@@ -1,0 +1,225 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VCPKG_DISABLE_METRICS: "1"
+  VCPKG_ROOT: ${{ runner.temp }}/vcpkg
+  VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
+
+jobs:
+  build:
+    name: Build ${{ matrix.package_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            package_name: woby-viewer-windows-x64
+            vcpkg_triplet: x64-windows
+            archive_extension: zip
+          - os: ubuntu-latest
+            package_name: woby-viewer-linux-x64
+            vcpkg_triplet: x64-linux
+            archive_extension: tar.gz
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            autoconf \
+            autoconf-archive \
+            automake \
+            bison \
+            build-essential \
+            curl \
+            flex \
+            libasound2-dev \
+            libdbus-1-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libibus-1.0-dev \
+            libpulse-dev \
+            libtool \
+            libudev-dev \
+            libwayland-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libxkbcommon-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libxss-dev \
+            nasm \
+            ninja-build \
+            pkg-config \
+            python3 \
+            tar \
+            unzip \
+            wayland-protocols \
+            zip
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-
+
+      - name: Prepare vcpkg cache directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force ".vcpkg-cache" | Out-Null
+
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$env:VCPKG_ROOT"
+          if ($IsWindows) {
+            & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+          } else {
+            & "$env:VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          }
+
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake `
+            -S . `
+            -B "build/${{ matrix.package_name }}" `
+            -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg_triplet }}"
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build "build/${{ matrix.package_name }}" --config Release --parallel
+
+      - name: Stage runtime files
+        shell: pwsh
+        run: |
+          $packageName = "${{ matrix.package_name }}"
+          $buildDir = Join-Path $env:GITHUB_WORKSPACE "build/$packageName"
+          $binDir = Join-Path $buildDir "bin"
+          $stageRoot = Join-Path $env:GITHUB_WORKSPACE "dist"
+          $stageDir = Join-Path $stageRoot $packageName
+
+          New-Item -ItemType Directory -Force $stageDir | Out-Null
+
+          if ($IsWindows) {
+            Copy-Item (Join-Path $binDir "woby_viewer.exe") $stageDir -Force
+            Get-ChildItem $binDir -Filter "*.dll" -File | Copy-Item -Destination $stageDir -Force
+          } else {
+            $executable = Join-Path $binDir "woby_viewer"
+            Copy-Item $executable $stageDir -Force
+            chmod +x (Join-Path $stageDir "woby_viewer")
+
+            $runtimeDeps = ldd $executable |
+              ForEach-Object {
+                if ($_ -match "=>\s+(/\S+)") {
+                  $matches[1]
+                } elseif ($_ -match "^\s*(/\S+)") {
+                  $matches[1]
+                }
+              } |
+              Where-Object { $_ -and $_.StartsWith($env:GITHUB_WORKSPACE) } |
+              Sort-Object -Unique
+
+            foreach ($dependency in $runtimeDeps) {
+              Copy-Item $dependency $stageDir -Force
+            }
+          }
+
+          Copy-Item (Join-Path $binDir "assets") $stageDir -Recurse -Force
+
+          Get-ChildItem $stageDir -Recurse -File |
+            Select-Object FullName, Length |
+            Format-Table -AutoSize
+
+      - name: Create package
+        id: package
+        shell: pwsh
+        run: |
+          $packageName = "${{ matrix.package_name }}"
+          $archivePath = Join-Path $env:GITHUB_WORKSPACE "dist/$packageName.${{ matrix.archive_extension }}"
+          $stageRoot = Join-Path $env:GITHUB_WORKSPACE "dist"
+          $stageDir = Join-Path $stageRoot $packageName
+
+          if ($IsWindows) {
+            Compress-Archive -Path $stageDir -DestinationPath $archivePath -Force
+          } else {
+            tar -C $stageRoot -czf $archivePath $packageName
+          }
+
+          "archive=$archivePath" >> $env:GITHUB_OUTPUT
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.package_name }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Validate release tag
+        id: tag
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping release because '${GITHUB_REF_NAME}' is not a vX.Y.Z tag."
+          fi
+
+      - name: Download packages
+        if: steps.tag.outputs.valid == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create release
+        if: steps.tag.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" release-assets/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              release-assets/* \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi

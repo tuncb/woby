@@ -35,6 +35,13 @@ target_link_libraries(woby_viewer PRIVATE
     imgui::imgui
 )
 
+if(UNIX AND NOT APPLE)
+    set_target_properties(woby_viewer PROPERTIES
+        BUILD_RPATH "$ORIGIN"
+        INSTALL_RPATH "$ORIGIN"
+    )
+endif()
+
 foreach(optional_bgfx_target IN ITEMS bgfx::bx bgfx::bimg)
     if(TARGET "${optional_bgfx_target}")
         target_link_libraries(woby_viewer PRIVATE "${optional_bgfx_target}")
