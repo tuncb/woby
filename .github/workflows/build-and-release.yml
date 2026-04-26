@@ -13,23 +13,24 @@ permissions:
 
 env:
   VCPKG_DISABLE_METRICS: "1"
-  VCPKG_ROOT: ${{ runner.temp }}/vcpkg
-  VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
 
 jobs:
   build:
     name: Build ${{ matrix.package_name }}
     runs-on: ${{ matrix.os }}
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            package_name: woby-viewer-windows-x64
+            package_name: woby-windows-x64
             vcpkg_triplet: x64-windows
             archive_extension: zip
           - os: ubuntu-latest
-            package_name: woby-viewer-linux-x64
+            package_name: woby-linux-x64
             vcpkg_triplet: x64-linux
             archive_extension: tar.gz
 
@@ -133,12 +134,12 @@ jobs:
           New-Item -ItemType Directory -Force $stageDir | Out-Null
 
           if ($IsWindows) {
-            Copy-Item (Join-Path $binDir "woby_viewer.exe") $stageDir -Force
+            Copy-Item (Join-Path $binDir "woby.exe") $stageDir -Force
             Get-ChildItem $binDir -Filter "*.dll" -File | Copy-Item -Destination $stageDir -Force
           } else {
-            $executable = Join-Path $binDir "woby_viewer"
+            $executable = Join-Path $binDir "woby"
             Copy-Item $executable $stageDir -Force
-            chmod +x (Join-Path $stageDir "woby_viewer")
+            chmod +x (Join-Path $stageDir "woby")
 
             $runtimeDeps = ldd $executable |
               ForEach-Object {

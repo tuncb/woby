@@ -12,19 +12,19 @@ to the vcpkg checkout directory.
 $env:VCPKG_ROOT="C:\path\to\vcpkg"
 cmake --preset vs2026-vcpkg
 cmake --build --preset vs2026-vcpkg
-.\build\vs2026-vcpkg\bin\Debug\woby_viewer.exe
+.\build\vs2026-vcpkg\bin\Debug\woby.exe
 ```
 
 Pass an OBJ path to load another model:
 
 ```powershell
-.\build\vs2026-vcpkg\bin\Debug\woby_viewer.exe --file C:\path\to\model.obj
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --file C:\path\to\model.obj
 ```
 
 Print the application version:
 
 ```powershell
-.\build\vs2026-vcpkg\bin\Debug\woby_viewer.exe --version
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --version
 ```
 
 The Ninja presets are also available, but they must be run from a shell where
