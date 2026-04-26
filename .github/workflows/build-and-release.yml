@@ -32,7 +32,7 @@ jobs:
             archive_extension: zip
           - os: ubuntu-latest
             package_name: woby-linux-x64
-            vcpkg_triplet: x64-linux-dynamic
+            vcpkg_triplet: woby-x64-linux-dynamic
             archive_extension: tar.gz
 
     steps:
@@ -91,7 +91,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .vcpkg-cache
-          key: vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg-triplets/**') }}
           restore-keys: |
             vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-
 
@@ -118,6 +118,7 @@ jobs:
             -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_TOOLCHAIN_FILE="$env:WOBY_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/cmake/vcpkg-triplets" `
             -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg_triplet }}"
 
       - name: Build
