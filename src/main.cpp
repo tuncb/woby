@@ -285,6 +285,9 @@ int main(int argc, char** argv)
         bool spin = true;
         float orbit = 0.0f;
         auto previous = std::chrono::steady_clock::now();
+        auto fpsWindowStart = previous;
+        int fpsFrameCount = 0;
+        float fps = 0.0f;
 
         while (running) {
             SDL_Event event;
@@ -308,6 +311,13 @@ int main(int argc, char** argv)
             const auto now = std::chrono::steady_clock::now();
             const float deltaSeconds = std::chrono::duration<float>(now - previous).count();
             previous = now;
+            ++fpsFrameCount;
+            const float fpsWindowSeconds = std::chrono::duration<float>(now - fpsWindowStart).count();
+            if (fpsWindowSeconds >= 1.0f) {
+                fps = static_cast<float>(fpsFrameCount) / fpsWindowSeconds;
+                fpsFrameCount = 0;
+                fpsWindowStart = now;
+            }
             if (spin) {
                 orbit += deltaSeconds * 0.6f;
             }
@@ -343,11 +353,13 @@ int main(int argc, char** argv)
             bgfx::dbgTextClear();
             bgfx::dbgTextPrintf(0, 1, 0x4f, "Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
             bgfx::dbgTextPrintf(0, 2, 0x6f, "Model: %s", modelPath.filename().string().c_str());
+            bgfx::dbgTextPrintf(0, 3, 0x2f, "FPS: %.1f", fps);
 
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
             ImGui::Begin("Viewer");
             ImGui::Text("Model: %s", modelPath.string().c_str());
+            ImGui::Text("FPS: %.1f", fps);
             ImGui::Text("Vertices: %zu", cpuMesh.vertices().size());
             ImGui::Text("Indices: %zu", cpuMesh.indices().size());
             ImGui::Checkbox("Spin", &spin);
