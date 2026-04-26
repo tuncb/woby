@@ -22,10 +22,6 @@
 #include <string>
 #include <utility>
 
-#ifndef WOBY_VERSION
-#define WOBY_VERSION "0.0.3"
-#endif
-
 namespace {
 
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC;
