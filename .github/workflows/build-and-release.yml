@@ -32,7 +32,7 @@ jobs:
             archive_extension: zip
           - os: ubuntu-latest
             package_name: woby-linux-x64
-            vcpkg_triplet: x64-linux
+            vcpkg_triplet: x64-linux-dynamic
             archive_extension: tar.gz
 
     steps:
