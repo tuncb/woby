@@ -9,15 +9,30 @@ The intended setup is vcpkg manifest mode. Install vcpkg, then set `VCPKG_ROOT`
 to the vcpkg checkout directory.
 
 ```powershell
-cmake --preset ninja-vcpkg
-cmake --build --preset ninja-vcpkg
-.\build\ninja-vcpkg\bin\woby_viewer.exe
+$env:VCPKG_ROOT="C:\path\to\vcpkg"
+cmake --preset vs2026-vcpkg
+cmake --build --preset vs2026-vcpkg
+.\build\vs2026-vcpkg\bin\Debug\woby_viewer.exe
 ```
 
 Pass an OBJ path to load another model:
 
 ```powershell
-.\build\ninja-vcpkg\bin\woby_viewer.exe C:\path\to\model.obj
+.\build\vs2026-vcpkg\bin\Debug\woby_viewer.exe --file C:\path\to\model.obj
+```
+
+Print the application version:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby_viewer.exe --version
+```
+
+The Ninja presets are also available, but they must be run from a shell where
+`cl.exe` is already on `PATH`, such as a Visual Studio Developer PowerShell:
+
+```powershell
+cmake --preset ninja-vcpkg
+cmake --build --preset ninja-vcpkg
 ```
 
 If dependencies are installed some other way, use the plain Ninja preset and

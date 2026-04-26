@@ -22,6 +22,10 @@
 #include <string>
 #include <utility>
 
+#ifndef WOBY_VERSION
+#define WOBY_VERSION "0.0.1"
+#endif
+
 namespace {
 
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC;
@@ -177,6 +181,42 @@ struct SdlDeleter {
     }
 };
 
+struct CommandLineOptions {
+    bool showVersion = false;
+    std::filesystem::path modelPath;
+};
+
+CommandLineOptions parseCommandLine(int argc, char** argv)
+{
+    CommandLineOptions options;
+
+    for (int index = 1; index < argc; ++index) {
+        const std::string argument = argv[index];
+
+        if (argument == "--version") {
+            options.showVersion = true;
+            continue;
+        }
+
+        if (argument == "--file") {
+            if (index + 1 >= argc) {
+                throw std::runtime_error("--file requires an OBJ filename.");
+            }
+
+            options.modelPath = argv[++index];
+            continue;
+        }
+
+        if (argument.rfind("--", 0) == 0) {
+            throw std::runtime_error("Unknown option: " + argument);
+        }
+
+        throw std::runtime_error("Unexpected argument: " + argument);
+    }
+
+    return options;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -185,6 +225,12 @@ int main(int argc, char** argv)
     bool bgfxInitialized = false;
 
     try {
+        const auto commandLine = parseCommandLine(argc, argv);
+        if (commandLine.showVersion) {
+            std::printf("%s\n", WOBY_VERSION);
+            return 0;
+        }
+
         if (!SDL_Init(SDL_INIT_VIDEO)) {
             throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
         }
@@ -217,8 +263,8 @@ int main(int argc, char** argv)
         bgfx::setDebug(BGFX_DEBUG_TEXT);
 
         const auto assets = assetRoot();
-        const auto modelPath = argc > 1
-            ? std::filesystem::path(argv[1])
+        const auto modelPath = !commandLine.modelPath.empty()
+            ? commandLine.modelPath
             : assets / "models" / "cube.obj";
 
         const auto cpuMesh = woby::ObjMesh::load(modelPath);

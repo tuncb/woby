@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(woby_obj_viewer VERSION 0.1.0 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,6 +24,8 @@ add_executable(woby_viewer
 )
 
 target_compile_features(woby_viewer PRIVATE cxx_std_20)
+
+target_compile_definitions(woby_viewer PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby_viewer PRIVATE
     SDL3::SDL3

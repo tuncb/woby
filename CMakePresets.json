@@ -7,6 +7,23 @@
   },
   "configurePresets": [
     {
+      "name": "vs2026-vcpkg",
+      "displayName": "Visual Studio 2026 + vcpkg manifest",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "vs2026",
+      "displayName": "Visual Studio 2026 with installed packages",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
       "name": "ninja-vcpkg",
       "displayName": "Ninja + vcpkg manifest",
       "generator": "Ninja",
@@ -27,6 +44,16 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "vs2026-vcpkg",
+      "configurePreset": "vs2026-vcpkg",
+      "configuration": "Debug"
+    },
+    {
+      "name": "vs2026",
+      "configurePreset": "vs2026",
+      "configuration": "Debug"
+    },
     {
       "name": "ninja-vcpkg",
       "configurePreset": "ninja-vcpkg"
