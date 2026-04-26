@@ -12,6 +12,7 @@ permissions:
   contents: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   VCPKG_DISABLE_METRICS: "1"
 
 jobs:
@@ -36,7 +37,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -86,7 +87,7 @@ jobs:
             zip
 
       - name: Cache vcpkg packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .vcpkg-cache
           key: vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json') }}
@@ -181,7 +182,7 @@ jobs:
           "archive=$archivePath" >> $env:GITHUB_OUTPUT
 
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.package_name }}
           path: ${{ steps.package.outputs.archive }}
@@ -206,7 +207,7 @@ jobs:
 
       - name: Download packages
         if: steps.tag.outputs.valid == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release-assets
           merge-multiple: true
