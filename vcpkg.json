@@ -1,0 +1,21 @@
+{
+  "name": "woby-obj-viewer",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "sdl3",
+    {
+      "name": "bgfx",
+      "features": [
+        "tools"
+      ]
+    },
+    "tinyobjloader",
+    "meshoptimizer",
+    {
+      "name": "imgui",
+      "features": [
+        "sdl3-binding"
+      ]
+    }
+  ]
+}

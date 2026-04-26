@@ -1,0 +1,15 @@
+build/
+out/
+.vs/
+.vscode/
+.idea/
+CMakeUserPresets.json
+*.user
+*.suo
+*.log
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.dylib
+*.so
