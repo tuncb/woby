@@ -19,7 +19,7 @@ jobs:
     name: Build ${{ matrix.package_name }}
     runs-on: ${{ matrix.os }}
     env:
-      VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+      WOBY_VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
       VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
     strategy:
       fail-fast: false
@@ -100,11 +100,11 @@ jobs:
       - name: Bootstrap vcpkg
         shell: pwsh
         run: |
-          git clone https://github.com/microsoft/vcpkg.git "$env:VCPKG_ROOT"
+          git clone https://github.com/microsoft/vcpkg.git "$env:WOBY_VCPKG_ROOT"
           if ($IsWindows) {
-            & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+            & "$env:WOBY_VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
           } else {
-            & "$env:VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+            & "$env:WOBY_VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
           }
 
       - name: Configure CMake
@@ -115,7 +115,7 @@ jobs:
             -B "build/${{ matrix.package_name }}" `
             -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$env:WOBY_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg_triplet }}"
 
       - name: Build
