@@ -2,6 +2,7 @@
 #include "camera.h"
 #include "imgui_bgfx.h"
 #include "obj_mesh.h"
+#include "scene_file.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_dialog.h>
@@ -76,11 +77,17 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf0b2,
     0xf1b2,
     0xf1b2,
+    0xed75,
+    0xed75,
+    0xed95,
+    0xed95,
     0xea7f,
     0xea7f,
     0,
 };
 constexpr const char* addObjFileIcon = "\xee\xa9\xbf";
+constexpr const char* openSceneIcon = "\xee\xb6\x95";
+constexpr const char* saveSceneIcon = "\xee\xb5\xb5";
 constexpr const char* removeFileIcon = "\xef\x80\x8d";
 constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 constexpr const char* trianglesIcon = "\xef\x81\x8b";
@@ -278,6 +285,16 @@ struct ObjFileDialogState {
     std::string status;
     uint64_t statusVersion = 0;
     bool open = false;
+};
+
+struct SceneFileDialogState {
+    std::mutex mutex;
+    std::optional<std::filesystem::path> pendingOpenPath;
+    std::optional<std::filesystem::path> pendingSavePath;
+    std::string status;
+    uint64_t statusVersion = 0;
+    bool openDialogOpen = false;
+    bool saveDialogOpen = false;
 };
 
 struct ToastMessage {
@@ -1660,6 +1677,149 @@ bool objFileDialogIsOpen(ObjFileDialogState& state)
     return state.open;
 }
 
+void SDLCALL openSceneDialogCallback(void* userdata, const char* const* filelist, int filter)
+{
+    (void)filter;
+
+    auto* state = static_cast<SceneFileDialogState*>(userdata);
+    std::optional<std::filesystem::path> selectedPath;
+    std::string status;
+    bool showStatus = false;
+
+    if (filelist == nullptr) {
+        status = std::string("Open scene dialog failed: ") + SDL_GetError();
+        showStatus = true;
+    } else if (filelist[0] == nullptr) {
+        status = "Open scene canceled";
+        showStatus = true;
+    } else {
+        selectedPath = std::filesystem::path(filelist[0]);
+    }
+
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->pendingOpenPath = std::move(selectedPath);
+    if (showStatus) {
+        state->status = std::move(status);
+        ++state->statusVersion;
+    }
+    state->openDialogOpen = false;
+}
+
+void SDLCALL saveSceneDialogCallback(void* userdata, const char* const* filelist, int filter)
+{
+    (void)filter;
+
+    auto* state = static_cast<SceneFileDialogState*>(userdata);
+    std::optional<std::filesystem::path> selectedPath;
+    std::string status;
+    bool showStatus = false;
+
+    if (filelist == nullptr) {
+        status = std::string("Save scene dialog failed: ") + SDL_GetError();
+        showStatus = true;
+    } else if (filelist[0] == nullptr) {
+        status = "Save scene canceled";
+        showStatus = true;
+    } else {
+        selectedPath = std::filesystem::path(filelist[0]);
+    }
+
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->pendingSavePath = std::move(selectedPath);
+    if (showStatus) {
+        state->status = std::move(status);
+        ++state->statusVersion;
+    }
+    state->saveDialogOpen = false;
+}
+
+void showOpenSceneDialog(SDL_Window* window, SceneFileDialogState& state)
+{
+    static constexpr SDL_DialogFileFilter filters[] = {
+        {"woby scene", "woby"},
+    };
+
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if (state.openDialogOpen) {
+            return;
+        }
+        state.openDialogOpen = true;
+    }
+
+    SDL_ShowOpenFileDialog(
+        openSceneDialogCallback,
+        &state,
+        window,
+        filters,
+        static_cast<int>(std::size(filters)),
+        nullptr,
+        false);
+}
+
+void showSaveSceneDialog(SDL_Window* window, SceneFileDialogState& state)
+{
+    static constexpr SDL_DialogFileFilter filters[] = {
+        {"woby scene", "woby"},
+    };
+
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if (state.saveDialogOpen) {
+            return;
+        }
+        state.saveDialogOpen = true;
+    }
+
+    SDL_ShowSaveFileDialog(
+        saveSceneDialogCallback,
+        &state,
+        window,
+        filters,
+        static_cast<int>(std::size(filters)),
+        nullptr);
+}
+
+std::optional<std::filesystem::path> takePendingOpenScenePath(SceneFileDialogState& state)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    std::optional<std::filesystem::path> path = std::move(state.pendingOpenPath);
+    state.pendingOpenPath.reset();
+    return path;
+}
+
+std::optional<std::filesystem::path> takePendingSaveScenePath(SceneFileDialogState& state)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    std::optional<std::filesystem::path> path = std::move(state.pendingSavePath);
+    state.pendingSavePath.reset();
+    return path;
+}
+
+void setSceneFileDialogStatus(SceneFileDialogState& state, std::string status)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.status = std::move(status);
+    ++state.statusVersion;
+}
+
+std::string sceneFileDialogStatus(SceneFileDialogState& state, uint64_t& statusVersion)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (state.statusVersion == statusVersion) {
+        return {};
+    }
+
+    statusVersion = state.statusVersion;
+    return state.status;
+}
+
+bool sceneFileDialogIsOpen(SceneFileDialogState& state)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    return state.openDialogOpen || state.saveDialogOpen;
+}
+
 void appendFolderObjPaths(
     const std::filesystem::path& folder,
     std::vector<std::filesystem::path>& modelPaths)
@@ -1837,6 +1997,160 @@ bool appendObjFiles(
     return addedCount > 0u;
 }
 
+woby::SceneFileSettings sceneFileSettings(const FileRenderSettings& settings)
+{
+    woby::SceneFileSettings result;
+    result.visible = settings.visible;
+    result.scale = settings.scale;
+    result.opacity = settings.opacity;
+    result.translation = settings.translation;
+    result.rotationDegrees = settings.rotationDegrees;
+    return result;
+}
+
+woby::SceneGroupSettings sceneGroupSettings(const GroupRenderSettings& settings)
+{
+    woby::SceneGroupSettings result;
+    result.visible = settings.visible;
+    result.showSolidMesh = settings.showSolidMesh;
+    result.showTriangles = settings.showTriangles;
+    result.showVertices = settings.showVertices;
+    result.scale = settings.scale;
+    result.opacity = settings.opacity;
+    result.vertexSizeScale = settings.vertexSizeScale;
+    result.translation = settings.translation;
+    result.rotationDegrees = settings.rotationDegrees;
+    result.color = settings.color;
+    return result;
+}
+
+woby::SceneDocument createSceneDocument(
+    const std::vector<LoadedObjFile>& files,
+    float masterVertexPointSize,
+    const woby::SceneCamera& camera)
+{
+    woby::SceneDocument document;
+    document.masterVertexPointSize = masterVertexPointSize;
+    document.camera = camera;
+    document.cameraLoaded = true;
+    document.files.reserve(files.size());
+
+    for (const auto& file : files) {
+        woby::SceneFileRecord fileRecord;
+        fileRecord.path = file.path;
+        fileRecord.settings = sceneFileSettings(file.fileSettings);
+        fileRecord.vertexSizeScale = file.vertexSizeScale;
+        fileRecord.groups.reserve(file.groupSettings.size());
+
+        for (size_t groupIndex = 0; groupIndex < file.groupSettings.size(); ++groupIndex) {
+            woby::SceneGroupRecord groupRecord;
+            groupRecord.name = file.mesh.nodes[groupIndex].name;
+            groupRecord.settings = sceneGroupSettings(file.groupSettings[groupIndex]);
+            fileRecord.groups.push_back(std::move(groupRecord));
+        }
+
+        document.files.push_back(std::move(fileRecord));
+    }
+
+    return document;
+}
+
+void applySceneFileRecord(LoadedObjFile& file, const woby::SceneFileRecord& record)
+{
+    file.fileSettings.visible = record.settings.visible;
+    file.fileSettings.scale = record.settings.scale;
+    file.fileSettings.opacity = record.settings.opacity;
+    file.fileSettings.translation = record.settings.translation;
+    file.fileSettings.rotationDegrees = record.settings.rotationDegrees;
+    file.vertexSizeScale = record.vertexSizeScale;
+
+    const size_t groupCount = std::min(file.groupSettings.size(), record.groups.size());
+    for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+        auto& group = file.groupSettings[groupIndex];
+        const auto& recordGroup = record.groups[groupIndex].settings;
+        group.visible = recordGroup.visible;
+        group.showSolidMesh = recordGroup.showSolidMesh;
+        group.showTriangles = recordGroup.showTriangles;
+        group.showVertices = recordGroup.showVertices;
+        group.scale = recordGroup.scale;
+        group.opacity = recordGroup.opacity;
+        group.vertexSizeScale = recordGroup.vertexSizeScale;
+        group.translation = recordGroup.translation;
+        group.rotationDegrees = recordGroup.rotationDegrees;
+        group.color = recordGroup.color;
+    }
+}
+
+void destroyObjFiles(std::vector<LoadedObjFile>& files)
+{
+    for (auto& file : files) {
+        destroyGpuMesh(file.gpuMesh);
+    }
+    files.clear();
+}
+
+std::vector<LoadedObjFile> loadSceneFiles(
+    const std::filesystem::path& scenePath,
+    const woby::SceneDocument& document,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout)
+{
+    std::vector<LoadedObjFile> loadedFiles;
+    loadedFiles.reserve(document.files.size());
+    size_t colorIndex = 0;
+
+    try {
+        for (const auto& record : document.files) {
+            const std::filesystem::path modelPath = woby::sceneAbsolutePath(scenePath, record.path);
+            LoadedObjFile file = loadObjFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
+            applySceneFileRecord(file, record);
+            colorIndex += file.groupSettings.size();
+            loadedFiles.push_back(std::move(file));
+        }
+    } catch (...) {
+        destroyObjFiles(loadedFiles);
+        throw;
+    }
+
+    return loadedFiles;
+}
+
+void loadScene(
+    const std::filesystem::path& scenePath,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout,
+    std::vector<LoadedObjFile>& files,
+    woby::Bounds& sceneBounds,
+    woby::SceneCamera& camera,
+    float& masterVertexPointSize)
+{
+    const woby::SceneDocument document = woby::readSceneDocument(scenePath);
+    std::vector<LoadedObjFile> loadedFiles = loadSceneFiles(
+        scenePath,
+        document,
+        meshLayout,
+        pointSpriteLayout);
+
+    destroyObjFiles(files);
+    files = std::move(loadedFiles);
+    masterVertexPointSize = std::clamp(
+        document.masterVertexPointSize,
+        minVertexPointSize,
+        maxVertexPointSize);
+    sceneBounds = combineBounds(files);
+    camera = document.cameraLoaded ? document.camera : woby::frameCameraBounds(sceneBounds);
+}
+
+void saveScene(
+    const std::filesystem::path& requestedScenePath,
+    const std::vector<LoadedObjFile>& files,
+    float masterVertexPointSize,
+    const woby::SceneCamera& camera)
+{
+    const std::filesystem::path scenePath = woby::sceneSavePathWithExtension(requestedScenePath);
+    woby::writeSceneDocument(scenePath, createSceneDocument(files, masterVertexPointSize, camera));
+}
+
 void setToastMessage(ToastMessage& toast, std::string text)
 {
     toast.text = std::move(text);
@@ -1996,8 +2310,10 @@ int main(int argc, char** argv)
         woby::SceneCamera camera = woby::frameCameraBounds(sceneBounds);
         woby::CameraInput cameraInput;
         static ObjFileDialogState objFileDialogState;
+        static SceneFileDialogState sceneFileDialogState;
         ToastMessage toast;
         uint64_t observedObjFileDialogStatusVersion = 0;
+        uint64_t observedSceneFileDialogStatusVersion = 0;
         auto previousFrame = std::chrono::steady_clock::now();
         auto fpsWindowStart = previousFrame;
         int fpsFrameCount = 0;
@@ -2072,6 +2388,43 @@ int main(int argc, char** argv)
                 observedObjFileDialogStatusVersion);
             if (!objDialogStatus.empty()) {
                 setToastMessage(toast, objDialogStatus);
+            }
+
+            const auto pendingOpenScenePath = takePendingOpenScenePath(sceneFileDialogState);
+            if (pendingOpenScenePath.has_value()) {
+                try {
+                    loadScene(
+                        pendingOpenScenePath.value(),
+                        layout,
+                        pointLayout,
+                        files,
+                        sceneBounds,
+                        camera,
+                        masterVertexPointSize);
+                    setToastMessage(toast, "Opened scene " + fileDisplayName(pendingOpenScenePath.value()));
+                } catch (const std::exception& exception) {
+                    setSceneFileDialogStatus(
+                        sceneFileDialogState,
+                        std::string("Open scene failed: ") + exception.what());
+                }
+            }
+            const auto pendingSaveScenePath = takePendingSaveScenePath(sceneFileDialogState);
+            if (pendingSaveScenePath.has_value()) {
+                try {
+                    const auto scenePath = woby::sceneSavePathWithExtension(pendingSaveScenePath.value());
+                    saveScene(scenePath, files, masterVertexPointSize, camera);
+                    setToastMessage(toast, "Saved scene " + fileDisplayName(scenePath));
+                } catch (const std::exception& exception) {
+                    setSceneFileDialogStatus(
+                        sceneFileDialogState,
+                        std::string("Save scene failed: ") + exception.what());
+                }
+            }
+            const std::string sceneDialogStatus = sceneFileDialogStatus(
+                sceneFileDialogState,
+                observedSceneFileDialogStatusVersion);
+            if (!sceneDialogStatus.empty()) {
+                setToastMessage(toast, sceneDialogStatus);
             }
 
             const auto now = std::chrono::steady_clock::now();
@@ -2228,7 +2581,9 @@ int main(int argc, char** argv)
                             ImVec2(0.0f, sceneContentHeight),
                             ImGuiChildFlags_None)) {
                         const bool fileDialogOpen = objFileDialogIsOpen(objFileDialogState);
-                        if (fileDialogOpen) {
+                        const bool sceneDialogOpen = sceneFileDialogIsOpen(sceneFileDialogState);
+                        const bool anyFileDialogOpen = fileDialogOpen || sceneDialogOpen;
+                        if (anyFileDialogOpen) {
                             ImGui::BeginDisabled();
                         }
                         if (ImGui::Button(
@@ -2236,10 +2591,36 @@ int main(int argc, char** argv)
                                 ImVec2(renderModeButtonSize, renderModeButtonSize))) {
                             showObjFileDialog(window.get(), objFileDialogState);
                         }
-                        if (fileDialogOpen) {
+                        if (anyFileDialogOpen) {
                             ImGui::EndDisabled();
                         }
                         setLastItemTooltip("Add OBJ files");
+                        ImGui::SameLine();
+                        if (anyFileDialogOpen) {
+                            ImGui::BeginDisabled();
+                        }
+                        if (ImGui::Button(
+                                std::string(openSceneIcon).append("##open_scene").c_str(),
+                                ImVec2(renderModeButtonSize, renderModeButtonSize))) {
+                            showOpenSceneDialog(window.get(), sceneFileDialogState);
+                        }
+                        if (anyFileDialogOpen) {
+                            ImGui::EndDisabled();
+                        }
+                        setLastItemTooltip("Open scene");
+                        ImGui::SameLine();
+                        if (anyFileDialogOpen) {
+                            ImGui::BeginDisabled();
+                        }
+                        if (ImGui::Button(
+                                std::string(saveSceneIcon).append("##save_scene").c_str(),
+                                ImVec2(renderModeButtonSize, renderModeButtonSize))) {
+                            showSaveSceneDialog(window.get(), sceneFileDialogState);
+                        }
+                        if (anyFileDialogOpen) {
+                            ImGui::EndDisabled();
+                        }
+                        setLastItemTooltip("Save scene");
                         ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
                         ImGui::Text("FPS: %.1f", fps);
                         size_t vertexCountTotal = 0;

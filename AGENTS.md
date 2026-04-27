@@ -1,8 +1,12 @@
 # Task completion rules
 
-Any code change requires:
+## Completeness rules
+
+- In case of change in ui features that the user can use to change the scene, visibility, transformations, colors etc. the changes should be reflected in the woby file saving and loading code.
+
+## Code changes
 - Build woby project in debug mode, the build shoud succeed without any warnings.
-- If there is alrady woby open, terminate the process and re-try. 
+- If there is alrady woby open, terminate the process and re-try.
 
 # Build rules
 

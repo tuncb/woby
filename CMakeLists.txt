@@ -25,6 +25,8 @@ add_executable(woby
     src/main.cpp
     src/obj_mesh.cpp
     src/obj_mesh.h
+    src/scene_file.cpp
+    src/scene_file.h
 )
 
 target_compile_features(woby PRIVATE cxx_std_20)
