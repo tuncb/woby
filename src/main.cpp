@@ -1691,7 +1691,7 @@ int main(int argc, char** argv)
         }
         sdlInitialized = true;
 
-        SDL_Window* rawWindow = SDL_CreateWindow("woby OBJ Viewer", 1280, 720, SDL_WINDOW_RESIZABLE);
+        SDL_Window* rawWindow = SDL_CreateWindow("woby", 1280, 720, SDL_WINDOW_RESIZABLE);
         if (rawWindow == nullptr) {
             throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
         }
