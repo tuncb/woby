@@ -4,6 +4,7 @@
 #include "obj_mesh.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_dialog.h>
 #include <SDL3/SDL_main.h>
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
@@ -19,8 +20,10 @@
 #include <cctype>
 #include <exception>
 #include <filesystem>
+#include <iterator>
 #include <memory>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -67,8 +70,11 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf0b2,
     0xf1b2,
     0xf1b2,
+    0xea7f,
+    0xea7f,
     0,
 };
+constexpr const char* addObjFileIcon = "\xee\xa9\xbf";
 constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 constexpr const char* trianglesIcon = "\xef\x81\x8b";
 constexpr const char* verticesIcon = "\xef\x86\x92";
@@ -79,6 +85,8 @@ constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 constexpr float renderModeButtonSize = 26.0f;
 constexpr float groupVertexSizeControlWidth = 70.0f;
 constexpr float viewerPaneWidthPadding = 20.0f;
+constexpr float toastDurationSeconds = 3.0f;
+constexpr float toastMargin = 12.0f;
 
 bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
 {
@@ -254,6 +262,19 @@ struct LoadedObjFile {
     std::vector<GroupRenderSettings> groupSettings;
     FileRenderSettings fileSettings;
     float vertexSizeScale = 1.0f;
+};
+
+struct ObjFileDialogState {
+    std::mutex mutex;
+    std::vector<std::filesystem::path> pendingPaths;
+    std::string status;
+    uint64_t statusVersion = 0;
+    bool open = false;
+};
+
+struct ToastMessage {
+    std::string text;
+    std::chrono::steady_clock::time_point startedAt{};
 };
 
 std::array<float, 3> nodeCenter(const woby::ObjMesh& mesh, const woby::ObjNode& node)
@@ -1322,6 +1343,96 @@ bool isObjPath(const std::filesystem::path& path)
     return lowercase(path.extension().string()) == ".obj";
 }
 
+void SDLCALL objFileDialogCallback(void* userdata, const char* const* filelist, int filter)
+{
+    (void)filter;
+
+    auto* state = static_cast<ObjFileDialogState*>(userdata);
+    std::vector<std::filesystem::path> selectedPaths;
+    std::string status;
+    bool showStatus = false;
+
+    if (filelist == nullptr) {
+        status = std::string("Open dialog failed: ") + SDL_GetError();
+        showStatus = true;
+    } else if (filelist[0] == nullptr) {
+        status = "Open canceled";
+        showStatus = true;
+    } else {
+        for (size_t index = 0; filelist[index] != nullptr; ++index) {
+            selectedPaths.emplace_back(filelist[index]);
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->pendingPaths.insert(
+        state->pendingPaths.end(),
+        selectedPaths.begin(),
+        selectedPaths.end());
+    if (showStatus) {
+        state->status = std::move(status);
+        ++state->statusVersion;
+    }
+    state->open = false;
+}
+
+void showObjFileDialog(SDL_Window* window, ObjFileDialogState& state)
+{
+    static constexpr SDL_DialogFileFilter filters[] = {
+        {"Wavefront OBJ", "obj"},
+        {"All files", "*"},
+    };
+
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if (state.open) {
+            return;
+        }
+        state.open = true;
+    }
+
+    SDL_ShowOpenFileDialog(
+        objFileDialogCallback,
+        &state,
+        window,
+        filters,
+        static_cast<int>(std::size(filters)),
+        nullptr,
+        true);
+}
+
+std::vector<std::filesystem::path> takePendingObjPaths(ObjFileDialogState& state)
+{
+    std::vector<std::filesystem::path> paths;
+    std::lock_guard<std::mutex> lock(state.mutex);
+    paths.swap(state.pendingPaths);
+    return paths;
+}
+
+void setObjFileDialogStatus(ObjFileDialogState& state, std::string status)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.status = std::move(status);
+    ++state.statusVersion;
+}
+
+std::string objFileDialogStatus(ObjFileDialogState& state, uint64_t& statusVersion)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (state.statusVersion == statusVersion) {
+        return {};
+    }
+
+    statusVersion = state.statusVersion;
+    return state.status;
+}
+
+bool objFileDialogIsOpen(ObjFileDialogState& state)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    return state.open;
+}
+
 void appendFolderObjPaths(
     const std::filesystem::path& folder,
     std::vector<std::filesystem::path>& modelPaths)
@@ -1406,6 +1517,28 @@ woby::Bounds combineBounds(const std::vector<LoadedObjFile>& files)
     return bounds;
 }
 
+LoadedObjFile loadObjFile(
+    const std::filesystem::path& modelPath,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout,
+    size_t firstColorIndex)
+{
+    LoadedObjFile file;
+    file.path = modelPath;
+    file.mesh = woby::loadObjMesh(modelPath);
+    file.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout);
+    file.groupSettings = createGroupRenderSettings(file.mesh);
+    file.fileSettings.center = file.mesh.bounds.center;
+
+    size_t colorIndex = firstColorIndex;
+    for (auto& group : file.groupSettings) {
+        group.color = objGroupColor(colorIndex);
+        ++colorIndex;
+    }
+
+    return file;
+}
+
 std::vector<LoadedObjFile> loadObjFiles(
     const std::vector<std::filesystem::path>& modelPaths,
     const bgfx::VertexLayout& meshLayout,
@@ -1416,20 +1549,105 @@ std::vector<LoadedObjFile> loadObjFiles(
     size_t colorIndex = 0;
 
     for (const auto& modelPath : modelPaths) {
-        LoadedObjFile file;
-        file.path = modelPath;
-        file.mesh = woby::loadObjMesh(modelPath);
-        file.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout);
-        file.groupSettings = createGroupRenderSettings(file.mesh);
-        file.fileSettings.center = file.mesh.bounds.center;
-        for (auto& group : file.groupSettings) {
-            group.color = objGroupColor(colorIndex);
-            ++colorIndex;
-        }
+        LoadedObjFile file = loadObjFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
+        colorIndex += file.groupSettings.size();
         files.push_back(std::move(file));
     }
 
     return files;
+}
+
+bool appendObjFiles(
+    const std::vector<std::filesystem::path>& modelPaths,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout,
+    std::vector<LoadedObjFile>& files,
+    std::string& status)
+{
+    size_t addedCount = 0;
+    size_t skippedCount = 0;
+    size_t failedCount = 0;
+    std::string lastError;
+    size_t colorIndex = totalGroupCount(files);
+
+    for (const auto& modelPath : modelPaths) {
+        if (!isObjPath(modelPath)) {
+            ++skippedCount;
+            continue;
+        }
+
+        try {
+            LoadedObjFile file = loadObjFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
+            colorIndex += file.groupSettings.size();
+            files.push_back(std::move(file));
+            ++addedCount;
+        } catch (const std::exception& exception) {
+            ++failedCount;
+            lastError = exception.what();
+        }
+    }
+
+    status = "Added " + std::to_string(addedCount) + " OBJ file";
+    if (addedCount != 1u) {
+        status += "s";
+    }
+    if (skippedCount > 0u) {
+        status += ", skipped " + std::to_string(skippedCount) + " non-OBJ";
+    }
+    if (failedCount > 0u) {
+        status += ", failed " + std::to_string(failedCount);
+        if (!lastError.empty()) {
+            status += ": " + lastError;
+        }
+    }
+
+    return addedCount > 0u;
+}
+
+void setToastMessage(ToastMessage& toast, std::string text)
+{
+    toast.text = std::move(text);
+    toast.startedAt = std::chrono::steady_clock::now();
+}
+
+void drawToastMessage(const ToastMessage& toast, uint32_t width)
+{
+    if (toast.text.empty()) {
+        return;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    const float elapsedSeconds = std::chrono::duration<float>(now - toast.startedAt).count();
+    if (elapsedSeconds >= toastDurationSeconds) {
+        return;
+    }
+
+    const float alpha = std::clamp(
+        (toastDurationSeconds - elapsedSeconds) / 0.35f,
+        0.0f,
+        1.0f);
+    ImGui::SetNextWindowBgAlpha(0.86f * alpha);
+    ImGui::SetNextWindowPos(
+        ImVec2(static_cast<float>(width) - toastMargin, toastMargin),
+        ImGuiCond_Always,
+        ImVec2(1.0f, 0.0f));
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, alpha));
+    if (ImGui::Begin(
+            "##ToastMessage",
+            nullptr,
+            ImGuiWindowFlags_NoDecoration
+                | ImGuiWindowFlags_AlwaysAutoResize
+                | ImGuiWindowFlags_NoMove
+                | ImGuiWindowFlags_NoSavedSettings
+                | ImGuiWindowFlags_NoFocusOnAppearing
+                | ImGuiWindowFlags_NoInputs)) {
+        ImGui::TextUnformatted(toast.text.c_str());
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
 }
 
 } // namespace
@@ -1482,7 +1700,7 @@ int main(int argc, char** argv)
         const auto layout = meshVertexLayout();
         const auto pointLayout = pointSpriteVertexLayout();
         std::vector<LoadedObjFile> files = loadObjFiles(modelPaths, layout, pointLayout);
-        const woby::Bounds sceneBounds = combineBounds(files);
+        woby::Bounds sceneBounds = combineBounds(files);
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
@@ -1503,6 +1721,9 @@ int main(int argc, char** argv)
         float masterVertexPointSize = 4.0f;
         woby::SceneCamera camera = woby::frameCameraBounds(sceneBounds);
         woby::CameraInput cameraInput;
+        static ObjFileDialogState objFileDialogState;
+        ToastMessage toast;
+        uint64_t observedObjFileDialogStatusVersion = 0;
         auto previousFrame = std::chrono::steady_clock::now();
         auto fpsWindowStart = previousFrame;
         int fpsFrameCount = 0;
@@ -1562,6 +1783,22 @@ int main(int argc, char** argv)
             }
 
             getDrawableSize(window.get(), width, height);
+
+            const auto pendingObjPaths = takePendingObjPaths(objFileDialogState);
+            if (!pendingObjPaths.empty()) {
+                std::string status;
+                if (appendObjFiles(pendingObjPaths, layout, pointLayout, files, status)) {
+                    sceneBounds = combineBounds(files);
+                    camera = woby::frameCameraBounds(sceneBounds);
+                }
+                setObjFileDialogStatus(objFileDialogState, std::move(status));
+            }
+            const std::string objDialogStatus = objFileDialogStatus(
+                objFileDialogState,
+                observedObjFileDialogStatusVersion);
+            if (!objDialogStatus.empty()) {
+                setToastMessage(toast, objDialogStatus);
+            }
 
             const auto now = std::chrono::steady_clock::now();
             const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();
@@ -1698,6 +1935,19 @@ int main(int argc, char** argv)
                             "SceneContent",
                             ImVec2(0.0f, sceneContentHeight),
                             ImGuiChildFlags_None)) {
+                        const bool fileDialogOpen = objFileDialogIsOpen(objFileDialogState);
+                        if (fileDialogOpen) {
+                            ImGui::BeginDisabled();
+                        }
+                        if (ImGui::Button(
+                                std::string(addObjFileIcon).append("##add_obj_file").c_str(),
+                                ImVec2(renderModeButtonSize, renderModeButtonSize))) {
+                            showObjFileDialog(window.get(), objFileDialogState);
+                        }
+                        if (fileDialogOpen) {
+                            ImGui::EndDisabled();
+                        }
+                        setLastItemTooltip("Add OBJ files");
                         ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
                         ImGui::Text("FPS: %.1f", fps);
                         size_t vertexCountTotal = 0;
@@ -1830,6 +2080,7 @@ int main(int argc, char** argv)
                 }
             }
             ImGui::End();
+            drawToastMessage(toast, width);
             ImGui::Render();
             woby::imgui_bgfx::render(ImGui::GetDrawData());
 
