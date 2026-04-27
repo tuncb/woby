@@ -1647,10 +1647,10 @@ int main(int argc, char** argv)
                             ImGui::Checkbox("##visible", &file.fileSettings.visible);
                             setLastItemTooltip("Show file");
                             ImGui::SameLine();
-                            if (ImGui::TreeNode(label.c_str())) {
-                                const std::string pathText = file.path.string();
-                                ImGui::Text("Path: %s", pathText.c_str());
-                                setLastItemTooltip(pathText.c_str());
+                            const std::string pathText = file.path.string();
+                            const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
+                            setLastItemTooltip(pathText.c_str());
+                            if (fileTreeOpen) {
                                 drawMeshCountLine(
                                     file.mesh.vertices.size(),
                                     file.mesh.indices.size() / 3u);
