@@ -9,21 +9,23 @@ namespace woby {
 
 const char* rendererShaderFolder(bgfx::RendererType::Enum renderer)
 {
-    switch (renderer) {
-    case bgfx::RendererType::Direct3D11:
-    case bgfx::RendererType::Direct3D12:
+    if (renderer == bgfx::RendererType::Direct3D11 || renderer == bgfx::RendererType::Direct3D12) {
         return "dx11";
-    case bgfx::RendererType::Metal:
+    }
+    if (renderer == bgfx::RendererType::Metal) {
         return "metal";
-    case bgfx::RendererType::OpenGL:
-        return "glsl";
-    case bgfx::RendererType::OpenGLES:
-        return "essl";
-    case bgfx::RendererType::Vulkan:
-        return "spirv";
-    default:
+    }
+    if (renderer == bgfx::RendererType::OpenGL) {
         return "glsl";
     }
+    if (renderer == bgfx::RendererType::OpenGLES) {
+        return "essl";
+    }
+    if (renderer == bgfx::RendererType::Vulkan) {
+        return "spirv";
+    }
+
+    return "glsl";
 }
 
 bgfx::ShaderHandle loadShader(const std::filesystem::path& path)

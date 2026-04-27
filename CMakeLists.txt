@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
+include(cmake/WobyWarnings.cmake)
+
 find_package(SDL3 CONFIG REQUIRED)
 find_package(bgfx CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
@@ -50,11 +52,8 @@ foreach(optional_bgfx_target IN ITEMS bgfx::bx bgfx::bimg)
     endif()
 endforeach()
 
-if(MSVC)
-    target_compile_options(woby PRIVATE /W4 /permissive- /EHs)
-else()
-    target_compile_options(woby PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+woby_enable_project_warnings(woby)
+woby_enable_enum_switch_warnings(woby)
 
 add_custom_target(woby_assets
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
