@@ -135,6 +135,13 @@ struct GpuMesh {
     std::vector<GpuNodeRange> nodeRanges;
 };
 
+struct GroupRenderSettings {
+    bool visible = true;
+    bool showSolidMesh = true;
+    bool showTriangles = true;
+    bool showVertices = true;
+};
+
 std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
 {
     std::vector<uint32_t> lineIndices;
@@ -245,6 +252,13 @@ void setIdentityTransform()
     float model[16];
     bx::mtxIdentity(model);
     bgfx::setTransform(model);
+}
+
+void setLastItemTooltip(const char* text)
+{
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", text);
+    }
 }
 
 void submitTriangleRange(
@@ -414,7 +428,7 @@ int main(int argc, char** argv)
         bool showSolidMesh = true;
         bool showTriangles = true;
         bool showVertexNodes = true;
-        std::vector<uint8_t> nodeVisible(cpuMesh.nodes.size(), 1u);
+        std::vector<GroupRenderSettings> groupSettings(cpuMesh.nodes.size());
         woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds);
         woby::CameraInput cameraInput;
         auto previousFrame = std::chrono::steady_clock::now();
@@ -506,13 +520,14 @@ int main(int argc, char** argv)
             bgfx::setViewTransform(sceneView, view, projection);
 
             for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
-                if (nodeVisible[nodeIndex] == 0u) {
+                const auto& settings = groupSettings[nodeIndex];
+                if (!settings.visible) {
                     continue;
                 }
 
                 const auto groupColor = objGroupColor(nodeIndex);
                 const auto& range = gpuMesh.nodeRanges[nodeIndex];
-                if (showSolidMesh) {
+                if (showSolidMesh && settings.showSolidMesh) {
                     submitTriangleRange(
                         gpuMesh,
                         meshProgram,
@@ -521,7 +536,7 @@ int main(int argc, char** argv)
                         range.triangleIndexOffset,
                         range.triangleIndexCount);
                 }
-                if (showTriangles) {
+                if (showTriangles && settings.showTriangles) {
                     submitColorRange(
                         gpuMesh,
                         gpuMesh.lineIndexBuffer,
@@ -532,7 +547,7 @@ int main(int argc, char** argv)
                         range.lineIndexOffset,
                         range.lineIndexCount);
                 }
-                if (showVertexNodes) {
+                if (showVertexNodes && settings.showVertices) {
                     submitColorRange(
                         gpuMesh,
                         gpuMesh.pointIndexBuffer,
@@ -561,13 +576,21 @@ int main(int argc, char** argv)
             if (ImGui::TreeNode("Groups")) {
                 for (size_t nodeIndex = 0; nodeIndex < cpuMesh.nodes.size(); ++nodeIndex) {
                     const auto& node = cpuMesh.nodes[nodeIndex];
-                    bool visible = nodeVisible[nodeIndex] != 0u;
+                    auto& settings = groupSettings[nodeIndex];
                     const std::string label = node.name + "##node_" + std::to_string(nodeIndex);
-                    if (ImGui::Checkbox(label.c_str(), &visible)) {
-                        nodeVisible[nodeIndex] = visible ? 1u : 0u;
-                    }
+                    ImGui::Checkbox(label.c_str(), &settings.visible);
+                    setLastItemTooltip("Show group");
                     ImGui::SameLine();
                     ImGui::TextDisabled("(%u triangles)", node.indexCount / 3u);
+                    ImGui::SameLine();
+                    ImGui::Checkbox(("S##solid_node_" + std::to_string(nodeIndex)).c_str(), &settings.showSolidMesh);
+                    setLastItemTooltip("Solid mesh for this group");
+                    ImGui::SameLine();
+                    ImGui::Checkbox(("T##triangles_node_" + std::to_string(nodeIndex)).c_str(), &settings.showTriangles);
+                    setLastItemTooltip("Triangles for this group");
+                    ImGui::SameLine();
+                    ImGui::Checkbox(("V##vertices_node_" + std::to_string(nodeIndex)).c_str(), &settings.showVertices);
+                    setLastItemTooltip("Vertices for this group");
                 }
                 ImGui::TreePop();
             }
