@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <exception>
 #include <filesystem>
@@ -29,6 +30,10 @@ namespace {
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC;
 constexpr bgfx::ViewId sceneView = 0;
 constexpr bgfx::ViewId imguiView = 255;
+constexpr float minVertexPointSize = 1.0f;
+constexpr float maxVertexPointSize = 40.0f;
+constexpr float minVertexSizeScale = 0.1f;
+constexpr float maxVertexSizeScale = 10.0f;
 
 bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
 {
@@ -88,6 +93,17 @@ bgfx::VertexLayout meshVertexLayout()
     return layout;
 }
 
+bgfx::VertexLayout pointSpriteVertexLayout()
+{
+    bgfx::VertexLayout layout;
+    layout
+        .begin()
+        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
+        .end();
+    return layout;
+}
+
 std::array<float, 4> objGroupColor(size_t groupIndex)
 {
     constexpr std::array<std::array<float, 4>, 12> palette = {{
@@ -125,14 +141,22 @@ struct GpuNodeRange {
     uint32_t lineIndexCount = 0;
     uint32_t pointIndexOffset = 0;
     uint32_t pointIndexCount = 0;
+    uint32_t pointSpriteIndexOffset = 0;
+    uint32_t pointSpriteIndexCount = 0;
 };
 
 struct GpuMesh {
     bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
+    bgfx::VertexBufferHandle pointSpriteVertexBuffer = BGFX_INVALID_HANDLE;
     bgfx::IndexBufferHandle triangleIndexBuffer = BGFX_INVALID_HANDLE;
     bgfx::IndexBufferHandle lineIndexBuffer = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle pointIndexBuffer = BGFX_INVALID_HANDLE;
+    bgfx::IndexBufferHandle pointSpriteIndexBuffer = BGFX_INVALID_HANDLE;
     std::vector<GpuNodeRange> nodeRanges;
+};
+
+struct PointSpriteVertex {
+    std::array<float, 3> position{};
+    std::array<float, 2> corner{};
 };
 
 struct GroupRenderSettings {
@@ -140,6 +164,7 @@ struct GroupRenderSettings {
     bool showSolidMesh = true;
     bool showTriangles = true;
     bool showVertices = true;
+    float vertexSizeScale = 1.0f;
     std::array<float, 4> color{};
 };
 
@@ -222,13 +247,51 @@ uint32_t appendPointIndicesForRange(
     return static_cast<uint32_t>(pointIndices.size()) - pointOffset;
 }
 
-GpuMesh createGpuMesh(const woby::ObjMesh& mesh, const bgfx::VertexLayout& layout)
+void buildPointSprites(
+    const woby::ObjMesh& mesh,
+    const std::vector<uint32_t>& pointIndices,
+    std::vector<PointSpriteVertex>& vertices,
+    std::vector<uint32_t>& indices)
+{
+    constexpr std::array<std::array<float, 2>, 4> corners = {{
+        {-0.5f, -0.5f},
+        {0.5f, -0.5f},
+        {0.5f, 0.5f},
+        {-0.5f, 0.5f},
+    }};
+
+    vertices.reserve(pointIndices.size() * corners.size());
+    indices.reserve(pointIndices.size() * 6u);
+
+    for (uint32_t pointIndex : pointIndices) {
+        const uint32_t vertexBase = static_cast<uint32_t>(vertices.size());
+        const auto& sourceVertex = mesh.vertices[pointIndex];
+        for (const auto& corner : corners) {
+            PointSpriteVertex vertex;
+            vertex.position = sourceVertex.position;
+            vertex.corner = corner;
+            vertices.push_back(vertex);
+        }
+
+        indices.push_back(vertexBase + 0u);
+        indices.push_back(vertexBase + 1u);
+        indices.push_back(vertexBase + 2u);
+        indices.push_back(vertexBase + 0u);
+        indices.push_back(vertexBase + 2u);
+        indices.push_back(vertexBase + 3u);
+    }
+}
+
+GpuMesh createGpuMesh(
+    const woby::ObjMesh& mesh,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout)
 {
     GpuMesh gpuMesh;
 
     gpuMesh.vertexBuffer = bgfx::createVertexBuffer(
         bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(woby::Vertex))),
-        layout);
+        meshLayout);
 
     gpuMesh.triangleIndexBuffer = bgfx::createIndexBuffer(
         bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
@@ -254,11 +317,24 @@ GpuMesh createGpuMesh(const woby::ObjMesh& mesh, const bgfx::VertexLayout& layou
             node.indexOffset,
             node.indexCount,
             pointIndices);
+        range.pointSpriteIndexOffset = range.pointIndexOffset * 6u;
+        range.pointSpriteIndexCount = range.pointIndexCount * 6u;
         gpuMesh.nodeRanges.push_back(range);
     }
 
-    gpuMesh.pointIndexBuffer = bgfx::createIndexBuffer(
-        bgfx::copy(pointIndices.data(), static_cast<uint32_t>(pointIndices.size() * sizeof(uint32_t))),
+    std::vector<PointSpriteVertex> pointSpriteVertices;
+    std::vector<uint32_t> pointSpriteIndices;
+    buildPointSprites(mesh, pointIndices, pointSpriteVertices, pointSpriteIndices);
+
+    gpuMesh.pointSpriteVertexBuffer = bgfx::createVertexBuffer(
+        bgfx::copy(
+            pointSpriteVertices.data(),
+            static_cast<uint32_t>(pointSpriteVertices.size() * sizeof(PointSpriteVertex))),
+        pointSpriteLayout);
+    gpuMesh.pointSpriteIndexBuffer = bgfx::createIndexBuffer(
+        bgfx::copy(
+            pointSpriteIndices.data(),
+            static_cast<uint32_t>(pointSpriteIndices.size() * sizeof(uint32_t))),
         BGFX_BUFFER_INDEX32);
 
     return gpuMesh;
@@ -266,8 +342,8 @@ GpuMesh createGpuMesh(const woby::ObjMesh& mesh, const bgfx::VertexLayout& layou
 
 void destroyGpuMesh(GpuMesh& mesh)
 {
-    if (bgfx::isValid(mesh.pointIndexBuffer)) {
-        bgfx::destroy(mesh.pointIndexBuffer);
+    if (bgfx::isValid(mesh.pointSpriteIndexBuffer)) {
+        bgfx::destroy(mesh.pointSpriteIndexBuffer);
     }
     if (bgfx::isValid(mesh.lineIndexBuffer)) {
         bgfx::destroy(mesh.lineIndexBuffer);
@@ -278,11 +354,15 @@ void destroyGpuMesh(GpuMesh& mesh)
     if (bgfx::isValid(mesh.vertexBuffer)) {
         bgfx::destroy(mesh.vertexBuffer);
     }
+    if (bgfx::isValid(mesh.pointSpriteVertexBuffer)) {
+        bgfx::destroy(mesh.pointSpriteVertexBuffer);
+    }
 
-    mesh.pointIndexBuffer = BGFX_INVALID_HANDLE;
+    mesh.pointSpriteIndexBuffer = BGFX_INVALID_HANDLE;
     mesh.lineIndexBuffer = BGFX_INVALID_HANDLE;
     mesh.triangleIndexBuffer = BGFX_INVALID_HANDLE;
     mesh.vertexBuffer = BGFX_INVALID_HANDLE;
+    mesh.pointSpriteVertexBuffer = BGFX_INVALID_HANDLE;
     mesh.nodeRanges.clear();
 }
 
@@ -291,6 +371,15 @@ void setIdentityTransform()
     float model[16];
     bx::mtxIdentity(model);
     bgfx::setTransform(model);
+}
+
+uint32_t vertexPointSize(float masterSize, float groupScale)
+{
+    const float scaledSize = std::clamp(
+        masterSize * groupScale,
+        minVertexPointSize,
+        maxVertexPointSize);
+    return static_cast<uint32_t>(std::lround(scaledSize));
 }
 
 void setLastItemTooltip(const char* text)
@@ -395,6 +484,45 @@ void submitColorRange(
     bgfx::submit(sceneView, program);
 }
 
+void submitPointSpriteRange(
+    const GpuMesh& mesh,
+    bgfx::ProgramHandle program,
+    bgfx::UniformHandle colorUniform,
+    bgfx::UniformHandle pointParamsUniform,
+    const std::array<float, 4>& color,
+    float pointSize,
+    uint32_t viewWidth,
+    uint32_t viewHeight,
+    uint32_t indexOffset,
+    uint32_t indexCount)
+{
+    if (!bgfx::isValid(mesh.pointSpriteVertexBuffer)
+        || !bgfx::isValid(mesh.pointSpriteIndexBuffer)
+        || indexCount == 0) {
+        return;
+    }
+
+    const std::array<float, 4> pointParams = {
+        pointSize,
+        static_cast<float>(std::max(viewWidth, 1u)),
+        static_cast<float>(std::max(viewHeight, 1u)),
+        0.0f,
+    };
+
+    setIdentityTransform();
+    bgfx::setUniform(colorUniform, color.data());
+    bgfx::setUniform(pointParamsUniform, pointParams.data());
+    bgfx::setVertexBuffer(0, mesh.pointSpriteVertexBuffer);
+    bgfx::setIndexBuffer(mesh.pointSpriteIndexBuffer, indexOffset, indexCount);
+    bgfx::setState(
+        BGFX_STATE_WRITE_RGB
+        | BGFX_STATE_WRITE_A
+        | BGFX_STATE_WRITE_Z
+        | BGFX_STATE_DEPTH_TEST_LEQUAL
+        | BGFX_STATE_MSAA);
+    bgfx::submit(sceneView, program);
+}
+
 struct SdlDeleter {
     void operator()(SDL_Window* window) const noexcept
     {
@@ -492,10 +620,13 @@ int main(int argc, char** argv)
 
         const auto cpuMesh = woby::loadObjMesh(modelPath);
         const auto layout = meshVertexLayout();
-        GpuMesh gpuMesh = createGpuMesh(cpuMesh, layout);
+        const auto pointLayout = pointSpriteVertexLayout();
+        GpuMesh gpuMesh = createGpuMesh(cpuMesh, layout, pointLayout);
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
+        bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
         bgfx::UniformHandle colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
+        bgfx::UniformHandle pointParamsUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4);
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -508,6 +639,7 @@ int main(int argc, char** argv)
 
         bool running = true;
         std::vector<GroupRenderSettings> groupSettings = createGroupRenderSettings(cpuMesh.nodes.size());
+        float masterVertexPointSize = 4.0f;
         woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds);
         woby::CameraInput cameraInput;
         auto previousFrame = std::chrono::steady_clock::now();
@@ -626,15 +758,20 @@ int main(int argc, char** argv)
                         range.lineIndexCount);
                 }
                 if (settings.showVertices) {
-                    submitColorRange(
+                    const uint32_t pointSize = vertexPointSize(
+                        masterVertexPointSize,
+                        settings.vertexSizeScale);
+                    submitPointSpriteRange(
                         gpuMesh,
-                        gpuMesh.pointIndexBuffer,
-                        colorProgram,
+                        pointSpriteProgram,
                         colorUniform,
+                        pointParamsUniform,
                         scaledRgbColor(settings.color, 1.5f),
-                        BGFX_STATE_PT_POINTS | BGFX_STATE_POINT_SIZE(4),
-                        range.pointIndexOffset,
-                        range.pointIndexCount);
+                        static_cast<float>(pointSize),
+                        width,
+                        height,
+                        range.pointSpriteIndexOffset,
+                        range.pointSpriteIndexCount);
                 }
             }
 
@@ -676,6 +813,14 @@ int main(int argc, char** argv)
                     &GroupRenderSettings::showVertices,
                     vertexCount != groupCount);
             }
+            ImGui::SetNextItemWidth(260.0f);
+            ImGui::SliderFloat(
+                "Vertex size",
+                &masterVertexPointSize,
+                minVertexPointSize,
+                maxVertexPointSize,
+                "%.0f px");
+            setLastItemTooltip("Base vertex point size for all groups");
             if (ImGui::TreeNode("Groups")) {
                 for (size_t nodeIndex = 0; nodeIndex < cpuMesh.nodes.size(); ++nodeIndex) {
                     const auto& node = cpuMesh.nodes[nodeIndex];
@@ -694,6 +839,16 @@ int main(int argc, char** argv)
                     ImGui::SameLine();
                     ImGui::Checkbox(("V##vertices_node_" + std::to_string(nodeIndex)).c_str(), &settings.showVertices);
                     setLastItemTooltip("Vertices for this group");
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(140.0f);
+                    ImGui::DragFloat(
+                        ("##vertex_size_node_" + std::to_string(nodeIndex)).c_str(),
+                        &settings.vertexSizeScale,
+                        0.02f,
+                        minVertexSizeScale,
+                        maxVertexSizeScale,
+                        "%.2fx");
+                    setLastItemTooltip("Vertex size multiplier for this group");
                     ImGui::SameLine();
                     const std::string colorButtonId = "##color_node_" + std::to_string(nodeIndex);
                     const std::string colorPopupId = "Color##color_popup_node_" + std::to_string(nodeIndex);
@@ -730,7 +885,9 @@ int main(int argc, char** argv)
         ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
 
+        bgfx::destroy(pointParamsUniform);
         bgfx::destroy(colorUniform);
+        bgfx::destroy(pointSpriteProgram);
         bgfx::destroy(colorProgram);
         bgfx::destroy(meshProgram);
         destroyGpuMesh(gpuMesh);
