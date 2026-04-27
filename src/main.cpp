@@ -44,6 +44,14 @@ constexpr float defaultViewerPaneWidth = 360.0f;
 constexpr float minViewerPaneWidth = 280.0f;
 constexpr float defaultScenePaneHeight = 150.0f;
 constexpr float minSceneViewportWidth = 160.0f;
+constexpr float viewerPaneBackgroundRed = 0.20f;
+constexpr float viewerPaneBackgroundGreen = 0.21f;
+constexpr float viewerPaneBackgroundBlue = 0.22f;
+constexpr float viewerPaneBackgroundAlpha = 0.76f;
+constexpr float popupBackgroundRed = 0.20f;
+constexpr float popupBackgroundGreen = 0.21f;
+constexpr float popupBackgroundBlue = 0.22f;
+constexpr float popupBackgroundAlpha = 0.88f;
 constexpr float appFontSize = 15.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
@@ -656,6 +664,39 @@ void drawClippedTextItem(const char* id, const char* text, float width)
 ImVec4 toImVec4(const std::array<float, 4>& color)
 {
     return ImVec4(color[0], color[1], color[2], color[3]);
+}
+
+void setStyleColor(ImGuiCol colorIndex, float red, float green, float blue, float alpha)
+{
+    ImVec4 color = ImGui::GetStyleColorVec4(colorIndex);
+    color.x = red;
+    color.y = green;
+    color.z = blue;
+    color.w = alpha;
+    ImGui::GetStyle().Colors[colorIndex] = color;
+}
+
+void configureAppStyle()
+{
+    ImGui::StyleColorsDark();
+    setStyleColor(
+        ImGuiCol_WindowBg,
+        viewerPaneBackgroundRed,
+        viewerPaneBackgroundGreen,
+        viewerPaneBackgroundBlue,
+        viewerPaneBackgroundAlpha);
+    setStyleColor(
+        ImGuiCol_ChildBg,
+        viewerPaneBackgroundRed,
+        viewerPaneBackgroundGreen,
+        viewerPaneBackgroundBlue,
+        viewerPaneBackgroundAlpha);
+    setStyleColor(
+        ImGuiCol_PopupBg,
+        popupBackgroundRed,
+        popupBackgroundGreen,
+        popupBackgroundBlue,
+        popupBackgroundAlpha);
 }
 
 enum class RenderModeState {
@@ -1389,7 +1430,7 @@ int main(int argc, char** argv)
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         loadAppFont(assets);
-        ImGui::StyleColorsDark();
+        configureAppStyle();
 
         if (!ImGui_ImplSDL3_InitForOther(window.get())) {
             throw std::runtime_error("ImGui_ImplSDL3_InitForOther failed.");
@@ -1479,16 +1520,11 @@ int main(int argc, char** argv)
                 static_cast<float>(width) - minSceneViewportWidth);
             viewerPaneWidth = std::clamp(viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth);
 
-            uint32_t sceneViewportX = 0;
-            if (width > 1u) {
-                const auto panePixelWidth = static_cast<uint32_t>(std::lround(viewerPaneWidth));
-                sceneViewportX = std::min(panePixelWidth, width - 1u);
-            }
-            const uint32_t sceneViewportWidth = std::max(width - sceneViewportX, 1u);
+            const uint32_t sceneViewportWidth = std::max(width, 1u);
 
             bgfx::setViewRect(
                 sceneView,
-                static_cast<uint16_t>(sceneViewportX),
+                0,
                 0,
                 static_cast<uint16_t>(sceneViewportWidth),
                 static_cast<uint16_t>(height));
