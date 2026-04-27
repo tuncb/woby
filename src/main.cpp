@@ -755,6 +755,17 @@ float renderModeButtonRowWidth()
     return renderModeButtonSize * 3.0f + style.ItemSpacing.x * 2.0f;
 }
 
+void pushRenderModeControlHeight()
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float paddingY = std::max(
+        (renderModeButtonSize - ImGui::GetFontSize()) * 0.5f,
+        0.0f);
+    ImGui::PushStyleVar(
+        ImGuiStyleVar_FramePadding,
+        ImVec2(style.FramePadding.x, paddingY));
+}
+
 void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
 {
     const size_t groupCount = settings.size();
@@ -845,6 +856,7 @@ void drawGroupControls(
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(70.0f);
+    pushRenderModeControlHeight();
     ImGui::DragFloat(
         "##vertex_size",
         &settings.vertexSizeScale,
@@ -852,13 +864,14 @@ void drawGroupControls(
         minVertexSizeScale,
         maxVertexSizeScale,
         "%.2fx");
+    ImGui::PopStyleVar();
     setLastItemTooltip("Vertex size multiplier for this group");
     ImGui::SameLine();
     if (ImGui::ColorButton(
             "##color",
             toImVec4(groupColor(settings, 1.0f)),
             ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoTooltip,
-            ImVec2(18.0f, 18.0f))) {
+            ImVec2(renderModeButtonSize, renderModeButtonSize))) {
         ImGui::OpenPopup("Color");
     }
     setLastItemTooltip("Color for this group");
@@ -1547,12 +1560,14 @@ int main(int argc, char** argv)
                         }
                         ImGui::SameLine();
                         ImGui::SetNextItemWidth(renderModeButtonRowWidth());
+                        pushRenderModeControlHeight();
                         ImGui::SliderFloat(
                             "Vertex size",
                             &masterVertexPointSize,
                             minVertexPointSize,
                             maxVertexPointSize,
                             "%.0f px");
+                        ImGui::PopStyleVar();
                         setLastItemTooltip("Base vertex point size for all groups");
                     }
                     ImGui::EndChild();
@@ -1589,6 +1604,7 @@ int main(int argc, char** argv)
                                 ImGui::SameLine();
                                 const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
                                 ImGui::SetNextItemWidth(renderModeButtonRowWidth());
+                                pushRenderModeControlHeight();
                                 ImGui::DragFloat(
                                     "Vertex size",
                                     &file.vertexSizeScale,
@@ -1596,6 +1612,7 @@ int main(int argc, char** argv)
                                     minVertexSizeScale,
                                     maxVertexSizeScale,
                                     "%.2fx");
+                                ImGui::PopStyleVar();
                                 setLastItemTooltip("Vertex size multiplier for this file");
                                 drawFileTransformControls(file.fileSettings, translationSpeed);
                                 for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
