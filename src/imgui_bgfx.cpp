@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <stdexcept>
+#include <string>
 
 namespace woby::imgui_bgfx {
 namespace {
@@ -17,19 +19,21 @@ struct RendererState {
     bgfx::VertexLayout layout{};
     bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;
     bgfx::UniformHandle textureSampler = BGFX_INVALID_HANDLE;
-    bgfx::TextureHandle fontTexture = BGFX_INVALID_HANDLE;
 };
 
 RendererState state;
 
 ImTextureID encodeTexture(bgfx::TextureHandle handle)
 {
-    return static_cast<ImTextureID>(static_cast<uintptr_t>(handle.idx));
+    return static_cast<ImTextureID>(handle.idx) + 1u;
 }
 
 bgfx::TextureHandle decodeTexture(ImTextureID textureId)
 {
-    return bgfx::TextureHandle{static_cast<uint16_t>(static_cast<uintptr_t>(textureId))};
+    if (textureId == ImTextureID_Invalid) {
+        return BGFX_INVALID_HANDLE;
+    }
+    return bgfx::TextureHandle{static_cast<uint16_t>(textureId - 1u)};
 }
 
 template <typename HandleT>
@@ -38,27 +42,167 @@ bool valid(HandleT handle)
     return bgfx::isValid(handle);
 }
 
-void createFontTexture()
+uint16_t toUint16(int value, const char* name)
 {
-    ImGuiIO& io = ImGui::GetIO();
+    if (value < 0 || value > static_cast<int>(std::numeric_limits<uint16_t>::max())) {
+        throw std::runtime_error(std::string("Dear ImGui texture ") + name + " is outside bgfx uint16 range.");
+    }
+    return static_cast<uint16_t>(value);
+}
 
-    unsigned char* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+uint32_t textureUploadSize(int pitch, int rowBytes, int height)
+{
+    if (height <= 0) {
+        return 0;
+    }
+    return static_cast<uint32_t>(pitch * (height - 1) + rowBytes);
+}
 
-    const bgfx::Memory* memory = bgfx::copy(pixels, static_cast<uint32_t>(width * height * 4));
-    state.fontTexture = bgfx::createTexture2D(
-        static_cast<uint16_t>(width),
-        static_cast<uint16_t>(height),
+const bgfx::Memory* copyRgba32TextureRect(ImTextureData* texture, const ImTextureRect& rect, uint16_t& pitch)
+{
+    const int sourcePitch = texture->GetPitch();
+    const int rowBytes = rect.w * texture->BytesPerPixel;
+    pitch = toUint16(sourcePitch, "pitch");
+    return bgfx::copy(
+        texture->GetPixelsAt(rect.x, rect.y),
+        textureUploadSize(sourcePitch, rowBytes, rect.h));
+}
+
+const bgfx::Memory* copyAlpha8TextureRectAsRgba32(ImTextureData* texture, const ImTextureRect& rect, uint16_t& pitch)
+{
+    const int targetPitch = rect.w * 4;
+    pitch = toUint16(targetPitch, "pitch");
+
+    const bgfx::Memory* memory = bgfx::alloc(static_cast<uint32_t>(targetPitch * rect.h));
+    auto* target = memory->data;
+    const auto* sourceBase = static_cast<const unsigned char*>(texture->GetPixelsAt(rect.x, rect.y));
+    const int sourcePitch = texture->GetPitch();
+
+    for (uint16_t y = 0; y < rect.h; ++y) {
+        const unsigned char* source = sourceBase + y * sourcePitch;
+        unsigned char* row = target + y * targetPitch;
+        for (uint16_t x = 0; x < rect.w; ++x) {
+            row[x * 4 + 0] = 255;
+            row[x * 4 + 1] = 255;
+            row[x * 4 + 2] = 255;
+            row[x * 4 + 3] = source[x];
+        }
+    }
+
+    return memory;
+}
+
+const bgfx::Memory* copyTextureRectPixels(ImTextureData* texture, const ImTextureRect& rect, uint16_t& pitch)
+{
+    if (texture->Format == ImTextureFormat_RGBA32) {
+        return copyRgba32TextureRect(texture, rect, pitch);
+    }
+    if (texture->Format == ImTextureFormat_Alpha8) {
+        return copyAlpha8TextureRectAsRgba32(texture, rect, pitch);
+    }
+
+    throw std::runtime_error("Unsupported Dear ImGui texture format.");
+}
+
+void uploadTextureRect(ImTextureData* texture, bgfx::TextureHandle handle, const ImTextureRect& rect)
+{
+    uint16_t pitch = 0;
+    const bgfx::Memory* memory = copyTextureRectPixels(texture, rect, pitch);
+    bgfx::updateTexture2D(
+        handle,
+        0,
+        0,
+        rect.x,
+        rect.y,
+        rect.w,
+        rect.h,
+        memory,
+        pitch);
+}
+
+void destroyTexture(ImTextureData* texture)
+{
+    const bgfx::TextureHandle handle = decodeTexture(texture->GetTexID());
+    if (valid(handle)) {
+        bgfx::destroy(handle);
+    }
+
+    texture->SetTexID(ImTextureID_Invalid);
+    texture->BackendUserData = nullptr;
+    texture->SetStatus(ImTextureStatus_Destroyed);
+}
+
+void createTexture(ImTextureData* texture)
+{
+    if (texture->TexID != ImTextureID_Invalid) {
+        destroyTexture(texture);
+    }
+
+    const bgfx::TextureHandle handle = bgfx::createTexture2D(
+        toUint16(texture->Width, "width"),
+        toUint16(texture->Height, "height"),
         false,
         1,
         bgfx::TextureFormat::RGBA8,
-        0,
-        memory);
+        BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP,
+        nullptr);
 
-    bgfx::setName(state.fontTexture, "Dear ImGui Font Texture");
-    io.Fonts->SetTexID(encodeTexture(state.fontTexture));
+    if (!valid(handle)) {
+        throw std::runtime_error("bgfx failed to create Dear ImGui texture.");
+    }
+
+    bgfx::setName(handle, "Dear ImGui Texture");
+
+    const ImTextureRect rect{
+        0,
+        0,
+        toUint16(texture->Width, "width"),
+        toUint16(texture->Height, "height"),
+    };
+    uploadTextureRect(texture, handle, rect);
+
+    texture->SetTexID(encodeTexture(handle));
+    texture->BackendUserData = nullptr;
+    texture->SetStatus(ImTextureStatus_OK);
+}
+
+void updateTexture(ImTextureData* texture)
+{
+    if (texture->Status == ImTextureStatus_WantCreate) {
+        createTexture(texture);
+        return;
+    }
+
+    if (texture->Status == ImTextureStatus_WantUpdates) {
+        const bgfx::TextureHandle handle = decodeTexture(texture->GetTexID());
+        if (!valid(handle)) {
+            createTexture(texture);
+            return;
+        }
+
+        for (const ImTextureRect& rect : texture->Updates) {
+            uploadTextureRect(texture, handle, rect);
+        }
+        texture->SetStatus(ImTextureStatus_OK);
+        return;
+    }
+
+    if (texture->Status == ImTextureStatus_WantDestroy && texture->UnusedFrames > 0) {
+        destroyTexture(texture);
+    }
+}
+
+void updateTextures(ImDrawData* drawData)
+{
+    if (drawData->Textures == nullptr) {
+        return;
+    }
+
+    for (ImTextureData* texture : *drawData->Textures) {
+        if (texture->Status != ImTextureStatus_OK) {
+            updateTexture(texture);
+        }
+    }
 }
 
 } // namespace
@@ -76,23 +220,29 @@ void init(const std::filesystem::path& assetRoot, bgfx::ViewId viewId)
 
     state.textureSampler = bgfx::createUniform("s_tex", bgfx::UniformType::Sampler);
     state.program = loadProgram(assetRoot, "vs_imgui.bin", "fs_imgui.bin");
-    createFontTexture();
 
     ImGuiIO& io = ImGui::GetIO();
     io.BackendRendererName = "woby_imgui_bgfx";
-    io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasTextures;
+
+    ImGuiPlatformIO& platformIo = ImGui::GetPlatformIO();
+    platformIo.Renderer_TextureMaxWidth = static_cast<int>(bgfx::getCaps()->limits.maxTextureSize);
+    platformIo.Renderer_TextureMaxHeight = static_cast<int>(bgfx::getCaps()->limits.maxTextureSize);
 }
 
 void shutdown()
 {
+    for (ImTextureData* texture : ImGui::GetPlatformIO().Textures) {
+        if (texture->RefCount == 1) {
+            destroyTexture(texture);
+        }
+    }
+
     ImGuiIO& io = ImGui::GetIO();
     io.BackendRendererName = nullptr;
-    io.BackendFlags &= ~ImGuiBackendFlags_RendererHasVtxOffset;
-    io.Fonts->SetTexID(0);
+    io.BackendFlags &= ~(ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasTextures);
+    ImGui::GetPlatformIO().ClearRendererHandlers();
 
-    if (valid(state.fontTexture)) {
-        bgfx::destroy(state.fontTexture);
-    }
     if (valid(state.textureSampler)) {
         bgfx::destroy(state.textureSampler);
     }
@@ -110,6 +260,8 @@ void render(ImDrawData* drawData)
     if (framebufferWidth <= 0 || framebufferHeight <= 0) {
         return;
     }
+
+    updateTextures(drawData);
 
     bgfx::setViewName(state.viewId, "Dear ImGui");
     bgfx::setViewMode(state.viewId, bgfx::ViewMode::Sequential);
@@ -171,12 +323,9 @@ void render(ImDrawData* drawData)
             const auto scissorW = static_cast<uint16_t>(std::min(clipRect.z, 65535.0f) - scissorX);
             const auto scissorH = static_cast<uint16_t>(std::min(clipRect.w, 65535.0f) - scissorY);
 
-            bgfx::TextureHandle texture = state.fontTexture;
-            if (command.GetTexID() != 0) {
-                texture = decodeTexture(command.GetTexID());
-            }
+            const bgfx::TextureHandle texture = decodeTexture(command.GetTexID());
             if (!valid(texture)) {
-                texture = state.fontTexture;
+                continue;
             }
 
             bgfx::setScissor(scissorX, scissorY, scissorW, scissorH);
