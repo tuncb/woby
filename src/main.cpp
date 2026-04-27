@@ -1378,7 +1378,9 @@ int main(int argc, char** argv)
                         setLastItemTooltip("Show file");
                         ImGui::SameLine();
                         if (ImGui::TreeNode(label.c_str())) {
-                            ImGui::Text("Path: %s", file.path.string().c_str());
+                            const std::string pathText = file.path.string();
+                            ImGui::Text("Path: %s", pathText.c_str());
+                            setLastItemTooltip(pathText.c_str());
                             ImGui::Text("Vertices: %zu", file.mesh.vertices.size());
                             ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
                             drawGroupMasterControls(file.groupSettings);
