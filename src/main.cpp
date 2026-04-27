@@ -748,6 +748,12 @@ bool drawTriStateMasterIconButton(
         totalCount == 0u);
 }
 
+float renderModeButtonRowWidth()
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    return renderModeButtonSize * 3.0f + style.ItemSpacing.x * 2.0f;
+}
+
 void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
 {
     const size_t groupCount = settings.size();
@@ -837,7 +843,7 @@ void drawGroupControls(
         settings.showVertices = !settings.showVertices;
     }
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(140.0f);
+    ImGui::SetNextItemWidth(70.0f);
     ImGui::DragFloat(
         "##vertex_size",
         &settings.vertexSizeScale,
@@ -1529,9 +1535,10 @@ int main(int argc, char** argv)
                         &GroupRenderSettings::showVertices,
                         vertexCount != groupCount);
                 }
-                ImGui::SetNextItemWidth(260.0f);
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(renderModeButtonRowWidth());
                 ImGui::SliderFloat(
-                    "Global vertex size",
+                    "Vertex size",
                     &masterVertexPointSize,
                     minVertexPointSize,
                     maxVertexPointSize,
@@ -1557,9 +1564,10 @@ int main(int argc, char** argv)
                             ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
                             drawGroupMasterControls(file.groupSettings);
                             const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
-                            ImGui::SetNextItemWidth(220.0f);
+                            ImGui::SameLine();
+                            ImGui::SetNextItemWidth(renderModeButtonRowWidth());
                             ImGui::DragFloat(
-                                "File vertex size",
+                                "Vertex size",
                                 &file.vertexSizeScale,
                                 0.02f,
                                 minVertexSizeScale,
