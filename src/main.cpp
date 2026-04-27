@@ -630,6 +630,29 @@ void setLastItemTooltip(const char* text)
     }
 }
 
+void drawClippedTextItem(const char* id, const char* text, float width)
+{
+    const float itemWidth = std::max(width, 1.0f);
+    const float itemHeight = ImGui::GetFrameHeight();
+    ImGui::InvisibleButton(id, ImVec2(itemWidth, itemHeight));
+
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const ImVec2 itemMin = ImGui::GetItemRectMin();
+    const ImVec2 itemMax = ImGui::GetItemRectMax();
+    const ImVec2 textPosition(itemMin.x, itemMin.y + style.FramePadding.y);
+    const ImVec4 clipRect(itemMin.x, itemMin.y, itemMax.x, itemMax.y);
+
+    ImGui::GetWindowDrawList()->AddText(
+        ImGui::GetFont(),
+        ImGui::GetFontSize(),
+        textPosition,
+        ImGui::GetColorU32(ImGuiCol_Text),
+        text,
+        nullptr,
+        0.0f,
+        &clipRect);
+}
+
 ImVec4 toImVec4(const std::array<float, 4>& color)
 {
     return ImVec4(color[0], color[1], color[2], color[3]);
@@ -758,6 +781,15 @@ float renderModeButtonRowWidth()
     return renderModeButtonSize * 3.0f + style.ItemSpacing.x * 2.0f;
 }
 
+float groupControlStartOffset()
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    return renderModeButtonRowWidth() * 2.0f
+        + style.ItemSpacing.x
+        + renderModeButtonSize
+        + style.ItemSpacing.x;
+}
+
 void pushRenderModeControlHeight()
 {
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -847,14 +879,21 @@ void drawGroupControls(
     float translationSpeed)
 {
     ImGui::PushID(static_cast<int>(nodeIndex));
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float rowStartX = ImGui::GetCursorPosX();
+    const float controlsStartX = rowStartX + groupControlStartOffset();
     ImGui::Checkbox("##visible", &settings.visible);
     setLastItemTooltip("Show group");
     ImGui::SameLine();
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(node.name.c_str());
-    const std::string triangleTooltip = std::to_string(node.indexCount / 3u) + " triangles";
-    setLastItemTooltip(triangleTooltip.c_str());
-    ImGui::SameLine();
+    const float textStartX = ImGui::GetCursorPosX();
+    const float nameWidth = controlsStartX - textStartX - style.ItemSpacing.x;
+    drawClippedTextItem("##name", node.name.c_str(), nameWidth);
+    const std::string groupTooltip = node.name
+        + "\n"
+        + std::to_string(node.indexCount / 3u)
+        + " triangles";
+    setLastItemTooltip(groupTooltip.c_str());
+    ImGui::SameLine(controlsStartX, 0.0f);
     if (drawRenderModeIconButton(
             "solid_mesh",
             solidMeshIcon,
