@@ -776,11 +776,11 @@ int main(int argc, char** argv)
             }
 
             bgfx::dbgTextClear();
-            bgfx::dbgTextPrintf(0, 1, 0x4f, "Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
 
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
             ImGui::Begin("Viewer");
+            ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
             ImGui::Text("File: %s", modelPath.string().c_str());
             ImGui::Text("FPS: %.1f", fps);
             ImGui::Text("Vertices: %zu", cpuMesh.vertices.size());
