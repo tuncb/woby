@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 namespace woby {
@@ -20,19 +21,20 @@ struct Bounds {
     float radius = 1.0f;
 };
 
-class ObjMesh {
-public:
-    static ObjMesh load(const std::filesystem::path& path);
-
-    [[nodiscard]] const std::vector<Vertex>& vertices() const noexcept { return vertices_; }
-    [[nodiscard]] const std::vector<uint32_t>& indices() const noexcept { return indices_; }
-    [[nodiscard]] const Bounds& bounds() const noexcept { return bounds_; }
-    [[nodiscard]] bool empty() const noexcept { return vertices_.empty() || indices_.empty(); }
-
-private:
-    std::vector<Vertex> vertices_;
-    std::vector<uint32_t> indices_;
-    Bounds bounds_;
+struct ObjNode {
+    std::string name;
+    uint32_t indexOffset = 0;
+    uint32_t indexCount = 0;
 };
+
+struct ObjMesh {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    std::vector<ObjNode> nodes;
+    Bounds bounds;
+};
+
+[[nodiscard]] ObjMesh loadObjMesh(const std::filesystem::path& path);
+[[nodiscard]] bool empty(const ObjMesh& mesh) noexcept;
 
 } // namespace woby

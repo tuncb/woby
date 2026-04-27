@@ -81,6 +81,20 @@ woby_compile_bgfx_shader(woby
 )
 
 woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/color.vert.sc"
+    TYPE vertex
+    OUTPUT_NAME vs_color
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
+)
+
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/color.frag.sc"
+    TYPE fragment
+    OUTPUT_NAME fs_color
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
+)
+
+woby_compile_bgfx_shader(woby
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/imgui.vert.sc"
     TYPE vertex
     OUTPUT_NAME vs_imgui

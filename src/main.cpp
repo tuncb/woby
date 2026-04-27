@@ -12,6 +12,7 @@
 #include <imgui_impl_sdl3.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdio>
 #include <exception>
@@ -19,7 +20,9 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -85,87 +88,183 @@ bgfx::VertexLayout meshVertexLayout()
     return layout;
 }
 
-class GpuMesh {
-public:
-    GpuMesh() = default;
-
-    GpuMesh(const woby::ObjMesh& mesh, const bgfx::VertexLayout& layout)
-    {
-        vertexBuffer_ = bgfx::createVertexBuffer(
-            bgfx::copy(mesh.vertices().data(), static_cast<uint32_t>(mesh.vertices().size() * sizeof(woby::Vertex))),
-            layout);
-
-        indexBuffer_ = bgfx::createIndexBuffer(
-            bgfx::copy(mesh.indices().data(), static_cast<uint32_t>(mesh.indices().size() * sizeof(uint32_t))),
-            BGFX_BUFFER_INDEX32);
-
-        indexCount_ = static_cast<uint32_t>(mesh.indices().size());
-    }
-
-    GpuMesh(const GpuMesh&) = delete;
-    GpuMesh& operator=(const GpuMesh&) = delete;
-
-    GpuMesh(GpuMesh&& other) noexcept
-    {
-        *this = std::move(other);
-    }
-
-    GpuMesh& operator=(GpuMesh&& other) noexcept
-    {
-        if (this == &other) {
-            return *this;
-        }
-
-        destroy();
-        vertexBuffer_ = other.vertexBuffer_;
-        indexBuffer_ = other.indexBuffer_;
-        indexCount_ = other.indexCount_;
-        other.vertexBuffer_ = BGFX_INVALID_HANDLE;
-        other.indexBuffer_ = BGFX_INVALID_HANDLE;
-        other.indexCount_ = 0;
-        return *this;
-    }
-
-    ~GpuMesh()
-    {
-        destroy();
-    }
-
-    void submit(bgfx::ProgramHandle program) const
-    {
-        if (!bgfx::isValid(vertexBuffer_) || !bgfx::isValid(indexBuffer_) || indexCount_ == 0) {
-            return;
-        }
-
-        bgfx::setVertexBuffer(0, vertexBuffer_);
-        bgfx::setIndexBuffer(indexBuffer_, 0, indexCount_);
-        bgfx::setState(
-            BGFX_STATE_WRITE_RGB
-            | BGFX_STATE_WRITE_A
-            | BGFX_STATE_WRITE_Z
-            | BGFX_STATE_DEPTH_TEST_LESS
-            | BGFX_STATE_MSAA);
-        bgfx::submit(sceneView, program);
-    }
-
-private:
-    void destroy()
-    {
-        if (bgfx::isValid(indexBuffer_)) {
-            bgfx::destroy(indexBuffer_);
-        }
-        if (bgfx::isValid(vertexBuffer_)) {
-            bgfx::destroy(vertexBuffer_);
-        }
-        vertexBuffer_ = BGFX_INVALID_HANDLE;
-        indexBuffer_ = BGFX_INVALID_HANDLE;
-        indexCount_ = 0;
-    }
-
-    bgfx::VertexBufferHandle vertexBuffer_ = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle indexBuffer_ = BGFX_INVALID_HANDLE;
-    uint32_t indexCount_ = 0;
+struct GpuNodeRange {
+    uint32_t triangleIndexOffset = 0;
+    uint32_t triangleIndexCount = 0;
+    uint32_t lineIndexOffset = 0;
+    uint32_t lineIndexCount = 0;
+    uint32_t pointIndexOffset = 0;
+    uint32_t pointIndexCount = 0;
 };
+
+struct GpuMesh {
+    bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
+    bgfx::IndexBufferHandle triangleIndexBuffer = BGFX_INVALID_HANDLE;
+    bgfx::IndexBufferHandle lineIndexBuffer = BGFX_INVALID_HANDLE;
+    bgfx::IndexBufferHandle pointIndexBuffer = BGFX_INVALID_HANDLE;
+    std::vector<GpuNodeRange> nodeRanges;
+};
+
+std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
+{
+    std::vector<uint32_t> lineIndices;
+    lineIndices.reserve((triangleIndices.size() / 3u) * 6u);
+
+    for (size_t index = 0; index + 2u < triangleIndices.size(); index += 3u) {
+        const uint32_t a = triangleIndices[index + 0u];
+        const uint32_t b = triangleIndices[index + 1u];
+        const uint32_t c = triangleIndices[index + 2u];
+        lineIndices.push_back(a);
+        lineIndices.push_back(b);
+        lineIndices.push_back(b);
+        lineIndices.push_back(c);
+        lineIndices.push_back(c);
+        lineIndices.push_back(a);
+    }
+
+    return lineIndices;
+}
+
+uint32_t appendPointIndicesForRange(
+    const std::vector<uint32_t>& triangleIndices,
+    uint32_t triangleIndexOffset,
+    uint32_t triangleIndexCount,
+    std::vector<uint32_t>& pointIndices)
+{
+    const uint32_t pointOffset = static_cast<uint32_t>(pointIndices.size());
+    std::unordered_set<uint32_t> seen;
+    seen.reserve(triangleIndexCount);
+
+    const uint32_t endIndex = triangleIndexOffset + triangleIndexCount;
+    for (uint32_t index = triangleIndexOffset; index < endIndex; ++index) {
+        const uint32_t vertexIndex = triangleIndices[index];
+        if (seen.insert(vertexIndex).second) {
+            pointIndices.push_back(vertexIndex);
+        }
+    }
+
+    return static_cast<uint32_t>(pointIndices.size()) - pointOffset;
+}
+
+GpuMesh createGpuMesh(const woby::ObjMesh& mesh, const bgfx::VertexLayout& layout)
+{
+    GpuMesh gpuMesh;
+
+    gpuMesh.vertexBuffer = bgfx::createVertexBuffer(
+        bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(woby::Vertex))),
+        layout);
+
+    gpuMesh.triangleIndexBuffer = bgfx::createIndexBuffer(
+        bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
+        BGFX_BUFFER_INDEX32);
+
+    const std::vector<uint32_t> lineIndices = buildLineIndices(mesh.indices);
+    gpuMesh.lineIndexBuffer = bgfx::createIndexBuffer(
+        bgfx::copy(lineIndices.data(), static_cast<uint32_t>(lineIndices.size() * sizeof(uint32_t))),
+        BGFX_BUFFER_INDEX32);
+
+    std::vector<uint32_t> pointIndices;
+    const auto& nodes = mesh.nodes;
+    gpuMesh.nodeRanges.reserve(nodes.size());
+    for (const auto& node : nodes) {
+        GpuNodeRange range;
+        range.triangleIndexOffset = node.indexOffset;
+        range.triangleIndexCount = node.indexCount;
+        range.lineIndexOffset = (node.indexOffset / 3u) * 6u;
+        range.lineIndexCount = (node.indexCount / 3u) * 6u;
+        range.pointIndexOffset = static_cast<uint32_t>(pointIndices.size());
+        range.pointIndexCount = appendPointIndicesForRange(
+            mesh.indices,
+            node.indexOffset,
+            node.indexCount,
+            pointIndices);
+        gpuMesh.nodeRanges.push_back(range);
+    }
+
+    gpuMesh.pointIndexBuffer = bgfx::createIndexBuffer(
+        bgfx::copy(pointIndices.data(), static_cast<uint32_t>(pointIndices.size() * sizeof(uint32_t))),
+        BGFX_BUFFER_INDEX32);
+
+    return gpuMesh;
+}
+
+void destroyGpuMesh(GpuMesh& mesh)
+{
+    if (bgfx::isValid(mesh.pointIndexBuffer)) {
+        bgfx::destroy(mesh.pointIndexBuffer);
+    }
+    if (bgfx::isValid(mesh.lineIndexBuffer)) {
+        bgfx::destroy(mesh.lineIndexBuffer);
+    }
+    if (bgfx::isValid(mesh.triangleIndexBuffer)) {
+        bgfx::destroy(mesh.triangleIndexBuffer);
+    }
+    if (bgfx::isValid(mesh.vertexBuffer)) {
+        bgfx::destroy(mesh.vertexBuffer);
+    }
+
+    mesh.pointIndexBuffer = BGFX_INVALID_HANDLE;
+    mesh.lineIndexBuffer = BGFX_INVALID_HANDLE;
+    mesh.triangleIndexBuffer = BGFX_INVALID_HANDLE;
+    mesh.vertexBuffer = BGFX_INVALID_HANDLE;
+    mesh.nodeRanges.clear();
+}
+
+void setIdentityTransform()
+{
+    float model[16];
+    bx::mtxIdentity(model);
+    bgfx::setTransform(model);
+}
+
+void submitTriangleRange(
+    const GpuMesh& mesh,
+    bgfx::ProgramHandle program,
+    uint32_t indexOffset,
+    uint32_t indexCount)
+{
+    if (!bgfx::isValid(mesh.vertexBuffer) || !bgfx::isValid(mesh.triangleIndexBuffer) || indexCount == 0) {
+        return;
+    }
+
+    setIdentityTransform();
+    bgfx::setVertexBuffer(0, mesh.vertexBuffer);
+    bgfx::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
+    bgfx::setState(
+        BGFX_STATE_WRITE_RGB
+        | BGFX_STATE_WRITE_A
+        | BGFX_STATE_WRITE_Z
+        | BGFX_STATE_DEPTH_TEST_LESS
+        | BGFX_STATE_MSAA);
+    bgfx::submit(sceneView, program);
+}
+
+void submitColorRange(
+    const GpuMesh& mesh,
+    bgfx::IndexBufferHandle indexBuffer,
+    bgfx::ProgramHandle program,
+    bgfx::UniformHandle colorUniform,
+    const std::array<float, 4>& color,
+    uint64_t primitiveState,
+    uint32_t indexOffset,
+    uint32_t indexCount)
+{
+    if (!bgfx::isValid(mesh.vertexBuffer) || !bgfx::isValid(indexBuffer) || indexCount == 0) {
+        return;
+    }
+
+    setIdentityTransform();
+    bgfx::setUniform(colorUniform, color.data());
+    bgfx::setVertexBuffer(0, mesh.vertexBuffer);
+    bgfx::setIndexBuffer(indexBuffer, indexOffset, indexCount);
+    bgfx::setState(
+        BGFX_STATE_WRITE_RGB
+        | BGFX_STATE_WRITE_A
+        | BGFX_STATE_DEPTH_TEST_LEQUAL
+        | BGFX_STATE_MSAA
+        | primitiveState);
+    bgfx::submit(sceneView, program);
+}
 
 struct SdlDeleter {
     void operator()(SDL_Window* window) const noexcept
@@ -262,10 +361,12 @@ int main(int argc, char** argv)
             ? commandLine.modelPath
             : assets / "models" / "cube.obj";
 
-        const auto cpuMesh = woby::ObjMesh::load(modelPath);
+        const auto cpuMesh = woby::loadObjMesh(modelPath);
         const auto layout = meshVertexLayout();
-        GpuMesh gpuMesh(cpuMesh, layout);
+        GpuMesh gpuMesh = createGpuMesh(cpuMesh, layout);
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
+        bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
+        bgfx::UniformHandle colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -277,7 +378,11 @@ int main(int argc, char** argv)
         woby::imgui_bgfx::init(assets, imguiView);
 
         bool running = true;
-        woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds());
+        bool showSolidMesh = true;
+        bool showTriangles = true;
+        bool showVertexNodes = true;
+        std::vector<uint8_t> nodeVisible(cpuMesh.nodes.size(), 1u);
+        woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds);
         woby::CameraInput cameraInput;
         auto previousFrame = std::chrono::steady_clock::now();
         auto fpsWindowStart = previousFrame;
@@ -298,7 +403,7 @@ int main(int argc, char** argv)
                 if (event.type == SDL_EVENT_KEY_DOWN
                     && event.key.key == SDLK_R
                     && !ImGui::GetIO().WantCaptureKeyboard) {
-                    camera = woby::frameCameraBounds(cpuMesh.bounds());
+                    camera = woby::frameCameraBounds(cpuMesh.bounds);
                 }
                 if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
                     getDrawableSize(window.get(), width, height);
@@ -349,7 +454,7 @@ int main(int argc, char** argv)
                 fpsWindowStart = now;
             }
 
-            const auto& bounds = cpuMesh.bounds();
+            const auto& bounds = cpuMesh.bounds;
             woby::updateCameraFromKeyboard(camera, bounds, deltaSeconds);
 
             bgfx::setViewRect(sceneView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
@@ -367,23 +472,67 @@ int main(int argc, char** argv)
                 bgfx::getCaps()->homogeneousDepth);
             bgfx::setViewTransform(sceneView, view, projection);
 
-            float model[16];
-            bx::mtxIdentity(model);
-            bgfx::setTransform(model);
-            gpuMesh.submit(meshProgram);
+            constexpr std::array<float, 4> triangleColor = {0.04f, 0.92f, 1.0f, 1.0f};
+            constexpr std::array<float, 4> nodeColor = {1.0f, 0.76f, 0.16f, 1.0f};
+            for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
+                if (nodeVisible[nodeIndex] == 0u) {
+                    continue;
+                }
+
+                const auto& range = gpuMesh.nodeRanges[nodeIndex];
+                if (showSolidMesh) {
+                    submitTriangleRange(gpuMesh, meshProgram, range.triangleIndexOffset, range.triangleIndexCount);
+                }
+                if (showTriangles) {
+                    submitColorRange(
+                        gpuMesh,
+                        gpuMesh.lineIndexBuffer,
+                        colorProgram,
+                        colorUniform,
+                        triangleColor,
+                        BGFX_STATE_PT_LINES,
+                        range.lineIndexOffset,
+                        range.lineIndexCount);
+                }
+                if (showVertexNodes) {
+                    submitColorRange(
+                        gpuMesh,
+                        gpuMesh.pointIndexBuffer,
+                        colorProgram,
+                        colorUniform,
+                        nodeColor,
+                        BGFX_STATE_PT_POINTS | BGFX_STATE_POINT_SIZE(4),
+                        range.pointIndexOffset,
+                        range.pointIndexCount);
+                }
+            }
 
             bgfx::dbgTextClear();
             bgfx::dbgTextPrintf(0, 1, 0x4f, "Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
-            bgfx::dbgTextPrintf(0, 2, 0x6f, "Model: %s", modelPath.filename().string().c_str());
-            bgfx::dbgTextPrintf(0, 3, 0x2f, "FPS: %.1f", fps);
 
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
             ImGui::Begin("Viewer");
-            ImGui::Text("Model: %s", modelPath.string().c_str());
+            ImGui::Text("File: %s", modelPath.string().c_str());
             ImGui::Text("FPS: %.1f", fps);
-            ImGui::Text("Vertices: %zu", cpuMesh.vertices().size());
-            ImGui::Text("Indices: %zu", cpuMesh.indices().size());
+            ImGui::Text("Vertices: %zu", cpuMesh.vertices.size());
+            ImGui::Text("Triangles: %zu", cpuMesh.indices.size() / 3u);
+            ImGui::Checkbox("Solid mesh", &showSolidMesh);
+            ImGui::Checkbox("Triangles", &showTriangles);
+            ImGui::Checkbox("Vertices", &showVertexNodes);
+            if (ImGui::TreeNode("Groups")) {
+                for (size_t nodeIndex = 0; nodeIndex < cpuMesh.nodes.size(); ++nodeIndex) {
+                    const auto& node = cpuMesh.nodes[nodeIndex];
+                    bool visible = nodeVisible[nodeIndex] != 0u;
+                    const std::string label = node.name + "##node_" + std::to_string(nodeIndex);
+                    if (ImGui::Checkbox(label.c_str(), &visible)) {
+                        nodeVisible[nodeIndex] = visible ? 1u : 0u;
+                    }
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("(%u triangles)", node.indexCount / 3u);
+                }
+                ImGui::TreePop();
+            }
             ImGui::End();
             ImGui::Render();
             woby::imgui_bgfx::render(ImGui::GetDrawData());
@@ -395,8 +544,10 @@ int main(int argc, char** argv)
         ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
 
+        bgfx::destroy(colorUniform);
+        bgfx::destroy(colorProgram);
         bgfx::destroy(meshProgram);
-        gpuMesh = GpuMesh();
+        destroyGpuMesh(gpuMesh);
         bgfx::shutdown();
         bgfxInitialized = false;
         window.reset();

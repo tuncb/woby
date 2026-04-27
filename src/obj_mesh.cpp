@@ -133,7 +133,7 @@ Bounds calculateBounds(const std::vector<Vertex>& vertices)
     return bounds;
 }
 
-void optimizeMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
+void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     if (vertices.empty() || indices.empty()) {
         return;
@@ -169,21 +169,6 @@ void optimizeMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
     indices = std::move(remappedIndices);
     vertices = std::move(remappedVertices);
 
-    meshopt_optimizeVertexCache(
-        reinterpret_cast<unsigned int*>(indices.data()),
-        reinterpret_cast<const unsigned int*>(indices.data()),
-        indices.size(),
-        vertices.size());
-
-    meshopt_optimizeOverdraw(
-        reinterpret_cast<unsigned int*>(indices.data()),
-        reinterpret_cast<const unsigned int*>(indices.data()),
-        indices.size(),
-        &vertices.front().position[0],
-        vertices.size(),
-        sizeof(Vertex),
-        1.05f);
-
     std::vector<Vertex> fetchedVertices(vertices.size());
     meshopt_optimizeVertexFetch(
         fetchedVertices.data(),
@@ -198,7 +183,12 @@ void optimizeMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
 
 } // namespace
 
-ObjMesh ObjMesh::load(const std::filesystem::path& path)
+bool empty(const ObjMesh& mesh) noexcept
+{
+    return mesh.vertices.empty() || mesh.indices.empty();
+}
+
+ObjMesh loadObjMesh(const std::filesystem::path& path)
 {
     tinyobj::ObjReaderConfig config;
     config.triangulate = true;
@@ -222,12 +212,15 @@ ObjMesh ObjMesh::load(const std::filesystem::path& path)
     ObjMesh mesh;
     std::unordered_map<IndexKey, uint32_t, IndexKeyHash> vertexMap;
 
-    for (const auto& shape : shapes) {
+    for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
+        const auto& shape = shapes[shapeIndex];
+        const uint32_t nodeIndexOffset = static_cast<uint32_t>(mesh.indices.size());
+
         for (const auto& index : shape.mesh.indices) {
             const IndexKey key{index.vertex_index, index.normal_index, index.texcoord_index};
             const auto found = vertexMap.find(key);
             if (found != vertexMap.end()) {
-                mesh.indices_.push_back(found->second);
+                mesh.indices.push_back(found->second);
                 continue;
             }
 
@@ -260,23 +253,32 @@ ObjMesh ObjMesh::load(const std::filesystem::path& path)
                 };
             }
 
-            const uint32_t newIndex = static_cast<uint32_t>(mesh.vertices_.size());
+            const uint32_t newIndex = static_cast<uint32_t>(mesh.vertices.size());
             vertexMap.emplace(key, newIndex);
-            mesh.vertices_.push_back(vertex);
-            mesh.indices_.push_back(newIndex);
+            mesh.vertices.push_back(vertex);
+            mesh.indices.push_back(newIndex);
+        }
+
+        const uint32_t nodeIndexCount = static_cast<uint32_t>(mesh.indices.size()) - nodeIndexOffset;
+        if (nodeIndexCount > 0) {
+            ObjNode node;
+            node.name = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1u) : shape.name;
+            node.indexOffset = nodeIndexOffset;
+            node.indexCount = nodeIndexCount;
+            mesh.nodes.push_back(std::move(node));
         }
     }
 
-    if (mesh.empty()) {
+    if (empty(mesh)) {
         throw std::runtime_error("OBJ did not contain renderable triangles: " + path.string());
     }
 
-    if (!hasCompleteNormals(mesh.vertices_)) {
-        generateSmoothNormals(mesh.vertices_, mesh.indices_);
+    if (!hasCompleteNormals(mesh.vertices)) {
+        generateSmoothNormals(mesh.vertices, mesh.indices);
     }
 
-    mesh.bounds_ = calculateBounds(mesh.vertices_);
-    optimizeMesh(mesh.vertices_, mesh.indices_);
+    mesh.bounds = calculateBounds(mesh.vertices);
+    compactMesh(mesh.vertices, mesh.indices);
     return mesh;
 }
 
