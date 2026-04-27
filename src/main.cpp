@@ -16,6 +16,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cctype>
 #include <exception>
 #include <filesystem>
 #include <memory>
@@ -178,6 +179,24 @@ struct GroupRenderSettings {
     std::array<float, 4> color{};
 };
 
+struct FileRenderSettings {
+    bool visible = true;
+    float scale = 1.0f;
+    float opacity = 1.0f;
+    std::array<float, 3> center{};
+    std::array<float, 3> translation{};
+    std::array<float, 3> rotationDegrees{};
+};
+
+struct LoadedObjFile {
+    std::filesystem::path path;
+    woby::ObjMesh mesh;
+    GpuMesh gpuMesh;
+    std::vector<GroupRenderSettings> groupSettings;
+    FileRenderSettings fileSettings;
+    float vertexSizeScale = 1.0f;
+};
+
 std::array<float, 3> nodeCenter(const woby::ObjMesh& mesh, const woby::ObjNode& node)
 {
     if (node.indexCount == 0u || mesh.indices.empty() || mesh.vertices.empty()) {
@@ -226,6 +245,16 @@ std::vector<GroupRenderSettings> createGroupRenderSettings(const woby::ObjMesh& 
     return settings;
 }
 
+size_t totalGroupCount(const std::vector<LoadedObjFile>& files)
+{
+    size_t groupCount = 0;
+    for (const auto& file : files) {
+        groupCount += file.groupSettings.size();
+    }
+
+    return groupCount;
+}
+
 size_t countEnabledGroupSettings(
     const std::vector<GroupRenderSettings>& settings,
     bool GroupRenderSettings::*field)
@@ -235,6 +264,18 @@ size_t countEnabledGroupSettings(
         if (group.*field) {
             ++enabledCount;
         }
+    }
+
+    return enabledCount;
+}
+
+size_t countEnabledFileSettings(
+    const std::vector<LoadedObjFile>& files,
+    bool GroupRenderSettings::*field)
+{
+    size_t enabledCount = 0;
+    for (const auto& file : files) {
+        enabledCount += countEnabledGroupSettings(file.groupSettings, field);
     }
 
     return enabledCount;
@@ -250,6 +291,16 @@ void setAllGroupSettings(
     }
 }
 
+void setAllFileGroupSettings(
+    std::vector<LoadedObjFile>& files,
+    bool GroupRenderSettings::*field,
+    bool enabled)
+{
+    for (auto& file : files) {
+        setAllGroupSettings(file.groupSettings, field, enabled);
+    }
+}
+
 void resetGroupTransform(GroupRenderSettings& settings)
 {
     settings.scale = 1.0f;
@@ -258,14 +309,48 @@ void resetGroupTransform(GroupRenderSettings& settings)
     settings.rotationDegrees = {};
 }
 
-std::array<float, 4> groupColor(const GroupRenderSettings& settings, float rgbScale)
+void resetFileTransform(FileRenderSettings& settings)
+{
+    settings.scale = 1.0f;
+    settings.opacity = 1.0f;
+    settings.translation = {};
+    settings.rotationDegrees = {};
+}
+
+std::array<float, 4> groupColor(
+    const GroupRenderSettings& settings,
+    float rgbScale,
+    float opacityScale = 1.0f)
 {
     auto color = scaledRgbColor(settings.color, rgbScale);
-    color[3] = std::clamp(settings.opacity, minGroupOpacity, maxGroupOpacity);
+    color[3] = std::clamp(settings.opacity * opacityScale, minGroupOpacity, maxGroupOpacity);
     return color;
 }
 
 void groupTransform(const GroupRenderSettings& settings, float* model)
+{
+    float toOrigin[16];
+    float transformed[16];
+    bx::mtxTranslate(
+        toOrigin,
+        -settings.center[0],
+        -settings.center[1],
+        -settings.center[2]);
+    bx::mtxSRT(
+        transformed,
+        settings.scale,
+        settings.scale,
+        settings.scale,
+        bx::toRad(settings.rotationDegrees[0]),
+        bx::toRad(settings.rotationDegrees[1]),
+        bx::toRad(settings.rotationDegrees[2]),
+        settings.center[0] + settings.translation[0],
+        settings.center[1] + settings.translation[1],
+        settings.center[2] + settings.translation[2]);
+    bx::mtxMul(model, transformed, toOrigin);
+}
+
+void fileTransform(const FileRenderSettings& settings, float* model)
 {
     float toOrigin[16];
     float transformed[16];
@@ -481,6 +566,16 @@ uint32_t vertexPointSize(float masterSize, float groupScale)
     return static_cast<uint32_t>(std::lround(scaledSize));
 }
 
+std::string fileDisplayName(const std::filesystem::path& path)
+{
+    const auto filename = path.filename().string();
+    if (!filename.empty()) {
+        return filename;
+    }
+
+    return path.string();
+}
+
 void setLastItemTooltip(const char* text)
 {
     if (ImGui::IsItemHovered()) {
@@ -529,6 +624,169 @@ bool drawTriStateMasterCheckbox(const char* label, size_t enabledCount, size_t t
     }
 
     return changed;
+}
+
+void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
+{
+    const size_t groupCount = settings.size();
+    const size_t solidMeshCount = countEnabledGroupSettings(
+        settings,
+        &GroupRenderSettings::showSolidMesh);
+    if (drawTriStateMasterCheckbox("Solid mesh", solidMeshCount, groupCount)) {
+        setAllGroupSettings(
+            settings,
+            &GroupRenderSettings::showSolidMesh,
+            solidMeshCount != groupCount);
+    }
+    const size_t triangleCount = countEnabledGroupSettings(
+        settings,
+        &GroupRenderSettings::showTriangles);
+    if (drawTriStateMasterCheckbox("Triangles", triangleCount, groupCount)) {
+        setAllGroupSettings(
+            settings,
+            &GroupRenderSettings::showTriangles,
+            triangleCount != groupCount);
+    }
+    const size_t vertexCount = countEnabledGroupSettings(
+        settings,
+        &GroupRenderSettings::showVertices);
+    if (drawTriStateMasterCheckbox("Vertices", vertexCount, groupCount)) {
+        setAllGroupSettings(
+            settings,
+            &GroupRenderSettings::showVertices,
+            vertexCount != groupCount);
+    }
+}
+
+void drawGroupControls(
+    const woby::ObjNode& node,
+    GroupRenderSettings& settings,
+    size_t nodeIndex,
+    size_t colorIndex,
+    float translationSpeed)
+{
+    ImGui::PushID(static_cast<int>(nodeIndex));
+    ImGui::Checkbox(node.name.c_str(), &settings.visible);
+    setLastItemTooltip("Show group");
+    ImGui::SameLine();
+    ImGui::TextDisabled("(%u triangles)", node.indexCount / 3u);
+    ImGui::SameLine();
+    ImGui::Checkbox("S", &settings.showSolidMesh);
+    setLastItemTooltip("Solid mesh for this group");
+    ImGui::SameLine();
+    ImGui::Checkbox("T", &settings.showTriangles);
+    setLastItemTooltip("Triangles for this group");
+    ImGui::SameLine();
+    ImGui::Checkbox("V", &settings.showVertices);
+    setLastItemTooltip("Vertices for this group");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(140.0f);
+    ImGui::DragFloat(
+        "##vertex_size",
+        &settings.vertexSizeScale,
+        0.02f,
+        minVertexSizeScale,
+        maxVertexSizeScale,
+        "%.2fx");
+    setLastItemTooltip("Vertex size multiplier for this group");
+    ImGui::SameLine();
+    if (ImGui::ColorButton(
+            "##color",
+            toImVec4(groupColor(settings, 1.0f)),
+            ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoTooltip,
+            ImVec2(18.0f, 18.0f))) {
+        ImGui::OpenPopup("Color");
+    }
+    setLastItemTooltip("Color for this group");
+    if (ImGui::BeginPopup("Color")) {
+        ImGui::TextUnformatted(node.name.c_str());
+        ImGui::ColorPicker3("##color_picker", settings.color.data());
+        if (ImGui::Button("Reset")) {
+            settings.color = objGroupColor(colorIndex);
+        }
+        ImGui::EndPopup();
+    }
+    if (ImGui::TreeNode("Transform")) {
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::DragFloat(
+            "Scale",
+            &settings.scale,
+            0.01f,
+            minGroupScale,
+            maxGroupScale,
+            "%.2fx");
+        setLastItemTooltip("Uniform scale for this group");
+        ImGui::SetNextItemWidth(260.0f);
+        ImGui::DragFloat3(
+            "Move",
+            settings.translation.data(),
+            translationSpeed);
+        setLastItemTooltip("Position offset for this group");
+        ImGui::SetNextItemWidth(260.0f);
+        ImGui::DragFloat3(
+            "Rotate",
+            settings.rotationDegrees.data(),
+            1.0f,
+            -180.0f,
+            180.0f,
+            "%.0f deg");
+        setLastItemTooltip("Rotation in degrees for this group");
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::SliderFloat(
+            "Opacity",
+            &settings.opacity,
+            minGroupOpacity,
+            maxGroupOpacity,
+            "%.2f");
+        setLastItemTooltip("Opacity for this group");
+        if (ImGui::Button("Reset")) {
+            resetGroupTransform(settings);
+        }
+        ImGui::TreePop();
+    }
+    ImGui::PopID();
+}
+
+void drawFileTransformControls(FileRenderSettings& settings, float translationSpeed)
+{
+    if (ImGui::TreeNode("Transform")) {
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::DragFloat(
+            "Scale",
+            &settings.scale,
+            0.01f,
+            minGroupScale,
+            maxGroupScale,
+            "%.2fx");
+        setLastItemTooltip("Uniform scale for this file");
+        ImGui::SetNextItemWidth(260.0f);
+        ImGui::DragFloat3(
+            "Move",
+            settings.translation.data(),
+            translationSpeed);
+        setLastItemTooltip("Position offset for this file");
+        ImGui::SetNextItemWidth(260.0f);
+        ImGui::DragFloat3(
+            "Rotate",
+            settings.rotationDegrees.data(),
+            1.0f,
+            -180.0f,
+            180.0f,
+            "%.0f deg");
+        setLastItemTooltip("Rotation in degrees for this file");
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::SliderFloat(
+            "Opacity",
+            &settings.opacity,
+            minGroupOpacity,
+            maxGroupOpacity,
+            "%.2f");
+        setLastItemTooltip("Opacity for this file");
+        if (ImGui::Button("Reset")) {
+            resetFileTransform(settings);
+        }
+        ImGui::TreePop();
+    }
 }
 
 void submitTriangleRange(
@@ -619,9 +877,14 @@ struct SdlDeleter {
     }
 };
 
+struct ModelPathOption {
+    bool folder = false;
+    std::filesystem::path path;
+};
+
 struct CommandLineOptions {
     bool showVersion = false;
-    std::filesystem::path modelPath;
+    std::vector<ModelPathOption> inputPaths;
 };
 
 CommandLineOptions parseCommandLine(int argc, char** argv)
@@ -641,7 +904,21 @@ CommandLineOptions parseCommandLine(int argc, char** argv)
                 throw std::runtime_error("--file requires an OBJ filename.");
             }
 
-            options.modelPath = argv[++index];
+            ModelPathOption inputPath;
+            inputPath.path = argv[++index];
+            options.inputPaths.push_back(std::move(inputPath));
+            continue;
+        }
+
+        if (argument == "--folder") {
+            if (index + 1 >= argc) {
+                throw std::runtime_error("--folder requires a folder path.");
+            }
+
+            ModelPathOption inputPath;
+            inputPath.folder = true;
+            inputPath.path = argv[++index];
+            options.inputPaths.push_back(std::move(inputPath));
             continue;
         }
 
@@ -653,6 +930,130 @@ CommandLineOptions parseCommandLine(int argc, char** argv)
     }
 
     return options;
+}
+
+std::string lowercase(std::string value)
+{
+    for (char& character : value) {
+        character = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+    }
+
+    return value;
+}
+
+bool isObjPath(const std::filesystem::path& path)
+{
+    return lowercase(path.extension().string()) == ".obj";
+}
+
+void appendFolderObjPaths(
+    const std::filesystem::path& folder,
+    std::vector<std::filesystem::path>& modelPaths)
+{
+    if (!std::filesystem::is_directory(folder)) {
+        throw std::runtime_error("--folder path is not a folder: " + folder.string());
+    }
+
+    std::vector<std::filesystem::path> folderPaths;
+    for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+        if (entry.is_regular_file() && isObjPath(entry.path())) {
+            folderPaths.push_back(entry.path());
+        }
+    }
+
+    std::sort(folderPaths.begin(), folderPaths.end());
+    if (folderPaths.empty()) {
+        throw std::runtime_error("--folder did not contain OBJ files: " + folder.string());
+    }
+
+    modelPaths.insert(modelPaths.end(), folderPaths.begin(), folderPaths.end());
+}
+
+std::vector<std::filesystem::path> resolveModelPaths(
+    const CommandLineOptions& options,
+    const std::filesystem::path& assets)
+{
+    std::vector<std::filesystem::path> modelPaths;
+    if (options.inputPaths.empty()) {
+        modelPaths.push_back(assets / "models" / "cube.obj");
+        return modelPaths;
+    }
+
+    for (const auto& inputPath : options.inputPaths) {
+        if (inputPath.folder) {
+            appendFolderObjPaths(inputPath.path, modelPaths);
+            continue;
+        }
+
+        modelPaths.push_back(inputPath.path);
+    }
+
+    return modelPaths;
+}
+
+woby::Bounds combineBounds(const std::vector<LoadedObjFile>& files)
+{
+    if (files.empty()) {
+        throw std::runtime_error("No OBJ files were loaded.");
+    }
+
+    woby::Bounds bounds = files.front().mesh.bounds;
+    for (const auto& file : files) {
+        for (size_t axis = 0; axis < 3u; ++axis) {
+            bounds.min[axis] = std::min(bounds.min[axis], file.mesh.bounds.min[axis]);
+            bounds.max[axis] = std::max(bounds.max[axis], file.mesh.bounds.max[axis]);
+        }
+    }
+
+    for (size_t axis = 0; axis < 3u; ++axis) {
+        bounds.center[axis] = (bounds.min[axis] + bounds.max[axis]) * 0.5f;
+    }
+
+    float radiusSquared = 0.0f;
+    for (const auto& file : files) {
+        for (size_t corner = 0; corner < 8u; ++corner) {
+            std::array<float, 3> position{};
+            for (size_t axis = 0; axis < 3u; ++axis) {
+                position[axis] = (corner & (size_t{1u} << axis)) != 0u
+                    ? file.mesh.bounds.max[axis]
+                    : file.mesh.bounds.min[axis];
+            }
+
+            const float x = position[0] - bounds.center[0];
+            const float y = position[1] - bounds.center[1];
+            const float z = position[2] - bounds.center[2];
+            radiusSquared = std::max(radiusSquared, x * x + y * y + z * z);
+        }
+    }
+
+    bounds.radius = std::max(std::sqrt(radiusSquared), 0.001f);
+    return bounds;
+}
+
+std::vector<LoadedObjFile> loadObjFiles(
+    const std::vector<std::filesystem::path>& modelPaths,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout)
+{
+    std::vector<LoadedObjFile> files;
+    files.reserve(modelPaths.size());
+    size_t colorIndex = 0;
+
+    for (const auto& modelPath : modelPaths) {
+        LoadedObjFile file;
+        file.path = modelPath;
+        file.mesh = woby::loadObjMesh(modelPath);
+        file.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout);
+        file.groupSettings = createGroupRenderSettings(file.mesh);
+        file.fileSettings.center = file.mesh.bounds.center;
+        for (auto& group : file.groupSettings) {
+            group.color = objGroupColor(colorIndex);
+            ++colorIndex;
+        }
+        files.push_back(std::move(file));
+    }
+
+    return files;
 }
 
 } // namespace
@@ -701,14 +1102,11 @@ int main(int argc, char** argv)
         bgfx::setDebug(BGFX_DEBUG_TEXT);
 
         const auto assets = assetRoot();
-        const auto modelPath = !commandLine.modelPath.empty()
-            ? commandLine.modelPath
-            : assets / "models" / "cube.obj";
-
-        const auto cpuMesh = woby::loadObjMesh(modelPath);
+        const auto modelPaths = resolveModelPaths(commandLine, assets);
         const auto layout = meshVertexLayout();
         const auto pointLayout = pointSpriteVertexLayout();
-        GpuMesh gpuMesh = createGpuMesh(cpuMesh, layout, pointLayout);
+        std::vector<LoadedObjFile> files = loadObjFiles(modelPaths, layout, pointLayout);
+        const woby::Bounds sceneBounds = combineBounds(files);
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
@@ -725,9 +1123,8 @@ int main(int argc, char** argv)
         woby::imgui_bgfx::init(assets, imguiView);
 
         bool running = true;
-        std::vector<GroupRenderSettings> groupSettings = createGroupRenderSettings(cpuMesh);
         float masterVertexPointSize = 4.0f;
-        woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds);
+        woby::SceneCamera camera = woby::frameCameraBounds(sceneBounds);
         woby::CameraInput cameraInput;
         auto previousFrame = std::chrono::steady_clock::now();
         auto fpsWindowStart = previousFrame;
@@ -748,7 +1145,7 @@ int main(int argc, char** argv)
                 if (event.type == SDL_EVENT_KEY_DOWN
                     && event.key.key == SDLK_R
                     && !ImGui::GetIO().WantCaptureKeyboard) {
-                    camera = woby::frameCameraBounds(cpuMesh.bounds);
+                    camera = woby::frameCameraBounds(sceneBounds);
                 }
                 if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
                     getDrawableSize(window.get(), width, height);
@@ -799,7 +1196,7 @@ int main(int argc, char** argv)
                 fpsWindowStart = now;
             }
 
-            const auto& bounds = cpuMesh.bounds;
+            const auto& bounds = sceneBounds;
             woby::updateCameraFromKeyboard(camera, bounds, deltaSeconds);
 
             bgfx::setViewRect(sceneView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
@@ -817,53 +1214,63 @@ int main(int argc, char** argv)
                 bgfx::getCaps()->homogeneousDepth);
             bgfx::setViewTransform(sceneView, view, projection);
 
-            for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
-                const auto& settings = groupSettings[nodeIndex];
-                if (!settings.visible) {
+            for (const auto& file : files) {
+                if (!file.fileSettings.visible) {
                     continue;
                 }
 
-                float model[16];
-                groupTransform(settings, model);
-                const auto& range = gpuMesh.nodeRanges[nodeIndex];
-                if (settings.showSolidMesh) {
-                    submitTriangleRange(
-                        gpuMesh,
-                        meshProgram,
-                        colorUniform,
-                        model,
-                        groupColor(settings, 1.0f),
-                        range.triangleIndexOffset,
-                        range.triangleIndexCount);
-                }
-                if (settings.showTriangles) {
-                    submitColorRange(
-                        gpuMesh,
-                        gpuMesh.lineIndexBuffer,
-                        colorProgram,
-                        colorUniform,
-                        model,
-                        groupColor(settings, 1.25f),
-                        BGFX_STATE_PT_LINES,
-                        range.lineIndexOffset,
-                        range.lineIndexCount);
-                }
-                if (settings.showVertices) {
-                    const uint32_t pointSize = vertexPointSize(
-                        masterVertexPointSize,
-                        settings.vertexSizeScale);
-                    submitPointSpriteRange(
-                        gpuMesh,
-                        pointSpriteProgram,
-                        colorUniform,
-                        pointParamsUniform,
-                        model,
-                        groupColor(settings, 1.5f),
-                        static_cast<float>(pointSize),
-                        width,
-                        height,
-                        range.pointSpriteIndexOffset,
-                        range.pointSpriteIndexCount);
+                float fileModel[16];
+                fileTransform(file.fileSettings, fileModel);
+                for (size_t nodeIndex = 0; nodeIndex < file.gpuMesh.nodeRanges.size(); ++nodeIndex) {
+                    const auto& settings = file.groupSettings[nodeIndex];
+                    if (!settings.visible) {
+                        continue;
+                    }
+
+                    float groupModel[16];
+                    float model[16];
+                    groupTransform(settings, groupModel);
+                    bx::mtxMul(model, fileModel, groupModel);
+                    const auto& range = file.gpuMesh.nodeRanges[nodeIndex];
+                    if (settings.showSolidMesh) {
+                        submitTriangleRange(
+                            file.gpuMesh,
+                            meshProgram,
+                            colorUniform,
+                            model,
+                            groupColor(settings, 1.0f, file.fileSettings.opacity),
+                            range.triangleIndexOffset,
+                            range.triangleIndexCount);
+                    }
+                    if (settings.showTriangles) {
+                        submitColorRange(
+                            file.gpuMesh,
+                            file.gpuMesh.lineIndexBuffer,
+                            colorProgram,
+                            colorUniform,
+                            model,
+                            groupColor(settings, 1.25f, file.fileSettings.opacity),
+                            BGFX_STATE_PT_LINES,
+                            range.lineIndexOffset,
+                            range.lineIndexCount);
+                    }
+                    if (settings.showVertices) {
+                        const uint32_t pointSize = vertexPointSize(
+                            masterVertexPointSize,
+                            file.vertexSizeScale * settings.vertexSizeScale);
+                        submitPointSpriteRange(
+                            file.gpuMesh,
+                            pointSpriteProgram,
+                            colorUniform,
+                            pointParamsUniform,
+                            model,
+                            groupColor(settings, 1.5f, file.fileSettings.opacity),
+                            static_cast<float>(pointSize),
+                            width,
+                            height,
+                            range.pointSpriteIndexOffset,
+                            range.pointSpriteIndexCount);
+                    }
                 }
             }
 
@@ -873,134 +1280,91 @@ int main(int argc, char** argv)
             ImGui::NewFrame();
             ImGui::Begin("Viewer");
             ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
-            ImGui::Text("File: %s", modelPath.string().c_str());
             ImGui::Text("FPS: %.1f", fps);
-            ImGui::Text("Vertices: %zu", cpuMesh.vertices.size());
-            ImGui::Text("Triangles: %zu", cpuMesh.indices.size() / 3u);
-            const size_t groupCount = groupSettings.size();
-            const size_t solidMeshCount = countEnabledGroupSettings(
-                groupSettings,
+            size_t vertexCountTotal = 0;
+            size_t triangleCountTotal = 0;
+            for (const auto& file : files) {
+                vertexCountTotal += file.mesh.vertices.size();
+                triangleCountTotal += file.mesh.indices.size() / 3u;
+            }
+            ImGui::Text("Vertices: %zu", vertexCountTotal);
+            ImGui::Text("Triangles: %zu", triangleCountTotal);
+            const size_t groupCount = totalGroupCount(files);
+            const size_t solidMeshCount = countEnabledFileSettings(
+                files,
                 &GroupRenderSettings::showSolidMesh);
             if (drawTriStateMasterCheckbox("Solid mesh", solidMeshCount, groupCount)) {
-                setAllGroupSettings(
-                    groupSettings,
+                setAllFileGroupSettings(
+                    files,
                     &GroupRenderSettings::showSolidMesh,
                     solidMeshCount != groupCount);
             }
-            const size_t triangleCount = countEnabledGroupSettings(
-                groupSettings,
+            const size_t triangleCount = countEnabledFileSettings(
+                files,
                 &GroupRenderSettings::showTriangles);
             if (drawTriStateMasterCheckbox("Triangles", triangleCount, groupCount)) {
-                setAllGroupSettings(
-                    groupSettings,
+                setAllFileGroupSettings(
+                    files,
                     &GroupRenderSettings::showTriangles,
                     triangleCount != groupCount);
             }
-            const size_t vertexCount = countEnabledGroupSettings(
-                groupSettings,
+            const size_t vertexCount = countEnabledFileSettings(
+                files,
                 &GroupRenderSettings::showVertices);
             if (drawTriStateMasterCheckbox("Vertices", vertexCount, groupCount)) {
-                setAllGroupSettings(
-                    groupSettings,
+                setAllFileGroupSettings(
+                    files,
                     &GroupRenderSettings::showVertices,
                     vertexCount != groupCount);
             }
             ImGui::SetNextItemWidth(260.0f);
             ImGui::SliderFloat(
-                "Vertex size",
+                "Global vertex size",
                 &masterVertexPointSize,
                 minVertexPointSize,
                 maxVertexPointSize,
                 "%.0f px");
             setLastItemTooltip("Base vertex point size for all groups");
-            const float translationSpeed = std::max(cpuMesh.bounds.radius * 0.005f, 0.01f);
-            if (ImGui::TreeNode("Groups")) {
-                for (size_t nodeIndex = 0; nodeIndex < cpuMesh.nodes.size(); ++nodeIndex) {
-                    const auto& node = cpuMesh.nodes[nodeIndex];
-                    auto& settings = groupSettings[nodeIndex];
-                    const std::string label = node.name + "##node_" + std::to_string(nodeIndex);
-                    ImGui::Checkbox(label.c_str(), &settings.visible);
-                    setLastItemTooltip("Show group");
+            ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+            const std::string filesLabel = "Files (" + std::to_string(files.size()) + ")";
+            if (ImGui::TreeNode(filesLabel.c_str())) {
+                size_t colorIndex = 0;
+                for (size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
+                    auto& file = files[fileIndex];
+                    ImGui::PushID(static_cast<int>(fileIndex));
+                    const std::string label = fileDisplayName(file.path)
+                        + "##file_" + std::to_string(fileIndex);
+                    ImGui::Checkbox("##visible", &file.fileSettings.visible);
+                    setLastItemTooltip("Show file");
                     ImGui::SameLine();
-                    ImGui::TextDisabled("(%u triangles)", node.indexCount / 3u);
-                    ImGui::SameLine();
-                    ImGui::Checkbox(("S##solid_node_" + std::to_string(nodeIndex)).c_str(), &settings.showSolidMesh);
-                    setLastItemTooltip("Solid mesh for this group");
-                    ImGui::SameLine();
-                    ImGui::Checkbox(("T##triangles_node_" + std::to_string(nodeIndex)).c_str(), &settings.showTriangles);
-                    setLastItemTooltip("Triangles for this group");
-                    ImGui::SameLine();
-                    ImGui::Checkbox(("V##vertices_node_" + std::to_string(nodeIndex)).c_str(), &settings.showVertices);
-                    setLastItemTooltip("Vertices for this group");
-                    ImGui::SameLine();
-                    ImGui::SetNextItemWidth(140.0f);
-                    ImGui::DragFloat(
-                        ("##vertex_size_node_" + std::to_string(nodeIndex)).c_str(),
-                        &settings.vertexSizeScale,
-                        0.02f,
-                        minVertexSizeScale,
-                        maxVertexSizeScale,
-                        "%.2fx");
-                    setLastItemTooltip("Vertex size multiplier for this group");
-                    ImGui::SameLine();
-                    const std::string colorButtonId = "##color_node_" + std::to_string(nodeIndex);
-                    const std::string colorPopupId = "Color##color_popup_node_" + std::to_string(nodeIndex);
-                    if (ImGui::ColorButton(
-                            colorButtonId.c_str(),
-                            toImVec4(groupColor(settings, 1.0f)),
-                            ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoTooltip,
-                            ImVec2(18.0f, 18.0f))) {
-                        ImGui::OpenPopup(colorPopupId.c_str());
-                    }
-                    setLastItemTooltip("Color for this group");
-                    if (ImGui::BeginPopup(colorPopupId.c_str())) {
-                        ImGui::TextUnformatted(node.name.c_str());
-                        ImGui::ColorPicker3(
-                            ("##color_picker_node_" + std::to_string(nodeIndex)).c_str(),
-                            settings.color.data());
-                        if (ImGui::Button(("Reset##reset_color_node_" + std::to_string(nodeIndex)).c_str())) {
-                            settings.color = objGroupColor(nodeIndex);
-                        }
-                        ImGui::EndPopup();
-                    }
-                    if (ImGui::TreeNode(("Transform##transform_node_" + std::to_string(nodeIndex)).c_str())) {
+                    if (ImGui::TreeNode(label.c_str())) {
+                        ImGui::Text("Path: %s", file.path.string().c_str());
+                        ImGui::Text("Vertices: %zu", file.mesh.vertices.size());
+                        ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
+                        drawGroupMasterControls(file.groupSettings);
+                        const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
                         ImGui::SetNextItemWidth(220.0f);
                         ImGui::DragFloat(
-                            ("Scale##scale_node_" + std::to_string(nodeIndex)).c_str(),
-                            &settings.scale,
-                            0.01f,
-                            minGroupScale,
-                            maxGroupScale,
+                            "File vertex size",
+                            &file.vertexSizeScale,
+                            0.02f,
+                            minVertexSizeScale,
+                            maxVertexSizeScale,
                             "%.2fx");
-                        setLastItemTooltip("Uniform scale for this group");
-                        ImGui::SetNextItemWidth(260.0f);
-                        ImGui::DragFloat3(
-                            ("Move##translation_node_" + std::to_string(nodeIndex)).c_str(),
-                            settings.translation.data(),
-                            translationSpeed);
-                        setLastItemTooltip("Position offset for this group");
-                        ImGui::SetNextItemWidth(260.0f);
-                        ImGui::DragFloat3(
-                            ("Rotate##rotation_node_" + std::to_string(nodeIndex)).c_str(),
-                            settings.rotationDegrees.data(),
-                            1.0f,
-                            -180.0f,
-                            180.0f,
-                            "%.0f deg");
-                        setLastItemTooltip("Rotation in degrees for this group");
-                        ImGui::SetNextItemWidth(220.0f);
-                        ImGui::SliderFloat(
-                            ("Opacity##opacity_node_" + std::to_string(nodeIndex)).c_str(),
-                            &settings.opacity,
-                            minGroupOpacity,
-                            maxGroupOpacity,
-                            "%.2f");
-                        setLastItemTooltip("Opacity for this group");
-                        if (ImGui::Button(("Reset##reset_transform_node_" + std::to_string(nodeIndex)).c_str())) {
-                            resetGroupTransform(settings);
+                        setLastItemTooltip("Vertex size multiplier for this file");
+                        drawFileTransformControls(file.fileSettings, translationSpeed);
+                        for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
+                            drawGroupControls(
+                                file.mesh.nodes[nodeIndex],
+                                file.groupSettings[nodeIndex],
+                                nodeIndex,
+                                colorIndex + nodeIndex,
+                                translationSpeed);
                         }
                         ImGui::TreePop();
                     }
+                    colorIndex += file.groupSettings.size();
+                    ImGui::PopID();
                 }
                 ImGui::TreePop();
             }
@@ -1020,7 +1384,9 @@ int main(int argc, char** argv)
         bgfx::destroy(pointSpriteProgram);
         bgfx::destroy(colorProgram);
         bgfx::destroy(meshProgram);
-        destroyGpuMesh(gpuMesh);
+        for (auto& file : files) {
+            destroyGpuMesh(file.gpuMesh);
+        }
         bgfx::shutdown();
         bgfxInitialized = false;
         window.reset();

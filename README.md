@@ -15,10 +15,17 @@ cmake --build --preset vs2026-vcpkg
 .\build\vs2026-vcpkg\bin\Debug\woby.exe
 ```
 
-Pass an OBJ path to load another model:
+Pass OBJ paths to load one or more models:
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --file C:\path\to\model.obj
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --file C:\path\to\a.obj --file C:\path\to\b.obj
+```
+
+Load every OBJ file directly inside a folder:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --folder C:\path\to\models
 ```
 
 Print the application version:
