@@ -1,4 +1,5 @@
 #include "bgfx_helpers.h"
+#include "camera.h"
 #include "imgui_bgfx.h"
 #include "obj_mesh.h"
 
@@ -11,9 +12,7 @@
 #include <imgui_impl_sdl3.h>
 
 #include <algorithm>
-#include <array>
 #include <chrono>
-#include <cmath>
 #include <cstdio>
 #include <exception>
 #include <filesystem>
@@ -278,10 +277,10 @@ int main(int argc, char** argv)
         woby::imgui_bgfx::init(assets, imguiView);
 
         bool running = true;
-        bool spin = true;
-        float orbit = 0.0f;
-        auto previous = std::chrono::steady_clock::now();
-        auto fpsWindowStart = previous;
+        woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds());
+        woby::CameraInput cameraInput;
+        auto previousFrame = std::chrono::steady_clock::now();
+        auto fpsWindowStart = previousFrame;
         int fpsFrameCount = 0;
         float fps = 0.0f;
 
@@ -296,17 +295,52 @@ int main(int argc, char** argv)
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
                     running = false;
                 }
+                if (event.type == SDL_EVENT_KEY_DOWN
+                    && event.key.key == SDLK_R
+                    && !ImGui::GetIO().WantCaptureKeyboard) {
+                    camera = woby::frameCameraBounds(cpuMesh.bounds());
+                }
                 if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
                     getDrawableSize(window.get(), width, height);
                     bgfx::reset(width, height, resetFlags);
+                }
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && !ImGui::GetIO().WantCaptureMouse) {
+                    if (event.button.button == SDL_BUTTON_LEFT) {
+                        cameraInput.orbiting = true;
+                    }
+                    if (event.button.button == SDL_BUTTON_RIGHT || event.button.button == SDL_BUTTON_MIDDLE) {
+                        cameraInput.panning = true;
+                    }
+                }
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+                    if (event.button.button == SDL_BUTTON_LEFT) {
+                        cameraInput.orbiting = false;
+                    }
+                    if (event.button.button == SDL_BUTTON_RIGHT || event.button.button == SDL_BUTTON_MIDDLE) {
+                        cameraInput.panning = false;
+                    }
+                }
+                if (event.type == SDL_EVENT_MOUSE_MOTION) {
+                    if (cameraInput.orbiting) {
+                        woby::orbitCamera(camera, event.motion.xrel, event.motion.yrel);
+                    }
+                    if (cameraInput.panning) {
+                        woby::panCamera(camera, event.motion.xrel, event.motion.yrel, static_cast<float>(height));
+                    }
+                }
+                if (event.type == SDL_EVENT_MOUSE_WHEEL && !ImGui::GetIO().WantCaptureMouse) {
+                    const float wheelY = event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED
+                        ? -event.wheel.y
+                        : event.wheel.y;
+                    woby::dollyCamera(camera, -wheelY * 0.12f);
                 }
             }
 
             getDrawableSize(window.get(), width, height);
 
             const auto now = std::chrono::steady_clock::now();
-            const float deltaSeconds = std::chrono::duration<float>(now - previous).count();
-            previous = now;
+            const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();
+            previousFrame = now;
             ++fpsFrameCount;
             const float fpsWindowSeconds = std::chrono::duration<float>(now - fpsWindowStart).count();
             if (fpsWindowSeconds >= 1.0f) {
@@ -314,30 +348,22 @@ int main(int argc, char** argv)
                 fpsFrameCount = 0;
                 fpsWindowStart = now;
             }
-            if (spin) {
-                orbit += deltaSeconds * 0.6f;
-            }
+
+            const auto& bounds = cpuMesh.bounds();
+            woby::updateCameraFromKeyboard(camera, bounds, deltaSeconds);
 
             bgfx::setViewRect(sceneView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
             bgfx::touch(sceneView);
 
-            const auto& bounds = cpuMesh.bounds();
-            const bx::Vec3 at(bounds.center[0], bounds.center[1], bounds.center[2]);
-            const float distance = bounds.radius * 2.8f;
-            const bx::Vec3 eye(
-                bounds.center[0] + std::sin(orbit) * distance,
-                bounds.center[1] + bounds.radius * 0.6f,
-                bounds.center[2] + std::cos(orbit) * distance);
-
             float view[16];
             float projection[16];
-            bx::mtxLookAt(view, eye, at);
+            bx::mtxLookAt(view, woby::cameraEye(camera), woby::cameraLookAt(camera));
             bx::mtxProj(
                 projection,
-                60.0f,
+                camera.verticalFovDegrees,
                 static_cast<float>(width) / static_cast<float>(height),
-                0.1f,
-                std::max(bounds.radius * 20.0f, 10.0f),
+                camera.nearPlane,
+                woby::cameraFarPlane(camera, bounds),
                 bgfx::getCaps()->homogeneousDepth);
             bgfx::setViewTransform(sceneView, view, projection);
 
@@ -358,8 +384,6 @@ int main(int argc, char** argv)
             ImGui::Text("FPS: %.1f", fps);
             ImGui::Text("Vertices: %zu", cpuMesh.vertices().size());
             ImGui::Text("Indices: %zu", cpuMesh.indices().size());
-            ImGui::Checkbox("Spin", &spin);
-            ImGui::SliderFloat("Orbit", &orbit, 0.0f, 6.28318f);
             ImGui::End();
             ImGui::Render();
             woby::imgui_bgfx::render(ImGui::GetDrawData());

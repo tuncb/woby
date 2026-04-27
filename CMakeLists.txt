@@ -16,6 +16,8 @@ find_package(imgui CONFIG REQUIRED)
 add_executable(woby
     src/bgfx_helpers.cpp
     src/bgfx_helpers.h
+    src/camera.cpp
+    src/camera.h
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
@@ -49,7 +51,7 @@ foreach(optional_bgfx_target IN ITEMS bgfx::bx bgfx::bimg)
 endforeach()
 
 if(MSVC)
-    target_compile_options(woby PRIVATE /W4 /permissive-)
+    target_compile_options(woby PRIVATE /W4 /permissive- /EHs)
 else()
     target_compile_options(woby PRIVATE -Wall -Wextra -Wpedantic)
 endif()
