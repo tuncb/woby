@@ -40,8 +40,6 @@ constexpr float minGroupScale = 0.01f;
 constexpr float maxGroupScale = 20.0f;
 constexpr float minGroupOpacity = 0.0f;
 constexpr float maxGroupOpacity = 1.0f;
-constexpr float defaultViewerPaneWidth = 360.0f;
-constexpr float minViewerPaneWidth = 280.0f;
 constexpr float defaultScenePaneHeight = 150.0f;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float viewerPaneBackgroundRed = 0.20f;
@@ -75,6 +73,8 @@ constexpr const char* verticesIcon = "\xef\x86\x92";
 constexpr const char* transformIcon = "\xef\x82\xb2";
 constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 constexpr float renderModeButtonSize = 26.0f;
+constexpr float groupVertexSizeControlWidth = 70.0f;
+constexpr float viewerPaneWidthPadding = 20.0f;
 
 bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
 {
@@ -831,6 +831,23 @@ float groupControlStartOffset()
         + style.ItemSpacing.x;
 }
 
+float minimumViewerPaneWidth()
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float groupControlWidth = renderModeButtonRowWidth()
+        + groupVertexSizeControlWidth
+        + style.ItemSpacing.x
+        + renderModeButtonSize
+        + style.ItemSpacing.x
+        + renderModeButtonSize;
+
+    return groupControlStartOffset()
+        + groupControlWidth
+        + style.WindowPadding.x * 2.0f
+        + style.ScrollbarSize
+        + viewerPaneWidthPadding;
+}
+
 void pushRenderModeControlHeight()
 {
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -962,7 +979,7 @@ void drawGroupControls(
         settings.showVertices = !settings.showVertices;
     }
     ImGui::SameLine(0.0f, 0.0f);
-    ImGui::SetNextItemWidth(70.0f);
+    ImGui::SetNextItemWidth(groupVertexSizeControlWidth);
     pushRenderModeControlHeight();
     ImGui::DragFloat(
         "##vertex_size",
@@ -1445,7 +1462,7 @@ int main(int argc, char** argv)
         auto fpsWindowStart = previousFrame;
         int fpsFrameCount = 0;
         float fps = 0.0f;
-        float viewerPaneWidth = defaultViewerPaneWidth;
+        float viewerPaneWidth = minimumViewerPaneWidth();
 
         while (running) {
             SDL_Event event;
@@ -1515,6 +1532,7 @@ int main(int argc, char** argv)
             const auto& bounds = sceneBounds;
             woby::updateCameraFromKeyboard(camera, bounds, deltaSeconds);
 
+            const float minViewerPaneWidth = minimumViewerPaneWidth();
             const float maxViewerPaneWidth = std::max(
                 minViewerPaneWidth,
                 static_cast<float>(width) - minSceneViewportWidth);
