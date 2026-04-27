@@ -847,10 +847,13 @@ void drawGroupControls(
     float translationSpeed)
 {
     ImGui::PushID(static_cast<int>(nodeIndex));
-    ImGui::Checkbox(node.name.c_str(), &settings.visible);
+    ImGui::Checkbox("##visible", &settings.visible);
     setLastItemTooltip("Show group");
     ImGui::SameLine();
-    ImGui::TextDisabled("(%u triangles)", node.indexCount / 3u);
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(node.name.c_str());
+    const std::string triangleTooltip = std::to_string(node.indexCount / 3u) + " triangles";
+    setLastItemTooltip(triangleTooltip.c_str());
     ImGui::SameLine();
     if (drawRenderModeIconButton(
             "solid_mesh",
