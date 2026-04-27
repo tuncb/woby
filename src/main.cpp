@@ -785,6 +785,11 @@ bool fileTransformIsDefault(const FileRenderSettings& settings)
         && settings.rotationDegrees == std::array<float, 3>{};
 }
 
+void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
+{
+    ImGui::Text("Vertices: %zu  Triangles: %zu", vertexCount, triangleCount);
+}
+
 void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
 {
     const size_t groupCount = settings.size();
@@ -1560,8 +1565,7 @@ int main(int argc, char** argv)
                             vertexCountTotal += file.mesh.vertices.size();
                             triangleCountTotal += file.mesh.indices.size() / 3u;
                         }
-                        ImGui::Text("Vertices: %zu", vertexCountTotal);
-                        ImGui::Text("Triangles: %zu", triangleCountTotal);
+                        drawMeshCountLine(vertexCountTotal, triangleCountTotal);
                         const size_t groupCount = totalGroupCount(files);
                         const size_t solidMeshCount = countEnabledFileSettings(
                             files,
@@ -1647,8 +1651,9 @@ int main(int argc, char** argv)
                                 const std::string pathText = file.path.string();
                                 ImGui::Text("Path: %s", pathText.c_str());
                                 setLastItemTooltip(pathText.c_str());
-                                ImGui::Text("Vertices: %zu", file.mesh.vertices.size());
-                                ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
+                                drawMeshCountLine(
+                                    file.mesh.vertices.size(),
+                                    file.mesh.indices.size() / 3u);
                                 drawGroupMasterControls(file.groupSettings);
                                 ImGui::SameLine();
                                 const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
