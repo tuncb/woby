@@ -61,6 +61,8 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf192,
     0xf068,
     0xf068,
+    0xf06e,
+    0xf070,
     0xf0b2,
     0xf0b2,
     0xf1b2,
@@ -71,6 +73,8 @@ constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 constexpr const char* trianglesIcon = "\xef\x81\x8b";
 constexpr const char* verticesIcon = "\xef\x86\x92";
 constexpr const char* transformIcon = "\xef\x82\xb2";
+constexpr const char* visibleIcon = "\xef\x81\xae";
+constexpr const char* hiddenIcon = "\xef\x81\xb0";
 constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 constexpr float renderModeButtonSize = 26.0f;
 constexpr float groupVertexSizeControlWidth = 70.0f;
@@ -816,6 +820,41 @@ bool drawTriStateMasterIconButton(
         totalCount == 0u);
 }
 
+bool drawVisibilityButton(const char* id, bool& visible, const char* itemName)
+{
+    const std::string tooltip = std::string(visible ? "Hide " : "Show ")
+        + itemName;
+    const char* icon = visible ? visibleIcon : hiddenIcon;
+    const std::string label = std::string("##") + id;
+
+    pushRenderModeButtonColors(
+        visible ? RenderModeState::on : RenderModeState::off);
+    const bool changed = ImGui::Button(
+        label.c_str(),
+        ImVec2(renderModeButtonSize, renderModeButtonSize));
+    const ImVec2 buttonMin = ImGui::GetItemRectMin();
+    const ImVec2 buttonMax = ImGui::GetItemRectMax();
+    const ImVec2 iconSize = ImGui::CalcTextSize(icon);
+    const ImVec2 iconPosition(
+        std::floor(buttonMin.x + (buttonMax.x - buttonMin.x - iconSize.x) * 0.5f - 1.0f),
+        std::floor(buttonMin.y + (buttonMax.y - buttonMin.y - iconSize.y) * 0.5f));
+    ImGui::GetWindowDrawList()->AddText(
+        iconPosition,
+        ImGui::GetColorU32(ImGuiCol_Text),
+        icon);
+    ImGui::PopStyleColor(4);
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s", tooltip.c_str());
+    }
+
+    if (changed) {
+        visible = !visible;
+        return true;
+    }
+
+    return false;
+}
+
 float renderModeButtonRowWidth()
 {
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -940,8 +979,7 @@ void drawGroupControls(
     const ImGuiStyle& style = ImGui::GetStyle();
     const float rowStartX = ImGui::GetCursorPosX();
     const float controlsStartX = rowStartX + groupControlStartOffset();
-    ImGui::Checkbox("##visible", &settings.visible);
-    setLastItemTooltip("Show group");
+    drawVisibilityButton("visible", settings.visible, "group");
     ImGui::SameLine();
     const float textStartX = ImGui::GetCursorPosX();
     const float nameWidth = controlsStartX - textStartX - style.ItemSpacing.x;
@@ -1741,8 +1779,7 @@ int main(int argc, char** argv)
                             ImGui::PushID(static_cast<int>(fileIndex));
                             const std::string label = fileDisplayName(file.path)
                                 + "##file_" + std::to_string(fileIndex);
-                            ImGui::Checkbox("##visible", &file.fileSettings.visible);
-                            setLastItemTooltip("Show file");
+                            drawVisibilityButton("visible", file.fileSettings.visible, "file");
                             ImGui::SameLine();
                             const std::string pathText = file.path.string();
                             const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
