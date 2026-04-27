@@ -56,6 +56,8 @@ constexpr float popupBackgroundGreen = 0.21f;
 constexpr float popupBackgroundBlue = 0.22f;
 constexpr float popupBackgroundAlpha = 0.88f;
 constexpr float appFontSize = 15.0f;
+constexpr float vertexHoverMinRadius = 3.0f;
+constexpr float vertexHoverEpsilon = 0.000001f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
     0x0020,
@@ -230,6 +232,7 @@ struct GpuMesh {
     bgfx::IndexBufferHandle lineIndexBuffer = BGFX_INVALID_HANDLE;
     bgfx::IndexBufferHandle pointSpriteIndexBuffer = BGFX_INVALID_HANDLE;
     std::vector<GpuNodeRange> nodeRanges;
+    std::vector<uint32_t> pointVertexIndices;
 };
 
 struct PointSpriteVertex {
@@ -280,6 +283,25 @@ struct ObjFileDialogState {
 struct ToastMessage {
     std::string text;
     std::chrono::steady_clock::time_point startedAt{};
+};
+
+struct MousePosition {
+    float x = 0.0f;
+    float y = 0.0f;
+};
+
+struct ProjectedVertex {
+    bool visible = false;
+    float x = 0.0f;
+    float y = 0.0f;
+    float depth = 0.0f;
+};
+
+struct HoveredVertex {
+    std::array<float, 3> localPosition{};
+    std::array<float, 3> transformedPosition{};
+    float depth = 0.0f;
+    float distanceSquared = 0.0f;
 };
 
 std::array<float, 3> nodeCenter(const woby::ObjMesh& mesh, const woby::ObjNode& node)
@@ -577,6 +599,7 @@ GpuMesh createGpuMesh(
     std::vector<PointSpriteVertex> pointSpriteVertices;
     std::vector<uint32_t> pointSpriteIndices;
     buildPointSprites(mesh, pointIndices, pointSpriteVertices, pointSpriteIndices);
+    gpuMesh.pointVertexIndices = std::move(pointIndices);
 
     gpuMesh.pointSpriteVertexBuffer = bgfx::createVertexBuffer(
         bgfx::copy(
@@ -616,6 +639,7 @@ void destroyGpuMesh(GpuMesh& mesh)
     mesh.vertexBuffer = BGFX_INVALID_HANDLE;
     mesh.pointSpriteVertexBuffer = BGFX_INVALID_HANDLE;
     mesh.nodeRanges.clear();
+    mesh.pointVertexIndices.clear();
 }
 
 uint64_t renderState(
@@ -649,6 +673,193 @@ uint32_t vertexPointSize(float masterSize, float groupScale)
         minVertexPointSize,
         maxVertexPointSize);
     return static_cast<uint32_t>(std::lround(scaledSize));
+}
+
+MousePosition mousePositionInPixels(SDL_Window* window)
+{
+    float mouseWindowX = 0.0f;
+    float mouseWindowY = 0.0f;
+    SDL_GetMouseState(&mouseWindowX, &mouseWindowY);
+
+    int windowWidth = 0;
+    int windowHeight = 0;
+    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+
+    uint32_t drawableWidth = 0;
+    uint32_t drawableHeight = 0;
+    getDrawableSize(window, drawableWidth, drawableHeight);
+
+    const float widthScale = static_cast<float>(drawableWidth) / static_cast<float>(std::max(windowWidth, 1));
+    const float heightScale = static_cast<float>(drawableHeight) / static_cast<float>(std::max(windowHeight, 1));
+    return {
+        mouseWindowX * widthScale,
+        mouseWindowY * heightScale,
+    };
+}
+
+std::array<float, 4> transformPoint4(const float* matrix, const std::array<float, 4>& point)
+{
+    return {
+        matrix[0] * point[0] + matrix[4] * point[1] + matrix[8] * point[2] + matrix[12] * point[3],
+        matrix[1] * point[0] + matrix[5] * point[1] + matrix[9] * point[2] + matrix[13] * point[3],
+        matrix[2] * point[0] + matrix[6] * point[1] + matrix[10] * point[2] + matrix[14] * point[3],
+        matrix[3] * point[0] + matrix[7] * point[1] + matrix[11] * point[2] + matrix[15] * point[3],
+    };
+}
+
+std::array<float, 3> transformPosition(const float* matrix, const std::array<float, 3>& position)
+{
+    const auto transformed = transformPoint4(matrix, {position[0], position[1], position[2], 1.0f});
+    if (std::abs(transformed[3]) <= vertexHoverEpsilon) {
+        return {transformed[0], transformed[1], transformed[2]};
+    }
+
+    return {
+        transformed[0] / transformed[3],
+        transformed[1] / transformed[3],
+        transformed[2] / transformed[3],
+    };
+}
+
+ProjectedVertex projectPosition(
+    const std::array<float, 3>& position,
+    const float* model,
+    const float* view,
+    const float* projection,
+    uint32_t viewportWidth,
+    uint32_t viewportHeight,
+    bool homogeneousDepth)
+{
+    const auto world = transformPoint4(model, {position[0], position[1], position[2], 1.0f});
+    const auto eye = transformPoint4(view, world);
+    const auto clip = transformPoint4(projection, eye);
+    if (clip[3] <= vertexHoverEpsilon) {
+        return {};
+    }
+
+    const float ndcX = clip[0] / clip[3];
+    const float ndcY = clip[1] / clip[3];
+    const float ndcZ = clip[2] / clip[3];
+    const float minDepth = homogeneousDepth ? -1.0f : 0.0f;
+    if (ndcX < -1.0f
+        || ndcX > 1.0f
+        || ndcY < -1.0f
+        || ndcY > 1.0f
+        || ndcZ < minDepth
+        || ndcZ > 1.0f) {
+        return {};
+    }
+
+    ProjectedVertex projected;
+    projected.visible = true;
+    projected.x = (ndcX * 0.5f + 0.5f) * static_cast<float>(viewportWidth);
+    projected.y = (0.5f - ndcY * 0.5f) * static_cast<float>(viewportHeight);
+    projected.depth = ndcZ;
+    return projected;
+}
+
+void updateHoveredVertexCandidate(
+    const std::array<float, 3>& localPosition,
+    const std::array<float, 3>& transformedPosition,
+    const ProjectedVertex& projected,
+    const MousePosition& mouse,
+    float hoverRadius,
+    std::optional<HoveredVertex>& hoveredVertex)
+{
+    const float deltaX = projected.x - mouse.x;
+    const float deltaY = projected.y - mouse.y;
+    const float distanceSquared = deltaX * deltaX + deltaY * deltaY;
+    if (distanceSquared > hoverRadius * hoverRadius) {
+        return;
+    }
+
+    if (hoveredVertex.has_value()
+        && (projected.depth > hoveredVertex->depth
+            || (projected.depth == hoveredVertex->depth
+                && distanceSquared >= hoveredVertex->distanceSquared))) {
+        return;
+    }
+
+    hoveredVertex = HoveredVertex{
+        localPosition,
+        transformedPosition,
+        projected.depth,
+        distanceSquared,
+    };
+}
+
+std::optional<HoveredVertex> findHoveredVertex(
+    const std::vector<LoadedObjFile>& files,
+    const MousePosition& mouse,
+    float masterVertexPointSize,
+    const float* view,
+    const float* projection,
+    uint32_t viewportWidth,
+    uint32_t viewportHeight,
+    bool homogeneousDepth)
+{
+    std::optional<HoveredVertex> hoveredVertex;
+    for (const auto& file : files) {
+        if (!file.fileSettings.visible || file.fileSettings.opacity <= vertexHoverEpsilon) {
+            continue;
+        }
+
+        float fileModel[16];
+        fileTransform(file.fileSettings, fileModel);
+        for (size_t nodeIndex = 0; nodeIndex < file.gpuMesh.nodeRanges.size(); ++nodeIndex) {
+            const auto& settings = file.groupSettings[nodeIndex];
+            if (!settings.visible
+                || !settings.showVertices
+                || settings.opacity <= vertexHoverEpsilon) {
+                continue;
+            }
+
+            float groupModel[16];
+            float model[16];
+            groupTransform(settings, groupModel);
+            bx::mtxMul(model, fileModel, groupModel);
+
+            const uint32_t pointSize = vertexPointSize(
+                masterVertexPointSize,
+                file.vertexSizeScale * settings.vertexSizeScale);
+            const float hoverRadius = std::max(
+                static_cast<float>(pointSize) * 0.5f,
+                vertexHoverMinRadius);
+            const auto& range = file.gpuMesh.nodeRanges[nodeIndex];
+            const uint32_t endIndex = std::min(
+                range.pointIndexOffset + range.pointIndexCount,
+                static_cast<uint32_t>(file.gpuMesh.pointVertexIndices.size()));
+            for (uint32_t index = range.pointIndexOffset; index < endIndex; ++index) {
+                const uint32_t vertexIndex = file.gpuMesh.pointVertexIndices[index];
+                if (vertexIndex >= file.mesh.vertices.size()) {
+                    continue;
+                }
+
+                const auto& localPosition = file.mesh.vertices[vertexIndex].position;
+                const auto projected = projectPosition(
+                    localPosition,
+                    model,
+                    view,
+                    projection,
+                    viewportWidth,
+                    viewportHeight,
+                    homogeneousDepth);
+                if (!projected.visible) {
+                    continue;
+                }
+
+                updateHoveredVertexCandidate(
+                    localPosition,
+                    transformPosition(model, localPosition),
+                    projected,
+                    mouse,
+                    hoverRadius,
+                    hoveredVertex);
+            }
+        }
+    }
+
+    return hoveredVertex;
 }
 
 std::string fileDisplayName(const std::filesystem::path& path)
@@ -1672,6 +1883,47 @@ void drawToastMessage(const ToastMessage& toast, uint32_t width)
     ImGui::PopStyleVar();
 }
 
+void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex, uint32_t width, uint32_t height)
+{
+    if (!hoveredVertex.has_value()) {
+        return;
+    }
+
+    ImGui::SetNextWindowBgAlpha(0.86f);
+    ImGui::SetNextWindowPos(
+        ImVec2(
+            static_cast<float>(width) - toastMargin,
+            static_cast<float>(height) - toastMargin),
+        ImGuiCond_Always,
+        ImVec2(1.0f, 1.0f));
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+    if (ImGui::Begin(
+            "##HoveredVertex",
+            nullptr,
+            ImGuiWindowFlags_NoDecoration
+                | ImGuiWindowFlags_AlwaysAutoResize
+                | ImGuiWindowFlags_NoMove
+                | ImGuiWindowFlags_NoSavedSettings
+                | ImGuiWindowFlags_NoFocusOnAppearing
+                | ImGuiWindowFlags_NoInputs)) {
+        const auto& local = hoveredVertex->localPosition;
+        const auto& transformed = hoveredVertex->transformedPosition;
+        ImGui::Text(
+            "Local: %.4f, %.4f, %.4f",
+            static_cast<double>(local[0]),
+            static_cast<double>(local[1]),
+            static_cast<double>(local[2]));
+        ImGui::Text(
+            "Transformed: %.4f, %.4f, %.4f",
+            static_cast<double>(transformed[0]),
+            static_cast<double>(transformed[1]),
+            static_cast<double>(transformed[2]));
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -1854,6 +2106,7 @@ int main(int argc, char** argv)
 
             float view[16];
             float projection[16];
+            const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
             bx::mtxLookAt(view, woby::cameraEye(camera), woby::cameraLookAt(camera));
             bx::mtxProj(
                 projection,
@@ -1861,8 +2114,25 @@ int main(int argc, char** argv)
                 static_cast<float>(sceneViewportWidth) / static_cast<float>(height),
                 camera.nearPlane,
                 woby::cameraFarPlane(camera, bounds),
-                bgfx::getCaps()->homogeneousDepth);
+                homogeneousDepth);
             bgfx::setViewTransform(sceneView, view, projection);
+
+            std::optional<HoveredVertex> hoveredVertex;
+            const MousePosition mouse = mousePositionInPixels(window.get());
+            if (mouse.x >= viewerPaneWidth
+                && mouse.x < static_cast<float>(sceneViewportWidth)
+                && mouse.y >= 0.0f
+                && mouse.y < static_cast<float>(height)) {
+                hoveredVertex = findHoveredVertex(
+                    files,
+                    mouse,
+                    masterVertexPointSize,
+                    view,
+                    projection,
+                    sceneViewportWidth,
+                    height,
+                    homogeneousDepth);
+            }
 
             for (const auto& file : files) {
                 if (!file.fileSettings.visible) {
@@ -2123,6 +2393,7 @@ int main(int argc, char** argv)
             }
             ImGui::End();
             drawToastMessage(toast, width);
+            drawHoveredVertexOverlay(hoveredVertex, width, height);
             ImGui::Render();
             woby::imgui_bgfx::render(ImGui::GetDrawData());
 
