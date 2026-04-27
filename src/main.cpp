@@ -914,9 +914,16 @@ bool fileTransformIsDefault(const FileRenderSettings& settings)
         && settings.rotationDegrees == std::array<float, 3>{};
 }
 
+std::string meshCountLine(size_t vertexCount, size_t triangleCount)
+{
+    return "Vertices: " + std::to_string(vertexCount)
+        + "  Triangles: " + std::to_string(triangleCount);
+}
+
 void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
 {
-    ImGui::Text("Vertices: %zu  Triangles: %zu", vertexCount, triangleCount);
+    const std::string countLine = meshCountLine(vertexCount, triangleCount);
+    ImGui::TextUnformatted(countLine.c_str());
 }
 
 void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
@@ -970,6 +977,7 @@ void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
 
 void drawGroupControls(
     const woby::ObjNode& node,
+    const GpuNodeRange& range,
     GroupRenderSettings& settings,
     size_t nodeIndex,
     size_t colorIndex,
@@ -986,8 +994,7 @@ void drawGroupControls(
     drawClippedTextItem("##name", node.name.c_str(), nameWidth);
     const std::string groupTooltip = node.name
         + "\n"
-        + std::to_string(node.indexCount / 3u)
-        + " triangles";
+        + meshCountLine(range.pointIndexCount, node.indexCount / 3u);
     setLastItemTooltip(groupTooltip.c_str());
     ImGui::SameLine(controlsStartX, 0.0f);
     if (drawRenderModeIconButton(
@@ -1781,13 +1788,14 @@ int main(int argc, char** argv)
                                 + "##file_" + std::to_string(fileIndex);
                             drawVisibilityButton("visible", file.fileSettings.visible, "file");
                             ImGui::SameLine();
-                            const std::string pathText = file.path.string();
-                            const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
-                            setLastItemTooltip(pathText.c_str());
-                            if (fileTreeOpen) {
-                                drawMeshCountLine(
+                            const std::string tooltipText = file.path.string()
+                                + "\n"
+                                + meshCountLine(
                                     file.mesh.vertices.size(),
                                     file.mesh.indices.size() / 3u);
+                            const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
+                            setLastItemTooltip(tooltipText.c_str());
+                            if (fileTreeOpen) {
                                 drawGroupMasterControls(file.groupSettings);
                                 ImGui::SameLine(0.0f, 0.0f);
                                 const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
@@ -1806,6 +1814,7 @@ int main(int argc, char** argv)
                                 for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
                                     drawGroupControls(
                                         file.mesh.nodes[nodeIndex],
+                                        file.gpuMesh.nodeRanges[nodeIndex],
                                         file.groupSettings[nodeIndex],
                                         nodeIndex,
                                         colorIndex + nodeIndex,
