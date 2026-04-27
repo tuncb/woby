@@ -42,6 +42,7 @@ constexpr float minGroupOpacity = 0.0f;
 constexpr float maxGroupOpacity = 1.0f;
 constexpr float defaultViewerPaneWidth = 360.0f;
 constexpr float minViewerPaneWidth = 280.0f;
+constexpr float defaultScenePaneHeight = 150.0f;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float appFontSize = 15.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
@@ -1295,7 +1296,8 @@ int main(int argc, char** argv)
         int fpsFrameCount = 0;
         float fps = 0.0f;
         float viewerPaneWidth = defaultViewerPaneWidth;
-        bool viewerPaneCollapsed = false;
+        bool scenePaneCollapsed = false;
+        bool filesPaneCollapsed = false;
 
         while (running) {
             SDL_Event event;
@@ -1371,7 +1373,7 @@ int main(int argc, char** argv)
             viewerPaneWidth = std::clamp(viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth);
 
             uint32_t sceneViewportX = 0;
-            if (!viewerPaneCollapsed && width > 1u) {
+            if (!(scenePaneCollapsed && filesPaneCollapsed) && width > 1u) {
                 const auto panePixelWidth = static_cast<uint32_t>(std::lround(viewerPaneWidth));
                 sceneViewportX = std::min(panePixelWidth, width - 1u);
             }
@@ -1461,25 +1463,28 @@ int main(int argc, char** argv)
 
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
+            const float availableHeight = static_cast<float>(height);
+            const float scenePaneHeight = std::min(defaultScenePaneHeight, availableHeight);
+            const float filesPaneHeight = std::max(availableHeight - scenePaneHeight, 1.0f);
             ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
             ImGui::SetNextWindowSize(
-                ImVec2(viewerPaneWidth, static_cast<float>(height)),
+                ImVec2(viewerPaneWidth, scenePaneHeight),
                 ImGuiCond_Always);
             ImGui::SetNextWindowSizeConstraints(
-                ImVec2(minViewerPaneWidth, static_cast<float>(height)),
-                ImVec2(maxViewerPaneWidth, static_cast<float>(height)));
-            const bool showViewerContent = ImGui::Begin(
-                "Viewer",
+                ImVec2(minViewerPaneWidth, scenePaneHeight),
+                ImVec2(maxViewerPaneWidth, scenePaneHeight));
+            const bool showSceneContent = ImGui::Begin(
+                "Scene",
                 nullptr,
                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-            viewerPaneCollapsed = ImGui::IsWindowCollapsed();
-            if (!viewerPaneCollapsed) {
+            scenePaneCollapsed = ImGui::IsWindowCollapsed();
+            if (!scenePaneCollapsed) {
                 viewerPaneWidth = std::clamp(
                     ImGui::GetWindowSize().x,
                     minViewerPaneWidth,
                     maxViewerPaneWidth);
             }
-            if (showViewerContent) {
+            if (showSceneContent) {
                 ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
                 ImGui::Text("FPS: %.1f", fps);
                 size_t vertexCountTotal = 0;
@@ -1544,51 +1549,69 @@ int main(int argc, char** argv)
                     maxVertexPointSize,
                     "%.0f px");
                 setLastItemTooltip("Base vertex point size for all groups");
-                ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-                const std::string filesLabel = "Files (" + std::to_string(files.size()) + ")";
-                if (ImGui::TreeNode(filesLabel.c_str())) {
-                    size_t colorIndex = 0;
-                    for (size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
-                        auto& file = files[fileIndex];
-                        ImGui::PushID(static_cast<int>(fileIndex));
-                        const std::string label = fileDisplayName(file.path)
-                            + "##file_" + std::to_string(fileIndex);
-                        ImGui::Checkbox("##visible", &file.fileSettings.visible);
-                        setLastItemTooltip("Show file");
+            }
+            ImGui::End();
+
+            ImGui::SetNextWindowPos(ImVec2(0.0f, scenePaneHeight), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(
+                ImVec2(viewerPaneWidth, filesPaneHeight),
+                ImGuiCond_Always);
+            ImGui::SetNextWindowSizeConstraints(
+                ImVec2(minViewerPaneWidth, filesPaneHeight),
+                ImVec2(maxViewerPaneWidth, filesPaneHeight));
+            const std::string filesPaneTitle = "Files (" + std::to_string(files.size()) + ")##Files";
+            const bool showFilesContent = ImGui::Begin(
+                filesPaneTitle.c_str(),
+                nullptr,
+                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+            filesPaneCollapsed = ImGui::IsWindowCollapsed();
+            if (!filesPaneCollapsed) {
+                viewerPaneWidth = std::clamp(
+                    ImGui::GetWindowSize().x,
+                    minViewerPaneWidth,
+                    maxViewerPaneWidth);
+            }
+            if (showFilesContent) {
+                size_t colorIndex = 0;
+                for (size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
+                    auto& file = files[fileIndex];
+                    ImGui::PushID(static_cast<int>(fileIndex));
+                    const std::string label = fileDisplayName(file.path)
+                        + "##file_" + std::to_string(fileIndex);
+                    ImGui::Checkbox("##visible", &file.fileSettings.visible);
+                    setLastItemTooltip("Show file");
+                    ImGui::SameLine();
+                    if (ImGui::TreeNode(label.c_str())) {
+                        const std::string pathText = file.path.string();
+                        ImGui::Text("Path: %s", pathText.c_str());
+                        setLastItemTooltip(pathText.c_str());
+                        ImGui::Text("Vertices: %zu", file.mesh.vertices.size());
+                        ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
+                        drawGroupMasterControls(file.groupSettings);
                         ImGui::SameLine();
-                        if (ImGui::TreeNode(label.c_str())) {
-                            const std::string pathText = file.path.string();
-                            ImGui::Text("Path: %s", pathText.c_str());
-                            setLastItemTooltip(pathText.c_str());
-                            ImGui::Text("Vertices: %zu", file.mesh.vertices.size());
-                            ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
-                            drawGroupMasterControls(file.groupSettings);
-                            const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
-                            ImGui::SameLine();
-                            ImGui::SetNextItemWidth(renderModeButtonRowWidth());
-                            ImGui::DragFloat(
-                                "Vertex size",
-                                &file.vertexSizeScale,
-                                0.02f,
-                                minVertexSizeScale,
-                                maxVertexSizeScale,
-                                "%.2fx");
-                            setLastItemTooltip("Vertex size multiplier for this file");
-                            drawFileTransformControls(file.fileSettings, translationSpeed);
-                            for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
-                                drawGroupControls(
-                                    file.mesh.nodes[nodeIndex],
-                                    file.groupSettings[nodeIndex],
-                                    nodeIndex,
-                                    colorIndex + nodeIndex,
-                                    translationSpeed);
-                            }
-                            ImGui::TreePop();
+                        const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
+                        ImGui::SetNextItemWidth(renderModeButtonRowWidth());
+                        ImGui::DragFloat(
+                            "Vertex size",
+                            &file.vertexSizeScale,
+                            0.02f,
+                            minVertexSizeScale,
+                            maxVertexSizeScale,
+                            "%.2fx");
+                        setLastItemTooltip("Vertex size multiplier for this file");
+                        drawFileTransformControls(file.fileSettings, translationSpeed);
+                        for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
+                            drawGroupControls(
+                                file.mesh.nodes[nodeIndex],
+                                file.groupSettings[nodeIndex],
+                                nodeIndex,
+                                colorIndex + nodeIndex,
+                                translationSpeed);
                         }
-                        colorIndex += file.groupSettings.size();
-                        ImGui::PopID();
+                        ImGui::TreePop();
                     }
-                    ImGui::TreePop();
+                    colorIndex += file.groupSettings.size();
+                    ImGui::PopID();
                 }
             }
             ImGui::End();
