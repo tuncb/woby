@@ -55,6 +55,8 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf192,
     0xf068,
     0xf068,
+    0xf0b2,
+    0xf0b2,
     0xf1b2,
     0xf1b2,
     0,
@@ -62,6 +64,7 @@ constexpr ImWchar appFontGlyphRanges[] = {
 constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 constexpr const char* trianglesIcon = "\xef\x81\x8b";
 constexpr const char* verticesIcon = "\xef\x86\x92";
+constexpr const char* transformIcon = "\xef\x82\xb2";
 constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 constexpr float renderModeButtonSize = 26.0f;
 
@@ -766,6 +769,22 @@ void pushRenderModeControlHeight()
         ImVec2(style.FramePadding.x, paddingY));
 }
 
+bool groupTransformIsDefault(const GroupRenderSettings& settings)
+{
+    return settings.scale == 1.0f
+        && settings.opacity == 1.0f
+        && settings.translation == std::array<float, 3>{}
+        && settings.rotationDegrees == std::array<float, 3>{};
+}
+
+bool fileTransformIsDefault(const FileRenderSettings& settings)
+{
+    return settings.scale == 1.0f
+        && settings.opacity == 1.0f
+        && settings.translation == std::array<float, 3>{}
+        && settings.rotationDegrees == std::array<float, 3>{};
+}
+
 void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
 {
     const size_t groupCount = settings.size();
@@ -875,6 +894,18 @@ void drawGroupControls(
         ImGui::OpenPopup("Color");
     }
     setLastItemTooltip("Color for this group");
+    ImGui::SameLine();
+    const RenderModeState transformState = groupTransformIsDefault(settings)
+        ? RenderModeState::off
+        : RenderModeState::on;
+    if (drawRenderModeIconButton(
+            "transform",
+            transformIcon,
+            "Transform geometry",
+            transformState,
+            false)) {
+        ImGui::OpenPopup("Transform");
+    }
     if (ImGui::BeginPopup("Color")) {
         ImGui::TextUnformatted(node.name.c_str());
         ImGui::ColorPicker3("##color_picker", settings.color.data());
@@ -883,16 +914,13 @@ void drawGroupControls(
         }
         ImGui::EndPopup();
     }
-    if (ImGui::TreeNode("Transform")) {
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::DragFloat(
-            "Scale",
-            &settings.scale,
-            0.01f,
-            minGroupScale,
-            maxGroupScale,
-            "%.2fx");
-        setLastItemTooltip("Uniform scale for this group");
+    if (ImGui::BeginPopup("Transform")) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("Transform geometry");
+        ImGui::SameLine();
+        if (ImGui::Button("Reset")) {
+            resetGroupTransform(settings);
+        }
         ImGui::SetNextItemWidth(260.0f);
         ImGui::DragFloat3(
             "Move",
@@ -908,26 +936,7 @@ void drawGroupControls(
             180.0f,
             "%.0f deg");
         setLastItemTooltip("Rotation in degrees for this group");
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::SliderFloat(
-            "Opacity",
-            &settings.opacity,
-            minGroupOpacity,
-            maxGroupOpacity,
-            "%.2f");
-        setLastItemTooltip("Opacity for this group");
-        if (ImGui::Button("Reset")) {
-            resetGroupTransform(settings);
-        }
-        ImGui::TreePop();
-    }
-    ImGui::PopID();
-}
-
-void drawFileTransformControls(FileRenderSettings& settings, float translationSpeed)
-{
-    if (ImGui::TreeNode("Transform")) {
-        ImGui::SetNextItemWidth(220.0f);
+        ImGui::SetNextItemWidth(260.0f);
         ImGui::DragFloat(
             "Scale",
             &settings.scale,
@@ -935,7 +944,41 @@ void drawFileTransformControls(FileRenderSettings& settings, float translationSp
             minGroupScale,
             maxGroupScale,
             "%.2fx");
-        setLastItemTooltip("Uniform scale for this file");
+        setLastItemTooltip("Uniform scale for this group");
+        ImGui::SetNextItemWidth(260.0f);
+        ImGui::SliderFloat(
+            "Opacity",
+            &settings.opacity,
+            minGroupOpacity,
+            maxGroupOpacity,
+            "%.2f");
+        setLastItemTooltip("Opacity for this group");
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+}
+
+void drawFileTransformControls(FileRenderSettings& settings, float translationSpeed)
+{
+    ImGui::SameLine();
+    const RenderModeState transformState = fileTransformIsDefault(settings)
+        ? RenderModeState::off
+        : RenderModeState::on;
+    if (drawRenderModeIconButton(
+            "transform",
+            transformIcon,
+            "Transform geometry",
+            transformState,
+            false)) {
+        ImGui::OpenPopup("Transform");
+    }
+    if (ImGui::BeginPopup("Transform")) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("Transform geometry");
+        ImGui::SameLine();
+        if (ImGui::Button("Reset")) {
+            resetFileTransform(settings);
+        }
         ImGui::SetNextItemWidth(260.0f);
         ImGui::DragFloat3(
             "Move",
@@ -951,7 +994,16 @@ void drawFileTransformControls(FileRenderSettings& settings, float translationSp
             180.0f,
             "%.0f deg");
         setLastItemTooltip("Rotation in degrees for this file");
-        ImGui::SetNextItemWidth(220.0f);
+        ImGui::SetNextItemWidth(260.0f);
+        ImGui::DragFloat(
+            "Scale",
+            &settings.scale,
+            0.01f,
+            minGroupScale,
+            maxGroupScale,
+            "%.2fx");
+        setLastItemTooltip("Uniform scale for this file");
+        ImGui::SetNextItemWidth(260.0f);
         ImGui::SliderFloat(
             "Opacity",
             &settings.opacity,
@@ -959,10 +1011,7 @@ void drawFileTransformControls(FileRenderSettings& settings, float translationSp
             maxGroupOpacity,
             "%.2f");
         setLastItemTooltip("Opacity for this file");
-        if (ImGui::Button("Reset")) {
-            resetFileTransform(settings);
-        }
-        ImGui::TreePop();
+        ImGui::EndPopup();
     }
 }
 
