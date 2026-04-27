@@ -140,7 +140,22 @@ struct GroupRenderSettings {
     bool showSolidMesh = true;
     bool showTriangles = true;
     bool showVertices = true;
+    std::array<float, 4> color{};
 };
+
+std::vector<GroupRenderSettings> createGroupRenderSettings(size_t groupCount)
+{
+    std::vector<GroupRenderSettings> settings;
+    settings.reserve(groupCount);
+
+    for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+        GroupRenderSettings group;
+        group.color = objGroupColor(groupIndex);
+        settings.push_back(group);
+    }
+
+    return settings;
+}
 
 std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
 {
@@ -259,6 +274,11 @@ void setLastItemTooltip(const char* text)
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("%s", text);
     }
+}
+
+ImVec4 toImVec4(const std::array<float, 4>& color)
+{
+    return ImVec4(color[0], color[1], color[2], color[3]);
 }
 
 void submitTriangleRange(
@@ -428,7 +448,7 @@ int main(int argc, char** argv)
         bool showSolidMesh = true;
         bool showTriangles = true;
         bool showVertexNodes = true;
-        std::vector<GroupRenderSettings> groupSettings(cpuMesh.nodes.size());
+        std::vector<GroupRenderSettings> groupSettings = createGroupRenderSettings(cpuMesh.nodes.size());
         woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds);
         woby::CameraInput cameraInput;
         auto previousFrame = std::chrono::steady_clock::now();
@@ -525,14 +545,13 @@ int main(int argc, char** argv)
                     continue;
                 }
 
-                const auto groupColor = objGroupColor(nodeIndex);
                 const auto& range = gpuMesh.nodeRanges[nodeIndex];
                 if (showSolidMesh && settings.showSolidMesh) {
                     submitTriangleRange(
                         gpuMesh,
                         meshProgram,
                         colorUniform,
-                        groupColor,
+                        settings.color,
                         range.triangleIndexOffset,
                         range.triangleIndexCount);
                 }
@@ -542,7 +561,7 @@ int main(int argc, char** argv)
                         gpuMesh.lineIndexBuffer,
                         colorProgram,
                         colorUniform,
-                        scaledRgbColor(groupColor, 1.25f),
+                        scaledRgbColor(settings.color, 1.25f),
                         BGFX_STATE_PT_LINES,
                         range.lineIndexOffset,
                         range.lineIndexCount);
@@ -553,7 +572,7 @@ int main(int argc, char** argv)
                         gpuMesh.pointIndexBuffer,
                         colorProgram,
                         colorUniform,
-                        scaledRgbColor(groupColor, 1.5f),
+                        scaledRgbColor(settings.color, 1.5f),
                         BGFX_STATE_PT_POINTS | BGFX_STATE_POINT_SIZE(4),
                         range.pointIndexOffset,
                         range.pointIndexCount);
@@ -591,6 +610,28 @@ int main(int argc, char** argv)
                     ImGui::SameLine();
                     ImGui::Checkbox(("V##vertices_node_" + std::to_string(nodeIndex)).c_str(), &settings.showVertices);
                     setLastItemTooltip("Vertices for this group");
+                    ImGui::SameLine();
+                    const std::string colorButtonId = "##color_node_" + std::to_string(nodeIndex);
+                    const std::string colorPopupId = "Color##color_popup_node_" + std::to_string(nodeIndex);
+                    if (ImGui::ColorButton(
+                            colorButtonId.c_str(),
+                            toImVec4(settings.color),
+                            ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_NoTooltip,
+                            ImVec2(18.0f, 18.0f))) {
+                        ImGui::OpenPopup(colorPopupId.c_str());
+                    }
+                    setLastItemTooltip("Color for this group");
+                    if (ImGui::BeginPopup(colorPopupId.c_str())) {
+                        ImGui::TextUnformatted(node.name.c_str());
+                        ImGui::ColorPicker4(
+                            ("##color_picker_node_" + std::to_string(nodeIndex)).c_str(),
+                            settings.color.data(),
+                            ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+                        if (ImGui::Button(("Reset##reset_color_node_" + std::to_string(nodeIndex)).c_str())) {
+                            settings.color = objGroupColor(nodeIndex);
+                        }
+                        ImGui::EndPopup();
+                    }
                 }
                 ImGui::TreePop();
             }
