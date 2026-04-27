@@ -157,6 +157,30 @@ std::vector<GroupRenderSettings> createGroupRenderSettings(size_t groupCount)
     return settings;
 }
 
+size_t countEnabledGroupSettings(
+    const std::vector<GroupRenderSettings>& settings,
+    bool GroupRenderSettings::*field)
+{
+    size_t enabledCount = 0;
+    for (const auto& group : settings) {
+        if (group.*field) {
+            ++enabledCount;
+        }
+    }
+
+    return enabledCount;
+}
+
+void setAllGroupSettings(
+    std::vector<GroupRenderSettings>& settings,
+    bool GroupRenderSettings::*field,
+    bool enabled)
+{
+    for (auto& group : settings) {
+        group.*field = enabled;
+    }
+}
+
 std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
 {
     std::vector<uint32_t> lineIndices;
@@ -279,6 +303,44 @@ void setLastItemTooltip(const char* text)
 ImVec4 toImVec4(const std::array<float, 4>& color)
 {
     return ImVec4(color[0], color[1], color[2], color[3]);
+}
+
+void drawMixedCheckboxMark()
+{
+    const ImVec2 itemMin = ImGui::GetItemRectMin();
+    const float squareSize = ImGui::GetFrameHeight();
+    const float padding = std::max(2.0f, squareSize * 0.25f);
+    const float centerY = itemMin.y + squareSize * 0.5f;
+    const ImVec2 lineStart(itemMin.x + padding, centerY);
+    const ImVec2 lineEnd(itemMin.x + squareSize - padding, centerY);
+    ImGui::GetWindowDrawList()->AddLine(
+        lineStart,
+        lineEnd,
+        ImGui::GetColorU32(ImGuiCol_CheckMark),
+        2.0f);
+}
+
+bool drawTriStateMasterCheckbox(const char* label, size_t enabledCount, size_t totalCount)
+{
+    const bool allEnabled = totalCount > 0u && enabledCount == totalCount;
+    const bool mixed = enabledCount > 0u && enabledCount < totalCount;
+    bool checkboxValue = allEnabled;
+
+    if (totalCount == 0u) {
+        ImGui::BeginDisabled();
+    }
+    const bool changed = ImGui::Checkbox(label, &checkboxValue);
+    if (mixed) {
+        drawMixedCheckboxMark();
+    }
+    if (totalCount == 0u) {
+        ImGui::EndDisabled();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("%s enabled for %zu of %zu groups", label, enabledCount, totalCount);
+    }
+
+    return changed;
 }
 
 void submitTriangleRange(
@@ -445,9 +507,6 @@ int main(int argc, char** argv)
         woby::imgui_bgfx::init(assets, imguiView);
 
         bool running = true;
-        bool showSolidMesh = true;
-        bool showTriangles = true;
-        bool showVertexNodes = true;
         std::vector<GroupRenderSettings> groupSettings = createGroupRenderSettings(cpuMesh.nodes.size());
         woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds);
         woby::CameraInput cameraInput;
@@ -546,7 +605,7 @@ int main(int argc, char** argv)
                 }
 
                 const auto& range = gpuMesh.nodeRanges[nodeIndex];
-                if (showSolidMesh && settings.showSolidMesh) {
+                if (settings.showSolidMesh) {
                     submitTriangleRange(
                         gpuMesh,
                         meshProgram,
@@ -555,7 +614,7 @@ int main(int argc, char** argv)
                         range.triangleIndexOffset,
                         range.triangleIndexCount);
                 }
-                if (showTriangles && settings.showTriangles) {
+                if (settings.showTriangles) {
                     submitColorRange(
                         gpuMesh,
                         gpuMesh.lineIndexBuffer,
@@ -566,7 +625,7 @@ int main(int argc, char** argv)
                         range.lineIndexOffset,
                         range.lineIndexCount);
                 }
-                if (showVertexNodes && settings.showVertices) {
+                if (settings.showVertices) {
                     submitColorRange(
                         gpuMesh,
                         gpuMesh.pointIndexBuffer,
@@ -589,9 +648,34 @@ int main(int argc, char** argv)
             ImGui::Text("FPS: %.1f", fps);
             ImGui::Text("Vertices: %zu", cpuMesh.vertices.size());
             ImGui::Text("Triangles: %zu", cpuMesh.indices.size() / 3u);
-            ImGui::Checkbox("Solid mesh", &showSolidMesh);
-            ImGui::Checkbox("Triangles", &showTriangles);
-            ImGui::Checkbox("Vertices", &showVertexNodes);
+            const size_t groupCount = groupSettings.size();
+            const size_t solidMeshCount = countEnabledGroupSettings(
+                groupSettings,
+                &GroupRenderSettings::showSolidMesh);
+            if (drawTriStateMasterCheckbox("Solid mesh", solidMeshCount, groupCount)) {
+                setAllGroupSettings(
+                    groupSettings,
+                    &GroupRenderSettings::showSolidMesh,
+                    solidMeshCount != groupCount);
+            }
+            const size_t triangleCount = countEnabledGroupSettings(
+                groupSettings,
+                &GroupRenderSettings::showTriangles);
+            if (drawTriStateMasterCheckbox("Triangles", triangleCount, groupCount)) {
+                setAllGroupSettings(
+                    groupSettings,
+                    &GroupRenderSettings::showTriangles,
+                    triangleCount != groupCount);
+            }
+            const size_t vertexCount = countEnabledGroupSettings(
+                groupSettings,
+                &GroupRenderSettings::showVertices);
+            if (drawTriStateMasterCheckbox("Vertices", vertexCount, groupCount)) {
+                setAllGroupSettings(
+                    groupSettings,
+                    &GroupRenderSettings::showVertices,
+                    vertexCount != groupCount);
+            }
             if (ImGui::TreeNode("Groups")) {
                 for (size_t nodeIndex = 0; nodeIndex < cpuMesh.nodes.size(); ++nodeIndex) {
                     const auto& node = cpuMesh.nodes[nodeIndex];
