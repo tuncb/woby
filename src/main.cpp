@@ -45,6 +45,24 @@ constexpr float minViewerPaneWidth = 280.0f;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float appFontSize = 15.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
+constexpr ImWchar appFontGlyphRanges[] = {
+    0x0020,
+    0x00ff,
+    0xf04b,
+    0xf04b,
+    0xf192,
+    0xf192,
+    0xf068,
+    0xf068,
+    0xf1b2,
+    0xf1b2,
+    0,
+};
+constexpr const char* solidMeshIcon = "\xef\x86\xb2";
+constexpr const char* trianglesIcon = "\xef\x81\x8b";
+constexpr const char* verticesIcon = "\xef\x86\x92";
+constexpr const char* mixedStateIcon = "\xef\x81\xa8";
+constexpr float renderModeButtonSize = 26.0f;
 
 bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
 {
@@ -91,7 +109,11 @@ void loadAppFont(const std::filesystem::path& assets)
     }
 
     ImGuiIO& io = ImGui::GetIO();
-    ImFont* font = io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), appFontSize);
+    ImFont* font = io.Fonts->AddFontFromFileTTF(
+        fontPath.string().c_str(),
+        appFontSize,
+        nullptr,
+        appFontGlyphRanges);
     if (font == nullptr) {
         throw std::runtime_error("Failed to load app font: " + fontPath.string());
     }
@@ -609,42 +631,121 @@ ImVec4 toImVec4(const std::array<float, 4>& color)
     return ImVec4(color[0], color[1], color[2], color[3]);
 }
 
-void drawMixedCheckboxMark()
+enum class RenderModeState {
+    off,
+    mixed,
+    on,
+};
+
+RenderModeState renderModeState(size_t enabledCount, size_t totalCount)
 {
-    const ImVec2 itemMin = ImGui::GetItemRectMin();
-    const float squareSize = ImGui::GetFrameHeight();
-    const float padding = std::max(2.0f, squareSize * 0.25f);
-    const float centerY = itemMin.y + squareSize * 0.5f;
-    const ImVec2 lineStart(itemMin.x + padding, centerY);
-    const ImVec2 lineEnd(itemMin.x + squareSize - padding, centerY);
-    ImGui::GetWindowDrawList()->AddLine(
-        lineStart,
-        lineEnd,
-        ImGui::GetColorU32(ImGuiCol_CheckMark),
-        2.0f);
+    if (totalCount > 0u && enabledCount == totalCount) {
+        return RenderModeState::on;
+    }
+    if (enabledCount > 0u && enabledCount < totalCount) {
+        return RenderModeState::mixed;
+    }
+    return RenderModeState::off;
 }
 
-bool drawTriStateMasterCheckbox(const char* label, size_t enabledCount, size_t totalCount)
+void pushRenderModeButtonColors(RenderModeState state)
 {
-    const bool allEnabled = totalCount > 0u && enabledCount == totalCount;
-    const bool mixed = enabledCount > 0u && enabledCount < totalCount;
-    bool checkboxValue = allEnabled;
+    const ImVec4 buttonColor = ImGui::GetStyleColorVec4(ImGuiCol_Button);
+    const ImVec4 activeColor = ImGui::GetStyleColorVec4(ImGuiCol_Header);
+    const ImVec4 activeHoveredColor = ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered);
+    const ImVec4 mixedColor(0.55f, 0.40f, 0.14f, 0.75f);
+    const ImVec4 mixedHoveredColor(0.70f, 0.50f, 0.18f, 0.90f);
+    const ImVec4 offTextColor = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
+    const ImVec4 onTextColor = ImGui::GetStyleColorVec4(ImGuiCol_Text);
 
-    if (totalCount == 0u) {
+    if (state == RenderModeState::on) {
+        ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, activeHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, activeHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_Text, onTextColor);
+        return;
+    }
+    if (state == RenderModeState::mixed) {
+        ImGui::PushStyleColor(ImGuiCol_Button, mixedColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, mixedHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, mixedHoveredColor);
+        ImGui::PushStyleColor(ImGuiCol_Text, onTextColor);
+        return;
+    }
+
+    ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonColor);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonColor);
+    ImGui::PushStyleColor(ImGuiCol_Text, offTextColor);
+}
+
+void drawMixedRenderModeMark()
+{
+    const ImVec2 buttonMax = ImGui::GetItemRectMax();
+    const float fontSize = ImGui::GetFontSize() * 0.72f;
+    const ImVec2 textSize = ImGui::CalcTextSize(mixedStateIcon);
+    const ImVec2 position(
+        buttonMax.x - textSize.x - 4.0f,
+        buttonMax.y - fontSize - 3.0f);
+    ImGui::GetWindowDrawList()->AddText(
+        ImGui::GetFont(),
+        fontSize,
+        position,
+        ImGui::GetColorU32(ImGuiCol_Text),
+        mixedStateIcon);
+}
+
+bool drawRenderModeIconButton(
+    const char* id,
+    const char* icon,
+    const char* tooltip,
+    RenderModeState state,
+    bool disabled)
+{
+    const std::string label = std::string(icon) + "##" + id;
+
+    if (disabled) {
         ImGui::BeginDisabled();
     }
-    const bool changed = ImGui::Checkbox(label, &checkboxValue);
-    if (mixed) {
-        drawMixedCheckboxMark();
+    pushRenderModeButtonColors(state);
+    const bool changed = ImGui::Button(
+        label.c_str(),
+        ImVec2(renderModeButtonSize, renderModeButtonSize));
+    ImGui::PopStyleColor(4);
+    if (state == RenderModeState::mixed) {
+        drawMixedRenderModeMark();
     }
-    if (totalCount == 0u) {
+    if (disabled) {
         ImGui::EndDisabled();
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s enabled for %zu of %zu groups", label, enabledCount, totalCount);
+        ImGui::SetTooltip("%s", tooltip);
     }
 
     return changed;
+}
+
+bool drawTriStateMasterIconButton(
+    const char* id,
+    const char* icon,
+    const char* label,
+    size_t enabledCount,
+    size_t totalCount)
+{
+    const RenderModeState state = renderModeState(enabledCount, totalCount);
+    const std::string tooltip = std::string(label)
+        + " enabled for "
+        + std::to_string(enabledCount)
+        + " of "
+        + std::to_string(totalCount)
+        + " groups";
+
+    return drawRenderModeIconButton(
+        id,
+        icon,
+        tooltip.c_str(),
+        state,
+        totalCount == 0u);
 }
 
 void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
@@ -653,25 +754,42 @@ void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
     const size_t solidMeshCount = countEnabledGroupSettings(
         settings,
         &GroupRenderSettings::showSolidMesh);
-    if (drawTriStateMasterCheckbox("Solid mesh", solidMeshCount, groupCount)) {
+    if (drawTriStateMasterIconButton(
+            "solid_mesh",
+            solidMeshIcon,
+            "Solid mesh",
+            solidMeshCount,
+            groupCount)) {
         setAllGroupSettings(
             settings,
             &GroupRenderSettings::showSolidMesh,
             solidMeshCount != groupCount);
     }
+    ImGui::SameLine();
     const size_t triangleCount = countEnabledGroupSettings(
         settings,
         &GroupRenderSettings::showTriangles);
-    if (drawTriStateMasterCheckbox("Triangles", triangleCount, groupCount)) {
+    if (drawTriStateMasterIconButton(
+            "triangles",
+            trianglesIcon,
+            "Triangles",
+            triangleCount,
+            groupCount)) {
         setAllGroupSettings(
             settings,
             &GroupRenderSettings::showTriangles,
             triangleCount != groupCount);
     }
+    ImGui::SameLine();
     const size_t vertexCount = countEnabledGroupSettings(
         settings,
         &GroupRenderSettings::showVertices);
-    if (drawTriStateMasterCheckbox("Vertices", vertexCount, groupCount)) {
+    if (drawTriStateMasterIconButton(
+            "vertices",
+            verticesIcon,
+            "Vertices",
+            vertexCount,
+            groupCount)) {
         setAllGroupSettings(
             settings,
             &GroupRenderSettings::showVertices,
@@ -692,14 +810,32 @@ void drawGroupControls(
     ImGui::SameLine();
     ImGui::TextDisabled("(%u triangles)", node.indexCount / 3u);
     ImGui::SameLine();
-    ImGui::Checkbox("S", &settings.showSolidMesh);
-    setLastItemTooltip("Solid mesh for this group");
+    if (drawRenderModeIconButton(
+            "solid_mesh",
+            solidMeshIcon,
+            "Solid mesh for this group",
+            settings.showSolidMesh ? RenderModeState::on : RenderModeState::off,
+            false)) {
+        settings.showSolidMesh = !settings.showSolidMesh;
+    }
     ImGui::SameLine();
-    ImGui::Checkbox("T", &settings.showTriangles);
-    setLastItemTooltip("Triangles for this group");
+    if (drawRenderModeIconButton(
+            "triangles",
+            trianglesIcon,
+            "Triangles for this group",
+            settings.showTriangles ? RenderModeState::on : RenderModeState::off,
+            false)) {
+        settings.showTriangles = !settings.showTriangles;
+    }
     ImGui::SameLine();
-    ImGui::Checkbox("V", &settings.showVertices);
-    setLastItemTooltip("Vertices for this group");
+    if (drawRenderModeIconButton(
+            "vertices",
+            verticesIcon,
+            "Vertices for this group",
+            settings.showVertices ? RenderModeState::on : RenderModeState::off,
+            false)) {
+        settings.showVertices = !settings.showVertices;
+    }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(140.0f);
     ImGui::DragFloat(
@@ -1352,25 +1488,42 @@ int main(int argc, char** argv)
                 const size_t solidMeshCount = countEnabledFileSettings(
                     files,
                     &GroupRenderSettings::showSolidMesh);
-                if (drawTriStateMasterCheckbox("Solid mesh", solidMeshCount, groupCount)) {
+                if (drawTriStateMasterIconButton(
+                        "solid_mesh",
+                        solidMeshIcon,
+                        "Solid mesh",
+                        solidMeshCount,
+                        groupCount)) {
                     setAllFileGroupSettings(
                         files,
                         &GroupRenderSettings::showSolidMesh,
                         solidMeshCount != groupCount);
                 }
+                ImGui::SameLine();
                 const size_t triangleCount = countEnabledFileSettings(
                     files,
                     &GroupRenderSettings::showTriangles);
-                if (drawTriStateMasterCheckbox("Triangles", triangleCount, groupCount)) {
+                if (drawTriStateMasterIconButton(
+                        "triangles",
+                        trianglesIcon,
+                        "Triangles",
+                        triangleCount,
+                        groupCount)) {
                     setAllFileGroupSettings(
                         files,
                         &GroupRenderSettings::showTriangles,
                         triangleCount != groupCount);
                 }
+                ImGui::SameLine();
                 const size_t vertexCount = countEnabledFileSettings(
                     files,
                     &GroupRenderSettings::showVertices);
-                if (drawTriStateMasterCheckbox("Vertices", vertexCount, groupCount)) {
+                if (drawTriStateMasterIconButton(
+                        "vertices",
+                        verticesIcon,
+                        "Vertices",
+                        vertexCount,
+                        groupCount)) {
                     setAllFileGroupSettings(
                         files,
                         &GroupRenderSettings::showVertices,
