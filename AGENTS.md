@@ -6,8 +6,8 @@ Any code change requires:
 
 # Build rules
 
-- For local development, use visual studio back end instead of ninja.
-- CI flow should depend on ninja.
+- For local development, use vs2026-vcpkg preset instead of ninja + vcpkg.
+- CI flow should depend on ninja + vcpkg.
 
 # Code style rules
 

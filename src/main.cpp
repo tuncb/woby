@@ -88,6 +88,36 @@ bgfx::VertexLayout meshVertexLayout()
     return layout;
 }
 
+std::array<float, 4> objGroupColor(size_t groupIndex)
+{
+    constexpr std::array<std::array<float, 4>, 12> palette = {{
+        {0.90f, 0.22f, 0.24f, 1.0f},
+        {0.13f, 0.58f, 0.95f, 1.0f},
+        {0.20f, 0.72f, 0.38f, 1.0f},
+        {1.00f, 0.70f, 0.18f, 1.0f},
+        {0.67f, 0.42f, 0.95f, 1.0f},
+        {0.06f, 0.76f, 0.78f, 1.0f},
+        {0.96f, 0.36f, 0.67f, 1.0f},
+        {0.58f, 0.72f, 0.16f, 1.0f},
+        {0.98f, 0.48f, 0.16f, 1.0f},
+        {0.40f, 0.55f, 1.00f, 1.0f},
+        {0.74f, 0.62f, 0.34f, 1.0f},
+        {0.72f, 0.78f, 0.86f, 1.0f},
+    }};
+
+    return palette[groupIndex % palette.size()];
+}
+
+std::array<float, 4> scaledRgbColor(const std::array<float, 4>& color, float scale)
+{
+    return {
+        std::clamp(color[0] * scale, 0.0f, 1.0f),
+        std::clamp(color[1] * scale, 0.0f, 1.0f),
+        std::clamp(color[2] * scale, 0.0f, 1.0f),
+        color[3],
+    };
+}
+
 struct GpuNodeRange {
     uint32_t triangleIndexOffset = 0;
     uint32_t triangleIndexCount = 0;
@@ -220,6 +250,8 @@ void setIdentityTransform()
 void submitTriangleRange(
     const GpuMesh& mesh,
     bgfx::ProgramHandle program,
+    bgfx::UniformHandle colorUniform,
+    const std::array<float, 4>& color,
     uint32_t indexOffset,
     uint32_t indexCount)
 {
@@ -228,6 +260,7 @@ void submitTriangleRange(
     }
 
     setIdentityTransform();
+    bgfx::setUniform(colorUniform, color.data());
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
     bgfx::setState(
@@ -472,16 +505,21 @@ int main(int argc, char** argv)
                 bgfx::getCaps()->homogeneousDepth);
             bgfx::setViewTransform(sceneView, view, projection);
 
-            constexpr std::array<float, 4> triangleColor = {0.04f, 0.92f, 1.0f, 1.0f};
-            constexpr std::array<float, 4> nodeColor = {1.0f, 0.76f, 0.16f, 1.0f};
             for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
                 if (nodeVisible[nodeIndex] == 0u) {
                     continue;
                 }
 
+                const auto groupColor = objGroupColor(nodeIndex);
                 const auto& range = gpuMesh.nodeRanges[nodeIndex];
                 if (showSolidMesh) {
-                    submitTriangleRange(gpuMesh, meshProgram, range.triangleIndexOffset, range.triangleIndexCount);
+                    submitTriangleRange(
+                        gpuMesh,
+                        meshProgram,
+                        colorUniform,
+                        groupColor,
+                        range.triangleIndexOffset,
+                        range.triangleIndexCount);
                 }
                 if (showTriangles) {
                     submitColorRange(
@@ -489,7 +527,7 @@ int main(int argc, char** argv)
                         gpuMesh.lineIndexBuffer,
                         colorProgram,
                         colorUniform,
-                        triangleColor,
+                        scaledRgbColor(groupColor, 1.25f),
                         BGFX_STATE_PT_LINES,
                         range.lineIndexOffset,
                         range.lineIndexCount);
@@ -500,7 +538,7 @@ int main(int argc, char** argv)
                         gpuMesh.pointIndexBuffer,
                         colorProgram,
                         colorUniform,
-                        nodeColor,
+                        scaledRgbColor(groupColor, 1.5f),
                         BGFX_STATE_PT_POINTS | BGFX_STATE_POINT_SIZE(4),
                         range.pointIndexOffset,
                         range.pointIndexCount);
