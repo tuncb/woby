@@ -34,7 +34,7 @@
 
 namespace {
 
-constexpr uint32_t resetFlags = BGFX_RESET_VSYNC;
+constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
 constexpr bgfx::ViewId sceneView = 0;
 constexpr bgfx::ViewId imguiView = 255;
 constexpr float minVertexPointSize = 1.0f;
@@ -1242,7 +1242,7 @@ void submitColorRange(
     bgfx::setUniform(colorUniform, color.data());
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(indexBuffer, indexOffset, indexCount);
-    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, false, color, primitiveState));
+    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, primitiveState));
     bgfx::submit(sceneView, program);
 }
 
