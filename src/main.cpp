@@ -43,6 +43,8 @@ constexpr float maxGroupOpacity = 1.0f;
 constexpr float defaultViewerPaneWidth = 360.0f;
 constexpr float minViewerPaneWidth = 280.0f;
 constexpr float minSceneViewportWidth = 160.0f;
+constexpr float appFontSize = 15.0f;
+constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 
 bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
 {
@@ -79,6 +81,22 @@ std::filesystem::path assetRoot()
     }
 
     return std::filesystem::path(basePath) / "assets";
+}
+
+void loadAppFont(const std::filesystem::path& assets)
+{
+    const std::filesystem::path fontPath = assets / "fonts" / appFontFilename;
+    if (!std::filesystem::exists(fontPath)) {
+        throw std::runtime_error("App font not found: " + fontPath.string());
+    }
+
+    ImGuiIO& io = ImGui::GetIO();
+    ImFont* font = io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), appFontSize);
+    if (font == nullptr) {
+        throw std::runtime_error("Failed to load app font: " + fontPath.string());
+    }
+
+    io.FontDefault = font;
 }
 
 void getDrawableSize(SDL_Window* window, uint32_t& width, uint32_t& height)
@@ -1118,6 +1136,7 @@ int main(int argc, char** argv)
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        loadAppFont(assets);
         ImGui::StyleColorsDark();
 
         if (!ImGui_ImplSDL3_InitForOther(window.get())) {

@@ -162,6 +162,11 @@ jobs:
 
           Copy-Item (Join-Path $binDir "assets") $stageDir -Recurse -Force
 
+          $fontPath = Join-Path $stageDir "assets/fonts/RobotoMonoNerdFont-Regular.ttf"
+          if (-not (Test-Path -LiteralPath $fontPath -PathType Leaf)) {
+            throw "Expected app font is missing from package staging path: $fontPath"
+          }
+
           Get-ChildItem $stageDir -Recurse -File |
             Select-Object FullName, Length |
             Format-Table -AutoSize
