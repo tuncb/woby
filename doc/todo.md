@@ -4,7 +4,7 @@
 [x] Create a tree for single grouped obj with on off options
 [x] Color each group 
 [x] Add option to set color per group
-[ ] Add options for scale and transforming and opacity of individual group
+[x] Add options for scale and transforming and opacity of individual group
 [x] Add an option for vertex sizes
 [ ] Add argument options for multiple --file options and --folder options
 [x] Move options for mesh, triangles, vertices per group.

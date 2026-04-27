@@ -19,6 +19,7 @@
 #include <exception>
 #include <filesystem>
 #include <memory>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -34,6 +35,10 @@ constexpr float minVertexPointSize = 1.0f;
 constexpr float maxVertexPointSize = 40.0f;
 constexpr float minVertexSizeScale = 0.1f;
 constexpr float maxVertexSizeScale = 10.0f;
+constexpr float minGroupScale = 0.01f;
+constexpr float maxGroupScale = 20.0f;
+constexpr float minGroupOpacity = 0.0f;
+constexpr float maxGroupOpacity = 1.0f;
 
 bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
 {
@@ -164,18 +169,57 @@ struct GroupRenderSettings {
     bool showSolidMesh = true;
     bool showTriangles = true;
     bool showVertices = true;
+    float scale = 1.0f;
+    float opacity = 1.0f;
     float vertexSizeScale = 1.0f;
+    std::array<float, 3> center{};
+    std::array<float, 3> translation{};
+    std::array<float, 3> rotationDegrees{};
     std::array<float, 4> color{};
 };
 
-std::vector<GroupRenderSettings> createGroupRenderSettings(size_t groupCount)
+std::array<float, 3> nodeCenter(const woby::ObjMesh& mesh, const woby::ObjNode& node)
+{
+    if (node.indexCount == 0u || mesh.indices.empty() || mesh.vertices.empty()) {
+        return mesh.bounds.center;
+    }
+
+    std::array<float, 3> minPosition = {
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+    };
+    std::array<float, 3> maxPosition = {
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+    };
+
+    const uint32_t endIndex = node.indexOffset + node.indexCount;
+    for (uint32_t index = node.indexOffset; index < endIndex; ++index) {
+        const auto& position = mesh.vertices[mesh.indices[index]].position;
+        for (size_t axis = 0; axis < 3u; ++axis) {
+            minPosition[axis] = std::min(minPosition[axis], position[axis]);
+            maxPosition[axis] = std::max(maxPosition[axis], position[axis]);
+        }
+    }
+
+    return {
+        (minPosition[0] + maxPosition[0]) * 0.5f,
+        (minPosition[1] + maxPosition[1]) * 0.5f,
+        (minPosition[2] + maxPosition[2]) * 0.5f,
+    };
+}
+
+std::vector<GroupRenderSettings> createGroupRenderSettings(const woby::ObjMesh& mesh)
 {
     std::vector<GroupRenderSettings> settings;
-    settings.reserve(groupCount);
+    settings.reserve(mesh.nodes.size());
 
-    for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+    for (size_t groupIndex = 0; groupIndex < mesh.nodes.size(); ++groupIndex) {
         GroupRenderSettings group;
         group.color = objGroupColor(groupIndex);
+        group.center = nodeCenter(mesh, mesh.nodes[groupIndex]);
         settings.push_back(group);
     }
 
@@ -204,6 +248,44 @@ void setAllGroupSettings(
     for (auto& group : settings) {
         group.*field = enabled;
     }
+}
+
+void resetGroupTransform(GroupRenderSettings& settings)
+{
+    settings.scale = 1.0f;
+    settings.opacity = 1.0f;
+    settings.translation = {};
+    settings.rotationDegrees = {};
+}
+
+std::array<float, 4> groupColor(const GroupRenderSettings& settings, float rgbScale)
+{
+    auto color = scaledRgbColor(settings.color, rgbScale);
+    color[3] = std::clamp(settings.opacity, minGroupOpacity, maxGroupOpacity);
+    return color;
+}
+
+void groupTransform(const GroupRenderSettings& settings, float* model)
+{
+    float toOrigin[16];
+    float transformed[16];
+    bx::mtxTranslate(
+        toOrigin,
+        -settings.center[0],
+        -settings.center[1],
+        -settings.center[2]);
+    bx::mtxSRT(
+        transformed,
+        settings.scale,
+        settings.scale,
+        settings.scale,
+        bx::toRad(settings.rotationDegrees[0]),
+        bx::toRad(settings.rotationDegrees[1]),
+        bx::toRad(settings.rotationDegrees[2]),
+        settings.center[0] + settings.translation[0],
+        settings.center[1] + settings.translation[1],
+        settings.center[2] + settings.translation[2]);
+    bx::mtxMul(model, transformed, toOrigin);
 }
 
 std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
@@ -366,11 +448,28 @@ void destroyGpuMesh(GpuMesh& mesh)
     mesh.nodeRanges.clear();
 }
 
-void setIdentityTransform()
+uint64_t renderState(
+    uint64_t depthTest,
+    bool writeDepth,
+    const std::array<float, 4>& color,
+    uint64_t primitiveState)
 {
-    float model[16];
-    bx::mtxIdentity(model);
-    bgfx::setTransform(model);
+    uint64_t state = BGFX_STATE_WRITE_RGB
+        | BGFX_STATE_WRITE_A
+        | depthTest
+        | BGFX_STATE_MSAA
+        | primitiveState;
+
+    if (writeDepth && color[3] >= 0.999f) {
+        state |= BGFX_STATE_WRITE_Z;
+    }
+    if (color[3] < 0.999f) {
+        state |= BGFX_STATE_BLEND_FUNC(
+            BGFX_STATE_BLEND_SRC_ALPHA,
+            BGFX_STATE_BLEND_INV_SRC_ALPHA);
+    }
+
+    return state;
 }
 
 uint32_t vertexPointSize(float masterSize, float groupScale)
@@ -436,6 +535,7 @@ void submitTriangleRange(
     const GpuMesh& mesh,
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform,
+    const float* model,
     const std::array<float, 4>& color,
     uint32_t indexOffset,
     uint32_t indexCount)
@@ -444,16 +544,11 @@ void submitTriangleRange(
         return;
     }
 
-    setIdentityTransform();
+    bgfx::setTransform(model);
     bgfx::setUniform(colorUniform, color.data());
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
-    bgfx::setState(
-        BGFX_STATE_WRITE_RGB
-        | BGFX_STATE_WRITE_A
-        | BGFX_STATE_WRITE_Z
-        | BGFX_STATE_DEPTH_TEST_LESS
-        | BGFX_STATE_MSAA);
+    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LESS, true, color, 0u));
     bgfx::submit(sceneView, program);
 }
 
@@ -462,6 +557,7 @@ void submitColorRange(
     bgfx::IndexBufferHandle indexBuffer,
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform,
+    const float* model,
     const std::array<float, 4>& color,
     uint64_t primitiveState,
     uint32_t indexOffset,
@@ -471,16 +567,11 @@ void submitColorRange(
         return;
     }
 
-    setIdentityTransform();
+    bgfx::setTransform(model);
     bgfx::setUniform(colorUniform, color.data());
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(indexBuffer, indexOffset, indexCount);
-    bgfx::setState(
-        BGFX_STATE_WRITE_RGB
-        | BGFX_STATE_WRITE_A
-        | BGFX_STATE_DEPTH_TEST_LEQUAL
-        | BGFX_STATE_MSAA
-        | primitiveState);
+    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, false, color, primitiveState));
     bgfx::submit(sceneView, program);
 }
 
@@ -489,6 +580,7 @@ void submitPointSpriteRange(
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform,
     bgfx::UniformHandle pointParamsUniform,
+    const float* model,
     const std::array<float, 4>& color,
     float pointSize,
     uint32_t viewWidth,
@@ -509,17 +601,12 @@ void submitPointSpriteRange(
         0.0f,
     };
 
-    setIdentityTransform();
+    bgfx::setTransform(model);
     bgfx::setUniform(colorUniform, color.data());
     bgfx::setUniform(pointParamsUniform, pointParams.data());
     bgfx::setVertexBuffer(0, mesh.pointSpriteVertexBuffer);
     bgfx::setIndexBuffer(mesh.pointSpriteIndexBuffer, indexOffset, indexCount);
-    bgfx::setState(
-        BGFX_STATE_WRITE_RGB
-        | BGFX_STATE_WRITE_A
-        | BGFX_STATE_WRITE_Z
-        | BGFX_STATE_DEPTH_TEST_LEQUAL
-        | BGFX_STATE_MSAA);
+    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, 0u));
     bgfx::submit(sceneView, program);
 }
 
@@ -638,7 +725,7 @@ int main(int argc, char** argv)
         woby::imgui_bgfx::init(assets, imguiView);
 
         bool running = true;
-        std::vector<GroupRenderSettings> groupSettings = createGroupRenderSettings(cpuMesh.nodes.size());
+        std::vector<GroupRenderSettings> groupSettings = createGroupRenderSettings(cpuMesh);
         float masterVertexPointSize = 4.0f;
         woby::SceneCamera camera = woby::frameCameraBounds(cpuMesh.bounds);
         woby::CameraInput cameraInput;
@@ -736,13 +823,16 @@ int main(int argc, char** argv)
                     continue;
                 }
 
+                float model[16];
+                groupTransform(settings, model);
                 const auto& range = gpuMesh.nodeRanges[nodeIndex];
                 if (settings.showSolidMesh) {
                     submitTriangleRange(
                         gpuMesh,
                         meshProgram,
                         colorUniform,
-                        settings.color,
+                        model,
+                        groupColor(settings, 1.0f),
                         range.triangleIndexOffset,
                         range.triangleIndexCount);
                 }
@@ -752,7 +842,8 @@ int main(int argc, char** argv)
                         gpuMesh.lineIndexBuffer,
                         colorProgram,
                         colorUniform,
-                        scaledRgbColor(settings.color, 1.25f),
+                        model,
+                        groupColor(settings, 1.25f),
                         BGFX_STATE_PT_LINES,
                         range.lineIndexOffset,
                         range.lineIndexCount);
@@ -766,7 +857,8 @@ int main(int argc, char** argv)
                         pointSpriteProgram,
                         colorUniform,
                         pointParamsUniform,
-                        scaledRgbColor(settings.color, 1.5f),
+                        model,
+                        groupColor(settings, 1.5f),
                         static_cast<float>(pointSize),
                         width,
                         height,
@@ -821,6 +913,7 @@ int main(int argc, char** argv)
                 maxVertexPointSize,
                 "%.0f px");
             setLastItemTooltip("Base vertex point size for all groups");
+            const float translationSpeed = std::max(cpuMesh.bounds.radius * 0.005f, 0.01f);
             if (ImGui::TreeNode("Groups")) {
                 for (size_t nodeIndex = 0; nodeIndex < cpuMesh.nodes.size(); ++nodeIndex) {
                     const auto& node = cpuMesh.nodes[nodeIndex];
@@ -854,22 +947,59 @@ int main(int argc, char** argv)
                     const std::string colorPopupId = "Color##color_popup_node_" + std::to_string(nodeIndex);
                     if (ImGui::ColorButton(
                             colorButtonId.c_str(),
-                            toImVec4(settings.color),
-                            ImGuiColorEditFlags_AlphaPreview | ImGuiColorEditFlags_NoTooltip,
+                            toImVec4(groupColor(settings, 1.0f)),
+                            ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoTooltip,
                             ImVec2(18.0f, 18.0f))) {
                         ImGui::OpenPopup(colorPopupId.c_str());
                     }
                     setLastItemTooltip("Color for this group");
                     if (ImGui::BeginPopup(colorPopupId.c_str())) {
                         ImGui::TextUnformatted(node.name.c_str());
-                        ImGui::ColorPicker4(
+                        ImGui::ColorPicker3(
                             ("##color_picker_node_" + std::to_string(nodeIndex)).c_str(),
-                            settings.color.data(),
-                            ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+                            settings.color.data());
                         if (ImGui::Button(("Reset##reset_color_node_" + std::to_string(nodeIndex)).c_str())) {
                             settings.color = objGroupColor(nodeIndex);
                         }
                         ImGui::EndPopup();
+                    }
+                    if (ImGui::TreeNode(("Transform##transform_node_" + std::to_string(nodeIndex)).c_str())) {
+                        ImGui::SetNextItemWidth(220.0f);
+                        ImGui::DragFloat(
+                            ("Scale##scale_node_" + std::to_string(nodeIndex)).c_str(),
+                            &settings.scale,
+                            0.01f,
+                            minGroupScale,
+                            maxGroupScale,
+                            "%.2fx");
+                        setLastItemTooltip("Uniform scale for this group");
+                        ImGui::SetNextItemWidth(260.0f);
+                        ImGui::DragFloat3(
+                            ("Move##translation_node_" + std::to_string(nodeIndex)).c_str(),
+                            settings.translation.data(),
+                            translationSpeed);
+                        setLastItemTooltip("Position offset for this group");
+                        ImGui::SetNextItemWidth(260.0f);
+                        ImGui::DragFloat3(
+                            ("Rotate##rotation_node_" + std::to_string(nodeIndex)).c_str(),
+                            settings.rotationDegrees.data(),
+                            1.0f,
+                            -180.0f,
+                            180.0f,
+                            "%.0f deg");
+                        setLastItemTooltip("Rotation in degrees for this group");
+                        ImGui::SetNextItemWidth(220.0f);
+                        ImGui::SliderFloat(
+                            ("Opacity##opacity_node_" + std::to_string(nodeIndex)).c_str(),
+                            &settings.opacity,
+                            minGroupOpacity,
+                            maxGroupOpacity,
+                            "%.2f");
+                        setLastItemTooltip("Opacity for this group");
+                        if (ImGui::Button(("Reset##reset_transform_node_" + std::to_string(nodeIndex)).c_str())) {
+                            resetGroupTransform(settings);
+                        }
+                        ImGui::TreePop();
                     }
                 }
                 ImGui::TreePop();
