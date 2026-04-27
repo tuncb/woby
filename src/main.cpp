@@ -1296,8 +1296,6 @@ int main(int argc, char** argv)
         int fpsFrameCount = 0;
         float fps = 0.0f;
         float viewerPaneWidth = defaultViewerPaneWidth;
-        bool scenePaneCollapsed = false;
-        bool filesPaneCollapsed = false;
 
         while (running) {
             SDL_Event event;
@@ -1373,7 +1371,7 @@ int main(int argc, char** argv)
             viewerPaneWidth = std::clamp(viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth);
 
             uint32_t sceneViewportX = 0;
-            if (!(scenePaneCollapsed && filesPaneCollapsed) && width > 1u) {
+            if (width > 1u) {
                 const auto panePixelWidth = static_cast<uint32_t>(std::lround(viewerPaneWidth));
                 sceneViewportX = std::min(panePixelWidth, width - 1u);
             }
@@ -1464,154 +1462,157 @@ int main(int argc, char** argv)
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
             const float availableHeight = static_cast<float>(height);
-            const float scenePaneHeight = std::min(defaultScenePaneHeight, availableHeight);
-            const float filesPaneHeight = std::max(availableHeight - scenePaneHeight, 1.0f);
             ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
             ImGui::SetNextWindowSize(
-                ImVec2(viewerPaneWidth, scenePaneHeight),
+                ImVec2(viewerPaneWidth, availableHeight),
                 ImGuiCond_Always);
             ImGui::SetNextWindowSizeConstraints(
-                ImVec2(minViewerPaneWidth, scenePaneHeight),
-                ImVec2(maxViewerPaneWidth, scenePaneHeight));
-            const bool showSceneContent = ImGui::Begin(
-                "Scene",
+                ImVec2(minViewerPaneWidth, availableHeight),
+                ImVec2(maxViewerPaneWidth, availableHeight));
+            const bool showViewerContent = ImGui::Begin(
+                "##ViewerPane",
                 nullptr,
-                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-            scenePaneCollapsed = ImGui::IsWindowCollapsed();
-            if (!scenePaneCollapsed) {
+                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+            if (showViewerContent) {
                 viewerPaneWidth = std::clamp(
                     ImGui::GetWindowSize().x,
                     minViewerPaneWidth,
                     maxViewerPaneWidth);
-            }
-            if (showSceneContent) {
-                ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
-                ImGui::Text("FPS: %.1f", fps);
-                size_t vertexCountTotal = 0;
-                size_t triangleCountTotal = 0;
-                for (const auto& file : files) {
-                    vertexCountTotal += file.mesh.vertices.size();
-                    triangleCountTotal += file.mesh.indices.size() / 3u;
-                }
-                ImGui::Text("Vertices: %zu", vertexCountTotal);
-                ImGui::Text("Triangles: %zu", triangleCountTotal);
-                const size_t groupCount = totalGroupCount(files);
-                const size_t solidMeshCount = countEnabledFileSettings(
-                    files,
-                    &GroupRenderSettings::showSolidMesh);
-                if (drawTriStateMasterIconButton(
-                        "solid_mesh",
-                        solidMeshIcon,
-                        "Solid mesh",
-                        solidMeshCount,
-                        groupCount)) {
-                    setAllFileGroupSettings(
-                        files,
-                        &GroupRenderSettings::showSolidMesh,
-                        solidMeshCount != groupCount);
-                }
-                ImGui::SameLine();
-                const size_t triangleCount = countEnabledFileSettings(
-                    files,
-                    &GroupRenderSettings::showTriangles);
-                if (drawTriStateMasterIconButton(
-                        "triangles",
-                        trianglesIcon,
-                        "Triangles",
-                        triangleCount,
-                        groupCount)) {
-                    setAllFileGroupSettings(
-                        files,
-                        &GroupRenderSettings::showTriangles,
-                        triangleCount != groupCount);
-                }
-                ImGui::SameLine();
-                const size_t vertexCount = countEnabledFileSettings(
-                    files,
-                    &GroupRenderSettings::showVertices);
-                if (drawTriStateMasterIconButton(
-                        "vertices",
-                        verticesIcon,
-                        "Vertices",
-                        vertexCount,
-                        groupCount)) {
-                    setAllFileGroupSettings(
-                        files,
-                        &GroupRenderSettings::showVertices,
-                        vertexCount != groupCount);
-                }
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(renderModeButtonRowWidth());
-                ImGui::SliderFloat(
-                    "Vertex size",
-                    &masterVertexPointSize,
-                    minVertexPointSize,
-                    maxVertexPointSize,
-                    "%.0f px");
-                setLastItemTooltip("Base vertex point size for all groups");
-            }
-            ImGui::End();
 
-            ImGui::SetNextWindowPos(ImVec2(0.0f, scenePaneHeight), ImGuiCond_Always);
-            ImGui::SetNextWindowSize(
-                ImVec2(viewerPaneWidth, filesPaneHeight),
-                ImGuiCond_Always);
-            ImGui::SetNextWindowSizeConstraints(
-                ImVec2(minViewerPaneWidth, filesPaneHeight),
-                ImVec2(maxViewerPaneWidth, filesPaneHeight));
-            const std::string filesPaneTitle = "Files (" + std::to_string(files.size()) + ")##Files";
-            const bool showFilesContent = ImGui::Begin(
-                filesPaneTitle.c_str(),
-                nullptr,
-                ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-            filesPaneCollapsed = ImGui::IsWindowCollapsed();
-            if (!filesPaneCollapsed) {
-                viewerPaneWidth = std::clamp(
-                    ImGui::GetWindowSize().x,
-                    minViewerPaneWidth,
-                    maxViewerPaneWidth);
-            }
-            if (showFilesContent) {
-                size_t colorIndex = 0;
-                for (size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
-                    auto& file = files[fileIndex];
-                    ImGui::PushID(static_cast<int>(fileIndex));
-                    const std::string label = fileDisplayName(file.path)
-                        + "##file_" + std::to_string(fileIndex);
-                    ImGui::Checkbox("##visible", &file.fileSettings.visible);
-                    setLastItemTooltip("Show file");
-                    ImGui::SameLine();
-                    if (ImGui::TreeNode(label.c_str())) {
-                        const std::string pathText = file.path.string();
-                        ImGui::Text("Path: %s", pathText.c_str());
-                        setLastItemTooltip(pathText.c_str());
-                        ImGui::Text("Vertices: %zu", file.mesh.vertices.size());
-                        ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
-                        drawGroupMasterControls(file.groupSettings);
-                        ImGui::SameLine();
-                        const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
-                        ImGui::SetNextItemWidth(renderModeButtonRowWidth());
-                        ImGui::DragFloat(
-                            "Vertex size",
-                            &file.vertexSizeScale,
-                            0.02f,
-                            minVertexSizeScale,
-                            maxVertexSizeScale,
-                            "%.2fx");
-                        setLastItemTooltip("Vertex size multiplier for this file");
-                        drawFileTransformControls(file.fileSettings, translationSpeed);
-                        for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
-                            drawGroupControls(
-                                file.mesh.nodes[nodeIndex],
-                                file.groupSettings[nodeIndex],
-                                nodeIndex,
-                                colorIndex + nodeIndex,
-                                translationSpeed);
+                const bool scenePaneOpen = ImGui::CollapsingHeader(
+                    "Scene",
+                    ImGuiTreeNodeFlags_DefaultOpen);
+                if (scenePaneOpen) {
+                    const float sceneContentHeight = std::max(
+                        defaultScenePaneHeight - ImGui::GetFrameHeightWithSpacing(),
+                        ImGui::GetFrameHeight());
+                    if (ImGui::BeginChild(
+                            "SceneContent",
+                            ImVec2(0.0f, sceneContentHeight),
+                            ImGuiChildFlags_None)) {
+                        ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
+                        ImGui::Text("FPS: %.1f", fps);
+                        size_t vertexCountTotal = 0;
+                        size_t triangleCountTotal = 0;
+                        for (const auto& file : files) {
+                            vertexCountTotal += file.mesh.vertices.size();
+                            triangleCountTotal += file.mesh.indices.size() / 3u;
                         }
-                        ImGui::TreePop();
+                        ImGui::Text("Vertices: %zu", vertexCountTotal);
+                        ImGui::Text("Triangles: %zu", triangleCountTotal);
+                        const size_t groupCount = totalGroupCount(files);
+                        const size_t solidMeshCount = countEnabledFileSettings(
+                            files,
+                            &GroupRenderSettings::showSolidMesh);
+                        if (drawTriStateMasterIconButton(
+                                "solid_mesh",
+                                solidMeshIcon,
+                                "Solid mesh",
+                                solidMeshCount,
+                                groupCount)) {
+                            setAllFileGroupSettings(
+                                files,
+                                &GroupRenderSettings::showSolidMesh,
+                                solidMeshCount != groupCount);
+                        }
+                        ImGui::SameLine();
+                        const size_t triangleCount = countEnabledFileSettings(
+                            files,
+                            &GroupRenderSettings::showTriangles);
+                        if (drawTriStateMasterIconButton(
+                                "triangles",
+                                trianglesIcon,
+                                "Triangles",
+                                triangleCount,
+                                groupCount)) {
+                            setAllFileGroupSettings(
+                                files,
+                                &GroupRenderSettings::showTriangles,
+                                triangleCount != groupCount);
+                        }
+                        ImGui::SameLine();
+                        const size_t vertexCount = countEnabledFileSettings(
+                            files,
+                            &GroupRenderSettings::showVertices);
+                        if (drawTriStateMasterIconButton(
+                                "vertices",
+                                verticesIcon,
+                                "Vertices",
+                                vertexCount,
+                                groupCount)) {
+                            setAllFileGroupSettings(
+                                files,
+                                &GroupRenderSettings::showVertices,
+                                vertexCount != groupCount);
+                        }
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(renderModeButtonRowWidth());
+                        ImGui::SliderFloat(
+                            "Vertex size",
+                            &masterVertexPointSize,
+                            minVertexPointSize,
+                            maxVertexPointSize,
+                            "%.0f px");
+                        setLastItemTooltip("Base vertex point size for all groups");
                     }
-                    colorIndex += file.groupSettings.size();
-                    ImGui::PopID();
+                    ImGui::EndChild();
+                }
+
+                const std::string filesPaneTitle = "Files (" + std::to_string(files.size()) + ")##Files";
+                const bool filesPaneOpen = ImGui::CollapsingHeader(
+                    filesPaneTitle.c_str(),
+                    ImGuiTreeNodeFlags_DefaultOpen);
+                if (filesPaneOpen) {
+                    const float filesContentHeight = std::max(
+                        ImGui::GetContentRegionAvail().y,
+                        ImGui::GetFrameHeight());
+                    if (ImGui::BeginChild(
+                            "FilesContent",
+                            ImVec2(0.0f, filesContentHeight),
+                            ImGuiChildFlags_None)) {
+                        size_t colorIndex = 0;
+                        for (size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
+                            auto& file = files[fileIndex];
+                            ImGui::PushID(static_cast<int>(fileIndex));
+                            const std::string label = fileDisplayName(file.path)
+                                + "##file_" + std::to_string(fileIndex);
+                            ImGui::Checkbox("##visible", &file.fileSettings.visible);
+                            setLastItemTooltip("Show file");
+                            ImGui::SameLine();
+                            if (ImGui::TreeNode(label.c_str())) {
+                                const std::string pathText = file.path.string();
+                                ImGui::Text("Path: %s", pathText.c_str());
+                                setLastItemTooltip(pathText.c_str());
+                                ImGui::Text("Vertices: %zu", file.mesh.vertices.size());
+                                ImGui::Text("Triangles: %zu", file.mesh.indices.size() / 3u);
+                                drawGroupMasterControls(file.groupSettings);
+                                ImGui::SameLine();
+                                const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
+                                ImGui::SetNextItemWidth(renderModeButtonRowWidth());
+                                ImGui::DragFloat(
+                                    "Vertex size",
+                                    &file.vertexSizeScale,
+                                    0.02f,
+                                    minVertexSizeScale,
+                                    maxVertexSizeScale,
+                                    "%.2fx");
+                                setLastItemTooltip("Vertex size multiplier for this file");
+                                drawFileTransformControls(file.fileSettings, translationSpeed);
+                                for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
+                                    drawGroupControls(
+                                        file.mesh.nodes[nodeIndex],
+                                        file.groupSettings[nodeIndex],
+                                        nodeIndex,
+                                        colorIndex + nodeIndex,
+                                        translationSpeed);
+                                }
+                                ImGui::TreePop();
+                            }
+                            colorIndex += file.groupSettings.size();
+                            ImGui::PopID();
+                        }
+                    }
+                    ImGui::EndChild();
                 }
             }
             ImGui::End();
