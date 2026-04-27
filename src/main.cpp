@@ -1456,15 +1456,9 @@ void appendFolderObjPaths(
     modelPaths.insert(modelPaths.end(), folderPaths.begin(), folderPaths.end());
 }
 
-std::vector<std::filesystem::path> resolveModelPaths(
-    const CommandLineOptions& options,
-    const std::filesystem::path& assets)
+std::vector<std::filesystem::path> resolveModelPaths(const CommandLineOptions& options)
 {
     std::vector<std::filesystem::path> modelPaths;
-    if (options.inputPaths.empty()) {
-        modelPaths.push_back(assets / "models" / "cube.obj");
-        return modelPaths;
-    }
 
     for (const auto& inputPath : options.inputPaths) {
         if (inputPath.folder) {
@@ -1481,7 +1475,7 @@ std::vector<std::filesystem::path> resolveModelPaths(
 woby::Bounds combineBounds(const std::vector<LoadedObjFile>& files)
 {
     if (files.empty()) {
-        throw std::runtime_error("No OBJ files were loaded.");
+        return {};
     }
 
     woby::Bounds bounds = files.front().mesh.bounds;
@@ -1696,7 +1690,7 @@ int main(int argc, char** argv)
         bgfx::setDebug(BGFX_DEBUG_TEXT);
 
         const auto assets = assetRoot();
-        const auto modelPaths = resolveModelPaths(commandLine, assets);
+        const auto modelPaths = resolveModelPaths(commandLine);
         const auto layout = meshVertexLayout();
         const auto pointLayout = pointSpriteVertexLayout();
         std::vector<LoadedObjFile> files = loadObjFiles(modelPaths, layout, pointLayout);

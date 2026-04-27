@@ -56,7 +56,7 @@ cmake --build --preset ninja
 - `src/obj_mesh.*` loads OBJ files with tinyobjloader and optimizes buffers with meshoptimizer.
 - `src/imgui_bgfx.*` renders Dear ImGui draw data through bgfx.
 - `cmake/BgfxShaders.cmake` compiles bgfx shaders into runtime assets.
-- `assets/models/cube.obj` is the default model.
+- `assets/models/cube.obj` is a small sample model.
 
 ## Notes
 
