@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <cstddef>
 #include <cctype>
 #include <exception>
 #include <filesystem>
@@ -24,6 +25,7 @@
 #include <memory>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -60,6 +62,8 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0x00ff,
     0xf04b,
     0xf04b,
+    0xf00d,
+    0xf00d,
     0xf192,
     0xf192,
     0xf068,
@@ -75,6 +79,7 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0,
 };
 constexpr const char* addObjFileIcon = "\xee\xa9\xbf";
+constexpr const char* removeFileIcon = "\xef\x80\x8d";
 constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 constexpr const char* trianglesIcon = "\xef\x81\x8b";
 constexpr const char* verticesIcon = "\xef\x86\x92";
@@ -891,6 +896,17 @@ float groupControlStartOffset()
         + style.ItemSpacing.x;
 }
 
+float transformControlStartOffset()
+{
+    const ImGuiStyle& style = ImGui::GetStyle();
+    return groupControlStartOffset()
+        + renderModeButtonRowWidth()
+        + groupVertexSizeControlWidth
+        + style.ItemSpacing.x
+        + renderModeButtonSize
+        + style.ItemSpacing.x;
+}
+
 float minimumViewerPaneWidth()
 {
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -1551,6 +1567,18 @@ std::vector<LoadedObjFile> loadObjFiles(
     return files;
 }
 
+void removeObjFile(
+    std::vector<LoadedObjFile>& files,
+    size_t fileIndex,
+    woby::Bounds& sceneBounds,
+    woby::SceneCamera& camera)
+{
+    destroyGpuMesh(files[fileIndex].gpuMesh);
+    files.erase(files.begin() + static_cast<std::ptrdiff_t>(fileIndex));
+    sceneBounds = combineBounds(files);
+    camera = woby::frameCameraBounds(sceneBounds);
+}
+
 bool appendObjFiles(
     const std::vector<std::filesystem::path>& modelPaths,
     const bgfx::VertexLayout& meshLayout,
@@ -2025,9 +2053,15 @@ int main(int argc, char** argv)
                             ImVec2(0.0f, filesContentHeight),
                             ImGuiChildFlags_None)) {
                         size_t colorIndex = 0;
+                        std::optional<size_t> removeFileIndex;
                         for (size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
                             auto& file = files[fileIndex];
                             ImGui::PushID(static_cast<int>(fileIndex));
+                            const ImGuiStyle& style = ImGui::GetStyle();
+                            const float rowStartX = ImGui::GetCursorPosX();
+                            const float removeControlStartX = rowStartX
+                                + style.IndentSpacing
+                                + transformControlStartOffset();
                             const std::string label = fileDisplayName(file.path)
                                 + "##file_" + std::to_string(fileIndex);
                             drawVisibilityButton("visible", file.fileSettings.visible, "file");
@@ -2039,6 +2073,15 @@ int main(int argc, char** argv)
                                     file.mesh.indices.size() / 3u);
                             const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
                             setLastItemTooltip(tooltipText.c_str());
+                            ImGui::SameLine(removeControlStartX, 0.0f);
+                            if (drawRenderModeIconButton(
+                                    "remove",
+                                    removeFileIcon,
+                                    "Remove file from scene",
+                                    RenderModeState::off,
+                                    false)) {
+                                removeFileIndex = fileIndex;
+                            }
                             if (fileTreeOpen) {
                                 drawGroupMasterControls(file.groupSettings);
                                 ImGui::SameLine(0.0f, 0.0f);
@@ -2068,6 +2111,11 @@ int main(int argc, char** argv)
                             }
                             colorIndex += file.groupSettings.size();
                             ImGui::PopID();
+                        }
+                        if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
+                            const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
+                            removeObjFile(files, removeFileIndex.value(), sceneBounds, camera);
+                            setToastMessage(toast, "Removed " + removedName);
                         }
                     }
                     ImGui::EndChild();
