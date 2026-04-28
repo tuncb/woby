@@ -28,6 +28,20 @@ Load every OBJ file recursively inside a folder:
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --folder C:\path\to\models
 ```
 
+Open a saved woby scene:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --woby C:\path\to\scene.woby
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --scene C:\path\to\scene.woby
+```
+
+You can combine a scene with OBJ inputs. The scene opens first, then the OBJ
+files are added to it, leaving the scene dirty:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --scene C:\path\to\scene.woby --file C:\path\to\model.obj
+```
+
 You can also drag `.obj` files or folders onto the window to add them to the
 current scene. Dragged folders are scanned recursively. Drag a single `.woby`
 scene file by itself to open it with the same unsaved-change prompt as the UI
