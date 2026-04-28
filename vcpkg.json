@@ -14,7 +14,8 @@
     {
       "name": "imgui",
       "features": [
-        "sdl3-binding"
+        "sdl3-binding",
+        "wchar32"
       ]
     },
     "doctest"

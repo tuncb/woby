@@ -22,6 +22,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -39,8 +40,9 @@ namespace {
 
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
 constexpr bgfx::ViewId sceneView = 0;
+constexpr bgfx::ViewId helperView = 1;
 constexpr bgfx::ViewId imguiView = 255;
-constexpr float defaultScenePaneHeight = 150.0f;
+constexpr float defaultScenePaneHeight = 185.0f;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float viewerPaneBackgroundRed = 0.20f;
 constexpr float viewerPaneBackgroundGreen = 0.21f;
@@ -71,6 +73,10 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf0b2,
     0xf1b2,
     0xf1b2,
+    0xf02c1,
+    0xf02c1,
+    0xf0b43,
+    0xf0b43,
     0xed75,
     0xed75,
     0xed95,
@@ -90,6 +96,8 @@ constexpr const char* transformIcon = "\xef\x82\xb2";
 constexpr const char* visibleIcon = "\xef\x81\xae";
 constexpr const char* hiddenIcon = "\xef\x81\xb0";
 constexpr const char* mixedStateIcon = "\xef\x81\xa8";
+constexpr const char* originIcon = "\xf3\xb0\xad\x83";
+constexpr const char* gridIcon = "\xf3\xb0\x8b\x81";
 constexpr float renderModeButtonSize = 26.0f;
 constexpr float groupVertexSizeControlWidth = 70.0f;
 constexpr float viewerPaneWidthPadding = 20.0f;
@@ -185,6 +193,16 @@ bgfx::VertexLayout pointSpriteVertexLayout()
     return layout;
 }
 
+bgfx::VertexLayout helperLineVertexLayout()
+{
+    bgfx::VertexLayout layout;
+    layout
+        .begin()
+        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+        .end();
+    return layout;
+}
+
 std::array<float, 4> scaledRgbColor(const std::array<float, 4>& color, float scale)
 {
     return {
@@ -219,6 +237,10 @@ struct GpuMesh {
 struct PointSpriteVertex {
     std::array<float, 3> position{};
     std::array<float, 2> corner{};
+};
+
+struct HelperLineVertex {
+    std::array<float, 3> position{};
 };
 
 using GroupRenderSettings = woby::UiGroupState;
@@ -290,52 +312,6 @@ std::array<float, 4> groupColor(
     auto color = scaledRgbColor(settings.color, rgbScale);
     color[3] = std::clamp(settings.opacity * opacityScale, woby::minGroupOpacity, woby::maxGroupOpacity);
     return color;
-}
-
-void groupTransform(const GroupRenderSettings& settings, float* model)
-{
-    float toOrigin[16];
-    float transformed[16];
-    bx::mtxTranslate(
-        toOrigin,
-        -settings.center[0],
-        -settings.center[1],
-        -settings.center[2]);
-    bx::mtxSRT(
-        transformed,
-        settings.scale,
-        settings.scale,
-        settings.scale,
-        bx::toRad(settings.rotationDegrees[0]),
-        bx::toRad(settings.rotationDegrees[1]),
-        bx::toRad(settings.rotationDegrees[2]),
-        settings.center[0] + settings.translation[0],
-        settings.center[1] + settings.translation[1],
-        settings.center[2] + settings.translation[2]);
-    bx::mtxMul(model, transformed, toOrigin);
-}
-
-void fileTransform(const FileRenderSettings& settings, float* model)
-{
-    float toOrigin[16];
-    float transformed[16];
-    bx::mtxTranslate(
-        toOrigin,
-        -settings.center[0],
-        -settings.center[1],
-        -settings.center[2]);
-    bx::mtxSRT(
-        transformed,
-        settings.scale,
-        settings.scale,
-        settings.scale,
-        bx::toRad(settings.rotationDegrees[0]),
-        bx::toRad(settings.rotationDegrees[1]),
-        bx::toRad(settings.rotationDegrees[2]),
-        settings.center[0] + settings.translation[0],
-        settings.center[1] + settings.translation[1],
-        settings.center[2] + settings.translation[2]);
-    bx::mtxMul(model, transformed, toOrigin);
 }
 
 std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
@@ -667,7 +643,7 @@ std::optional<HoveredVertex> findHoveredVertex(
         }
 
         float fileModel[16];
-        fileTransform(file.fileSettings, fileModel);
+        woby::fileTransformMatrix(file.fileSettings, fileModel);
         for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
             const auto& settings = file.groupSettings[nodeIndex];
             if (!settings.visible
@@ -678,7 +654,7 @@ std::optional<HoveredVertex> findHoveredVertex(
 
             float groupModel[16];
             float model[16];
-            groupTransform(settings, groupModel);
+            woby::groupTransformMatrix(settings, groupModel);
             bx::mtxMul(model, fileModel, groupModel);
 
             const uint32_t pointSize = vertexPointSize(
@@ -1458,7 +1434,7 @@ void submitSceneFiles(
         }
 
         float fileModel[16];
-        fileTransform(file.fileSettings, fileModel);
+        woby::fileTransformMatrix(file.fileSettings, fileModel);
         for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
             const auto& settings = file.groupSettings[nodeIndex];
             if (!settings.visible) {
@@ -1467,7 +1443,7 @@ void submitSceneFiles(
 
             float groupModel[16];
             float model[16];
-            groupTransform(settings, groupModel);
+            woby::groupTransformMatrix(settings, groupModel);
             bx::mtxMul(model, fileModel, groupModel);
             const auto& range = gpuMesh.nodeRanges[nodeIndex];
             if (settings.showSolidMesh) {
@@ -1510,6 +1486,117 @@ void submitSceneFiles(
                     range.pointSpriteIndexCount);
             }
         }
+    }
+}
+
+float helperGridExtent(const woby::Bounds& bounds)
+{
+    const float extent = std::max({
+        std::abs(bounds.min[0]),
+        std::abs(bounds.max[0]),
+        std::abs(bounds.min[1]),
+        std::abs(bounds.max[1]),
+        woby::defaultDisplayBoundsMax,
+    });
+    return std::max(extent, 0.001f);
+}
+
+float helperGridSpacing(float extent)
+{
+    constexpr float targetIntervals = 20.0f;
+    const float rawSpacing = std::max((extent * 2.0f) / targetIntervals, 0.001f);
+    const float magnitude = std::pow(10.0f, std::floor(std::log10(rawSpacing)));
+    const float normalized = rawSpacing / magnitude;
+    if (normalized <= 1.0f) {
+        return magnitude;
+    }
+    if (normalized <= 2.0f) {
+        return 2.0f * magnitude;
+    }
+    if (normalized <= 5.0f) {
+        return 5.0f * magnitude;
+    }
+
+    return 10.0f * magnitude;
+}
+
+void appendHelperLine(
+    std::vector<HelperLineVertex>& vertices,
+    const std::array<float, 3>& start,
+    const std::array<float, 3>& end)
+{
+    vertices.push_back({start});
+    vertices.push_back({end});
+}
+
+void submitHelperLines(
+    const std::vector<HelperLineVertex>& vertices,
+    const bgfx::VertexLayout& layout,
+    bgfx::ProgramHandle program,
+    bgfx::UniformHandle colorUniform,
+    const std::array<float, 4>& color)
+{
+    if (vertices.empty() || vertices.size() % 2u != 0u) {
+        return;
+    }
+
+    bgfx::TransientVertexBuffer vertexBuffer;
+    const auto vertexCount = static_cast<uint32_t>(vertices.size());
+    if (bgfx::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) {
+        return;
+    }
+    bgfx::allocTransientVertexBuffer(&vertexBuffer, vertexCount, layout);
+
+    auto* destination = reinterpret_cast<HelperLineVertex*>(vertexBuffer.data);
+    std::copy(vertices.begin(), vertices.end(), destination);
+
+    float model[16];
+    bx::mtxIdentity(model);
+    bgfx::setTransform(model);
+    bgfx::setUniform(colorUniform, color.data());
+    bgfx::setVertexBuffer(0, &vertexBuffer);
+    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, BGFX_STATE_PT_LINES));
+    bgfx::submit(helperView, program);
+}
+
+void submitSceneHelpers(
+    const woby::UiState& state,
+    const bgfx::VertexLayout& layout,
+    bgfx::ProgramHandle program,
+    bgfx::UniformHandle colorUniform)
+{
+    const float extent = helperGridExtent(state.sceneBounds);
+    const float spacing = helperGridSpacing(extent);
+    const int lineRadius = std::max(1, static_cast<int>(std::ceil(extent / spacing)));
+    const float snappedExtent = static_cast<float>(lineRadius) * spacing;
+
+    if (state.showGrid) {
+        std::vector<HelperLineVertex> gridLines;
+        gridLines.reserve(static_cast<size_t>(lineRadius * 4 + 2) * 2u);
+        for (int line = -lineRadius; line <= lineRadius; ++line) {
+            const float offset = static_cast<float>(line) * spacing;
+            appendHelperLine(gridLines, {offset, -snappedExtent, 0.0f}, {offset, snappedExtent, 0.0f});
+            appendHelperLine(gridLines, {-snappedExtent, offset, 0.0f}, {snappedExtent, offset, 0.0f});
+        }
+        submitHelperLines(gridLines, layout, program, colorUniform, {0.72f, 0.74f, 0.78f, 0.42f});
+    }
+
+    if (state.showOrigin) {
+        const float axisLength = std::max(spacing * 2.0f, snappedExtent * 0.18f);
+
+        std::vector<HelperLineVertex> axisLine;
+        axisLine.reserve(2u);
+
+        appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {axisLength, 0.0f, 0.0f});
+        submitHelperLines(axisLine, layout, program, colorUniform, {1.0f, 0.20f, 0.20f, 1.0f});
+
+        axisLine.clear();
+        appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {0.0f, axisLength, 0.0f});
+        submitHelperLines(axisLine, layout, program, colorUniform, {0.20f, 0.85f, 0.35f, 1.0f});
+
+        axisLine.clear();
+        appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, axisLength});
+        submitHelperLines(axisLine, layout, program, colorUniform, {0.30f, 0.55f, 1.0f, 1.0f});
     }
 }
 
@@ -2113,6 +2200,8 @@ void loadScene(
     destroyObjRuntimes(runtimes);
     runtimes = std::move(loadedRuntimes);
     state.files = std::move(loadedFiles);
+    woby::setShowOrigin(state, document.showOrigin);
+    woby::setShowGrid(state, document.showGrid);
     woby::setMasterVertexPointSize(state, document.masterVertexPointSize);
     woby::recalculateSceneBounds(state);
     state.camera = woby::frameCameraBounds(state.sceneBounds);
@@ -2378,12 +2467,14 @@ int main(int argc, char** argv)
         bgfxInitialized = true;
 
         bgfx::setViewClear(sceneView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
+        bgfx::setViewClear(helperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
         bgfx::setDebug(BGFX_DEBUG_TEXT);
 
         const auto assets = assetRoot();
         const auto modelPaths = resolveModelPaths(commandLine);
         const auto layout = meshVertexLayout();
         const auto pointLayout = pointSpriteVertexLayout();
+        const auto helperLayout = helperLineVertexLayout();
         woby::UiState ui;
         std::vector<LoadedObjRuntime> runtimes;
         ui.files = loadObjFiles(modelPaths, layout, pointLayout, runtimes);
@@ -2751,6 +2842,23 @@ int main(int argc, char** argv)
                             triangleCountTotal += file.mesh.indices.size() / 3u;
                         }
                         drawMeshCountLine(vertexCountTotal, triangleCountTotal);
+                        if (drawRenderModeIconButton(
+                                "origin",
+                                originIcon,
+                                ui.showOrigin ? "Hide origin axes" : "Show origin axes",
+                                ui.showOrigin ? RenderModeState::on : RenderModeState::off,
+                                false)) {
+                            woby::toggleShowOrigin(ui);
+                        }
+                        ImGui::SameLine();
+                        if (drawRenderModeIconButton(
+                                "grid",
+                                gridIcon,
+                                ui.showGrid ? "Hide XY grid" : "Show XY grid",
+                                ui.showGrid ? RenderModeState::on : RenderModeState::off,
+                                false)) {
+                            woby::toggleShowGrid(ui);
+                        }
                         const size_t groupCount = woby::totalGroupCount(ui);
                         const size_t visibleCount = woby::countVisibleSceneGroups(ui);
                         if (drawTriStateVisibilityButton(
@@ -2919,6 +3027,7 @@ int main(int argc, char** argv)
             }
             ImGui::End();
 
+            woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
 
@@ -2929,12 +3038,23 @@ int main(int argc, char** argv)
                 0,
                 static_cast<uint16_t>(sceneViewportWidth),
                 static_cast<uint16_t>(height));
+            bgfx::setViewRect(
+                helperView,
+                0,
+                0,
+                static_cast<uint16_t>(sceneViewportWidth),
+                static_cast<uint16_t>(height));
             bgfx::touch(sceneView);
+            bgfx::touch(helperView);
 
             float view[16];
             float projection[16];
             const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
-            bx::mtxLookAt(view, woby::cameraEye(camera), woby::cameraLookAt(camera));
+            bx::mtxLookAt(
+                view,
+                woby::cameraEye(camera),
+                woby::cameraLookAt(camera),
+                bx::Vec3(0.0f, 0.0f, 1.0f));
             bx::mtxProj(
                 projection,
                 camera.verticalFovDegrees,
@@ -2943,6 +3063,7 @@ int main(int argc, char** argv)
                 woby::cameraFarPlane(camera, sceneBounds),
                 homogeneousDepth);
             bgfx::setViewTransform(sceneView, view, projection);
+            bgfx::setViewTransform(helperView, view, projection);
 
             std::optional<HoveredVertex> hoveredVertex;
             const MousePosition mouse = mousePositionInPixels(window.get());
@@ -2972,6 +3093,7 @@ int main(int argc, char** argv)
                 pointParamsUniform,
                 sceneViewportWidth,
                 height);
+            submitSceneHelpers(ui, helperLayout, colorProgram, colorUniform);
 
             drawToastMessage(toast, width);
             drawHoveredVertexOverlay(hoveredVertex, width, height);

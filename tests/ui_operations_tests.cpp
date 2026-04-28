@@ -164,6 +164,37 @@ TEST_CASE("removing a file recalculates bounds and reframes the camera")
     CHECK_FALSE(woby::removeFileFromState(state, 4u));
 }
 
+TEST_CASE("empty scenes use default display bounds")
+{
+    woby::UiState state;
+
+    woby::recalculateSceneBounds(state);
+
+    CHECK(state.sceneBounds.min[0] == doctest::Approx(woby::defaultDisplayBoundsMin));
+    CHECK(state.sceneBounds.min[1] == doctest::Approx(woby::defaultDisplayBoundsMin));
+    CHECK(state.sceneBounds.min[2] == doctest::Approx(woby::defaultDisplayBoundsMin));
+    CHECK(state.sceneBounds.max[0] == doctest::Approx(woby::defaultDisplayBoundsMax));
+    CHECK(state.sceneBounds.max[1] == doctest::Approx(woby::defaultDisplayBoundsMax));
+    CHECK(state.sceneBounds.max[2] == doctest::Approx(woby::defaultDisplayBoundsMax));
+}
+
+TEST_CASE("scene bounds include file and group transforms")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    auto& file = state.files[0];
+    auto& group = file.groupSettings[0];
+
+    woby::setFileTranslation(file.fileSettings, {10.0f, 0.0f, 0.0f});
+    woby::setGroupTranslation(group, {0.0f, 20.0f, 0.0f});
+    woby::recalculateSceneBounds(state);
+
+    CHECK(state.sceneBounds.min[0] == doctest::Approx(10.0f));
+    CHECK(state.sceneBounds.max[0] == doctest::Approx(11.0f));
+    CHECK(state.sceneBounds.min[1] == doctest::Approx(20.0f));
+    CHECK(state.sceneBounds.max[1] == doctest::Approx(21.0f));
+}
+
 TEST_CASE("event operations update top-level ui state")
 {
     woby::UiState state;
@@ -181,6 +212,19 @@ TEST_CASE("event operations update top-level ui state")
     CHECK(state.running);
     woby::requestQuit(state);
     CHECK_FALSE(state.running);
+}
+
+TEST_CASE("camera panning uses z as the global up axis")
+{
+    woby::SceneCamera camera;
+    camera.distance = 10.0f;
+    camera.verticalFovDegrees = 60.0f;
+
+    woby::panCamera(camera, 0.0f, -100.0f, 100.0f);
+
+    CHECK(camera.target[0] == doctest::Approx(0.0f));
+    CHECK(camera.target[1] == doctest::Approx(0.0f));
+    CHECK(camera.target[2] > 0.0f);
 }
 
 TEST_CASE("dirty tracking follows persisted scene document only")
@@ -202,6 +246,11 @@ TEST_CASE("dirty tracking follows persisted scene document only")
     woby::updateSceneDirty(state, cleanDocument);
     CHECK(state.isDirty);
 
+    woby::setMasterVertexPointSize(state, woby::defaultMasterVertexPointSize);
+    woby::setShowGrid(state, false);
+    woby::updateSceneDirty(state, cleanDocument);
+    CHECK(state.isDirty);
+
     const woby::SceneDocument newCleanDocument = woby::createSceneDocument(state);
     woby::updateSceneDirty(state, newCleanDocument);
     CHECK_FALSE(state.isDirty);
@@ -212,6 +261,8 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
     state.masterVertexPointSize = 9.0f;
+    woby::setShowOrigin(state, false);
+    woby::setShowGrid(state, false);
     auto& file = state.files[0];
     auto& group = file.groupSettings[0];
 
@@ -234,6 +285,8 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     REQUIRE(document.files.size() == 1u);
     REQUIRE(document.files[0].groups.size() == 1u);
     CHECK(document.masterVertexPointSize == doctest::Approx(9.0f));
+    CHECK_FALSE(document.showOrigin);
+    CHECK_FALSE(document.showGrid);
     CHECK_FALSE(document.files[0].settings.visible);
     CHECK(document.files[0].vertexSizeScale == doctest::Approx(2.5f));
     CHECK_FALSE(document.files[0].groups[0].settings.visible);
@@ -274,6 +327,34 @@ TEST_CASE("scene document writer omits camera state")
     CHECK(text.find("[camera]") == std::string::npos);
     CHECK(text.find("distance") == std::string::npos);
     CHECK(text.find("vertical_fov_degrees") == std::string::npos);
+}
+
+TEST_CASE("scene document persists helper visibility and defaults old files to visible")
+{
+    woby::SceneDocument document;
+    document.showOrigin = false;
+    document.showGrid = false;
+    const std::filesystem::path path = std::filesystem::temp_directory_path()
+        / "woby_scene_document_helper_visibility.woby";
+
+    woby::writeSceneDocument(path, document);
+    const woby::SceneDocument restored = woby::readSceneDocument(path);
+
+    CHECK_FALSE(restored.showOrigin);
+    CHECK_FALSE(restored.showGrid);
+
+    {
+        std::ofstream stream(path, std::ios::trunc);
+        stream << "# woby scene\n";
+        stream << "version = 1\n";
+        stream << "master_vertex_point_size = 4\n";
+    }
+
+    const woby::SceneDocument oldStyleDocument = woby::readSceneDocument(path);
+    std::filesystem::remove(path);
+
+    CHECK(oldStyleDocument.showOrigin);
+    CHECK(oldStyleDocument.showGrid);
 }
 
 TEST_CASE("scene record apply clamps invalid persisted numeric values")

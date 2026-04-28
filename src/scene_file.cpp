@@ -402,6 +402,10 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     }
                 } else if (key == "master_vertex_point_size") {
                     document.masterVertexPointSize = parseTomlFloat(value);
+                } else if (key == "show_origin") {
+                    document.showOrigin = parseTomlBool(value);
+                } else if (key == "show_grid") {
+                    document.showGrid = parseTomlBool(value);
                 }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
@@ -438,7 +442,9 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream << "version = 1\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
-    stream << "\n\n";
+    stream << "\n";
+    stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
+    stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n\n";
 
     for (const auto& file : document.files) {
         const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);

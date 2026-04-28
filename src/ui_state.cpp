@@ -5,6 +5,8 @@
 #include <limits>
 #include <utility>
 
+#include <bx/math.h>
+
 namespace woby {
 namespace {
 
@@ -47,6 +49,140 @@ std::array<float, 4> clampColor(const std::array<float, 4>& value)
         clampFinite(value[2], 0.0f, 1.0f, 1.0f),
         clampFinite(value[3], 0.0f, 1.0f, 1.0f),
     };
+}
+
+std::array<float, 3> transformPoint(const float* matrix, const std::array<float, 3>& position)
+{
+    const float x = matrix[0] * position[0] + matrix[4] * position[1] + matrix[8] * position[2] + matrix[12];
+    const float y = matrix[1] * position[0] + matrix[5] * position[1] + matrix[9] * position[2] + matrix[13];
+    const float z = matrix[2] * position[0] + matrix[6] * position[1] + matrix[10] * position[2] + matrix[14];
+    const float w = matrix[3] * position[0] + matrix[7] * position[1] + matrix[11] * position[2] + matrix[15];
+    if (std::abs(w) <= 0.000001f) {
+        return {x, y, z};
+    }
+
+    return {x / w, y / w, z / w};
+}
+
+void transformFromSettings(
+    const std::array<float, 3>& center,
+    const std::array<float, 3>& translation,
+    const std::array<float, 3>& rotationDegrees,
+    float scale,
+    float* model)
+{
+    float toOrigin[16];
+    float transformed[16];
+    bx::mtxTranslate(toOrigin, -center[0], -center[1], -center[2]);
+    bx::mtxSRT(
+        transformed,
+        scale,
+        scale,
+        scale,
+        bx::toRad(rotationDegrees[0]),
+        bx::toRad(rotationDegrees[1]),
+        bx::toRad(rotationDegrees[2]),
+        center[0] + translation[0],
+        center[1] + translation[1],
+        center[2] + translation[2]);
+    bx::mtxMul(model, transformed, toOrigin);
+}
+
+bool boundsContainFinitePoints(const Bounds& bounds)
+{
+    return std::isfinite(bounds.min[0])
+        && std::isfinite(bounds.min[1])
+        && std::isfinite(bounds.min[2])
+        && std::isfinite(bounds.max[0])
+        && std::isfinite(bounds.max[1])
+        && std::isfinite(bounds.max[2])
+        && bounds.min[0] <= bounds.max[0]
+        && bounds.min[1] <= bounds.max[1]
+        && bounds.min[2] <= bounds.max[2];
+}
+
+Bounds emptyAccumulatedBounds()
+{
+    Bounds bounds;
+    bounds.min = {
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+    };
+    bounds.max = {
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+        std::numeric_limits<float>::lowest(),
+    };
+    bounds.center = {};
+    bounds.radius = 0.0f;
+    return bounds;
+}
+
+void expandBounds(Bounds& bounds, const std::array<float, 3>& position)
+{
+    for (size_t axis = 0; axis < 3u; ++axis) {
+        bounds.min[axis] = std::min(bounds.min[axis], position[axis]);
+        bounds.max[axis] = std::max(bounds.max[axis], position[axis]);
+    }
+}
+
+void finalizeBounds(Bounds& bounds)
+{
+    for (size_t axis = 0; axis < 3u; ++axis) {
+        bounds.center[axis] = (bounds.min[axis] + bounds.max[axis]) * 0.5f;
+    }
+
+    float radiusSquared = 0.0f;
+    for (size_t corner = 0; corner < 8u; ++corner) {
+        std::array<float, 3> position{};
+        for (size_t axis = 0; axis < 3u; ++axis) {
+            position[axis] = (corner & (size_t{1u} << axis)) != 0u
+                ? bounds.max[axis]
+                : bounds.min[axis];
+        }
+
+        const float x = position[0] - bounds.center[0];
+        const float y = position[1] - bounds.center[1];
+        const float z = position[2] - bounds.center[2];
+        radiusSquared = std::max(radiusSquared, x * x + y * y + z * z);
+    }
+
+    bounds.radius = std::max(std::sqrt(radiusSquared), 0.001f);
+}
+
+Bounds nodeBounds(const ObjMesh& mesh, const ObjNode& node)
+{
+    Bounds bounds = emptyAccumulatedBounds();
+    const uint32_t endIndex = std::min(
+        node.indexOffset + node.indexCount,
+        static_cast<uint32_t>(mesh.indices.size()));
+    for (uint32_t index = node.indexOffset; index < endIndex; ++index) {
+        const uint32_t vertexIndex = mesh.indices[index];
+        if (vertexIndex < mesh.vertices.size()) {
+            expandBounds(bounds, mesh.vertices[vertexIndex].position);
+        }
+    }
+
+    if (!boundsContainFinitePoints(bounds)) {
+        return mesh.bounds;
+    }
+
+    finalizeBounds(bounds);
+    return bounds;
+}
+
+void expandTransformedBounds(Bounds& bounds, const Bounds& localBounds, const float* model)
+{
+    for (size_t corner = 0; corner < 8u; ++corner) {
+        std::array<float, 3> position{};
+        for (size_t axis = 0; axis < 3u; ++axis) {
+            position[axis] = (corner & (size_t{1u} << axis)) != 0u
+                ? localBounds.max[axis]
+                : localBounds.min[axis];
+        }
+        expandBounds(bounds, transformPoint(model, position));
+    }
 }
 
 } // namespace
@@ -129,42 +265,62 @@ UiFileState createUiFileState(std::filesystem::path modelPath, ObjMesh mesh, siz
     return file;
 }
 
+void groupTransformMatrix(const UiGroupState& settings, float* model)
+{
+    transformFromSettings(
+        settings.center,
+        settings.translation,
+        settings.rotationDegrees,
+        settings.scale,
+        model);
+}
+
+void fileTransformMatrix(const UiFileSettings& settings, float* model)
+{
+    transformFromSettings(
+        settings.center,
+        settings.translation,
+        settings.rotationDegrees,
+        settings.scale,
+        model);
+}
+
+Bounds defaultDisplayBounds()
+{
+    Bounds bounds;
+    bounds.min = {defaultDisplayBoundsMin, defaultDisplayBoundsMin, defaultDisplayBoundsMin};
+    bounds.max = {defaultDisplayBoundsMax, defaultDisplayBoundsMax, defaultDisplayBoundsMax};
+    finalizeBounds(bounds);
+    return bounds;
+}
+
 Bounds combineBounds(const std::vector<UiFileState>& files)
 {
-    if (files.empty()) {
-        return {};
-    }
+    Bounds bounds = emptyAccumulatedBounds();
 
-    Bounds bounds = files.front().mesh.bounds;
     for (const auto& file : files) {
-        for (size_t axis = 0; axis < 3u; ++axis) {
-            bounds.min[axis] = std::min(bounds.min[axis], file.mesh.bounds.min[axis]);
-            bounds.max[axis] = std::max(bounds.max[axis], file.mesh.bounds.max[axis]);
+        float fileModel[16];
+        fileTransformMatrix(file.fileSettings, fileModel);
+        if (file.groupSettings.empty()) {
+            expandTransformedBounds(bounds, file.mesh.bounds, fileModel);
+            continue;
+        }
+
+        const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+        for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+            float groupModel[16];
+            float model[16];
+            groupTransformMatrix(file.groupSettings[groupIndex], groupModel);
+            bx::mtxMul(model, fileModel, groupModel);
+            expandTransformedBounds(bounds, nodeBounds(file.mesh, file.mesh.nodes[groupIndex]), model);
         }
     }
 
-    for (size_t axis = 0; axis < 3u; ++axis) {
-        bounds.center[axis] = (bounds.min[axis] + bounds.max[axis]) * 0.5f;
+    if (!boundsContainFinitePoints(bounds)) {
+        return defaultDisplayBounds();
     }
 
-    float radiusSquared = 0.0f;
-    for (const auto& file : files) {
-        for (size_t corner = 0; corner < 8u; ++corner) {
-            std::array<float, 3> position{};
-            for (size_t axis = 0; axis < 3u; ++axis) {
-                position[axis] = (corner & (size_t{1u} << axis)) != 0u
-                    ? file.mesh.bounds.max[axis]
-                    : file.mesh.bounds.min[axis];
-            }
-
-            const float x = position[0] - bounds.center[0];
-            const float y = position[1] - bounds.center[1];
-            const float z = position[2] - bounds.center[2];
-            radiusSquared = std::max(radiusSquared, x * x + y * y + z * z);
-        }
-    }
-
-    bounds.radius = std::max(std::sqrt(radiusSquared), 0.001f);
+    finalizeBounds(bounds);
     return bounds;
 }
 
@@ -199,6 +355,8 @@ SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
     document.masterVertexPointSize = state.masterVertexPointSize;
+    document.showOrigin = state.showOrigin;
+    document.showGrid = state.showGrid;
     document.files.reserve(state.files.size());
 
     for (const auto& file : state.files) {

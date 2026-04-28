@@ -17,15 +17,15 @@ std::array<float, 3> viewDirection(const SceneCamera& camera)
 {
     const float pitchCos = std::cos(camera.pitchRadians);
     return {
+        std::cos(camera.yawRadians) * pitchCos,
         std::sin(camera.yawRadians) * pitchCos,
         std::sin(camera.pitchRadians),
-        std::cos(camera.yawRadians) * pitchCos,
     };
 }
 
 std::array<float, 3> rightDirection(const SceneCamera& camera)
 {
-    return {std::cos(camera.yawRadians), 0.0f, -std::sin(camera.yawRadians)};
+    return {std::sin(camera.yawRadians), -std::cos(camera.yawRadians), 0.0f};
 }
 
 std::array<float, 3> upDirection(const SceneCamera& camera)

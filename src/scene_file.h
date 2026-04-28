@@ -50,6 +50,8 @@ struct SceneFileRecord {
 
 struct SceneDocument {
     float masterVertexPointSize = 4.0f;
+    bool showOrigin = true;
+    bool showGrid = true;
     std::vector<SceneFileRecord> files;
 
     friend bool operator==(const SceneDocument&, const SceneDocument&) = default;

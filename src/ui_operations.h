@@ -36,6 +36,10 @@ void setGroupVisible(UiGroupState& group, bool visible);
 void toggleGroupVisible(UiGroupState& group);
 void setGroupVisible(UiFileState& file, UiGroupState& group, bool visible);
 void toggleGroupVisible(UiFileState& file, UiGroupState& group);
+void setShowOrigin(UiState& state, bool visible);
+void toggleShowOrigin(UiState& state);
+void setShowGrid(UiState& state, bool visible);
+void toggleShowGrid(UiState& state);
 
 void setMasterVertexPointSize(UiState& state, float value);
 void setFileVertexSizeScale(UiFileState& file, float value);

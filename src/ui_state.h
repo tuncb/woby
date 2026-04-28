@@ -21,6 +21,8 @@ inline constexpr float minGroupOpacity = 0.0f;
 inline constexpr float maxGroupOpacity = 1.0f;
 inline constexpr float minRotationDegrees = -180.0f;
 inline constexpr float maxRotationDegrees = 180.0f;
+inline constexpr float defaultDisplayBoundsMin = -10.0f;
+inline constexpr float defaultDisplayBoundsMax = 10.0f;
 
 struct UiGroupState {
     bool visible = true;
@@ -56,6 +58,8 @@ struct UiFileState {
 struct UiState {
     bool running = true;
     bool isDirty = false;
+    bool showOrigin = true;
+    bool showGrid = true;
     float masterVertexPointSize = defaultMasterVertexPointSize;
     SceneCamera camera;
     CameraInput cameraInput;
@@ -71,6 +75,9 @@ struct UiState {
     std::filesystem::path modelPath,
     ObjMesh mesh,
     size_t firstColorIndex);
+void groupTransformMatrix(const UiGroupState& settings, float* model);
+void fileTransformMatrix(const UiFileSettings& settings, float* model);
+[[nodiscard]] Bounds defaultDisplayBounds();
 [[nodiscard]] Bounds combineBounds(const std::vector<UiFileState>& files);
 
 [[nodiscard]] SceneFileSettings sceneFileSettings(const UiFileSettings& settings);

@@ -218,6 +218,32 @@ void toggleGroupVisible(UiFileState& file, UiGroupState& group)
     setGroupVisible(file, group, !group.visible);
 }
 
+void setShowOrigin(UiState& state, bool visible)
+{
+    if (state.showOrigin != visible) {
+        state.showOrigin = visible;
+        markSceneDirty(state);
+    }
+}
+
+void toggleShowOrigin(UiState& state)
+{
+    setShowOrigin(state, !state.showOrigin);
+}
+
+void setShowGrid(UiState& state, bool visible)
+{
+    if (state.showGrid != visible) {
+        state.showGrid = visible;
+        markSceneDirty(state);
+    }
+}
+
+void toggleShowGrid(UiState& state)
+{
+    setShowGrid(state, !state.showGrid);
+}
+
 void setMasterVertexPointSize(UiState& state, float value)
 {
     const float clampedValue = clampFinite(
