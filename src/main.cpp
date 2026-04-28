@@ -77,6 +77,10 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf02c1,
     0xf0b43,
     0xf0b43,
+    0xf0930,
+    0xf0930,
+    0xeba0,
+    0xeba0,
     0xed75,
     0xed75,
     0xed95,
@@ -98,9 +102,12 @@ constexpr const char* hiddenIcon = "\xef\x81\xb0";
 constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 constexpr const char* originIcon = "\xf3\xb0\xad\x83";
 constexpr const char* gridIcon = "\xf3\xb0\x8b\x81";
+constexpr const char* viewerPanePinnedIcon = "\xee\xae\xa0";
+constexpr const char* viewerPaneUnpinnedIcon = "\xf3\xb0\xa4\xb0";
 constexpr float renderModeButtonSize = 26.0f;
 constexpr float groupVertexSizeControlWidth = 70.0f;
 constexpr float viewerPaneWidthPadding = 20.0f;
+constexpr float viewerPaneTogglePaneMargin = 6.0f;
 constexpr float toastDurationSeconds = 3.0f;
 constexpr float toastMargin = 12.0f;
 
@@ -1037,6 +1044,39 @@ float minimumViewerPaneWidth()
         + style.WindowPadding.x * 2.0f
         + style.ScrollbarSize
         + viewerPaneWidthPadding;
+}
+
+void drawViewerPaneTogglePane(woby::UiState& state, float windowWidth)
+{
+    ImGui::SetNextWindowBgAlpha(0.86f);
+    ImGui::SetNextWindowPos(
+        ImVec2(windowWidth - viewerPaneTogglePaneMargin, viewerPaneTogglePaneMargin),
+        ImGuiCond_Always,
+        ImVec2(1.0f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+    if (ImGui::Begin(
+            "##ViewerPaneToggle",
+            nullptr,
+            ImGuiWindowFlags_NoDecoration
+                | ImGuiWindowFlags_AlwaysAutoResize
+                | ImGuiWindowFlags_NoMove
+                | ImGuiWindowFlags_NoSavedSettings
+                | ImGuiWindowFlags_NoFocusOnAppearing)) {
+        const char* icon = state.viewerPaneVisible ? viewerPanePinnedIcon : viewerPaneUnpinnedIcon;
+        const char* tooltip = state.viewerPaneVisible
+            ? "Hide left panes (Ctrl+B)"
+            : "Show left panes (Ctrl+B)";
+        if (drawRenderModeIconButton(
+                "toggle_viewer_pane",
+                icon,
+                tooltip,
+                state.viewerPaneVisible ? RenderModeState::on : RenderModeState::off,
+                false)) {
+            woby::toggleViewerPaneVisible(state);
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 void pushRenderModeControlHeight()
@@ -2614,6 +2654,13 @@ int main(int argc, char** argv)
                     && !ImGui::GetIO().WantCaptureKeyboard) {
                     woby::frameCameraToScene(ui);
                 }
+                if (event.type == SDL_EVENT_KEY_DOWN
+                    && event.key.key == SDLK_B
+                    && (event.key.mod & SDL_KMOD_CTRL) != 0u
+                    && !event.key.repeat
+                    && !ImGui::GetIO().WantCaptureKeyboard) {
+                    woby::toggleViewerPaneVisible(ui);
+                }
                 if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
                     getDrawableSize(window.get(), width, height);
                     bgfx::reset(width, height, resetFlags);
@@ -2807,28 +2854,30 @@ int main(int argc, char** argv)
                 }
                 ImGui::EndPopup();
             }
-            const float availableHeight = static_cast<float>(height);
-            ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
-            ImGui::SetNextWindowSize(
-                ImVec2(viewerPaneWidth, availableHeight),
-                ImGuiCond_Always);
-            ImGui::SetNextWindowSizeConstraints(
-                ImVec2(minViewerPaneWidth, availableHeight),
-                ImVec2(maxViewerPaneWidth, availableHeight));
-            const bool showViewerContent = ImGui::Begin(
-                "##ViewerPane",
-                nullptr,
-                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-            if (showViewerContent) {
-                woby::setViewerPaneWidth(
-                    ui,
-                    ImGui::GetWindowSize().x,
-                    minViewerPaneWidth,
-                    maxViewerPaneWidth);
+            const float activeViewerPaneWidth = ui.viewerPaneVisible ? viewerPaneWidth : 0.0f;
+            if (ui.viewerPaneVisible) {
+                const float availableHeight = static_cast<float>(height);
+                ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+                ImGui::SetNextWindowSize(
+                    ImVec2(viewerPaneWidth, availableHeight),
+                    ImGuiCond_Always);
+                ImGui::SetNextWindowSizeConstraints(
+                    ImVec2(minViewerPaneWidth, availableHeight),
+                    ImVec2(maxViewerPaneWidth, availableHeight));
+                const bool showViewerContent = ImGui::Begin(
+                    "##ViewerPane",
+                    nullptr,
+                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+                if (showViewerContent) {
+                    woby::setViewerPaneWidth(
+                        ui,
+                        ImGui::GetWindowSize().x,
+                        minViewerPaneWidth,
+                        maxViewerPaneWidth);
 
-                const bool scenePaneOpen = ImGui::CollapsingHeader(
-                    "Scene",
-                    ImGuiTreeNodeFlags_DefaultOpen);
+                    const bool scenePaneOpen = ImGui::CollapsingHeader(
+                        "Scene",
+                        ImGuiTreeNodeFlags_DefaultOpen);
                 if (scenePaneOpen) {
                     const float sceneContentHeight = std::max(
                         defaultScenePaneHeight - ImGui::GetFrameHeightWithSpacing(),
@@ -3085,7 +3134,9 @@ int main(int argc, char** argv)
                     ImGui::EndChild();
                 }
             }
-            ImGui::End();
+                ImGui::End();
+            }
+            drawViewerPaneTogglePane(ui, static_cast<float>(width));
 
             woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
@@ -3127,7 +3178,7 @@ int main(int argc, char** argv)
 
             std::optional<HoveredVertex> hoveredVertex;
             const MousePosition mouse = mousePositionInPixels(window.get());
-            if (mouse.x >= viewerPaneWidth
+            if (mouse.x >= activeViewerPaneWidth
                 && mouse.x < static_cast<float>(sceneViewportWidth)
                 && mouse.y >= 0.0f
                 && mouse.y < static_cast<float>(height)) {

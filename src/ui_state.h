@@ -65,6 +65,7 @@ struct UiState {
     CameraInput cameraInput;
     Bounds sceneBounds;
     float viewerPaneWidth = 0.0f;
+    bool viewerPaneVisible = true;
     std::vector<UiFileState> files;
 };
 

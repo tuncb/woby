@@ -68,6 +68,8 @@ void markSceneDirty(UiState& state);
 void clearSceneDirty(UiState& state);
 void updateSceneDirty(UiState& state, const SceneDocument& cleanDocument);
 void setViewerPaneWidth(UiState& state, float value, float minWidth, float maxWidth);
+void setViewerPaneVisible(UiState& state, bool visible);
+void toggleViewerPaneVisible(UiState& state);
 void requestQuit(UiState& state);
 void setCameraOrbiting(UiState& state, bool enabled);
 void setCameraPanning(UiState& state, bool enabled);

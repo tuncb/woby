@@ -405,6 +405,16 @@ void setViewerPaneWidth(UiState& state, float value, float minWidth, float maxWi
         std::max(minWidth, maxWidth));
 }
 
+void setViewerPaneVisible(UiState& state, bool visible)
+{
+    state.viewerPaneVisible = visible;
+}
+
+void toggleViewerPaneVisible(UiState& state)
+{
+    setViewerPaneVisible(state, !state.viewerPaneVisible);
+}
+
 void requestQuit(UiState& state)
 {
     state.running = false;

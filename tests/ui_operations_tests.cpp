@@ -212,6 +212,12 @@ TEST_CASE("event operations update top-level ui state")
     CHECK(state.running);
     woby::requestQuit(state);
     CHECK_FALSE(state.running);
+
+    CHECK(state.viewerPaneVisible);
+    woby::toggleViewerPaneVisible(state);
+    CHECK_FALSE(state.viewerPaneVisible);
+    woby::setViewerPaneVisible(state, true);
+    CHECK(state.viewerPaneVisible);
 }
 
 TEST_CASE("camera panning uses z as the global up axis")
@@ -239,6 +245,7 @@ TEST_CASE("dirty tracking follows persisted scene document only")
     woby::orbitUiCamera(state, 20.0f, 10.0f);
     woby::panUiCamera(state, 5.0f, 3.0f, 720.0f);
     woby::dollyUiCamera(state, 0.5f);
+    woby::toggleViewerPaneVisible(state);
     woby::updateSceneDirty(state, cleanDocument);
     CHECK_FALSE(state.isDirty);
 
