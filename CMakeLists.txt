@@ -20,6 +20,7 @@ add_executable(woby
     src/bgfx_helpers.h
     src/camera.cpp
     src/camera.h
+    src/camera_sdl.cpp
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
@@ -27,6 +28,10 @@ add_executable(woby
     src/obj_mesh.h
     src/scene_file.cpp
     src/scene_file.h
+    src/ui_operations.cpp
+    src/ui_operations.h
+    src/ui_state.cpp
+    src/ui_state.h
 )
 
 target_compile_features(woby PRIVATE cxx_std_20)
@@ -148,11 +153,24 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        src/camera.cpp
+        src/ui_operations.cpp
+        src/ui_operations.h
+        src/ui_state.cpp
+        src/ui_state.h
         tests/dummy_tests.cpp
+        tests/ui_operations_tests.cpp
     )
 
     target_compile_features(woby_tests PRIVATE cxx_std_20)
-    target_link_libraries(woby_tests PRIVATE doctest::doctest)
+    target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(woby_tests PRIVATE doctest::doctest bgfx::bgfx)
+
+    foreach(optional_bgfx_target IN ITEMS bgfx::bx bgfx::bimg)
+        if(TARGET "${optional_bgfx_target}")
+            target_link_libraries(woby_tests PRIVATE "${optional_bgfx_target}")
+        endif()
+    endforeach()
 
     woby_enable_project_warnings(woby_tests)
 
