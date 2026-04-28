@@ -7,8 +7,8 @@
 - Run unit tests and make sure they compile without warnings and all tests pass.
 
 ## Code changes
-- Build woby project in debug mode, the build shoud succeed without any warnings.
-- If there is alrady woby open, terminate the process and re-try.
+- Build woby project in debug mode, the build should succeed without any warnings.
+- If there is already a woby instance open, terminate the process and re-try.
 
 # Build rules
 
