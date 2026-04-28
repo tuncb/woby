@@ -12,7 +12,6 @@ permissions:
   contents: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   VCPKG_DISABLE_METRICS: "1"
 
 jobs:
@@ -47,9 +46,59 @@ jobs:
 
       - name: Set up MSVC
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+            throw "Could not find vswhere.exe at '$vswhere'."
+          }
+
+          $vsPath = & $vswhere `
+            -latest `
+            -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if (-not $vsPath) {
+            throw "Could not find a Visual Studio installation with the MSVC x64 toolchain."
+          }
+
+          $vsDevCmd = Join-Path $vsPath "Common7\Tools\VsDevCmd.bat"
+          if (-not (Test-Path -LiteralPath $vsDevCmd -PathType Leaf)) {
+            throw "Could not find VsDevCmd.bat at '$vsDevCmd'."
+          }
+
+          $beforeEnv = Join-Path $env:RUNNER_TEMP "woby-msvc-env-before.txt"
+          $afterEnv = Join-Path $env:RUNNER_TEMP "woby-msvc-env-after.txt"
+          $envScript = Join-Path $env:RUNNER_TEMP "woby-msvc-env.cmd"
+          Set-Content -LiteralPath $envScript -Encoding ASCII -Value @(
+            "@echo off",
+            "set > ""$beforeEnv""",
+            "call ""$vsDevCmd"" -arch=x64 -host_arch=x64",
+            "if errorlevel 1 exit /b %errorlevel%",
+            "set > ""$afterEnv"""
+          )
+
+          & cmd /s /c "`"$envScript`""
+          if ($LASTEXITCODE -ne 0) {
+            throw "VsDevCmd.bat failed with exit code $LASTEXITCODE."
+          }
+
+          $before = @{}
+          foreach ($line in Get-Content -LiteralPath $beforeEnv) {
+            if ($line -match "^([^=]+)=(.*)$") {
+              $before[$matches[1]] = $matches[2]
+            }
+          }
+
+          foreach ($line in Get-Content -LiteralPath $afterEnv) {
+            if ($line -match "^([^=]+)=(.*)$") {
+              $name = $matches[1]
+              $value = $matches[2]
+              if ((-not $before.ContainsKey($name)) -or ($before[$name] -cne $value)) {
+                "$name=$value" >> $env:GITHUB_ENV
+              }
+            }
+          }
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
