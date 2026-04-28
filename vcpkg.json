@@ -16,6 +16,7 @@
       "features": [
         "sdl3-binding"
       ]
-    }
+    },
+    "doctest"
   ]
 }

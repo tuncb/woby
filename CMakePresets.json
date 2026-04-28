@@ -62,5 +62,22 @@
       "name": "ninja",
       "configurePreset": "ninja"
     }
+  ],
+  "testPresets": [
+    {
+      "name": "vs2026-vcpkg",
+      "configurePreset": "vs2026-vcpkg",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ninja-vcpkg",
+      "configurePreset": "ninja-vcpkg",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
   ]
 }

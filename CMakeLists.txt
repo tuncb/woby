@@ -140,3 +140,21 @@ if(WIN32 AND TARGET SDL3::SDL3-shared)
         VERBATIM
     )
 endif()
+
+include(CTest)
+
+if(BUILD_TESTING)
+    find_package(doctest CONFIG REQUIRED)
+    include(doctest)
+
+    add_executable(woby_tests
+        tests/dummy_tests.cpp
+    )
+
+    target_compile_features(woby_tests PRIVATE cxx_std_20)
+    target_link_libraries(woby_tests PRIVATE doctest::doctest)
+
+    woby_enable_project_warnings(woby_tests)
+
+    doctest_discover_tests(woby_tests)
+endif()
