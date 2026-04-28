@@ -257,6 +257,20 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
             maxRotationDegrees);
         group.color = clampColor(recordGroup.color);
     }
+
+    if (!record.settings.visible) {
+        for (auto& group : file.groupSettings) {
+            group.visible = false;
+        }
+        file.fileSettings.visible = false;
+    } else if (!file.groupSettings.empty()) {
+        file.fileSettings.visible = std::any_of(
+            file.groupSettings.begin(),
+            file.groupSettings.end(),
+            [](const UiGroupState& group) {
+                return group.visible;
+            });
+    }
 }
 
 } // namespace woby

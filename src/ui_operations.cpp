@@ -54,6 +54,37 @@ size_t totalGroupCount(const UiState& state)
     return totalGroupCount(state.files);
 }
 
+size_t countVisibleGroups(const std::vector<UiGroupState>& groups)
+{
+    size_t visibleCount = 0;
+    for (const auto& group : groups) {
+        if (group.visible) {
+            ++visibleCount;
+        }
+    }
+
+    return visibleCount;
+}
+
+size_t countVisibleFileGroups(const UiFileState& file)
+{
+    if (!file.fileSettings.visible) {
+        return 0u;
+    }
+
+    return countVisibleGroups(file.groupSettings);
+}
+
+size_t countVisibleSceneGroups(const UiState& state)
+{
+    size_t visibleCount = 0;
+    for (const auto& file : state.files) {
+        visibleCount += countVisibleFileGroups(file);
+    }
+
+    return visibleCount;
+}
+
 size_t countEnabledGroupRenderMode(const std::vector<UiGroupState>& groups, UiRenderMode mode)
 {
     size_t enabledCount = 0;
@@ -127,11 +158,21 @@ void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled)
 void setFileVisible(UiFileState& file, bool visible)
 {
     file.fileSettings.visible = visible;
+    for (auto& group : file.groupSettings) {
+        group.visible = visible;
+    }
 }
 
 void toggleFileVisible(UiFileState& file)
 {
-    setFileVisible(file, !file.fileSettings.visible);
+    setFileVisible(file, countVisibleFileGroups(file) != file.groupSettings.size());
+}
+
+void setAllSceneVisible(UiState& state, bool visible)
+{
+    for (auto& file : state.files) {
+        setFileVisible(file, visible);
+    }
 }
 
 void setGroupVisible(UiGroupState& group, bool visible)
@@ -142,6 +183,24 @@ void setGroupVisible(UiGroupState& group, bool visible)
 void toggleGroupVisible(UiGroupState& group)
 {
     setGroupVisible(group, !group.visible);
+}
+
+void setGroupVisible(UiFileState& file, UiGroupState& group, bool visible)
+{
+    setGroupVisible(group, visible);
+    if (visible) {
+        file.fileSettings.visible = true;
+        return;
+    }
+
+    if (countVisibleGroups(file.groupSettings) == 0u) {
+        file.fileSettings.visible = false;
+    }
+}
+
+void toggleGroupVisible(UiFileState& file, UiGroupState& group)
+{
+    setGroupVisible(file, group, !group.visible);
 }
 
 void setMasterVertexPointSize(UiState& state, float value)

@@ -63,6 +63,51 @@ TEST_CASE("scene render mode operations update all groups")
     CHECK(woby::countEnabledSceneRenderMode(state, woby::UiRenderMode::solidMesh) == 2u);
 }
 
+TEST_CASE("visibility master operations update descendant groups")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    state.files.push_back(makeFile("b.obj", "b", 2.0f, 3.0f, 1u));
+    state.files[0].mesh.nodes.push_back({"a-extra", 0u, 3u});
+    state.files[0].groupSettings.push_back(woby::UiGroupState{});
+
+    CHECK(woby::totalGroupCount(state) == 3u);
+    CHECK(woby::countVisibleSceneGroups(state) == 3u);
+    CHECK(woby::countVisibleFileGroups(state.files[0]) == 2u);
+
+    woby::setGroupVisible(state.files[0], state.files[0].groupSettings[0], false);
+
+    CHECK(state.files[0].fileSettings.visible);
+    CHECK(woby::countVisibleFileGroups(state.files[0]) == 1u);
+    CHECK(woby::countVisibleSceneGroups(state) == 2u);
+
+    woby::setFileVisible(state.files[0], false);
+
+    CHECK_FALSE(state.files[0].fileSettings.visible);
+    CHECK(woby::countVisibleFileGroups(state.files[0]) == 0u);
+    CHECK_FALSE(state.files[0].groupSettings[0].visible);
+    CHECK_FALSE(state.files[0].groupSettings[1].visible);
+
+    woby::setGroupVisible(state.files[0], state.files[0].groupSettings[1], true);
+
+    CHECK(state.files[0].fileSettings.visible);
+    CHECK_FALSE(state.files[0].groupSettings[0].visible);
+    CHECK(state.files[0].groupSettings[1].visible);
+    CHECK(woby::countVisibleFileGroups(state.files[0]) == 1u);
+
+    woby::setAllSceneVisible(state, false);
+
+    CHECK(woby::countVisibleSceneGroups(state) == 0u);
+    CHECK_FALSE(state.files[0].fileSettings.visible);
+    CHECK_FALSE(state.files[1].fileSettings.visible);
+
+    woby::setAllSceneVisible(state, true);
+
+    CHECK(woby::countVisibleSceneGroups(state) == 3u);
+    CHECK(state.files[0].fileSettings.visible);
+    CHECK(state.files[1].fileSettings.visible);
+}
+
 TEST_CASE("numeric setters clamp values for saved ui state")
 {
     woby::UiState state;
@@ -175,6 +220,7 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     woby::applySceneFileRecord(restored, document.files[0]);
     CHECK_FALSE(restored.fileSettings.visible);
     CHECK(restored.vertexSizeScale == doctest::Approx(2.5f));
+    CHECK_FALSE(restored.groupSettings[0].visible);
     CHECK_FALSE(restored.groupSettings[0].showTriangles);
     CHECK(restored.groupSettings[0].translation[2] == doctest::Approx(9.0f));
     CHECK(restored.groupSettings[0].color[1] == doctest::Approx(0.2f));

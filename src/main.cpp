@@ -912,15 +912,19 @@ bool drawTriStateMasterIconButton(
         totalCount == 0u);
 }
 
-bool drawVisibilityButton(const char* id, bool visible, const char* itemName)
+bool drawVisibilityIconButton(
+    const char* id,
+    RenderModeState state,
+    const char* tooltip,
+    bool disabled)
 {
-    const std::string tooltip = std::string(visible ? "Hide " : "Show ")
-        + itemName;
-    const char* icon = visible ? visibleIcon : hiddenIcon;
+    const char* icon = state == RenderModeState::off ? hiddenIcon : visibleIcon;
     const std::string label = std::string("##") + id;
 
-    pushRenderModeButtonColors(
-        visible ? RenderModeState::on : RenderModeState::off);
+    if (disabled) {
+        ImGui::BeginDisabled();
+    }
+    pushRenderModeButtonColors(state);
     const bool changed = ImGui::Button(
         label.c_str(),
         ImVec2(renderModeButtonSize, renderModeButtonSize));
@@ -935,11 +939,50 @@ bool drawVisibilityButton(const char* id, bool visible, const char* itemName)
         ImGui::GetColorU32(ImGuiCol_Text),
         icon);
     ImGui::PopStyleColor(4);
+    if (state == RenderModeState::mixed) {
+        drawMixedRenderModeMark();
+    }
+    if (disabled) {
+        ImGui::EndDisabled();
+    }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s", tooltip.c_str());
+        ImGui::SetTooltip("%s", tooltip);
     }
 
     return changed;
+}
+
+bool drawTriStateVisibilityButton(
+    const char* id,
+    const char* label,
+    size_t visibleCount,
+    size_t totalCount)
+{
+    const RenderModeState state = renderModeState(visibleCount, totalCount);
+    const std::string tooltip = std::string(label)
+        + " visibility: "
+        + std::to_string(visibleCount)
+        + " of "
+        + std::to_string(totalCount)
+        + " groups shown";
+
+    return drawVisibilityIconButton(
+        id,
+        state,
+        tooltip.c_str(),
+        totalCount == 0u);
+}
+
+bool drawVisibilityButton(const char* id, bool visible, const char* itemName)
+{
+    const std::string tooltip = std::string(visible ? "Hide " : "Show ")
+        + itemName;
+
+    return drawVisibilityIconButton(
+        id,
+        visible ? RenderModeState::on : RenderModeState::off,
+        tooltip.c_str(),
+        false);
 }
 
 float renderModeButtonRowWidth()
@@ -1060,17 +1103,18 @@ void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
 void drawGroupControls(
     const woby::ObjNode& node,
     const GpuNodeRange& range,
-    GroupRenderSettings& settings,
+    LoadedObjFile& file,
     size_t nodeIndex,
     size_t colorIndex,
     float translationSpeed)
 {
     ImGui::PushID(static_cast<int>(nodeIndex));
+    auto& settings = file.groupSettings[nodeIndex];
     const ImGuiStyle& style = ImGui::GetStyle();
     const float rowStartX = ImGui::GetCursorPosX();
     const float controlsStartX = rowStartX + groupControlStartOffset();
     if (drawVisibilityButton("visible", settings.visible, "group")) {
-        woby::toggleGroupVisible(settings);
+        woby::toggleGroupVisible(file, settings);
     }
     ImGui::SameLine();
     const float textStartX = ImGui::GetCursorPosX();
@@ -2347,6 +2391,15 @@ int main(int argc, char** argv)
                         }
                         drawMeshCountLine(vertexCountTotal, triangleCountTotal);
                         const size_t groupCount = woby::totalGroupCount(ui);
+                        const size_t visibleCount = woby::countVisibleSceneGroups(ui);
+                        if (drawTriStateVisibilityButton(
+                                "visible",
+                                "Scene",
+                                visibleCount,
+                                groupCount)) {
+                            woby::setAllSceneVisible(ui, visibleCount != groupCount);
+                        }
+                        ImGui::SameLine();
                         const size_t solidMeshCount = woby::countEnabledSceneRenderMode(
                             ui,
                             woby::UiRenderMode::solidMesh);
@@ -2434,8 +2487,14 @@ int main(int argc, char** argv)
                                 + transformControlStartOffset();
                             const std::string label = fileDisplayName(file.path)
                                 + "##file_" + std::to_string(fileIndex);
-                            if (drawVisibilityButton("visible", file.fileSettings.visible, "file")) {
-                                woby::toggleFileVisible(file);
+                            const size_t fileGroupCount = file.groupSettings.size();
+                            const size_t fileVisibleCount = woby::countVisibleFileGroups(file);
+                            if (drawTriStateVisibilityButton(
+                                    "visible",
+                                    "File",
+                                    fileVisibleCount,
+                                    fileGroupCount)) {
+                                woby::setFileVisible(file, fileVisibleCount != fileGroupCount);
                             }
                             ImGui::SameLine();
                             const std::string tooltipText = file.path.string()
@@ -2478,7 +2537,7 @@ int main(int argc, char** argv)
                                     drawGroupControls(
                                         file.mesh.nodes[nodeIndex],
                                         gpuMesh.nodeRanges[nodeIndex],
-                                        file.groupSettings[nodeIndex],
+                                        file,
                                         nodeIndex,
                                         colorIndex + nodeIndex,
                                         translationSpeed);

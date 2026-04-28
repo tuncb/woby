@@ -16,6 +16,9 @@ enum class UiRenderMode {
 
 [[nodiscard]] size_t totalGroupCount(const std::vector<UiFileState>& files);
 [[nodiscard]] size_t totalGroupCount(const UiState& state);
+[[nodiscard]] size_t countVisibleGroups(const std::vector<UiGroupState>& groups);
+[[nodiscard]] size_t countVisibleFileGroups(const UiFileState& file);
+[[nodiscard]] size_t countVisibleSceneGroups(const UiState& state);
 [[nodiscard]] size_t countEnabledGroupRenderMode(
     const std::vector<UiGroupState>& groups,
     UiRenderMode mode);
@@ -28,8 +31,11 @@ void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled);
 
 void setFileVisible(UiFileState& file, bool visible);
 void toggleFileVisible(UiFileState& file);
+void setAllSceneVisible(UiState& state, bool visible);
 void setGroupVisible(UiGroupState& group, bool visible);
 void toggleGroupVisible(UiGroupState& group);
+void setGroupVisible(UiFileState& file, UiGroupState& group, bool visible);
+void toggleGroupVisible(UiFileState& file, UiGroupState& group);
 
 void setMasterVertexPointSize(UiState& state, float value);
 void setFileVertexSizeScale(UiFileState& file, float value);
