@@ -1,51 +1,51 @@
-# woby OBJ Viewer
+# woby
 
-CMake-based C++ starter project for rendering Wavefront OBJ meshes with SDL3,
-bgfx, tinyobjloader, meshoptimizer, and Dear ImGui.
+woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and saving Wavefront OBJ models.
 
-## Dependencies
+## Features
 
-The intended setup is vcpkg manifest mode. Install vcpkg, then set `VCPKG_ROOT`
-to the vcpkg checkout directory.
+- Load one or more `.obj` model files.
+- Load every `.obj` file in a folder recursively.
+- Drag `.obj` files, `.woby` scenes, or folders into the window.
+- Inspect scenes with orbit, pan, and zoom camera controls.
+- Toggle model, group, grid, and origin visibility.
+- Show solid mesh, triangle edges, and vertices.
+- Edit file and group transforms, opacity, color, and vertex point size.
+- Save and reopen `.woby` scene files.
+
+## Command Line
+
+Run the app:
 
 ```powershell
-$env:VCPKG_ROOT="C:\path\to\vcpkg"
-cmake --preset vs2026-vcpkg
-cmake --build --preset vs2026-vcpkg
 .\build\vs2026-vcpkg\bin\Debug\woby.exe
 ```
 
-Pass OBJ paths to load one or more models:
+Load OBJ files:
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --file C:\path\to\model.obj
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --file C:\path\to\a.obj --file C:\path\to\b.obj
 ```
 
-Load every OBJ file recursively inside a folder:
+Load all OBJ files in a folder recursively:
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --folder C:\path\to\models
 ```
 
-Open a saved woby scene:
+Open a saved scene:
 
 ```powershell
-.\build\vs2026-vcpkg\bin\Debug\woby.exe --woby C:\path\to\scene.woby
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --scene C:\path\to\scene.woby
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --woby C:\path\to\scene.woby
 ```
 
-You can combine a scene with OBJ inputs. The scene opens first, then the OBJ
-files are added to it, leaving the scene dirty:
+Open a scene and add OBJ files to it:
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --scene C:\path\to\scene.woby --file C:\path\to\model.obj
 ```
-
-You can also drag `.obj` files or folders onto the window to add them to the
-current scene. Dragged folders are scanned recursively. Drag a single `.woby`
-scene file by itself to open it with the same unsaved-change prompt as the UI
-open command.
 
 Print the application version:
 
@@ -53,32 +53,18 @@ Print the application version:
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --version
 ```
 
-The Ninja presets are also available, but they must be run from a shell where
-`cl.exe` is already on `PATH`, such as a Visual Studio Developer PowerShell:
+## Build
+
+Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:
 
 ```powershell
-cmake --preset ninja-vcpkg
-cmake --build --preset ninja-vcpkg
+$env:VCPKG_ROOT="C:\path\to\vcpkg"
+cmake --preset vs2026-vcpkg
+cmake --build --preset vs2026-vcpkg
 ```
 
-If dependencies are installed some other way, use the plain Ninja preset and
-make sure CMake can find each package:
+Run tests:
 
 ```powershell
-cmake --preset ninja
-cmake --build --preset ninja
+ctest --preset vs2026-vcpkg
 ```
-
-## Project Layout
-
-- `src/main.cpp` creates the SDL3 window, initializes bgfx, and runs the frame loop.
-- `src/obj_mesh.*` loads OBJ files with tinyobjloader and optimizes buffers with meshoptimizer.
-- `src/imgui_bgfx.*` renders Dear ImGui draw data through bgfx.
-- `cmake/BgfxShaders.cmake` compiles bgfx shaders into runtime assets.
-- `assets/models/cube.obj` is a small sample model.
-
-## Notes
-
-bgfx shaders are compiled at build time with `shaderc`, provided by the `bgfx`
-vcpkg `tools` feature. The app loads shaders from `assets/shaders/<renderer>/`
-next to the executable.
