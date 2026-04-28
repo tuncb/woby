@@ -1,7 +1,5 @@
 #pragma once
 
-#include "camera.h"
-
 #include <array>
 #include <filesystem>
 #include <string>
@@ -20,6 +18,8 @@ struct SceneGroupSettings {
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
     std::array<float, 4> color{};
+
+    friend bool operator==(const SceneGroupSettings&, const SceneGroupSettings&) = default;
 };
 
 struct SceneFileSettings {
@@ -28,11 +28,15 @@ struct SceneFileSettings {
     float opacity = 1.0f;
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
+
+    friend bool operator==(const SceneFileSettings&, const SceneFileSettings&) = default;
 };
 
 struct SceneGroupRecord {
     std::string name;
     SceneGroupSettings settings;
+
+    friend bool operator==(const SceneGroupRecord&, const SceneGroupRecord&) = default;
 };
 
 struct SceneFileRecord {
@@ -40,13 +44,15 @@ struct SceneFileRecord {
     SceneFileSettings settings;
     float vertexSizeScale = 1.0f;
     std::vector<SceneGroupRecord> groups;
+
+    friend bool operator==(const SceneFileRecord&, const SceneFileRecord&) = default;
 };
 
 struct SceneDocument {
     float masterVertexPointSize = 4.0f;
-    SceneCamera camera;
-    bool cameraLoaded = false;
     std::vector<SceneFileRecord> files;
+
+    friend bool operator==(const SceneDocument&, const SceneDocument&) = default;
 };
 
 [[nodiscard]] SceneDocument readSceneDocument(const std::filesystem::path& scenePath);

@@ -3,7 +3,11 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <limits>
+#include <string>
 
 namespace {
 
@@ -179,12 +183,35 @@ TEST_CASE("event operations update top-level ui state")
     CHECK_FALSE(state.running);
 }
 
+TEST_CASE("dirty tracking follows persisted scene document only")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    const woby::SceneDocument cleanDocument = woby::createSceneDocument(state);
+
+    woby::updateSceneDirty(state, cleanDocument);
+    CHECK_FALSE(state.isDirty);
+
+    woby::orbitUiCamera(state, 20.0f, 10.0f);
+    woby::panUiCamera(state, 5.0f, 3.0f, 720.0f);
+    woby::dollyUiCamera(state, 0.5f);
+    woby::updateSceneDirty(state, cleanDocument);
+    CHECK_FALSE(state.isDirty);
+
+    woby::setMasterVertexPointSize(state, 9.0f);
+    woby::updateSceneDirty(state, cleanDocument);
+    CHECK(state.isDirty);
+
+    const woby::SceneDocument newCleanDocument = woby::createSceneDocument(state);
+    woby::updateSceneDirty(state, newCleanDocument);
+    CHECK_FALSE(state.isDirty);
+}
+
 TEST_CASE("scene document mapping preserves ui-editable fields")
 {
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
     state.masterVertexPointSize = 9.0f;
-    state.camera.distance = 42.0f;
     auto& file = state.files[0];
     auto& group = file.groupSettings[0];
 
@@ -207,7 +234,6 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     REQUIRE(document.files.size() == 1u);
     REQUIRE(document.files[0].groups.size() == 1u);
     CHECK(document.masterVertexPointSize == doctest::Approx(9.0f));
-    CHECK(document.camera.distance == doctest::Approx(42.0f));
     CHECK_FALSE(document.files[0].settings.visible);
     CHECK(document.files[0].vertexSizeScale == doctest::Approx(2.5f));
     CHECK_FALSE(document.files[0].groups[0].settings.visible);
@@ -224,6 +250,30 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     CHECK_FALSE(restored.groupSettings[0].showTriangles);
     CHECK(restored.groupSettings[0].translation[2] == doctest::Approx(9.0f));
     CHECK(restored.groupSettings[0].color[1] == doctest::Approx(0.2f));
+}
+
+TEST_CASE("scene document writer omits camera state")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    state.camera.distance = 42.0f;
+    const woby::SceneDocument document = woby::createSceneDocument(state);
+    const std::filesystem::path path = std::filesystem::temp_directory_path()
+        / "woby_scene_document_writer_omits_camera_state.woby";
+
+    woby::writeSceneDocument(path, document);
+    std::string text;
+    {
+        std::ifstream stream(path);
+        text.assign(
+            std::istreambuf_iterator<char>(stream),
+            std::istreambuf_iterator<char>());
+    }
+    std::filesystem::remove(path);
+
+    CHECK(text.find("[camera]") == std::string::npos);
+    CHECK(text.find("distance") == std::string::npos);
+    CHECK(text.find("vertical_fov_degrees") == std::string::npos);
 }
 
 TEST_CASE("scene record apply clamps invalid persisted numeric values")

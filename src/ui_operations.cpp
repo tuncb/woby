@@ -150,8 +150,15 @@ void setAllGroupRenderModes(std::vector<UiGroupState>& groups, UiRenderMode mode
 
 void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled)
 {
+    bool changed = false;
     for (auto& file : state.files) {
+        for (const auto& group : file.groupSettings) {
+            changed = changed || groupRenderModeEnabled(group, mode) != enabled;
+        }
         setAllGroupRenderModes(file.groupSettings, mode, enabled);
+    }
+    if (changed) {
+        markSceneDirty(state);
     }
 }
 
@@ -170,8 +177,16 @@ void toggleFileVisible(UiFileState& file)
 
 void setAllSceneVisible(UiState& state, bool visible)
 {
+    bool changed = false;
     for (auto& file : state.files) {
+        changed = changed || file.fileSettings.visible != visible;
+        for (const auto& group : file.groupSettings) {
+            changed = changed || group.visible != visible;
+        }
         setFileVisible(file, visible);
+    }
+    if (changed) {
+        markSceneDirty(state);
     }
 }
 
@@ -205,11 +220,15 @@ void toggleGroupVisible(UiFileState& file, UiGroupState& group)
 
 void setMasterVertexPointSize(UiState& state, float value)
 {
-    state.masterVertexPointSize = clampFinite(
+    const float clampedValue = clampFinite(
         value,
         minVertexPointSize,
         maxVertexPointSize,
         defaultMasterVertexPointSize);
+    if (state.masterVertexPointSize != clampedValue) {
+        state.masterVertexPointSize = clampedValue;
+        markSceneDirty(state);
+    }
 }
 
 void setFileVertexSizeScale(UiFileState& file, float value)
@@ -328,7 +347,28 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
     state.files.erase(state.files.begin() + static_cast<std::ptrdiff_t>(fileIndex));
     recalculateSceneBounds(state);
     frameCameraToScene(state);
+    markSceneDirty(state);
     return true;
+}
+
+void setSceneDirty(UiState& state, bool dirty)
+{
+    state.isDirty = dirty;
+}
+
+void markSceneDirty(UiState& state)
+{
+    setSceneDirty(state, true);
+}
+
+void clearSceneDirty(UiState& state)
+{
+    setSceneDirty(state, false);
+}
+
+void updateSceneDirty(UiState& state, const SceneDocument& cleanDocument)
+{
+    setSceneDirty(state, createSceneDocument(state) != cleanDocument);
 }
 
 void setViewerPaneWidth(UiState& state, float value, float minWidth, float maxWidth)

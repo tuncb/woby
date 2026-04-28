@@ -727,6 +727,34 @@ std::string fileDisplayName(const std::filesystem::path& path)
     return path.string();
 }
 
+std::filesystem::path normalizedPath(const std::filesystem::path& path)
+{
+    return std::filesystem::absolute(path).lexically_normal();
+}
+
+std::string appWindowTitle(
+    const std::optional<std::filesystem::path>& currentScenePath,
+    bool isDirty)
+{
+    std::string title = "woby - ";
+    title += currentScenePath.has_value()
+        ? fileDisplayName(currentScenePath.value())
+        : "untitled";
+    if (isDirty) {
+        title += '*';
+    }
+
+    return title;
+}
+
+void updateAppWindowTitle(
+    SDL_Window* window,
+    const std::optional<std::filesystem::path>& currentScenePath,
+    bool isDirty)
+{
+    SDL_SetWindowTitle(window, appWindowTitle(currentScenePath, isDirty).c_str());
+}
+
 void setLastItemTooltip(const char* text)
 {
     if (ImGui::IsItemHovered()) {
@@ -1934,6 +1962,7 @@ bool appendObjFiles(
     if (addedCount > 0u) {
         woby::recalculateSceneBounds(state);
         woby::frameCameraToScene(state);
+        woby::markSceneDirty(state);
     }
 
     return addedCount > 0u;
@@ -1999,15 +2028,45 @@ void loadScene(
     state.files = std::move(loadedFiles);
     woby::setMasterVertexPointSize(state, document.masterVertexPointSize);
     woby::recalculateSceneBounds(state);
-    state.camera = document.cameraLoaded ? document.camera : woby::frameCameraBounds(state.sceneBounds);
+    state.camera = woby::frameCameraBounds(state.sceneBounds);
 }
 
-void saveScene(
+std::filesystem::path saveScene(
     const std::filesystem::path& requestedScenePath,
     const woby::UiState& state)
 {
     const std::filesystem::path scenePath = woby::sceneSavePathWithExtension(requestedScenePath);
     woby::writeSceneDocument(scenePath, woby::createSceneDocument(state));
+    return scenePath;
+}
+
+void loadSceneFromPath(
+    const std::filesystem::path& requestedScenePath,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout,
+    woby::UiState& state,
+    std::vector<LoadedObjRuntime>& runtimes,
+    std::optional<std::filesystem::path>& currentScenePath,
+    woby::SceneDocument& cleanSceneDocument)
+{
+    const std::filesystem::path scenePath = normalizedPath(requestedScenePath);
+    loadScene(scenePath, meshLayout, pointSpriteLayout, state, runtimes);
+    currentScenePath = scenePath;
+    cleanSceneDocument = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state);
+}
+
+std::filesystem::path saveSceneToPath(
+    const std::filesystem::path& requestedScenePath,
+    woby::UiState& state,
+    std::optional<std::filesystem::path>& currentScenePath,
+    woby::SceneDocument& cleanSceneDocument)
+{
+    const std::filesystem::path scenePath = normalizedPath(saveScene(requestedScenePath, state));
+    currentScenePath = scenePath;
+    cleanSceneDocument = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state);
+    return scenePath;
 }
 
 void setToastMessage(ToastMessage& toast, std::string text)
@@ -2150,6 +2209,9 @@ int main(int argc, char** argv)
         std::vector<LoadedObjRuntime> runtimes;
         ui.files = loadObjFiles(modelPaths, layout, pointLayout, runtimes);
         woby::recalculateSceneBounds(ui);
+        std::optional<std::filesystem::path> currentScenePath;
+        woby::SceneDocument cleanSceneDocument;
+        woby::updateSceneDirty(ui, cleanSceneDocument);
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
@@ -2177,6 +2239,9 @@ int main(int argc, char** argv)
         auto& viewerPaneWidth = ui.viewerPaneWidth;
         static ObjFileDialogState objFileDialogState;
         static SceneFileDialogState sceneFileDialogState;
+        std::optional<std::filesystem::path> pendingDirtyOpenScenePath;
+        bool requestDirtyOpenWarning = false;
+        bool requestDirtyQuitWarning = false;
         ToastMessage toast;
         uint64_t observedObjFileDialogStatusVersion = 0;
         uint64_t observedSceneFileDialogStatusVersion = 0;
@@ -2190,10 +2255,18 @@ int main(int argc, char** argv)
                 ImGui_ImplSDL3_ProcessEvent(&event);
 
                 if (event.type == SDL_EVENT_QUIT) {
-                    woby::requestQuit(ui);
+                    if (ui.isDirty) {
+                        requestDirtyQuitWarning = true;
+                    } else {
+                        woby::requestQuit(ui);
+                    }
                 }
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
-                    woby::requestQuit(ui);
+                    if (ui.isDirty) {
+                        requestDirtyQuitWarning = true;
+                    } else {
+                        woby::requestQuit(ui);
+                    }
                 }
                 if (event.type == SDL_EVENT_KEY_DOWN
                     && event.key.key == SDLK_R
@@ -2253,25 +2326,35 @@ int main(int argc, char** argv)
 
             const auto pendingOpenScenePath = takePendingOpenScenePath(sceneFileDialogState);
             if (pendingOpenScenePath.has_value()) {
-                try {
-                    loadScene(
-                        pendingOpenScenePath.value(),
-                        layout,
-                        pointLayout,
-                        ui,
-                        runtimes);
-                    setToastMessage(toast, "Opened scene " + fileDisplayName(pendingOpenScenePath.value()));
-                } catch (const std::exception& exception) {
-                    setSceneFileDialogStatus(
-                        sceneFileDialogState,
-                        std::string("Open scene failed: ") + exception.what());
+                if (ui.isDirty) {
+                    pendingDirtyOpenScenePath = normalizedPath(pendingOpenScenePath.value());
+                    requestDirtyOpenWarning = true;
+                } else {
+                    try {
+                        loadSceneFromPath(
+                            pendingOpenScenePath.value(),
+                            layout,
+                            pointLayout,
+                            ui,
+                            runtimes,
+                            currentScenePath,
+                            cleanSceneDocument);
+                        setToastMessage(toast, "Opened scene " + fileDisplayName(pendingOpenScenePath.value()));
+                    } catch (const std::exception& exception) {
+                        setSceneFileDialogStatus(
+                            sceneFileDialogState,
+                            std::string("Open scene failed: ") + exception.what());
+                    }
                 }
             }
             const auto pendingSaveScenePath = takePendingSaveScenePath(sceneFileDialogState);
             if (pendingSaveScenePath.has_value()) {
                 try {
-                    const auto scenePath = woby::sceneSavePathWithExtension(pendingSaveScenePath.value());
-                    saveScene(scenePath, ui);
+                    const auto scenePath = saveSceneToPath(
+                        pendingSaveScenePath.value(),
+                        ui,
+                        currentScenePath,
+                        cleanSceneDocument);
                     setToastMessage(toast, "Saved scene " + fileDisplayName(scenePath));
                 } catch (const std::exception& exception) {
                     setSceneFileDialogStatus(
@@ -2285,6 +2368,8 @@ int main(int argc, char** argv)
             if (!sceneDialogStatus.empty()) {
                 setToastMessage(toast, sceneDialogStatus);
             }
+            woby::updateSceneDirty(ui, cleanSceneDocument);
+            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
 
             const auto now = std::chrono::steady_clock::now();
             const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();
@@ -2310,6 +2395,69 @@ int main(int argc, char** argv)
 
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
+            if (requestDirtyOpenWarning) {
+                ImGui::OpenPopup("Unsaved scene changes");
+                requestDirtyOpenWarning = false;
+            }
+            if (ImGui::BeginPopupModal(
+                    "Unsaved scene changes",
+                    nullptr,
+                    ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextUnformatted("The current scene has unsaved changes.");
+                if (pendingDirtyOpenScenePath.has_value()) {
+                    ImGui::Text(
+                        "Open %s and discard them?",
+                        fileDisplayName(pendingDirtyOpenScenePath.value()).c_str());
+                }
+                if (ImGui::Button("Open")) {
+                    if (pendingDirtyOpenScenePath.has_value()) {
+                        try {
+                            const auto scenePath = pendingDirtyOpenScenePath.value();
+                            loadSceneFromPath(
+                                scenePath,
+                                layout,
+                                pointLayout,
+                                ui,
+                                runtimes,
+                                currentScenePath,
+                                cleanSceneDocument);
+                            setToastMessage(toast, "Opened scene " + fileDisplayName(scenePath));
+                        } catch (const std::exception& exception) {
+                            setSceneFileDialogStatus(
+                                sceneFileDialogState,
+                                std::string("Open scene failed: ") + exception.what());
+                        }
+                    }
+                    pendingDirtyOpenScenePath.reset();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel")) {
+                    pendingDirtyOpenScenePath.reset();
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+            if (requestDirtyQuitWarning) {
+                ImGui::OpenPopup("Unsaved scene changes##quit");
+                requestDirtyQuitWarning = false;
+            }
+            if (ImGui::BeginPopupModal(
+                    "Unsaved scene changes##quit",
+                    nullptr,
+                    ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextUnformatted("The current scene has unsaved changes.");
+                ImGui::TextUnformatted("Exit and discard them?");
+                if (ImGui::Button("Exit")) {
+                    woby::requestQuit(ui);
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Cancel")) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
             const float availableHeight = static_cast<float>(height);
             ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
             ImGui::SetNextWindowSize(
@@ -2375,7 +2523,22 @@ int main(int argc, char** argv)
                         if (ImGui::Button(
                                 std::string(saveSceneIcon).append("##save_scene").c_str(),
                                 ImVec2(renderModeButtonSize, renderModeButtonSize))) {
-                            showSaveSceneDialog(window.get(), sceneFileDialogState);
+                            if (currentScenePath.has_value()) {
+                                try {
+                                    const auto scenePath = saveSceneToPath(
+                                        currentScenePath.value(),
+                                        ui,
+                                        currentScenePath,
+                                        cleanSceneDocument);
+                                    setToastMessage(toast, "Saved scene " + fileDisplayName(scenePath));
+                                } catch (const std::exception& exception) {
+                                    setSceneFileDialogStatus(
+                                        sceneFileDialogState,
+                                        std::string("Save scene failed: ") + exception.what());
+                                }
+                            } else {
+                                showSaveSceneDialog(window.get(), sceneFileDialogState);
+                            }
                         }
                         if (anyFileDialogOpen) {
                             ImGui::EndDisabled();
@@ -2557,6 +2720,9 @@ int main(int argc, char** argv)
                 }
             }
             ImGui::End();
+
+            woby::updateSceneDirty(ui, cleanSceneDocument);
+            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
 
             const uint32_t sceneViewportWidth = std::max(width, 1u);
             bgfx::setViewRect(

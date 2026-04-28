@@ -325,24 +325,6 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
     }
 }
 
-void assignSceneCameraValue(SceneDocument& document, const std::string& key, std::string_view value)
-{
-    document.cameraLoaded = true;
-    if (key == "target") {
-        document.camera.target = parseTomlFloat3(value);
-    } else if (key == "yaw_radians") {
-        document.camera.yawRadians = parseTomlFloat(value);
-    } else if (key == "pitch_radians") {
-        document.camera.pitchRadians = parseTomlFloat(value);
-    } else if (key == "distance") {
-        document.camera.distance = parseTomlFloat(value);
-    } else if (key == "vertical_fov_degrees") {
-        document.camera.verticalFovDegrees = parseTomlFloat(value);
-    } else if (key == "near_plane") {
-        document.camera.nearPlane = parseTomlFloat(value);
-    }
-}
-
 } // namespace
 
 std::filesystem::path sceneAbsolutePath(
@@ -374,7 +356,6 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
     enum class Section {
         root,
-        camera,
         file,
         group,
     };
@@ -392,10 +373,6 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
 
         try {
-            if (text == "[camera]") {
-                section = Section::camera;
-                continue;
-            }
             if (text == "[[files]]") {
                 document.files.emplace_back();
                 section = Section::file;
@@ -426,8 +403,6 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 } else if (key == "master_vertex_point_size") {
                     document.masterVertexPointSize = parseTomlFloat(value);
                 }
-            } else if (section == Section::camera) {
-                assignSceneCameraValue(document, key, value);
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
             } else {
@@ -464,26 +439,6 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n\n";
-
-    stream << "[camera]\n";
-    stream << "target = ";
-    writeTomlFloat3(stream, document.camera.target);
-    stream << "\n";
-    stream << "yaw_radians = ";
-    writeTomlFloat(stream, document.camera.yawRadians);
-    stream << "\n";
-    stream << "pitch_radians = ";
-    writeTomlFloat(stream, document.camera.pitchRadians);
-    stream << "\n";
-    stream << "distance = ";
-    writeTomlFloat(stream, document.camera.distance);
-    stream << "\n";
-    stream << "vertical_fov_degrees = ";
-    writeTomlFloat(stream, document.camera.verticalFovDegrees);
-    stream << "\n";
-    stream << "near_plane = ";
-    writeTomlFloat(stream, document.camera.nearPlane);
-    stream << "\n";
 
     for (const auto& file : document.files) {
         const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);

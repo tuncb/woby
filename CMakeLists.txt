@@ -154,6 +154,8 @@ if(BUILD_TESTING)
 
     add_executable(woby_tests
         src/camera.cpp
+        src/scene_file.cpp
+        src/scene_file.h
         src/ui_operations.cpp
         src/ui_operations.h
         src/ui_state.cpp

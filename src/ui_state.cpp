@@ -199,8 +199,6 @@ SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
     document.masterVertexPointSize = state.masterVertexPointSize;
-    document.camera = state.camera;
-    document.cameraLoaded = true;
     document.files.reserve(state.files.size());
 
     for (const auto& file : state.files) {

@@ -55,6 +55,7 @@ struct UiFileState {
 
 struct UiState {
     bool running = true;
+    bool isDirty = false;
     float masterVertexPointSize = defaultMasterVertexPointSize;
     SceneCamera camera;
     CameraInput cameraInput;
