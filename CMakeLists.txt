@@ -21,6 +21,8 @@ add_executable(woby
     src/camera.cpp
     src/camera.h
     src/camera_sdl.cpp
+    src/file_discovery.cpp
+    src/file_discovery.h
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
@@ -154,6 +156,8 @@ if(BUILD_TESTING)
 
     add_executable(woby_tests
         src/camera.cpp
+        src/file_discovery.cpp
+        src/file_discovery.h
         src/scene_file.cpp
         src/scene_file.h
         src/ui_operations.cpp
@@ -161,6 +165,7 @@ if(BUILD_TESTING)
         src/ui_state.cpp
         src/ui_state.h
         tests/dummy_tests.cpp
+        tests/file_discovery_tests.cpp
         tests/ui_operations_tests.cpp
     )
 

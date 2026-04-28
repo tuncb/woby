@@ -22,11 +22,16 @@ Pass OBJ paths to load one or more models:
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --file C:\path\to\a.obj --file C:\path\to\b.obj
 ```
 
-Load every OBJ file directly inside a folder:
+Load every OBJ file recursively inside a folder:
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --folder C:\path\to\models
 ```
+
+You can also drag `.obj` files or folders onto the window to add them to the
+current scene. Dragged folders are scanned recursively. Drag a single `.woby`
+scene file by itself to open it with the same unsaved-change prompt as the UI
+open command.
 
 Print the application version:
 

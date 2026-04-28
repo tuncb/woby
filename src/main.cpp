@@ -1,5 +1,6 @@
 #include "bgfx_helpers.h"
 #include "camera.h"
+#include "file_discovery.h"
 #include "imgui_bgfx.h"
 #include "obj_mesh.h"
 #include "scene_file.h"
@@ -21,7 +22,6 @@
 #include <cmath>
 #include <cstdio>
 #include <cstddef>
-#include <cctype>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -30,6 +30,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -249,6 +250,12 @@ struct SceneFileDialogState {
     uint64_t statusVersion = 0;
     bool openDialogOpen = false;
     bool saveDialogOpen = false;
+};
+
+struct DragDropState {
+    std::vector<std::filesystem::path> batchPaths;
+    std::vector<std::filesystem::path> pendingPaths;
+    bool active = false;
 };
 
 struct ToastMessage {
@@ -1570,20 +1577,6 @@ CommandLineOptions parseCommandLine(int argc, char** argv)
     return options;
 }
 
-std::string lowercase(std::string value)
-{
-    for (char& character : value) {
-        character = static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
-    }
-
-    return value;
-}
-
-bool isObjPath(const std::filesystem::path& path)
-{
-    return lowercase(path.extension().string()) == ".obj";
-}
-
 void SDLCALL objFileDialogCallback(void* userdata, const char* const* filelist, int filter)
 {
     (void)filter;
@@ -1821,20 +1814,9 @@ void appendFolderObjPaths(
     const std::filesystem::path& folder,
     std::vector<std::filesystem::path>& modelPaths)
 {
-    if (!std::filesystem::is_directory(folder)) {
-        throw std::runtime_error("--folder path is not a folder: " + folder.string());
-    }
-
-    std::vector<std::filesystem::path> folderPaths;
-    for (const auto& entry : std::filesystem::directory_iterator(folder)) {
-        if (entry.is_regular_file() && isObjPath(entry.path())) {
-            folderPaths.push_back(entry.path());
-        }
-    }
-
-    std::sort(folderPaths.begin(), folderPaths.end());
+    const std::vector<std::filesystem::path> folderPaths = woby::collectObjPathsRecursive(folder);
     if (folderPaths.empty()) {
-        throw std::runtime_error("--folder did not contain OBJ files: " + folder.string());
+        throw std::runtime_error("--folder did not contain OBJ files recursively: " + folder.string());
     }
 
     modelPaths.insert(modelPaths.end(), folderPaths.begin(), folderPaths.end());
@@ -1928,7 +1910,7 @@ bool appendObjFiles(
     runtimes.reserve(runtimes.size() + modelPaths.size());
 
     for (const auto& modelPath : modelPaths) {
-        if (!isObjPath(modelPath)) {
+        if (!woby::isObjPath(modelPath)) {
             ++skippedCount;
             continue;
         }
@@ -1966,6 +1948,111 @@ bool appendObjFiles(
     }
 
     return addedCount > 0u;
+}
+
+void pushDroppedPath(DragDropState& state, const char* data)
+{
+    if (data == nullptr) {
+        return;
+    }
+
+    if (state.active) {
+        state.batchPaths.emplace_back(data);
+    } else {
+        state.pendingPaths.emplace_back(data);
+    }
+}
+
+void finishDropBatch(DragDropState& state)
+{
+    state.pendingPaths.insert(
+        state.pendingPaths.end(),
+        state.batchPaths.begin(),
+        state.batchPaths.end());
+    state.batchPaths.clear();
+    state.active = false;
+}
+
+std::vector<std::filesystem::path> takePendingDropPaths(DragDropState& state)
+{
+    std::vector<std::filesystem::path> paths;
+    paths.swap(state.pendingPaths);
+    return paths;
+}
+
+struct DroppedPathClassification {
+    std::vector<std::filesystem::path> objPaths;
+    std::vector<std::filesystem::path> scenePaths;
+    size_t unsupportedCount = 0;
+    size_t emptyFolderCount = 0;
+    size_t failedFolderCount = 0;
+    std::string lastFolderError;
+};
+
+DroppedPathClassification classifyDroppedPaths(
+    const std::vector<std::filesystem::path>& paths)
+{
+    DroppedPathClassification classification;
+
+    for (const auto& path : paths) {
+        std::error_code error;
+        if (std::filesystem::is_directory(path, error)) {
+            try {
+                const std::vector<std::filesystem::path> folderObjPaths =
+                    woby::collectObjPathsRecursive(path);
+                if (folderObjPaths.empty()) {
+                    ++classification.emptyFolderCount;
+                } else {
+                    classification.objPaths.insert(
+                        classification.objPaths.end(),
+                        folderObjPaths.begin(),
+                        folderObjPaths.end());
+                }
+            } catch (const std::exception& exception) {
+                ++classification.failedFolderCount;
+                classification.lastFolderError = exception.what();
+            }
+            continue;
+        }
+
+        if (woby::isObjPath(path)) {
+            classification.objPaths.push_back(path);
+            continue;
+        }
+
+        if (woby::isWobyPath(path)) {
+            classification.scenePaths.push_back(path);
+            continue;
+        }
+
+        ++classification.unsupportedCount;
+    }
+
+    return classification;
+}
+
+void appendDropClassificationStatus(
+    std::string& status,
+    const DroppedPathClassification& classification)
+{
+    if (classification.unsupportedCount > 0u) {
+        status += ", skipped " + std::to_string(classification.unsupportedCount) + " unsupported";
+    }
+    if (classification.emptyFolderCount > 0u) {
+        status += ", skipped " + std::to_string(classification.emptyFolderCount) + " empty folder";
+        if (classification.emptyFolderCount != 1u) {
+            status += "s";
+        }
+    }
+    if (classification.failedFolderCount > 0u) {
+        status += ", failed " + std::to_string(classification.failedFolderCount) + " folder";
+        if (classification.failedFolderCount != 1u) {
+            status += "s";
+        }
+        if (!classification.lastFolderError.empty()) {
+            status += ": " + classification.lastFolderError;
+        }
+    }
 }
 
 void destroyObjRuntimes(std::vector<LoadedObjRuntime>& runtimes)
@@ -2073,6 +2160,98 @@ void setToastMessage(ToastMessage& toast, std::string text)
 {
     toast.text = std::move(text);
     toast.startedAt = std::chrono::steady_clock::now();
+}
+
+void openSceneOrRequestDirtyWarning(
+    const std::filesystem::path& scenePath,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout,
+    woby::UiState& state,
+    std::vector<LoadedObjRuntime>& runtimes,
+    std::optional<std::filesystem::path>& currentScenePath,
+    woby::SceneDocument& cleanSceneDocument,
+    SceneFileDialogState& sceneFileDialogState,
+    ToastMessage& toast,
+    std::optional<std::filesystem::path>& pendingDirtyOpenScenePath,
+    bool& requestDirtyOpenWarning)
+{
+    if (state.isDirty) {
+        pendingDirtyOpenScenePath = normalizedPath(scenePath);
+        requestDirtyOpenWarning = true;
+        return;
+    }
+
+    try {
+        loadSceneFromPath(
+            scenePath,
+            meshLayout,
+            pointSpriteLayout,
+            state,
+            runtimes,
+            currentScenePath,
+            cleanSceneDocument);
+        setToastMessage(toast, "Opened scene " + fileDisplayName(scenePath));
+    } catch (const std::exception& exception) {
+        setSceneFileDialogStatus(
+            sceneFileDialogState,
+            std::string("Open scene failed: ") + exception.what());
+    }
+}
+
+void processDroppedPaths(
+    const std::vector<std::filesystem::path>& paths,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout,
+    woby::UiState& state,
+    std::vector<LoadedObjRuntime>& runtimes,
+    std::optional<std::filesystem::path>& currentScenePath,
+    woby::SceneDocument& cleanSceneDocument,
+    SceneFileDialogState& sceneFileDialogState,
+    ToastMessage& toast,
+    std::optional<std::filesystem::path>& pendingDirtyOpenScenePath,
+    bool& requestDirtyOpenWarning)
+{
+    const DroppedPathClassification classification = classifyDroppedPaths(paths);
+    const size_t extraPathCount = classification.objPaths.size()
+        + classification.unsupportedCount
+        + classification.emptyFolderCount
+        + classification.failedFolderCount;
+
+    if (!classification.scenePaths.empty()) {
+        if (classification.scenePaths.size() != 1u || extraPathCount > 0u) {
+            setToastMessage(toast, "Drop one .woby scene file by itself");
+            return;
+        }
+
+        openSceneOrRequestDirtyWarning(
+            classification.scenePaths[0],
+            meshLayout,
+            pointSpriteLayout,
+            state,
+            runtimes,
+            currentScenePath,
+            cleanSceneDocument,
+            sceneFileDialogState,
+            toast,
+            pendingDirtyOpenScenePath,
+            requestDirtyOpenWarning);
+        return;
+    }
+
+    std::string status;
+    if (classification.objPaths.empty()) {
+        status = "No OBJ files added";
+    } else {
+        (void)appendObjFiles(
+            classification.objPaths,
+            meshLayout,
+            pointSpriteLayout,
+            state,
+            runtimes,
+            status);
+    }
+    appendDropClassificationStatus(status, classification);
+    setToastMessage(toast, std::move(status));
 }
 
 void drawToastMessage(const ToastMessage& toast, uint32_t width)
@@ -2239,6 +2418,7 @@ int main(int argc, char** argv)
         auto& viewerPaneWidth = ui.viewerPaneWidth;
         static ObjFileDialogState objFileDialogState;
         static SceneFileDialogState sceneFileDialogState;
+        DragDropState dragDropState;
         std::optional<std::filesystem::path> pendingDirtyOpenScenePath;
         bool requestDirtyOpenWarning = false;
         bool requestDirtyQuitWarning = false;
@@ -2260,6 +2440,16 @@ int main(int argc, char** argv)
                     } else {
                         woby::requestQuit(ui);
                     }
+                }
+                if (event.type == SDL_EVENT_DROP_BEGIN) {
+                    dragDropState.batchPaths.clear();
+                    dragDropState.active = true;
+                }
+                if (event.type == SDL_EVENT_DROP_FILE) {
+                    pushDroppedPath(dragDropState, event.drop.data);
+                }
+                if (event.type == SDL_EVENT_DROP_COMPLETE) {
+                    finishDropBatch(dragDropState);
                 }
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
                     if (ui.isDirty) {
@@ -2326,26 +2516,18 @@ int main(int argc, char** argv)
 
             const auto pendingOpenScenePath = takePendingOpenScenePath(sceneFileDialogState);
             if (pendingOpenScenePath.has_value()) {
-                if (ui.isDirty) {
-                    pendingDirtyOpenScenePath = normalizedPath(pendingOpenScenePath.value());
-                    requestDirtyOpenWarning = true;
-                } else {
-                    try {
-                        loadSceneFromPath(
-                            pendingOpenScenePath.value(),
-                            layout,
-                            pointLayout,
-                            ui,
-                            runtimes,
-                            currentScenePath,
-                            cleanSceneDocument);
-                        setToastMessage(toast, "Opened scene " + fileDisplayName(pendingOpenScenePath.value()));
-                    } catch (const std::exception& exception) {
-                        setSceneFileDialogStatus(
-                            sceneFileDialogState,
-                            std::string("Open scene failed: ") + exception.what());
-                    }
-                }
+                openSceneOrRequestDirtyWarning(
+                    pendingOpenScenePath.value(),
+                    layout,
+                    pointLayout,
+                    ui,
+                    runtimes,
+                    currentScenePath,
+                    cleanSceneDocument,
+                    sceneFileDialogState,
+                    toast,
+                    pendingDirtyOpenScenePath,
+                    requestDirtyOpenWarning);
             }
             const auto pendingSaveScenePath = takePendingSaveScenePath(sceneFileDialogState);
             if (pendingSaveScenePath.has_value()) {
@@ -2367,6 +2549,22 @@ int main(int argc, char** argv)
                 observedSceneFileDialogStatusVersion);
             if (!sceneDialogStatus.empty()) {
                 setToastMessage(toast, sceneDialogStatus);
+            }
+
+            const auto droppedPaths = takePendingDropPaths(dragDropState);
+            if (!droppedPaths.empty()) {
+                processDroppedPaths(
+                    droppedPaths,
+                    layout,
+                    pointLayout,
+                    ui,
+                    runtimes,
+                    currentScenePath,
+                    cleanSceneDocument,
+                    sceneFileDialogState,
+                    toast,
+                    pendingDirtyOpenScenePath,
+                    requestDirtyOpenWarning);
             }
             woby::updateSceneDirty(ui, cleanSceneDocument);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
