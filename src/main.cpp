@@ -1529,6 +1529,7 @@ struct ModelPathOption {
 
 struct CommandLineOptions {
     bool showVersion = false;
+    std::optional<std::filesystem::path> scenePath;
     std::vector<ModelPathOption> inputPaths;
 };
 
@@ -1552,6 +1553,18 @@ CommandLineOptions parseCommandLine(int argc, char** argv)
             ModelPathOption inputPath;
             inputPath.path = argv[++index];
             options.inputPaths.push_back(std::move(inputPath));
+            continue;
+        }
+
+        if (argument == "--woby" || argument == "--scene") {
+            if (index + 1 >= argc) {
+                throw std::runtime_error(argument + " requires a woby scene filename.");
+            }
+            if (options.scenePath.has_value()) {
+                throw std::runtime_error("Only one woby scene file can be specified.");
+            }
+
+            options.scenePath = argv[++index];
             continue;
         }
 
@@ -1857,12 +1870,13 @@ std::vector<LoadedObjFile> loadObjFiles(
     const std::vector<std::filesystem::path>& modelPaths,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
-    std::vector<LoadedObjRuntime>& runtimes)
+    std::vector<LoadedObjRuntime>& runtimes,
+    size_t firstColorIndex = 0)
 {
     std::vector<LoadedObjFile> files;
     files.reserve(modelPaths.size());
     runtimes.reserve(modelPaths.size());
-    size_t colorIndex = 0;
+    size_t colorIndex = firstColorIndex;
 
     try {
         for (const auto& modelPath : modelPaths) {
@@ -1877,6 +1891,38 @@ std::vector<LoadedObjFile> loadObjFiles(
     }
 
     return files;
+}
+
+void appendInitialObjFiles(
+    const std::vector<std::filesystem::path>& modelPaths,
+    const bgfx::VertexLayout& meshLayout,
+    const bgfx::VertexLayout& pointSpriteLayout,
+    woby::UiState& state,
+    std::vector<LoadedObjRuntime>& runtimes)
+{
+    if (modelPaths.empty()) {
+        return;
+    }
+
+    std::vector<LoadedObjRuntime> loadedRuntimes;
+    std::vector<LoadedObjFile> loadedFiles = loadObjFiles(
+        modelPaths,
+        meshLayout,
+        pointSpriteLayout,
+        loadedRuntimes,
+        woby::totalGroupCount(state));
+
+    state.files.insert(
+        state.files.end(),
+        std::make_move_iterator(loadedFiles.begin()),
+        std::make_move_iterator(loadedFiles.end()));
+    runtimes.insert(
+        runtimes.end(),
+        std::make_move_iterator(loadedRuntimes.begin()),
+        std::make_move_iterator(loadedRuntimes.end()));
+    woby::recalculateSceneBounds(state);
+    woby::frameCameraToScene(state);
+    woby::markSceneDirty(state);
 }
 
 void removeObjFile(
@@ -2386,11 +2432,25 @@ int main(int argc, char** argv)
         const auto pointLayout = pointSpriteVertexLayout();
         woby::UiState ui;
         std::vector<LoadedObjRuntime> runtimes;
-        ui.files = loadObjFiles(modelPaths, layout, pointLayout, runtimes);
-        woby::recalculateSceneBounds(ui);
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument;
-        woby::updateSceneDirty(ui, cleanSceneDocument);
+
+        if (commandLine.scenePath.has_value()) {
+            loadSceneFromPath(
+                commandLine.scenePath.value(),
+                layout,
+                pointLayout,
+                ui,
+                runtimes,
+                currentScenePath,
+                cleanSceneDocument);
+            appendInitialObjFiles(modelPaths, layout, pointLayout, ui, runtimes);
+        } else {
+            ui.files = loadObjFiles(modelPaths, layout, pointLayout, runtimes);
+            woby::recalculateSceneBounds(ui);
+            woby::updateSceneDirty(ui, cleanSceneDocument);
+        }
+
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
