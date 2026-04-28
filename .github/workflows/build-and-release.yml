@@ -34,6 +34,10 @@ jobs:
             package_name: woby-linux-x64
             vcpkg_triplet: woby-x64-linux-dynamic
             archive_extension: tar.gz
+          - os: macos-latest
+            package_name: woby-macos-arm64
+            vcpkg_triplet: arm64-osx
+            archive_extension: tar.gz
 
     steps:
       - name: Check out repository
@@ -87,6 +91,10 @@ jobs:
             wayland-protocols \
             zip
 
+      - name: Install macOS build dependencies
+        if: runner.os == 'macOS'
+        run: brew install autoconf automake libtool nasm ninja pkg-config
+
       - name: Cache vcpkg packages
         uses: actions/cache@v5
         with:
@@ -139,6 +147,85 @@ jobs:
           if ($IsWindows) {
             Copy-Item (Join-Path $binDir "woby.exe") $stageDir -Force
             Get-ChildItem $binDir -Filter "*.dll" -File | Copy-Item -Destination $stageDir -Force
+          } elseif ($IsMacOS) {
+            $executable = Join-Path $binDir "woby"
+            $stagedExecutable = Join-Path $stageDir "woby"
+
+            function Get-MachORpaths([string]$binaryPath) {
+              $lines = otool -l $binaryPath
+
+              for ($index = 0; $index -lt $lines.Count; $index++) {
+                if ($lines[$index].Trim() -eq "cmd LC_RPATH") {
+                  for ($offset = $index; $offset -lt [Math]::Min($index + 6, $lines.Count); $offset++) {
+                    if ($lines[$offset] -match "^\s*path\s+(.+?)\s+\(offset") {
+                      $matches[1]
+                    }
+                  }
+                }
+              }
+            }
+
+            function Add-MachORpathIfMissing([string]$binaryPath, [string]$rpath) {
+              $existingRpaths = @(Get-MachORpaths $binaryPath)
+
+              if ($existingRpaths -notcontains $rpath) {
+                install_name_tool -add_rpath $rpath $binaryPath
+              }
+            }
+
+            Copy-Item $executable $stageDir -Force
+            chmod +x $stagedExecutable
+
+            $vcpkgLibDirs = @(
+              (Join-Path $buildDir "vcpkg_installed/${{ matrix.vcpkg_triplet }}/lib"),
+              (Join-Path $env:GITHUB_WORKSPACE "vcpkg_installed/${{ matrix.vcpkg_triplet }}/lib")
+            ) | Where-Object { Test-Path -LiteralPath $_ -PathType Container } | Select-Object -Unique
+
+            foreach ($vcpkgLibDir in $vcpkgLibDirs) {
+              Get-ChildItem $vcpkgLibDir -Filter "*.dylib" -File | Copy-Item -Destination $stageDir -Force
+            }
+
+            Add-MachORpathIfMissing $stagedExecutable "@executable_path"
+
+            $runtimeDeps = otool -L $executable |
+              Select-Object -Skip 1 |
+              ForEach-Object {
+                if ($_ -match "^\s+(.+?)\s+\(") {
+                  $matches[1]
+                }
+              } |
+              Where-Object { $_ -and $_.StartsWith($env:GITHUB_WORKSPACE) } |
+              Sort-Object -Unique
+
+            foreach ($dependency in $runtimeDeps) {
+              Copy-Item $dependency $stageDir -Force
+            }
+
+            foreach ($dependency in $runtimeDeps) {
+              $dependencyName = Split-Path $dependency -Leaf
+              install_name_tool -change $dependency "@executable_path/$dependencyName" $stagedExecutable
+            }
+
+            $stagedDylibs = Get-ChildItem $stageDir -Filter "*.dylib" -File
+            foreach ($dylib in $stagedDylibs) {
+              install_name_tool -id "@rpath/$($dylib.Name)" $dylib.FullName
+              Add-MachORpathIfMissing $dylib.FullName "@loader_path"
+
+              $nestedDeps = otool -L $dylib.FullName |
+                Select-Object -Skip 1 |
+                ForEach-Object {
+                  if ($_ -match "^\s+(.+?)\s+\(") {
+                    $matches[1]
+                  }
+                } |
+                Where-Object { $_ -and $_.StartsWith($env:GITHUB_WORKSPACE) } |
+                Sort-Object -Unique
+
+              foreach ($nestedDependency in $nestedDeps) {
+                $nestedDependencyName = Split-Path $nestedDependency -Leaf
+                install_name_tool -change $nestedDependency "@executable_path/$nestedDependencyName" $dylib.FullName
+              }
+            }
           } else {
             $executable = Join-Path $binDir "woby"
             Copy-Item $executable $stageDir -Force
