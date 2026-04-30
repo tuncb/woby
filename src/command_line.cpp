@@ -153,7 +153,7 @@ AppArguments parseCommandLine(int argc, char** argv)
         }
 
         if (argument == "--file") {
-            requireValue(argc, index, argument, "an OBJ filename");
+            requireValue(argc, index, argument, "a model filename");
 
             ModelPathOption inputPath;
             inputPath.path = argv[++index];

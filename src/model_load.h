@@ -6,6 +6,6 @@
 
 namespace woby {
 
-[[nodiscard]] Mesh loadObjMesh(const std::filesystem::path& path);
+[[nodiscard]] Mesh loadModelMesh(const std::filesystem::path& path);
 
 } // namespace woby

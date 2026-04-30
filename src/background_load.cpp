@@ -1,7 +1,7 @@
 #include "background_load.h"
 
 #include "file_discovery.h"
-#include "obj_mesh.h"
+#include "model_load.h"
 #include "performance_log.h"
 
 #include <spdlog/spdlog.h>
@@ -35,14 +35,14 @@ void reportProgress(
     progress(update);
 }
 
-void buildObjBatchStatus(ObjBatchCpuLoadResult& result)
+void buildModelBatchStatus(ModelBatchCpuLoadResult& result)
 {
-    result.status = "Added " + std::to_string(result.addedCount) + " OBJ file";
+    result.status = "Added " + std::to_string(result.addedCount) + " model file";
     if (result.addedCount != 1u) {
         result.status += "s";
     }
     if (result.skippedCount > 0u) {
-        result.status += ", skipped " + std::to_string(result.skippedCount) + " non-OBJ";
+        result.status += ", skipped " + std::to_string(result.skippedCount) + " non-model";
     }
     if (result.failedCount > 0u) {
         result.status += ", failed " + std::to_string(result.failedCount);
@@ -57,14 +57,14 @@ void buildObjBatchStatus(ObjBatchCpuLoadResult& result)
 
 } // namespace
 
-ObjBatchCpuLoadResult loadObjBatchCpu(
+ModelBatchCpuLoadResult loadModelBatchCpu(
     const std::vector<std::filesystem::path>& modelPaths,
     size_t firstColorIndex,
     const BackgroundLoadProgressCallback& progress,
     const BackgroundLoadCancelCallback& shouldCancel)
 {
     const auto start = PerformanceClock::now();
-    ObjBatchCpuLoadResult result;
+    ModelBatchCpuLoadResult result;
     result.requestedCount = modelPaths.size();
     result.files.reserve(modelPaths.size());
 
@@ -77,7 +77,7 @@ ObjBatchCpuLoadResult loadObjBatchCpu(
         }
 
         reportProgress(progress, modelPath, pathIndex, modelPaths.size());
-        if (!isObjPath(modelPath)) {
+        if (!isModelPath(modelPath)) {
             ++result.skippedCount;
             continue;
         }
@@ -85,13 +85,13 @@ ObjBatchCpuLoadResult loadObjBatchCpu(
         const auto totalStart = PerformanceClock::now();
         try {
             const auto parseStart = PerformanceClock::now();
-            ObjMesh mesh = loadObjMesh(modelPath);
+            Mesh mesh = loadModelMesh(modelPath);
             const double parseMilliseconds = millisecondsBetween(parseStart, PerformanceClock::now());
 
             UiFileState file = createUiFileState(modelPath, std::move(mesh), colorIndex);
             colorIndex += file.groupSettings.size();
             spdlog::info(
-                "perf obj_cpu_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} total_ms={}",
+                "perf model_cpu_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} total_ms={}",
                 modelPath.string(),
                 file.mesh.vertices.size(),
                 file.mesh.indices.size() / 3u,
@@ -104,16 +104,16 @@ ObjBatchCpuLoadResult loadObjBatchCpu(
             ++result.failedCount;
             result.lastError = exception.what();
             spdlog::info(
-                "perf obj_cpu_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
+                "perf model_cpu_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
                 modelPath.string(),
                 millisecondsBetween(totalStart, PerformanceClock::now()),
                 exception.what());
         }
     }
 
-    buildObjBatchStatus(result);
+    buildModelBatchStatus(result);
     spdlog::info(
-        "perf obj_cpu_load_batch requested_count={} loaded_count={} skipped_count={} failed_count={} canceled={} duration_ms={}",
+        "perf model_cpu_load_batch requested_count={} loaded_count={} skipped_count={} failed_count={} canceled={} duration_ms={}",
         result.requestedCount,
         result.files.size(),
         result.skippedCount,
@@ -147,12 +147,12 @@ SceneCpuLoadResult loadSceneCpu(
         const std::filesystem::path modelPath = sceneAbsolutePath(scenePath, record.path);
         reportProgress(progress, modelPath, result.files.size(), result.document.files.size());
         const auto loadStart = PerformanceClock::now();
-        ObjMesh mesh = loadObjMesh(modelPath);
+        Mesh mesh = loadModelMesh(modelPath);
         UiFileState file = createUiFileState(modelPath, std::move(mesh), colorIndex);
         applySceneFileRecord(file, record);
         colorIndex += file.groupSettings.size();
         spdlog::info(
-            "perf scene_obj_cpu_load scene=\"{}\" path=\"{}\" vertices={} triangles={} groups={} duration_ms={}",
+            "perf scene_model_cpu_load scene=\"{}\" path=\"{}\" vertices={} triangles={} groups={} duration_ms={}",
             scenePath.string(),
             modelPath.string(),
             file.mesh.vertices.size(),

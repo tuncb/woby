@@ -151,7 +151,7 @@ void finalizeBounds(Bounds& bounds)
     bounds.radius = std::max(std::sqrt(radiusSquared), 0.001f);
 }
 
-Bounds nodeBounds(const ObjMesh& mesh, const ObjNode& node)
+Bounds nodeBounds(const Mesh& mesh, const MeshNode& node)
 {
     Bounds bounds = emptyAccumulatedBounds();
     const uint32_t endIndex = std::min(
@@ -207,7 +207,7 @@ std::array<float, 4> defaultGroupColor(size_t groupIndex)
     return palette[groupIndex % palette.size()];
 }
 
-std::array<float, 3> nodeCenter(const ObjMesh& mesh, const ObjNode& node)
+std::array<float, 3> nodeCenter(const Mesh& mesh, const MeshNode& node)
 {
     if (node.indexCount == 0u || mesh.indices.empty() || mesh.vertices.empty()) {
         return mesh.bounds.center;
@@ -240,7 +240,7 @@ std::array<float, 3> nodeCenter(const ObjMesh& mesh, const ObjNode& node)
     };
 }
 
-std::vector<UiGroupState> createUiGroupStates(const ObjMesh& mesh, size_t firstColorIndex)
+std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex)
 {
     std::vector<UiGroupState> settings;
     settings.reserve(mesh.nodes.size());
@@ -257,7 +257,7 @@ std::vector<UiGroupState> createUiGroupStates(const ObjMesh& mesh, size_t firstC
     return settings;
 }
 
-UiFileState createUiFileState(std::filesystem::path modelPath, ObjMesh mesh, size_t firstColorIndex)
+UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t firstColorIndex)
 {
     UiFileState file;
     file.path = std::move(modelPath);

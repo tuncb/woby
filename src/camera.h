@@ -1,6 +1,6 @@
 #pragma once
 
-#include "obj_mesh.h"
+#include "model_mesh.h"
 #include "scene_up_axis.h"
 
 #include <array>

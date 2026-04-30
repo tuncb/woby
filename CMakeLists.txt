@@ -33,12 +33,18 @@ add_executable(woby
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
+    src/model_load.cpp
+    src/model_load.h
+    src/model_mesh.cpp
+    src/model_mesh.h
     src/obj_mesh.cpp
     src/obj_mesh.h
     src/performance_log.cpp
     src/performance_log.h
     src/scene_file.cpp
     src/scene_file.h
+    src/stl_mesh.cpp
+    src/stl_mesh.h
     src/ui_operations.cpp
     src/ui_operations.h
     src/ui_state.cpp
@@ -172,12 +178,18 @@ if(BUILD_TESTING)
         src/command_line.h
         src/file_discovery.cpp
         src/file_discovery.h
+        src/model_load.cpp
+        src/model_load.h
+        src/model_mesh.cpp
+        src/model_mesh.h
         src/obj_mesh.cpp
         src/obj_mesh.h
         src/performance_log.cpp
         src/performance_log.h
         src/scene_file.cpp
         src/scene_file.h
+        src/stl_mesh.cpp
+        src/stl_mesh.h
         src/ui_operations.cpp
         src/ui_operations.h
         src/ui_state.cpp
@@ -186,6 +198,7 @@ if(BUILD_TESTING)
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
+        tests/stl_mesh_tests.cpp
         tests/ui_operations_tests.cpp
     )
 

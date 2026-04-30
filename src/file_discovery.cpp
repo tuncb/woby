@@ -25,12 +25,22 @@ bool isObjPath(const std::filesystem::path& path)
     return lowercase(path.extension().string()) == ".obj";
 }
 
+bool isStlPath(const std::filesystem::path& path)
+{
+    return lowercase(path.extension().string()) == ".stl";
+}
+
+bool isModelPath(const std::filesystem::path& path)
+{
+    return isObjPath(path) || isStlPath(path);
+}
+
 bool isWobyPath(const std::filesystem::path& path)
 {
     return lowercase(path.extension().string()) == ".woby";
 }
 
-std::vector<std::filesystem::path> collectObjPathsRecursive(
+std::vector<std::filesystem::path> collectModelPathsRecursive(
     const std::filesystem::path& folder)
 {
     std::error_code error;
@@ -38,7 +48,7 @@ std::vector<std::filesystem::path> collectObjPathsRecursive(
         throw std::runtime_error("Folder path is not a folder: " + folder.string());
     }
 
-    std::vector<std::filesystem::path> objPaths;
+    std::vector<std::filesystem::path> modelPaths;
     const auto options = std::filesystem::directory_options::skip_permission_denied;
     std::filesystem::recursive_directory_iterator iterator(folder, options, error);
     if (error) {
@@ -49,8 +59,8 @@ std::vector<std::filesystem::path> collectObjPathsRecursive(
     while (iterator != end) {
         const std::filesystem::directory_entry& entry = *iterator;
         error.clear();
-        if (entry.is_regular_file(error) && isObjPath(entry.path())) {
-            objPaths.push_back(entry.path());
+        if (entry.is_regular_file(error) && isModelPath(entry.path())) {
+            modelPaths.push_back(entry.path());
         }
 
         error.clear();
@@ -60,7 +70,19 @@ std::vector<std::filesystem::path> collectObjPathsRecursive(
         }
     }
 
-    std::sort(objPaths.begin(), objPaths.end());
+    std::sort(modelPaths.begin(), modelPaths.end());
+    return modelPaths;
+}
+
+std::vector<std::filesystem::path> collectObjPathsRecursive(
+    const std::filesystem::path& folder)
+{
+    std::vector<std::filesystem::path> objPaths;
+    for (const auto& path : collectModelPathsRecursive(folder)) {
+        if (isObjPath(path)) {
+            objPaths.push_back(path);
+        }
+    }
     return objPaths;
 }
 

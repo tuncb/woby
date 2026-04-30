@@ -1,7 +1,7 @@
 #pragma once
 
 #include "camera.h"
-#include "obj_mesh.h"
+#include "model_mesh.h"
 #include "scene_file.h"
 
 #include <array>
@@ -51,7 +51,7 @@ struct UiFileSettings {
 
 struct UiFileState {
     std::filesystem::path path;
-    ObjMesh mesh;
+    Mesh mesh;
     std::vector<UiGroupState> groupSettings;
     UiFileSettings fileSettings;
     float vertexSizeScale = 1.0f;
@@ -73,11 +73,11 @@ struct UiState {
 };
 
 [[nodiscard]] std::array<float, 4> defaultGroupColor(size_t groupIndex);
-[[nodiscard]] std::array<float, 3> nodeCenter(const ObjMesh& mesh, const ObjNode& node);
-[[nodiscard]] std::vector<UiGroupState> createUiGroupStates(const ObjMesh& mesh, size_t firstColorIndex);
+[[nodiscard]] std::array<float, 3> nodeCenter(const Mesh& mesh, const MeshNode& node);
+[[nodiscard]] std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex);
 [[nodiscard]] UiFileState createUiFileState(
     std::filesystem::path modelPath,
-    ObjMesh mesh,
+    Mesh mesh,
     size_t firstColorIndex);
 void groupTransformMatrix(const UiGroupState& settings, float* model);
 void fileTransformMatrix(const UiFileSettings& settings, float* model);

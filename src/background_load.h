@@ -24,7 +24,7 @@ struct BackgroundLoadProgress {
 using BackgroundLoadProgressCallback = std::function<void(const BackgroundLoadProgress&)>;
 using BackgroundLoadCancelCallback = std::function<bool()>;
 
-struct ObjBatchCpuLoadResult {
+struct ModelBatchCpuLoadResult {
     std::vector<UiFileState> files;
     size_t requestedCount = 0;
     size_t addedCount = 0;
@@ -42,7 +42,7 @@ struct SceneCpuLoadResult {
     bool canceled = false;
 };
 
-[[nodiscard]] ObjBatchCpuLoadResult loadObjBatchCpu(
+[[nodiscard]] ModelBatchCpuLoadResult loadModelBatchCpu(
     const std::vector<std::filesystem::path>& modelPaths,
     size_t firstColorIndex,
     const BackgroundLoadProgressCallback& progress,

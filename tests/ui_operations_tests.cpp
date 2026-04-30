@@ -27,9 +27,9 @@ woby::Bounds makeBounds(float minX, float maxX)
     return bounds;
 }
 
-woby::ObjMesh makeMesh(const char* groupName, float minX, float maxX)
+woby::Mesh makeMesh(const char* groupName, float minX, float maxX)
 {
-    woby::ObjMesh mesh;
+    woby::Mesh mesh;
     mesh.vertices = {
         {{minX, 0.0f, 0.0f}, {}, {}},
         {{maxX, 0.0f, 0.0f}, {}, {}},

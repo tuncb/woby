@@ -5,7 +5,7 @@
 #include "file_discovery.h"
 #include "hash_utils.h"
 #include "imgui_bgfx.h"
-#include "obj_mesh.h"
+#include "model_load.h"
 #include "performance_log.h"
 #include "scene_file.h"
 #include "ui_operations.h"
@@ -97,7 +97,7 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xea7f,
     0,
 };
-constexpr const char* addObjFileIcon = "\xee\xa9\xbf";
+constexpr const char* addModelFileIcon = "\xee\xa9\xbf";
 constexpr const char* openSceneIcon = "\xee\xb6\x95";
 constexpr const char* saveSceneIcon = "\xee\xb5\xb5";
 constexpr const char* removeFileIcon = "\xef\x80\x8d";
@@ -260,18 +260,18 @@ struct HelperLineVertex {
 
 using GroupRenderSettings = woby::UiGroupState;
 using FileRenderSettings = woby::UiFileSettings;
-using LoadedObjFile = woby::UiFileState;
+using LoadedModelFile = woby::UiFileState;
 
-struct LoadedObjRuntime {
+struct LoadedModelRuntime {
     GpuMesh gpuMesh;
 };
 
-struct LoadedObjFileWithRuntime {
-    LoadedObjFile file;
-    LoadedObjRuntime runtime;
+struct LoadedModelFileWithRuntime {
+    LoadedModelFile file;
+    LoadedModelRuntime runtime;
 };
 
-struct ObjFileDialogState {
+struct ModelFileDialogState {
     std::mutex mutex;
     std::vector<std::filesystem::path> pendingPaths;
     std::string status;
@@ -301,13 +301,13 @@ struct ToastMessage {
 };
 
 enum class AsyncLoadKind {
-    appendObj,
+    appendModel,
     openScene,
 };
 
 struct AsyncLoadOutcome {
-    AsyncLoadKind kind = AsyncLoadKind::appendObj;
-    woby::ObjBatchCpuLoadResult objBatch;
+    AsyncLoadKind kind = AsyncLoadKind::appendModel;
+    woby::ModelBatchCpuLoadResult modelBatch;
     woby::SceneCpuLoadResult scene;
     std::string error;
     bool failed = false;
@@ -327,17 +327,17 @@ struct BackgroundLoadRuntime {
     std::optional<AsyncLoadOutcome> outcome;
     woby::BackgroundLoadProgress progress;
     std::atomic_bool cancelRequested = false;
-    AsyncLoadKind kind = AsyncLoadKind::appendObj;
+    AsyncLoadKind kind = AsyncLoadKind::appendModel;
     bool active = false;
 };
 
 struct GpuFinalizeRuntime {
-    AsyncLoadKind kind = AsyncLoadKind::appendObj;
+    AsyncLoadKind kind = AsyncLoadKind::appendModel;
     std::filesystem::path scenePath;
     woby::SceneDocument sceneDocument;
-    std::vector<LoadedObjFile> files;
-    std::vector<LoadedObjFile> finalizedFiles;
-    std::vector<LoadedObjRuntime> finalizedRuntimes;
+    std::vector<LoadedModelFile> files;
+    std::vector<LoadedModelFile> finalizedFiles;
+    std::vector<LoadedModelRuntime> finalizedRuntimes;
     size_t sourceFailedCount = 0;
     size_t sourceSkippedCount = 0;
     size_t gpuFailedCount = 0;
@@ -372,8 +372,8 @@ struct HoverPickCache {
 };
 
 uint64_t hoverPickSignature(
-    const std::vector<LoadedObjFile>& files,
-    const std::vector<LoadedObjRuntime>& runtimes,
+    const std::vector<LoadedModelFile>& files,
+    const std::vector<LoadedModelRuntime>& runtimes,
     const MousePosition& mouse,
     bool mouseInsideViewport,
     float masterVertexPointSize,
@@ -475,7 +475,7 @@ uint32_t appendPointIndicesForRange(
 }
 
 void buildPointSprites(
-    const woby::ObjMesh& mesh,
+    const woby::Mesh& mesh,
     const std::vector<uint32_t>& pointIndices,
     std::vector<PointSpriteVertex>& vertices,
     std::vector<uint32_t>& indices)
@@ -510,7 +510,7 @@ void buildPointSprites(
 }
 
 GpuMesh createGpuMesh(
-    const woby::ObjMesh& mesh,
+    const woby::Mesh& mesh,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout)
 {
@@ -742,8 +742,8 @@ void updateHoveredVertexCandidate(
 }
 
 std::optional<HoveredVertex> findHoveredVertex(
-    const std::vector<LoadedObjFile>& files,
-    const std::vector<LoadedObjRuntime>& runtimes,
+    const std::vector<LoadedModelFile>& files,
+    const std::vector<LoadedModelRuntime>& runtimes,
     const MousePosition& mouse,
     float masterVertexPointSize,
     const float* view,
@@ -1264,9 +1264,9 @@ void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
 }
 
 void drawGroupControls(
-    const woby::ObjNode& node,
+    const woby::MeshNode& node,
     const GpuNodeRange& range,
-    LoadedObjFile& file,
+    LoadedModelFile& file,
     size_t nodeIndex,
     size_t colorIndex,
     float translationSpeed)
@@ -1566,8 +1566,8 @@ void submitPointSpriteRange(
 }
 
 void submitSceneFiles(
-    const std::vector<LoadedObjFile>& files,
-    const std::vector<LoadedObjRuntime>& runtimes,
+    const std::vector<LoadedModelFile>& files,
+    const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
     bgfx::ProgramHandle meshProgram,
     bgfx::ProgramHandle colorProgram,
@@ -1768,11 +1768,11 @@ struct SdlDeleter {
     }
 };
 
-void SDLCALL objFileDialogCallback(void* userdata, const char* const* filelist, int filter)
+void SDLCALL modelFileDialogCallback(void* userdata, const char* const* filelist, int filter)
 {
     (void)filter;
 
-    auto* state = static_cast<ObjFileDialogState*>(userdata);
+    auto* state = static_cast<ModelFileDialogState*>(userdata);
     std::vector<std::filesystem::path> selectedPaths;
     std::string status;
     bool showStatus = false;
@@ -1801,10 +1801,12 @@ void SDLCALL objFileDialogCallback(void* userdata, const char* const* filelist, 
     state->open = false;
 }
 
-void showObjFileDialog(SDL_Window* window, ObjFileDialogState& state)
+void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
 {
     static constexpr SDL_DialogFileFilter filters[] = {
+        {"3D Models", "obj;stl"},
         {"Wavefront OBJ", "obj"},
+        {"STL", "stl"},
         {"All files", "*"},
     };
 
@@ -1817,7 +1819,7 @@ void showObjFileDialog(SDL_Window* window, ObjFileDialogState& state)
     }
 
     SDL_ShowOpenFileDialog(
-        objFileDialogCallback,
+        modelFileDialogCallback,
         &state,
         window,
         filters,
@@ -1826,7 +1828,7 @@ void showObjFileDialog(SDL_Window* window, ObjFileDialogState& state)
         true);
 }
 
-std::vector<std::filesystem::path> takePendingObjPaths(ObjFileDialogState& state)
+std::vector<std::filesystem::path> takePendingModelPaths(ModelFileDialogState& state)
 {
     std::vector<std::filesystem::path> paths;
     std::lock_guard<std::mutex> lock(state.mutex);
@@ -1834,14 +1836,14 @@ std::vector<std::filesystem::path> takePendingObjPaths(ObjFileDialogState& state
     return paths;
 }
 
-void setObjFileDialogStatus(ObjFileDialogState& state, std::string status)
+void setModelFileDialogStatus(ModelFileDialogState& state, std::string status)
 {
     std::lock_guard<std::mutex> lock(state.mutex);
     state.status = std::move(status);
     ++state.statusVersion;
 }
 
-std::string objFileDialogStatus(ObjFileDialogState& state, uint64_t& statusVersion)
+std::string modelFileDialogStatus(ModelFileDialogState& state, uint64_t& statusVersion)
 {
     std::lock_guard<std::mutex> lock(state.mutex);
     if (state.statusVersion == statusVersion) {
@@ -1852,7 +1854,7 @@ std::string objFileDialogStatus(ObjFileDialogState& state, uint64_t& statusVersi
     return state.status;
 }
 
-bool objFileDialogIsOpen(ObjFileDialogState& state)
+bool modelFileDialogIsOpen(ModelFileDialogState& state)
 {
     std::lock_guard<std::mutex> lock(state.mutex);
     return state.open;
@@ -2003,19 +2005,19 @@ bool sceneFileDialogIsOpen(SceneFileDialogState& state)
 
 double elapsedMilliseconds(woby::PerformanceClock::time_point start);
 
-void appendFolderObjPaths(
+void appendFolderModelPaths(
     const std::filesystem::path& folder,
     std::vector<std::filesystem::path>& modelPaths)
 {
     const auto start = woby::PerformanceClock::now();
-    const std::vector<std::filesystem::path> folderPaths = woby::collectObjPathsRecursive(folder);
+    const std::vector<std::filesystem::path> folderPaths = woby::collectModelPathsRecursive(folder);
     spdlog::info(
-        "perf folder_scan path=\"{}\" obj_count={} duration_ms={}",
+        "perf folder_scan path=\"{}\" model_count={} duration_ms={}",
         folder.string(),
         folderPaths.size(),
         elapsedMilliseconds(start));
     if (folderPaths.empty()) {
-        throw std::runtime_error("--folder did not contain OBJ files recursively: " + folder.string());
+        throw std::runtime_error("--folder did not contain model files recursively: " + folder.string());
     }
 
     modelPaths.insert(modelPaths.end(), folderPaths.begin(), folderPaths.end());
@@ -2106,7 +2108,7 @@ std::vector<std::filesystem::path> resolveModelPaths(const woby::AppArguments& o
 
     for (const auto& inputPath : options.inputPaths) {
         if (inputPath.folder) {
-            appendFolderObjPaths(inputPath.path, modelPaths);
+            appendFolderModelPaths(inputPath.path, modelPaths);
             continue;
         }
 
@@ -2116,17 +2118,17 @@ std::vector<std::filesystem::path> resolveModelPaths(const woby::AppArguments& o
     return modelPaths;
 }
 
-LoadedObjFileWithRuntime loadObjFile(
+LoadedModelFileWithRuntime loadModelFile(
     const std::filesystem::path& modelPath,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     size_t firstColorIndex)
 {
     const auto totalStart = woby::PerformanceClock::now();
-    LoadedObjFileWithRuntime loaded;
+    LoadedModelFileWithRuntime loaded;
     try {
         const auto parseStart = woby::PerformanceClock::now();
-        woby::ObjMesh mesh = woby::loadObjMesh(modelPath);
+        woby::Mesh mesh = woby::loadModelMesh(modelPath);
         const double parseMilliseconds = elapsedMilliseconds(parseStart);
 
         loaded.file = woby::createUiFileState(modelPath, std::move(mesh), firstColorIndex);
@@ -2136,7 +2138,7 @@ LoadedObjFileWithRuntime loadObjFile(
         const double gpuMilliseconds = elapsedMilliseconds(gpuStart);
 
         spdlog::info(
-            "perf obj_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} gpu_ms={} total_ms={}",
+            "perf model_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} gpu_ms={} total_ms={}",
             modelPath.string(),
             loaded.file.mesh.vertices.size(),
             loaded.file.mesh.indices.size() / 3u,
@@ -2146,7 +2148,7 @@ LoadedObjFileWithRuntime loadObjFile(
             elapsedMilliseconds(totalStart));
     } catch (const std::exception& exception) {
         spdlog::info(
-            "perf obj_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
+            "perf model_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
             modelPath.string(),
             elapsedMilliseconds(totalStart),
             exception.what());
@@ -2156,55 +2158,55 @@ LoadedObjFileWithRuntime loadObjFile(
     return loaded;
 }
 
-void destroyObjRuntimes(std::vector<LoadedObjRuntime>& runtimes);
+void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 
-std::vector<LoadedObjFile> loadObjFiles(
+std::vector<LoadedModelFile> loadModelFiles(
     const std::vector<std::filesystem::path>& modelPaths,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
-    std::vector<LoadedObjRuntime>& runtimes,
+    std::vector<LoadedModelRuntime>& runtimes,
     size_t firstColorIndex = 0)
 {
     const auto start = woby::PerformanceClock::now();
-    std::vector<LoadedObjFile> files;
+    std::vector<LoadedModelFile> files;
     files.reserve(modelPaths.size());
     runtimes.reserve(modelPaths.size());
     size_t colorIndex = firstColorIndex;
 
     try {
         for (const auto& modelPath : modelPaths) {
-            LoadedObjFileWithRuntime loaded = loadObjFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
+            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
             colorIndex += loaded.file.groupSettings.size();
             files.push_back(std::move(loaded.file));
             runtimes.push_back(std::move(loaded.runtime));
         }
     } catch (...) {
-        destroyObjRuntimes(runtimes);
+        destroyModelRuntimes(runtimes);
         throw;
     }
 
     spdlog::info(
-        "perf obj_load_batch requested_count={} loaded_count={} duration_ms={}",
+        "perf model_load_batch requested_count={} loaded_count={} duration_ms={}",
         modelPaths.size(),
         files.size(),
         elapsedMilliseconds(start));
     return files;
 }
 
-void appendInitialObjFiles(
+void appendInitialModelFiles(
     const std::vector<std::filesystem::path>& modelPaths,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes)
+    std::vector<LoadedModelRuntime>& runtimes)
 {
     if (modelPaths.empty()) {
         return;
     }
 
     const auto start = woby::PerformanceClock::now();
-    std::vector<LoadedObjRuntime> loadedRuntimes;
-    std::vector<LoadedObjFile> loadedFiles = loadObjFiles(
+    std::vector<LoadedModelRuntime> loadedRuntimes;
+    std::vector<LoadedModelFile> loadedFiles = loadModelFiles(
         modelPaths,
         meshLayout,
         pointSpriteLayout,
@@ -2223,14 +2225,14 @@ void appendInitialObjFiles(
     woby::frameCameraToScene(state);
     woby::markSceneDirty(state);
     spdlog::info(
-        "perf append_initial_obj_files requested_count={} duration_ms={}",
+        "perf append_initial_model_files requested_count={} duration_ms={}",
         modelPaths.size(),
         elapsedMilliseconds(start));
 }
 
-void removeObjFile(
+void removeModelFile(
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes,
+    std::vector<LoadedModelRuntime>& runtimes,
     size_t fileIndex)
 {
     if (fileIndex >= runtimes.size()) {
@@ -2242,12 +2244,12 @@ void removeObjFile(
     (void)woby::removeFileFromState(state, fileIndex);
 }
 
-bool appendObjFiles(
+bool appendModelFiles(
     const std::vector<std::filesystem::path>& modelPaths,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes,
+    std::vector<LoadedModelRuntime>& runtimes,
     std::string& status)
 {
     const auto start = woby::PerformanceClock::now();
@@ -2260,13 +2262,13 @@ bool appendObjFiles(
     runtimes.reserve(runtimes.size() + modelPaths.size());
 
     for (const auto& modelPath : modelPaths) {
-        if (!woby::isObjPath(modelPath)) {
+        if (!woby::isModelPath(modelPath)) {
             ++skippedCount;
             continue;
         }
 
         try {
-            LoadedObjFileWithRuntime loaded = loadObjFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
+            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
             colorIndex += loaded.file.groupSettings.size();
             state.files.push_back(std::move(loaded.file));
             runtimes.push_back(std::move(loaded.runtime));
@@ -2277,12 +2279,12 @@ bool appendObjFiles(
         }
     }
 
-    status = "Added " + std::to_string(addedCount) + " OBJ file";
+    status = "Added " + std::to_string(addedCount) + " model file";
     if (addedCount != 1u) {
         status += "s";
     }
     if (skippedCount > 0u) {
-        status += ", skipped " + std::to_string(skippedCount) + " non-OBJ";
+        status += ", skipped " + std::to_string(skippedCount) + " non-model";
     }
     if (failedCount > 0u) {
         status += ", failed " + std::to_string(failedCount);
@@ -2298,7 +2300,7 @@ bool appendObjFiles(
     }
 
     spdlog::info(
-        "perf append_obj_files requested_count={} added_count={} skipped_count={} failed_count={} duration_ms={}",
+        "perf append_model_files requested_count={} added_count={} skipped_count={} failed_count={} duration_ms={}",
         modelPaths.size(),
         addedCount,
         skippedCount,
@@ -2338,7 +2340,7 @@ std::vector<std::filesystem::path> takePendingDropPaths(DragDropState& state)
 }
 
 struct DroppedPathClassification {
-    std::vector<std::filesystem::path> objPaths;
+    std::vector<std::filesystem::path> modelPaths;
     std::vector<std::filesystem::path> scenePaths;
     size_t unsupportedCount = 0;
     size_t emptyFolderCount = 0;
@@ -2356,15 +2358,15 @@ DroppedPathClassification classifyDroppedPaths(
         std::error_code error;
         if (std::filesystem::is_directory(path, error)) {
             try {
-                const std::vector<std::filesystem::path> folderObjPaths =
-                    woby::collectObjPathsRecursive(path);
-                if (folderObjPaths.empty()) {
+                const std::vector<std::filesystem::path> folderModelPaths =
+                    woby::collectModelPathsRecursive(path);
+                if (folderModelPaths.empty()) {
                     ++classification.emptyFolderCount;
                 } else {
-                    classification.objPaths.insert(
-                        classification.objPaths.end(),
-                        folderObjPaths.begin(),
-                        folderObjPaths.end());
+                    classification.modelPaths.insert(
+                        classification.modelPaths.end(),
+                        folderModelPaths.begin(),
+                        folderModelPaths.end());
                 }
             } catch (const std::exception& exception) {
                 ++classification.failedFolderCount;
@@ -2373,8 +2375,8 @@ DroppedPathClassification classifyDroppedPaths(
             continue;
         }
 
-        if (woby::isObjPath(path)) {
-            classification.objPaths.push_back(path);
+        if (woby::isModelPath(path)) {
+            classification.modelPaths.push_back(path);
             continue;
         }
 
@@ -2387,9 +2389,9 @@ DroppedPathClassification classifyDroppedPaths(
     }
 
     spdlog::info(
-        "perf dropped_path_classification input_count={} obj_count={} scene_count={} unsupported_count={} empty_folder_count={} failed_folder_count={} duration_ms={}",
+        "perf dropped_path_classification input_count={} model_count={} scene_count={} unsupported_count={} empty_folder_count={} failed_folder_count={} duration_ms={}",
         paths.size(),
-        classification.objPaths.size(),
+        classification.modelPaths.size(),
         classification.scenePaths.size(),
         classification.unsupportedCount,
         classification.emptyFolderCount,
@@ -2422,7 +2424,7 @@ void appendDropClassificationStatus(
     }
 }
 
-void destroyObjRuntimes(std::vector<LoadedObjRuntime>& runtimes)
+void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes)
 {
     for (auto& runtime : runtimes) {
         destroyGpuMesh(runtime.gpuMesh);
@@ -2430,15 +2432,15 @@ void destroyObjRuntimes(std::vector<LoadedObjRuntime>& runtimes)
     runtimes.clear();
 }
 
-std::vector<LoadedObjFile> loadSceneFiles(
+std::vector<LoadedModelFile> loadSceneFiles(
     const std::filesystem::path& scenePath,
     const woby::SceneDocument& document,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
-    std::vector<LoadedObjRuntime>& runtimes)
+    std::vector<LoadedModelRuntime>& runtimes)
 {
-    std::vector<LoadedObjFile> loadedFiles;
-    std::vector<LoadedObjRuntime> loadedRuntimes;
+    std::vector<LoadedModelFile> loadedFiles;
+    std::vector<LoadedModelRuntime> loadedRuntimes;
     loadedFiles.reserve(document.files.size());
     loadedRuntimes.reserve(document.files.size());
     size_t colorIndex = 0;
@@ -2446,14 +2448,14 @@ std::vector<LoadedObjFile> loadSceneFiles(
     try {
         for (const auto& record : document.files) {
             const std::filesystem::path modelPath = woby::sceneAbsolutePath(scenePath, record.path);
-            LoadedObjFileWithRuntime loaded = loadObjFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
+            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
             woby::applySceneFileRecord(loaded.file, record);
             colorIndex += loaded.file.groupSettings.size();
             loadedRuntimes.push_back(std::move(loaded.runtime));
             loadedFiles.push_back(std::move(loaded.file));
         }
     } catch (...) {
-        destroyObjRuntimes(loadedRuntimes);
+        destroyModelRuntimes(loadedRuntimes);
         throw;
     }
 
@@ -2466,7 +2468,7 @@ void loadScene(
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes)
+    std::vector<LoadedModelRuntime>& runtimes)
 {
     const auto totalStart = woby::PerformanceClock::now();
     const auto readStart = woby::PerformanceClock::now();
@@ -2474,8 +2476,8 @@ void loadScene(
     const double readMilliseconds = elapsedMilliseconds(readStart);
 
     const auto filesStart = woby::PerformanceClock::now();
-    std::vector<LoadedObjRuntime> loadedRuntimes;
-    std::vector<LoadedObjFile> loadedFiles = loadSceneFiles(
+    std::vector<LoadedModelRuntime> loadedRuntimes;
+    std::vector<LoadedModelFile> loadedFiles = loadSceneFiles(
         scenePath,
         document,
         meshLayout,
@@ -2484,7 +2486,7 @@ void loadScene(
     const double filesMilliseconds = elapsedMilliseconds(filesStart);
 
     const auto applyStart = woby::PerformanceClock::now();
-    destroyObjRuntimes(runtimes);
+    destroyModelRuntimes(runtimes);
     runtimes = std::move(loadedRuntimes);
     state.files = std::move(loadedFiles);
     state.upAxis = document.upAxis;
@@ -2531,7 +2533,7 @@ void loadSceneFromPath(
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes,
+    std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument)
 {
@@ -2591,7 +2593,7 @@ void updateBackgroundLoadProgress(
     load.progress = progress;
 }
 
-bool startAppendObjBackgroundLoad(
+bool startAppendModelBackgroundLoad(
     BackgroundLoadRuntime& load,
     std::vector<std::filesystem::path> modelPaths,
     size_t firstColorIndex)
@@ -2604,14 +2606,14 @@ bool startAppendObjBackgroundLoad(
         load.worker.join();
     }
 
-    resetBackgroundLoadProgress(load, AsyncLoadKind::appendObj, modelPaths.size());
+    resetBackgroundLoadProgress(load, AsyncLoadKind::appendModel, modelPaths.size());
     load.cancelRequested.store(false);
     load.active = true;
     load.worker = std::thread([&load, modelPaths = std::move(modelPaths), firstColorIndex]() {
         AsyncLoadOutcome outcome;
-        outcome.kind = AsyncLoadKind::appendObj;
+        outcome.kind = AsyncLoadKind::appendModel;
         try {
-            outcome.objBatch = woby::loadObjBatchCpu(
+            outcome.modelBatch = woby::loadModelBatchCpu(
                 modelPaths,
                 firstColorIndex,
                 [&load](const woby::BackgroundLoadProgress& progress) {
@@ -2695,11 +2697,11 @@ void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
 {
     finalize = GpuFinalizeRuntime{};
     finalize.kind = outcome.kind;
-    if (outcome.kind == AsyncLoadKind::appendObj) {
-        finalize.files = std::move(outcome.objBatch.files);
-        finalize.sourceFailedCount = outcome.objBatch.failedCount;
-        finalize.sourceSkippedCount = outcome.objBatch.skippedCount;
-        finalize.lastError = std::move(outcome.objBatch.lastError);
+    if (outcome.kind == AsyncLoadKind::appendModel) {
+        finalize.files = std::move(outcome.modelBatch.files);
+        finalize.sourceFailedCount = outcome.modelBatch.failedCount;
+        finalize.sourceSkippedCount = outcome.modelBatch.skippedCount;
+        finalize.lastError = std::move(outcome.modelBatch.lastError);
     } else {
         finalize.scenePath = std::move(outcome.scene.scenePath);
         finalize.sceneDocument = std::move(outcome.scene.document);
@@ -2713,12 +2715,12 @@ void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
 std::string appendFinalizeStatus(const GpuFinalizeRuntime& finalize)
 {
     const size_t failedCount = finalize.sourceFailedCount + finalize.gpuFailedCount;
-    std::string status = "Added " + std::to_string(finalize.finalizedFiles.size()) + " OBJ file";
+    std::string status = "Added " + std::to_string(finalize.finalizedFiles.size()) + " model file";
     if (finalize.finalizedFiles.size() != 1u) {
         status += "s";
     }
     if (finalize.sourceSkippedCount > 0u) {
-        status += ", skipped " + std::to_string(finalize.sourceSkippedCount) + " non-OBJ";
+        status += ", skipped " + std::to_string(finalize.sourceSkippedCount) + " non-model";
     }
     if (failedCount > 0u) {
         status += ", failed " + std::to_string(failedCount);
@@ -2731,19 +2733,19 @@ std::string appendFinalizeStatus(const GpuFinalizeRuntime& finalize)
 
 void abortGpuFinalize(GpuFinalizeRuntime& finalize)
 {
-    destroyObjRuntimes(finalize.finalizedRuntimes);
+    destroyModelRuntimes(finalize.finalizedRuntimes);
     finalize = GpuFinalizeRuntime{};
 }
 
 void commitGpuFinalize(
     GpuFinalizeRuntime& finalize,
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes,
+    std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument,
     ToastMessage& toast)
 {
-    if (finalize.kind == AsyncLoadKind::appendObj) {
+    if (finalize.kind == AsyncLoadKind::appendModel) {
         const bool addedAnyFiles = !finalize.finalizedFiles.empty();
         state.files.insert(
             state.files.end(),
@@ -2760,7 +2762,7 @@ void commitGpuFinalize(
         }
         setToastMessage(toast, appendFinalizeStatus(finalize));
     } else {
-        destroyObjRuntimes(runtimes);
+        destroyModelRuntimes(runtimes);
         runtimes = std::move(finalize.finalizedRuntimes);
         state.files = std::move(finalize.finalizedFiles);
         state.upAxis = finalize.sceneDocument.upAxis;
@@ -2783,7 +2785,7 @@ void processGpuFinalizeStep(
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes,
+    std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument,
     ToastMessage& toast)
@@ -2797,10 +2799,10 @@ void processGpuFinalizeStep(
         return;
     }
 
-    LoadedObjFile file = std::move(finalize.files[finalize.nextFileIndex]);
+    LoadedModelFile file = std::move(finalize.files[finalize.nextFileIndex]);
     ++finalize.nextFileIndex;
     try {
-        LoadedObjRuntime runtime;
+        LoadedModelRuntime runtime;
         runtime.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout);
         finalize.finalizedRuntimes.push_back(std::move(runtime));
         finalize.finalizedFiles.push_back(std::move(file));
@@ -2856,7 +2858,7 @@ void processDroppedPaths(
 {
     const auto start = woby::PerformanceClock::now();
     const DroppedPathClassification classification = classifyDroppedPaths(paths);
-    const size_t extraPathCount = classification.objPaths.size()
+    const size_t extraPathCount = classification.modelPaths.size()
         + classification.unsupportedCount
         + classification.emptyFolderCount
         + classification.failedFolderCount;
@@ -2888,12 +2890,12 @@ void processDroppedPaths(
     }
 
     std::string status;
-    if (classification.objPaths.empty()) {
-        status = "No OBJ files added";
+    if (classification.modelPaths.empty()) {
+        status = "No model files added";
     } else {
-        if (!startAppendObjBackgroundLoad(
+        if (!startAppendModelBackgroundLoad(
                 backgroundLoad,
-                classification.objPaths,
+                classification.modelPaths,
                 woby::totalGroupCount(state))) {
             status = "Already processing files";
         }
@@ -2952,7 +2954,7 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
 {
     bool backgroundActive = false;
     bool finalizingActive = gpuFinalize.active;
-    AsyncLoadKind kind = AsyncLoadKind::appendObj;
+    AsyncLoadKind kind = AsyncLoadKind::appendModel;
     woby::BackgroundLoadProgress progress;
     {
         std::lock_guard<std::mutex> lock(backgroundLoad.mutex);
@@ -2973,7 +2975,7 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
             ImGuiWindowFlags_AlwaysAutoResize)) {
         modalOpen = true;
         if (backgroundActive) {
-            ImGui::TextUnformatted(kind == AsyncLoadKind::openScene ? "Opening scene..." : "Loading OBJ files...");
+            ImGui::TextUnformatted(kind == AsyncLoadKind::openScene ? "Opening scene..." : "Loading model files...");
             if (!progress.currentPath.empty()) {
                 ImGui::Text(
                     "%s",
@@ -3118,7 +3120,7 @@ int main(int argc, char** argv)
         const auto pointLayout = pointSpriteVertexLayout();
         const auto helperLayout = helperLineVertexLayout();
         woby::UiState ui;
-        std::vector<LoadedObjRuntime> runtimes;
+        std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument;
 
@@ -3132,9 +3134,9 @@ int main(int argc, char** argv)
                 runtimes,
                 currentScenePath,
                 cleanSceneDocument);
-            appendInitialObjFiles(modelPaths, layout, pointLayout, ui, runtimes);
+            appendInitialModelFiles(modelPaths, layout, pointLayout, ui, runtimes);
         } else {
-            ui.files = loadObjFiles(modelPaths, layout, pointLayout, runtimes);
+            ui.files = loadModelFiles(modelPaths, layout, pointLayout, runtimes);
             woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
         }
@@ -3170,7 +3172,7 @@ int main(int argc, char** argv)
         auto& cameraInput = ui.cameraInput;
         auto& masterVertexPointSize = ui.masterVertexPointSize;
         auto& viewerPaneWidth = ui.viewerPaneWidth;
-        static ObjFileDialogState objFileDialogState;
+        static ModelFileDialogState modelFileDialogState;
         static SceneFileDialogState sceneFileDialogState;
         BackgroundLoadRuntime backgroundLoad;
         GpuFinalizeRuntime gpuFinalize;
@@ -3179,7 +3181,7 @@ int main(int argc, char** argv)
         bool requestDirtyOpenWarning = false;
         bool requestDirtyQuitWarning = false;
         ToastMessage toast;
-        uint64_t observedObjFileDialogStatusVersion = 0;
+        uint64_t observedModelFileDialogStatusVersion = 0;
         uint64_t observedSceneFileDialogStatusVersion = 0;
         auto previousFrame = std::chrono::steady_clock::now();
         auto fpsWindowStart = previousFrame;
@@ -3286,11 +3288,11 @@ int main(int argc, char** argv)
                 if (outcome->failed) {
                     const std::string prefix = outcome->kind == AsyncLoadKind::openScene
                         ? "Open scene failed: "
-                        : "Open OBJ files failed: ";
+                        : "Open model files failed: ";
                     setToastMessage(toast, prefix + outcome->error);
-                } else if (outcome->kind == AsyncLoadKind::appendObj) {
-                    if (outcome->objBatch.canceled || outcome->objBatch.files.empty()) {
-                        setToastMessage(toast, outcome->objBatch.status);
+                } else if (outcome->kind == AsyncLoadKind::appendModel) {
+                    if (outcome->modelBatch.canceled || outcome->modelBatch.files.empty()) {
+                        setToastMessage(toast, outcome->modelBatch.status);
                     } else {
                         startGpuFinalize(gpuFinalize, std::move(outcome.value()));
                     }
@@ -3312,22 +3314,22 @@ int main(int argc, char** argv)
                 toast);
 
             const bool processingFiles = backgroundLoad.active || gpuFinalize.active;
-            const auto pendingObjPaths = takePendingObjPaths(objFileDialogState);
-            if (!pendingObjPaths.empty()) {
+            const auto pendingModelPaths = takePendingModelPaths(modelFileDialogState);
+            if (!pendingModelPaths.empty()) {
                 if (processingFiles) {
-                    setObjFileDialogStatus(objFileDialogState, "Already processing files");
-                } else if (!startAppendObjBackgroundLoad(
+                    setModelFileDialogStatus(modelFileDialogState, "Already processing files");
+                } else if (!startAppendModelBackgroundLoad(
                                backgroundLoad,
-                               pendingObjPaths,
+                               pendingModelPaths,
                                woby::totalGroupCount(ui))) {
-                    setObjFileDialogStatus(objFileDialogState, "Open OBJ files failed: already processing files");
+                    setModelFileDialogStatus(modelFileDialogState, "Open model files failed: already processing files");
                 }
             }
-            const std::string objDialogStatus = objFileDialogStatus(
-                objFileDialogState,
-                observedObjFileDialogStatusVersion);
-            if (!objDialogStatus.empty()) {
-                setToastMessage(toast, objDialogStatus);
+            const std::string modelDialogStatus = modelFileDialogStatus(
+                modelFileDialogState,
+                observedModelFileDialogStatusVersion);
+            if (!modelDialogStatus.empty()) {
+                setToastMessage(toast, modelDialogStatus);
             }
 
             const auto pendingOpenScenePath = takePendingOpenScenePath(sceneFileDialogState);
@@ -3503,7 +3505,7 @@ int main(int argc, char** argv)
                             "SceneContent",
                             ImVec2(0.0f, sceneContentHeight),
                             ImGuiChildFlags_None)) {
-                        const bool fileDialogOpen = objFileDialogIsOpen(objFileDialogState);
+                        const bool fileDialogOpen = modelFileDialogIsOpen(modelFileDialogState);
                         const bool sceneDialogOpen = sceneFileDialogIsOpen(sceneFileDialogState);
                         const bool anyFileDialogOpen = fileDialogOpen
                             || sceneDialogOpen
@@ -3513,14 +3515,14 @@ int main(int argc, char** argv)
                             ImGui::BeginDisabled();
                         }
                         if (ImGui::Button(
-                                std::string(addObjFileIcon).append("##add_obj_file").c_str(),
+                                std::string(addModelFileIcon).append("##add_model_file").c_str(),
                                 ImVec2(renderModeButtonSize, renderModeButtonSize))) {
-                            showObjFileDialog(window.get(), objFileDialogState);
+                            showModelFileDialog(window.get(), modelFileDialogState);
                         }
                         if (anyFileDialogOpen) {
                             ImGui::EndDisabled();
                         }
-                        setLastItemTooltip("Add OBJ files");
+                        setLastItemTooltip("Add model files");
                         ImGui::SameLine();
                         if (anyFileDialogOpen) {
                             ImGui::BeginDisabled();
@@ -3757,7 +3759,7 @@ int main(int argc, char** argv)
                         }
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
                             const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
-                            removeObjFile(ui, runtimes, removeFileIndex.value());
+                            removeModelFile(ui, runtimes, removeFileIndex.value());
                             setToastMessage(toast, "Removed " + removedName);
                         }
                     }
@@ -3818,7 +3820,7 @@ int main(int argc, char** argv)
             const bool cameraInteractionActive = cameraInput.orbiting
                 || cameraInput.rolling
                 || cameraInput.panning;
-            const bool nativeFileDialogOpen = objFileDialogIsOpen(objFileDialogState)
+            const bool nativeFileDialogOpen = modelFileDialogIsOpen(modelFileDialogState)
                 || sceneFileDialogIsOpen(sceneFileDialogState);
             const bool dialogOpen = modalDialogOpen
                 || nativeFileDialogOpen
@@ -3915,7 +3917,7 @@ int main(int argc, char** argv)
         bgfx::destroy(pointSpriteProgram);
         bgfx::destroy(colorProgram);
         bgfx::destroy(meshProgram);
-        destroyObjRuntimes(runtimes);
+        destroyModelRuntimes(runtimes);
         bgfx::shutdown();
         bgfxInitialized = false;
         window.reset();
