@@ -17,6 +17,8 @@ find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
 add_executable(woby
+    src/background_load.cpp
+    src/background_load.h
     src/bgfx_helpers.cpp
     src/bgfx_helpers.h
     src/camera.cpp
@@ -163,17 +165,24 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        src/background_load.cpp
+        src/background_load.h
         src/camera.cpp
         src/command_line.cpp
         src/command_line.h
         src/file_discovery.cpp
         src/file_discovery.h
+        src/obj_mesh.cpp
+        src/obj_mesh.h
+        src/performance_log.cpp
+        src/performance_log.h
         src/scene_file.cpp
         src/scene_file.h
         src/ui_operations.cpp
         src/ui_operations.h
         src/ui_state.cpp
         src/ui_state.h
+        tests/background_load_tests.cpp
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
@@ -182,7 +191,13 @@ if(BUILD_TESTING)
 
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    target_link_libraries(woby_tests PRIVATE doctest::doctest bgfx::bgfx)
+    target_link_libraries(woby_tests PRIVATE
+        doctest::doctest
+        bgfx::bgfx
+        tinyobjloader::tinyobjloader
+        meshoptimizer::meshoptimizer
+        spdlog::spdlog
+    )
 
     foreach(optional_bgfx_target IN ITEMS bgfx::bx bgfx::bimg)
         if(TARGET "${optional_bgfx_target}")

@@ -1,4 +1,5 @@
 #include "bgfx_helpers.h"
+#include "background_load.h"
 #include "camera.h"
 #include "command_line.h"
 #include "file_discovery.h"
@@ -23,6 +24,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -37,6 +39,7 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <thread>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -295,6 +298,52 @@ struct DragDropState {
 struct ToastMessage {
     std::string text;
     std::chrono::steady_clock::time_point startedAt{};
+};
+
+enum class AsyncLoadKind {
+    appendObj,
+    openScene,
+};
+
+struct AsyncLoadOutcome {
+    AsyncLoadKind kind = AsyncLoadKind::appendObj;
+    woby::ObjBatchCpuLoadResult objBatch;
+    woby::SceneCpuLoadResult scene;
+    std::string error;
+    bool failed = false;
+};
+
+struct BackgroundLoadRuntime {
+    ~BackgroundLoadRuntime()
+    {
+        cancelRequested.store(true);
+        if (worker.joinable()) {
+            worker.join();
+        }
+    }
+
+    std::mutex mutex;
+    std::thread worker;
+    std::optional<AsyncLoadOutcome> outcome;
+    woby::BackgroundLoadProgress progress;
+    std::atomic_bool cancelRequested = false;
+    AsyncLoadKind kind = AsyncLoadKind::appendObj;
+    bool active = false;
+};
+
+struct GpuFinalizeRuntime {
+    AsyncLoadKind kind = AsyncLoadKind::appendObj;
+    std::filesystem::path scenePath;
+    woby::SceneDocument sceneDocument;
+    std::vector<LoadedObjFile> files;
+    std::vector<LoadedObjFile> finalizedFiles;
+    std::vector<LoadedObjRuntime> finalizedRuntimes;
+    size_t sourceFailedCount = 0;
+    size_t sourceSkippedCount = 0;
+    size_t gpuFailedCount = 0;
+    std::string lastError;
+    size_t nextFileIndex = 0;
+    bool active = false;
 };
 
 struct MousePosition {
@@ -2522,50 +2571,284 @@ void setToastMessage(ToastMessage& toast, std::string text)
     toast.startedAt = std::chrono::steady_clock::now();
 }
 
-void openSceneOrRequestDirtyWarning(
-    const std::filesystem::path& scenePath,
+void resetBackgroundLoadProgress(
+    BackgroundLoadRuntime& load,
+    AsyncLoadKind kind,
+    size_t totalCount)
+{
+    std::lock_guard<std::mutex> lock(load.mutex);
+    load.progress = woby::BackgroundLoadProgress{};
+    load.progress.totalCount = totalCount;
+    load.kind = kind;
+    load.outcome.reset();
+}
+
+void updateBackgroundLoadProgress(
+    BackgroundLoadRuntime& load,
+    const woby::BackgroundLoadProgress& progress)
+{
+    std::lock_guard<std::mutex> lock(load.mutex);
+    load.progress = progress;
+}
+
+bool startAppendObjBackgroundLoad(
+    BackgroundLoadRuntime& load,
+    std::vector<std::filesystem::path> modelPaths,
+    size_t firstColorIndex)
+{
+    if (load.active) {
+        return false;
+    }
+
+    if (load.worker.joinable()) {
+        load.worker.join();
+    }
+
+    resetBackgroundLoadProgress(load, AsyncLoadKind::appendObj, modelPaths.size());
+    load.cancelRequested.store(false);
+    load.active = true;
+    load.worker = std::thread([&load, modelPaths = std::move(modelPaths), firstColorIndex]() {
+        AsyncLoadOutcome outcome;
+        outcome.kind = AsyncLoadKind::appendObj;
+        try {
+            outcome.objBatch = woby::loadObjBatchCpu(
+                modelPaths,
+                firstColorIndex,
+                [&load](const woby::BackgroundLoadProgress& progress) {
+                    updateBackgroundLoadProgress(load, progress);
+                },
+                [&load]() {
+                    return load.cancelRequested.load();
+                });
+        } catch (const std::exception& exception) {
+            outcome.failed = true;
+            outcome.error = exception.what();
+        }
+
+        std::lock_guard<std::mutex> lock(load.mutex);
+        load.outcome = std::move(outcome);
+    });
+    return true;
+}
+
+bool startOpenSceneBackgroundLoad(
+    BackgroundLoadRuntime& load,
+    const std::filesystem::path& requestedScenePath)
+{
+    if (load.active) {
+        return false;
+    }
+
+    if (load.worker.joinable()) {
+        load.worker.join();
+    }
+
+    const std::filesystem::path scenePath = normalizedPath(requestedScenePath);
+    resetBackgroundLoadProgress(load, AsyncLoadKind::openScene, 0u);
+    load.cancelRequested.store(false);
+    load.active = true;
+    load.worker = std::thread([&load, scenePath]() {
+        AsyncLoadOutcome outcome;
+        outcome.kind = AsyncLoadKind::openScene;
+        try {
+            outcome.scene = woby::loadSceneCpu(
+                scenePath,
+                [&load](const woby::BackgroundLoadProgress& progress) {
+                    updateBackgroundLoadProgress(load, progress);
+                },
+                [&load]() {
+                    return load.cancelRequested.load();
+                });
+        } catch (const std::exception& exception) {
+            outcome.failed = true;
+            outcome.error = exception.what();
+        }
+
+        std::lock_guard<std::mutex> lock(load.mutex);
+        load.outcome = std::move(outcome);
+    });
+    return true;
+}
+
+std::optional<AsyncLoadOutcome> takeBackgroundLoadOutcome(BackgroundLoadRuntime& load)
+{
+    std::optional<AsyncLoadOutcome> outcome;
+    {
+        std::lock_guard<std::mutex> lock(load.mutex);
+        outcome = std::move(load.outcome);
+        load.outcome.reset();
+    }
+
+    if (!outcome.has_value()) {
+        return {};
+    }
+
+    if (load.worker.joinable()) {
+        load.worker.join();
+    }
+    load.active = false;
+    load.cancelRequested.store(false);
+    return outcome;
+}
+
+void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
+{
+    finalize = GpuFinalizeRuntime{};
+    finalize.kind = outcome.kind;
+    if (outcome.kind == AsyncLoadKind::appendObj) {
+        finalize.files = std::move(outcome.objBatch.files);
+        finalize.sourceFailedCount = outcome.objBatch.failedCount;
+        finalize.sourceSkippedCount = outcome.objBatch.skippedCount;
+        finalize.lastError = std::move(outcome.objBatch.lastError);
+    } else {
+        finalize.scenePath = std::move(outcome.scene.scenePath);
+        finalize.sceneDocument = std::move(outcome.scene.document);
+        finalize.files = std::move(outcome.scene.files);
+    }
+    finalize.finalizedFiles.reserve(finalize.files.size());
+    finalize.finalizedRuntimes.reserve(finalize.files.size());
+    finalize.active = true;
+}
+
+std::string appendFinalizeStatus(const GpuFinalizeRuntime& finalize)
+{
+    const size_t failedCount = finalize.sourceFailedCount + finalize.gpuFailedCount;
+    std::string status = "Added " + std::to_string(finalize.finalizedFiles.size()) + " OBJ file";
+    if (finalize.finalizedFiles.size() != 1u) {
+        status += "s";
+    }
+    if (finalize.sourceSkippedCount > 0u) {
+        status += ", skipped " + std::to_string(finalize.sourceSkippedCount) + " non-OBJ";
+    }
+    if (failedCount > 0u) {
+        status += ", failed " + std::to_string(failedCount);
+        if (!finalize.lastError.empty()) {
+            status += ": " + finalize.lastError;
+        }
+    }
+    return status;
+}
+
+void abortGpuFinalize(GpuFinalizeRuntime& finalize)
+{
+    destroyObjRuntimes(finalize.finalizedRuntimes);
+    finalize = GpuFinalizeRuntime{};
+}
+
+void commitGpuFinalize(
+    GpuFinalizeRuntime& finalize,
+    woby::UiState& state,
+    std::vector<LoadedObjRuntime>& runtimes,
+    std::optional<std::filesystem::path>& currentScenePath,
+    woby::SceneDocument& cleanSceneDocument,
+    ToastMessage& toast)
+{
+    if (finalize.kind == AsyncLoadKind::appendObj) {
+        const bool addedAnyFiles = !finalize.finalizedFiles.empty();
+        state.files.insert(
+            state.files.end(),
+            std::make_move_iterator(finalize.finalizedFiles.begin()),
+            std::make_move_iterator(finalize.finalizedFiles.end()));
+        runtimes.insert(
+            runtimes.end(),
+            std::make_move_iterator(finalize.finalizedRuntimes.begin()),
+            std::make_move_iterator(finalize.finalizedRuntimes.end()));
+        if (addedAnyFiles) {
+            woby::recalculateSceneBounds(state);
+            woby::frameCameraToScene(state);
+            woby::markSceneDirty(state);
+        }
+        setToastMessage(toast, appendFinalizeStatus(finalize));
+    } else {
+        destroyObjRuntimes(runtimes);
+        runtimes = std::move(finalize.finalizedRuntimes);
+        state.files = std::move(finalize.finalizedFiles);
+        state.upAxis = finalize.sceneDocument.upAxis;
+        woby::setShowOrigin(state, finalize.sceneDocument.showOrigin);
+        woby::setShowGrid(state, finalize.sceneDocument.showGrid);
+        woby::setMasterVertexPointSize(state, finalize.sceneDocument.masterVertexPointSize);
+        woby::recalculateSceneBounds(state);
+        state.camera = woby::frameCameraBounds(state.sceneBounds, state.upAxis);
+        currentScenePath = finalize.scenePath;
+        cleanSceneDocument = woby::createSceneDocument(state);
+        woby::clearSceneDirty(state);
+        setToastMessage(toast, "Opened scene " + fileDisplayName(finalize.scenePath));
+    }
+
+    finalize = GpuFinalizeRuntime{};
+}
+
+void processGpuFinalizeStep(
+    GpuFinalizeRuntime& finalize,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
     std::vector<LoadedObjRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument,
+    ToastMessage& toast)
+{
+    if (!finalize.active) {
+        return;
+    }
+
+    if (finalize.nextFileIndex >= finalize.files.size()) {
+        commitGpuFinalize(finalize, state, runtimes, currentScenePath, cleanSceneDocument, toast);
+        return;
+    }
+
+    LoadedObjFile file = std::move(finalize.files[finalize.nextFileIndex]);
+    ++finalize.nextFileIndex;
+    try {
+        LoadedObjRuntime runtime;
+        runtime.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout);
+        finalize.finalizedRuntimes.push_back(std::move(runtime));
+        finalize.finalizedFiles.push_back(std::move(file));
+    } catch (const std::exception& exception) {
+        ++finalize.gpuFailedCount;
+        finalize.lastError = exception.what();
+        if (finalize.kind == AsyncLoadKind::openScene) {
+            setToastMessage(toast, std::string("Open scene failed: ") + exception.what());
+            abortGpuFinalize(finalize);
+        }
+    }
+}
+
+void openSceneOrRequestDirtyWarning(
+    const std::filesystem::path& scenePath,
+    woby::UiState& state,
+    BackgroundLoadRuntime& backgroundLoad,
+    GpuFinalizeRuntime& gpuFinalize,
     SceneFileDialogState& sceneFileDialogState,
     ToastMessage& toast,
     std::optional<std::filesystem::path>& pendingDirtyOpenScenePath,
     bool& requestDirtyOpenWarning)
 {
+    if (backgroundLoad.active || gpuFinalize.active) {
+        setSceneFileDialogStatus(sceneFileDialogState, "Already processing files");
+        return;
+    }
+
     if (state.isDirty) {
         pendingDirtyOpenScenePath = normalizedPath(scenePath);
         requestDirtyOpenWarning = true;
         return;
     }
 
-    try {
-        loadSceneFromPath(
-            scenePath,
-            meshLayout,
-            pointSpriteLayout,
-            state,
-            runtimes,
-            currentScenePath,
-            cleanSceneDocument);
-        setToastMessage(toast, "Opened scene " + fileDisplayName(scenePath));
-    } catch (const std::exception& exception) {
+    if (!startOpenSceneBackgroundLoad(backgroundLoad, scenePath)) {
         setSceneFileDialogStatus(
             sceneFileDialogState,
-            std::string("Open scene failed: ") + exception.what());
+            "Open scene failed: already processing files");
+    } else {
+        setToastMessage(toast, "Opening scene " + fileDisplayName(scenePath));
     }
 }
 
 void processDroppedPaths(
     const std::vector<std::filesystem::path>& paths,
-    const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
-    std::vector<LoadedObjRuntime>& runtimes,
-    std::optional<std::filesystem::path>& currentScenePath,
-    woby::SceneDocument& cleanSceneDocument,
+    BackgroundLoadRuntime& backgroundLoad,
+    GpuFinalizeRuntime& gpuFinalize,
     SceneFileDialogState& sceneFileDialogState,
     ToastMessage& toast,
     std::optional<std::filesystem::path>& pendingDirtyOpenScenePath,
@@ -2590,12 +2873,9 @@ void processDroppedPaths(
 
         openSceneOrRequestDirtyWarning(
             classification.scenePaths[0],
-            meshLayout,
-            pointSpriteLayout,
             state,
-            runtimes,
-            currentScenePath,
-            cleanSceneDocument,
+            backgroundLoad,
+            gpuFinalize,
             sceneFileDialogState,
             toast,
             pendingDirtyOpenScenePath,
@@ -2611,16 +2891,17 @@ void processDroppedPaths(
     if (classification.objPaths.empty()) {
         status = "No OBJ files added";
     } else {
-        (void)appendObjFiles(
-            classification.objPaths,
-            meshLayout,
-            pointSpriteLayout,
-            state,
-            runtimes,
-            status);
+        if (!startAppendObjBackgroundLoad(
+                backgroundLoad,
+                classification.objPaths,
+                woby::totalGroupCount(state))) {
+            status = "Already processing files";
+        }
     }
     appendDropClassificationStatus(status, classification);
-    setToastMessage(toast, std::move(status));
+    if (!status.empty()) {
+        setToastMessage(toast, std::move(status));
+    }
     spdlog::info(
         "perf dropped_paths_processed input_count={} duration_ms={}",
         paths.size(),
@@ -2665,6 +2946,74 @@ void drawToastMessage(const ToastMessage& toast, uint32_t width)
     ImGui::End();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
+}
+
+bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRuntime& gpuFinalize)
+{
+    bool backgroundActive = false;
+    bool finalizingActive = gpuFinalize.active;
+    AsyncLoadKind kind = AsyncLoadKind::appendObj;
+    woby::BackgroundLoadProgress progress;
+    {
+        std::lock_guard<std::mutex> lock(backgroundLoad.mutex);
+        backgroundActive = backgroundLoad.active;
+        kind = backgroundLoad.kind;
+        progress = backgroundLoad.progress;
+    }
+
+    if (!backgroundActive && !finalizingActive) {
+        return false;
+    }
+
+    ImGui::OpenPopup("Processing files");
+    bool modalOpen = false;
+    if (ImGui::BeginPopupModal(
+            "Processing files",
+            nullptr,
+            ImGuiWindowFlags_AlwaysAutoResize)) {
+        modalOpen = true;
+        if (backgroundActive) {
+            ImGui::TextUnformatted(kind == AsyncLoadKind::openScene ? "Opening scene..." : "Loading OBJ files...");
+            if (!progress.currentPath.empty()) {
+                ImGui::Text(
+                    "%s",
+                    fileDisplayName(progress.currentPath).c_str());
+            }
+            if (progress.totalCount > 0u) {
+                const float fraction = static_cast<float>(std::min(progress.completedCount, progress.totalCount))
+                    / static_cast<float>(progress.totalCount);
+                ImGui::ProgressBar(
+                    fraction,
+                    ImVec2(260.0f, 0.0f),
+                    (std::to_string(progress.completedCount) + " / " + std::to_string(progress.totalCount)).c_str());
+            } else {
+                ImGui::TextUnformatted("Preparing...");
+            }
+            if (ImGui::Button("Cancel")) {
+                backgroundLoad.cancelRequested.store(true);
+            }
+        } else if (finalizingActive) {
+            ImGui::TextUnformatted("Finalizing GPU resources...");
+            if (gpuFinalize.nextFileIndex < gpuFinalize.files.size()) {
+                ImGui::Text(
+                    "%s",
+                    fileDisplayName(gpuFinalize.files[gpuFinalize.nextFileIndex].path).c_str());
+            }
+            if (!gpuFinalize.files.empty()) {
+                const float fraction = static_cast<float>(std::min(gpuFinalize.nextFileIndex, gpuFinalize.files.size()))
+                    / static_cast<float>(gpuFinalize.files.size());
+                ImGui::ProgressBar(
+                    fraction,
+                    ImVec2(260.0f, 0.0f),
+                    (std::to_string(gpuFinalize.nextFileIndex) + " / " + std::to_string(gpuFinalize.files.size())).c_str());
+            } else {
+                ImGui::TextUnformatted("Committing scene...");
+            }
+        }
+        ImGui::EndPopup();
+    }
+
+    return modalOpen;
 }
 
 void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex, uint32_t width, uint32_t height)
@@ -2823,6 +3172,8 @@ int main(int argc, char** argv)
         auto& viewerPaneWidth = ui.viewerPaneWidth;
         static ObjFileDialogState objFileDialogState;
         static SceneFileDialogState sceneFileDialogState;
+        BackgroundLoadRuntime backgroundLoad;
+        GpuFinalizeRuntime gpuFinalize;
         DragDropState dragDropState;
         std::optional<std::filesystem::path> pendingDirtyOpenScenePath;
         bool requestDirtyOpenWarning = false;
@@ -2931,11 +3282,46 @@ int main(int argc, char** argv)
 
             getDrawableSize(window.get(), width, height);
 
+            if (auto outcome = takeBackgroundLoadOutcome(backgroundLoad); outcome.has_value()) {
+                if (outcome->failed) {
+                    const std::string prefix = outcome->kind == AsyncLoadKind::openScene
+                        ? "Open scene failed: "
+                        : "Open OBJ files failed: ";
+                    setToastMessage(toast, prefix + outcome->error);
+                } else if (outcome->kind == AsyncLoadKind::appendObj) {
+                    if (outcome->objBatch.canceled || outcome->objBatch.files.empty()) {
+                        setToastMessage(toast, outcome->objBatch.status);
+                    } else {
+                        startGpuFinalize(gpuFinalize, std::move(outcome.value()));
+                    }
+                } else if (outcome->scene.canceled) {
+                    setToastMessage(toast, "Open scene canceled");
+                } else {
+                    startGpuFinalize(gpuFinalize, std::move(outcome.value()));
+                }
+            }
+
+            processGpuFinalizeStep(
+                gpuFinalize,
+                layout,
+                pointLayout,
+                ui,
+                runtimes,
+                currentScenePath,
+                cleanSceneDocument,
+                toast);
+
+            const bool processingFiles = backgroundLoad.active || gpuFinalize.active;
             const auto pendingObjPaths = takePendingObjPaths(objFileDialogState);
             if (!pendingObjPaths.empty()) {
-                std::string status;
-                (void)appendObjFiles(pendingObjPaths, layout, pointLayout, ui, runtimes, status);
-                setObjFileDialogStatus(objFileDialogState, std::move(status));
+                if (processingFiles) {
+                    setObjFileDialogStatus(objFileDialogState, "Already processing files");
+                } else if (!startAppendObjBackgroundLoad(
+                               backgroundLoad,
+                               pendingObjPaths,
+                               woby::totalGroupCount(ui))) {
+                    setObjFileDialogStatus(objFileDialogState, "Open OBJ files failed: already processing files");
+                }
             }
             const std::string objDialogStatus = objFileDialogStatus(
                 objFileDialogState,
@@ -2948,12 +3334,9 @@ int main(int argc, char** argv)
             if (pendingOpenScenePath.has_value()) {
                 openSceneOrRequestDirtyWarning(
                     pendingOpenScenePath.value(),
-                    layout,
-                    pointLayout,
                     ui,
-                    runtimes,
-                    currentScenePath,
-                    cleanSceneDocument,
+                    backgroundLoad,
+                    gpuFinalize,
                     sceneFileDialogState,
                     toast,
                     pendingDirtyOpenScenePath,
@@ -2983,18 +3366,19 @@ int main(int argc, char** argv)
 
             const auto droppedPaths = takePendingDropPaths(dragDropState);
             if (!droppedPaths.empty()) {
-                processDroppedPaths(
-                    droppedPaths,
-                    layout,
-                    pointLayout,
-                    ui,
-                    runtimes,
-                    currentScenePath,
-                    cleanSceneDocument,
-                    sceneFileDialogState,
-                    toast,
-                    pendingDirtyOpenScenePath,
-                    requestDirtyOpenWarning);
+                if (processingFiles) {
+                    setToastMessage(toast, "Already processing files");
+                } else {
+                    processDroppedPaths(
+                        droppedPaths,
+                        ui,
+                        backgroundLoad,
+                        gpuFinalize,
+                        sceneFileDialogState,
+                        toast,
+                        pendingDirtyOpenScenePath,
+                        requestDirtyOpenWarning);
+                }
             }
             recordFrameStage(frameTimings, woby::FrameStage::pendingIo, stageStart);
 
@@ -3044,21 +3428,13 @@ int main(int argc, char** argv)
                 }
                 if (ImGui::Button("Open")) {
                     if (pendingDirtyOpenScenePath.has_value()) {
-                        try {
-                            const auto scenePath = pendingDirtyOpenScenePath.value();
-                            loadSceneFromPath(
-                                scenePath,
-                                layout,
-                                pointLayout,
-                                ui,
-                                runtimes,
-                                currentScenePath,
-                                cleanSceneDocument);
-                            setToastMessage(toast, "Opened scene " + fileDisplayName(scenePath));
-                        } catch (const std::exception& exception) {
+                        const auto scenePath = pendingDirtyOpenScenePath.value();
+                        if (!startOpenSceneBackgroundLoad(backgroundLoad, scenePath)) {
                             setSceneFileDialogStatus(
                                 sceneFileDialogState,
-                                std::string("Open scene failed: ") + exception.what());
+                                "Open scene failed: already processing files");
+                        } else {
+                            setToastMessage(toast, "Opening scene " + fileDisplayName(scenePath));
                         }
                     }
                     pendingDirtyOpenScenePath.reset();
@@ -3091,6 +3467,9 @@ int main(int argc, char** argv)
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
+            }
+            if (drawProcessingDialog(backgroundLoad, gpuFinalize)) {
+                modalDialogOpen = true;
             }
             const float activeViewerPaneWidth = ui.viewerPaneVisible ? viewerPaneWidth : 0.0f;
             if (ui.viewerPaneVisible) {
@@ -3126,7 +3505,10 @@ int main(int argc, char** argv)
                             ImGuiChildFlags_None)) {
                         const bool fileDialogOpen = objFileDialogIsOpen(objFileDialogState);
                         const bool sceneDialogOpen = sceneFileDialogIsOpen(sceneFileDialogState);
-                        const bool anyFileDialogOpen = fileDialogOpen || sceneDialogOpen;
+                        const bool anyFileDialogOpen = fileDialogOpen
+                            || sceneDialogOpen
+                            || backgroundLoad.active
+                            || gpuFinalize.active;
                         if (anyFileDialogOpen) {
                             ImGui::BeginDisabled();
                         }
@@ -3438,7 +3820,10 @@ int main(int argc, char** argv)
                 || cameraInput.panning;
             const bool nativeFileDialogOpen = objFileDialogIsOpen(objFileDialogState)
                 || sceneFileDialogIsOpen(sceneFileDialogState);
-            const bool dialogOpen = modalDialogOpen || nativeFileDialogOpen;
+            const bool dialogOpen = modalDialogOpen
+                || nativeFileDialogOpen
+                || backgroundLoad.active
+                || gpuFinalize.active;
             const bool hoverPickingEnabled = mouseInsideViewport
                 && !cameraInteractionActive
                 && !dialogOpen;
@@ -3514,6 +3899,12 @@ int main(int argc, char** argv)
                 }
             }
         }
+
+        backgroundLoad.cancelRequested.store(true);
+        if (backgroundLoad.worker.joinable()) {
+            backgroundLoad.worker.join();
+        }
+        abortGpuFinalize(gpuFinalize);
 
         woby::imgui_bgfx::shutdown();
         ImGui_ImplSDL3_Shutdown();
