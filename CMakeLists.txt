@@ -14,6 +14,7 @@ find_package(bgfx CONFIG REQUIRED)
 find_package(tinyobjloader CONFIG REQUIRED)
 find_package(meshoptimizer CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 add_executable(woby
     src/bgfx_helpers.cpp
@@ -21,6 +22,8 @@ add_executable(woby
     src/camera.cpp
     src/camera.h
     src/camera_sdl.cpp
+    src/command_line.cpp
+    src/command_line.h
     src/file_discovery.cpp
     src/file_discovery.h
     src/imgui_bgfx.cpp
@@ -46,6 +49,7 @@ target_link_libraries(woby PRIVATE
     tinyobjloader::tinyobjloader
     meshoptimizer::meshoptimizer
     imgui::imgui
+    spdlog::spdlog
 )
 
 if(UNIX AND NOT APPLE)
@@ -156,6 +160,8 @@ if(BUILD_TESTING)
 
     add_executable(woby_tests
         src/camera.cpp
+        src/command_line.cpp
+        src/command_line.h
         src/file_discovery.cpp
         src/file_discovery.h
         src/scene_file.cpp
@@ -165,6 +171,7 @@ if(BUILD_TESTING)
         src/ui_state.cpp
         src/ui_state.h
         tests/dummy_tests.cpp
+        tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
         tests/ui_operations_tests.cpp
     )

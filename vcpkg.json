@@ -18,6 +18,7 @@
         "wchar32"
       ]
     },
+    "spdlog",
     "doctest"
   ]
 }

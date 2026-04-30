@@ -53,6 +53,14 @@ Print the application version:
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --version
 ```
 
+Enable file logging:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --log-level info --log-file C:\path\to\woby.log
+```
+
+Logging is off by default. Supported log levels are `off`, `trace`, `debug`, `info`, `warn`, `error`, and `critical`.
+
 ## Build
 
 Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:

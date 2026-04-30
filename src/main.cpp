@@ -1,5 +1,6 @@
 #include "bgfx_helpers.h"
 #include "camera.h"
+#include "command_line.h"
 #include "file_discovery.h"
 #include "imgui_bgfx.h"
 #include "obj_mesh.h"
@@ -15,6 +16,8 @@
 #include <bx/math.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <array>
@@ -1649,74 +1652,6 @@ struct SdlDeleter {
     }
 };
 
-struct ModelPathOption {
-    bool folder = false;
-    std::filesystem::path path;
-};
-
-struct CommandLineOptions {
-    bool showVersion = false;
-    std::optional<std::filesystem::path> scenePath;
-    std::vector<ModelPathOption> inputPaths;
-};
-
-CommandLineOptions parseCommandLine(int argc, char** argv)
-{
-    CommandLineOptions options;
-
-    for (int index = 1; index < argc; ++index) {
-        const std::string argument = argv[index];
-
-        if (argument == "--version") {
-            options.showVersion = true;
-            continue;
-        }
-
-        if (argument == "--file") {
-            if (index + 1 >= argc) {
-                throw std::runtime_error("--file requires an OBJ filename.");
-            }
-
-            ModelPathOption inputPath;
-            inputPath.path = argv[++index];
-            options.inputPaths.push_back(std::move(inputPath));
-            continue;
-        }
-
-        if (argument == "--woby" || argument == "--scene") {
-            if (index + 1 >= argc) {
-                throw std::runtime_error(argument + " requires a woby scene filename.");
-            }
-            if (options.scenePath.has_value()) {
-                throw std::runtime_error("Only one woby scene file can be specified.");
-            }
-
-            options.scenePath = argv[++index];
-            continue;
-        }
-
-        if (argument == "--folder") {
-            if (index + 1 >= argc) {
-                throw std::runtime_error("--folder requires a folder path.");
-            }
-
-            ModelPathOption inputPath;
-            inputPath.folder = true;
-            inputPath.path = argv[++index];
-            options.inputPaths.push_back(std::move(inputPath));
-            continue;
-        }
-
-        if (argument.rfind("--", 0) == 0) {
-            throw std::runtime_error("Unknown option: " + argument);
-        }
-
-        throw std::runtime_error("Unexpected argument: " + argument);
-    }
-
-    return options;
-}
-
 void SDLCALL objFileDialogCallback(void* userdata, const char* const* filelist, int filter)
 {
     (void)filter;
@@ -1962,7 +1897,45 @@ void appendFolderObjPaths(
     modelPaths.insert(modelPaths.end(), folderPaths.begin(), folderPaths.end());
 }
 
-std::vector<std::filesystem::path> resolveModelPaths(const CommandLineOptions& options)
+spdlog::level::level_enum toSpdlogLevel(woby::LogLevel level)
+{
+    switch (level) {
+    case woby::LogLevel::off:
+        return spdlog::level::off;
+    case woby::LogLevel::trace:
+        return spdlog::level::trace;
+    case woby::LogLevel::debug:
+        return spdlog::level::debug;
+    case woby::LogLevel::info:
+        return spdlog::level::info;
+    case woby::LogLevel::warn:
+        return spdlog::level::warn;
+    case woby::LogLevel::error:
+        return spdlog::level::err;
+    case woby::LogLevel::critical:
+        return spdlog::level::critical;
+    }
+
+    throw std::runtime_error("Unsupported log level.");
+}
+
+void initializeLogging(const woby::AppArguments& arguments)
+{
+    if (arguments.logLevel == woby::LogLevel::off) {
+        spdlog::set_level(spdlog::level::off);
+        return;
+    }
+
+    const spdlog::level::level_enum level = toSpdlogLevel(arguments.logLevel);
+    const auto logger = spdlog::basic_logger_mt("woby", arguments.logFile.value().string());
+    logger->set_level(level);
+    logger->flush_on(level);
+    spdlog::set_default_logger(logger);
+    spdlog::set_level(level);
+    spdlog::info("woby version {}", WOBY_VERSION);
+}
+
+std::vector<std::filesystem::path> resolveModelPaths(const woby::AppArguments& options)
 {
     std::vector<std::filesystem::path> modelPaths;
 
@@ -2518,9 +2491,11 @@ int main(int argc, char** argv)
     bool bgfxInitialized = false;
 
     try {
-        const auto commandLine = parseCommandLine(argc, argv);
+        const auto commandLine = woby::parseCommandLine(argc, argv);
+        initializeLogging(commandLine);
         if (commandLine.showVersion) {
             std::printf("%s\n", WOBY_VERSION);
+            spdlog::shutdown();
             return 0;
         }
 
@@ -3229,6 +3204,7 @@ int main(int argc, char** argv)
         window.reset();
         SDL_Quit();
         sdlInitialized = false;
+        spdlog::shutdown();
 
         return 0;
     } catch (const std::exception& exception) {
@@ -3239,6 +3215,7 @@ int main(int argc, char** argv)
         if (sdlInitialized) {
             SDL_Quit();
         }
+        spdlog::shutdown();
         return 1;
     }
 }
