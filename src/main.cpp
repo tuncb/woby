@@ -2,6 +2,7 @@
 #include "camera.h"
 #include "command_line.h"
 #include "file_discovery.h"
+#include "hash_utils.h"
 #include "imgui_bgfx.h"
 #include "obj_mesh.h"
 #include "performance_log.h"
@@ -314,6 +315,62 @@ struct HoveredVertex {
     float depth = 0.0f;
     float distanceSquared = 0.0f;
 };
+
+struct HoverPickCache {
+    bool valid = false;
+    uint64_t signature = 0u;
+    std::optional<HoveredVertex> hoveredVertex;
+};
+
+uint64_t hoverPickSignature(
+    const std::vector<LoadedObjFile>& files,
+    const std::vector<LoadedObjRuntime>& runtimes,
+    const MousePosition& mouse,
+    bool mouseInsideViewport,
+    float masterVertexPointSize,
+    const woby::SceneCamera& camera,
+    const woby::Bounds& sceneBounds,
+    uint32_t viewportWidth,
+    uint32_t viewportHeight,
+    bool homogeneousDepth)
+{
+    uint64_t seed = 0xcbf29ce484222325ull;
+    woby::hashFloat(seed, mouse.x);
+    woby::hashFloat(seed, mouse.y);
+    woby::hashBool(seed, mouseInsideViewport);
+    woby::hashFloat(seed, masterVertexPointSize);
+    woby::hashCamera(seed, camera);
+    woby::hashBounds(seed, sceneBounds);
+    woby::hashCombine(seed, viewportWidth);
+    woby::hashCombine(seed, viewportHeight);
+    woby::hashBool(seed, homogeneousDepth);
+    woby::hashCombine(seed, files.size());
+    woby::hashCombine(seed, runtimes.size());
+
+    const size_t fileCount = std::min(files.size(), runtimes.size());
+    for (size_t fileIndex = 0; fileIndex < fileCount; ++fileIndex) {
+        const auto& file = files[fileIndex];
+        const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
+        woby::hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.vertices.data()));
+        woby::hashCombine(seed, file.mesh.vertices.size());
+        woby::hashCombine(seed, reinterpret_cast<uintptr_t>(gpuMesh.pointVertexIndices.data()));
+        woby::hashCombine(seed, gpuMesh.pointVertexIndices.size());
+        woby::hashCombine(seed, gpuMesh.nodeRanges.size());
+        woby::hashFileSettings(seed, file.fileSettings);
+        woby::hashFloat(seed, file.vertexSizeScale);
+
+        const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
+        woby::hashCombine(seed, groupCount);
+        for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+            const auto& range = gpuMesh.nodeRanges[groupIndex];
+            woby::hashCombine(seed, range.pointIndexOffset);
+            woby::hashCombine(seed, range.pointIndexCount);
+            woby::hashGroupSettings(seed, file.groupSettings[groupIndex]);
+        }
+    }
+
+    return seed;
+}
 
 std::array<float, 4> groupColor(
     const GroupRenderSettings& settings,
@@ -2769,6 +2826,7 @@ int main(int argc, char** argv)
         float fps = 0.0f;
         woby::FrameTimingAccumulator frameTimingAccumulator;
         uint64_t frameIndex = 0;
+        HoverPickCache hoverPickCache;
         while (running) {
             woby::FrameTimings frameTimings;
             frameTimings.frameIndex = ++frameIndex;
@@ -2958,6 +3016,7 @@ int main(int argc, char** argv)
 
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
+            bool modalDialogOpen = false;
             if (requestDirtyOpenWarning) {
                 ImGui::OpenPopup("Unsaved scene changes");
                 requestDirtyOpenWarning = false;
@@ -2966,6 +3025,7 @@ int main(int argc, char** argv)
                     "Unsaved scene changes",
                     nullptr,
                     ImGuiWindowFlags_AlwaysAutoResize)) {
+                modalDialogOpen = true;
                 ImGui::TextUnformatted("The current scene has unsaved changes.");
                 if (pendingDirtyOpenScenePath.has_value()) {
                     ImGui::Text(
@@ -3009,6 +3069,7 @@ int main(int argc, char** argv)
                     "Unsaved scene changes##quit",
                     nullptr,
                     ImGuiWindowFlags_AlwaysAutoResize)) {
+                modalDialogOpen = true;
                 ImGui::TextUnformatted("The current scene has unsaved changes.");
                 ImGui::TextUnformatted("Exit and discard them?");
                 if (ImGui::Button("Exit")) {
@@ -3348,21 +3409,51 @@ int main(int argc, char** argv)
 
             std::optional<HoveredVertex> hoveredVertex;
             const MousePosition mouse = mousePositionInPixels(window.get());
-            if (mouse.x >= activeViewerPaneWidth
+            const bool mouseInsideViewport = mouse.x >= activeViewerPaneWidth
                 && mouse.x < static_cast<float>(sceneViewportWidth)
                 && mouse.y >= 0.0f
-                && mouse.y < static_cast<float>(height)) {
-                hoveredVertex = findHoveredVertex(
+                && mouse.y < static_cast<float>(height);
+            const bool cameraInteractionActive = cameraInput.orbiting
+                || cameraInput.rolling
+                || cameraInput.panning;
+            const bool nativeFileDialogOpen = objFileDialogIsOpen(objFileDialogState)
+                || sceneFileDialogIsOpen(sceneFileDialogState);
+            const bool dialogOpen = modalDialogOpen || nativeFileDialogOpen;
+            const bool hoverPickingEnabled = mouseInsideViewport
+                && !cameraInteractionActive
+                && !dialogOpen;
+            if (!hoverPickingEnabled) {
+                hoverPickCache.hoveredVertex.reset();
+                hoverPickCache.valid = false;
+            } else {
+                const uint64_t hoverSignature = hoverPickSignature(
                     files,
                     runtimes,
                     mouse,
+                    mouseInsideViewport,
                     masterVertexPointSize,
-                    view,
-                    projection,
+                    camera,
+                    sceneBounds,
                     sceneViewportWidth,
                     height,
                     homogeneousDepth);
+                if (!hoverPickCache.valid || hoverPickCache.signature != hoverSignature) {
+                    hoverPickCache.hoveredVertex.reset();
+                    hoverPickCache.hoveredVertex = findHoveredVertex(
+                        files,
+                        runtimes,
+                        mouse,
+                        masterVertexPointSize,
+                        view,
+                        projection,
+                        sceneViewportWidth,
+                        height,
+                        homogeneousDepth);
+                    hoverPickCache.signature = hoverSignature;
+                    hoverPickCache.valid = true;
+                }
             }
+            hoveredVertex = hoverPickCache.hoveredVertex;
             recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
             submitSceneFiles(

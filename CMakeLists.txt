@@ -26,6 +26,8 @@ add_executable(woby
     src/command_line.h
     src/file_discovery.cpp
     src/file_discovery.h
+    src/hash_utils.cpp
+    src/hash_utils.h
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
