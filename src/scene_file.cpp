@@ -155,6 +155,24 @@ std::string parseTomlString(std::string_view value)
     return result;
 }
 
+SceneUpAxis parseSceneUpAxis(std::string_view value)
+{
+    const std::string text = parseTomlString(value);
+    if (text == "z") {
+        return SceneUpAxis::z;
+    }
+    if (text == "y") {
+        return SceneUpAxis::y;
+    }
+
+    throw std::runtime_error("Expected up axis \"z\" or \"y\".");
+}
+
+const char* sceneUpAxisName(SceneUpAxis upAxis)
+{
+    return upAxis == SceneUpAxis::y ? "y" : "z";
+}
+
 float parseTomlFloat(std::string_view value)
 {
     const std::string text = trim(value);
@@ -406,6 +424,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     document.showOrigin = parseTomlBool(value);
                 } else if (key == "show_grid") {
                     document.showGrid = parseTomlBool(value);
+                } else if (key == "up_axis") {
+                    document.upAxis = parseSceneUpAxis(value);
                 }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
@@ -444,7 +464,8 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
-    stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n\n";
+    stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
+    stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
 
     for (const auto& file : document.files) {
         const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);

@@ -7,7 +7,11 @@
 
 namespace woby {
 
-void updateCameraFromKeyboard(SceneCamera& camera, const Bounds& bounds, float deltaSeconds)
+void updateCameraFromKeyboard(
+    SceneCamera& camera,
+    const Bounds& bounds,
+    float deltaSeconds,
+    SceneUpAxis upAxis)
 {
     if (ImGui::GetIO().WantCaptureKeyboard) {
         return;
@@ -43,7 +47,7 @@ void updateCameraFromKeyboard(SceneCamera& camera, const Bounds& bounds, float d
     if (keys[SDL_SCANCODE_S]) {
         forward -= moveSpeed;
     }
-    moveCameraLocal(camera, right, up, forward);
+    moveCameraLocal(camera, right, up, forward, upAxis);
 
     constexpr float orbitPixelsPerSecond = 180.0f;
     float orbitX = 0.0f;
@@ -60,7 +64,7 @@ void updateCameraFromKeyboard(SceneCamera& camera, const Bounds& bounds, float d
     if (keys[SDL_SCANCODE_DOWN]) {
         orbitY += orbitPixelsPerSecond * deltaSeconds;
     }
-    orbitCamera(camera, orbitX, orbitY);
+    orbitCamera(camera, orbitX, orbitY, upAxis);
 
     float zoom = 0.0f;
     if (keys[SDL_SCANCODE_EQUALS] || keys[SDL_SCANCODE_KP_PLUS]) {

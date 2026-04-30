@@ -40,6 +40,8 @@ void setShowOrigin(UiState& state, bool visible);
 void toggleShowOrigin(UiState& state);
 void setShowGrid(UiState& state, bool visible);
 void toggleShowGrid(UiState& state);
+void setSceneUpAxis(UiState& state, SceneUpAxis upAxis);
+void toggleSceneUpAxis(UiState& state);
 
 void setMasterVertexPointSize(UiState& state, float value);
 void setFileVertexSizeScale(UiFileState& file, float value);

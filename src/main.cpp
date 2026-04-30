@@ -329,6 +329,7 @@ uint64_t hoverPickSignature(
     bool mouseInsideViewport,
     float masterVertexPointSize,
     const woby::SceneCamera& camera,
+    woby::SceneUpAxis upAxis,
     const woby::Bounds& sceneBounds,
     uint32_t viewportWidth,
     uint32_t viewportHeight,
@@ -340,6 +341,7 @@ uint64_t hoverPickSignature(
     woby::hashBool(seed, mouseInsideViewport);
     woby::hashFloat(seed, masterVertexPointSize);
     woby::hashCamera(seed, camera);
+    woby::hashCombine(seed, static_cast<uint64_t>(upAxis));
     woby::hashBounds(seed, sceneBounds);
     woby::hashCombine(seed, viewportWidth);
     woby::hashCombine(seed, viewportHeight);
@@ -1590,13 +1592,15 @@ void submitSceneFiles(
     }
 }
 
-float helperGridExtent(const woby::Bounds& bounds)
+float helperGridExtent(const woby::Bounds& bounds, woby::SceneUpAxis upAxis)
 {
+    const float secondMin = upAxis == woby::SceneUpAxis::y ? bounds.min[2] : bounds.min[1];
+    const float secondMax = upAxis == woby::SceneUpAxis::y ? bounds.max[2] : bounds.max[1];
     const float extent = std::max({
         std::abs(bounds.min[0]),
         std::abs(bounds.max[0]),
-        std::abs(bounds.min[1]),
-        std::abs(bounds.max[1]),
+        std::abs(secondMin),
+        std::abs(secondMax),
         woby::defaultDisplayBoundsMax,
     });
     return std::max(extent, 0.001f);
@@ -1666,7 +1670,7 @@ void submitSceneHelpers(
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform)
 {
-    const float extent = helperGridExtent(state.sceneBounds);
+    const float extent = helperGridExtent(state.sceneBounds, state.upAxis);
     const float spacing = helperGridSpacing(extent);
     const int lineRadius = std::max(1, static_cast<int>(std::ceil(extent / spacing)));
     const float snappedExtent = static_cast<float>(lineRadius) * spacing;
@@ -1676,8 +1680,13 @@ void submitSceneHelpers(
         gridLines.reserve(static_cast<size_t>(lineRadius * 4 + 2) * 2u);
         for (int line = -lineRadius; line <= lineRadius; ++line) {
             const float offset = static_cast<float>(line) * spacing;
-            appendHelperLine(gridLines, {offset, -snappedExtent, 0.0f}, {offset, snappedExtent, 0.0f});
-            appendHelperLine(gridLines, {-snappedExtent, offset, 0.0f}, {snappedExtent, offset, 0.0f});
+            if (state.upAxis == woby::SceneUpAxis::y) {
+                appendHelperLine(gridLines, {offset, 0.0f, -snappedExtent}, {offset, 0.0f, snappedExtent});
+                appendHelperLine(gridLines, {-snappedExtent, 0.0f, offset}, {snappedExtent, 0.0f, offset});
+            } else {
+                appendHelperLine(gridLines, {offset, -snappedExtent, 0.0f}, {offset, snappedExtent, 0.0f});
+                appendHelperLine(gridLines, {-snappedExtent, offset, 0.0f}, {snappedExtent, offset, 0.0f});
+            }
         }
         submitHelperLines(gridLines, layout, program, colorUniform, {0.72f, 0.74f, 0.78f, 0.42f});
     }
@@ -2429,11 +2438,12 @@ void loadScene(
     destroyObjRuntimes(runtimes);
     runtimes = std::move(loadedRuntimes);
     state.files = std::move(loadedFiles);
+    state.upAxis = document.upAxis;
     woby::setShowOrigin(state, document.showOrigin);
     woby::setShowGrid(state, document.showGrid);
     woby::setMasterVertexPointSize(state, document.masterVertexPointSize);
     woby::recalculateSceneBounds(state);
-    state.camera = woby::frameCameraBounds(state.sceneBounds);
+    state.camera = woby::frameCameraBounds(state.sceneBounds, state.upAxis);
     spdlog::info(
         "perf scene_load path=\"{}\" files={} read_ms={} files_ms={} apply_ms={} total_ms={}",
         scenePath.string(),
@@ -2801,7 +2811,7 @@ int main(int argc, char** argv)
         woby::imgui_bgfx::init(assets, imguiView);
         woby::logDuration("startup_imgui", elapsedMilliseconds(imguiStart));
 
-        ui.camera = woby::frameCameraBounds(ui.sceneBounds);
+        ui.camera = woby::frameCameraBounds(ui.sceneBounds, ui.upAxis);
         ui.viewerPaneWidth = minimumViewerPaneWidth();
         woby::logDuration("startup_total", elapsedMilliseconds(startupStart));
         auto& running = ui.running;
@@ -3003,7 +3013,7 @@ int main(int argc, char** argv)
             }
 
             const auto& bounds = sceneBounds;
-            woby::updateCameraFromKeyboard(camera, bounds, deltaSeconds);
+            woby::updateCameraFromKeyboard(camera, bounds, deltaSeconds, ui.upAxis);
 
             const float minViewerPaneWidth = minimumViewerPaneWidth();
             const float maxViewerPaneWidth = std::max(
@@ -3191,10 +3201,20 @@ int main(int argc, char** argv)
                         if (drawRenderModeIconButton(
                                 "grid",
                                 gridIcon,
-                                ui.showGrid ? "Hide XY grid" : "Show XY grid",
+                                ui.showGrid ? "Hide ground grid" : "Show ground grid",
                                 ui.showGrid ? RenderModeState::on : RenderModeState::off,
                                 false)) {
                             woby::toggleShowGrid(ui);
+                        }
+                        ImGui::SameLine();
+                        const bool yUp = ui.upAxis == woby::SceneUpAxis::y;
+                        if (drawRenderModeIconButton(
+                                "up_axis",
+                                yUp ? "Y" : "Z",
+                                yUp ? "Use Z as scene up axis" : "Use Y as scene up axis",
+                                RenderModeState::on,
+                                false)) {
+                            woby::toggleSceneUpAxis(ui);
                         }
                         const size_t groupCount = woby::totalGroupCount(ui);
                         const size_t visibleCount = woby::countVisibleSceneGroups(ui);
@@ -3393,9 +3413,9 @@ int main(int argc, char** argv)
             const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
             bx::mtxLookAt(
                 view,
-                woby::cameraEye(camera),
+                woby::cameraEye(camera, ui.upAxis),
                 woby::cameraLookAt(camera),
-                woby::cameraUp(camera));
+                woby::cameraUp(camera, ui.upAxis));
             bx::mtxProj(
                 projection,
                 camera.verticalFovDegrees,
@@ -3433,6 +3453,7 @@ int main(int argc, char** argv)
                     mouseInsideViewport,
                     masterVertexPointSize,
                     camera,
+                    ui.upAxis,
                     sceneBounds,
                     sceneViewportWidth,
                     height,

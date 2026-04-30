@@ -62,6 +62,7 @@ struct UiState {
     bool isDirty = false;
     bool showOrigin = true;
     bool showGrid = true;
+    SceneUpAxis upAxis = SceneUpAxis::z;
     float masterVertexPointSize = defaultMasterVertexPointSize;
     SceneCamera camera;
     CameraInput cameraInput;

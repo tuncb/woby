@@ -216,6 +216,7 @@ TEST_CASE("scene bounds reuse cached group local bounds")
 TEST_CASE("event operations update top-level ui state")
 {
     woby::UiState state;
+    state.sceneBounds = makeBounds(4.0f, 8.0f);
 
     woby::setCameraOrbiting(state, true);
     woby::setCameraRolling(state, true);
@@ -240,6 +241,12 @@ TEST_CASE("event operations update top-level ui state")
     CHECK_FALSE(state.viewerPaneVisible);
     woby::setViewerPaneVisible(state, true);
     CHECK(state.viewerPaneVisible);
+
+    CHECK(state.upAxis == woby::SceneUpAxis::z);
+    woby::toggleSceneUpAxis(state);
+    CHECK(state.upAxis == woby::SceneUpAxis::y);
+    CHECK(state.camera.target[0] == doctest::Approx(state.sceneBounds.center[0]));
+    CHECK(state.isDirty);
 }
 
 TEST_CASE("camera panning drags the scene with the cursor")
@@ -266,6 +273,23 @@ TEST_CASE("camera roll changes the view up direction")
     CHECK(up.x == doctest::Approx(0.0f));
     CHECK(up.y == doctest::Approx(-std::sin(0.6f)));
     CHECK(up.z == doctest::Approx(std::cos(0.6f)));
+}
+
+TEST_CASE("camera supports Y-up scene controls")
+{
+    woby::SceneCamera camera;
+    camera.distance = 10.0f;
+    camera.verticalFovDegrees = 60.0f;
+
+    woby::panCamera(camera, 100.0f, 100.0f, 100.0f, woby::SceneUpAxis::y);
+    const bx::Vec3 up = woby::cameraUp(camera, woby::SceneUpAxis::y);
+
+    CHECK(camera.target[0] == doctest::Approx(0.0f));
+    CHECK(camera.target[1] > 0.0f);
+    CHECK(camera.target[2] > 0.0f);
+    CHECK(up.x == doctest::Approx(0.0f));
+    CHECK(up.y == doctest::Approx(1.0f));
+    CHECK(up.z == doctest::Approx(0.0f));
 }
 
 TEST_CASE("camera panning follows the rolled screen axes")
@@ -320,6 +344,7 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     state.masterVertexPointSize = 9.0f;
     woby::setShowOrigin(state, false);
     woby::setShowGrid(state, false);
+    woby::setSceneUpAxis(state, woby::SceneUpAxis::y);
     auto& file = state.files[0];
     auto& group = file.groupSettings[0];
 
@@ -344,6 +369,7 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     CHECK(document.masterVertexPointSize == doctest::Approx(9.0f));
     CHECK_FALSE(document.showOrigin);
     CHECK_FALSE(document.showGrid);
+    CHECK(document.upAxis == woby::SceneUpAxis::y);
     CHECK_FALSE(document.files[0].settings.visible);
     CHECK(document.files[0].vertexSizeScale == doctest::Approx(2.5f));
     CHECK_FALSE(document.files[0].groups[0].settings.visible);
@@ -386,11 +412,12 @@ TEST_CASE("scene document writer omits camera state")
     CHECK(text.find("vertical_fov_degrees") == std::string::npos);
 }
 
-TEST_CASE("scene document persists helper visibility and defaults old files to visible")
+TEST_CASE("scene document persists helper visibility and up axis and defaults old files")
 {
     woby::SceneDocument document;
     document.showOrigin = false;
     document.showGrid = false;
+    document.upAxis = woby::SceneUpAxis::y;
     const std::filesystem::path path = std::filesystem::temp_directory_path()
         / "woby_scene_document_helper_visibility.woby";
 
@@ -399,6 +426,7 @@ TEST_CASE("scene document persists helper visibility and defaults old files to v
 
     CHECK_FALSE(restored.showOrigin);
     CHECK_FALSE(restored.showGrid);
+    CHECK(restored.upAxis == woby::SceneUpAxis::y);
 
     {
         std::ofstream stream(path, std::ios::trunc);
@@ -412,6 +440,7 @@ TEST_CASE("scene document persists helper visibility and defaults old files to v
 
     CHECK(oldStyleDocument.showOrigin);
     CHECK(oldStyleDocument.showGrid);
+    CHECK(oldStyleDocument.upAxis == woby::SceneUpAxis::z);
 }
 
 TEST_CASE("scene record apply clamps invalid persisted numeric values")

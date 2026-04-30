@@ -244,6 +244,22 @@ void toggleShowGrid(UiState& state)
     setShowGrid(state, !state.showGrid);
 }
 
+void setSceneUpAxis(UiState& state, SceneUpAxis upAxis)
+{
+    if (state.upAxis != upAxis) {
+        state.upAxis = upAxis;
+        frameCameraToScene(state);
+        markSceneDirty(state);
+    }
+}
+
+void toggleSceneUpAxis(UiState& state)
+{
+    setSceneUpAxis(
+        state,
+        state.upAxis == SceneUpAxis::z ? SceneUpAxis::y : SceneUpAxis::z);
+}
+
 void setMasterVertexPointSize(UiState& state, float value)
 {
     const float clampedValue = clampFinite(
@@ -361,7 +377,7 @@ void recalculateSceneBounds(UiState& state)
 
 void frameCameraToScene(UiState& state)
 {
-    state.camera = frameCameraBounds(state.sceneBounds);
+    state.camera = frameCameraBounds(state.sceneBounds, state.upAxis);
 }
 
 bool removeFileFromState(UiState& state, size_t fileIndex)
@@ -437,7 +453,7 @@ void setCameraPanning(UiState& state, bool enabled)
 
 void orbitUiCamera(UiState& state, float deltaX, float deltaY)
 {
-    orbitCamera(state.camera, deltaX, deltaY);
+    orbitCamera(state.camera, deltaX, deltaY, state.upAxis);
 }
 
 void rollUiCamera(UiState& state, float deltaX)
@@ -447,7 +463,7 @@ void rollUiCamera(UiState& state, float deltaX)
 
 void panUiCamera(UiState& state, float deltaX, float deltaY, float viewportHeight)
 {
-    panCamera(state.camera, deltaX, deltaY, viewportHeight);
+    panCamera(state.camera, deltaX, deltaY, viewportHeight, state.upAxis);
 }
 
 void dollyUiCamera(UiState& state, float amount)

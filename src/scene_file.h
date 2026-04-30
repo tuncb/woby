@@ -1,5 +1,7 @@
 #pragma once
 
+#include "scene_up_axis.h"
+
 #include <array>
 #include <filesystem>
 #include <string>
@@ -52,6 +54,7 @@ struct SceneDocument {
     float masterVertexPointSize = 4.0f;
     bool showOrigin = true;
     bool showGrid = true;
+    SceneUpAxis upAxis = SceneUpAxis::z;
     std::vector<SceneFileRecord> files;
 
     friend bool operator==(const SceneDocument&, const SceneDocument&) = default;

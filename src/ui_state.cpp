@@ -362,6 +362,7 @@ SceneDocument createSceneDocument(const UiState& state)
     document.masterVertexPointSize = state.masterVertexPointSize;
     document.showOrigin = state.showOrigin;
     document.showGrid = state.showGrid;
+    document.upAxis = state.upAxis;
     document.files.reserve(state.files.size());
 
     for (const auto& file : state.files) {
