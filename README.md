@@ -4,14 +4,18 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Features
 
-- Load one or more `.obj` model files.
-- Load every `.obj` file in a folder recursively.
-- Drag `.obj` files, `.woby` scenes, or folders into the window.
-- Inspect scenes with orbit, pan, and zoom camera controls.
-- Toggle model, group, grid, and origin visibility.
-- Show solid mesh, triangle edges, and vertices.
-- Edit file and group transforms, opacity, color, and vertex point size.
-- Save and reopen `.woby` scene files.
+- Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
+- Open, save, and drag in `.woby` scene files with persisted model paths, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
+- Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
+- View renderer, FPS, vertex, and triangle counts while working.
+- Toggle the origin axes, adaptive ground grid, and Y-up or Z-up scene orientation.
+- Control visibility at the scene, file, and mesh-group levels with tri-state master controls.
+- Render each group as solid mesh, triangle edges, vertices, or any combination of those modes.
+- Adjust global, per-file, and per-group vertex point sizes.
+- Arrange files and groups with translation, rotation, scale, opacity, and reset controls.
+- Assign and reset per-group display colors.
+- Remove files from a scene without touching the source model files.
+- Load large model batches and scenes in the background with progress, cancellation, and unsaved-change prompts.
 
 ## Command Line
 
