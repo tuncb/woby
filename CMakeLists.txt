@@ -31,6 +31,8 @@ add_executable(woby
     src/main.cpp
     src/obj_mesh.cpp
     src/obj_mesh.h
+    src/performance_log.cpp
+    src/performance_log.h
     src/scene_file.cpp
     src/scene_file.h
     src/ui_operations.cpp

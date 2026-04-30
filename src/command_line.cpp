@@ -42,12 +42,54 @@ void requireValue(int argc, int index, const std::string& option, const std::str
     }
 }
 
+size_t parsePositiveSize(const std::string& value, const std::string& option)
+{
+    size_t parsedCharacters = 0;
+    size_t result = 0;
+    try {
+        result = static_cast<size_t>(std::stoull(value, &parsedCharacters));
+    } catch (const std::exception&) {
+        throw std::runtime_error(option + " requires a positive integer.");
+    }
+
+    if (parsedCharacters != value.size() || result == 0u) {
+        throw std::runtime_error(option + " requires a positive integer.");
+    }
+
+    return result;
+}
+
+double parsePositiveDouble(const std::string& value, const std::string& option)
+{
+    size_t parsedCharacters = 0;
+    double result = 0.0;
+    try {
+        result = std::stod(value, &parsedCharacters);
+    } catch (const std::exception&) {
+        throw std::runtime_error(option + " requires a positive number.");
+    }
+
+    if (parsedCharacters != value.size() || result <= 0.0) {
+        throw std::runtime_error(option + " requires a positive number.");
+    }
+
+    return result;
+}
+
+bool writesInfoLogs(LogLevel level)
+{
+    return level == LogLevel::trace || level == LogLevel::debug || level == LogLevel::info;
+}
+
 } // namespace
 
 AppArguments parseCommandLine(int argc, char** argv)
 {
     AppArguments arguments;
     bool logLevelSpecified = false;
+    bool logPerformanceSpecified = false;
+    bool logFrameIntervalSpecified = false;
+    bool logSlowFrameSpecified = false;
 
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
@@ -75,6 +117,38 @@ AppArguments parseCommandLine(int argc, char** argv)
             }
 
             arguments.logFile = argv[++index];
+            continue;
+        }
+
+        if (argument == "--log-performance") {
+            if (logPerformanceSpecified) {
+                throw std::runtime_error("Only one --log-performance option can be specified.");
+            }
+
+            arguments.logPerformance = true;
+            logPerformanceSpecified = true;
+            continue;
+        }
+
+        if (argument == "--log-frame-interval") {
+            requireValue(argc, index, argument, "a frame count");
+            if (logFrameIntervalSpecified) {
+                throw std::runtime_error("Only one --log-frame-interval option can be specified.");
+            }
+
+            arguments.logFrameInterval = parsePositiveSize(argv[++index], argument);
+            logFrameIntervalSpecified = true;
+            continue;
+        }
+
+        if (argument == "--log-slow-frame-ms") {
+            requireValue(argc, index, argument, "a millisecond threshold");
+            if (logSlowFrameSpecified) {
+                throw std::runtime_error("Only one --log-slow-frame-ms option can be specified.");
+            }
+
+            arguments.logSlowFrameMilliseconds = parsePositiveDouble(argv[++index], argument);
+            logSlowFrameSpecified = true;
             continue;
         }
 
@@ -119,6 +193,15 @@ AppArguments parseCommandLine(int argc, char** argv)
     }
     if (arguments.logLevel == LogLevel::off && arguments.logFile.has_value()) {
         throw std::runtime_error("--log-file requires --log-level to be set to a non-off level.");
+    }
+    if (arguments.logPerformance && !writesInfoLogs(arguments.logLevel)) {
+        throw std::runtime_error("--log-performance requires --log-level to be trace, debug, or info.");
+    }
+    if (logFrameIntervalSpecified && !arguments.logPerformance) {
+        throw std::runtime_error("--log-frame-interval requires --log-performance.");
+    }
+    if (logSlowFrameSpecified && !arguments.logPerformance) {
+        throw std::runtime_error("--log-slow-frame-ms requires --log-performance.");
     }
 
     return arguments;

@@ -60,6 +60,16 @@ Enable file logging:
 ```
 
 Logging is off by default. Supported log levels are `off`, `trace`, `debug`, `info`, `warn`, `error`, and `critical`.
+At `info`, `debug`, or `trace`, the log includes startup, scene, folder scan, and OBJ load performance entries.
+
+Enable frame performance logging:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --log-level info --log-file C:\path\to\woby.log --log-performance
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --log-level info --log-file C:\path\to\woby.log --log-performance --log-frame-interval 60 --log-slow-frame-ms 20
+```
+
+Frame performance logging is opt-in. `--log-frame-interval` controls how many frames are summarized per log entry, and defaults to `120`. `--log-slow-frame-ms` logs individual frames whose total duration exceeds the provided threshold.
 
 ## Build
 

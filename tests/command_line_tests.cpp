@@ -28,6 +28,9 @@ TEST_CASE("command line defaults keep logging off")
     CHECK_FALSE(arguments.showVersion);
     CHECK(arguments.logLevel == woby::LogLevel::off);
     CHECK_FALSE(arguments.logFile.has_value());
+    CHECK_FALSE(arguments.logPerformance);
+    CHECK(arguments.logFrameInterval == 120u);
+    CHECK_FALSE(arguments.logSlowFrameMilliseconds.has_value());
     CHECK_FALSE(arguments.scenePath.has_value());
     CHECK(arguments.inputPaths.empty());
 }
@@ -46,6 +49,11 @@ TEST_CASE("command line parses scene model and logging options")
         "info",
         "--log-file",
         "woby.log",
+        "--log-performance",
+        "--log-frame-interval",
+        "60",
+        "--log-slow-frame-ms",
+        "20.5",
     });
 
     REQUIRE(arguments.scenePath.has_value());
@@ -53,12 +61,44 @@ TEST_CASE("command line parses scene model and logging options")
     CHECK(arguments.logLevel == woby::LogLevel::info);
     REQUIRE(arguments.logFile.has_value());
     CHECK(arguments.logFile.value() == "woby.log");
+    CHECK(arguments.logPerformance);
+    CHECK(arguments.logFrameInterval == 60u);
+    REQUIRE(arguments.logSlowFrameMilliseconds.has_value());
+    CHECK(arguments.logSlowFrameMilliseconds.value() == 20.5);
 
     REQUIRE(arguments.inputPaths.size() == 2u);
     CHECK_FALSE(arguments.inputPaths[0].folder);
     CHECK(arguments.inputPaths[0].path == "a.obj");
     CHECK(arguments.inputPaths[1].folder);
     CHECK(arguments.inputPaths[1].path == "models");
+}
+
+TEST_CASE("command line validates performance logging options")
+{
+    CHECK_THROWS_WITH_AS(
+        parse({"woby", "--log-performance"}),
+        "--log-performance requires --log-level to be trace, debug, or info.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({"woby", "--log-level", "warn", "--log-file", "woby.log", "--log-performance"}),
+        "--log-performance requires --log-level to be trace, debug, or info.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({"woby", "--log-level", "info", "--log-file", "woby.log", "--log-frame-interval", "60"}),
+        "--log-frame-interval requires --log-performance.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({"woby", "--log-level", "info", "--log-file", "woby.log", "--log-performance", "--log-frame-interval", "0"}),
+        "--log-frame-interval requires a positive integer.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({"woby", "--log-level", "info", "--log-file", "woby.log", "--log-performance", "--log-slow-frame-ms", "-1"}),
+        "--log-slow-frame-ms requires a positive number.",
+        std::runtime_error);
 }
 
 TEST_CASE("command line requires log file for enabled logging")

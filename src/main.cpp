@@ -4,6 +4,7 @@
 #include "file_discovery.h"
 #include "imgui_bgfx.h"
 #include "obj_mesh.h"
+#include "performance_log.h"
 #include "scene_file.h"
 #include "ui_operations.h"
 #include "ui_state.h"
@@ -1885,11 +1886,19 @@ bool sceneFileDialogIsOpen(SceneFileDialogState& state)
     return state.openDialogOpen || state.saveDialogOpen;
 }
 
+double elapsedMilliseconds(woby::PerformanceClock::time_point start);
+
 void appendFolderObjPaths(
     const std::filesystem::path& folder,
     std::vector<std::filesystem::path>& modelPaths)
 {
+    const auto start = woby::PerformanceClock::now();
     const std::vector<std::filesystem::path> folderPaths = woby::collectObjPathsRecursive(folder);
+    spdlog::info(
+        "perf folder_scan path=\"{}\" obj_count={} duration_ms={}",
+        folder.string(),
+        folderPaths.size(),
+        elapsedMilliseconds(start));
     if (folderPaths.empty()) {
         throw std::runtime_error("--folder did not contain OBJ files recursively: " + folder.string());
     }
@@ -1935,6 +1944,47 @@ void initializeLogging(const woby::AppArguments& arguments)
     spdlog::info("woby version {}", WOBY_VERSION);
 }
 
+double elapsedMilliseconds(woby::PerformanceClock::time_point start)
+{
+    return woby::millisecondsBetween(start, woby::PerformanceClock::now());
+}
+
+double timerTicksToMilliseconds(int64_t ticks, int64_t frequency)
+{
+    if (frequency <= 0) {
+        return 0.0;
+    }
+
+    return (static_cast<double>(ticks) * 1000.0) / static_cast<double>(frequency);
+}
+
+void copyBgfxStats(woby::FrameTimings& timings)
+{
+    const bgfx::Stats* stats = bgfx::getStats();
+    if (stats == nullptr) {
+        return;
+    }
+
+    timings.bgfxCpuFrameMilliseconds = timerTicksToMilliseconds(stats->cpuTimeFrame, stats->cpuTimerFreq);
+    timings.bgfxCpuSubmitMilliseconds =
+        timerTicksToMilliseconds(stats->cpuTimeEnd - stats->cpuTimeBegin, stats->cpuTimerFreq);
+    if (stats->gpuTimerFreq > 0 && stats->gpuTimeEnd > stats->gpuTimeBegin) {
+        timings.bgfxGpuFrameMilliseconds =
+            timerTicksToMilliseconds(stats->gpuTimeEnd - stats->gpuTimeBegin, stats->gpuTimerFreq);
+        timings.hasBgfxGpuFrameMilliseconds = true;
+    }
+}
+
+void recordFrameStage(
+    woby::FrameTimings& timings,
+    woby::FrameStage stage,
+    woby::PerformanceClock::time_point& stageStart)
+{
+    const auto now = woby::PerformanceClock::now();
+    timings.stageMilliseconds[static_cast<size_t>(stage)] += woby::millisecondsBetween(stageStart, now);
+    stageStart = now;
+}
+
 std::vector<std::filesystem::path> resolveModelPaths(const woby::AppArguments& options)
 {
     std::vector<std::filesystem::path> modelPaths;
@@ -1957,9 +2007,36 @@ LoadedObjFileWithRuntime loadObjFile(
     const bgfx::VertexLayout& pointSpriteLayout,
     size_t firstColorIndex)
 {
+    const auto totalStart = woby::PerformanceClock::now();
     LoadedObjFileWithRuntime loaded;
-    loaded.file = woby::createUiFileState(modelPath, woby::loadObjMesh(modelPath), firstColorIndex);
-    loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout, pointSpriteLayout);
+    try {
+        const auto parseStart = woby::PerformanceClock::now();
+        woby::ObjMesh mesh = woby::loadObjMesh(modelPath);
+        const double parseMilliseconds = elapsedMilliseconds(parseStart);
+
+        loaded.file = woby::createUiFileState(modelPath, std::move(mesh), firstColorIndex);
+
+        const auto gpuStart = woby::PerformanceClock::now();
+        loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout, pointSpriteLayout);
+        const double gpuMilliseconds = elapsedMilliseconds(gpuStart);
+
+        spdlog::info(
+            "perf obj_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} gpu_ms={} total_ms={}",
+            modelPath.string(),
+            loaded.file.mesh.vertices.size(),
+            loaded.file.mesh.indices.size() / 3u,
+            loaded.file.groupSettings.size(),
+            parseMilliseconds,
+            gpuMilliseconds,
+            elapsedMilliseconds(totalStart));
+    } catch (const std::exception& exception) {
+        spdlog::info(
+            "perf obj_load_failed path=\"{}\" duration_ms={} error=\"{}\"",
+            modelPath.string(),
+            elapsedMilliseconds(totalStart),
+            exception.what());
+        throw;
+    }
 
     return loaded;
 }
@@ -1973,6 +2050,7 @@ std::vector<LoadedObjFile> loadObjFiles(
     std::vector<LoadedObjRuntime>& runtimes,
     size_t firstColorIndex = 0)
 {
+    const auto start = woby::PerformanceClock::now();
     std::vector<LoadedObjFile> files;
     files.reserve(modelPaths.size());
     runtimes.reserve(modelPaths.size());
@@ -1990,6 +2068,11 @@ std::vector<LoadedObjFile> loadObjFiles(
         throw;
     }
 
+    spdlog::info(
+        "perf obj_load_batch requested_count={} loaded_count={} duration_ms={}",
+        modelPaths.size(),
+        files.size(),
+        elapsedMilliseconds(start));
     return files;
 }
 
@@ -2004,6 +2087,7 @@ void appendInitialObjFiles(
         return;
     }
 
+    const auto start = woby::PerformanceClock::now();
     std::vector<LoadedObjRuntime> loadedRuntimes;
     std::vector<LoadedObjFile> loadedFiles = loadObjFiles(
         modelPaths,
@@ -2023,6 +2107,10 @@ void appendInitialObjFiles(
     woby::recalculateSceneBounds(state);
     woby::frameCameraToScene(state);
     woby::markSceneDirty(state);
+    spdlog::info(
+        "perf append_initial_obj_files requested_count={} duration_ms={}",
+        modelPaths.size(),
+        elapsedMilliseconds(start));
 }
 
 void removeObjFile(
@@ -2047,6 +2135,7 @@ bool appendObjFiles(
     std::vector<LoadedObjRuntime>& runtimes,
     std::string& status)
 {
+    const auto start = woby::PerformanceClock::now();
     size_t addedCount = 0;
     size_t skippedCount = 0;
     size_t failedCount = 0;
@@ -2093,6 +2182,13 @@ bool appendObjFiles(
         woby::markSceneDirty(state);
     }
 
+    spdlog::info(
+        "perf append_obj_files requested_count={} added_count={} skipped_count={} failed_count={} duration_ms={}",
+        modelPaths.size(),
+        addedCount,
+        skippedCount,
+        failedCount,
+        elapsedMilliseconds(start));
     return addedCount > 0u;
 }
 
@@ -2138,6 +2234,7 @@ struct DroppedPathClassification {
 DroppedPathClassification classifyDroppedPaths(
     const std::vector<std::filesystem::path>& paths)
 {
+    const auto start = woby::PerformanceClock::now();
     DroppedPathClassification classification;
 
     for (const auto& path : paths) {
@@ -2174,6 +2271,15 @@ DroppedPathClassification classifyDroppedPaths(
         ++classification.unsupportedCount;
     }
 
+    spdlog::info(
+        "perf dropped_path_classification input_count={} obj_count={} scene_count={} unsupported_count={} empty_folder_count={} failed_folder_count={} duration_ms={}",
+        paths.size(),
+        classification.objPaths.size(),
+        classification.scenePaths.size(),
+        classification.unsupportedCount,
+        classification.emptyFolderCount,
+        classification.failedFolderCount,
+        elapsedMilliseconds(start));
     return classification;
 }
 
@@ -2247,7 +2353,12 @@ void loadScene(
     woby::UiState& state,
     std::vector<LoadedObjRuntime>& runtimes)
 {
+    const auto totalStart = woby::PerformanceClock::now();
+    const auto readStart = woby::PerformanceClock::now();
     const woby::SceneDocument document = woby::readSceneDocument(scenePath);
+    const double readMilliseconds = elapsedMilliseconds(readStart);
+
+    const auto filesStart = woby::PerformanceClock::now();
     std::vector<LoadedObjRuntime> loadedRuntimes;
     std::vector<LoadedObjFile> loadedFiles = loadSceneFiles(
         scenePath,
@@ -2255,7 +2366,9 @@ void loadScene(
         meshLayout,
         pointSpriteLayout,
         loadedRuntimes);
+    const double filesMilliseconds = elapsedMilliseconds(filesStart);
 
+    const auto applyStart = woby::PerformanceClock::now();
     destroyObjRuntimes(runtimes);
     runtimes = std::move(loadedRuntimes);
     state.files = std::move(loadedFiles);
@@ -2264,14 +2377,36 @@ void loadScene(
     woby::setMasterVertexPointSize(state, document.masterVertexPointSize);
     woby::recalculateSceneBounds(state);
     state.camera = woby::frameCameraBounds(state.sceneBounds);
+    spdlog::info(
+        "perf scene_load path=\"{}\" files={} read_ms={} files_ms={} apply_ms={} total_ms={}",
+        scenePath.string(),
+        state.files.size(),
+        readMilliseconds,
+        filesMilliseconds,
+        elapsedMilliseconds(applyStart),
+        elapsedMilliseconds(totalStart));
 }
 
 std::filesystem::path saveScene(
     const std::filesystem::path& requestedScenePath,
     const woby::UiState& state)
 {
+    const auto totalStart = woby::PerformanceClock::now();
     const std::filesystem::path scenePath = woby::sceneSavePathWithExtension(requestedScenePath);
-    woby::writeSceneDocument(scenePath, woby::createSceneDocument(state));
+    const auto documentStart = woby::PerformanceClock::now();
+    const woby::SceneDocument document = woby::createSceneDocument(state);
+    const double documentMilliseconds = elapsedMilliseconds(documentStart);
+
+    const auto writeStart = woby::PerformanceClock::now();
+    woby::writeSceneDocument(scenePath, document);
+    const double writeMilliseconds = elapsedMilliseconds(writeStart);
+    spdlog::info(
+        "perf scene_save path=\"{}\" files={} document_ms={} write_ms={} total_ms={}",
+        scenePath.string(),
+        document.files.size(),
+        documentMilliseconds,
+        writeMilliseconds,
+        elapsedMilliseconds(totalStart));
     return scenePath;
 }
 
@@ -2284,11 +2419,16 @@ void loadSceneFromPath(
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument)
 {
+    const auto start = woby::PerformanceClock::now();
     const std::filesystem::path scenePath = normalizedPath(requestedScenePath);
     loadScene(scenePath, meshLayout, pointSpriteLayout, state, runtimes);
     currentScenePath = scenePath;
     cleanSceneDocument = woby::createSceneDocument(state);
     woby::clearSceneDirty(state);
+    spdlog::info(
+        "perf scene_open path=\"{}\" duration_ms={}",
+        scenePath.string(),
+        elapsedMilliseconds(start));
 }
 
 std::filesystem::path saveSceneToPath(
@@ -2297,10 +2437,15 @@ std::filesystem::path saveSceneToPath(
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument)
 {
+    const auto start = woby::PerformanceClock::now();
     const std::filesystem::path scenePath = normalizedPath(saveScene(requestedScenePath, state));
     currentScenePath = scenePath;
     cleanSceneDocument = woby::createSceneDocument(state);
     woby::clearSceneDirty(state);
+    spdlog::info(
+        "perf scene_save_total path=\"{}\" duration_ms={}",
+        scenePath.string(),
+        elapsedMilliseconds(start));
     return scenePath;
 }
 
@@ -2359,6 +2504,7 @@ void processDroppedPaths(
     std::optional<std::filesystem::path>& pendingDirtyOpenScenePath,
     bool& requestDirtyOpenWarning)
 {
+    const auto start = woby::PerformanceClock::now();
     const DroppedPathClassification classification = classifyDroppedPaths(paths);
     const size_t extraPathCount = classification.objPaths.size()
         + classification.unsupportedCount
@@ -2368,6 +2514,10 @@ void processDroppedPaths(
     if (!classification.scenePaths.empty()) {
         if (classification.scenePaths.size() != 1u || extraPathCount > 0u) {
             setToastMessage(toast, "Drop one .woby scene file by itself");
+            spdlog::info(
+                "perf dropped_paths_processed input_count={} duration_ms={}",
+                paths.size(),
+                elapsedMilliseconds(start));
             return;
         }
 
@@ -2383,6 +2533,10 @@ void processDroppedPaths(
             toast,
             pendingDirtyOpenScenePath,
             requestDirtyOpenWarning);
+        spdlog::info(
+            "perf dropped_paths_processed input_count={} duration_ms={}",
+            paths.size(),
+            elapsedMilliseconds(start));
         return;
     }
 
@@ -2400,6 +2554,10 @@ void processDroppedPaths(
     }
     appendDropClassificationStatus(status, classification);
     setToastMessage(toast, std::move(status));
+    spdlog::info(
+        "perf dropped_paths_processed input_count={} duration_ms={}",
+        paths.size(),
+        elapsedMilliseconds(start));
 }
 
 void drawToastMessage(const ToastMessage& toast, uint32_t width)
@@ -2493,12 +2651,14 @@ int main(int argc, char** argv)
     try {
         const auto commandLine = woby::parseCommandLine(argc, argv);
         initializeLogging(commandLine);
+        const auto startupStart = woby::PerformanceClock::now();
         if (commandLine.showVersion) {
             std::printf("%s\n", WOBY_VERSION);
             spdlog::shutdown();
             return 0;
         }
 
+        const auto sdlStart = woby::PerformanceClock::now();
         if (!SDL_Init(SDL_INIT_VIDEO)) {
             throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
         }
@@ -2514,7 +2674,9 @@ int main(int argc, char** argv)
         uint32_t width = 0;
         uint32_t height = 0;
         getDrawableSize(window.get(), width, height);
+        woby::logDuration("startup_sdl_window", elapsedMilliseconds(sdlStart));
 
+        const auto bgfxStart = woby::PerformanceClock::now();
         bgfx::Init init;
         init.type = bgfx::RendererType::Count;
         init.platformData = platformDataFromSdlWindow(window.get());
@@ -2530,9 +2692,12 @@ int main(int argc, char** argv)
         bgfx::setViewClear(sceneView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
         bgfx::setViewClear(helperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
         bgfx::setDebug(BGFX_DEBUG_TEXT);
+        woby::logDuration("startup_bgfx", elapsedMilliseconds(bgfxStart));
 
         const auto assets = assetRoot();
+        const auto modelPathsStart = woby::PerformanceClock::now();
         const auto modelPaths = resolveModelPaths(commandLine);
+        woby::logDuration("startup_resolve_model_paths", elapsedMilliseconds(modelPathsStart));
         const auto layout = meshVertexLayout();
         const auto pointLayout = pointSpriteVertexLayout();
         const auto helperLayout = helperLineVertexLayout();
@@ -2541,6 +2706,7 @@ int main(int argc, char** argv)
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument;
 
+        const auto initialLoadStart = woby::PerformanceClock::now();
         if (commandLine.scenePath.has_value()) {
             loadSceneFromPath(
                 commandLine.scenePath.value(),
@@ -2556,13 +2722,17 @@ int main(int argc, char** argv)
             woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
         }
+        woby::logDuration("startup_initial_scene", elapsedMilliseconds(initialLoadStart));
 
+        const auto shaderStart = woby::PerformanceClock::now();
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
         bgfx::UniformHandle colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
         bgfx::UniformHandle pointParamsUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4);
+        woby::logDuration("startup_shaders", elapsedMilliseconds(shaderStart));
 
+        const auto imguiStart = woby::PerformanceClock::now();
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         loadAppFont(assets);
@@ -2572,9 +2742,11 @@ int main(int argc, char** argv)
             throw std::runtime_error("ImGui_ImplSDL3_InitForOther failed.");
         }
         woby::imgui_bgfx::init(assets, imguiView);
+        woby::logDuration("startup_imgui", elapsedMilliseconds(imguiStart));
 
         ui.camera = woby::frameCameraBounds(ui.sceneBounds);
         ui.viewerPaneWidth = minimumViewerPaneWidth();
+        woby::logDuration("startup_total", elapsedMilliseconds(startupStart));
         auto& running = ui.running;
         auto& files = ui.files;
         auto& sceneBounds = ui.sceneBounds;
@@ -2595,7 +2767,14 @@ int main(int argc, char** argv)
         auto fpsWindowStart = previousFrame;
         int fpsFrameCount = 0;
         float fps = 0.0f;
+        woby::FrameTimingAccumulator frameTimingAccumulator;
+        uint64_t frameIndex = 0;
         while (running) {
+            woby::FrameTimings frameTimings;
+            frameTimings.frameIndex = ++frameIndex;
+            const auto frameStart = woby::PerformanceClock::now();
+            auto stageStart = frameStart;
+
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 ImGui_ImplSDL3_ProcessEvent(&event);
@@ -2671,6 +2850,7 @@ int main(int argc, char** argv)
                     woby::dollyUiCamera(ui, -wheelY * 0.12f);
                 }
             }
+            recordFrameStage(frameTimings, woby::FrameStage::events, stageStart);
 
             getDrawableSize(window.get(), width, height);
 
@@ -2739,6 +2919,8 @@ int main(int argc, char** argv)
                     pendingDirtyOpenScenePath,
                     requestDirtyOpenWarning);
             }
+            recordFrameStage(frameTimings, woby::FrameStage::pendingIo, stageStart);
+
             woby::updateSceneDirty(ui, cleanSceneDocument);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
 
@@ -2763,6 +2945,7 @@ int main(int argc, char** argv)
             woby::setViewerPaneWidth(ui, viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth);
 
             bgfx::dbgTextClear();
+            recordFrameStage(frameTimings, woby::FrameStage::stateUpdate, stageStart);
 
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
@@ -3112,10 +3295,12 @@ int main(int argc, char** argv)
                 ImGui::End();
             }
             drawViewerPaneTogglePane(ui, static_cast<float>(width));
+            recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
 
             woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
+            recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
 
             const uint32_t sceneViewportWidth = std::max(width, 1u);
             bgfx::setViewRect(
@@ -3150,6 +3335,7 @@ int main(int argc, char** argv)
                 homogeneousDepth);
             bgfx::setViewTransform(sceneView, view, projection);
             bgfx::setViewTransform(helperView, view, projection);
+            recordFrameStage(frameTimings, woby::FrameStage::viewSetup, stageStart);
 
             std::optional<HoveredVertex> hoveredVertex;
             const MousePosition mouse = mousePositionInPixels(window.get());
@@ -3168,6 +3354,8 @@ int main(int argc, char** argv)
                     height,
                     homogeneousDepth);
             }
+            recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
+
             submitSceneFiles(
                 files,
                 runtimes,
@@ -3179,14 +3367,31 @@ int main(int argc, char** argv)
                 pointParamsUniform,
                 sceneViewportWidth,
                 height);
+            recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
+
             submitSceneHelpers(ui, helperLayout, colorProgram, colorUniform);
+            recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
 
             drawToastMessage(toast, width);
             drawHoveredVertexOverlay(hoveredVertex, width, height);
             ImGui::Render();
             woby::imgui_bgfx::render(ImGui::GetDrawData());
+            recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);
 
             bgfx::frame();
+            recordFrameStage(frameTimings, woby::FrameStage::bgfxFrame, stageStart);
+            frameTimings.totalMilliseconds = woby::millisecondsBetween(frameStart, woby::PerformanceClock::now());
+            copyBgfxStats(frameTimings);
+            if (commandLine.logPerformance) {
+                woby::accumulateFrameTiming(frameTimingAccumulator, frameTimings);
+                if (commandLine.logSlowFrameMilliseconds.has_value()) {
+                    woby::logSlowFrame(frameTimings, commandLine.logSlowFrameMilliseconds.value());
+                }
+                if (frameTimingAccumulator.frameCount >= commandLine.logFrameInterval) {
+                    woby::logFrameSummary(frameTimingAccumulator);
+                    woby::resetFrameTimingAccumulator(frameTimingAccumulator);
+                }
+            }
         }
 
         woby::imgui_bgfx::shutdown();
