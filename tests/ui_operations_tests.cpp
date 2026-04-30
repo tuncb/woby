@@ -220,16 +220,16 @@ TEST_CASE("event operations update top-level ui state")
     CHECK(state.viewerPaneVisible);
 }
 
-TEST_CASE("camera panning uses z as the global up axis")
+TEST_CASE("camera panning drags the scene with the cursor")
 {
     woby::SceneCamera camera;
     camera.distance = 10.0f;
     camera.verticalFovDegrees = 60.0f;
 
-    woby::panCamera(camera, 0.0f, -100.0f, 100.0f);
+    woby::panCamera(camera, 100.0f, 100.0f, 100.0f);
 
     CHECK(camera.target[0] == doctest::Approx(0.0f));
-    CHECK(camera.target[1] == doctest::Approx(0.0f));
+    CHECK(camera.target[1] < 0.0f);
     CHECK(camera.target[2] > 0.0f);
 }
 

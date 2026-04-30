@@ -95,7 +95,7 @@ void panCamera(SceneCamera& camera, float deltaX, float deltaY, float viewportHe
         * 2.0f
         / std::max(viewportHeight, 1.0f);
     moveTarget(camera, rightDirection(camera), deltaX * unitsPerPixel);
-    moveTarget(camera, upDirection(camera), -deltaY * unitsPerPixel);
+    moveTarget(camera, upDirection(camera), deltaY * unitsPerPixel);
 }
 
 void dollyCamera(SceneCamera& camera, float amount)
