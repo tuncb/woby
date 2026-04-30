@@ -248,6 +248,8 @@ std::vector<UiGroupState> createUiGroupStates(const ObjMesh& mesh, size_t firstC
     for (size_t groupIndex = 0; groupIndex < mesh.nodes.size(); ++groupIndex) {
         UiGroupState group;
         group.color = defaultGroupColor(firstColorIndex + groupIndex);
+        group.localBounds = nodeBounds(mesh, mesh.nodes[groupIndex]);
+        group.localBoundsValid = true;
         group.center = nodeCenter(mesh, mesh.nodes[groupIndex]);
         settings.push_back(group);
     }
@@ -312,7 +314,10 @@ Bounds combineBounds(const std::vector<UiFileState>& files)
             float model[16];
             groupTransformMatrix(file.groupSettings[groupIndex], groupModel);
             bx::mtxMul(model, fileModel, groupModel);
-            expandTransformedBounds(bounds, nodeBounds(file.mesh, file.mesh.nodes[groupIndex]), model);
+            const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
+                ? file.groupSettings[groupIndex].localBounds
+                : nodeBounds(file.mesh, file.mesh.nodes[groupIndex]);
+            expandTransformedBounds(bounds, localBounds, model);
         }
     }
 

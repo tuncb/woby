@@ -36,6 +36,8 @@ struct UiGroupState {
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
     std::array<float, 4> color{};
+    Bounds localBounds;
+    bool localBoundsValid = false;
 };
 
 struct UiFileSettings {

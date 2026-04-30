@@ -195,6 +195,24 @@ TEST_CASE("scene bounds include file and group transforms")
     CHECK(state.sceneBounds.max[1] == doctest::Approx(21.0f));
 }
 
+TEST_CASE("scene bounds reuse cached group local bounds")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    auto& file = state.files[0];
+    auto& group = file.groupSettings[0];
+
+    REQUIRE(group.localBoundsValid);
+    CHECK(group.localBounds.min[0] == doctest::Approx(0.0f));
+    CHECK(group.localBounds.max[0] == doctest::Approx(1.0f));
+
+    file.mesh.vertices[1].position[0] = 1000.0f;
+    woby::recalculateSceneBounds(state);
+
+    CHECK(state.sceneBounds.min[0] == doctest::Approx(0.0f));
+    CHECK(state.sceneBounds.max[0] == doctest::Approx(1.0f));
+}
+
 TEST_CASE("event operations update top-level ui state")
 {
     woby::UiState state;
