@@ -2821,7 +2821,12 @@ int main(int argc, char** argv)
                 }
                 if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && !ImGui::GetIO().WantCaptureMouse) {
                     if (event.button.button == SDL_BUTTON_LEFT) {
-                        woby::setCameraOrbiting(ui, true);
+                        const bool altPressed = (SDL_GetModState() & SDL_KMOD_ALT) != 0u;
+                        if (altPressed) {
+                            woby::setCameraRolling(ui, true);
+                        } else {
+                            woby::setCameraOrbiting(ui, true);
+                        }
                     }
                     if (event.button.button == SDL_BUTTON_RIGHT || event.button.button == SDL_BUTTON_MIDDLE) {
                         woby::setCameraPanning(ui, true);
@@ -2830,6 +2835,7 @@ int main(int argc, char** argv)
                 if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
                     if (event.button.button == SDL_BUTTON_LEFT) {
                         woby::setCameraOrbiting(ui, false);
+                        woby::setCameraRolling(ui, false);
                     }
                     if (event.button.button == SDL_BUTTON_RIGHT || event.button.button == SDL_BUTTON_MIDDLE) {
                         woby::setCameraPanning(ui, false);
@@ -2838,6 +2844,9 @@ int main(int argc, char** argv)
                 if (event.type == SDL_EVENT_MOUSE_MOTION) {
                     if (cameraInput.orbiting) {
                         woby::orbitUiCamera(ui, event.motion.xrel, event.motion.yrel);
+                    }
+                    if (cameraInput.rolling) {
+                        woby::rollUiCamera(ui, event.motion.xrel);
                     }
                     if (cameraInput.panning) {
                         woby::panUiCamera(ui, event.motion.xrel, event.motion.yrel, static_cast<float>(height));
@@ -3325,7 +3334,7 @@ int main(int argc, char** argv)
                 view,
                 woby::cameraEye(camera),
                 woby::cameraLookAt(camera),
-                bx::Vec3(0.0f, 0.0f, 1.0f));
+                woby::cameraUp(camera));
             bx::mtxProj(
                 projection,
                 camera.verticalFovDegrees,

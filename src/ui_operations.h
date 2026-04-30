@@ -72,8 +72,10 @@ void setViewerPaneVisible(UiState& state, bool visible);
 void toggleViewerPaneVisible(UiState& state);
 void requestQuit(UiState& state);
 void setCameraOrbiting(UiState& state, bool enabled);
+void setCameraRolling(UiState& state, bool enabled);
 void setCameraPanning(UiState& state, bool enabled);
 void orbitUiCamera(UiState& state, float deltaX, float deltaY);
+void rollUiCamera(UiState& state, float deltaX);
 void panUiCamera(UiState& state, float deltaX, float deltaY, float viewportHeight);
 void dollyUiCamera(UiState& state, float amount);
 

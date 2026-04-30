@@ -39,6 +39,32 @@ std::array<float, 3> upDirection(const SceneCamera& camera)
     };
 }
 
+std::array<float, 3> rolledRightDirection(const SceneCamera& camera)
+{
+    const auto right = rightDirection(camera);
+    const auto up = upDirection(camera);
+    const float rollCos = std::cos(camera.rollRadians);
+    const float rollSin = std::sin(camera.rollRadians);
+    return {
+        right[0] * rollCos - up[0] * rollSin,
+        right[1] * rollCos - up[1] * rollSin,
+        right[2] * rollCos - up[2] * rollSin,
+    };
+}
+
+std::array<float, 3> rolledUpDirection(const SceneCamera& camera)
+{
+    const auto right = rightDirection(camera);
+    const auto up = upDirection(camera);
+    const float rollCos = std::cos(camera.rollRadians);
+    const float rollSin = std::sin(camera.rollRadians);
+    return {
+        up[0] * rollCos + right[0] * rollSin,
+        up[1] * rollCos + right[1] * rollSin,
+        up[2] * rollCos + right[2] * rollSin,
+    };
+}
+
 void moveTarget(SceneCamera& camera, const std::array<float, 3>& direction, float amount)
 {
     for (size_t axis = 0; axis < camera.target.size(); ++axis) {
@@ -76,6 +102,11 @@ bx::Vec3 cameraLookAt(const SceneCamera& camera)
     return toVec3(camera.target);
 }
 
+bx::Vec3 cameraUp(const SceneCamera& camera)
+{
+    return toVec3(rolledUpDirection(camera));
+}
+
 float cameraFarPlane(const SceneCamera& camera, const Bounds& bounds)
 {
     return std::max(camera.distance + bounds.radius * 4.0f, 10.0f);
@@ -88,14 +119,20 @@ void orbitCamera(SceneCamera& camera, float deltaX, float deltaY)
     camera.pitchRadians = std::clamp(camera.pitchRadians + deltaY * sensitivity, -1.45f, 1.45f);
 }
 
+void rollCamera(SceneCamera& camera, float deltaX)
+{
+    constexpr float sensitivity = 0.006f;
+    camera.rollRadians += deltaX * sensitivity;
+}
+
 void panCamera(SceneCamera& camera, float deltaX, float deltaY, float viewportHeight)
 {
     const float unitsPerPixel = std::max(camera.distance, 0.001f)
         * std::tan(camera.verticalFovDegrees * 0.5f * pi / 180.0f)
         * 2.0f
         / std::max(viewportHeight, 1.0f);
-    moveTarget(camera, rightDirection(camera), deltaX * unitsPerPixel);
-    moveTarget(camera, upDirection(camera), deltaY * unitsPerPixel);
+    moveTarget(camera, rolledRightDirection(camera), deltaX * unitsPerPixel);
+    moveTarget(camera, rolledUpDirection(camera), deltaY * unitsPerPixel);
 }
 
 void dollyCamera(SceneCamera& camera, float amount)
@@ -105,8 +142,8 @@ void dollyCamera(SceneCamera& camera, float amount)
 
 void moveCameraLocal(SceneCamera& camera, float rightAmount, float upAmount, float forwardAmount)
 {
-    moveTarget(camera, rightDirection(camera), rightAmount);
-    moveTarget(camera, upDirection(camera), upAmount);
+    moveTarget(camera, rolledRightDirection(camera), rightAmount);
+    moveTarget(camera, rolledUpDirection(camera), upAmount);
 
     const auto forward = viewDirection(camera);
     moveTarget(camera, forward, -forwardAmount);

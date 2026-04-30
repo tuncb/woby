@@ -425,6 +425,11 @@ void setCameraOrbiting(UiState& state, bool enabled)
     state.cameraInput.orbiting = enabled;
 }
 
+void setCameraRolling(UiState& state, bool enabled)
+{
+    state.cameraInput.rolling = enabled;
+}
+
 void setCameraPanning(UiState& state, bool enabled)
 {
     state.cameraInput.panning = enabled;
@@ -433,6 +438,11 @@ void setCameraPanning(UiState& state, bool enabled)
 void orbitUiCamera(UiState& state, float deltaX, float deltaY)
 {
     orbitCamera(state.camera, deltaX, deltaY);
+}
+
+void rollUiCamera(UiState& state, float deltaX)
+{
+    rollCamera(state.camera, deltaX);
 }
 
 void panUiCamera(UiState& state, float deltaX, float deltaY, float viewportHeight)

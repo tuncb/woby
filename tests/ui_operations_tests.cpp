@@ -200,13 +200,17 @@ TEST_CASE("event operations update top-level ui state")
     woby::UiState state;
 
     woby::setCameraOrbiting(state, true);
+    woby::setCameraRolling(state, true);
     woby::setCameraPanning(state, true);
     CHECK(state.cameraInput.orbiting);
+    CHECK(state.cameraInput.rolling);
     CHECK(state.cameraInput.panning);
 
     woby::setCameraOrbiting(state, false);
+    woby::setCameraRolling(state, false);
     woby::setCameraPanning(state, false);
     CHECK_FALSE(state.cameraInput.orbiting);
+    CHECK_FALSE(state.cameraInput.rolling);
     CHECK_FALSE(state.cameraInput.panning);
 
     CHECK(state.running);
@@ -233,6 +237,33 @@ TEST_CASE("camera panning drags the scene with the cursor")
     CHECK(camera.target[2] > 0.0f);
 }
 
+TEST_CASE("camera roll changes the view up direction")
+{
+    woby::SceneCamera camera;
+
+    woby::rollCamera(camera, 100.0f);
+    const bx::Vec3 up = woby::cameraUp(camera);
+
+    CHECK(camera.rollRadians == doctest::Approx(0.6f));
+    CHECK(up.x == doctest::Approx(0.0f));
+    CHECK(up.y == doctest::Approx(-std::sin(0.6f)));
+    CHECK(up.z == doctest::Approx(std::cos(0.6f)));
+}
+
+TEST_CASE("camera panning follows the rolled screen axes")
+{
+    woby::SceneCamera camera;
+    camera.distance = 10.0f;
+    camera.verticalFovDegrees = 60.0f;
+    camera.rollRadians = 3.14159265358979323846f * 0.5f;
+
+    woby::panCamera(camera, 100.0f, 0.0f, 100.0f);
+
+    CHECK(camera.target[0] == doctest::Approx(0.0f));
+    CHECK(camera.target[1] == doctest::Approx(0.0f).epsilon(0.0001));
+    CHECK(camera.target[2] < 0.0f);
+}
+
 TEST_CASE("dirty tracking follows persisted scene document only")
 {
     woby::UiState state;
@@ -243,6 +274,7 @@ TEST_CASE("dirty tracking follows persisted scene document only")
     CHECK_FALSE(state.isDirty);
 
     woby::orbitUiCamera(state, 20.0f, 10.0f);
+    woby::rollUiCamera(state, 8.0f);
     woby::panUiCamera(state, 5.0f, 3.0f, 720.0f);
     woby::dollyUiCamera(state, 0.5f);
     woby::toggleViewerPaneVisible(state);
