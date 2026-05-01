@@ -30,11 +30,15 @@ add_executable(woby
     src/file_discovery.h
     src/hash_utils.cpp
     src/hash_utils.h
+    src/hover_pick.cpp
+    src/hover_pick.h
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
     src/model_load.cpp
     src/model_load.h
+    src/native_dialogs.cpp
+    src/native_dialogs.h
     src/model_mesh.cpp
     src/model_mesh.h
     src/obj_mesh.cpp
@@ -43,6 +47,10 @@ add_executable(woby
     src/performance_log.h
     src/scene_file.cpp
     src/scene_file.h
+    src/scene_renderer.cpp
+    src/scene_renderer.h
+    src/scene_screenshot.cpp
+    src/scene_screenshot.h
     src/stl_mesh.cpp
     src/stl_mesh.h
     src/ui_operations.cpp
