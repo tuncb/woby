@@ -364,7 +364,7 @@ TEST_CASE("camera panning drags the scene with the cursor")
     woby::panCamera(camera, 100.0f, 100.0f, 100.0f);
 
     CHECK(camera.target[0] == doctest::Approx(0.0f));
-    CHECK(camera.target[1] < 0.0f);
+    CHECK(camera.target[1] > 0.0f);
     CHECK(camera.target[2] > 0.0f);
 }
 
@@ -392,7 +392,7 @@ TEST_CASE("camera supports Y-up scene controls")
 
     CHECK(camera.target[0] == doctest::Approx(0.0f));
     CHECK(camera.target[1] > 0.0f);
-    CHECK(camera.target[2] > 0.0f);
+    CHECK(camera.target[2] < 0.0f);
     CHECK(up.x == doctest::Approx(0.0f));
     CHECK(up.y == doctest::Approx(1.0f));
     CHECK(up.z == doctest::Approx(0.0f));
@@ -409,7 +409,7 @@ TEST_CASE("camera panning follows the rolled screen axes")
 
     CHECK(camera.target[0] == doctest::Approx(0.0f));
     CHECK(camera.target[1] == doctest::Approx(0.0f).epsilon(0.0001));
-    CHECK(camera.target[2] < 0.0f);
+    CHECK(camera.target[2] > 0.0f);
 }
 
 TEST_CASE("dirty tracking follows persisted scene document only")

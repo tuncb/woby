@@ -152,7 +152,7 @@ void panCamera(
         * std::tan(camera.verticalFovDegrees * 0.5f * pi / 180.0f)
         * 2.0f
         / std::max(viewportHeight, 1.0f);
-    moveTarget(camera, rolledRightDirection(camera, upAxis), deltaX * unitsPerPixel);
+    moveTarget(camera, rolledRightDirection(camera, upAxis), -deltaX * unitsPerPixel);
     moveTarget(camera, rolledUpDirection(camera, upAxis), deltaY * unitsPerPixel);
 }
 
