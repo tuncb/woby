@@ -142,6 +142,106 @@ TEST_CASE("command line rejects invalid and duplicate logging options")
         parse({"woby", "--log-level", "info", "--log-file", "one.log", "--log-file", "two.log"}),
         "Only one --log-file option can be specified.",
         std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({
+            "woby",
+            "--log-level",
+            "info",
+            "--log-file",
+            "woby.log",
+            "--log-performance",
+            "--log-performance",
+        }),
+        "Only one --log-performance option can be specified.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({
+            "woby",
+            "--log-level",
+            "info",
+            "--log-file",
+            "woby.log",
+            "--log-performance",
+            "--log-frame-interval",
+            "60",
+            "--log-frame-interval",
+            "120",
+        }),
+        "Only one --log-frame-interval option can be specified.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({
+            "woby",
+            "--log-level",
+            "info",
+            "--log-file",
+            "woby.log",
+            "--log-performance",
+            "--log-slow-frame-ms",
+            "20",
+            "--log-slow-frame-ms",
+            "40",
+        }),
+        "Only one --log-slow-frame-ms option can be specified.",
+        std::runtime_error);
+}
+
+TEST_CASE("command line rejects malformed numeric values and duplicate scene inputs")
+{
+    CHECK_THROWS_WITH_AS(
+        parse({
+            "woby",
+            "--log-level",
+            "info",
+            "--log-file",
+            "woby.log",
+            "--log-performance",
+            "--log-frame-interval",
+            "-1",
+        }),
+        "--log-frame-interval requires a positive integer.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({
+            "woby",
+            "--log-level",
+            "info",
+            "--log-file",
+            "woby.log",
+            "--log-performance",
+            "--log-frame-interval",
+            "12x",
+        }),
+        "--log-frame-interval requires a positive integer.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({
+            "woby",
+            "--log-level",
+            "info",
+            "--log-file",
+            "woby.log",
+            "--log-performance",
+            "--log-slow-frame-ms",
+            "nan",
+        }),
+        "--log-slow-frame-ms requires a positive number.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({"woby", "--scene", "one.woby", "--woby", "two.woby"}),
+        "Only one woby scene file can be specified.",
+        std::runtime_error);
+
+    CHECK_THROWS_WITH_AS(
+        parse({"woby", "model.obj"}),
+        "Unexpected argument: model.obj",
+        std::runtime_error);
 }
 
 TEST_CASE("command line parses generated valid argv cases")

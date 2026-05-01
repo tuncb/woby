@@ -186,6 +186,10 @@ if(BUILD_TESTING)
         src/command_line.h
         src/file_discovery.cpp
         src/file_discovery.h
+        src/hash_utils.cpp
+        src/hash_utils.h
+        src/hover_pick.cpp
+        src/hover_pick.h
         src/model_load.cpp
         src/model_load.h
         src/model_mesh.cpp
@@ -196,6 +200,8 @@ if(BUILD_TESTING)
         src/performance_log.h
         src/scene_file.cpp
         src/scene_file.h
+        src/scene_renderer.cpp
+        src/scene_renderer.h
         src/stl_mesh.cpp
         src/stl_mesh.h
         src/ui_operations.cpp
@@ -206,6 +212,10 @@ if(BUILD_TESTING)
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
+        tests/hover_pick_tests.cpp
+        tests/model_mesh_tests.cpp
+        tests/obj_mesh_tests.cpp
+        tests/scene_file_edge_tests.cpp
         tests/stl_mesh_tests.cpp
         tests/ui_operations_tests.cpp
     )

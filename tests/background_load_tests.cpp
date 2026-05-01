@@ -134,3 +134,110 @@ TEST_CASE("background model batch loader cancels between files")
 
     std::filesystem::remove_all(root);
 }
+
+TEST_CASE("background model batch loader reports skipped and failed files")
+{
+    const std::filesystem::path root = std::filesystem::temp_directory_path()
+        / "woby_background_model_batch_failures";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    const std::filesystem::path validPath = root / "triangle.stl";
+    const std::filesystem::path invalidPath = root / "empty.obj";
+    const std::filesystem::path skippedPath = root / "ignored.txt";
+    writeTriangleStl(validPath);
+    {
+        std::ofstream stream(invalidPath, std::ios::trunc);
+        stream << "o empty\n";
+        stream << "v 0 0 0\n";
+        stream << "v 1 0 0\n";
+        stream << "v 0 1 0\n";
+    }
+    {
+        std::ofstream stream(skippedPath, std::ios::trunc);
+        stream << "ignored\n";
+    }
+
+    const woby::ModelBatchCpuLoadResult result = woby::loadModelBatchCpu(
+        {validPath, invalidPath, skippedPath},
+        0u,
+        {},
+        {});
+
+    CHECK_FALSE(result.canceled);
+    CHECK(result.requestedCount == 3u);
+    CHECK(result.addedCount == 1u);
+    CHECK(result.failedCount == 1u);
+    CHECK(result.skippedCount == 1u);
+    CHECK(result.files.size() == 1u);
+    CHECK(result.lastError.find("OBJ did not contain renderable triangles") != std::string::npos);
+    CHECK(result.status.find("Added 1 model file") != std::string::npos);
+    CHECK(result.status.find("skipped 1 non-model") != std::string::npos);
+    CHECK(result.status.find("failed 1") != std::string::npos);
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("background model batch loader cancels after completed files")
+{
+    const std::filesystem::path root = std::filesystem::temp_directory_path()
+        / "woby_background_model_batch_partial_cancel";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    const std::filesystem::path firstPath = root / "one.stl";
+    const std::filesystem::path secondPath = root / "two.stl";
+    writeTriangleStl(firstPath);
+    writeTriangleStl(secondPath);
+
+    size_t cancelChecks = 0u;
+    const woby::ModelBatchCpuLoadResult result = woby::loadModelBatchCpu(
+        {firstPath, secondPath},
+        0u,
+        {},
+        [&cancelChecks]() {
+            return cancelChecks++ > 0u;
+        });
+
+    CHECK(result.canceled);
+    CHECK(result.requestedCount == 2u);
+    CHECK(result.addedCount == 1u);
+    CHECK(result.files.size() == 1u);
+    CHECK(result.status.find("canceled") != std::string::npos);
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("background scene loader cancels after completed files")
+{
+    const std::filesystem::path root = std::filesystem::temp_directory_path()
+        / "woby_background_scene_partial_cancel";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    const std::filesystem::path firstPath = root / "one.stl";
+    const std::filesystem::path secondPath = root / "two.stl";
+    const std::filesystem::path scenePath = root / "scene.woby";
+    writeTriangleStl(firstPath);
+    writeTriangleStl(secondPath);
+
+    woby::SceneDocument document;
+    woby::SceneFileRecord firstRecord;
+    firstRecord.path = firstPath;
+    document.files.push_back(firstRecord);
+    woby::SceneFileRecord secondRecord;
+    secondRecord.path = secondPath;
+    document.files.push_back(secondRecord);
+    woby::writeSceneDocument(scenePath, document);
+
+    size_t cancelChecks = 0u;
+    const woby::SceneCpuLoadResult result = woby::loadSceneCpu(
+        scenePath,
+        {},
+        [&cancelChecks]() {
+            return cancelChecks++ > 0u;
+        });
+
+    CHECK(result.canceled);
+    REQUIRE(result.files.size() == 1u);
+    CHECK(result.files[0].path == firstPath);
+
+    std::filesystem::remove_all(root);
+}

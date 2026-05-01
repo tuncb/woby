@@ -14,6 +14,11 @@ void writeEmptyFile(const std::filesystem::path& path)
     stream << '\n';
 }
 
+void collectModelPathsAndDiscard(const std::filesystem::path& path)
+{
+    (void)woby::collectModelPathsRecursive(path);
+}
+
 } // namespace
 
 TEST_CASE("path extension checks are case insensitive")
@@ -51,6 +56,30 @@ TEST_CASE("recursive model collection includes nested folders in sorted order")
     CHECK(paths[1].filename() == "part.STL");
     CHECK(paths[2].filename() == "two.OBJ");
     CHECK(paths[3].filename() == "root.obj");
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("model collection rejects non-folders and obj-only collection filters STL")
+{
+    const std::filesystem::path root = std::filesystem::temp_directory_path()
+        / "woby_model_collection_edges";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+    const std::filesystem::path filePath = root / "not_a_folder.txt";
+    writeEmptyFile(filePath);
+    writeEmptyFile(root / "one.obj");
+    writeEmptyFile(root / "two.stl");
+
+    CHECK_THROWS_WITH_AS(
+        collectModelPathsAndDiscard(filePath),
+        ("Folder path is not a folder: " + filePath.string()).c_str(),
+        std::runtime_error);
+
+    const std::vector<std::filesystem::path> objPaths = woby::collectObjPathsRecursive(root);
+
+    REQUIRE(objPaths.size() == 1u);
+    CHECK(objPaths[0].filename() == "one.obj");
 
     std::filesystem::remove_all(root);
 }

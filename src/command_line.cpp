@@ -1,5 +1,6 @@
 #include "command_line.h"
 
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -44,6 +45,10 @@ void requireValue(int argc, int index, const std::string& option, const std::str
 
 size_t parsePositiveSize(const std::string& value, const std::string& option)
 {
+    if (!value.empty() && (value.front() == '-' || value.front() == '+')) {
+        throw std::runtime_error(option + " requires a positive integer.");
+    }
+
     size_t parsedCharacters = 0;
     size_t result = 0;
     try {
@@ -69,7 +74,7 @@ double parsePositiveDouble(const std::string& value, const std::string& option)
         throw std::runtime_error(option + " requires a positive number.");
     }
 
-    if (parsedCharacters != value.size() || result <= 0.0) {
+    if (parsedCharacters != value.size() || !std::isfinite(result) || result <= 0.0) {
         throw std::runtime_error(option + " requires a positive number.");
     }
 

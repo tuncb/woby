@@ -187,7 +187,8 @@ std::optional<HoveredVertex> findHoveredVertex(
 
         float fileModel[16];
         fileTransformMatrix(file.fileSettings, fileModel);
-        for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
+        const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
+        for (size_t nodeIndex = 0; nodeIndex < groupCount; ++nodeIndex) {
             const auto& settings = file.groupSettings[nodeIndex];
             if (!settings.visible
                 || !settings.showVertices
