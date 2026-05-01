@@ -14,8 +14,10 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_dialog.h>
 #include <SDL3/SDL_main.h>
+#include <bimg/bimg.h>
 #include <bgfx/bgfx.h>
 #include <bgfx/platform.h>
+#include <bx/file.h>
 #include <bx/math.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
@@ -30,6 +32,7 @@
 #include <cstdio>
 #include <cstddef>
 #include <cstdint>
+#include <cctype>
 #include <exception>
 #include <filesystem>
 #include <iterator>
@@ -49,7 +52,12 @@ namespace {
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
 constexpr bgfx::ViewId sceneView = 0;
 constexpr bgfx::ViewId helperView = 1;
+constexpr bgfx::ViewId screenshotSceneView = 2;
+constexpr bgfx::ViewId screenshotHelperView = 3;
+constexpr bgfx::ViewId screenshotReadbackView = 4;
 constexpr bgfx::ViewId imguiView = 255;
+constexpr uint16_t screenshotWidth = 1920;
+constexpr uint16_t screenshotHeight = 1800;
 constexpr float defaultScenePaneHeight = 185.0f;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float viewerPaneBackgroundRed = 0.20f;
@@ -71,6 +79,8 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf04b,
     0xf00d,
     0xf00d,
+    0xf030,
+    0xf030,
     0xf192,
     0xf192,
     0xf068,
@@ -100,6 +110,7 @@ constexpr ImWchar appFontGlyphRanges[] = {
 constexpr const char* addModelFileIcon = "\xee\xa9\xbf";
 constexpr const char* openSceneIcon = "\xee\xb6\x95";
 constexpr const char* saveSceneIcon = "\xee\xb5\xb5";
+constexpr const char* screenshotIcon = "\xef\x80\xb0";
 constexpr const char* removeFileIcon = "\xef\x80\x8d";
 constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 constexpr const char* trianglesIcon = "\xef\x81\x8b";
@@ -287,6 +298,26 @@ struct SceneFileDialogState {
     uint64_t statusVersion = 0;
     bool openDialogOpen = false;
     bool saveDialogOpen = false;
+};
+
+struct SceneScreenshotDialogState {
+    std::mutex mutex;
+    std::optional<std::filesystem::path> pendingSavePath;
+    std::string status;
+    uint64_t statusVersion = 0;
+    bool saveDialogOpen = false;
+};
+
+struct SceneScreenshotRuntime {
+    bgfx::FrameBufferHandle frameBuffer = BGFX_INVALID_HANDLE;
+    bgfx::TextureHandle colorTexture = BGFX_INVALID_HANDLE;
+    bgfx::TextureHandle depthTexture = BGFX_INVALID_HANDLE;
+    bgfx::TextureHandle readbackTexture = BGFX_INVALID_HANDLE;
+    std::vector<uint8_t> pixels;
+    std::filesystem::path outputPath;
+    uint32_t readFrame = 0;
+    bool captureRequested = false;
+    bool readbackPending = false;
 };
 
 struct DragDropState {
@@ -595,6 +626,28 @@ void destroyGpuMesh(GpuMesh& mesh)
     mesh.pointVertexIndices.clear();
 }
 
+void destroySceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
+{
+    if (bgfx::isValid(screenshot.frameBuffer)) {
+        bgfx::destroy(screenshot.frameBuffer);
+    }
+    if (bgfx::isValid(screenshot.depthTexture)) {
+        bgfx::destroy(screenshot.depthTexture);
+    }
+    if (bgfx::isValid(screenshot.readbackTexture)) {
+        bgfx::destroy(screenshot.readbackTexture);
+    }
+    if (bgfx::isValid(screenshot.colorTexture)) {
+        bgfx::destroy(screenshot.colorTexture);
+    }
+
+    screenshot.frameBuffer = BGFX_INVALID_HANDLE;
+    screenshot.depthTexture = BGFX_INVALID_HANDLE;
+    screenshot.readbackTexture = BGFX_INVALID_HANDLE;
+    screenshot.colorTexture = BGFX_INVALID_HANDLE;
+    screenshot.pixels.clear();
+}
+
 uint64_t renderState(
     uint64_t depthTest,
     bool writeDepth,
@@ -832,6 +885,25 @@ std::string fileDisplayName(const std::filesystem::path& path)
 std::filesystem::path normalizedPath(const std::filesystem::path& path)
 {
     return std::filesystem::absolute(path).lexically_normal();
+}
+
+std::filesystem::path pngPath(const std::filesystem::path& path)
+{
+    std::string extension = path.extension().string();
+    std::transform(
+        extension.begin(),
+        extension.end(),
+        extension.begin(),
+        [](unsigned char value) {
+            return static_cast<char>(std::tolower(value));
+        });
+
+    std::filesystem::path outputPath = path;
+    if (extension != ".png") {
+        outputPath.replace_extension(".png");
+    }
+
+    return outputPath;
 }
 
 std::string appWindowTitle(
@@ -1158,8 +1230,9 @@ float minimumViewerPaneWidth()
         + viewerPaneWidthPadding;
 }
 
-void drawViewerPaneTogglePane(woby::UiState& state, float windowWidth)
+bool drawViewerPaneTogglePane(woby::UiState& state, float windowWidth, bool screenshotDisabled)
 {
+    bool screenshotRequested = false;
     ImGui::SetNextWindowBgAlpha(0.86f);
     ImGui::SetNextWindowPos(
         ImVec2(windowWidth - viewerPaneTogglePaneMargin, viewerPaneTogglePaneMargin),
@@ -1186,9 +1259,24 @@ void drawViewerPaneTogglePane(woby::UiState& state, float windowWidth)
                 false)) {
             woby::toggleViewerPaneVisible(state);
         }
+        if (screenshotDisabled) {
+            ImGui::BeginDisabled();
+        }
+        if (drawRenderModeIconButton(
+                "scene_screenshot",
+                screenshotIcon,
+                "Save scene screenshot",
+                RenderModeState::off,
+                false)) {
+            screenshotRequested = true;
+        }
+        if (screenshotDisabled) {
+            ImGui::EndDisabled();
+        }
     }
     ImGui::End();
     ImGui::PopStyleVar();
+    return screenshotRequested;
 }
 
 void pushRenderModeControlHeight()
@@ -1487,6 +1575,7 @@ void drawFileTransformControls(FileRenderSettings& settings, float translationSp
 }
 
 void submitTriangleRange(
+    bgfx::ViewId viewId,
     const GpuMesh& mesh,
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform,
@@ -1504,10 +1593,11 @@ void submitTriangleRange(
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
     bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LESS, true, color, 0u));
-    bgfx::submit(sceneView, program);
+    bgfx::submit(viewId, program);
 }
 
 void submitColorRange(
+    bgfx::ViewId viewId,
     const GpuMesh& mesh,
     bgfx::IndexBufferHandle indexBuffer,
     bgfx::ProgramHandle program,
@@ -1527,10 +1617,11 @@ void submitColorRange(
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(indexBuffer, indexOffset, indexCount);
     bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, primitiveState));
-    bgfx::submit(sceneView, program);
+    bgfx::submit(viewId, program);
 }
 
 void submitPointSpriteRange(
+    bgfx::ViewId viewId,
     const GpuMesh& mesh,
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform,
@@ -1562,10 +1653,11 @@ void submitPointSpriteRange(
     bgfx::setVertexBuffer(0, mesh.pointSpriteVertexBuffer);
     bgfx::setIndexBuffer(mesh.pointSpriteIndexBuffer, indexOffset, indexCount);
     bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, 0u));
-    bgfx::submit(sceneView, program);
+    bgfx::submit(viewId, program);
 }
 
 void submitSceneFiles(
+    bgfx::ViewId viewId,
     const std::vector<LoadedModelFile>& files,
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
@@ -1600,6 +1692,7 @@ void submitSceneFiles(
             const auto& range = gpuMesh.nodeRanges[nodeIndex];
             if (settings.showSolidMesh) {
                 submitTriangleRange(
+                    viewId,
                     gpuMesh,
                     meshProgram,
                     colorUniform,
@@ -1610,6 +1703,7 @@ void submitSceneFiles(
             }
             if (settings.showTriangles) {
                 submitColorRange(
+                    viewId,
                     gpuMesh,
                     gpuMesh.lineIndexBuffer,
                     colorProgram,
@@ -1625,6 +1719,7 @@ void submitSceneFiles(
                     masterVertexPointSize,
                     file.vertexSizeScale * settings.vertexSizeScale);
                 submitPointSpriteRange(
+                    viewId,
                     gpuMesh,
                     pointSpriteProgram,
                     colorUniform,
@@ -1684,6 +1779,7 @@ void appendHelperLine(
 }
 
 void submitHelperLines(
+    bgfx::ViewId viewId,
     const std::vector<HelperLineVertex>& vertices,
     const bgfx::VertexLayout& layout,
     bgfx::ProgramHandle program,
@@ -1710,10 +1806,11 @@ void submitHelperLines(
     bgfx::setUniform(colorUniform, color.data());
     bgfx::setVertexBuffer(0, &vertexBuffer);
     bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, BGFX_STATE_PT_LINES));
-    bgfx::submit(helperView, program);
+    bgfx::submit(viewId, program);
 }
 
 void submitSceneHelpers(
+    bgfx::ViewId viewId,
     const woby::UiState& state,
     const bgfx::VertexLayout& layout,
     bgfx::ProgramHandle program,
@@ -1737,7 +1834,7 @@ void submitSceneHelpers(
                 appendHelperLine(gridLines, {-snappedExtent, offset, 0.0f}, {snappedExtent, offset, 0.0f});
             }
         }
-        submitHelperLines(gridLines, layout, program, colorUniform, {0.72f, 0.74f, 0.78f, 0.42f});
+        submitHelperLines(viewId, gridLines, layout, program, colorUniform, {0.72f, 0.74f, 0.78f, 0.42f});
     }
 
     if (state.showOrigin) {
@@ -1747,16 +1844,237 @@ void submitSceneHelpers(
         axisLine.reserve(2u);
 
         appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {axisLength, 0.0f, 0.0f});
-        submitHelperLines(axisLine, layout, program, colorUniform, {1.0f, 0.20f, 0.20f, 1.0f});
+        submitHelperLines(viewId, axisLine, layout, program, colorUniform, {1.0f, 0.20f, 0.20f, 1.0f});
 
         axisLine.clear();
         appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {0.0f, axisLength, 0.0f});
-        submitHelperLines(axisLine, layout, program, colorUniform, {0.20f, 0.85f, 0.35f, 1.0f});
+        submitHelperLines(viewId, axisLine, layout, program, colorUniform, {0.20f, 0.85f, 0.35f, 1.0f});
 
         axisLine.clear();
         appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, axisLength});
-        submitHelperLines(axisLine, layout, program, colorUniform, {0.30f, 0.55f, 1.0f, 1.0f});
+        submitHelperLines(viewId, axisLine, layout, program, colorUniform, {0.30f, 0.55f, 1.0f, 1.0f});
     }
+}
+
+void ensureSceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
+{
+    if (bgfx::isValid(screenshot.frameBuffer)) {
+        return;
+    }
+
+    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_READ_BACK) == 0u) {
+        throw std::runtime_error("Renderer does not support texture readback.");
+    }
+
+    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_BLIT) == 0u) {
+        throw std::runtime_error("Renderer does not support texture blit for screenshot readback.");
+    }
+
+    constexpr uint64_t colorFlags = BGFX_TEXTURE_RT
+        | BGFX_SAMPLER_U_CLAMP
+        | BGFX_SAMPLER_V_CLAMP;
+    constexpr uint64_t depthFlags = BGFX_TEXTURE_RT
+        | BGFX_SAMPLER_U_CLAMP
+        | BGFX_SAMPLER_V_CLAMP;
+    constexpr uint64_t readbackFlags = BGFX_TEXTURE_BLIT_DST
+        | BGFX_TEXTURE_READ_BACK
+        | BGFX_SAMPLER_U_CLAMP
+        | BGFX_SAMPLER_V_CLAMP;
+    if (!bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::BGRA8, colorFlags)) {
+        throw std::runtime_error("Renderer cannot create screenshot color target.");
+    }
+    if (!bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::D24S8, depthFlags)) {
+        throw std::runtime_error("Renderer cannot create screenshot depth target.");
+    }
+    if (!bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::BGRA8, readbackFlags)) {
+        throw std::runtime_error("Renderer cannot create screenshot readback target.");
+    }
+
+    screenshot.colorTexture = bgfx::createTexture2D(
+        screenshotWidth,
+        screenshotHeight,
+        false,
+        1,
+        bgfx::TextureFormat::BGRA8,
+        colorFlags);
+    screenshot.depthTexture = bgfx::createTexture2D(
+        screenshotWidth,
+        screenshotHeight,
+        false,
+        1,
+        bgfx::TextureFormat::D24S8,
+        depthFlags);
+    screenshot.readbackTexture = bgfx::createTexture2D(
+        screenshotWidth,
+        screenshotHeight,
+        false,
+        1,
+        bgfx::TextureFormat::BGRA8,
+        readbackFlags);
+    if (!bgfx::isValid(screenshot.colorTexture)
+        || !bgfx::isValid(screenshot.depthTexture)
+        || !bgfx::isValid(screenshot.readbackTexture)) {
+        destroySceneScreenshotFramebuffer(screenshot);
+        throw std::runtime_error("Failed to create screenshot textures.");
+    }
+
+    const bgfx::TextureHandle textures[] = {
+        screenshot.colorTexture,
+        screenshot.depthTexture,
+    };
+    screenshot.frameBuffer = bgfx::createFrameBuffer(
+        static_cast<uint8_t>(std::size(textures)),
+        textures,
+        false);
+    if (!bgfx::isValid(screenshot.frameBuffer)) {
+        destroySceneScreenshotFramebuffer(screenshot);
+        throw std::runtime_error("Failed to create screenshot framebuffer.");
+    }
+
+    bgfx::setName(screenshot.frameBuffer, "Scene Screenshot Framebuffer");
+    bgfx::setName(screenshot.colorTexture, "Scene Screenshot Color");
+    bgfx::setName(screenshot.depthTexture, "Scene Screenshot Depth");
+    bgfx::setName(screenshot.readbackTexture, "Scene Screenshot Readback");
+    screenshot.pixels.resize(static_cast<size_t>(screenshotWidth) * screenshotHeight * 4u);
+}
+
+void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std::filesystem::path& outputPath)
+{
+    if (screenshot.captureRequested || screenshot.readbackPending) {
+        throw std::runtime_error("A screenshot is already pending.");
+    }
+
+    screenshot.outputPath = pngPath(outputPath);
+    screenshot.captureRequested = true;
+}
+
+void submitSceneScreenshotCapture(
+    SceneScreenshotRuntime& screenshot,
+    const std::vector<LoadedModelFile>& files,
+    const std::vector<LoadedModelRuntime>& runtimes,
+    float masterVertexPointSize,
+    bgfx::ProgramHandle meshProgram,
+    bgfx::ProgramHandle colorProgram,
+    bgfx::ProgramHandle pointSpriteProgram,
+    bgfx::UniformHandle colorUniform,
+    bgfx::UniformHandle pointParamsUniform,
+    const woby::UiState& ui,
+    const bgfx::VertexLayout& helperLayout,
+    const woby::Bounds& sceneBounds,
+    const woby::SceneCamera& camera,
+    bool homogeneousDepth)
+{
+    if (!screenshot.captureRequested) {
+        return;
+    }
+
+    ensureSceneScreenshotFramebuffer(screenshot);
+
+    bgfx::setViewName(screenshotSceneView, "Scene Screenshot");
+    bgfx::setViewName(screenshotHelperView, "Scene Screenshot Helpers");
+    bgfx::setViewName(screenshotReadbackView, "Scene Screenshot Readback");
+    bgfx::setViewFrameBuffer(screenshotSceneView, screenshot.frameBuffer);
+    bgfx::setViewFrameBuffer(screenshotHelperView, screenshot.frameBuffer);
+    bgfx::setViewClear(screenshotSceneView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
+    bgfx::setViewClear(screenshotHelperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
+    bgfx::setViewRect(screenshotSceneView, 0, 0, screenshotWidth, screenshotHeight);
+    bgfx::setViewRect(screenshotHelperView, 0, 0, screenshotWidth, screenshotHeight);
+    bgfx::touch(screenshotSceneView);
+    bgfx::touch(screenshotHelperView);
+
+    float view[16];
+    float projection[16];
+    bx::mtxLookAt(
+        view,
+        woby::cameraEye(camera, ui.upAxis),
+        woby::cameraLookAt(camera),
+        woby::cameraUp(camera, ui.upAxis));
+    bx::mtxProj(
+        projection,
+        camera.verticalFovDegrees,
+        static_cast<float>(screenshotWidth) / static_cast<float>(screenshotHeight),
+        camera.nearPlane,
+        woby::cameraFarPlane(camera, sceneBounds),
+        homogeneousDepth);
+    bgfx::setViewTransform(screenshotSceneView, view, projection);
+    bgfx::setViewTransform(screenshotHelperView, view, projection);
+
+    submitSceneFiles(
+        screenshotSceneView,
+        files,
+        runtimes,
+        masterVertexPointSize,
+        meshProgram,
+        colorProgram,
+        pointSpriteProgram,
+        colorUniform,
+        pointParamsUniform,
+        screenshotWidth,
+        screenshotHeight);
+    submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
+
+    bgfx::blit(
+        screenshotReadbackView,
+        screenshot.readbackTexture,
+        0,
+        0,
+        screenshot.colorTexture,
+        0,
+        0,
+        screenshotWidth,
+        screenshotHeight);
+    screenshot.readFrame = bgfx::readTexture(screenshot.readbackTexture, screenshot.pixels.data());
+    screenshot.captureRequested = false;
+    screenshot.readbackPending = true;
+}
+
+void failSceneScreenshotCapture(SceneScreenshotRuntime& screenshot)
+{
+    screenshot.captureRequested = false;
+    screenshot.readbackPending = false;
+}
+
+void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
+{
+    const std::filesystem::path parentPath = screenshot.outputPath.parent_path();
+    if (!parentPath.empty()) {
+        std::filesystem::create_directories(parentPath);
+    }
+
+    bx::FileWriter writer;
+    bx::Error error;
+    const std::string outputPath = screenshot.outputPath.string();
+    if (!writer.open(bx::FilePath(outputPath.c_str()), false, &error)) {
+        throw std::runtime_error("Failed to open screenshot file: " + outputPath);
+    }
+
+    const bool yflip = bgfx::getCaps()->originBottomLeft;
+    const int32_t result = bimg::imageWritePng(
+        &writer,
+        screenshotWidth,
+        screenshotHeight,
+        screenshotWidth * 4u,
+        screenshot.pixels.data(),
+        bimg::TextureFormat::BGRA8,
+        yflip,
+        &error);
+    writer.close();
+    if (result <= 0 || !error.isOk()) {
+        throw std::runtime_error("Failed to write screenshot PNG: " + outputPath);
+    }
+}
+
+std::optional<std::string> completeSceneScreenshotReadback(
+    SceneScreenshotRuntime& screenshot,
+    uint32_t frameNumber)
+{
+    if (!screenshot.readbackPending || frameNumber < screenshot.readFrame) {
+        return {};
+    }
+
+    writeSceneScreenshotPng(screenshot);
+    screenshot.readbackPending = false;
+    return "Saved screenshot " + fileDisplayName(screenshot.outputPath);
 }
 
 struct SdlDeleter {
@@ -2001,6 +2319,89 @@ bool sceneFileDialogIsOpen(SceneFileDialogState& state)
 {
     std::lock_guard<std::mutex> lock(state.mutex);
     return state.openDialogOpen || state.saveDialogOpen;
+}
+
+void SDLCALL saveSceneScreenshotDialogCallback(void* userdata, const char* const* filelist, int filter)
+{
+    (void)filter;
+
+    auto* state = static_cast<SceneScreenshotDialogState*>(userdata);
+    std::optional<std::filesystem::path> selectedPath;
+    std::string status;
+    bool showStatus = false;
+
+    if (filelist == nullptr) {
+        status = std::string("Save screenshot dialog failed: ") + SDL_GetError();
+        showStatus = true;
+    } else if (filelist[0] == nullptr) {
+        status = "Save screenshot canceled";
+        showStatus = true;
+    } else {
+        selectedPath = std::filesystem::path(filelist[0]);
+    }
+
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->pendingSavePath = std::move(selectedPath);
+    if (showStatus) {
+        state->status = std::move(status);
+        ++state->statusVersion;
+    }
+    state->saveDialogOpen = false;
+}
+
+void showSaveSceneScreenshotDialog(SDL_Window* window, SceneScreenshotDialogState& state)
+{
+    static constexpr SDL_DialogFileFilter filters[] = {
+        {"PNG image", "png"},
+    };
+
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if (state.saveDialogOpen) {
+            return;
+        }
+        state.saveDialogOpen = true;
+    }
+
+    SDL_ShowSaveFileDialog(
+        saveSceneScreenshotDialogCallback,
+        &state,
+        window,
+        filters,
+        static_cast<int>(std::size(filters)),
+        nullptr);
+}
+
+std::optional<std::filesystem::path> takePendingSaveSceneScreenshotPath(SceneScreenshotDialogState& state)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    std::optional<std::filesystem::path> path = std::move(state.pendingSavePath);
+    state.pendingSavePath.reset();
+    return path;
+}
+
+void setSceneScreenshotDialogStatus(SceneScreenshotDialogState& state, std::string status)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    state.status = std::move(status);
+    ++state.statusVersion;
+}
+
+std::string sceneScreenshotDialogStatus(SceneScreenshotDialogState& state, uint64_t& statusVersion)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    if (state.statusVersion == statusVersion) {
+        return {};
+    }
+
+    statusVersion = state.statusVersion;
+    return state.status;
+}
+
+bool sceneScreenshotDialogIsOpen(SceneScreenshotDialogState& state)
+{
+    std::lock_guard<std::mutex> lock(state.mutex);
+    return state.saveDialogOpen;
 }
 
 double elapsedMilliseconds(woby::PerformanceClock::time_point start);
@@ -3174,8 +3575,10 @@ int main(int argc, char** argv)
         auto& viewerPaneWidth = ui.viewerPaneWidth;
         static ModelFileDialogState modelFileDialogState;
         static SceneFileDialogState sceneFileDialogState;
+        static SceneScreenshotDialogState sceneScreenshotDialogState;
         BackgroundLoadRuntime backgroundLoad;
         GpuFinalizeRuntime gpuFinalize;
+        SceneScreenshotRuntime sceneScreenshot;
         DragDropState dragDropState;
         std::optional<std::filesystem::path> pendingDirtyOpenScenePath;
         bool requestDirtyOpenWarning = false;
@@ -3183,6 +3586,7 @@ int main(int argc, char** argv)
         ToastMessage toast;
         uint64_t observedModelFileDialogStatusVersion = 0;
         uint64_t observedSceneFileDialogStatusVersion = 0;
+        uint64_t observedSceneScreenshotDialogStatusVersion = 0;
         auto previousFrame = std::chrono::steady_clock::now();
         auto fpsWindowStart = previousFrame;
         int fpsFrameCount = 0;
@@ -3366,6 +3770,24 @@ int main(int argc, char** argv)
                 setToastMessage(toast, sceneDialogStatus);
             }
 
+            const auto pendingSceneScreenshotPath = takePendingSaveSceneScreenshotPath(sceneScreenshotDialogState);
+            if (pendingSceneScreenshotPath.has_value()) {
+                try {
+                    requestSceneScreenshotCapture(sceneScreenshot, pendingSceneScreenshotPath.value());
+                    setToastMessage(toast, "Saving screenshot...");
+                } catch (const std::exception& exception) {
+                    setSceneScreenshotDialogStatus(
+                        sceneScreenshotDialogState,
+                        std::string("Save screenshot failed: ") + exception.what());
+                }
+            }
+            const std::string screenshotDialogStatus = sceneScreenshotDialogStatus(
+                sceneScreenshotDialogState,
+                observedSceneScreenshotDialogStatusVersion);
+            if (!screenshotDialogStatus.empty()) {
+                setToastMessage(toast, screenshotDialogStatus);
+            }
+
             const auto droppedPaths = takePendingDropPaths(dragDropState);
             if (!droppedPaths.empty()) {
                 if (processingFiles) {
@@ -3507,8 +3929,10 @@ int main(int argc, char** argv)
                             ImGuiChildFlags_None)) {
                         const bool fileDialogOpen = modelFileDialogIsOpen(modelFileDialogState);
                         const bool sceneDialogOpen = sceneFileDialogIsOpen(sceneFileDialogState);
+                        const bool screenshotDialogOpen = sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
                         const bool anyFileDialogOpen = fileDialogOpen
                             || sceneDialogOpen
+                            || screenshotDialogOpen
                             || backgroundLoad.active
                             || gpuFinalize.active;
                         if (anyFileDialogOpen) {
@@ -3768,7 +4192,16 @@ int main(int argc, char** argv)
             }
                 ImGui::End();
             }
-            drawViewerPaneTogglePane(ui, static_cast<float>(width));
+            const bool screenshotActionDisabled = modelFileDialogIsOpen(modelFileDialogState)
+                || sceneFileDialogIsOpen(sceneFileDialogState)
+                || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState)
+                || backgroundLoad.active
+                || gpuFinalize.active
+                || sceneScreenshot.captureRequested
+                || sceneScreenshot.readbackPending;
+            if (drawViewerPaneTogglePane(ui, static_cast<float>(width), screenshotActionDisabled)) {
+                showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
+            }
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
 
             woby::recalculateSceneBounds(ui);
@@ -3821,7 +4254,8 @@ int main(int argc, char** argv)
                 || cameraInput.rolling
                 || cameraInput.panning;
             const bool nativeFileDialogOpen = modelFileDialogIsOpen(modelFileDialogState)
-                || sceneFileDialogIsOpen(sceneFileDialogState);
+                || sceneFileDialogIsOpen(sceneFileDialogState)
+                || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
             const bool dialogOpen = modalDialogOpen
                 || nativeFileDialogOpen
                 || backgroundLoad.active
@@ -3865,6 +4299,7 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
             submitSceneFiles(
+                sceneView,
                 files,
                 runtimes,
                 masterVertexPointSize,
@@ -3877,8 +4312,29 @@ int main(int argc, char** argv)
                 height);
             recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
-            submitSceneHelpers(ui, helperLayout, colorProgram, colorUniform);
+            submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
             recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
+
+            try {
+                submitSceneScreenshotCapture(
+                    sceneScreenshot,
+                    files,
+                    runtimes,
+                    masterVertexPointSize,
+                    meshProgram,
+                    colorProgram,
+                    pointSpriteProgram,
+                    colorUniform,
+                    pointParamsUniform,
+                    ui,
+                    helperLayout,
+                    sceneBounds,
+                    camera,
+                    homogeneousDepth);
+            } catch (const std::exception& exception) {
+                failSceneScreenshotCapture(sceneScreenshot);
+                setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
+            }
 
             drawToastMessage(toast, width);
             drawHoveredVertexOverlay(hoveredVertex, width, height);
@@ -3886,7 +4342,18 @@ int main(int argc, char** argv)
             woby::imgui_bgfx::render(ImGui::GetDrawData());
             recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);
 
-            bgfx::frame();
+            const uint32_t frameNumber = bgfx::frame();
+            try {
+                const std::optional<std::string> screenshotStatus = completeSceneScreenshotReadback(
+                    sceneScreenshot,
+                    frameNumber);
+                if (screenshotStatus.has_value()) {
+                    setToastMessage(toast, screenshotStatus.value());
+                }
+            } catch (const std::exception& exception) {
+                sceneScreenshot.readbackPending = false;
+                setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
+            }
             recordFrameStage(frameTimings, woby::FrameStage::bgfxFrame, stageStart);
             frameTimings.totalMilliseconds = woby::millisecondsBetween(frameStart, woby::PerformanceClock::now());
             copyBgfxStats(frameTimings);
@@ -3917,6 +4384,7 @@ int main(int argc, char** argv)
         bgfx::destroy(pointSpriteProgram);
         bgfx::destroy(colorProgram);
         bgfx::destroy(meshProgram);
+        destroySceneScreenshotFramebuffer(sceneScreenshot);
         destroyModelRuntimes(runtimes);
         bgfx::shutdown();
         bgfxInitialized = false;
