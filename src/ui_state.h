@@ -118,6 +118,7 @@ void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model)
 
 [[nodiscard]] UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex);
 void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex);
+void refreshSceneTreeFolderVisibility(UiState& state);
 void refreshSceneTreeFolderCenters(UiState& state);
 
 [[nodiscard]] SceneFileSettings sceneFileSettings(const UiFileSettings& settings);

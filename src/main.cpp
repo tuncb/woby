@@ -799,6 +799,7 @@ void drawSceneNodeMasterControls(woby::UiState& state, woby::UiSceneNode& node)
 }
 
 void drawGroupControls(
+    woby::UiState& state,
     const woby::MeshNode& node,
     const GpuNodeRange& range,
     LoadedModelFile& file,
@@ -812,7 +813,7 @@ void drawGroupControls(
     const float rowStartX = ImGui::GetCursorPosX();
     const float controlsStartX = rowStartX + groupControlStartOffset();
     if (drawVisibilityButton("visible", settings.visible, "group")) {
-        woby::toggleGroupVisible(file, settings);
+        woby::toggleGroupVisible(state, file, settings);
     }
     ImGui::SameLine();
     const float textStartX = ImGui::GetCursorPosX();
@@ -1214,6 +1215,7 @@ void drawSceneTreeNode(
     }
 
     drawGroupControls(
+        state,
         file.mesh.nodes[node.groupIndex],
         gpuMesh.nodeRanges[node.groupIndex],
         file,

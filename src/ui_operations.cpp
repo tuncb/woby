@@ -358,12 +358,13 @@ void setAllSceneVisible(UiState& state, bool visible)
         }
         setFileVisible(file, visible);
     }
+    refreshSceneTreeFolderVisibility(state);
     if (changed) {
         markSceneDirty(state);
     }
 }
 
-void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible)
+static void setSceneNodeSubtreeVisibleRecursive(UiState& state, UiSceneNode& node, bool visible)
 {
     if (node.kind == UiSceneNodeKind::folder) {
         node.settings.visible = visible;
@@ -377,8 +378,14 @@ void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible)
     }
 
     for (auto& child : node.children) {
-        setSceneNodeSubtreeVisible(state, child, visible);
+        setSceneNodeSubtreeVisibleRecursive(state, child, visible);
     }
+}
+
+void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible)
+{
+    setSceneNodeSubtreeVisibleRecursive(state, node, visible);
+    refreshSceneTreeFolderVisibility(state);
 }
 
 void setGroupVisible(UiGroupState& group, bool visible)
@@ -407,6 +414,17 @@ void setGroupVisible(UiFileState& file, UiGroupState& group, bool visible)
 void toggleGroupVisible(UiFileState& file, UiGroupState& group)
 {
     setGroupVisible(file, group, !group.visible);
+}
+
+void setGroupVisible(UiState& state, UiFileState& file, UiGroupState& group, bool visible)
+{
+    setGroupVisible(file, group, visible);
+    refreshSceneTreeFolderVisibility(state);
+}
+
+void toggleGroupVisible(UiState& state, UiFileState& file, UiGroupState& group)
+{
+    setGroupVisible(state, file, group, !group.visible);
 }
 
 void setShowOrigin(UiState& state, bool visible)

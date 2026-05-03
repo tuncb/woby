@@ -218,6 +218,52 @@ TEST_CASE("visibility master operations update descendant groups")
     CHECK(state.files[1].fileSettings.visible);
 }
 
+TEST_CASE("showing a child under a hidden folder restores mixed folder visibility")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    state.files[0].mesh.nodes.push_back({"a-extra", 0u, 3u});
+    state.files[0].groupSettings.push_back(woby::UiGroupState{});
+
+    woby::UiSceneNode folder;
+    folder.kind = woby::UiSceneNodeKind::folder;
+    folder.name = "parent";
+    folder.children.push_back(woby::createFileSceneNode(state.files[0], 0u));
+    state.sceneNodes.push_back(folder);
+
+    auto& parent = state.sceneNodes[0];
+    CHECK(woby::countSceneNodeGroups(state, parent) == 2u);
+    CHECK(woby::countVisibleSceneNodeGroups(state, parent) == 2u);
+
+    woby::setSceneNodeSubtreeVisible(state, parent, false);
+
+    CHECK_FALSE(parent.settings.visible);
+    CHECK_FALSE(state.files[0].fileSettings.visible);
+    CHECK(woby::countVisibleSceneNodeGroups(state, parent) == 0u);
+
+    woby::setGroupVisible(state, state.files[0], state.files[0].groupSettings[1], true);
+
+    CHECK(parent.settings.visible);
+    CHECK(state.files[0].fileSettings.visible);
+    CHECK_FALSE(state.files[0].groupSettings[0].visible);
+    CHECK(state.files[0].groupSettings[1].visible);
+    CHECK(woby::countVisibleSceneNodeGroups(state, parent) == 1u);
+    CHECK(woby::countVisibleSceneGroups(state) == 1u);
+
+    woby::setGroupVisible(state, state.files[0], state.files[0].groupSettings[1], false);
+
+    CHECK_FALSE(parent.settings.visible);
+    CHECK_FALSE(state.files[0].fileSettings.visible);
+    CHECK(woby::countVisibleSceneNodeGroups(state, parent) == 0u);
+
+    woby::setSceneNodeSubtreeVisible(state, parent, false);
+    woby::setSceneNodeSubtreeVisible(state, parent.children[0], true);
+
+    CHECK(parent.settings.visible);
+    CHECK(state.files[0].fileSettings.visible);
+    CHECK(woby::countVisibleSceneNodeGroups(state, parent) == 2u);
+}
+
 TEST_CASE("numeric setters clamp values for saved ui state")
 {
     woby::UiState state;

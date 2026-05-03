@@ -241,6 +241,48 @@ bool validGroupIndex(const std::vector<UiFileState>& files, size_t fileIndex, si
         && groupIndex < files[fileIndex].mesh.nodes.size();
 }
 
+bool refreshFolderVisibilityRecursive(const std::vector<UiFileState>& files, UiSceneNode& node)
+{
+    if (node.kind == UiSceneNodeKind::group) {
+        return validGroupIndex(files, node.fileIndex, node.groupIndex)
+            && files[node.fileIndex].fileSettings.visible
+            && files[node.fileIndex].groupSettings[node.groupIndex].visible;
+    }
+
+    if (node.kind == UiSceneNodeKind::file) {
+        if (!validFileIndex(files, node.fileIndex)) {
+            return false;
+        }
+
+        const auto& file = files[node.fileIndex];
+        if (!file.fileSettings.visible) {
+            return false;
+        }
+
+        if (node.children.empty()) {
+            return std::any_of(
+                file.groupSettings.begin(),
+                file.groupSettings.end(),
+                [](const UiGroupState& group) {
+                    return group.visible;
+                });
+        }
+
+        bool hasVisibleChild = false;
+        for (auto& child : node.children) {
+            hasVisibleChild = refreshFolderVisibilityRecursive(files, child) || hasVisibleChild;
+        }
+        return hasVisibleChild;
+    }
+
+    bool hasVisibleChild = false;
+    for (auto& child : node.children) {
+        hasVisibleChild = refreshFolderVisibilityRecursive(files, child) || hasVisibleChild;
+    }
+    node.settings.visible = hasVisibleChild;
+    return hasVisibleChild;
+}
+
 void expandSceneNodeBounds(
     Bounds& bounds,
     const std::vector<UiFileState>& files,
@@ -585,6 +627,13 @@ void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
     }
 }
 
+void refreshSceneTreeFolderVisibility(UiState& state)
+{
+    for (auto& node : state.sceneNodes) {
+        (void)refreshFolderVisibilityRecursive(state.files, node);
+    }
+}
+
 void refreshSceneTreeFolderCenters(UiState& state)
 {
     for (auto& node : state.sceneNodes) {
@@ -777,6 +826,7 @@ void applySceneNodeRecords(UiState& state, const std::vector<SceneNodeRecord>& r
     for (const size_t rootIndex : rootIndices) {
         state.sceneNodes.push_back(buildNode(buildNode, rootIndex));
     }
+    refreshSceneTreeFolderVisibility(state);
     refreshSceneTreeFolderCenters(state);
 }
 
