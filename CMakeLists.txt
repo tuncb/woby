@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(woby_obj_viewer VERSION 0.4.0 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -239,4 +239,9 @@ if(BUILD_TESTING)
     woby_enable_project_warnings(woby_tests)
 
     doctest_discover_tests(woby_tests)
+
+    add_test(NAME woby_version COMMAND woby --version)
+    set_tests_properties(woby_version PROPERTIES
+        PASS_REGULAR_EXPRESSION "^${PROJECT_VERSION}\r?\n?$"
+    )
 endif()
