@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstddef>
+#include <filesystem>
 #include <vector>
 
 namespace woby {
@@ -84,6 +85,11 @@ void resetSceneNodeTransform(UiSceneNodeSettings& settings);
 
 void recalculateSceneBounds(UiState& state);
 void frameCameraToScene(UiState& state);
+void appendFolderTreeSceneNode(
+    UiState& state,
+    const std::filesystem::path& root,
+    size_t firstFileIndex,
+    size_t fileCount);
 bool removeFileFromState(UiState& state, size_t fileIndex);
 void setSceneDirty(UiState& state, bool dirty);
 void markSceneDirty(UiState& state);

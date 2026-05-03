@@ -366,6 +366,41 @@ TEST_CASE("scene bounds include folder scene node transforms")
     CHECK(state.sceneBounds.max[0] == doctest::Approx(11.0f));
 }
 
+TEST_CASE("folder tree scene nodes preserve selected root hierarchy")
+{
+    const std::filesystem::path root = std::filesystem::temp_directory_path()
+        / "woby_folder_tree_scene_node";
+    const std::string firstPath = (root / "alpha" / "one.obj").string();
+    const std::string secondPath = (root / "alpha" / "nested" / "two.stl").string();
+    const std::string thirdPath = (root / "root.obj").string();
+
+    woby::UiState state;
+    state.files.push_back(makeFile(firstPath.c_str(), "one", 0.0f, 1.0f, 0u));
+    state.files.push_back(makeFile(secondPath.c_str(), "two", 2.0f, 3.0f, 1u));
+    state.files.push_back(makeFile(thirdPath.c_str(), "root", 4.0f, 5.0f, 2u));
+
+    woby::appendFolderTreeSceneNode(state, root, 0u, state.files.size());
+
+    REQUIRE(state.sceneNodes.size() == 1u);
+    const auto& rootNode = state.sceneNodes[0];
+    CHECK(rootNode.kind == woby::UiSceneNodeKind::folder);
+    CHECK(rootNode.name == root.filename().string());
+    CHECK(woby::countSceneNodeGroups(state, rootNode) == 3u);
+    CHECK(finiteVec3(rootNode.settings.center));
+    REQUIRE(rootNode.children.size() == 2u);
+    CHECK(rootNode.children[0].kind == woby::UiSceneNodeKind::folder);
+    CHECK(rootNode.children[0].name == "alpha");
+    REQUIRE(rootNode.children[0].children.size() == 2u);
+    CHECK(rootNode.children[0].children[0].kind == woby::UiSceneNodeKind::file);
+    CHECK(rootNode.children[0].children[0].fileIndex == 0u);
+    CHECK(rootNode.children[0].children[1].kind == woby::UiSceneNodeKind::folder);
+    CHECK(rootNode.children[0].children[1].name == "nested");
+    REQUIRE(rootNode.children[0].children[1].children.size() == 1u);
+    CHECK(rootNode.children[0].children[1].children[0].fileIndex == 1u);
+    CHECK(rootNode.children[1].kind == woby::UiSceneNodeKind::file);
+    CHECK(rootNode.children[1].fileIndex == 2u);
+}
+
 TEST_CASE("scene bounds reuse cached group local bounds")
 {
     woby::UiState state;

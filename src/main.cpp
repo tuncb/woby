@@ -96,9 +96,12 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xed95,
     0xea7f,
     0xea7f,
+    0xea80,
+    0xea80,
     0,
 };
 constexpr const char* addModelFileIcon = "\xee\xa9\xbf";
+constexpr const char* addModelFolderTreeIcon = "\xee\xaa\x80";
 constexpr const char* openSceneIcon = "\xee\xb6\x95";
 constexpr const char* saveSceneIcon = "\xee\xb5\xb5";
 constexpr const char* screenshotIcon = "\xef\x80\xb0";
@@ -244,11 +247,13 @@ struct ToastMessage {
 
 enum class AsyncLoadKind {
     appendModel,
+    appendFolderTree,
     openScene,
 };
 
 struct AsyncLoadOutcome {
     AsyncLoadKind kind = AsyncLoadKind::appendModel;
+    std::filesystem::path folderTreeRoot;
     woby::ModelBatchCpuLoadResult modelBatch;
     woby::SceneCpuLoadResult scene;
     std::string error;
@@ -275,6 +280,7 @@ struct BackgroundLoadRuntime {
 
 struct GpuFinalizeRuntime {
     AsyncLoadKind kind = AsyncLoadKind::appendModel;
+    std::filesystem::path folderTreeRoot;
     std::filesystem::path scenePath;
     woby::SceneDocument sceneDocument;
     std::vector<LoadedModelFile> files;
@@ -299,6 +305,39 @@ struct ResolvedModelInputs {
     std::vector<std::filesystem::path> paths;
     std::vector<ResolvedModelInputGroup> groups;
 };
+
+bool isAppendModelLoadKind(AsyncLoadKind kind)
+{
+    return kind == AsyncLoadKind::appendModel || kind == AsyncLoadKind::appendFolderTree;
+}
+
+const char* backgroundLoadDescription(AsyncLoadKind kind)
+{
+    switch (kind) {
+    case AsyncLoadKind::appendModel:
+        return "Loading model files...";
+    case AsyncLoadKind::appendFolderTree:
+        return "Loading folder tree...";
+    case AsyncLoadKind::openScene:
+        return "Opening scene...";
+    }
+
+    return "Processing files...";
+}
+
+const char* backgroundLoadFailurePrefix(AsyncLoadKind kind)
+{
+    switch (kind) {
+    case AsyncLoadKind::appendModel:
+        return "Open model files failed: ";
+    case AsyncLoadKind::appendFolderTree:
+        return "Open folder tree failed: ";
+    case AsyncLoadKind::openScene:
+        return "Open scene failed: ";
+    }
+
+    return "Processing files failed: ";
+}
 
 std::array<float, 4> groupColor(
     const GroupRenderSettings& settings,
@@ -1247,7 +1286,7 @@ void appendFolderModelPaths(
         folderPaths.size(),
         elapsedMilliseconds(start));
     if (folderPaths.empty()) {
-        throw std::runtime_error("--folder did not contain model files recursively: " + folder.string());
+        throw std::runtime_error("Folder did not contain model files recursively: " + folder.string());
     }
 
     modelPaths.insert(modelPaths.end(), folderPaths.begin(), folderPaths.end());
@@ -1357,75 +1396,6 @@ ResolvedModelInputs resolveModelInputs(const woby::AppArguments& options)
     return inputs;
 }
 
-woby::UiSceneNode& ensureFolderSceneNode(
-    std::vector<woby::UiSceneNode>& nodes,
-    const std::string& name)
-{
-    const auto found = std::find_if(
-        nodes.begin(),
-        nodes.end(),
-        [&name](const woby::UiSceneNode& node) {
-            return node.kind == woby::UiSceneNodeKind::folder && node.name == name;
-        });
-    if (found != nodes.end()) {
-        return *found;
-    }
-
-    woby::UiSceneNode folder;
-    folder.kind = woby::UiSceneNodeKind::folder;
-    folder.name = name;
-    nodes.push_back(std::move(folder));
-    return nodes.back();
-}
-
-std::string folderDisplayName(const std::filesystem::path& path)
-{
-    const std::string filename = path.filename().string();
-    if (!filename.empty()) {
-        return filename;
-    }
-
-    return path.string();
-}
-
-void appendFolderTreeSceneNode(
-    woby::UiState& state,
-    const std::filesystem::path& root,
-    size_t firstFileIndex,
-    size_t fileCount)
-{
-    woby::UiSceneNode rootNode;
-    rootNode.kind = woby::UiSceneNodeKind::folder;
-    rootNode.name = folderDisplayName(root);
-
-    const std::filesystem::path absoluteRoot = std::filesystem::absolute(root).lexically_normal();
-    for (size_t offset = 0; offset < fileCount; ++offset) {
-        const size_t fileIndex = firstFileIndex + offset;
-        if (fileIndex >= state.files.size()) {
-            break;
-        }
-
-        const std::filesystem::path absoluteFile = std::filesystem::absolute(state.files[fileIndex].path).lexically_normal();
-        std::filesystem::path relativePath = absoluteFile.lexically_relative(absoluteRoot);
-        if (relativePath.empty()) {
-            relativePath = absoluteFile.filename();
-        }
-
-        std::vector<woby::UiSceneNode>* children = &rootNode.children;
-        for (const auto& part : relativePath.parent_path()) {
-            const std::string name = part.string();
-            if (name.empty() || name == "." || name == "..") {
-                continue;
-            }
-            children = &ensureFolderSceneNode(*children, name).children;
-        }
-
-        children->push_back(woby::createFileSceneNode(state.files[fileIndex], fileIndex));
-    }
-
-    state.sceneNodes.push_back(std::move(rootNode));
-}
-
 void appendSceneNodesForResolvedInputs(
     woby::UiState& state,
     const ResolvedModelInputs& inputs,
@@ -1437,7 +1407,7 @@ void appendSceneNodesForResolvedInputs(
         }
 
         if (group.folderTree) {
-            appendFolderTreeSceneNode(
+            woby::appendFolderTreeSceneNode(
                 state,
                 group.root,
                 firstFileIndex + group.firstPathIndex,
@@ -1929,7 +1899,9 @@ void updateBackgroundLoadProgress(
 bool startAppendModelBackgroundLoad(
     BackgroundLoadRuntime& load,
     std::vector<std::filesystem::path> modelPaths,
-    size_t firstColorIndex)
+    size_t firstColorIndex,
+    AsyncLoadKind kind = AsyncLoadKind::appendModel,
+    std::filesystem::path folderTreeRoot = {})
 {
     if (load.active) {
         return false;
@@ -1939,12 +1911,19 @@ bool startAppendModelBackgroundLoad(
         load.worker.join();
     }
 
-    resetBackgroundLoadProgress(load, AsyncLoadKind::appendModel, modelPaths.size());
+    resetBackgroundLoadProgress(load, kind, modelPaths.size());
     load.cancelRequested.store(false);
     load.active = true;
-    load.worker = std::thread([&load, modelPaths = std::move(modelPaths), firstColorIndex]() {
+    load.worker = std::thread([
+        &load,
+        modelPaths = std::move(modelPaths),
+        firstColorIndex,
+        kind,
+        folderTreeRoot = std::move(folderTreeRoot)
+    ]() mutable {
         AsyncLoadOutcome outcome;
-        outcome.kind = AsyncLoadKind::appendModel;
+        outcome.kind = kind;
+        outcome.folderTreeRoot = std::move(folderTreeRoot);
         try {
             outcome.modelBatch = woby::loadModelBatchCpu(
                 modelPaths,
@@ -1964,6 +1943,32 @@ bool startAppendModelBackgroundLoad(
         load.outcome = std::move(outcome);
     });
     return true;
+}
+
+bool startAppendFolderTreeBackgroundLoad(
+    BackgroundLoadRuntime& load,
+    const std::filesystem::path& folder,
+    size_t firstColorIndex,
+    std::string& status)
+{
+    if (load.active) {
+        return false;
+    }
+
+    std::vector<std::filesystem::path> modelPaths;
+    try {
+        appendFolderModelPaths(folder, modelPaths);
+    } catch (const std::exception& exception) {
+        status = std::string("Open folder tree failed: ") + exception.what();
+        return true;
+    }
+
+    return startAppendModelBackgroundLoad(
+        load,
+        std::move(modelPaths),
+        firstColorIndex,
+        AsyncLoadKind::appendFolderTree,
+        normalizedPath(folder));
 }
 
 bool startOpenSceneBackgroundLoad(
@@ -2030,7 +2035,8 @@ void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
 {
     finalize = GpuFinalizeRuntime{};
     finalize.kind = outcome.kind;
-    if (outcome.kind == AsyncLoadKind::appendModel) {
+    finalize.folderTreeRoot = std::move(outcome.folderTreeRoot);
+    if (isAppendModelLoadKind(outcome.kind)) {
         finalize.files = std::move(outcome.modelBatch.files);
         finalize.sourceFailedCount = outcome.modelBatch.failedCount;
         finalize.sourceSkippedCount = outcome.modelBatch.skippedCount;
@@ -2078,7 +2084,7 @@ void commitGpuFinalize(
     woby::SceneDocument& cleanSceneDocument,
     ToastMessage& toast)
 {
-    if (finalize.kind == AsyncLoadKind::appendModel) {
+    if (isAppendModelLoadKind(finalize.kind)) {
         const bool addedAnyFiles = !finalize.finalizedFiles.empty();
         const size_t firstFileIndex = state.files.size();
         state.files.insert(
@@ -2090,7 +2096,15 @@ void commitGpuFinalize(
             std::make_move_iterator(finalize.finalizedRuntimes.begin()),
             std::make_move_iterator(finalize.finalizedRuntimes.end()));
         if (addedAnyFiles) {
-            woby::appendDefaultSceneNodesForFiles(state, firstFileIndex);
+            if (finalize.kind == AsyncLoadKind::appendFolderTree) {
+                woby::appendFolderTreeSceneNode(
+                    state,
+                    finalize.folderTreeRoot,
+                    firstFileIndex,
+                    finalize.finalizedFiles.size());
+            } else {
+                woby::appendDefaultSceneNodesForFiles(state, firstFileIndex);
+            }
             woby::recalculateSceneBounds(state);
             woby::frameCameraToScene(state);
             woby::markSceneDirty(state);
@@ -2311,7 +2325,7 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
             ImGuiWindowFlags_AlwaysAutoResize)) {
         modalOpen = true;
         if (backgroundActive) {
-            ImGui::TextUnformatted(kind == AsyncLoadKind::openScene ? "Opening scene..." : "Loading model files...");
+            ImGui::TextUnformatted(backgroundLoadDescription(kind));
             if (!progress.currentPath.empty()) {
                 ImGui::Text(
                     "%s",
@@ -2626,11 +2640,8 @@ int main(int argc, char** argv)
 
             if (auto outcome = takeBackgroundLoadOutcome(backgroundLoad); outcome.has_value()) {
                 if (outcome->failed) {
-                    const std::string prefix = outcome->kind == AsyncLoadKind::openScene
-                        ? "Open scene failed: "
-                        : "Open model files failed: ";
-                    setToastMessage(toast, prefix + outcome->error);
-                } else if (outcome->kind == AsyncLoadKind::appendModel) {
+                    setToastMessage(toast, std::string(backgroundLoadFailurePrefix(outcome->kind)) + outcome->error);
+                } else if (isAppendModelLoadKind(outcome->kind)) {
                     if (outcome->modelBatch.canceled || outcome->modelBatch.files.empty()) {
                         setToastMessage(toast, outcome->modelBatch.status);
                     } else {
@@ -2663,6 +2674,25 @@ int main(int argc, char** argv)
                                pendingModelPaths,
                                woby::totalGroupCount(ui))) {
                     setModelFileDialogStatus(modelFileDialogState, "Open model files failed: already processing files");
+                }
+            }
+            const auto pendingFolderTreeRoots = takePendingModelFolderTreeRoots(modelFileDialogState);
+            for (const auto& folderTreeRoot : pendingFolderTreeRoots) {
+                if (backgroundLoad.active || gpuFinalize.active) {
+                    setModelFileDialogStatus(modelFileDialogState, "Already processing files");
+                    break;
+                }
+
+                std::string folderTreeStatus;
+                if (!startAppendFolderTreeBackgroundLoad(
+                        backgroundLoad,
+                        folderTreeRoot,
+                        woby::totalGroupCount(ui),
+                        folderTreeStatus)) {
+                    folderTreeStatus = "Open folder tree failed: already processing files";
+                }
+                if (!folderTreeStatus.empty()) {
+                    setModelFileDialogStatus(modelFileDialogState, std::move(folderTreeStatus));
                 }
             }
             const std::string modelDialogStatus = modelFileDialogStatus(
@@ -2883,6 +2913,19 @@ int main(int argc, char** argv)
                             ImGui::EndDisabled();
                         }
                         setLastItemTooltip("Add model files");
+                        ImGui::SameLine();
+                        if (anyFileDialogOpen) {
+                            ImGui::BeginDisabled();
+                        }
+                        if (ImGui::Button(
+                                std::string(addModelFolderTreeIcon).append("##add_model_folder_tree").c_str(),
+                                ImVec2(renderModeButtonSize, renderModeButtonSize))) {
+                            showModelFolderTreeDialog(window.get(), modelFileDialogState);
+                        }
+                        if (anyFileDialogOpen) {
+                            ImGui::EndDisabled();
+                        }
+                        setLastItemTooltip("Add folder tree");
                         ImGui::SameLine();
                         if (anyFileDialogOpen) {
                             ImGui::BeginDisabled();

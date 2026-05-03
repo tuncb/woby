@@ -14,9 +14,11 @@ namespace woby {
 struct ModelFileDialogState {
     std::mutex mutex;
     std::vector<std::filesystem::path> pendingPaths;
+    std::vector<std::filesystem::path> pendingFolderTreeRoots;
     std::string status;
     uint64_t statusVersion = 0;
     bool open = false;
+    bool folderTreeOpen = false;
 };
 
 struct SceneFileDialogState {
@@ -38,7 +40,10 @@ struct SceneScreenshotDialogState {
 };
 
 void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state);
+void showModelFolderTreeDialog(SDL_Window* window, ModelFileDialogState& state);
 [[nodiscard]] std::vector<std::filesystem::path> takePendingModelPaths(ModelFileDialogState& state);
+[[nodiscard]] std::vector<std::filesystem::path> takePendingModelFolderTreeRoots(
+    ModelFileDialogState& state);
 void setModelFileDialogStatus(ModelFileDialogState& state, std::string status);
 [[nodiscard]] std::string modelFileDialogStatus(ModelFileDialogState& state, uint64_t& statusVersion);
 [[nodiscard]] bool modelFileDialogIsOpen(ModelFileDialogState& state);

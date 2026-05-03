@@ -42,6 +42,39 @@ void SDLCALL modelFileDialogCallback(void* userdata, const char* const* filelist
     state->open = false;
 }
 
+void SDLCALL modelFolderTreeDialogCallback(void* userdata, const char* const* filelist, int filter)
+{
+    (void)filter;
+
+    auto* state = static_cast<ModelFileDialogState*>(userdata);
+    std::vector<std::filesystem::path> selectedPaths;
+    std::string status;
+    bool showStatus = false;
+
+    if (filelist == nullptr) {
+        status = std::string("Open folder dialog failed: ") + SDL_GetError();
+        showStatus = true;
+    } else if (filelist[0] == nullptr) {
+        status = "Open folder canceled";
+        showStatus = true;
+    } else {
+        for (size_t index = 0; filelist[index] != nullptr; ++index) {
+            selectedPaths.emplace_back(filelist[index]);
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->pendingFolderTreeRoots.insert(
+        state->pendingFolderTreeRoots.end(),
+        selectedPaths.begin(),
+        selectedPaths.end());
+    if (showStatus) {
+        state->status = std::move(status);
+        ++state->statusVersion;
+    }
+    state->folderTreeOpen = false;
+}
+
 void SDLCALL openSceneDialogCallback(void* userdata, const char* const* filelist, int filter)
 {
     (void)filter;
@@ -139,7 +172,7 @@ void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
 
     {
         std::lock_guard<std::mutex> lock(state.mutex);
-        if (state.open) {
+        if (state.open || state.folderTreeOpen) {
             return;
         }
         state.open = true;
@@ -155,11 +188,37 @@ void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
         true);
 }
 
+void showModelFolderTreeDialog(SDL_Window* window, ModelFileDialogState& state)
+{
+    {
+        std::lock_guard<std::mutex> lock(state.mutex);
+        if (state.open || state.folderTreeOpen) {
+            return;
+        }
+        state.folderTreeOpen = true;
+    }
+
+    SDL_ShowOpenFolderDialog(
+        modelFolderTreeDialogCallback,
+        &state,
+        window,
+        nullptr,
+        false);
+}
+
 std::vector<std::filesystem::path> takePendingModelPaths(ModelFileDialogState& state)
 {
     std::vector<std::filesystem::path> paths;
     std::lock_guard<std::mutex> lock(state.mutex);
     paths.swap(state.pendingPaths);
+    return paths;
+}
+
+std::vector<std::filesystem::path> takePendingModelFolderTreeRoots(ModelFileDialogState& state)
+{
+    std::vector<std::filesystem::path> paths;
+    std::lock_guard<std::mutex> lock(state.mutex);
+    paths.swap(state.pendingFolderTreeRoots);
     return paths;
 }
 
@@ -184,7 +243,7 @@ std::string modelFileDialogStatus(ModelFileDialogState& state, uint64_t& statusV
 bool modelFileDialogIsOpen(ModelFileDialogState& state)
 {
     std::lock_guard<std::mutex> lock(state.mutex);
-    return state.open;
+    return state.open || state.folderTreeOpen;
 }
 
 void showOpenSceneDialog(SDL_Window* window, SceneFileDialogState& state)

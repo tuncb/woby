@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <utility>
 
 namespace woby {
 namespace {
@@ -86,6 +88,37 @@ bool setFolderNodesVisible(UiSceneNode& node, bool visible)
         changed = setFolderNodesVisible(child, visible) || changed;
     }
     return changed;
+}
+
+UiSceneNode& ensureFolderSceneNode(
+    std::vector<UiSceneNode>& nodes,
+    const std::string& name)
+{
+    const auto found = std::find_if(
+        nodes.begin(),
+        nodes.end(),
+        [&name](const UiSceneNode& node) {
+            return node.kind == UiSceneNodeKind::folder && node.name == name;
+        });
+    if (found != nodes.end()) {
+        return *found;
+    }
+
+    UiSceneNode folder;
+    folder.kind = UiSceneNodeKind::folder;
+    folder.name = name;
+    nodes.push_back(std::move(folder));
+    return nodes.back();
+}
+
+std::string folderDisplayName(const std::filesystem::path& path)
+{
+    const std::string filename = path.filename().string();
+    if (!filename.empty()) {
+        return filename;
+    }
+
+    return path.string();
 }
 
 } // namespace
@@ -623,6 +656,46 @@ void recalculateSceneBounds(UiState& state)
 void frameCameraToScene(UiState& state)
 {
     state.camera = frameCameraBounds(state.sceneBounds, state.upAxis);
+}
+
+void appendFolderTreeSceneNode(
+    UiState& state,
+    const std::filesystem::path& root,
+    size_t firstFileIndex,
+    size_t fileCount)
+{
+    UiSceneNode rootNode;
+    rootNode.kind = UiSceneNodeKind::folder;
+    rootNode.name = folderDisplayName(root);
+
+    const std::filesystem::path absoluteRoot = std::filesystem::absolute(root).lexically_normal();
+    for (size_t offset = 0; offset < fileCount; ++offset) {
+        const size_t fileIndex = firstFileIndex + offset;
+        if (fileIndex >= state.files.size()) {
+            break;
+        }
+
+        const std::filesystem::path absoluteFile =
+            std::filesystem::absolute(state.files[fileIndex].path).lexically_normal();
+        std::filesystem::path relativePath = absoluteFile.lexically_relative(absoluteRoot);
+        if (relativePath.empty()) {
+            relativePath = absoluteFile.filename();
+        }
+
+        std::vector<UiSceneNode>* children = &rootNode.children;
+        for (const auto& part : relativePath.parent_path()) {
+            const std::string name = part.string();
+            if (name.empty() || name == "." || name == "..") {
+                continue;
+            }
+            children = &ensureFolderSceneNode(*children, name).children;
+        }
+
+        children->push_back(createFileSceneNode(state.files[fileIndex], fileIndex));
+    }
+
+    state.sceneNodes.push_back(std::move(rootNode));
+    refreshSceneTreeFolderCenters(state);
 }
 
 bool removeFileFromState(UiState& state, size_t fileIndex)
