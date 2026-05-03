@@ -53,20 +53,20 @@ TEST_CASE("scene document reader reports malformed files")
     writeText(
         unsupportedVersion,
         "# comment\n"
-        "version = 2\n");
+        "version = 3\n");
     checkReadThrowsContaining(unsupportedVersion, ":2: Unsupported scene version.");
 
     const std::filesystem::path groupBeforeFile = root / "group_before_file.woby";
     writeText(
         groupBeforeFile,
-        "version = 1\n"
+        "version = 2\n"
         "[[files.groups]]\n");
     checkReadThrowsContaining(groupBeforeFile, ":2: Group table appeared before any file table.");
 
     const std::filesystem::path badArray = root / "bad_array.woby";
     writeText(
         badArray,
-        "version = 1\n"
+        "version = 2\n"
         "[[files]]\n"
         "path = \"mesh.obj\"\n"
         "translation = [1, 2]\n");
@@ -75,7 +75,7 @@ TEST_CASE("scene document reader reports malformed files")
     const std::filesystem::path missingPath = root / "missing_path.woby";
     writeText(
         missingPath,
-        "version = 1\n"
+        "version = 2\n"
         "[[files]]\n"
         "visible = true\n");
     checkReadThrowsContaining(missingPath, "Scene contains a file entry without a path.");
@@ -93,21 +93,21 @@ TEST_CASE("scene document reader reports invalid scalar and string values")
     const std::filesystem::path invalidBool = root / "invalid_bool.woby";
     writeText(
         invalidBool,
-        "version = 1\n"
+        "version = 2\n"
         "show_grid = maybe\n");
     checkReadThrowsContaining(invalidBool, ":2: Expected TOML boolean value.");
 
     const std::filesystem::path invalidUpAxis = root / "invalid_up_axis.woby";
     writeText(
         invalidUpAxis,
-        "version = 1\n"
+        "version = 2\n"
         "up_axis = \"x\"\n");
     checkReadThrowsContaining(invalidUpAxis, ":2: Expected up axis \"z\" or \"y\".");
 
     const std::filesystem::path invalidEscape = root / "invalid_escape.woby";
     writeText(
         invalidEscape,
-        "version = 1\n"
+        "version = 2\n"
         "[[files]]\n"
         "path = \"bad\\q.obj\"\n");
     checkReadThrowsContaining(invalidEscape, ":3: Unsupported TOML string escape.");
@@ -115,7 +115,7 @@ TEST_CASE("scene document reader reports invalid scalar and string values")
     const std::filesystem::path invalidKeyValue = root / "invalid_key_value.woby";
     writeText(
         invalidKeyValue,
-        "version = 1\n"
+        "version = 2\n"
         "show_grid true\n");
     checkReadThrowsContaining(invalidKeyValue, ":2: Expected TOML key/value pair.");
 

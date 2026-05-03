@@ -6,6 +6,7 @@
 
 #include <array>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 namespace woby {
@@ -57,6 +58,32 @@ struct UiFileState {
     float vertexSizeScale = 1.0f;
 };
 
+inline constexpr size_t invalidSceneNodeIndex = static_cast<size_t>(-1);
+
+enum class UiSceneNodeKind {
+    folder,
+    file,
+    group,
+};
+
+struct UiSceneNodeSettings {
+    bool visible = true;
+    float scale = 1.0f;
+    float opacity = 1.0f;
+    std::array<float, 3> center{};
+    std::array<float, 3> translation{};
+    std::array<float, 3> rotationDegrees{};
+};
+
+struct UiSceneNode {
+    UiSceneNodeKind kind = UiSceneNodeKind::folder;
+    std::string name;
+    UiSceneNodeSettings settings;
+    size_t fileIndex = invalidSceneNodeIndex;
+    size_t groupIndex = invalidSceneNodeIndex;
+    std::vector<UiSceneNode> children;
+};
+
 struct UiState {
     bool running = true;
     bool isDirty = false;
@@ -70,6 +97,7 @@ struct UiState {
     float viewerPaneWidth = 0.0f;
     bool viewerPaneVisible = true;
     std::vector<UiFileState> files;
+    std::vector<UiSceneNode> sceneNodes;
 };
 
 [[nodiscard]] std::array<float, 4> defaultGroupColor(size_t groupIndex);
@@ -81,12 +109,22 @@ struct UiState {
     size_t firstColorIndex);
 void groupTransformMatrix(const UiGroupState& settings, float* model);
 void fileTransformMatrix(const UiFileSettings& settings, float* model);
+void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model);
 [[nodiscard]] Bounds defaultDisplayBounds();
 [[nodiscard]] Bounds combineBounds(const std::vector<UiFileState>& files);
+[[nodiscard]] Bounds combineBounds(
+    const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes);
+
+[[nodiscard]] UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex);
+void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex);
+void refreshSceneTreeFolderCenters(UiState& state);
 
 [[nodiscard]] SceneFileSettings sceneFileSettings(const UiFileSettings& settings);
 [[nodiscard]] SceneGroupSettings sceneGroupSettings(const UiGroupState& settings);
+[[nodiscard]] SceneNodeSettings sceneNodeSettings(const UiSceneNodeSettings& settings);
 [[nodiscard]] SceneDocument createSceneDocument(const UiState& state);
 void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record);
+void applySceneNodeRecords(UiState& state, const std::vector<SceneNodeRecord>& records);
 
 } // namespace woby

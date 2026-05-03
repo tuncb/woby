@@ -111,10 +111,226 @@ void updateHoveredVertexCandidate(
     };
 }
 
+void hashSceneNodeSettings(uint64_t& seed, const UiSceneNodeSettings& settings)
+{
+    hashBool(seed, settings.visible);
+    hashFloat(seed, settings.scale);
+    hashFloat(seed, settings.opacity);
+    for (const float value : settings.center) {
+        hashFloat(seed, value);
+    }
+    for (const float value : settings.translation) {
+        hashFloat(seed, value);
+    }
+    for (const float value : settings.rotationDegrees) {
+        hashFloat(seed, value);
+    }
+}
+
+void hashSceneNode(uint64_t& seed, const UiSceneNode& node)
+{
+    hashCombine(seed, static_cast<uint64_t>(node.kind));
+    hashSceneNodeSettings(seed, node.settings);
+    hashCombine(seed, node.fileIndex);
+    hashCombine(seed, node.groupIndex);
+    hashCombine(seed, node.children.size());
+    for (const auto& child : node.children) {
+        hashSceneNode(seed, child);
+    }
+}
+
+void findHoveredGroupVertex(
+    const UiFileState& file,
+    const GpuMesh& gpuMesh,
+    size_t nodeIndex,
+    const MousePosition& mouse,
+    float masterVertexPointSize,
+    const float* model,
+    const float* view,
+    const float* projection,
+    uint32_t viewportWidth,
+    uint32_t viewportHeight,
+    bool homogeneousDepth,
+    std::optional<HoveredVertex>& hoveredVertex)
+{
+    if (nodeIndex >= file.groupSettings.size() || nodeIndex >= gpuMesh.nodeRanges.size()) {
+        return;
+    }
+
+    const auto& settings = file.groupSettings[nodeIndex];
+    if (!settings.visible
+        || !settings.showVertices
+        || settings.opacity <= vertexHoverEpsilon) {
+        return;
+    }
+
+    float groupModel[16];
+    float groupWorld[16];
+    groupTransformMatrix(settings, groupModel);
+    bx::mtxMul(groupWorld, model, groupModel);
+
+    const uint32_t pointSize = vertexPointSize(
+        masterVertexPointSize,
+        file.vertexSizeScale * settings.vertexSizeScale);
+    const float hoverRadius = std::max(
+        static_cast<float>(pointSize) * 0.5f,
+        vertexHoverMinRadius);
+    const auto& range = gpuMesh.nodeRanges[nodeIndex];
+    const uint32_t endIndex = std::min(
+        range.pointIndexOffset + range.pointIndexCount,
+        static_cast<uint32_t>(gpuMesh.pointVertexIndices.size()));
+    for (uint32_t index = range.pointIndexOffset; index < endIndex; ++index) {
+        const uint32_t vertexIndex = gpuMesh.pointVertexIndices[index];
+        if (vertexIndex >= file.mesh.vertices.size()) {
+            continue;
+        }
+
+        const auto& localPosition = file.mesh.vertices[vertexIndex].position;
+        const auto projected = projectPosition(
+            localPosition,
+            groupWorld,
+            view,
+            projection,
+            viewportWidth,
+            viewportHeight,
+            homogeneousDepth);
+        if (!projected.visible) {
+            continue;
+        }
+
+        updateHoveredVertexCandidate(
+            localPosition,
+            transformPosition(groupWorld, localPosition),
+            projected,
+            mouse,
+            hoverRadius,
+            hoveredVertex);
+    }
+}
+
+void findHoveredSceneNodeVertex(
+    const std::vector<UiFileState>& files,
+    const std::vector<LoadedModelRuntime>& runtimes,
+    const UiSceneNode& node,
+    const MousePosition& mouse,
+    float masterVertexPointSize,
+    const float* parentModel,
+    float parentOpacity,
+    const float* view,
+    const float* projection,
+    uint32_t viewportWidth,
+    uint32_t viewportHeight,
+    bool homogeneousDepth,
+    std::optional<HoveredVertex>& hoveredVertex)
+{
+    if (node.kind == UiSceneNodeKind::folder) {
+        if (!node.settings.visible || node.settings.opacity * parentOpacity <= vertexHoverEpsilon) {
+            return;
+        }
+
+        float nodeModel[16];
+        float model[16];
+        sceneNodeTransformMatrix(node.settings, nodeModel);
+        bx::mtxMul(model, parentModel, nodeModel);
+        const float opacity = parentOpacity * node.settings.opacity;
+        for (const auto& child : node.children) {
+            findHoveredSceneNodeVertex(
+                files,
+                runtimes,
+                child,
+                mouse,
+                masterVertexPointSize,
+                model,
+                opacity,
+                view,
+                projection,
+                viewportWidth,
+                viewportHeight,
+                homogeneousDepth,
+                hoveredVertex);
+        }
+        return;
+    }
+
+    if (node.kind == UiSceneNodeKind::file) {
+        if (node.fileIndex >= files.size() || node.fileIndex >= runtimes.size()) {
+            return;
+        }
+
+        const auto& file = files[node.fileIndex];
+        if (!file.fileSettings.visible
+            || file.fileSettings.opacity * parentOpacity <= vertexHoverEpsilon) {
+            return;
+        }
+
+        float fileModel[16];
+        float model[16];
+        fileTransformMatrix(file.fileSettings, fileModel);
+        bx::mtxMul(model, parentModel, fileModel);
+        const float opacity = parentOpacity * file.fileSettings.opacity;
+        const auto& gpuMesh = runtimes[node.fileIndex].gpuMesh;
+        if (node.children.empty()) {
+            const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
+            for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+                findHoveredGroupVertex(
+                    file,
+                    gpuMesh,
+                    groupIndex,
+                    mouse,
+                    masterVertexPointSize,
+                    model,
+                    view,
+                    projection,
+                    viewportWidth,
+                    viewportHeight,
+                    homogeneousDepth,
+                    hoveredVertex);
+            }
+            return;
+        }
+
+        for (const auto& child : node.children) {
+            findHoveredSceneNodeVertex(
+                files,
+                runtimes,
+                child,
+                mouse,
+                masterVertexPointSize,
+                model,
+                opacity,
+                view,
+                projection,
+                viewportWidth,
+                viewportHeight,
+                homogeneousDepth,
+                hoveredVertex);
+        }
+        return;
+    }
+
+    if (node.fileIndex >= files.size() || node.fileIndex >= runtimes.size()) {
+        return;
+    }
+    findHoveredGroupVertex(
+        files[node.fileIndex],
+        runtimes[node.fileIndex].gpuMesh,
+        node.groupIndex,
+        mouse,
+        masterVertexPointSize,
+        parentModel,
+        view,
+        projection,
+        viewportWidth,
+        viewportHeight,
+        homogeneousDepth,
+        hoveredVertex);
+}
+
 } // namespace
 
 uint64_t hoverPickSignature(
     const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     const MousePosition& mouse,
     bool mouseInsideViewport,
@@ -138,7 +354,12 @@ uint64_t hoverPickSignature(
     hashCombine(seed, viewportHeight);
     hashBool(seed, homogeneousDepth);
     hashCombine(seed, files.size());
+    hashCombine(seed, sceneNodes.size());
     hashCombine(seed, runtimes.size());
+
+    for (const auto& node : sceneNodes) {
+        hashSceneNode(seed, node);
+    }
 
     const size_t fileCount = std::min(files.size(), runtimes.size());
     for (size_t fileIndex = 0; fileIndex < fileCount; ++fileIndex) {
@@ -167,6 +388,7 @@ uint64_t hoverPickSignature(
 
 std::optional<HoveredVertex> findHoveredVertex(
     const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     const MousePosition& mouse,
     float masterVertexPointSize,
@@ -177,6 +399,28 @@ std::optional<HoveredVertex> findHoveredVertex(
     bool homogeneousDepth)
 {
     std::optional<HoveredVertex> hoveredVertex;
+    if (!sceneNodes.empty()) {
+        float identity[16];
+        bx::mtxIdentity(identity);
+        for (const auto& node : sceneNodes) {
+            findHoveredSceneNodeVertex(
+                files,
+                runtimes,
+                node,
+                mouse,
+                masterVertexPointSize,
+                identity,
+                1.0f,
+                view,
+                projection,
+                viewportWidth,
+                viewportHeight,
+                homogeneousDepth,
+                hoveredVertex);
+        }
+        return hoveredVertex;
+    }
+
     const size_t fileCount = std::min(files.size(), runtimes.size());
     for (size_t fileIndex = 0; fileIndex < fileCount; ++fileIndex) {
         const auto& file = files[fileIndex];

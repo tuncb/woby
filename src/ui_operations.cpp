@@ -37,6 +37,57 @@ std::array<float, 3> clampFiniteArray(
     };
 }
 
+bool validFileIndex(const UiState& state, size_t fileIndex)
+{
+    return fileIndex != invalidSceneNodeIndex && fileIndex < state.files.size();
+}
+
+bool validGroupIndex(const UiState& state, size_t fileIndex, size_t groupIndex)
+{
+    return validFileIndex(state, fileIndex)
+        && groupIndex != invalidSceneNodeIndex
+        && groupIndex < state.files[fileIndex].groupSettings.size();
+}
+
+bool pruneRemovedFile(UiSceneNode& node, size_t removedFileIndex)
+{
+    if ((node.kind == UiSceneNodeKind::file || node.kind == UiSceneNodeKind::group)
+        && node.fileIndex == removedFileIndex) {
+        return false;
+    }
+
+    if ((node.kind == UiSceneNodeKind::file || node.kind == UiSceneNodeKind::group)
+        && node.fileIndex != invalidSceneNodeIndex
+        && node.fileIndex > removedFileIndex) {
+        --node.fileIndex;
+    }
+
+    node.children.erase(
+        std::remove_if(
+            node.children.begin(),
+            node.children.end(),
+            [removedFileIndex](UiSceneNode& child) {
+                return !pruneRemovedFile(child, removedFileIndex);
+            }),
+        node.children.end());
+
+    return node.kind != UiSceneNodeKind::folder || !node.children.empty();
+}
+
+bool setFolderNodesVisible(UiSceneNode& node, bool visible)
+{
+    bool changed = false;
+    if (node.kind == UiSceneNodeKind::folder) {
+        changed = node.settings.visible != visible;
+        node.settings.visible = visible;
+    }
+
+    for (auto& child : node.children) {
+        changed = setFolderNodesVisible(child, visible) || changed;
+    }
+    return changed;
+}
+
 } // namespace
 
 size_t totalGroupCount(const std::vector<UiFileState>& files)
@@ -77,11 +128,72 @@ size_t countVisibleFileGroups(const UiFileState& file)
 
 size_t countVisibleSceneGroups(const UiState& state)
 {
+    if (!state.sceneNodes.empty()) {
+        size_t visibleCount = 0;
+        for (const auto& node : state.sceneNodes) {
+            visibleCount += countVisibleSceneNodeGroups(state, node);
+        }
+        return visibleCount;
+    }
+
     size_t visibleCount = 0;
     for (const auto& file : state.files) {
         visibleCount += countVisibleFileGroups(file);
     }
 
+    return visibleCount;
+}
+
+size_t countSceneNodeGroups(const UiState& state, const UiSceneNode& node)
+{
+    if (node.kind == UiSceneNodeKind::group) {
+        return validGroupIndex(state, node.fileIndex, node.groupIndex) ? 1u : 0u;
+    }
+
+    if (node.kind == UiSceneNodeKind::file
+        && validFileIndex(state, node.fileIndex)
+        && node.children.empty()) {
+        return state.files[node.fileIndex].groupSettings.size();
+    }
+
+    size_t groupCount = 0;
+    for (const auto& child : node.children) {
+        groupCount += countSceneNodeGroups(state, child);
+    }
+    return groupCount;
+}
+
+size_t countVisibleSceneNodeGroups(const UiState& state, const UiSceneNode& node)
+{
+    if (node.kind == UiSceneNodeKind::folder && !node.settings.visible) {
+        return 0u;
+    }
+
+    if (node.kind == UiSceneNodeKind::group) {
+        if (!validGroupIndex(state, node.fileIndex, node.groupIndex)) {
+            return 0u;
+        }
+        const auto& file = state.files[node.fileIndex];
+        return file.fileSettings.visible && file.groupSettings[node.groupIndex].visible ? 1u : 0u;
+    }
+
+    if (node.kind == UiSceneNodeKind::file) {
+        if (!validFileIndex(state, node.fileIndex)) {
+            return 0u;
+        }
+        const auto& file = state.files[node.fileIndex];
+        if (!file.fileSettings.visible) {
+            return 0u;
+        }
+        if (node.children.empty()) {
+            return countVisibleFileGroups(file);
+        }
+    }
+
+    size_t visibleCount = 0;
+    for (const auto& child : node.children) {
+        visibleCount += countVisibleSceneNodeGroups(state, child);
+    }
     return visibleCount;
 }
 
@@ -99,11 +211,44 @@ size_t countEnabledGroupRenderMode(const std::vector<UiGroupState>& groups, UiRe
 
 size_t countEnabledSceneRenderMode(const UiState& state, UiRenderMode mode)
 {
+    if (!state.sceneNodes.empty()) {
+        size_t enabledCount = 0;
+        for (const auto& node : state.sceneNodes) {
+            enabledCount += countEnabledSceneNodeRenderMode(state, node, mode);
+        }
+        return enabledCount;
+    }
+
     size_t enabledCount = 0;
     for (const auto& file : state.files) {
         enabledCount += countEnabledGroupRenderMode(file.groupSettings, mode);
     }
 
+    return enabledCount;
+}
+
+size_t countEnabledSceneNodeRenderMode(
+    const UiState& state,
+    const UiSceneNode& node,
+    UiRenderMode mode)
+{
+    if (node.kind == UiSceneNodeKind::group) {
+        if (!validGroupIndex(state, node.fileIndex, node.groupIndex)) {
+            return 0u;
+        }
+        return groupRenderModeEnabled(state.files[node.fileIndex].groupSettings[node.groupIndex], mode) ? 1u : 0u;
+    }
+
+    if (node.kind == UiSceneNodeKind::file
+        && validFileIndex(state, node.fileIndex)
+        && node.children.empty()) {
+        return countEnabledGroupRenderMode(state.files[node.fileIndex].groupSettings, mode);
+    }
+
+    size_t enabledCount = 0;
+    for (const auto& child : node.children) {
+        enabledCount += countEnabledSceneNodeRenderMode(state, child, mode);
+    }
     return enabledCount;
 }
 
@@ -162,6 +307,31 @@ void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled)
     }
 }
 
+void setSceneNodeSubtreeRenderMode(
+    UiState& state,
+    UiSceneNode& node,
+    UiRenderMode mode,
+    bool enabled)
+{
+    if (node.kind == UiSceneNodeKind::group) {
+        if (validGroupIndex(state, node.fileIndex, node.groupIndex)) {
+            setGroupRenderMode(state.files[node.fileIndex].groupSettings[node.groupIndex], mode, enabled);
+        }
+        return;
+    }
+
+    if (node.kind == UiSceneNodeKind::file
+        && validFileIndex(state, node.fileIndex)
+        && node.children.empty()) {
+        setAllGroupRenderModes(state.files[node.fileIndex].groupSettings, mode, enabled);
+        return;
+    }
+
+    for (auto& child : node.children) {
+        setSceneNodeSubtreeRenderMode(state, child, mode, enabled);
+    }
+}
+
 void setFileVisible(UiFileState& file, bool visible)
 {
     file.fileSettings.visible = visible;
@@ -178,6 +348,9 @@ void toggleFileVisible(UiFileState& file)
 void setAllSceneVisible(UiState& state, bool visible)
 {
     bool changed = false;
+    for (auto& node : state.sceneNodes) {
+        changed = setFolderNodesVisible(node, visible) || changed;
+    }
     for (auto& file : state.files) {
         changed = changed || file.fileSettings.visible != visible;
         for (const auto& group : file.groupSettings) {
@@ -187,6 +360,24 @@ void setAllSceneVisible(UiState& state, bool visible)
     }
     if (changed) {
         markSceneDirty(state);
+    }
+}
+
+void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible)
+{
+    if (node.kind == UiSceneNodeKind::folder) {
+        node.settings.visible = visible;
+    } else if (node.kind == UiSceneNodeKind::file) {
+        if (validFileIndex(state, node.fileIndex)) {
+            setFileVisible(state.files[node.fileIndex], visible);
+        }
+    } else if (validGroupIndex(state, node.fileIndex, node.groupIndex)) {
+        auto& file = state.files[node.fileIndex];
+        setGroupVisible(file, file.groupSettings[node.groupIndex], visible);
+    }
+
+    for (auto& child : node.children) {
+        setSceneNodeSubtreeVisible(state, child, visible);
     }
 }
 
@@ -288,12 +479,22 @@ void setFileTranslation(UiFileSettings& settings, const std::array<float, 3>& va
     settings.translation = finiteArrayOrZero(value);
 }
 
+void setSceneNodeTranslation(UiSceneNodeSettings& settings, const std::array<float, 3>& value)
+{
+    settings.translation = finiteArrayOrZero(value);
+}
+
 void setGroupTranslation(UiGroupState& group, const std::array<float, 3>& value)
 {
     group.translation = finiteArrayOrZero(value);
 }
 
 void setFileRotationDegrees(UiFileSettings& settings, const std::array<float, 3>& value)
+{
+    settings.rotationDegrees = clampFiniteArray(value, minRotationDegrees, maxRotationDegrees);
+}
+
+void setSceneNodeRotationDegrees(UiSceneNodeSettings& settings, const std::array<float, 3>& value)
 {
     settings.rotationDegrees = clampFiniteArray(value, minRotationDegrees, maxRotationDegrees);
 }
@@ -308,12 +509,22 @@ void setFileScale(UiFileSettings& settings, float value)
     settings.scale = clampFinite(value, minGroupScale, maxGroupScale, 1.0f);
 }
 
+void setSceneNodeScale(UiSceneNodeSettings& settings, float value)
+{
+    settings.scale = clampFinite(value, minGroupScale, maxGroupScale, 1.0f);
+}
+
 void setGroupScale(UiGroupState& group, float value)
 {
     group.scale = clampFinite(value, minGroupScale, maxGroupScale, 1.0f);
 }
 
 void setFileOpacity(UiFileSettings& settings, float value)
+{
+    settings.opacity = clampFinite(value, minGroupOpacity, maxGroupOpacity, 1.0f);
+}
+
+void setSceneNodeOpacity(UiSceneNodeSettings& settings, float value)
 {
     settings.opacity = clampFinite(value, minGroupOpacity, maxGroupOpacity, 1.0f);
 }
@@ -354,6 +565,14 @@ void resetFileTransform(UiFileSettings& settings)
     settings.rotationDegrees = {};
 }
 
+void resetSceneNodeTransform(UiSceneNodeSettings& settings)
+{
+    settings.scale = 1.0f;
+    settings.opacity = 1.0f;
+    settings.translation = {};
+    settings.rotationDegrees = {};
+}
+
 bool groupTransformIsDefault(const UiGroupState& group)
 {
     return group.scale == 1.0f
@@ -370,9 +589,17 @@ bool fileTransformIsDefault(const UiFileSettings& settings)
         && settings.rotationDegrees == std::array<float, 3>{};
 }
 
+bool sceneNodeTransformIsDefault(const UiSceneNodeSettings& settings)
+{
+    return settings.scale == 1.0f
+        && settings.opacity == 1.0f
+        && settings.translation == std::array<float, 3>{}
+        && settings.rotationDegrees == std::array<float, 3>{};
+}
+
 void recalculateSceneBounds(UiState& state)
 {
-    state.sceneBounds = combineBounds(state.files);
+    state.sceneBounds = combineBounds(state.files, state.sceneNodes);
 }
 
 void frameCameraToScene(UiState& state)
@@ -387,6 +614,14 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
     }
 
     state.files.erase(state.files.begin() + static_cast<std::ptrdiff_t>(fileIndex));
+    state.sceneNodes.erase(
+        std::remove_if(
+            state.sceneNodes.begin(),
+            state.sceneNodes.end(),
+            [fileIndex](UiSceneNode& node) {
+                return !pruneRemovedFile(node, fileIndex);
+            }),
+        state.sceneNodes.end());
     recalculateSceneBounds(state);
     frameCameraToScene(state);
     markSceneDirty(state);

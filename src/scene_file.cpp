@@ -173,6 +173,36 @@ const char* sceneUpAxisName(SceneUpAxis upAxis)
     return upAxis == SceneUpAxis::y ? "y" : "z";
 }
 
+SceneNodeKind parseSceneNodeKind(std::string_view value)
+{
+    const std::string text = parseTomlString(value);
+    if (text == "folder") {
+        return SceneNodeKind::folder;
+    }
+    if (text == "file") {
+        return SceneNodeKind::file;
+    }
+    if (text == "group") {
+        return SceneNodeKind::group;
+    }
+
+    throw std::runtime_error("Expected scene node kind \"folder\", \"file\", or \"group\".");
+}
+
+const char* sceneNodeKindName(SceneNodeKind kind)
+{
+    switch (kind) {
+    case SceneNodeKind::folder:
+        return "folder";
+    case SceneNodeKind::file:
+        return "file";
+    case SceneNodeKind::group:
+        return "group";
+    }
+
+    return "folder";
+}
+
 float parseTomlFloat(std::string_view value)
 {
     const std::string text = trim(value);
@@ -343,6 +373,31 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
     }
 }
 
+void assignSceneNodeValue(SceneNodeRecord& record, const std::string& key, std::string_view value)
+{
+    if (key == "kind") {
+        record.kind = parseSceneNodeKind(value);
+    } else if (key == "name") {
+        record.name = parseTomlString(value);
+    } else if (key == "parent") {
+        record.parentIndex = parseTomlInteger(value);
+    } else if (key == "file_index") {
+        record.fileIndex = parseTomlInteger(value);
+    } else if (key == "group_index") {
+        record.groupIndex = parseTomlInteger(value);
+    } else if (key == "visible") {
+        record.settings.visible = parseTomlBool(value);
+    } else if (key == "scale") {
+        record.settings.scale = parseTomlFloat(value);
+    } else if (key == "opacity") {
+        record.settings.opacity = parseTomlFloat(value);
+    } else if (key == "translation") {
+        record.settings.translation = parseTomlFloat3(value);
+    } else if (key == "rotation_degrees") {
+        record.settings.rotationDegrees = parseTomlFloat3(value);
+    }
+}
+
 } // namespace
 
 std::filesystem::path sceneAbsolutePath(
@@ -376,6 +431,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         root,
         file,
         group,
+        node,
     };
 
     SceneDocument document;
@@ -404,6 +460,11 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 section = Section::group;
                 continue;
             }
+            if (text == "[[nodes]]") {
+                document.nodes.emplace_back();
+                section = Section::node;
+                continue;
+            }
 
             const size_t separator = text.find('=');
             if (separator == std::string::npos) {
@@ -415,7 +476,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 1) {
+                    if (version != 2) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -429,8 +490,10 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
-            } else {
+            } else if (section == Section::group) {
                 assignSceneGroupValue(document.files.back().groups.back(), key, value);
+            } else {
+                assignSceneNodeValue(document.nodes.back(), key, value);
             }
         } catch (const std::exception& exception) {
             throw std::runtime_error(
@@ -448,6 +511,27 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
     }
 
+    for (size_t nodeIndex = 0; nodeIndex < document.nodes.size(); ++nodeIndex) {
+        const auto& node = document.nodes[nodeIndex];
+        if (node.parentIndex >= static_cast<int>(nodeIndex)) {
+            throw std::runtime_error("Scene node parent must appear before its child.");
+        }
+        if (node.kind == SceneNodeKind::file
+            && (node.fileIndex < 0 || node.fileIndex >= static_cast<int>(document.files.size()))) {
+            throw std::runtime_error("Scene file node references an invalid file index.");
+        }
+        if (node.kind == SceneNodeKind::group) {
+            if (node.fileIndex < 0 || node.fileIndex >= static_cast<int>(document.files.size())) {
+                throw std::runtime_error("Scene group node references an invalid file index.");
+            }
+
+            const auto& file = document.files[static_cast<size_t>(node.fileIndex)];
+            if (node.groupIndex < 0 || node.groupIndex >= static_cast<int>(file.groups.size())) {
+                throw std::runtime_error("Scene group node references an invalid group index.");
+            }
+        }
+    }
+
     return document;
 }
 
@@ -459,7 +543,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     }
 
     stream << "# woby scene\n";
-    stream << "version = 1\n";
+    stream << "version = 2\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
@@ -514,6 +598,28 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             writeTomlFloat4(stream, group.settings.color);
             stream << "\n";
         }
+    }
+
+    for (const auto& node : document.nodes) {
+        stream << "\n[[nodes]]\n";
+        stream << "kind = \"" << sceneNodeKindName(node.kind) << "\"\n";
+        stream << "name = \"" << escapeTomlString(node.name) << "\"\n";
+        stream << "parent = " << node.parentIndex << "\n";
+        stream << "file_index = " << node.fileIndex << "\n";
+        stream << "group_index = " << node.groupIndex << "\n";
+        stream << "visible = " << (node.settings.visible ? "true" : "false") << "\n";
+        stream << "scale = ";
+        writeTomlFloat(stream, node.settings.scale);
+        stream << "\n";
+        stream << "opacity = ";
+        writeTomlFloat(stream, node.settings.opacity);
+        stream << "\n";
+        stream << "translation = ";
+        writeTomlFloat3(stream, node.settings.translation);
+        stream << "\n";
+        stream << "rotation_degrees = ";
+        writeTomlFloat3(stream, node.settings.rotationDegrees);
+        stream << "\n";
     }
 }
 

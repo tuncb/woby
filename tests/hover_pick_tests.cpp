@@ -65,6 +65,7 @@ std::optional<woby::HoveredVertex> pick(
 {
     return woby::findHoveredVertex(
         files,
+        {},
         runtimes,
         {mouseX, mouseY},
         woby::defaultMasterVertexPointSize,
@@ -162,6 +163,7 @@ TEST_CASE("hover pick signatures change when hit-test inputs change")
 
     const uint64_t baseline = woby::hoverPickSignature(
         files,
+        {},
         runtimes,
         {50.0f, 50.0f},
         true,
@@ -175,6 +177,7 @@ TEST_CASE("hover pick signatures change when hit-test inputs change")
 
     const uint64_t movedMouse = woby::hoverPickSignature(
         files,
+        {},
         runtimes,
         {51.0f, 50.0f},
         true,
@@ -190,6 +193,7 @@ TEST_CASE("hover pick signatures change when hit-test inputs change")
     files[0].groupSettings[0].showVertices = false;
     const uint64_t hiddenVertices = woby::hoverPickSignature(
         files,
+        {},
         runtimes,
         {50.0f, 50.0f},
         true,
@@ -207,6 +211,7 @@ TEST_CASE("hover pick signatures change when hit-test inputs change")
     runtimes[0].gpuMesh.nodeRanges[0].pointIndexCount = 2u;
     const uint64_t changedRuntime = woby::hoverPickSignature(
         files,
+        {},
         runtimes,
         {50.0f, 50.0f},
         true,

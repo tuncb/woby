@@ -51,6 +51,7 @@ void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 void submitSceneFiles(
     bgfx::ViewId viewId,
     const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
     bgfx::ProgramHandle meshProgram,

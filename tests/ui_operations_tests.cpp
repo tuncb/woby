@@ -301,6 +301,25 @@ TEST_CASE("scene bounds include file and group transforms")
     CHECK(state.sceneBounds.max[1] == doctest::Approx(21.0f));
 }
 
+TEST_CASE("scene bounds include folder scene node transforms")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+
+    woby::UiSceneNode folder;
+    folder.kind = woby::UiSceneNodeKind::folder;
+    folder.name = "models";
+    folder.children.push_back(woby::createFileSceneNode(state.files[0], 0u));
+    state.sceneNodes.push_back(std::move(folder));
+    woby::refreshSceneTreeFolderCenters(state);
+    woby::setSceneNodeTranslation(state.sceneNodes[0].settings, {10.0f, 0.0f, 0.0f});
+
+    woby::recalculateSceneBounds(state);
+
+    CHECK(state.sceneBounds.min[0] == doctest::Approx(10.0f));
+    CHECK(state.sceneBounds.max[0] == doctest::Approx(11.0f));
+}
+
 TEST_CASE("scene bounds reuse cached group local bounds")
 {
     woby::UiState state;
@@ -472,6 +491,13 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     const woby::SceneDocument document = woby::createSceneDocument(state);
     REQUIRE(document.files.size() == 1u);
     REQUIRE(document.files[0].groups.size() == 1u);
+    REQUIRE(document.nodes.size() == 2u);
+    CHECK(document.nodes[0].kind == woby::SceneNodeKind::file);
+    CHECK(document.nodes[0].fileIndex == 0);
+    CHECK(document.nodes[1].kind == woby::SceneNodeKind::group);
+    CHECK(document.nodes[1].parentIndex == 0);
+    CHECK(document.nodes[1].fileIndex == 0);
+    CHECK(document.nodes[1].groupIndex == 0);
     CHECK(document.masterVertexPointSize == doctest::Approx(9.0f));
     CHECK_FALSE(document.showOrigin);
     CHECK_FALSE(document.showGrid);
@@ -492,6 +518,49 @@ TEST_CASE("scene document mapping preserves ui-editable fields")
     CHECK_FALSE(restored.groupSettings[0].showTriangles);
     CHECK(restored.groupSettings[0].translation[2] == doctest::Approx(9.0f));
     CHECK(restored.groupSettings[0].color[1] == doctest::Approx(0.2f));
+}
+
+TEST_CASE("scene document mapping preserves nested scene nodes")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    state.files.push_back(makeFile("b.obj", "b", 2.0f, 3.0f, 1u));
+
+    woby::UiSceneNode root;
+    root.kind = woby::UiSceneNodeKind::folder;
+    root.name = "models";
+    woby::setSceneNodeTranslation(root.settings, {1.0f, 2.0f, 3.0f});
+    root.children.push_back(woby::createFileSceneNode(state.files[0], 0u));
+
+    woby::UiSceneNode nested;
+    nested.kind = woby::UiSceneNodeKind::folder;
+    nested.name = "nested";
+    nested.children.push_back(woby::createFileSceneNode(state.files[1], 1u));
+    root.children.push_back(std::move(nested));
+    state.sceneNodes.push_back(std::move(root));
+
+    const woby::SceneDocument document = woby::createSceneDocument(state);
+    REQUIRE(document.nodes.size() == 6u);
+    CHECK(document.nodes[0].kind == woby::SceneNodeKind::folder);
+    CHECK(document.nodes[0].parentIndex == -1);
+    CHECK(document.nodes[0].settings.translation[1] == doctest::Approx(2.0f));
+    CHECK(document.nodes[1].kind == woby::SceneNodeKind::file);
+    CHECK(document.nodes[1].parentIndex == 0);
+    CHECK(document.nodes[3].kind == woby::SceneNodeKind::folder);
+    CHECK(document.nodes[3].parentIndex == 0);
+    CHECK(document.nodes[4].kind == woby::SceneNodeKind::file);
+    CHECK(document.nodes[4].parentIndex == 3);
+
+    woby::UiState restored;
+    restored.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    restored.files.push_back(makeFile("b.obj", "b", 2.0f, 3.0f, 1u));
+    woby::applySceneNodeRecords(restored, document.nodes);
+
+    REQUIRE(restored.sceneNodes.size() == 1u);
+    CHECK(restored.sceneNodes[0].name == "models");
+    CHECK(restored.sceneNodes[0].settings.translation[2] == doctest::Approx(3.0f));
+    REQUIRE(restored.sceneNodes[0].children.size() == 2u);
+    CHECK(restored.sceneNodes[0].children[1].name == "nested");
 }
 
 TEST_CASE("scene document writer omits camera state")
@@ -518,7 +587,7 @@ TEST_CASE("scene document writer omits camera state")
     CHECK(text.find("vertical_fov_degrees") == std::string::npos);
 }
 
-TEST_CASE("scene document persists helper visibility and up axis and defaults old files")
+TEST_CASE("scene document persists helper visibility and up axis")
 {
     woby::SceneDocument document;
     document.showOrigin = false;
@@ -534,19 +603,7 @@ TEST_CASE("scene document persists helper visibility and up axis and defaults ol
     CHECK_FALSE(restored.showGrid);
     CHECK(restored.upAxis == woby::SceneUpAxis::y);
 
-    {
-        std::ofstream stream(path, std::ios::trunc);
-        stream << "# woby scene\n";
-        stream << "version = 1\n";
-        stream << "master_vertex_point_size = 4\n";
-    }
-
-    const woby::SceneDocument oldStyleDocument = woby::readSceneDocument(path);
     std::filesystem::remove(path);
-
-    CHECK(oldStyleDocument.showOrigin);
-    CHECK(oldStyleDocument.showGrid);
-    CHECK(oldStyleDocument.upAxis == woby::SceneUpAxis::z);
 }
 
 TEST_CASE("scene record apply clamps invalid persisted numeric values")

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 #include <utility>
 
 #include <bx/math.h>
@@ -185,6 +186,205 @@ void expandTransformedBounds(Bounds& bounds, const Bounds& localBounds, const fl
     }
 }
 
+UiSceneNodeKind uiSceneNodeKind(SceneNodeKind kind)
+{
+    switch (kind) {
+    case SceneNodeKind::folder:
+        return UiSceneNodeKind::folder;
+    case SceneNodeKind::file:
+        return UiSceneNodeKind::file;
+    case SceneNodeKind::group:
+        return UiSceneNodeKind::group;
+    }
+
+    return UiSceneNodeKind::folder;
+}
+
+SceneNodeKind sceneNodeKind(UiSceneNodeKind kind)
+{
+    switch (kind) {
+    case UiSceneNodeKind::folder:
+        return SceneNodeKind::folder;
+    case UiSceneNodeKind::file:
+        return SceneNodeKind::file;
+    case UiSceneNodeKind::group:
+        return SceneNodeKind::group;
+    }
+
+    return SceneNodeKind::folder;
+}
+
+UiSceneNodeSettings uiSceneNodeSettings(const SceneNodeSettings& settings)
+{
+    UiSceneNodeSettings result;
+    result.visible = settings.visible;
+    result.scale = clampFinite(settings.scale, minGroupScale, maxGroupScale, 1.0f);
+    result.opacity = clampFinite(settings.opacity, minGroupOpacity, maxGroupOpacity, 1.0f);
+    result.translation = finiteArrayOrZero(settings.translation);
+    result.rotationDegrees = clampFiniteArray(
+        settings.rotationDegrees,
+        minRotationDegrees,
+        maxRotationDegrees);
+    return result;
+}
+
+bool validFileIndex(const std::vector<UiFileState>& files, size_t fileIndex)
+{
+    return fileIndex != invalidSceneNodeIndex && fileIndex < files.size();
+}
+
+bool validGroupIndex(const std::vector<UiFileState>& files, size_t fileIndex, size_t groupIndex)
+{
+    return validFileIndex(files, fileIndex)
+        && groupIndex != invalidSceneNodeIndex
+        && groupIndex < files[fileIndex].groupSettings.size()
+        && groupIndex < files[fileIndex].mesh.nodes.size();
+}
+
+void expandSceneNodeBounds(
+    Bounds& bounds,
+    const std::vector<UiFileState>& files,
+    const UiSceneNode& node,
+    const float* parentModel)
+{
+    if (node.kind == UiSceneNodeKind::folder) {
+        if (!node.settings.visible) {
+            return;
+        }
+
+        float nodeModel[16];
+        float model[16];
+        sceneNodeTransformMatrix(node.settings, nodeModel);
+        bx::mtxMul(model, parentModel, nodeModel);
+        for (const auto& child : node.children) {
+            expandSceneNodeBounds(bounds, files, child, model);
+        }
+        return;
+    }
+
+    if (node.kind == UiSceneNodeKind::file) {
+        if (!validFileIndex(files, node.fileIndex)) {
+            return;
+        }
+
+        const auto& file = files[node.fileIndex];
+        if (!file.fileSettings.visible) {
+            return;
+        }
+
+        float fileModel[16];
+        float model[16];
+        fileTransformMatrix(file.fileSettings, fileModel);
+        bx::mtxMul(model, parentModel, fileModel);
+        if (node.children.empty()) {
+            const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+            for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+                if (!file.groupSettings[groupIndex].visible) {
+                    continue;
+                }
+                float groupModel[16];
+                float groupWorld[16];
+                groupTransformMatrix(file.groupSettings[groupIndex], groupModel);
+                bx::mtxMul(groupWorld, model, groupModel);
+                const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
+                    ? file.groupSettings[groupIndex].localBounds
+                    : nodeBounds(file.mesh, file.mesh.nodes[groupIndex]);
+                expandTransformedBounds(bounds, localBounds, groupWorld);
+            }
+            return;
+        }
+
+        for (const auto& child : node.children) {
+            expandSceneNodeBounds(bounds, files, child, model);
+        }
+        return;
+    }
+
+    if (!validGroupIndex(files, node.fileIndex, node.groupIndex)) {
+        return;
+    }
+
+    const auto& file = files[node.fileIndex];
+    const auto& group = file.groupSettings[node.groupIndex];
+    if (!group.visible) {
+        return;
+    }
+
+    float groupModel[16];
+    float model[16];
+    groupTransformMatrix(group, groupModel);
+    bx::mtxMul(model, parentModel, groupModel);
+    const Bounds localBounds = group.localBoundsValid
+        ? group.localBounds
+        : nodeBounds(file.mesh, file.mesh.nodes[node.groupIndex]);
+    expandTransformedBounds(bounds, localBounds, model);
+}
+
+bool boundsValidOrDefault(const Bounds& bounds)
+{
+    return boundsContainFinitePoints(bounds);
+}
+
+Bounds sceneNodesBounds(const std::vector<UiFileState>& files, const std::vector<UiSceneNode>& sceneNodes)
+{
+    Bounds bounds = emptyAccumulatedBounds();
+    float identity[16];
+    bx::mtxIdentity(identity);
+    for (const auto& node : sceneNodes) {
+        expandSceneNodeBounds(bounds, files, node, identity);
+    }
+
+    if (!boundsValidOrDefault(bounds)) {
+        return defaultDisplayBounds();
+    }
+
+    finalizeBounds(bounds);
+    return bounds;
+}
+
+void appendSceneNodeRecord(
+    SceneDocument& document,
+    const UiSceneNode& node,
+    int parentIndex)
+{
+    SceneNodeRecord record;
+    record.kind = sceneNodeKind(node.kind);
+    record.name = node.name;
+    record.parentIndex = parentIndex;
+    record.fileIndex = node.fileIndex == invalidSceneNodeIndex ? -1 : static_cast<int>(node.fileIndex);
+    record.groupIndex = node.groupIndex == invalidSceneNodeIndex ? -1 : static_cast<int>(node.groupIndex);
+    record.settings = sceneNodeSettings(node.settings);
+
+    const int nodeIndex = static_cast<int>(document.nodes.size());
+    document.nodes.push_back(std::move(record));
+    for (const auto& child : node.children) {
+        appendSceneNodeRecord(document, child, nodeIndex);
+    }
+}
+
+void refreshFolderCentersRecursive(UiState& state, UiSceneNode& node)
+{
+    for (auto& child : node.children) {
+        refreshFolderCentersRecursive(state, child);
+    }
+
+    if (node.kind != UiSceneNodeKind::folder) {
+        return;
+    }
+
+    Bounds bounds = emptyAccumulatedBounds();
+    float identity[16];
+    bx::mtxIdentity(identity);
+    for (const auto& child : node.children) {
+        expandSceneNodeBounds(bounds, state.files, child, identity);
+    }
+
+    if (boundsContainFinitePoints(bounds)) {
+        finalizeBounds(bounds);
+        node.settings.center = bounds.center;
+    }
+}
+
 } // namespace
 
 std::array<float, 4> defaultGroupColor(size_t groupIndex)
@@ -287,6 +487,16 @@ void fileTransformMatrix(const UiFileSettings& settings, float* model)
         model);
 }
 
+void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model)
+{
+    transformFromSettings(
+        settings.center,
+        settings.translation,
+        settings.rotationDegrees,
+        settings.scale,
+        model);
+}
+
 Bounds defaultDisplayBounds()
 {
     Bounds bounds;
@@ -329,6 +539,59 @@ Bounds combineBounds(const std::vector<UiFileState>& files)
     return bounds;
 }
 
+Bounds combineBounds(
+    const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes)
+{
+    if (sceneNodes.empty()) {
+        return combineBounds(files);
+    }
+
+    return sceneNodesBounds(files, sceneNodes);
+}
+
+UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex)
+{
+    UiSceneNode fileNode;
+    fileNode.kind = UiSceneNodeKind::file;
+    fileNode.name = file.path.filename().string().empty()
+        ? file.path.string()
+        : file.path.filename().string();
+    fileNode.fileIndex = fileIndex;
+    fileNode.children.reserve(file.groupSettings.size());
+
+    const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+    for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+        UiSceneNode groupNode;
+        groupNode.kind = UiSceneNodeKind::group;
+        groupNode.name = file.mesh.nodes[groupIndex].name;
+        groupNode.fileIndex = fileIndex;
+        groupNode.groupIndex = groupIndex;
+        fileNode.children.push_back(std::move(groupNode));
+    }
+
+    return fileNode;
+}
+
+void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
+{
+    if (firstFileIndex >= state.files.size()) {
+        return;
+    }
+
+    state.sceneNodes.reserve(state.sceneNodes.size() + state.files.size() - firstFileIndex);
+    for (size_t fileIndex = firstFileIndex; fileIndex < state.files.size(); ++fileIndex) {
+        state.sceneNodes.push_back(createFileSceneNode(state.files[fileIndex], fileIndex));
+    }
+}
+
+void refreshSceneTreeFolderCenters(UiState& state)
+{
+    for (auto& node : state.sceneNodes) {
+        refreshFolderCentersRecursive(state, node);
+    }
+}
+
 SceneFileSettings sceneFileSettings(const UiFileSettings& settings)
 {
     SceneFileSettings result;
@@ -356,6 +619,17 @@ SceneGroupSettings sceneGroupSettings(const UiGroupState& settings)
     return result;
 }
 
+SceneNodeSettings sceneNodeSettings(const UiSceneNodeSettings& settings)
+{
+    SceneNodeSettings result;
+    result.visible = settings.visible;
+    result.scale = settings.scale;
+    result.opacity = settings.opacity;
+    result.translation = settings.translation;
+    result.rotationDegrees = settings.rotationDegrees;
+    return result;
+}
+
 SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
@@ -372,7 +646,8 @@ SceneDocument createSceneDocument(const UiState& state)
         fileRecord.vertexSizeScale = file.vertexSizeScale;
         fileRecord.groups.reserve(file.groupSettings.size());
 
-        for (size_t groupIndex = 0; groupIndex < file.groupSettings.size(); ++groupIndex) {
+        const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
+        for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
             SceneGroupRecord groupRecord;
             groupRecord.name = file.mesh.nodes[groupIndex].name;
             groupRecord.settings = sceneGroupSettings(file.groupSettings[groupIndex]);
@@ -380,6 +655,16 @@ SceneDocument createSceneDocument(const UiState& state)
         }
 
         document.files.push_back(std::move(fileRecord));
+    }
+
+    if (state.sceneNodes.empty()) {
+        for (size_t fileIndex = 0; fileIndex < state.files.size(); ++fileIndex) {
+            appendSceneNodeRecord(document, createFileSceneNode(state.files[fileIndex], fileIndex), -1);
+        }
+    } else {
+        for (const auto& node : state.sceneNodes) {
+            appendSceneNodeRecord(document, node, -1);
+        }
     }
 
     return document;
@@ -433,6 +718,66 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
                 return group.visible;
             });
     }
+}
+
+void applySceneNodeRecords(UiState& state, const std::vector<SceneNodeRecord>& records)
+{
+    state.sceneNodes.clear();
+    if (records.empty()) {
+        appendDefaultSceneNodesForFiles(state, 0u);
+        refreshSceneTreeFolderCenters(state);
+        return;
+    }
+
+    std::vector<std::vector<size_t>> childIndices(records.size());
+    std::vector<size_t> rootIndices;
+    rootIndices.reserve(records.size());
+    for (size_t index = 0; index < records.size(); ++index) {
+        const int parentIndex = records[index].parentIndex;
+        if (parentIndex < 0) {
+            rootIndices.push_back(index);
+            continue;
+        }
+
+        if (static_cast<size_t>(parentIndex) >= index) {
+            throw std::runtime_error("Scene node parent must appear before its child.");
+        }
+        childIndices[static_cast<size_t>(parentIndex)].push_back(index);
+    }
+
+    auto buildNode = [&](auto&& self, size_t recordIndex) -> UiSceneNode {
+        const auto& record = records[recordIndex];
+        UiSceneNode node;
+        node.kind = uiSceneNodeKind(record.kind);
+        node.name = record.name;
+        node.settings = uiSceneNodeSettings(record.settings);
+        node.fileIndex = record.fileIndex < 0
+            ? invalidSceneNodeIndex
+            : static_cast<size_t>(record.fileIndex);
+        node.groupIndex = record.groupIndex < 0
+            ? invalidSceneNodeIndex
+            : static_cast<size_t>(record.groupIndex);
+
+        if (node.kind == UiSceneNodeKind::file && !validFileIndex(state.files, node.fileIndex)) {
+            throw std::runtime_error("Scene file node references an invalid file index.");
+        }
+        if (node.kind == UiSceneNodeKind::group
+            && !validGroupIndex(state.files, node.fileIndex, node.groupIndex)) {
+            throw std::runtime_error("Scene group node references an invalid file or group index.");
+        }
+
+        node.children.reserve(childIndices[recordIndex].size());
+        for (const size_t childIndex : childIndices[recordIndex]) {
+            node.children.push_back(self(self, childIndex));
+        }
+        return node;
+    };
+
+    state.sceneNodes.reserve(rootIndices.size());
+    for (const size_t rootIndex : rootIndices) {
+        state.sceneNodes.push_back(buildNode(buildNode, rootIndex));
+    }
+    refreshSceneTreeFolderCenters(state);
 }
 
 } // namespace woby

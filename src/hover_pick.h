@@ -31,6 +31,7 @@ struct HoverPickCache {
 
 [[nodiscard]] uint64_t hoverPickSignature(
     const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     const MousePosition& mouse,
     bool mouseInsideViewport,
@@ -44,6 +45,7 @@ struct HoverPickCache {
 
 [[nodiscard]] std::optional<HoveredVertex> findHoveredVertex(
     const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     const MousePosition& mouse,
     float masterVertexPointSize,

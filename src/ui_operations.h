@@ -19,19 +19,31 @@ enum class UiRenderMode {
 [[nodiscard]] size_t countVisibleGroups(const std::vector<UiGroupState>& groups);
 [[nodiscard]] size_t countVisibleFileGroups(const UiFileState& file);
 [[nodiscard]] size_t countVisibleSceneGroups(const UiState& state);
+[[nodiscard]] size_t countSceneNodeGroups(const UiState& state, const UiSceneNode& node);
+[[nodiscard]] size_t countVisibleSceneNodeGroups(const UiState& state, const UiSceneNode& node);
 [[nodiscard]] size_t countEnabledGroupRenderMode(
     const std::vector<UiGroupState>& groups,
     UiRenderMode mode);
 [[nodiscard]] size_t countEnabledSceneRenderMode(const UiState& state, UiRenderMode mode);
+[[nodiscard]] size_t countEnabledSceneNodeRenderMode(
+    const UiState& state,
+    const UiSceneNode& node,
+    UiRenderMode mode);
 [[nodiscard]] bool groupRenderModeEnabled(const UiGroupState& group, UiRenderMode mode);
 void setGroupRenderMode(UiGroupState& group, UiRenderMode mode, bool enabled);
 void toggleGroupRenderMode(UiGroupState& group, UiRenderMode mode);
 void setAllGroupRenderModes(std::vector<UiGroupState>& groups, UiRenderMode mode, bool enabled);
 void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled);
+void setSceneNodeSubtreeRenderMode(
+    UiState& state,
+    UiSceneNode& node,
+    UiRenderMode mode,
+    bool enabled);
 
 void setFileVisible(UiFileState& file, bool visible);
 void toggleFileVisible(UiFileState& file);
 void setAllSceneVisible(UiState& state, bool visible);
+void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible);
 void setGroupVisible(UiGroupState& group, bool visible);
 void toggleGroupVisible(UiGroupState& group);
 void setGroupVisible(UiFileState& file, UiGroupState& group, bool visible);
@@ -47,20 +59,26 @@ void setMasterVertexPointSize(UiState& state, float value);
 void setFileVertexSizeScale(UiFileState& file, float value);
 void setGroupVertexSizeScale(UiGroupState& group, float value);
 void setFileTranslation(UiFileSettings& settings, const std::array<float, 3>& value);
+void setSceneNodeTranslation(UiSceneNodeSettings& settings, const std::array<float, 3>& value);
 void setGroupTranslation(UiGroupState& group, const std::array<float, 3>& value);
 void setFileRotationDegrees(UiFileSettings& settings, const std::array<float, 3>& value);
+void setSceneNodeRotationDegrees(UiSceneNodeSettings& settings, const std::array<float, 3>& value);
 void setGroupRotationDegrees(UiGroupState& group, const std::array<float, 3>& value);
 void setFileScale(UiFileSettings& settings, float value);
+void setSceneNodeScale(UiSceneNodeSettings& settings, float value);
 void setGroupScale(UiGroupState& group, float value);
 void setFileOpacity(UiFileSettings& settings, float value);
+void setSceneNodeOpacity(UiSceneNodeSettings& settings, float value);
 void setGroupOpacity(UiGroupState& group, float value);
 void setGroupColor(UiGroupState& group, const std::array<float, 4>& value);
 void resetGroupColor(UiGroupState& group, size_t colorIndex);
 void resetGroupTransform(UiGroupState& group);
 void resetFileTransform(UiFileSettings& settings);
+void resetSceneNodeTransform(UiSceneNodeSettings& settings);
 
 [[nodiscard]] bool groupTransformIsDefault(const UiGroupState& group);
 [[nodiscard]] bool fileTransformIsDefault(const UiFileSettings& settings);
+[[nodiscard]] bool sceneNodeTransformIsDefault(const UiSceneNodeSettings& settings);
 
 void recalculateSceneBounds(UiState& state);
 void frameCameraToScene(UiState& state);

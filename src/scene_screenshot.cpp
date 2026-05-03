@@ -245,6 +245,7 @@ void submitSceneScreenshotCapture(
     submitSceneFiles(
         screenshotSceneView,
         files,
+        ui.sceneNodes,
         runtimes,
         masterVertexPointSize,
         meshProgram,

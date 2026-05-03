@@ -5,11 +5,11 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ## Features
 
 - Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
-- Open, save, and drag in `.woby` scene files with persisted model paths, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
+- Open, save, and drag in `.woby` scene files with persisted model paths, scene tree hierarchy, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
 - View renderer, FPS, vertex, and triangle counts while working.
 - Toggle the origin axes, adaptive ground grid, and Y-up or Z-up scene orientation.
-- Control visibility at the scene, file, and mesh-group levels with tri-state master controls.
+- Control visibility at the scene, folder, file, and mesh-group levels with tri-state master controls.
 - Render each group as solid mesh, triangle edges, vertices, or any combination of those modes.
 - Adjust global, per-file, and per-group vertex point sizes.
 - Arrange files and groups with translation, rotation, scale, opacity, and reset controls.
@@ -36,6 +36,12 @@ Load all OBJ files in a folder recursively:
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --folder C:\path\to\models
+```
+
+Load a folder recursively and mirror nested directories in the scene tree:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --folder-tree C:\path\to\models
 ```
 
 Open a saved scene:

@@ -288,6 +288,18 @@ struct GpuFinalizeRuntime {
     bool active = false;
 };
 
+struct ResolvedModelInputGroup {
+    bool folderTree = false;
+    std::filesystem::path root;
+    size_t firstPathIndex = 0;
+    size_t pathCount = 0;
+};
+
+struct ResolvedModelInputs {
+    std::vector<std::filesystem::path> paths;
+    std::vector<ResolvedModelInputGroup> groups;
+};
+
 std::array<float, 4> groupColor(
     const GroupRenderSettings& settings,
     float rgbScale,
@@ -731,11 +743,12 @@ void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
     ImGui::TextUnformatted(countLine.c_str());
 }
 
-void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
+void drawSceneNodeMasterControls(woby::UiState& state, woby::UiSceneNode& node)
 {
-    const size_t groupCount = settings.size();
-    const size_t solidMeshCount = woby::countEnabledGroupRenderMode(
-        settings,
+    const size_t groupCount = woby::countSceneNodeGroups(state, node);
+    const size_t solidMeshCount = woby::countEnabledSceneNodeRenderMode(
+        state,
+        node,
         woby::UiRenderMode::solidMesh);
     if (drawTriStateMasterIconButton(
             "solid_mesh",
@@ -743,14 +756,16 @@ void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
             "Solid mesh",
             solidMeshCount,
             groupCount)) {
-        woby::setAllGroupRenderModes(
-            settings,
+        woby::setSceneNodeSubtreeRenderMode(
+            state,
+            node,
             woby::UiRenderMode::solidMesh,
             solidMeshCount != groupCount);
     }
     ImGui::SameLine();
-    const size_t triangleCount = woby::countEnabledGroupRenderMode(
-        settings,
+    const size_t triangleCount = woby::countEnabledSceneNodeRenderMode(
+        state,
+        node,
         woby::UiRenderMode::triangles);
     if (drawTriStateMasterIconButton(
             "triangles",
@@ -758,14 +773,16 @@ void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
             "Triangles",
             triangleCount,
             groupCount)) {
-        woby::setAllGroupRenderModes(
-            settings,
+        woby::setSceneNodeSubtreeRenderMode(
+            state,
+            node,
             woby::UiRenderMode::triangles,
             triangleCount != groupCount);
     }
     ImGui::SameLine();
-    const size_t vertexCount = woby::countEnabledGroupRenderMode(
-        settings,
+    const size_t vertexCount = woby::countEnabledSceneNodeRenderMode(
+        state,
+        node,
         woby::UiRenderMode::vertices);
     if (drawTriStateMasterIconButton(
             "vertices",
@@ -773,8 +790,9 @@ void drawGroupMasterControls(std::vector<GroupRenderSettings>& settings)
             "Vertices",
             vertexCount,
             groupCount)) {
-        woby::setAllGroupRenderModes(
-            settings,
+        woby::setSceneNodeSubtreeRenderMode(
+            state,
+            node,
             woby::UiRenderMode::vertices,
             vertexCount != groupCount);
     }
@@ -1003,6 +1021,207 @@ void drawFileTransformControls(FileRenderSettings& settings, float translationSp
     }
 }
 
+void drawSceneNodeTransformControls(woby::UiSceneNodeSettings& settings, float translationSpeed)
+{
+    ImGui::SameLine();
+    const RenderModeState transformState = woby::sceneNodeTransformIsDefault(settings)
+        ? RenderModeState::off
+        : RenderModeState::on;
+    if (drawRenderModeIconButton(
+            "transform",
+            transformIcon,
+            "Transform geometry",
+            transformState,
+            false)) {
+        ImGui::OpenPopup("Transform");
+    }
+    if (ImGui::BeginPopup("Transform")) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("Transform geometry");
+        ImGui::SameLine();
+        if (ImGui::Button("Reset")) {
+            woby::resetSceneNodeTransform(settings);
+        }
+        std::array<float, 3> translation = settings.translation;
+        ImGui::SetNextItemWidth(260.0f);
+        if (ImGui::DragFloat3(
+            "Move",
+            translation.data(),
+            translationSpeed)) {
+            woby::setSceneNodeTranslation(settings, translation);
+        }
+        setLastItemTooltip("Position offset for this folder");
+        std::array<float, 3> rotationDegrees = settings.rotationDegrees;
+        ImGui::SetNextItemWidth(260.0f);
+        if (ImGui::DragFloat3(
+            "Rotate",
+            rotationDegrees.data(),
+            1.0f,
+            -180.0f,
+            180.0f,
+            "%.0f deg")) {
+            woby::setSceneNodeRotationDegrees(settings, rotationDegrees);
+        }
+        setLastItemTooltip("Rotation in degrees for this folder");
+        float scale = settings.scale;
+        ImGui::SetNextItemWidth(260.0f);
+        if (ImGui::DragFloat(
+            "Scale",
+            &scale,
+            0.01f,
+            woby::minGroupScale,
+            woby::maxGroupScale,
+            "%.2fx")) {
+            woby::setSceneNodeScale(settings, scale);
+        }
+        setLastItemTooltip("Uniform scale for this folder");
+        float opacity = settings.opacity;
+        ImGui::SetNextItemWidth(260.0f);
+        if (ImGui::SliderFloat(
+            "Opacity",
+            &opacity,
+            woby::minGroupOpacity,
+            woby::maxGroupOpacity,
+            "%.2f")) {
+            woby::setSceneNodeOpacity(settings, opacity);
+        }
+        setLastItemTooltip("Opacity for this folder");
+        ImGui::EndPopup();
+    }
+}
+
+size_t groupColorIndex(
+    const std::vector<LoadedModelFile>& files,
+    size_t fileIndex,
+    size_t groupIndex)
+{
+    size_t colorIndex = groupIndex;
+    for (size_t index = 0; index < fileIndex && index < files.size(); ++index) {
+        colorIndex += files[index].groupSettings.size();
+    }
+    return colorIndex;
+}
+
+void drawSceneTreeNode(
+    woby::UiState& state,
+    std::vector<LoadedModelRuntime>& runtimes,
+    woby::UiSceneNode& node,
+    std::optional<size_t>& removeFileIndex)
+{
+    if (node.kind == woby::UiSceneNodeKind::folder) {
+        const float rowStartX = ImGui::GetCursorPosX();
+        const float controlsStartX = rowStartX + groupControlStartOffset();
+        const size_t groupCount = woby::countSceneNodeGroups(state, node);
+        const size_t visibleCount = woby::countVisibleSceneNodeGroups(state, node);
+        if (drawTriStateVisibilityButton(
+                "visible",
+                "Folder",
+                visibleCount,
+                groupCount)) {
+            woby::setSceneNodeSubtreeVisible(state, node, visibleCount != groupCount);
+        }
+        ImGui::SameLine();
+        const bool folderOpen = ImGui::TreeNode(node.name.c_str());
+        ImGui::SameLine(controlsStartX, 0.0f);
+        drawSceneNodeMasterControls(state, node);
+        drawSceneNodeTransformControls(node.settings, std::max(state.sceneBounds.radius * 0.005f, 0.01f));
+        if (folderOpen) {
+            for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
+                ImGui::PushID(static_cast<int>(childIndex));
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
+        return;
+    }
+
+    if (node.kind == woby::UiSceneNodeKind::file) {
+        if (node.fileIndex >= state.files.size()) {
+            return;
+        }
+
+        auto& file = state.files[node.fileIndex];
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float rowStartX = ImGui::GetCursorPosX();
+        const float removeControlStartX = rowStartX
+            + style.IndentSpacing
+            + transformControlStartOffset();
+        const std::string label = node.name + "##file_" + std::to_string(node.fileIndex);
+        const size_t fileGroupCount = woby::countSceneNodeGroups(state, node);
+        const size_t fileVisibleCount = woby::countVisibleSceneNodeGroups(state, node);
+        if (drawTriStateVisibilityButton(
+                "visible",
+                "File",
+                fileVisibleCount,
+                fileGroupCount)) {
+            woby::setSceneNodeSubtreeVisible(state, node, fileVisibleCount != fileGroupCount);
+        }
+        ImGui::SameLine();
+        const std::string tooltipText = file.path.string()
+            + "\n"
+            + meshCountLine(
+                file.mesh.vertices.size(),
+                file.mesh.indices.size() / 3u);
+        const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
+        setLastItemTooltip(tooltipText.c_str());
+        ImGui::SameLine(removeControlStartX, 0.0f);
+        if (drawRenderModeIconButton(
+                "remove",
+                removeFileIcon,
+                "Remove file from scene",
+                RenderModeState::off,
+                false)) {
+            removeFileIndex = node.fileIndex;
+        }
+        if (fileTreeOpen) {
+            drawSceneNodeMasterControls(state, node);
+            ImGui::SameLine(0.0f, 0.0f);
+            const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
+            float fileVertexSizeScale = file.vertexSizeScale;
+            ImGui::SetNextItemWidth(renderModeButtonRowWidth());
+            pushRenderModeControlHeight();
+            if (ImGui::DragFloat(
+                "##vertex_size",
+                &fileVertexSizeScale,
+                0.02f,
+                woby::minVertexSizeScale,
+                woby::maxVertexSizeScale,
+                "%.2fx")) {
+                woby::setFileVertexSizeScale(file, fileVertexSizeScale);
+            }
+            ImGui::PopStyleVar();
+            setLastItemTooltip("Vertex size multiplier for this file");
+            drawFileTransformControls(file.fileSettings, translationSpeed);
+            for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
+                ImGui::PushID(static_cast<int>(childIndex));
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
+        return;
+    }
+
+    if (node.fileIndex >= state.files.size() || node.fileIndex >= runtimes.size()) {
+        return;
+    }
+
+    auto& file = state.files[node.fileIndex];
+    const auto& gpuMesh = runtimes[node.fileIndex].gpuMesh;
+    if (node.groupIndex >= file.mesh.nodes.size() || node.groupIndex >= gpuMesh.nodeRanges.size()) {
+        return;
+    }
+
+    drawGroupControls(
+        file.mesh.nodes[node.groupIndex],
+        gpuMesh.nodeRanges[node.groupIndex],
+        file,
+        node.groupIndex,
+        groupColorIndex(state.files, node.fileIndex, node.groupIndex),
+        std::max(file.mesh.bounds.radius * 0.005f, 0.01f));
+}
+
 struct SdlDeleter {
     void operator()(SDL_Window* window) const noexcept
     {
@@ -1111,20 +1330,128 @@ void recordFrameStage(
     stageStart = now;
 }
 
-std::vector<std::filesystem::path> resolveModelPaths(const woby::AppArguments& options)
+ResolvedModelInputs resolveModelInputs(const woby::AppArguments& options)
 {
-    std::vector<std::filesystem::path> modelPaths;
+    ResolvedModelInputs inputs;
 
     for (const auto& inputPath : options.inputPaths) {
+        ResolvedModelInputGroup group;
+        group.folderTree = inputPath.folderTree;
+        group.root = inputPath.path;
+        group.firstPathIndex = inputs.paths.size();
+
         if (inputPath.folder) {
-            appendFolderModelPaths(inputPath.path, modelPaths);
+            appendFolderModelPaths(inputPath.path, inputs.paths);
+            group.pathCount = inputs.paths.size() - group.firstPathIndex;
+            inputs.groups.push_back(std::move(group));
             continue;
         }
 
-        modelPaths.push_back(inputPath.path);
+        inputs.paths.push_back(inputPath.path);
+        group.pathCount = 1u;
+        inputs.groups.push_back(std::move(group));
     }
 
-    return modelPaths;
+    return inputs;
+}
+
+woby::UiSceneNode& ensureFolderSceneNode(
+    std::vector<woby::UiSceneNode>& nodes,
+    const std::string& name)
+{
+    const auto found = std::find_if(
+        nodes.begin(),
+        nodes.end(),
+        [&name](const woby::UiSceneNode& node) {
+            return node.kind == woby::UiSceneNodeKind::folder && node.name == name;
+        });
+    if (found != nodes.end()) {
+        return *found;
+    }
+
+    woby::UiSceneNode folder;
+    folder.kind = woby::UiSceneNodeKind::folder;
+    folder.name = name;
+    nodes.push_back(std::move(folder));
+    return nodes.back();
+}
+
+std::string folderDisplayName(const std::filesystem::path& path)
+{
+    const std::string filename = path.filename().string();
+    if (!filename.empty()) {
+        return filename;
+    }
+
+    return path.string();
+}
+
+void appendFolderTreeSceneNode(
+    woby::UiState& state,
+    const std::filesystem::path& root,
+    size_t firstFileIndex,
+    size_t fileCount)
+{
+    woby::UiSceneNode rootNode;
+    rootNode.kind = woby::UiSceneNodeKind::folder;
+    rootNode.name = folderDisplayName(root);
+
+    const std::filesystem::path absoluteRoot = std::filesystem::absolute(root).lexically_normal();
+    for (size_t offset = 0; offset < fileCount; ++offset) {
+        const size_t fileIndex = firstFileIndex + offset;
+        if (fileIndex >= state.files.size()) {
+            break;
+        }
+
+        const std::filesystem::path absoluteFile = std::filesystem::absolute(state.files[fileIndex].path).lexically_normal();
+        std::filesystem::path relativePath = absoluteFile.lexically_relative(absoluteRoot);
+        if (relativePath.empty()) {
+            relativePath = absoluteFile.filename();
+        }
+
+        std::vector<woby::UiSceneNode>* children = &rootNode.children;
+        for (const auto& part : relativePath.parent_path()) {
+            const std::string name = part.string();
+            if (name.empty() || name == "." || name == "..") {
+                continue;
+            }
+            children = &ensureFolderSceneNode(*children, name).children;
+        }
+
+        children->push_back(woby::createFileSceneNode(state.files[fileIndex], fileIndex));
+    }
+
+    state.sceneNodes.push_back(std::move(rootNode));
+}
+
+void appendSceneNodesForResolvedInputs(
+    woby::UiState& state,
+    const ResolvedModelInputs& inputs,
+    size_t firstFileIndex)
+{
+    for (const auto& group : inputs.groups) {
+        if (group.pathCount == 0u) {
+            continue;
+        }
+
+        if (group.folderTree) {
+            appendFolderTreeSceneNode(
+                state,
+                group.root,
+                firstFileIndex + group.firstPathIndex,
+                group.pathCount);
+            continue;
+        }
+
+        for (size_t offset = 0; offset < group.pathCount; ++offset) {
+            const size_t fileIndex = firstFileIndex + group.firstPathIndex + offset;
+            if (fileIndex < state.files.size()) {
+                state.sceneNodes.push_back(woby::createFileSceneNode(state.files[fileIndex], fileIndex));
+            }
+        }
+    }
+
+    woby::refreshSceneTreeFolderCenters(state);
 }
 
 LoadedModelFileWithRuntime loadModelFile(
@@ -1201,25 +1528,26 @@ std::vector<LoadedModelFile> loadModelFiles(
 }
 
 void appendInitialModelFiles(
-    const std::vector<std::filesystem::path>& modelPaths,
+    const ResolvedModelInputs& modelInputs,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes)
 {
-    if (modelPaths.empty()) {
+    if (modelInputs.paths.empty()) {
         return;
     }
 
     const auto start = woby::PerformanceClock::now();
     std::vector<LoadedModelRuntime> loadedRuntimes;
     std::vector<LoadedModelFile> loadedFiles = loadModelFiles(
-        modelPaths,
+        modelInputs.paths,
         meshLayout,
         pointSpriteLayout,
         loadedRuntimes,
         woby::totalGroupCount(state));
 
+    const size_t firstFileIndex = state.files.size();
     state.files.insert(
         state.files.end(),
         std::make_move_iterator(loadedFiles.begin()),
@@ -1228,12 +1556,13 @@ void appendInitialModelFiles(
         runtimes.end(),
         std::make_move_iterator(loadedRuntimes.begin()),
         std::make_move_iterator(loadedRuntimes.end()));
+    appendSceneNodesForResolvedInputs(state, modelInputs, firstFileIndex);
     woby::recalculateSceneBounds(state);
     woby::frameCameraToScene(state);
     woby::markSceneDirty(state);
     spdlog::info(
         "perf append_initial_model_files requested_count={} duration_ms={}",
-        modelPaths.size(),
+        modelInputs.paths.size(),
         elapsedMilliseconds(start));
 }
 
@@ -1265,6 +1594,7 @@ bool appendModelFiles(
     size_t failedCount = 0;
     std::string lastError;
     size_t colorIndex = woby::totalGroupCount(state);
+    const size_t firstAddedFileIndex = state.files.size();
     state.files.reserve(state.files.size() + modelPaths.size());
     runtimes.reserve(runtimes.size() + modelPaths.size());
 
@@ -1301,6 +1631,7 @@ bool appendModelFiles(
     }
 
     if (addedCount > 0u) {
+        woby::appendDefaultSceneNodesForFiles(state, firstAddedFileIndex);
         woby::recalculateSceneBounds(state);
         woby::frameCameraToScene(state);
         woby::markSceneDirty(state);
@@ -1488,6 +1819,7 @@ void loadScene(
     destroyModelRuntimes(runtimes);
     runtimes = std::move(loadedRuntimes);
     state.files = std::move(loadedFiles);
+    woby::applySceneNodeRecords(state, document.nodes);
     state.upAxis = document.upAxis;
     woby::setShowOrigin(state, document.showOrigin);
     woby::setShowGrid(state, document.showGrid);
@@ -1746,6 +2078,7 @@ void commitGpuFinalize(
 {
     if (finalize.kind == AsyncLoadKind::appendModel) {
         const bool addedAnyFiles = !finalize.finalizedFiles.empty();
+        const size_t firstFileIndex = state.files.size();
         state.files.insert(
             state.files.end(),
             std::make_move_iterator(finalize.finalizedFiles.begin()),
@@ -1755,6 +2088,7 @@ void commitGpuFinalize(
             std::make_move_iterator(finalize.finalizedRuntimes.begin()),
             std::make_move_iterator(finalize.finalizedRuntimes.end()));
         if (addedAnyFiles) {
+            woby::appendDefaultSceneNodesForFiles(state, firstFileIndex);
             woby::recalculateSceneBounds(state);
             woby::frameCameraToScene(state);
             woby::markSceneDirty(state);
@@ -1764,6 +2098,7 @@ void commitGpuFinalize(
         destroyModelRuntimes(runtimes);
         runtimes = std::move(finalize.finalizedRuntimes);
         state.files = std::move(finalize.finalizedFiles);
+        woby::applySceneNodeRecords(state, finalize.sceneDocument.nodes);
         state.upAxis = finalize.sceneDocument.upAxis;
         woby::setShowOrigin(state, finalize.sceneDocument.showOrigin);
         woby::setShowGrid(state, finalize.sceneDocument.showGrid);
@@ -2113,7 +2448,7 @@ int main(int argc, char** argv)
 
         const auto assets = assetRoot();
         const auto modelPathsStart = woby::PerformanceClock::now();
-        const auto modelPaths = resolveModelPaths(commandLine);
+        const auto modelInputs = resolveModelInputs(commandLine);
         woby::logDuration("startup_resolve_model_paths", elapsedMilliseconds(modelPathsStart));
         const auto layout = meshVertexLayout();
         const auto pointLayout = pointSpriteVertexLayout();
@@ -2133,9 +2468,10 @@ int main(int argc, char** argv)
                 runtimes,
                 currentScenePath,
                 cleanSceneDocument);
-            appendInitialModelFiles(modelPaths, layout, pointLayout, ui, runtimes);
+            appendInitialModelFiles(modelInputs, layout, pointLayout, ui, runtimes);
         } else {
-            ui.files = loadModelFiles(modelPaths, layout, pointLayout, runtimes);
+            ui.files = loadModelFiles(modelInputs.paths, layout, pointLayout, runtimes);
+            appendSceneNodesForResolvedInputs(ui, modelInputs, 0u);
             woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
         }
@@ -2707,76 +3043,10 @@ int main(int argc, char** argv)
                             "FilesContent",
                             ImVec2(0.0f, filesContentHeight),
                             ImGuiChildFlags_None)) {
-                        size_t colorIndex = 0;
                         std::optional<size_t> removeFileIndex;
-                        for (size_t fileIndex = 0; fileIndex < files.size(); ++fileIndex) {
-                            auto& file = files[fileIndex];
-                            ImGui::PushID(static_cast<int>(fileIndex));
-                            const ImGuiStyle& style = ImGui::GetStyle();
-                            const float rowStartX = ImGui::GetCursorPosX();
-                            const float removeControlStartX = rowStartX
-                                + style.IndentSpacing
-                                + transformControlStartOffset();
-                            const std::string label = fileDisplayName(file.path)
-                                + "##file_" + std::to_string(fileIndex);
-                            const size_t fileGroupCount = file.groupSettings.size();
-                            const size_t fileVisibleCount = woby::countVisibleFileGroups(file);
-                            if (drawTriStateVisibilityButton(
-                                    "visible",
-                                    "File",
-                                    fileVisibleCount,
-                                    fileGroupCount)) {
-                                woby::setFileVisible(file, fileVisibleCount != fileGroupCount);
-                            }
-                            ImGui::SameLine();
-                            const std::string tooltipText = file.path.string()
-                                + "\n"
-                                + meshCountLine(
-                                    file.mesh.vertices.size(),
-                                    file.mesh.indices.size() / 3u);
-                            const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
-                            setLastItemTooltip(tooltipText.c_str());
-                            ImGui::SameLine(removeControlStartX, 0.0f);
-                            if (drawRenderModeIconButton(
-                                    "remove",
-                                    removeFileIcon,
-                                    "Remove file from scene",
-                                    RenderModeState::off,
-                                    false)) {
-                                removeFileIndex = fileIndex;
-                            }
-                            if (fileTreeOpen) {
-                                drawGroupMasterControls(file.groupSettings);
-                                ImGui::SameLine(0.0f, 0.0f);
-                                const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
-                                float fileVertexSizeScale = file.vertexSizeScale;
-                                ImGui::SetNextItemWidth(renderModeButtonRowWidth());
-                                pushRenderModeControlHeight();
-                                if (ImGui::DragFloat(
-                                    "##vertex_size",
-                                    &fileVertexSizeScale,
-                                    0.02f,
-                                    woby::minVertexSizeScale,
-                                    woby::maxVertexSizeScale,
-                                    "%.2fx")) {
-                                    woby::setFileVertexSizeScale(file, fileVertexSizeScale);
-                                }
-                                ImGui::PopStyleVar();
-                                setLastItemTooltip("Vertex size multiplier for this file");
-                                drawFileTransformControls(file.fileSettings, translationSpeed);
-                                for (size_t nodeIndex = 0; nodeIndex < file.mesh.nodes.size(); ++nodeIndex) {
-                                    const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
-                                    drawGroupControls(
-                                        file.mesh.nodes[nodeIndex],
-                                        gpuMesh.nodeRanges[nodeIndex],
-                                        file,
-                                        nodeIndex,
-                                        colorIndex + nodeIndex,
-                                        translationSpeed);
-                                }
-                                ImGui::TreePop();
-                            }
-                            colorIndex += file.groupSettings.size();
+                        for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
+                            ImGui::PushID(static_cast<int>(nodeIndex));
+                            drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex);
                             ImGui::PopID();
                         }
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
@@ -2867,6 +3137,7 @@ int main(int argc, char** argv)
             } else {
                 const uint64_t hoverSignature = hoverPickSignature(
                     files,
+                    ui.sceneNodes,
                     runtimes,
                     mouse,
                     mouseInsideViewport,
@@ -2881,6 +3152,7 @@ int main(int argc, char** argv)
                     hoverPickCache.hoveredVertex.reset();
                     hoverPickCache.hoveredVertex = findHoveredVertex(
                         files,
+                        ui.sceneNodes,
                         runtimes,
                         mouse,
                         masterVertexPointSize,
@@ -2899,6 +3171,7 @@ int main(int argc, char** argv)
             submitSceneFiles(
                 sceneView,
                 files,
+                ui.sceneNodes,
                 runtimes,
                 masterVertexPointSize,
                 meshProgram,

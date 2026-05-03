@@ -19,6 +19,7 @@ enum class LogLevel {
 
 struct ModelPathOption {
     bool folder = false;
+    bool folderTree = false;
     std::filesystem::path path;
 };
 

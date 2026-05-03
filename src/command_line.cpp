@@ -186,6 +186,17 @@ AppArguments parseCommandLine(int argc, char** argv)
             continue;
         }
 
+        if (argument == "--folder-tree") {
+            requireValue(argc, index, argument, "a folder path");
+
+            ModelPathOption inputPath;
+            inputPath.folder = true;
+            inputPath.folderTree = true;
+            inputPath.path = argv[++index];
+            arguments.inputPaths.push_back(std::move(inputPath));
+            continue;
+        }
+
         if (argument.rfind("--", 0) == 0) {
             throw std::runtime_error("Unknown option: " + argument);
         }

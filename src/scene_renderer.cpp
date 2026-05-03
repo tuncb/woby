@@ -432,9 +432,217 @@ uint32_t vertexPointSize(float masterSize, float groupScale)
     return static_cast<uint32_t>(std::lround(scaledSize));
 }
 
+void submitGroupRange(
+    bgfx::ViewId viewId,
+    const std::vector<UiFileState>& files,
+    const std::vector<LoadedModelRuntime>& runtimes,
+    size_t fileIndex,
+    size_t nodeIndex,
+    const float* parentModel,
+    float opacityScale,
+    float masterVertexPointSize,
+    bgfx::ProgramHandle meshProgram,
+    bgfx::ProgramHandle colorProgram,
+    bgfx::ProgramHandle pointSpriteProgram,
+    bgfx::UniformHandle colorUniform,
+    bgfx::UniformHandle pointParamsUniform,
+    uint32_t sceneViewportWidth,
+    uint32_t viewportHeight)
+{
+    if (fileIndex >= files.size() || fileIndex >= runtimes.size()) {
+        return;
+    }
+
+    const auto& file = files[fileIndex];
+    const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
+    if (nodeIndex >= file.groupSettings.size() || nodeIndex >= gpuMesh.nodeRanges.size()) {
+        return;
+    }
+
+    const auto& settings = file.groupSettings[nodeIndex];
+    if (!settings.visible) {
+        return;
+    }
+
+    float groupModel[16];
+    float model[16];
+    groupTransformMatrix(settings, groupModel);
+    bx::mtxMul(model, parentModel, groupModel);
+    const auto& range = gpuMesh.nodeRanges[nodeIndex];
+    if (settings.showSolidMesh) {
+        submitTriangleRange(
+            viewId,
+            gpuMesh,
+            meshProgram,
+            colorUniform,
+            model,
+            groupColor(settings, 1.0f, opacityScale),
+            range.triangleIndexOffset,
+            range.triangleIndexCount);
+    }
+    if (settings.showTriangles) {
+        submitColorRange(
+            viewId,
+            gpuMesh,
+            gpuMesh.lineIndexBuffer,
+            colorProgram,
+            colorUniform,
+            model,
+            groupColor(settings, 1.25f, opacityScale),
+            BGFX_STATE_PT_LINES,
+            range.lineIndexOffset,
+            range.lineIndexCount);
+    }
+    if (settings.showVertices) {
+        const uint32_t pointSize = vertexPointSize(
+            masterVertexPointSize,
+            file.vertexSizeScale * settings.vertexSizeScale);
+        submitPointSpriteRange(
+            viewId,
+            gpuMesh,
+            pointSpriteProgram,
+            colorUniform,
+            pointParamsUniform,
+            model,
+            groupColor(settings, 1.5f, opacityScale),
+            static_cast<float>(pointSize),
+            sceneViewportWidth,
+            viewportHeight,
+            range.pointSpriteIndexOffset,
+            range.pointSpriteIndexCount);
+    }
+}
+
+void submitSceneNode(
+    bgfx::ViewId viewId,
+    const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes,
+    const std::vector<LoadedModelRuntime>& runtimes,
+    const UiSceneNode& node,
+    const float* parentModel,
+    float parentOpacity,
+    float masterVertexPointSize,
+    bgfx::ProgramHandle meshProgram,
+    bgfx::ProgramHandle colorProgram,
+    bgfx::ProgramHandle pointSpriteProgram,
+    bgfx::UniformHandle colorUniform,
+    bgfx::UniformHandle pointParamsUniform,
+    uint32_t sceneViewportWidth,
+    uint32_t viewportHeight)
+{
+    (void)sceneNodes;
+    if (node.kind == UiSceneNodeKind::folder) {
+        if (!node.settings.visible) {
+            return;
+        }
+
+        float nodeModel[16];
+        float model[16];
+        sceneNodeTransformMatrix(node.settings, nodeModel);
+        bx::mtxMul(model, parentModel, nodeModel);
+        const float opacity = parentOpacity * node.settings.opacity;
+        for (const auto& child : node.children) {
+            submitSceneNode(
+                viewId,
+                files,
+                sceneNodes,
+                runtimes,
+                child,
+                model,
+                opacity,
+                masterVertexPointSize,
+                meshProgram,
+                colorProgram,
+                pointSpriteProgram,
+                colorUniform,
+                pointParamsUniform,
+                sceneViewportWidth,
+                viewportHeight);
+        }
+        return;
+    }
+
+    if (node.kind == UiSceneNodeKind::file) {
+        if (node.fileIndex >= files.size() || node.fileIndex >= runtimes.size()) {
+            return;
+        }
+
+        const auto& file = files[node.fileIndex];
+        if (!file.fileSettings.visible) {
+            return;
+        }
+
+        float fileModel[16];
+        float model[16];
+        fileTransformMatrix(file.fileSettings, fileModel);
+        bx::mtxMul(model, parentModel, fileModel);
+        const float opacity = parentOpacity * file.fileSettings.opacity;
+        if (node.children.empty()) {
+            const size_t groupCount = std::min(file.groupSettings.size(), runtimes[node.fileIndex].gpuMesh.nodeRanges.size());
+            for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+                submitGroupRange(
+                    viewId,
+                    files,
+                    runtimes,
+                    node.fileIndex,
+                    groupIndex,
+                    model,
+                    opacity,
+                    masterVertexPointSize,
+                    meshProgram,
+                    colorProgram,
+                    pointSpriteProgram,
+                    colorUniform,
+                    pointParamsUniform,
+                    sceneViewportWidth,
+                    viewportHeight);
+            }
+            return;
+        }
+
+        for (const auto& child : node.children) {
+            submitSceneNode(
+                viewId,
+                files,
+                sceneNodes,
+                runtimes,
+                child,
+                model,
+                opacity,
+                masterVertexPointSize,
+                meshProgram,
+                colorProgram,
+                pointSpriteProgram,
+                colorUniform,
+                pointParamsUniform,
+                sceneViewportWidth,
+                viewportHeight);
+        }
+        return;
+    }
+
+    submitGroupRange(
+        viewId,
+        files,
+        runtimes,
+        node.fileIndex,
+        node.groupIndex,
+        parentModel,
+        parentOpacity,
+        masterVertexPointSize,
+        meshProgram,
+        colorProgram,
+        pointSpriteProgram,
+        colorUniform,
+        pointParamsUniform,
+        sceneViewportWidth,
+        viewportHeight);
+}
+
 void submitSceneFiles(
     bgfx::ViewId viewId,
     const std::vector<UiFileState>& files,
+    const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
     bgfx::ProgramHandle meshProgram,
@@ -445,69 +653,58 @@ void submitSceneFiles(
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight)
 {
+    float identity[16];
+    bx::mtxIdentity(identity);
+    if (!sceneNodes.empty()) {
+        for (const auto& node : sceneNodes) {
+            submitSceneNode(
+                viewId,
+                files,
+                sceneNodes,
+                runtimes,
+                node,
+                identity,
+                1.0f,
+                masterVertexPointSize,
+                meshProgram,
+                colorProgram,
+                pointSpriteProgram,
+                colorUniform,
+                pointParamsUniform,
+                sceneViewportWidth,
+                viewportHeight);
+        }
+        return;
+    }
+
     const size_t renderFileCount = std::min(files.size(), runtimes.size());
     for (size_t fileIndex = 0; fileIndex < renderFileCount; ++fileIndex) {
         const auto& file = files[fileIndex];
-        const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
         if (!file.fileSettings.visible) {
             continue;
         }
 
         float fileModel[16];
         fileTransformMatrix(file.fileSettings, fileModel);
-        for (size_t nodeIndex = 0; nodeIndex < gpuMesh.nodeRanges.size(); ++nodeIndex) {
-            const auto& settings = file.groupSettings[nodeIndex];
-            if (!settings.visible) {
-                continue;
-            }
-
-            float groupModel[16];
-            float model[16];
-            groupTransformMatrix(settings, groupModel);
-            bx::mtxMul(model, fileModel, groupModel);
-            const auto& range = gpuMesh.nodeRanges[nodeIndex];
-            if (settings.showSolidMesh) {
-                submitTriangleRange(
-                    viewId,
-                    gpuMesh,
-                    meshProgram,
-                    colorUniform,
-                    model,
-                    groupColor(settings, 1.0f, file.fileSettings.opacity),
-                    range.triangleIndexOffset,
-                    range.triangleIndexCount);
-            }
-            if (settings.showTriangles) {
-                submitColorRange(
-                    viewId,
-                    gpuMesh,
-                    gpuMesh.lineIndexBuffer,
-                    colorProgram,
-                    colorUniform,
-                    model,
-                    groupColor(settings, 1.25f, file.fileSettings.opacity),
-                    BGFX_STATE_PT_LINES,
-                    range.lineIndexOffset,
-                    range.lineIndexCount);
-            }
-            if (settings.showVertices) {
-                const uint32_t pointSize = vertexPointSize(
-                    masterVertexPointSize,
-                    file.vertexSizeScale * settings.vertexSizeScale);
-                submitPointSpriteRange(
-                    viewId,
-                    gpuMesh,
-                    pointSpriteProgram,
-                    colorUniform,
-                    pointParamsUniform,
-                    model,
-                    groupColor(settings, 1.5f, file.fileSettings.opacity),
-                    static_cast<float>(pointSize),
-                    sceneViewportWidth,
-                    viewportHeight,
-                    range.pointSpriteIndexOffset,
-                    range.pointSpriteIndexCount);
-            }
+        const float opacity = file.fileSettings.opacity;
+        const size_t groupCount = std::min(file.groupSettings.size(), runtimes[fileIndex].gpuMesh.nodeRanges.size());
+        for (size_t nodeIndex = 0; nodeIndex < groupCount; ++nodeIndex) {
+            submitGroupRange(
+                viewId,
+                files,
+                runtimes,
+                fileIndex,
+                nodeIndex,
+                fileModel,
+                opacity,
+                masterVertexPointSize,
+                meshProgram,
+                colorProgram,
+                pointSpriteProgram,
+                colorUniform,
+                pointParamsUniform,
+                sceneViewportWidth,
+                viewportHeight);
         }
     }
 }

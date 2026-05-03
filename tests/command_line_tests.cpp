@@ -54,6 +54,8 @@ TEST_CASE("command line parses scene model and logging options")
         "a.obj",
         "--folder",
         "models",
+        "--folder-tree",
+        "tree_models",
         "--log-level",
         "info",
         "--log-file",
@@ -75,11 +77,16 @@ TEST_CASE("command line parses scene model and logging options")
     REQUIRE(arguments.logSlowFrameMilliseconds.has_value());
     CHECK(arguments.logSlowFrameMilliseconds.value() == 20.5);
 
-    REQUIRE(arguments.inputPaths.size() == 2u);
+    REQUIRE(arguments.inputPaths.size() == 3u);
     CHECK_FALSE(arguments.inputPaths[0].folder);
+    CHECK_FALSE(arguments.inputPaths[0].folderTree);
     CHECK(arguments.inputPaths[0].path == "a.obj");
     CHECK(arguments.inputPaths[1].folder);
+    CHECK_FALSE(arguments.inputPaths[1].folderTree);
     CHECK(arguments.inputPaths[1].path == "models");
+    CHECK(arguments.inputPaths[2].folder);
+    CHECK(arguments.inputPaths[2].folderTree);
+    CHECK(arguments.inputPaths[2].path == "tree_models");
 }
 
 TEST_CASE("command line validates performance logging options")
@@ -336,6 +343,7 @@ TEST_CASE("command line parses generated valid argv cases")
         REQUIRE(parsed.inputPaths.size() == expectedInputs.size());
         for (size_t inputIndex = 0; inputIndex < expectedInputs.size(); ++inputIndex) {
             CHECK(parsed.inputPaths[inputIndex].folder == expectedInputs[inputIndex].folder);
+            CHECK(parsed.inputPaths[inputIndex].folderTree == expectedInputs[inputIndex].folderTree);
             CHECK(parsed.inputPaths[inputIndex].path == expectedInputs[inputIndex].path);
         }
     }
@@ -343,11 +351,12 @@ TEST_CASE("command line parses generated valid argv cases")
 
 TEST_CASE("command line rejects generated missing value and unknown option cases")
 {
-    const std::array<const char*, 8> valueOptions = {{
+    const std::array<const char*, 9> valueOptions = {{
         "--scene",
         "--woby",
         "--file",
         "--folder",
+        "--folder-tree",
         "--log-level",
         "--log-file",
         "--log-frame-interval",
