@@ -134,6 +134,10 @@ UI screenshot pipeline is busy. After a timeout, queued work is canceled; a capt
 GPU may still finish and save. Closing the viewer releases waiting clients.
 
 See [the local HTTP API](doc/automation.md) for direct scripting and discovery details.
+
+CTL also supports scene inspection, visibility/render modes, transforms, appearance,
+camera navigation, model and importer management, diagnostics, and pane controls.
+See the [complete command reference](doc/ctl-commands.md), or run `woby ctl --help`.
 Run `woby.exe --help` for command syntax.
 
 Discover loaded folders, files, and mesh groups, then resolve an object by its ID:

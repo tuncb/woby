@@ -16,6 +16,8 @@
 #include "ui_state.h"
 #include "utf8_path.h"
 #include "automation.h"
+#include "control_scene.h"
+#include "control_importers.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -296,6 +298,13 @@ struct GpuFinalizeRuntime {
     std::string lastError;
     size_t nextFileIndex = 0;
     bool active = false;
+};
+
+struct AutomationAppendRuntime {
+    woby::AutomationCommandId id = 0;
+    size_t firstFileIndex = 0;
+    std::vector<woby::ModelInputOutcome> outcomes;
+    bool canceled = false;
 };
 
 struct ResolvedModelInputGroup {
@@ -1894,34 +1903,39 @@ bool startAppendModelBackgroundLoad(
     resetBackgroundLoadProgress(load, kind, modelPaths.size());
     load.cancelRequested.store(false);
     load.active = true;
-    load.worker = std::thread([
-        &load,
-        modelPaths = std::move(modelPaths),
-        firstColorIndex,
-        kind,
-        folderTreeRoot = std::move(folderTreeRoot)
-    ]() mutable {
-        AsyncLoadOutcome outcome;
-        outcome.kind = kind;
-        outcome.folderTreeRoot = std::move(folderTreeRoot);
-        try {
-            outcome.modelBatch = woby::loadModelBatchCpu(
-                modelPaths,
-                firstColorIndex,
-                [&load](const woby::BackgroundLoadProgress& progress) {
-                    updateBackgroundLoadProgress(load, progress);
-                },
-                [&load]() {
-                    return load.cancelRequested.load();
-                });
-        } catch (const std::exception& exception) {
-            outcome.failed = true;
-            outcome.error = exception.what();
-        }
+    try {
+        load.worker = std::thread([
+            &load,
+            modelPaths = std::move(modelPaths),
+            firstColorIndex,
+            kind,
+            folderTreeRoot = std::move(folderTreeRoot)
+        ]() mutable {
+            AsyncLoadOutcome outcome;
+            outcome.kind = kind;
+            outcome.folderTreeRoot = std::move(folderTreeRoot);
+            try {
+                outcome.modelBatch = woby::loadModelBatchCpu(
+                    modelPaths,
+                    firstColorIndex,
+                    [&load](const woby::BackgroundLoadProgress& progress) {
+                        updateBackgroundLoadProgress(load, progress);
+                    },
+                    [&load]() {
+                        return load.cancelRequested.load();
+                    });
+            } catch (const std::exception& exception) {
+                outcome.failed = true;
+                outcome.error = exception.what();
+            }
 
-        std::lock_guard<std::mutex> lock(load.mutex);
-        load.outcome = std::move(outcome);
-    });
+            std::lock_guard<std::mutex> lock(load.mutex);
+            load.outcome = std::move(outcome);
+        });
+    } catch (...) {
+        load.active = false;
+        throw;
+    }
     return true;
 }
 
@@ -2568,6 +2582,37 @@ int main(int argc, char** argv)
         SceneScreenshotRuntime sceneScreenshot;
         std::optional<woby::AutomationCommandId> automationScreenshotCommandId;
         std::optional<woby::AutomationCommandId> automationOpenCommandId;
+        std::optional<AutomationAppendRuntime> automationAppend;
+        const woby::ObjectIdFormatter formatObjectId = [&](woby::SceneObjectId id) { return woby::automationObjectId(*automation, id); };
+        auto completeAppend = [&]() {
+            if (!automationAppend) { return; }
+            nlohmann::json outcomes = nlohmann::json::array(), addedIds = nlohmann::json::array();
+            size_t failed = 0, skipped = 0;
+            for (const auto& input : automationAppend->outcomes) {
+                nlohmann::json result = {{"path", woby::pathToUtf8(input.path)}, {"state", input.state}};
+                if (!input.error.empty()) { result["error"] = input.error; }
+                if (input.state == "failed") { ++failed; }
+                if (input.state == "skipped") { ++skipped; }
+                if (automationAppend->canceled && (input.state == "loaded" || input.state == "not-started")) { result["state"] = "canceled"; }
+                else if (input.state == "loaded") {
+                    for (size_t index = automationAppend->firstFileIndex; index < ui.files.size(); ++index) {
+                        if (ui.files[index].path == input.path) {
+                            result["state"] = "added";
+                            result["id"] = formatObjectId(ui.files[index].objectId);
+                            addedIds.push_back(result["id"]);
+                            break;
+                        }
+                    }
+                }
+                outcomes.push_back(std::move(result));
+            }
+            woby::updateSceneDirty(ui, cleanSceneDocument);
+            woby::completeAutomationCommand(*automation, automationAppend->id, woby::AutomationControlResult{
+                {{"outcomes", outcomes}, {"addedIds", addedIds}, {"requestedCount", outcomes.size()},
+                    {"addedCount", addedIds.size()}, {"failedCount", failed}, {"skippedCount", skipped},
+                    {"canceled", automationAppend->canceled}, {"dirty", ui.isDirty}}});
+            automationAppend.reset();
+        };
         auto completeLifecycleError = [&](woby::AutomationCommandId id, const woby::SceneLifecycleError& error) {
             woby::completeAutomationCommand(*automation, id,
                 woby::AutomationCommandError{error.message, error.code, error, currentScenePath, ui.isDirty});
@@ -2589,6 +2634,7 @@ int main(int argc, char** argv)
         int fpsFrameCount = 0;
         float fps = 0.0f;
         woby::FrameTimingAccumulator frameTimingAccumulator;
+        woby::FrameTimings lastFrameTimings;
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
         woby::setAutomationReady(*automation);
@@ -2688,16 +2734,32 @@ int main(int argc, char** argv)
 
             if (auto outcome = takeBackgroundLoadOutcome(backgroundLoad); outcome.has_value()) {
                 if (outcome->failed) {
+                    if (automationAppend) {
+                        woby::completeAutomationCommand(*automation, automationAppend->id, woby::AutomationCommandError{outcome->error});
+                        automationAppend.reset();
+                    }
                     setToastMessage(toast, std::string(backgroundLoadFailurePrefix(outcome->kind)) + outcome->error);
                     if (automationOpenCommandId) {
                         completeLifecycleError(*automationOpenCommandId, {"open_failed", outcome->error, -32016});
                         automationOpenCommandId.reset();
                     }
                 } else if (isAppendModelLoadKind(outcome->kind)) {
+                    if (automationAppend) {
+                        automationAppend->outcomes = outcome->modelBatch.outcomes;
+                        automationAppend->canceled = outcome->modelBatch.canceled;
+                    }
                     if (outcome->modelBatch.canceled || outcome->modelBatch.files.empty()) {
                         setToastMessage(toast, outcome->modelBatch.status);
+                        completeAppend();
                     } else {
-                        startGpuFinalize(gpuFinalize, std::move(outcome.value()));
+                        try { startGpuFinalize(gpuFinalize, std::move(outcome.value())); }
+                        catch (const std::exception& error) {
+                            abortGpuFinalize(gpuFinalize);
+                            if (automationAppend) {
+                                woby::completeAutomationCommand(*automation, automationAppend->id, woby::AutomationCommandError{error.what()});
+                                automationAppend.reset();
+                            } else { setToastMessage(toast, error.what()); }
+                        }
                     }
                 } else if (outcome->scene.canceled) {
                     setToastMessage(toast, "Open scene canceled");
@@ -2719,6 +2781,9 @@ int main(int argc, char** argv)
                 }
             }
 
+            const auto previousGpuFailures = gpuFinalize.gpuFailedCount;
+            const auto finalizingPath = gpuFinalize.active && gpuFinalize.nextFileIndex < gpuFinalize.files.size()
+                ? gpuFinalize.files[gpuFinalize.nextFileIndex].path : std::filesystem::path{};
             const auto finalized = processGpuFinalizeStep(
                 gpuFinalize,
                 layout,
@@ -2728,6 +2793,18 @@ int main(int argc, char** argv)
                 currentScenePath,
                 cleanSceneDocument,
                 toast);
+            if (automationAppend && gpuFinalize.gpuFailedCount > previousGpuFailures) {
+                for (auto& input : automationAppend->outcomes) {
+                    if (input.path == finalizingPath) { input.state = "failed"; input.error = gpuFinalize.lastError; }
+                }
+            }
+            if (finalized && automationAppend) {
+                if (finalized->empty()) { completeAppend(); }
+                else {
+                    woby::completeAutomationCommand(*automation, automationAppend->id, woby::AutomationCommandError{*finalized});
+                    automationAppend.reset();
+                }
+            }
             if (finalized && automationOpenCommandId) {
                 if (finalized->empty()) {
                     woby::completeAutomationCommand(*automation, *automationOpenCommandId,
@@ -3274,6 +3351,74 @@ int main(int argc, char** argv)
                         } else if constexpr (std::is_same_v<Command, woby::AutomationObjectsCommand>) {
                             woby::completeAutomationCommand(*automation, command->id,
                                 woby::AutomationObjectsResult{woby::sceneObjects(ui)});
+                        } else if constexpr (std::is_same_v<Command, woby::ControlOperation>) {
+                            using A = woby::ControlAction;
+                            using Json = nlohmann::json;
+                            const bool busy = backgroundLoad.active || gpuFinalize.active
+                                || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
+                                || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
+                                || modelFileDialogIsOpen(importerFileDialogState)
+                                || sceneFileDialogIsOpen(sceneFileDialogState) || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+                            if (payload.objectId != woby::invalidSceneObjectId && !woby::findSceneObject(ui, payload.objectId)) {
+                                woby::completeAutomationCommand(*automation, command->id,
+                                    woby::AutomationCommandError{"Unknown or stale object ID.", -32005});
+                                return;
+                            }
+                            if (busy && woby::controlMethod(payload.action).mutating) {
+                                woby::completeAutomationCommand(*automation, command->id,
+                                    woby::AutomationCommandError{"Scene is busy loading, capturing, or displaying a dialog.", -32014});
+                                return;
+                            }
+                            Json result;
+                            if (payload.action == A::status) {
+                                result = woby::automationInstanceInfo(*automation);
+                                result.update({{"path", currentScenePath ? Json(woby::pathToUtf8(*currentScenePath)) : Json(nullptr)},
+                                    {"dirty", ui.isDirty}, {"loading", backgroundLoad.active}, {"gpuFinalizing", gpuFinalize.active},
+                                    {"capturing", sceneScreenshot.captureRequested || sceneScreenshot.readbackPending},
+                                    {"busy", busy}, {"version", WOBY_VERSION},
+                                    {"pane", {{"visible", ui.viewerPaneVisible}, {"width", ui.viewerPaneWidth}}}});
+                            } else if (payload.action == A::capabilities) {
+                                result = woby::controlCapabilities();
+                                result["limits"] = {{"admittedCommands", woby::maxAutomationCommands},
+                                    {"retainedResults", woby::maxAutomationHistory}, {"requestKeys", woby::maxAutomationRequestKeys},
+                                    {"timeoutSeconds", {1, 3600}}, {"vertexPixels", {woby::minVertexPointSize, woby::maxVertexPointSize}},
+                                    {"scale", {woby::minGroupScale, woby::maxGroupScale}}};
+                                result["importers"] = woby::controlImporterInfo(rememberedImporters);
+                            } else if (payload.action == A::modelAdd || payload.action == A::folderAdd) {
+                                auto paths = payload.action == A::folderAdd ? woby::collectModelPathsRecursive(payload.path)
+                                    : std::vector<std::filesystem::path>{payload.path};
+                                if (!startAppendModelBackgroundLoad(backgroundLoad, std::move(paths), woby::totalGroupCount(ui),
+                                    payload.tree ? AsyncLoadKind::appendFolderTree : AsyncLoadKind::appendModel,
+                                    payload.tree ? payload.path : std::filesystem::path{})) {
+                                    throw std::runtime_error("Already processing files.");
+                                }
+                                automationAppend = AutomationAppendRuntime{command->id, ui.files.size(), {}, false};
+                                return;
+                            } else if (payload.action == A::modelRemove) {
+                                const auto found = std::find_if(ui.files.begin(), ui.files.end(), [&](const auto& file) { return file.objectId == payload.objectId; });
+                                if (found == ui.files.end()) { throw std::invalid_argument("model.remove requires a file ID."); }
+                                removeModelFile(ui, runtimes, static_cast<size_t>(found - ui.files.begin()));
+                                woby::updateSceneDirty(ui, cleanSceneDocument);
+                                result = {{"removed", payload.target}, {"dirty", ui.isDirty}};
+                            } else if (payload.action == A::importersList || payload.action == A::importersAdd
+                                || payload.action == A::importersScan || payload.action == A::importersForget) {
+                                result = woby::applyControlImporterOperation(payload, importerSettingsPath, rememberedImporters);
+                            } else if (payload.action == A::performance) {
+                                result = {{"frameIndex", lastFrameTimings.frameIndex}, {"fps", fps},
+                                    {"frameMilliseconds", lastFrameTimings.totalMilliseconds},
+                                    {"cpuFrameMilliseconds", lastFrameTimings.bgfxCpuFrameMilliseconds},
+                                    {"cpuSubmitMilliseconds", lastFrameTimings.bgfxCpuSubmitMilliseconds},
+                                    {"gpuFrameMilliseconds", lastFrameTimings.hasBgfxGpuFrameMilliseconds ? Json(lastFrameTimings.bgfxGpuFrameMilliseconds) : Json(nullptr)}};
+                                result["stagesMilliseconds"] = Json::object();
+                                for (size_t stage = 0; stage < lastFrameTimings.stageMilliseconds.size(); ++stage) {
+                                    result["stagesMilliseconds"][woby::frameStageName(static_cast<woby::FrameStage>(stage))] = lastFrameTimings.stageMilliseconds[stage];
+                                }
+                            } else {
+                                result = woby::applyControlSceneOperation(ui, cleanSceneDocument, payload, formatObjectId, minViewerPaneWidth, maxViewerPaneWidth);
+                                if (payload.action == A::sceneInfo) { result["path"] = currentScenePath ? Json(woby::pathToUtf8(*currentScenePath)) : Json(nullptr); }
+                                if (payload.action == A::stats) { result["renderer"] = bgfx::getRendererName(bgfx::getRendererType()); result["fps"] = fps; }
+                            }
+                            woby::completeAutomationCommand(*automation, command->id, woby::AutomationControlResult{std::move(result)});
                         } else if constexpr (std::is_same_v<Command, woby::SceneLifecycleCommand>) {
                             const bool busy = backgroundLoad.active || gpuFinalize.active
                                 || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
@@ -3309,13 +3454,16 @@ int main(int argc, char** argv)
                             static_assert(std::is_same_v<Command, woby::AutomationObjectCommand>);
                             const auto object = woby::findSceneObject(ui, payload.objectId);
                             if (object) {
-                                woby::completeAutomationCommand(*automation, command->id, woby::AutomationObjectResult{*object});
+                                woby::completeAutomationCommand(*automation, command->id,
+                                    woby::AutomationObjectResult{*object, woby::controlObjectDetails(ui, payload.objectId, formatObjectId)});
                             } else {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{"Unknown or stale object ID.", -32005});
                             }
                         }
                     }, command->payload);
+                } catch (const std::invalid_argument& exception) {
+                    woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what(), -32602});
                 } catch (const std::exception& exception) {
                     const auto* lifecycle = std::get_if<woby::SceneLifecycleCommand>(&command->payload);
                     if (lifecycle && lifecycle->action == woby::SceneAction::open) {
@@ -3493,6 +3641,7 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::bgfxFrame, stageStart);
             frameTimings.totalMilliseconds = woby::millisecondsBetween(frameStart, woby::PerformanceClock::now());
             copyBgfxStats(frameTimings);
+            lastFrameTimings = frameTimings;
             if (commandLine.logPerformance) {
                 woby::accumulateFrameTiming(frameTimingAccumulator, frameTimings);
                 if (commandLine.logSlowFrameMilliseconds.has_value()) {

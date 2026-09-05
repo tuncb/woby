@@ -1,4 +1,5 @@
 #pragma once
+#include "utf8_path.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -32,6 +33,5 @@ void releaseAutomationInstance(AutomationRegistration& registration);
 [[nodiscard]] AutomationInstance readAutomationInstance(
     const std::filesystem::path& directory, const std::string& id);
 [[nodiscard]] std::vector<AutomationInstance> readAutomationInstances(const std::filesystem::path& directory);
-[[nodiscard]] std::string pathToUtf8(const std::filesystem::path& path);
 
 } // namespace woby

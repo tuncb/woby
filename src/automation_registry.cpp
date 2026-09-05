@@ -119,12 +119,6 @@ bool instanceLockHeld(std::filesystem::path path)
 
 } // namespace
 
-std::string pathToUtf8(const std::filesystem::path& path)
-{
-    const auto text = path.u8string();
-    return std::string(text.begin(), text.end());
-}
-
 std::filesystem::path automationRegistryDirectory()
 {
 #ifdef _WIN32

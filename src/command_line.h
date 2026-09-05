@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene_lifecycle_types.h"
+#include "control_protocol.h"
 
 #include <cstddef>
 #include <filesystem>
@@ -40,6 +41,7 @@ enum class ControlCommand {
     command,
     scene,
     quit,
+    operation,
 };
 
 struct ControlArguments {
@@ -52,6 +54,7 @@ struct ControlArguments {
     int timeoutSeconds = 60;
     bool json = false;
     SceneLifecycleCommand lifecycle;
+    ControlOperation operation;
 };
 
 struct AppArguments {

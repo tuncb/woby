@@ -25,7 +25,14 @@ struct BackgroundLoadProgress {
 using BackgroundLoadProgressCallback = std::function<void(const BackgroundLoadProgress&)>;
 using BackgroundLoadCancelCallback = std::function<bool()>;
 
+struct ModelInputOutcome {
+    std::filesystem::path path;
+    std::string state = "not-started";
+    std::string error;
+};
+
 struct ModelBatchCpuLoadResult {
+    std::vector<ModelInputOutcome> outcomes;
     std::vector<UiFileState> files;
     size_t requestedCount = 0;
     size_t addedCount = 0;

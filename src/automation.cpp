@@ -106,6 +106,11 @@ AutomationCommandMessages commandMessages(const SceneLifecycleCommand&)
     return {"Scene command timed out; started work may still complete.", "Scene command timed out before execution."};
 }
 
+AutomationCommandMessages commandMessages(const ControlOperation&)
+{
+    return {"Control command timed out; started work may still complete.", "Control command timed out before execution."};
+}
+
 std::string publicObjectId(const AutomationRuntime& runtime, SceneObjectId id)
 {
     char suffix[17];
@@ -146,7 +151,16 @@ Json commandResponse(const AutomationRuntime& runtime, const AutomationObjectsRe
 
 Json commandResponse(const AutomationRuntime& runtime, const AutomationObjectResult& result)
 {
-    return rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"object", objectInfo(runtime, result.object)}});
+    auto object = objectInfo(runtime, result.object);
+    object.update(result.details);
+    return rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"object", object}});
+}
+
+Json commandResponse(const AutomationRuntime& runtime, const AutomationControlResult& result)
+{
+    auto value = result.value;
+    value["instance"] = runtime.registration.instance.id;
+    return rpcResult(nullptr, value);
 }
 
 Json commandResponse(const AutomationRuntime& runtime, const AutomationSceneResult& result)
@@ -352,6 +366,16 @@ Json commandFingerprint(const SceneLifecycleCommand& command)
 {
     return Json::array({"scene-lifecycle", static_cast<int>(command.action), pathToUtf8(command.path),
         static_cast<int>(command.onDirty), pathToUtf8(command.savePath), command.overwrite});
+}
+
+bool resultMatches(const ControlOperation&, const AutomationCommandResult& result)
+{
+    return std::holds_alternative<AutomationControlResult>(result);
+}
+
+Json commandFingerprint(const ControlOperation& command)
+{
+    return Json::array({controlMethod(command.action).method, controlOperationParams(command)});
 }
 
 Json submitAutomationCommand(
@@ -564,6 +588,36 @@ Json sceneLifecycle(AutomationRuntime& runtime, const Json& id, const Json& para
     return submitAutomationCommand(runtime, id, command, timeoutSeconds, params);
 }
 
+Json executeControlOperation(AutomationRuntime& runtime, const Json& id, Json params, const ControlMethod& method)
+{
+    const auto originalParams = params;
+    int timeout = 60;
+    if (params.contains("timeoutSeconds")) {
+        if (!params["timeoutSeconds"].is_number_integer() || params["timeoutSeconds"] < 1 || params["timeoutSeconds"] > 3600) {
+            return rpcError(id, -32602, "timeoutSeconds must be an integer from 1 to 3600.");
+        }
+        timeout = params["timeoutSeconds"].get<int>();
+        params.erase("timeoutSeconds");
+    }
+    params.erase("requestKey");
+    ControlOperation command;
+    try { command = parseControlOperation(method, params); }
+    catch (const std::exception& error) { return rpcError(id, -32602, error.what()); }
+    if (!command.target.empty() && command.target != "scene") {
+        const auto& text = command.target;
+        const auto isHex = [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); };
+        if (text.size() != 53 || text.substr(0, 4) != "obj-" || text[36] != '-'
+            || !std::all_of(text.begin() + 4, text.begin() + 36, isHex)
+            || !std::all_of(text.begin() + 37, text.end(), isHex)) {
+            return rpcError(id, -32602, "Invalid target; use scene or an ID returned by objects.list.");
+        }
+        const auto parsed = std::from_chars(text.data() + 37, text.data() + text.size(), command.objectId, 16);
+        if (parsed.ec != std::errc{} || command.objectId == invalidSceneObjectId) { return rpcError(id, -32602, "Invalid target ID."); }
+        if (text.compare(0, 37, runtime.objectIdPrefix) != 0) { return rpcError(id, -32005, "Unknown or stale object ID."); }
+    }
+    return submitAutomationCommand(runtime, id, command, timeout, originalParams);
+}
+
 void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, httplib::Response& response)
 {
     response.set_header("Cache-Control", "no-store");
@@ -618,6 +672,8 @@ void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, http
                 result = queryCommand(runtime, id, params);
             } else if (method == "objects.list" || method == "object.get") {
                 result = queryScene(runtime, id, params, method);
+            } else if (const auto* entry = findControlMethod(method)) {
+                result = executeControlOperation(runtime, id, params, *entry);
             } else {
                 result = rpcError(id, -32601, "Unknown method: " + method);
             }
@@ -667,6 +723,16 @@ Json verifyInstance(const AutomationInstance& instance)
 }
 
 } // namespace
+
+std::string automationObjectId(const AutomationRuntime& runtime, SceneObjectId id)
+{
+    return publicObjectId(runtime, id);
+}
+
+nlohmann::json automationInstanceInfo(AutomationRuntime& runtime)
+{
+    return instanceInfo(runtime);
+}
 
 AutomationOwner startAutomation(const std::optional<std::string>& instanceId, const std::filesystem::path& registryDirectory)
 {
@@ -812,6 +878,13 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
         if (arguments.requestKey) {
             params["requestKey"] = *arguments.requestKey;
         }
+        if (arguments.command == ControlCommand::operation) {
+            params.update(controlOperationParams(arguments.operation));
+            const auto result = callInstance(instance, controlMethod(arguments.operation.action).method,
+                params, arguments.timeoutSeconds + 5, &rpcFailure);
+            std::printf("%s\n", result.dump(arguments.json ? -1 : 2).c_str());
+            return 0;
+        }
         if (arguments.command == ControlCommand::objects || arguments.command == ControlCommand::object) {
             if (arguments.command == ControlCommand::object) {
                 params["id"] = arguments.objectId;
@@ -878,6 +951,12 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
 
 void printCommandLineHelp()
 {
+    std::printf("Scene controls (prefix with woby ctl --instance ID):\n");
+    for (const auto& method : controlMethods()) {
+        std::printf("  %s\n", controlMethodUsage(method).c_str());
+    }
+    std::printf("Options use --kebab-case (e.g. --rotation-degrees X Y Z); booleans require true|false.\n"
+        "--tree and --remember are flags. All controls accept --json, --timeout, --wait, --request-key.\n\n");
     std::printf(
         "Usage:\n"
         "  woby [--instance ID] [--scene PATH] [--file PATH ...]\n"

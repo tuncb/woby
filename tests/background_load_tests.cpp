@@ -64,6 +64,11 @@ TEST_CASE("background model batch loader creates UI file states")
     CHECK(result.addedCount == 2u);
     CHECK(result.skippedCount == 1u);
     CHECK(result.failedCount == 0u);
+    REQUIRE(result.outcomes.size() == 3u);
+    CHECK(result.outcomes[0].path == objPath);
+    CHECK(result.outcomes[0].state == "loaded");
+    CHECK(result.outcomes[1].state == "loaded");
+    CHECK(result.outcomes[2].state == "skipped");
     REQUIRE(result.files.size() == 2u);
     CHECK(result.files[0].path == objPath);
     CHECK(result.files[0].mesh.vertices.size() == 3u);
@@ -167,6 +172,9 @@ TEST_CASE("background model batch loader reports skipped and failed files")
     CHECK(result.requestedCount == 3u);
     CHECK(result.addedCount == 1u);
     CHECK(result.failedCount == 1u);
+    REQUIRE(result.outcomes.size() == 3u);
+    CHECK(result.outcomes[1].state == "failed");
+    CHECK_FALSE(result.outcomes[1].error.empty());
     CHECK(result.skippedCount == 1u);
     CHECK(result.files.size() == 1u);
     CHECK(result.lastError.find("OBJ did not contain renderable triangles") != std::string::npos);
@@ -202,6 +210,9 @@ TEST_CASE("background model batch loader cancels after completed files")
     CHECK(result.addedCount == 1u);
     CHECK(result.files.size() == 1u);
     CHECK(result.status.find("canceled") != std::string::npos);
+    REQUIRE(result.outcomes.size() == 2u);
+    CHECK(result.outcomes[0].state == "loaded");
+    CHECK(result.outcomes[1].state == "not-started");
 
     std::filesystem::remove_all(root);
 }

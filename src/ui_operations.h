@@ -110,4 +110,13 @@ void rollUiCamera(UiState& state, float deltaX);
 void panUiCamera(UiState& state, float deltaX, float deltaY, float viewportHeight);
 void dollyUiCamera(UiState& state, float amount);
 
+struct CameraNavigation {
+    float yawDegrees = 0, pitchDegrees = 0, rollDegrees = 0;
+    float right = 0, up = 0, forward = 0;
+    float distanceFactor = 1;
+};
+// Angles change the stored camera angles; translation uses rolled camera-local units.
+// Reject non-finite input/results without changing the camera.
+void navigateUiCamera(UiState& state, const CameraNavigation& navigation);
+
 } // namespace woby

@@ -7,6 +7,7 @@
 
 #include "ui_operations.h"
 #include "scene_lifecycle.h"
+#include "control_scene.h"
 
 #include <algorithm>
 #include <chrono>
@@ -109,6 +110,59 @@ TEST_CASE("automation instances reserve IDs and publish independent authenticate
     CHECK(woby::readAutomationInstances(fixture.directory).size() == 1u);
     auto reused = woby::startAutomation(otherId, fixture.directory);
     CHECK(woby::automationInstanceId(*reused) == otherId);
+}
+
+TEST_CASE("extended automation rejects invalid input before admission and resolves session targets")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    for (const auto& [method, params] : std::vector<std::pair<std::string, Json>>{
+        {"grid.set", {{"visible", "false"}}}, {"render.set", {{"target", "scene"}}},
+        {"camera.dolly", {{"factor", 0}}}, {"camera.orbit", {{"yawDegrees", 1e100}}},
+        {"status", {{"unexpected", 1}}}, {"scene.tree", {{"timeoutSeconds", 0}}},
+        {"model.add", {{"path", "relative.obj"}}}, {"color.reset", {{"target", "broken"}}}}) {
+        CAPTURE(method);
+        CHECK(request(fixture.instance, method, params)["error"]["code"] == -32602);
+        CHECK_FALSE(takeCommand(*fixture.server));
+    }
+    const auto target = woby::automationObjectId(*fixture.server, 42);
+    auto pending = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "opacity.set", {{"target", target}, {"value", 0.5}});
+    });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    const auto* operation = std::get_if<woby::ControlOperation>(&command->payload);
+    REQUIRE(operation);
+    CHECK(operation->objectId == 42);
+    CHECK(operation->value == 0.5f);
+    CHECK_FALSE(completeCommand(*fixture.server, command->id, woby::AutomationObjectsResult{}));
+    CHECK(completeCommand(*fixture.server, command->id, woby::AutomationCommandError{"Unknown target", -32005}));
+    CHECK(pending.get()["error"]["code"] == -32005);
+    auto foreign = target;
+    foreign[4] = foreign[4] == '0' ? '1' : '0';
+    CHECK(request(fixture.instance, "opacity.set", {{"target", foreign}, {"value", 0.5}})["error"]["code"] == -32005);
+}
+
+TEST_CASE("extended camera commands execute once and replay the applied result under retry keys")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const Json params = {{"forward", 2}, {"requestKey", "move-once"}};
+    auto pending = std::async(std::launch::async, [&] { return request(fixture.instance, "camera.move", params); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    woby::UiState state;
+    const auto clean = woby::createSceneDocument(state);
+    const auto result = woby::applyControlSceneOperation(state, clean, std::get<woby::ControlOperation>(command->payload),
+        [](woby::SceneObjectId id) { return std::to_string(id); }, 200, 800);
+    CHECK(request(fixture.instance, "camera.move", params)["error"]["code"] == -32008);
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{result}));
+    const auto original = pending.get();
+    CHECK(original["result"]["camera"] == woby::controlCameraInfo(state));
+    CHECK(request(fixture.instance, "camera.move", params)["result"] == original["result"]);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "move-once"}})["result"]["result"] == original["result"]);
+    CHECK(request(fixture.instance, "camera.move", {{"forward", 3}, {"requestKey", "move-once"}})["error"]["code"] == -32006);
+    CHECK_FALSE(takeCommand(*fixture.server));
 }
 
 TEST_CASE("automation rejects unauthenticated and browser requests")

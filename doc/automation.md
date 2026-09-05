@@ -6,6 +6,10 @@ initialization, so they do not create a second window or renderer.
 
 ## Instance discovery
 
+For all supported CLI commands, RPC names, parameters, and target scopes, see the
+[CTL command reference](ctl-commands.md). This includes scene inspection, property
+editing, camera navigation, model/importer management, diagnostics, and pane controls.
+
 Use `woby ctl instances --json` to list live instances. Each result includes `id`, `pid`,
 `url`, `apiVersion`, `ready`, `queuedCommands`, and `activeSequence` (a string, or null).
 The queued count excludes the active command. Discovery checks the authenticated endpoint and ignores
@@ -225,6 +229,12 @@ of only visible objects. It includes loaded files and groups even if a saved sce
 tree does not reference them. Repeated tree references share the underlying file or
 group ID and do not create duplicate inventory entries.
 
+`object.get` additionally returns `settings`, relevant counts/importer/local-bounds
+data, and an `occurrences` array containing effective visibility, opacity, and world
+matrices for each hierarchy occurrence. `scene.tree` exposes the ordered hierarchy
+with the same occurrence information. The flat `objects.list` inventory retains its
+compact identity-only format. See [inspection details](ctl-commands.md#visibility-rendering-transforms-and-appearance).
+
 IDs are independent of names, paths, vector indices, and visibility. They remain valid
 through edits, tree reordering, saves, and removal of other objects. Removing an object
 (including a folder pruned when its last file is removed) invalidates its ID. Reopening
@@ -279,10 +289,11 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($instance.port)/rpc" `
     -ContentType 'application/json' -Body $request -TimeoutSec 65
 ```
 
-Version 1 exposes instance discovery, screenshot capture, object enumeration, object
-lookup, scene persistence/replacement, quit, FIFO command ordering, retry keys, and
-command status/result recovery. Property editing, job/event APIs, and MCP integration
-can use the same runtime boundary.
+Version 1 exposes instance discovery, screenshot capture, object enumeration and
+detailed lookup, scene persistence/replacement, quit, scene/property/camera controls,
+model and importer management, diagnostics, and pane settings. These commands share
+FIFO ordering, retry keys, and command status/result recovery. Job/event APIs and
+MCP integration remain future work.
 
 ## Scene persistence and shutdown
 

@@ -20,6 +20,8 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
 add_library(woby_automation STATIC
+    src/control_protocol.cpp
+    src/control_protocol.h
     src/automation.cpp
     src/automation.h
     src/automation_registry.cpp
@@ -33,6 +35,10 @@ endif()
 woby_enable_project_warnings(woby_automation)
 
 add_executable(woby
+    src/control_importers.cpp
+    src/control_importers.h
+    src/control_scene.cpp
+    src/control_scene.h
     src/background_load.cpp
     src/background_load.h
     src/bgfx_helpers.cpp
@@ -205,6 +211,10 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        src/control_importers.cpp
+        src/control_importers.h
+        src/control_scene.cpp
+        src/control_scene.h
         src/background_load.cpp
         src/background_load.h
         src/camera.cpp
@@ -242,6 +252,7 @@ if(BUILD_TESTING)
         src/ui_state.cpp
         src/ui_state.h
         tests/scene_lifecycle_tests.cpp
+        tests/control_tests.cpp
         tests/importer_tests.cpp
         tests/automation_tests.cpp
         tests/background_load_tests.cpp

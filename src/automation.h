@@ -23,6 +23,8 @@ using AutomationOwner = std::unique_ptr<AutomationRuntime, void (*)(AutomationRu
 void stopAutomation(AutomationRuntime* runtime);
 [[nodiscard]] const std::string& automationInstanceId(const AutomationRuntime& runtime);
 void setAutomationReady(AutomationRuntime& runtime);
+[[nodiscard]] std::string automationObjectId(const AutomationRuntime& runtime, SceneObjectId id);
+[[nodiscard]] nlohmann::json automationInstanceInfo(AutomationRuntime& runtime);
 
 struct AutomationScreenshotCommand {
     std::filesystem::path outputPath;
@@ -34,7 +36,7 @@ struct AutomationObjectCommand {
     SceneObjectId objectId = invalidSceneObjectId;
 };
 
-using AutomationCommandPayload = std::variant<AutomationScreenshotCommand, AutomationObjectsCommand, AutomationObjectCommand, SceneLifecycleCommand>;
+using AutomationCommandPayload = std::variant<AutomationScreenshotCommand, AutomationObjectsCommand, AutomationObjectCommand, SceneLifecycleCommand, ControlOperation>;
 using AutomationCommandId = uint64_t;
 inline constexpr size_t maxAutomationCommands = 8;
 inline constexpr size_t maxAutomationHistory = 128;
@@ -64,6 +66,11 @@ struct AutomationObjectsResult {
 
 struct AutomationObjectResult {
     SceneObjectInfo object;
+    nlohmann::json details = nlohmann::json::object();
+};
+
+struct AutomationControlResult {
+    nlohmann::json value = nlohmann::json::object();
 };
 
 struct AutomationSceneResult {
@@ -72,7 +79,7 @@ struct AutomationSceneResult {
     bool quitAccepted = false;
 };
 
-using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationObjectsResult, AutomationObjectResult, AutomationSceneResult, AutomationCommandError>;
+using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationObjectsResult, AutomationObjectResult, AutomationSceneResult, AutomationCommandError, AutomationControlResult>;
 
 // Main thread only, after UI/state updates and before rendering. Starts the oldest
 // queued command whose deadline has not expired. Only one

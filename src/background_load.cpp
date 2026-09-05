@@ -69,10 +69,13 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
     ModelBatchCpuLoadResult result;
     result.requestedCount = modelPaths.size();
     result.files.reserve(modelPaths.size());
+    result.outcomes.reserve(modelPaths.size());
+    for (const auto& path : modelPaths) { result.outcomes.push_back({path, "not-started", {}}); }
 
     size_t colorIndex = firstColorIndex;
     for (size_t pathIndex = 0; pathIndex < modelPaths.size(); ++pathIndex) {
         const auto& modelPath = modelPaths[pathIndex];
+        auto& outcome = result.outcomes[pathIndex];
         if (canceled(shouldCancel)) {
             result.canceled = true;
             break;
@@ -81,6 +84,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
         reportProgress(progress, modelPath, pathIndex, modelPaths.size());
         if (!isModelPath(modelPath)) {
             ++result.skippedCount;
+            outcome.state = "skipped";
             continue;
         }
 
@@ -92,6 +96,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
             }});
             if (imported.canceled) {
                 result.canceled = true;
+                outcome.state = "canceled";
                 break;
             }
             const double parseMilliseconds = millisecondsBetween(parseStart, PerformanceClock::now());
@@ -108,8 +113,11 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
                 parseMilliseconds,
                 millisecondsBetween(totalStart, PerformanceClock::now()));
             result.files.push_back(std::move(file));
+            outcome.state = "loaded";
             ++result.addedCount;
         } catch (const std::exception& exception) {
+            outcome.state = "failed";
+            outcome.error = exception.what();
             ++result.failedCount;
             result.lastError = exception.what();
             spdlog::info(

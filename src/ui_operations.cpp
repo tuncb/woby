@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <stdexcept>
 #include <utility>
 
 namespace woby {
@@ -823,6 +824,29 @@ void panUiCamera(UiState& state, float deltaX, float deltaY, float viewportHeigh
 void dollyUiCamera(UiState& state, float amount)
 {
     dollyCamera(state.camera, amount);
+}
+
+void navigateUiCamera(UiState& state, const CameraNavigation& navigation)
+{
+    for (float value : {navigation.yawDegrees, navigation.pitchDegrees, navigation.rollDegrees,
+        navigation.right, navigation.up, navigation.forward, navigation.distanceFactor}) {
+        if (!std::isfinite(value)) { throw std::invalid_argument("Camera navigation requires finite values."); }
+    }
+    if (navigation.distanceFactor <= 0) { throw std::invalid_argument("Camera distance factor must be positive."); }
+    constexpr float degreesToRadians = 0.017453292519943295f;
+    auto camera = state.camera;
+    const float yawSign = state.upAxis == SceneUpAxis::y ? -1.0f : 1.0f;
+    orbitCamera(camera, std::fmod(navigation.yawDegrees, 360.0f) * degreesToRadians / (0.006f * yawSign),
+        std::clamp(navigation.pitchDegrees, -180.0f, 180.0f) * degreesToRadians / 0.006f, state.upAxis);
+    rollCamera(camera, std::fmod(navigation.rollDegrees, 360.0f) * degreesToRadians / 0.006f);
+    moveCameraLocal(camera, navigation.right, navigation.up, navigation.forward, state.upAxis);
+    camera.distance = std::max(0.001f, camera.distance * navigation.distanceFactor);
+    const auto eye = cameraEye(camera, state.upAxis);
+    for (float value : {camera.target[0], camera.target[1], camera.target[2], camera.distance,
+        camera.yawRadians, camera.pitchRadians, camera.rollRadians, eye.x, eye.y, eye.z}) {
+        if (!std::isfinite(value)) { throw std::invalid_argument("Camera navigation exceeds the finite coordinate range."); }
+    }
+    state.camera = camera;
 }
 
 } // namespace woby

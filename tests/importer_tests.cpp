@@ -3,6 +3,7 @@
 #include "file_discovery.h"
 #include "importer_host.h"
 #include "model_load.h"
+#include "control_importers.h"
 
 #include <doctest/doctest.h>
 
@@ -61,6 +62,48 @@ TEST_CASE("DLL importer registration validates ABI exports conflicts and dedupli
     std::filesystem::copy_file(WOBY_TEST_IMPORTER, copy, std::filesystem::copy_options::overwrite_existing);
     CHECK_THROWS_WITH_AS((void)woby::loadImporter(copy), doctest::Contains("Duplicate importer ID"), std::runtime_error);
     CHECK(woby::loadedImporters().size() == 1u);
+}
+
+TEST_CASE("ctl importer registration separates live loading from remembered configuration")
+{
+    ImporterTestScope scope;
+    const auto settings = scope.root / "importers.json";
+    std::vector<std::filesystem::path> remembered;
+    woby::ControlOperation command;
+    command.action = woby::ControlAction::importersAdd;
+    command.path = WOBY_TEST_IMPORTER;
+    auto result = woby::applyControlImporterOperation(command, settings, remembered);
+    CHECK(result["loadedCount"] == 1);
+    CHECK(remembered.empty());
+    CHECK_FALSE(std::filesystem::exists(settings));
+    command.remember = true;
+    result = woby::applyControlImporterOperation(command, settings, remembered);
+    CHECK(result["outcomes"][0]["remembered"] == true);
+    CHECK(woby::readImporterSettings(settings) == remembered);
+    REQUIRE(remembered.size() == 1);
+    command.action = woby::ControlAction::importersForget;
+    result = woby::applyControlImporterOperation(command, settings, remembered);
+    CHECK(result["forgotten"] == true);
+    CHECK(remembered.empty());
+    CHECK(woby::readImporterSettings(settings).empty());
+    CHECK(woby::loadedImporters().size() == 1);
+    CHECK(woby::applyControlImporterOperation(command, settings, remembered)["forgotten"] == false);
+    command.action = woby::ControlAction::importersAdd;
+    command.path = WOBY_TEST_BAD_IMPORTER;
+    result = woby::applyControlImporterOperation(command, settings, remembered);
+    CHECK(result["failedCount"] == 1);
+    CHECK(result["loadedCount"] == 0);
+    CHECK(result["outcomes"][0].contains("error"));
+    CHECK(remembered.empty());
+    command.path = WOBY_TEST_IMPORTER;
+    // Force a file-as-parent settings failure while the importer remains loaded.
+    const auto blocked = scope.root / "blocked";
+    writeFile(blocked);
+    remembered.clear();
+    result = woby::applyControlImporterOperation(command, blocked / "settings.json", remembered);
+    CHECK(result["loadedCount"] == 1);
+    CHECK_FALSE(result["registrationError"].is_null());
+    CHECK(remembered.empty());
 }
 
 TEST_CASE("DLL importer supports case insensitive discovery and owns copied mesh data")

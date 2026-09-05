@@ -101,6 +101,13 @@ std::string parseInstanceId(int argc, char** argv, int& index)
 AppArguments parseControlArguments(int argc, char** argv)
 {
     AppArguments arguments;
+    for (int index = 2; index < argc; ++index) {
+        if (std::string(argv[index]) == "--help" || std::string(argv[index]) == "-h") {
+            arguments.showHelp = true;
+            return arguments;
+        }
+    }
+    if (parseExtendedControlArguments(argc, argv, arguments.control)) { return arguments; }
     auto& control = arguments.control;
     bool timeoutSpecified = false;
     bool waitSpecified = false;
