@@ -104,6 +104,10 @@ AppArguments parseControlArguments(int argc, char** argv)
     auto& control = arguments.control;
     bool timeoutSpecified = false;
     bool waitSpecified = false;
+    bool sceneActionSpecified = false;
+    bool dirtySpecified = false;
+    bool savePathSpecified = false;
+    bool overwriteSpecified = false;
     for (int index = 2; index < argc; ++index) {
         const std::string argument = argv[index];
         if (argument == "--help" || argument == "-h") {
@@ -125,6 +129,24 @@ AppArguments parseControlArguments(int argc, char** argv)
                 throw std::runtime_error("Specify --request-key once, with 1-128 ASCII letters, digits, '-', '_', '.', or ':'.");
             }
             control.requestKey = key;
+        } else if (argument == "--on-dirty") {
+            requireValue(argc, index, argument, "error, save, or discard");
+            const std::string value = argv[++index];
+            if (dirtySpecified || (value != "error" && value != "save" && value != "discard")) {
+                throw std::runtime_error("Specify --on-dirty once: error, save, or discard.");
+            }
+            dirtySpecified = true;
+            control.lifecycle.onDirty = value == "save" ? DirtyPolicy::save : value == "discard" ? DirtyPolicy::discard : DirtyPolicy::error;
+        } else if (argument == "--save-path") {
+            requireValue(argc, index, argument, "a filename");
+            if (savePathSpecified) { throw std::runtime_error("Specify --save-path once."); }
+            savePathSpecified = true;
+            control.lifecycle.savePath = pathFromUtf8(argv[++index]);
+            if (control.lifecycle.savePath.empty()) { throw std::runtime_error("--save-path requires a filename."); }
+        } else if (argument == "--overwrite") {
+            if (overwriteSpecified) { throw std::runtime_error("Specify --overwrite once."); }
+            overwriteSpecified = true;
+            control.lifecycle.overwrite = true;
         } else if (argument == "--timeout") {
             requireValue(argc, index, argument, "a timeout in seconds");
             const size_t seconds = parsePositiveSize(argv[++index], argument);
@@ -138,6 +160,22 @@ AppArguments parseControlArguments(int argc, char** argv)
                 throw std::runtime_error("Only one --wait option can be specified.");
             }
             waitSpecified = true;
+        } else if (control.command == ControlCommand::none && argument == "scene") {
+            control.command = ControlCommand::scene;
+        } else if (control.command == ControlCommand::none && argument == "quit") {
+            control.command = ControlCommand::quit;
+            control.lifecycle.action = SceneAction::quit;
+        } else if (control.command == ControlCommand::scene && !sceneActionSpecified) {
+            if (argument == "save") { control.lifecycle.action = SceneAction::save; }
+            else if (argument == "save-as") { control.lifecycle.action = SceneAction::saveAs; }
+            else if (argument == "open") { control.lifecycle.action = SceneAction::open; }
+            else if (argument == "new") { control.lifecycle.action = SceneAction::newScene; }
+            else { throw std::runtime_error("Expected scene save, save-as, open, or new."); }
+            sceneActionSpecified = true;
+        } else if (control.command == ControlCommand::scene && control.lifecycle.path.empty()
+            && (control.lifecycle.action == SceneAction::saveAs || control.lifecycle.action == SceneAction::open)
+            && !argument.empty() && argument.front() != '-') {
+            control.lifecycle.path = pathFromUtf8(argument);
         } else if (control.command == ControlCommand::none && argument == "instances") {
             control.command = ControlCommand::instances;
         } else if (control.command == ControlCommand::none && argument == "screenshot") {
@@ -163,6 +201,22 @@ AppArguments parseControlArguments(int argc, char** argv)
     }
     if (arguments.showHelp) {
         return arguments;
+    }
+    const bool lifecycle = control.command == ControlCommand::scene || control.command == ControlCommand::quit;
+    const bool destructive = lifecycle && (control.lifecycle.action == SceneAction::open
+        || control.lifecycle.action == SceneAction::newScene || control.lifecycle.action == SceneAction::quit);
+    if ((dirtySpecified || savePathSpecified) && !destructive) {
+        throw std::runtime_error("Dirty policies apply only to scene open, scene new, and quit.");
+    }
+    if (savePathSpecified && control.lifecycle.onDirty != DirtyPolicy::save) {
+        throw std::runtime_error("--save-path requires --on-dirty save.");
+    }
+    if (overwriteSpecified && (!lifecycle || (control.lifecycle.action != SceneAction::saveAs && !savePathSpecified))) {
+        throw std::runtime_error("--overwrite requires an explicit save destination.");
+    }
+    if (lifecycle && (!control.instanceId || (control.command == ControlCommand::scene && !sceneActionSpecified)
+        || ((control.lifecycle.action == SceneAction::open || control.lifecycle.action == SceneAction::saveAs) && control.lifecycle.path.empty()))) {
+        throw std::runtime_error("Scene commands require --instance ID, a scene action, and a path for open/save-as.");
     }
     if (control.command == ControlCommand::none) {
         throw std::runtime_error("Expected ctl instances, screenshot, objects, object, or command. See --help.");

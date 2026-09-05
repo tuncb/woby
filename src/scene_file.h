@@ -91,7 +91,7 @@ struct SceneDocument {
 };
 
 [[nodiscard]] SceneDocument readSceneDocument(const std::filesystem::path& scenePath);
-void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocument& document);
+void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocument& document, bool overwrite = true);
 
 [[nodiscard]] std::filesystem::path sceneAbsolutePath(
     const std::filesystem::path& scenePath,

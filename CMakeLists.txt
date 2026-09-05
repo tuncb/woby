@@ -64,6 +64,8 @@ add_executable(woby
     src/obj_mesh.h
     src/performance_log.cpp
     src/performance_log.h
+    src/scene_lifecycle.cpp
+    src/scene_lifecycle.h
     src/scene_file.cpp
     src/scene_file.h
     src/scene_renderer.cpp
@@ -225,6 +227,8 @@ if(BUILD_TESTING)
         src/obj_mesh.h
         src/performance_log.cpp
         src/performance_log.h
+        src/scene_lifecycle.cpp
+        src/scene_lifecycle.h
         src/scene_file.cpp
         src/scene_file.h
         src/scene_objects.cpp
@@ -237,6 +241,7 @@ if(BUILD_TESTING)
         src/ui_operations.h
         src/ui_state.cpp
         src/ui_state.h
+        tests/scene_lifecycle_tests.cpp
         tests/importer_tests.cpp
         tests/automation_tests.cpp
         tests/background_load_tests.cpp

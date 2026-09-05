@@ -91,6 +91,9 @@ void appendFolderTreeSceneNode(
     size_t firstFileIndex,
     size_t fileCount);
 bool removeFileFromState(UiState& state, size_t fileIndex);
+// Prepare without mutating the live state; commit only after resources are ready.
+[[nodiscard]] UiState prepareSceneReplacement(const UiState& current,
+    std::vector<UiFileState> files, const SceneDocument& document);
 void setSceneDirty(UiState& state, bool dirty);
 void markSceneDirty(UiState& state);
 void clearSceneDirty(UiState& state);

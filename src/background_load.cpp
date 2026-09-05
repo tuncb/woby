@@ -177,6 +177,7 @@ SceneCpuLoadResult loadSceneCpu(
         result.files.push_back(std::move(file));
     }
 
+    result.canceled = result.canceled || canceled(shouldCancel);
     spdlog::info(
         "perf scene_cpu_load path=\"{}\" files={} read_ms={} canceled={} total_ms={}",
         scenePath.string(),

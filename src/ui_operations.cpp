@@ -720,6 +720,33 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
     return true;
 }
 
+UiState prepareSceneReplacement(const UiState& current,
+    std::vector<UiFileState> files, const SceneDocument& document)
+{
+    UiState prepared;
+    prepared.running = current.running;
+    prepared.viewerPaneWidth = current.viewerPaneWidth;
+    prepared.viewerPaneVisible = current.viewerPaneVisible;
+    prepared.nextObjectId = current.nextObjectId;
+    prepared.files = std::move(files);
+    // Every replacement receives fresh IDs, even when reopening the same file.
+    for (auto& file : prepared.files) {
+        file.objectId = invalidSceneObjectId;
+        for (auto& group : file.groupSettings) {
+            group.objectId = invalidSceneObjectId;
+        }
+    }
+    applySceneNodeRecords(prepared, document.nodes);
+    setSceneUpAxis(prepared, document.upAxis);
+    setShowOrigin(prepared, document.showOrigin);
+    setShowGrid(prepared, document.showGrid);
+    setMasterVertexPointSize(prepared, document.masterVertexPointSize);
+    recalculateSceneBounds(prepared);
+    prepared.camera = frameCameraBounds(prepared.sceneBounds, prepared.upAxis);
+    clearSceneDirty(prepared);
+    return prepared;
+}
+
 void setSceneDirty(UiState& state, bool dirty)
 {
     state.isDirty = dirty;

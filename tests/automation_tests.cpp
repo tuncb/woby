@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include "ui_operations.h"
+#include "scene_lifecycle.h"
 
 #include <algorithm>
 #include <chrono>
@@ -832,4 +833,150 @@ TEST_CASE("full queues still allow retry recovery and do not reserve rejected ke
     CHECK(next->id == active->id + woby::maxAutomationCommands);
     REQUIRE(completeCommand(*fixture.server, next->id, woby::AutomationObjectsResult{}));
     CHECK(accepted.get().contains("result"));
+}
+
+TEST_CASE("automation validates lifecycle parameters before admitting work")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const auto path = woby::pathToUtf8(fixture.directory / "scene.woby");
+    const std::vector<std::pair<std::string, Json>> invalid = {
+        {"scene.open", {}}, {"scene.save-as", {}},
+        {"scene.open", {{"path", "relative.woby"}}},
+        {"scene.open", {{"path", path}, {"onDirty", "ask"}}},
+        {"scene.new", {{"onDirty", 42}}},
+        {"quit", {{"onDirty", nullptr}}},
+        {"scene.new", {{"savePath", path}}},
+        {"quit", {{"onDirty", "discard"}, {"savePath", path}}},
+        {"scene.save", {{"path", path}}},
+        {"scene.save-as", {{"path", path}, {"overwrite", 1}}},
+        {"scene.open", {{"path", path}, {"overwrite", false}}},
+        {"scene.new", {{"path", path}}},
+        {"scene.new", {{"timeoutSeconds", 0}}},
+        {"quit", {{"unknown", true}}},
+    };
+    for (const auto& [method, parameters] : invalid) {
+        INFO(method, " ", parameters.dump());
+        auto params = parameters.is_object() ? parameters : Json::object();
+        params["requestKey"] = "invalid";
+        CHECK(request(fixture.instance, method, params)["error"]["code"] == -32602);
+        CHECK_FALSE(takeCommand(*fixture.server));
+    }
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "invalid"}}).contains("error"));
+}
+
+TEST_CASE("scene save retries replay success without writing the destination again")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    woby::UiState state;
+    woby::SceneDocument clean = woby::createSceneDocument(state);
+    woby::setShowGrid(state, false);
+    std::optional<std::filesystem::path> currentPath;
+    const auto path = fixture.directory / "saved.woby";
+    const Json params = {{"path", woby::pathToUtf8(path)}, {"requestKey", "save-once"}};
+    auto future = std::async(std::launch::async, [&] { return request(fixture.instance, "scene.save-as", params); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    const auto& payload = std::get<woby::SceneLifecycleCommand>(command->payload);
+    REQUIRE_FALSE(woby::beginSceneLifecycle(payload, state, currentPath, clean, false));
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationSceneResult{currentPath, state.isDirty}));
+    const auto response = future.get();
+    REQUIRE(response.contains("result"));
+    CHECK(response["result"]["dirty"] == false);
+    std::ofstream(path) << "external edit";
+    const auto replay = request(fixture.instance, "scene.save-as", params);
+    CHECK(replay == response);
+    CHECK_FALSE(takeCommand(*fixture.server));
+    std::ifstream stream(path);
+    std::string content;
+    std::getline(stream, content);
+    CHECK(content == "external edit");
+    auto conflict = params;
+    conflict["overwrite"] = true;
+    CHECK(request(fixture.instance, "scene.save-as", conflict)["error"]["code"] == -32006);
+    CHECK(request(fixture.instance, "scene.open", params)["error"]["code"] == -32006);
+}
+
+TEST_CASE("lifecycle errors replay their original dirty state and actionable reason")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    woby::UiState state;
+    woby::SceneDocument clean = woby::createSceneDocument(state);
+    woby::setShowGrid(state, false);
+    std::optional<std::filesystem::path> path;
+    const Json params = {{"requestKey", "new-failed"}};
+    auto future = std::async(std::launch::async, [&] { return request(fixture.instance, "scene.new", params); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    const auto error = woby::beginSceneLifecycle(std::get<woby::SceneLifecycleCommand>(command->payload), state, path, clean, false);
+    REQUIRE(error);
+    REQUIRE(completeCommand(*fixture.server, command->id,
+        woby::AutomationCommandError{error->message, error->code, error, path, state.isDirty}));
+    const auto response = future.get();
+    CHECK(response["error"]["data"]["reason"] == "dirty_scene");
+    CHECK(response["error"]["data"]["dirty"] == true);
+    CHECK(response["error"]["data"]["path"].is_null());
+    state = woby::prepareSceneReplacement(state, {}, {});
+    CHECK(request(fixture.instance, "scene.new", params) == response);
+    CHECK_FALSE(takeCommand(*fixture.server));
+}
+
+TEST_CASE("open timeout retains the FIFO slot and later completion can be recovered")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const Json params = {{"path", woby::pathToUtf8(fixture.directory / "scene.woby")},
+        {"timeoutSeconds", 1}, {"requestKey", "open-slow"}};
+    auto future = std::async(std::launch::async, [&] { return request(fixture.instance, "scene.open", params); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    const auto timeout = future.get();
+    CHECK(timeout["error"]["code"] == -32003);
+    CHECK(timeout["error"]["data"]["state"] == "running");
+    CHECK(request(fixture.instance, "scene.open", params)["error"]["code"] == -32008);
+    auto later = std::async(std::launch::async, [&] { return request(fixture.instance, "objects.list"); });
+    REQUIRE(waitForQueued(fixture, 1));
+    CHECK_FALSE(takeCommand(*fixture.server));
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationSceneResult{fixture.directory / "scene.woby"}));
+    CHECK(request(fixture.instance, "scene.open", params)["result"]["state"] == "succeeded");
+    auto conflict = params;
+    conflict["onDirty"] = "discard";
+    CHECK(request(fixture.instance, "scene.open", conflict)["error"]["code"] == -32006);
+    const auto next = waitForCommand(*fixture.server);
+    REQUIRE(next);
+    REQUIRE(completeCommand(*fixture.server, next->id, woby::AutomationObjectsResult{}));
+    CHECK(later.get().contains("result"));
+}
+
+TEST_CASE("quit acknowledges shutdown and prevents later queued commands from executing")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const Json params = {{"onDirty", "discard"}, {"requestKey", "quit-once"}};
+    auto future = std::async(std::launch::async, [&] { return request(fixture.instance, "quit", params); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    auto later = std::async(std::launch::async, [&] { return request(fixture.instance, "scene.new"); });
+    REQUIRE(waitForQueued(fixture, 1));
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationSceneResult{{}, true, true}));
+    const auto response = future.get();
+    CHECK(response["result"]["quitAccepted"] == true);
+    CHECK(later.get()["error"]["code"] == -32001);
+    CHECK_FALSE(takeCommand(*fixture.server));
+    CHECK(request(fixture.instance, "quit", params) == response);
+    CHECK(request(fixture.instance, "scene.new")["error"]["code"] == -32001);
+}
+
+TEST_CASE("completed quit response drains even when the server is stopped immediately")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    auto future = std::async(std::launch::async, [&] { return request(fixture.instance, "quit"); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationSceneResult{{}, false, true}));
+    fixture.server.reset();
+    CHECK(future.get()["result"]["quitAccepted"] == true);
 }

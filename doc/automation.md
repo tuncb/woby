@@ -123,7 +123,7 @@ already-updated state.
 
 ### Recover commands and retry safely
 
-All three scene methods accept an optional `requestKey` (`--request-key KEY` in the
+All queued scene methods accept an optional `requestKey` (`--request-key KEY` in the
 CLI). Keys contain 1-128 ASCII letters, digits, `-`, `_`, `.`, or `:`. Choose a unique
 key for each intended operation and keep it before submitting the request.
 
@@ -199,7 +199,7 @@ For future scene-editing methods, expose absolute setters (for example `visible=
 and `opacity=0.5`) and return actual values after operation-boundary validation and
 clamping. Complete edits only after updating bounds and dirty tracking. Relative
 operations and external side effects still require a retry key to prevent duplicate
-application. These are handler requirements; scene-editing methods are not yet exposed.
+application. These are handler requirements for future property-editing methods.
 
 ### Discover and resolve scene objects
 
@@ -280,5 +280,38 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($instance.port)/rpc" `
 ```
 
 Version 1 exposes instance discovery, screenshot capture, object enumeration, object
-lookup, FIFO command ordering, retry keys, and command status/result recovery. Scene
-editing, job/event APIs, and MCP integration can use the same runtime boundary.
+lookup, scene persistence/replacement, quit, FIFO command ordering, retry keys, and
+command status/result recovery. Property editing, job/event APIs, and MCP integration
+can use the same runtime boundary.
+
+## Scene persistence and shutdown
+
+See the [scene lifecycle contract](scene-lifecycle.md) for the complete policy,
+completion, failure, and object-ID rules. These commands are available through RPC
+and CLI:
+
+```powershell
+woby ctl --instance review scene save-as C:\output\review.woby --request-key save-1 --json
+woby ctl --instance review scene save --request-key save-2 --json
+woby ctl --instance review scene open C:\scenes\next.woby --on-dirty save --request-key open-1 --json
+woby ctl --instance review scene new --on-dirty discard --request-key new-1 --json
+woby ctl --instance review quit --on-dirty save --save-path C:\output\last.woby --request-key quit-1 --json
+```
+
+Save-as and explicit `--save-path` destinations require `--overwrite` to replace
+existing files. An ordinary save replaces the current file. Open/new/quit default to
+an actionable dirty-scene error and never display confirmation dialogs for CTL.
+All commands accept `--timeout`, `--wait`, `--request-key`, and `--json`.
+
+Example RPC (all paths must be absolute):
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"scene.open","params":{"path":"C:/scenes/next.woby","onDirty":"save","savePath":"C:/output/previous.woby","overwrite":true,"requestKey":"open-1"}}
+```
+
+Errors expose `data.reason`, the current `data.path` and `data.dirty`, plus command
+metadata. CLI JSON preserves these fields. For example, `dirty_scene` (-32011) calls
+for a save/discard policy, while `save_path_required` (-32012) calls for a save path.
+A failed command is retained: use a new request key when correcting its parameters.
+Quit success means `quitAccepted: true`; observe process exit separately. Lookup
+history and request keys disappear when the viewer exits.

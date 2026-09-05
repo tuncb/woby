@@ -17,6 +17,7 @@ currently supported commands; see [the automation API](automation.md) for that.
 | Scene revisions | Implemented experimentally, then removed by decision. The per-frame snapshot cost was unnecessary for the intended workflow. The benchmark code and reports were also removed. |
 | Automation concurrency contract | Assume one coordinating client and no manual edits during automation. Multiple clients and UI input must remain safe, but their effects may interleave; consistency across requests is the caller's responsibility. |
 | Predictable command retries | Implemented: session-scoped command IDs, `command.get` / `ctl command`, request keys, retained results, explicit timeout states, and structured retry errors. Absolute setters and applied-value responses are requirements for future editing handlers. See [retry semantics](automation.md#recover-commands-and-retry-safely). |
+| Persistence and destructive operations | Implemented: scene save/save-as/open/new and quit with explicit dirty policies, atomic saves, staged replacement, and existing request-key semantics. See [the lifecycle contract](scene-lifecycle.md). Camera remains session-only. |
 | Remaining proposed functionality | Future work unless explicitly documented in the current API. |
 
 The original revision-based capture and advanced-automation recommendations below

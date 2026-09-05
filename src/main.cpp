@@ -9,6 +9,7 @@
 #include "native_dialogs.h"
 #include "performance_log.h"
 #include "scene_file.h"
+#include "scene_lifecycle.h"
 #include "scene_renderer.h"
 #include "scene_screenshot.h"
 #include "ui_operations.h"
@@ -1797,16 +1798,15 @@ void loadScene(
     const double filesMilliseconds = elapsedMilliseconds(filesStart);
 
     const auto applyStart = woby::PerformanceClock::now();
-    destroyModelRuntimes(runtimes);
-    runtimes = std::move(loadedRuntimes);
-    state.files = std::move(loadedFiles);
-    woby::applySceneNodeRecords(state, document.nodes);
-    state.upAxis = document.upAxis;
-    woby::setShowOrigin(state, document.showOrigin);
-    woby::setShowGrid(state, document.showGrid);
-    woby::setMasterVertexPointSize(state, document.masterVertexPointSize);
-    woby::recalculateSceneBounds(state);
-    state.camera = woby::frameCameraBounds(state.sceneBounds, state.upAxis);
+    try {
+        auto prepared = woby::prepareSceneReplacement(state, std::move(loadedFiles), document);
+        destroyModelRuntimes(runtimes);
+        runtimes = std::move(loadedRuntimes);
+        state = std::move(prepared);
+    } catch (...) {
+        destroyModelRuntimes(loadedRuntimes);
+        throw;
+    }
     spdlog::info(
         "perf scene_load path=\"{}\" files={} read_ms={} files_ms={} apply_ms={} total_ms={}",
         scenePath.string(),
@@ -1815,29 +1815,6 @@ void loadScene(
         filesMilliseconds,
         elapsedMilliseconds(applyStart),
         elapsedMilliseconds(totalStart));
-}
-
-std::filesystem::path saveScene(
-    const std::filesystem::path& requestedScenePath,
-    const woby::UiState& state)
-{
-    const auto totalStart = woby::PerformanceClock::now();
-    const std::filesystem::path scenePath = woby::sceneSavePathWithExtension(requestedScenePath);
-    const auto documentStart = woby::PerformanceClock::now();
-    const woby::SceneDocument document = woby::createSceneDocument(state);
-    const double documentMilliseconds = elapsedMilliseconds(documentStart);
-
-    const auto writeStart = woby::PerformanceClock::now();
-    woby::writeSceneDocument(scenePath, document);
-    const double writeMilliseconds = elapsedMilliseconds(writeStart);
-    spdlog::info(
-        "perf scene_save path=\"{}\" files={} document_ms={} write_ms={} total_ms={}",
-        scenePath.string(),
-        document.files.size(),
-        documentMilliseconds,
-        writeMilliseconds,
-        elapsedMilliseconds(totalStart));
-    return scenePath;
 }
 
 void loadSceneFromPath(
@@ -1867,16 +1844,10 @@ std::filesystem::path saveSceneToPath(
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument)
 {
-    const auto start = woby::PerformanceClock::now();
-    const std::filesystem::path scenePath = normalizedPath(saveScene(requestedScenePath, state));
-    currentScenePath = scenePath;
-    cleanSceneDocument = woby::createSceneDocument(state);
-    woby::clearSceneDirty(state);
-    spdlog::info(
-        "perf scene_save_total path=\"{}\" duration_ms={}",
-        scenePath.string(),
-        elapsedMilliseconds(start));
-    return scenePath;
+    if (const auto error = woby::saveSceneState(state, currentScenePath, cleanSceneDocument, requestedScenePath, true)) {
+        throw std::runtime_error(error->message);
+    }
+    return *currentScenePath;
 }
 
 void setToastMessage(ToastMessage& toast, std::string text)
@@ -1996,26 +1967,31 @@ bool startOpenSceneBackgroundLoad(
     resetBackgroundLoadProgress(load, AsyncLoadKind::openScene, 0u);
     load.cancelRequested.store(false);
     load.active = true;
-    load.worker = std::thread([&load, scenePath]() {
-        AsyncLoadOutcome outcome;
-        outcome.kind = AsyncLoadKind::openScene;
-        try {
-            outcome.scene = woby::loadSceneCpu(
-                scenePath,
-                [&load](const woby::BackgroundLoadProgress& progress) {
-                    updateBackgroundLoadProgress(load, progress);
-                },
-                [&load]() {
-                    return load.cancelRequested.load();
-                });
-        } catch (const std::exception& exception) {
-            outcome.failed = true;
-            outcome.error = exception.what();
-        }
+    try {
+        load.worker = std::thread([&load, scenePath]() {
+            AsyncLoadOutcome outcome;
+            outcome.kind = AsyncLoadKind::openScene;
+            try {
+                outcome.scene = woby::loadSceneCpu(
+                    scenePath,
+                    [&load](const woby::BackgroundLoadProgress& progress) {
+                        updateBackgroundLoadProgress(load, progress);
+                    },
+                    [&load]() {
+                        return load.cancelRequested.load();
+                    });
+            } catch (const std::exception& exception) {
+                outcome.failed = true;
+                outcome.error = exception.what();
+            }
 
-        std::lock_guard<std::mutex> lock(load.mutex);
-        load.outcome = std::move(outcome);
-    });
+            std::lock_guard<std::mutex> lock(load.mutex);
+            load.outcome = std::move(outcome);
+        });
+    } catch (...) {
+        load.active = false;
+        throw;
+    }
     return true;
 }
 
@@ -2036,7 +2012,9 @@ std::optional<AsyncLoadOutcome> takeBackgroundLoadOutcome(BackgroundLoadRuntime&
         load.worker.join();
     }
     load.active = false;
-    load.cancelRequested.store(false);
+    if (load.cancelRequested.exchange(false) && outcome->kind == AsyncLoadKind::openScene) {
+        outcome->scene.canceled = true;
+    }
     return outcome;
 }
 
@@ -2120,26 +2098,22 @@ void commitGpuFinalize(
         }
         setToastMessage(toast, appendFinalizeStatus(finalize));
     } else {
+        auto prepared = woby::prepareSceneReplacement(state, std::move(finalize.finalizedFiles), finalize.sceneDocument);
+        auto clean = woby::createSceneDocument(prepared);
+        auto path = finalize.scenePath;
+        auto message = "Opened scene " + fileDisplayName(finalize.scenePath);
         destroyModelRuntimes(runtimes);
         runtimes = std::move(finalize.finalizedRuntimes);
-        state.files = std::move(finalize.finalizedFiles);
-        woby::applySceneNodeRecords(state, finalize.sceneDocument.nodes);
-        state.upAxis = finalize.sceneDocument.upAxis;
-        woby::setShowOrigin(state, finalize.sceneDocument.showOrigin);
-        woby::setShowGrid(state, finalize.sceneDocument.showGrid);
-        woby::setMasterVertexPointSize(state, finalize.sceneDocument.masterVertexPointSize);
-        woby::recalculateSceneBounds(state);
-        state.camera = woby::frameCameraBounds(state.sceneBounds, state.upAxis);
-        currentScenePath = finalize.scenePath;
-        cleanSceneDocument = woby::createSceneDocument(state);
-        woby::clearSceneDirty(state);
-        setToastMessage(toast, "Opened scene " + fileDisplayName(finalize.scenePath));
+        state = std::move(prepared);
+        currentScenePath = std::move(path);
+        cleanSceneDocument = std::move(clean);
+        setToastMessage(toast, std::move(message));
     }
 
     finalize = GpuFinalizeRuntime{};
 }
 
-void processGpuFinalizeStep(
+std::optional<std::string> processGpuFinalizeStep(
     GpuFinalizeRuntime& finalize,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
@@ -2150,12 +2124,19 @@ void processGpuFinalizeStep(
     ToastMessage& toast)
 {
     if (!finalize.active) {
-        return;
+        return {};
     }
 
     if (finalize.nextFileIndex >= finalize.files.size()) {
-        commitGpuFinalize(finalize, state, runtimes, currentScenePath, cleanSceneDocument, toast);
-        return;
+        try {
+            commitGpuFinalize(finalize, state, runtimes, currentScenePath, cleanSceneDocument, toast);
+            return std::string{};
+        } catch (const std::exception& exception) {
+            const std::string error = exception.what();
+            setToastMessage(toast, "Open scene failed: " + error);
+            abortGpuFinalize(finalize);
+            return error;
+        }
     }
 
     LoadedModelFile file = std::move(finalize.files[finalize.nextFileIndex]);
@@ -2171,8 +2152,10 @@ void processGpuFinalizeStep(
         if (finalize.kind == AsyncLoadKind::openScene) {
             setToastMessage(toast, std::string("Open scene failed: ") + exception.what());
             abortGpuFinalize(finalize);
+            return std::string(exception.what());
         }
     }
+    return {};
 }
 
 void openSceneOrRequestDirtyWarning(
@@ -2584,6 +2567,11 @@ int main(int argc, char** argv)
         GpuFinalizeRuntime gpuFinalize;
         SceneScreenshotRuntime sceneScreenshot;
         std::optional<woby::AutomationCommandId> automationScreenshotCommandId;
+        std::optional<woby::AutomationCommandId> automationOpenCommandId;
+        auto completeLifecycleError = [&](woby::AutomationCommandId id, const woby::SceneLifecycleError& error) {
+            woby::completeAutomationCommand(*automation, id,
+                woby::AutomationCommandError{error.message, error.code, error, currentScenePath, ui.isDirty});
+        };
         DragDropState dragDropState;
         std::optional<std::filesystem::path> pendingDirtyOpenScenePath;
         bool requestDirtyOpenWarning = false;
@@ -2701,6 +2689,10 @@ int main(int argc, char** argv)
             if (auto outcome = takeBackgroundLoadOutcome(backgroundLoad); outcome.has_value()) {
                 if (outcome->failed) {
                     setToastMessage(toast, std::string(backgroundLoadFailurePrefix(outcome->kind)) + outcome->error);
+                    if (automationOpenCommandId) {
+                        completeLifecycleError(*automationOpenCommandId, {"open_failed", outcome->error, -32016});
+                        automationOpenCommandId.reset();
+                    }
                 } else if (isAppendModelLoadKind(outcome->kind)) {
                     if (outcome->modelBatch.canceled || outcome->modelBatch.files.empty()) {
                         setToastMessage(toast, outcome->modelBatch.status);
@@ -2709,12 +2701,25 @@ int main(int argc, char** argv)
                     }
                 } else if (outcome->scene.canceled) {
                     setToastMessage(toast, "Open scene canceled");
+                    if (automationOpenCommandId) {
+                        completeLifecycleError(*automationOpenCommandId, {"scene_canceled", "Open scene canceled.", -32017});
+                        automationOpenCommandId.reset();
+                    }
                 } else {
-                    startGpuFinalize(gpuFinalize, std::move(outcome.value()));
+                    try {
+                        startGpuFinalize(gpuFinalize, std::move(outcome.value()));
+                    } catch (const std::exception& exception) {
+                        abortGpuFinalize(gpuFinalize);
+                        setToastMessage(toast, std::string("Open scene failed: ") + exception.what());
+                        if (automationOpenCommandId) {
+                            completeLifecycleError(*automationOpenCommandId, {"open_failed", exception.what(), -32016});
+                            automationOpenCommandId.reset();
+                        }
+                    }
                 }
             }
 
-            processGpuFinalizeStep(
+            const auto finalized = processGpuFinalizeStep(
                 gpuFinalize,
                 layout,
                 pointLayout,
@@ -2723,6 +2728,15 @@ int main(int argc, char** argv)
                 currentScenePath,
                 cleanSceneDocument,
                 toast);
+            if (finalized && automationOpenCommandId) {
+                if (finalized->empty()) {
+                    woby::completeAutomationCommand(*automation, *automationOpenCommandId,
+                        woby::AutomationSceneResult{currentScenePath, ui.isDirty});
+                } else {
+                    completeLifecycleError(*automationOpenCommandId, {"open_failed", *finalized, -32016});
+                }
+                automationOpenCommandId.reset();
+            }
 
             const auto importerDialogStatus = modelFileDialogStatus(
                 importerFileDialogState, observedImporterFileDialogStatusVersion);
@@ -3260,6 +3274,37 @@ int main(int argc, char** argv)
                         } else if constexpr (std::is_same_v<Command, woby::AutomationObjectsCommand>) {
                             woby::completeAutomationCommand(*automation, command->id,
                                 woby::AutomationObjectsResult{woby::sceneObjects(ui)});
+                        } else if constexpr (std::is_same_v<Command, woby::SceneLifecycleCommand>) {
+                            const bool busy = backgroundLoad.active || gpuFinalize.active
+                                || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
+                                || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
+                                || modelFileDialogIsOpen(importerFileDialogState)
+                                || sceneFileDialogIsOpen(sceneFileDialogState)
+                                || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+                            if (const auto error = woby::beginSceneLifecycle(payload, ui, currentScenePath, cleanSceneDocument, busy)) {
+                                completeLifecycleError(command->id, *error);
+                                return;
+                            }
+                            if (payload.action == woby::SceneAction::open) {
+                                if (!startOpenSceneBackgroundLoad(backgroundLoad, payload.path)) {
+                                    completeLifecycleError(command->id, {"scene_busy", "Already processing files.", -32014});
+                                } else {
+                                    automationOpenCommandId = command->id;
+                                }
+                                return;
+                            }
+                            if (payload.action == woby::SceneAction::newScene) {
+                                auto prepared = woby::prepareSceneReplacement(ui, {}, {});
+                                auto clean = woby::createSceneDocument(prepared);
+                                destroyModelRuntimes(runtimes);
+                                ui = std::move(prepared);
+                                cleanSceneDocument = std::move(clean);
+                                currentScenePath.reset();
+                            }
+                            const bool quit = payload.action == woby::SceneAction::quit;
+                            woby::completeAutomationCommand(*automation, command->id,
+                                woby::AutomationSceneResult{currentScenePath, ui.isDirty, quit});
+                            if (quit) { woby::requestQuit(ui); }
                         } else {
                             static_assert(std::is_same_v<Command, woby::AutomationObjectCommand>);
                             const auto object = woby::findSceneObject(ui, payload.objectId);
@@ -3272,7 +3317,12 @@ int main(int argc, char** argv)
                         }
                     }, command->payload);
                 } catch (const std::exception& exception) {
-                    woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what()});
+                    const auto* lifecycle = std::get_if<woby::SceneLifecycleCommand>(&command->payload);
+                    if (lifecycle && lifecycle->action == woby::SceneAction::open) {
+                        completeLifecycleError(command->id, {"open_failed", exception.what(), -32016});
+                    } else {
+                        woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what()});
+                    }
                 }
             }
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);

@@ -509,3 +509,47 @@ TEST_CASE("control retry keys and command lookup have unambiguous arguments")
         CHECK_THROWS_AS(parse(args), std::runtime_error);
     }
 }
+
+TEST_CASE("ctl parses scene lifecycle commands and explicit dirty policies")
+{
+    const auto save = parse({"woby", "ctl", "--instance", "test", "scene", "save", "--json"}).control;
+    CHECK(save.command == woby::ControlCommand::scene);
+    CHECK(save.lifecycle.action == woby::SceneAction::save);
+    const auto saveAs = parse({"woby", "ctl", "scene", "save-as", "scene.woby", "--overwrite", "--instance", "test"}).control;
+    CHECK(saveAs.lifecycle.action == woby::SceneAction::saveAs);
+    CHECK(saveAs.lifecycle.path == "scene.woby");
+    CHECK(saveAs.lifecycle.overwrite);
+    const auto open = parse({"woby", "ctl", "--instance", "test", "scene", "open", "next.woby", "--on-dirty", "save",
+        "--save-path", "previous.woby", "--overwrite", "--request-key", "open-1", "--timeout", "10"}).control;
+    CHECK(open.lifecycle.action == woby::SceneAction::open);
+    CHECK(open.lifecycle.onDirty == woby::DirtyPolicy::save);
+    CHECK(open.lifecycle.savePath == "previous.woby");
+    CHECK(open.lifecycle.overwrite);
+    CHECK(open.requestKey == "open-1");
+    CHECK(open.timeoutSeconds == 10);
+    CHECK(parse({"woby", "ctl", "--instance", "test", "scene", "new"}).control.lifecycle.action == woby::SceneAction::newScene);
+    const auto quit = parse({"woby", "ctl", "--instance", "test", "quit", "--on-dirty", "discard"}).control;
+    CHECK(quit.lifecycle.action == woby::SceneAction::quit);
+    CHECK(quit.lifecycle.onDirty == woby::DirtyPolicy::discard);
+}
+
+TEST_CASE("ctl rejects incomplete or conflicting lifecycle options")
+{
+    const std::vector<std::vector<std::string>> invalid = {
+        {"scene"}, {"scene", "open"}, {"scene", "save-as"}, {"scene", "unknown"},
+        {"scene", "save", "extra.woby"}, {"scene", "save", "--overwrite"},
+        {"scene", "new", "--overwrite"}, {"scene", "new", "--on-dirty", "ask"},
+        {"quit", "--save-path", "saved.woby"}, {"quit", "--on-dirty", "save", "--save-path", ""},
+        {"quit", "--on-dirty", "save", "--on-dirty", "discard"},
+        {"scene", "save-as", "x", "--overwrite", "--overwrite"},
+        {"objects", "--on-dirty", "discard"}, {"objects", "--overwrite"},
+        {"scene", "save", "--on-dirty", "error"},
+    };
+    for (const auto& tail : invalid) {
+        std::vector<std::string> args = {"woby", "ctl", "--instance", "test"};
+        args.insert(args.end(), tail.begin(), tail.end());
+        CHECK_THROWS(parse(args));
+    }
+    CHECK_THROWS(parse({"woby", "ctl", "scene", "new"}));
+    CHECK_THROWS(parse({"woby", "ctl", "quit"}));
+}

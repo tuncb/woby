@@ -2,6 +2,7 @@
 
 #include "command_line.h"
 #include "scene_objects.h"
+#include "scene_lifecycle_types.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -33,7 +34,7 @@ struct AutomationObjectCommand {
     SceneObjectId objectId = invalidSceneObjectId;
 };
 
-using AutomationCommandPayload = std::variant<AutomationScreenshotCommand, AutomationObjectsCommand, AutomationObjectCommand>;
+using AutomationCommandPayload = std::variant<AutomationScreenshotCommand, AutomationObjectsCommand, AutomationObjectCommand, SceneLifecycleCommand>;
 using AutomationCommandId = uint64_t;
 inline constexpr size_t maxAutomationCommands = 8;
 inline constexpr size_t maxAutomationHistory = 128;
@@ -52,6 +53,9 @@ struct AutomationScreenshotResult {
 struct AutomationCommandError {
     std::string message;
     int code = -32004;
+    std::optional<SceneLifecycleError> lifecycle = std::nullopt;
+    std::optional<std::filesystem::path> scenePath = std::nullopt;
+    bool dirty = false;
 };
 
 struct AutomationObjectsResult {
@@ -62,7 +66,13 @@ struct AutomationObjectResult {
     SceneObjectInfo object;
 };
 
-using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationObjectsResult, AutomationObjectResult, AutomationCommandError>;
+struct AutomationSceneResult {
+    std::optional<std::filesystem::path> path;
+    bool dirty = false;
+    bool quitAccepted = false;
+};
+
+using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationObjectsResult, AutomationObjectResult, AutomationSceneResult, AutomationCommandError>;
 
 // Main thread only, after UI/state updates and before rendering. Starts the oldest
 // queued command whose deadline has not expired. Only one

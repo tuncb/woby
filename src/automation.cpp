@@ -101,6 +101,11 @@ AutomationCommandMessages commandMessages(const AutomationObjectCommand&)
     return commandMessages(AutomationObjectsCommand{});
 }
 
+AutomationCommandMessages commandMessages(const SceneLifecycleCommand&)
+{
+    return {"Scene command timed out; started work may still complete.", "Scene command timed out before execution."};
+}
+
 std::string publicObjectId(const AutomationRuntime& runtime, SceneObjectId id)
 {
     char suffix[17];
@@ -144,9 +149,23 @@ Json commandResponse(const AutomationRuntime& runtime, const AutomationObjectRes
     return rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"object", objectInfo(runtime, result.object)}});
 }
 
+Json commandResponse(const AutomationRuntime& runtime, const AutomationSceneResult& result)
+{
+    Json value = {{"instance", runtime.registration.instance.id},
+        {"path", result.path ? Json(pathToUtf8(*result.path)) : Json(nullptr)}, {"dirty", result.dirty}};
+    if (result.quitAccepted) { value["quitAccepted"] = true; }
+    return rpcResult(nullptr, value);
+}
+
 Json commandResponse(const AutomationRuntime&, const AutomationCommandError& error)
 {
-    return rpcError(nullptr, error.code, error.message);
+    auto response = rpcError(nullptr, error.code, error.message);
+    if (error.lifecycle) {
+        response["error"]["data"] = {{"reason", error.lifecycle->reason},
+            {"path", error.scenePath ? Json(pathToUtf8(*error.scenePath)) : Json(nullptr)},
+            {"dirty", error.dirty}};
+    }
+    return response;
 }
 
 Json completedResponse(const AutomationRuntime& runtime, const AutomationCommand& command,
@@ -323,6 +342,18 @@ Json commandFingerprint(const AutomationObjectCommand& command)
     return Json::array({"object.get", command.objectId});
 }
 
+bool resultMatches(const SceneLifecycleCommand& command, const AutomationCommandResult& result)
+{
+    const auto* scene = std::get_if<AutomationSceneResult>(&result);
+    return scene && scene->quitAccepted == (command.action == SceneAction::quit);
+}
+
+Json commandFingerprint(const SceneLifecycleCommand& command)
+{
+    return Json::array({"scene-lifecycle", static_cast<int>(command.action), pathToUtf8(command.path),
+        static_cast<int>(command.onDirty), pathToUtf8(command.savePath), command.overwrite});
+}
+
 Json submitAutomationCommand(
     AutomationRuntime& runtime,
     const Json& id,
@@ -339,9 +370,6 @@ Json submitAutomationCommand(
     }
     const auto fingerprint = std::visit([](const auto& command) { return commandFingerprint(command).dump(); }, payload);
     std::unique_lock lock(runtime.mutex);
-    if (runtime.stopping || !runtime.ready.load()) {
-        return rpcError(id, -32001, "Instance is not ready.");
-    }
     expireQueuedRequests(runtime);
     if (!requestKey.empty()) {
         const auto key = runtime.requestKeys.find(requestKey);
@@ -371,6 +399,9 @@ Json submitAutomationCommand(
             return rpcError(id, -32010, "Viewer session request-key capacity reached; no command was admitted.");
         }
     }
+    if (runtime.stopping || !runtime.ready.load()) {
+        return rpcError(id, -32001, "Instance is not ready.");
+    }
     if (runtime.pending.size() + (runtime.request ? 1u : 0u) >= maxAutomationCommands) {
         return rpcError(id, -32002, "Automation command queue is full.");
     }
@@ -399,7 +430,7 @@ Json submitAutomationCommand(
         response["error"]["data"] = commandMetadata(runtime, *request);
         return response;
     }
-    if (runtime.stopping) {
+    if (runtime.stopping && !request->finished) {
         auto response = rpcError(id, -32001, "Instance is shutting down; command outcome may be unknown.");
         response["error"]["data"] = commandMetadata(runtime, *request);
         return response;
@@ -479,6 +510,60 @@ Json queryScene(AutomationRuntime& runtime, const Json& id, const Json& params, 
     return submitAutomationCommand(runtime, id, AutomationObjectCommand{objectId}, timeoutSeconds, params);
 }
 
+Json sceneLifecycle(AutomationRuntime& runtime, const Json& id, const Json& params, const std::string& method)
+{
+    SceneLifecycleCommand command;
+    if (method == "scene.save-as") { command.action = SceneAction::saveAs; }
+    else if (method == "scene.open") { command.action = SceneAction::open; }
+    else if (method == "scene.new") { command.action = SceneAction::newScene; }
+    else if (method == "quit") { command.action = SceneAction::quit; }
+    const bool hasPath = command.action == SceneAction::saveAs || command.action == SceneAction::open;
+    const bool destructive = command.action == SceneAction::open || command.action == SceneAction::newScene
+        || command.action == SceneAction::quit;
+    for (const auto& item : params.items()) {
+        if (item.key() == "timeoutSeconds" || item.key() == "requestKey"
+            || (hasPath && item.key() == "path")
+            || (destructive && (item.key() == "onDirty" || item.key() == "savePath"))
+            || ((destructive || command.action == SceneAction::saveAs) && item.key() == "overwrite")) { continue; }
+        return rpcError(id, -32602, "Unknown scene command parameter: " + item.key());
+    }
+    auto parsePath = [&](const char* name, std::filesystem::path& path) {
+        if (!params.contains(name) || !params[name].is_string()) { return false; }
+        const auto value = params[name].get<std::string>();
+        if (value.empty() || value.size() > 8192u || value.find('\0') != std::string::npos) { return false; }
+        path = pathFromUtf8(value).lexically_normal();
+        return path.is_absolute() && !path.filename().empty() && path.filename() != "." && path.filename() != "..";
+    };
+    if ((hasPath && !parsePath("path", command.path))
+        || (params.contains("savePath") && !parsePath("savePath", command.savePath))) {
+        return rpcError(id, -32602, "Scene paths must be absolute filenames.");
+    }
+    if (params.contains("onDirty")) {
+        if (params["onDirty"] == "save") { command.onDirty = DirtyPolicy::save; }
+        else if (params["onDirty"] == "discard") { command.onDirty = DirtyPolicy::discard; }
+        else if (params["onDirty"] != "error") { return rpcError(id, -32602, "onDirty must be error, save, or discard."); }
+    }
+    if (!command.savePath.empty() && command.onDirty != DirtyPolicy::save) {
+        return rpcError(id, -32602, "savePath requires onDirty: save.");
+    }
+    if (params.contains("overwrite")) {
+        if (!params["overwrite"].is_boolean()
+            || (command.action != SceneAction::saveAs && command.savePath.empty())) {
+            return rpcError(id, -32602, "overwrite must be a boolean accompanying an explicit save destination.");
+        }
+        command.overwrite = params["overwrite"].get<bool>();
+    }
+    int timeoutSeconds = 60;
+    if (params.contains("timeoutSeconds")) {
+        const auto& timeout = params["timeoutSeconds"];
+        if (!timeout.is_number_integer() || timeout < 1 || timeout > 3600) {
+            return rpcError(id, -32602, "timeoutSeconds must be an integer from 1 to 3600.");
+        }
+        timeoutSeconds = timeout.get<int>();
+    }
+    return submitAutomationCommand(runtime, id, command, timeoutSeconds, params);
+}
+
 void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, httplib::Response& response)
 {
     response.set_header("Cache-Control", "no-store");
@@ -526,6 +611,9 @@ void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, http
                                         : rpcError(id, -32602, "instance.info takes no parameters.");
             } else if (method == "screenshot.capture") {
                 result = captureScreenshot(runtime, id, params);
+            } else if (method == "scene.save" || method == "scene.save-as" || method == "scene.open"
+                || method == "scene.new" || method == "quit") {
+                result = sceneLifecycle(runtime, id, params, method);
             } else if (method == "command.get") {
                 result = queryCommand(runtime, id, params);
             } else if (method == "objects.list" || method == "object.get") {
@@ -672,6 +760,10 @@ bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId i
     }
     finishRequest(runtime, runtime.request, completedResponse(runtime, runtime.request->command, result));
     runtime.request.reset();
+    if (const auto* scene = std::get_if<AutomationSceneResult>(&result); scene && scene->quitAccepted) {
+        runtime.stopping = true;
+        runtime.ready.store(false);
+    }
     runtime.changed.notify_all();
     return true;
 }
@@ -731,6 +823,33 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
             std::printf("%s\n", result.dump(arguments.json ? -1 : 2).c_str());
             return 0;
         }
+        if (arguments.command == ControlCommand::scene || arguments.command == ControlCommand::quit) {
+            const auto& command = arguments.lifecycle;
+            std::string method;
+            switch (command.action) {
+            case SceneAction::save: method = "scene.save"; break;
+            case SceneAction::saveAs: method = "scene.save-as"; break;
+            case SceneAction::open: method = "scene.open"; break;
+            case SceneAction::newScene: method = "scene.new"; break;
+            case SceneAction::quit: method = "quit"; break;
+            }
+            if (!command.path.empty()) {
+                params["path"] = pathToUtf8(std::filesystem::absolute(command.path).lexically_normal());
+            }
+            if (command.action == SceneAction::open || command.action == SceneAction::newScene || command.action == SceneAction::quit) {
+                params["onDirty"] = command.onDirty == DirtyPolicy::save ? "save"
+                    : command.onDirty == DirtyPolicy::discard ? "discard" : "error";
+            }
+            if (!command.savePath.empty()) {
+                params["savePath"] = pathToUtf8(std::filesystem::absolute(command.savePath).lexically_normal());
+            }
+            if (command.action == SceneAction::saveAs || !command.savePath.empty()) {
+                params["overwrite"] = command.overwrite;
+            }
+            const auto result = callInstance(instance, method, params, arguments.timeoutSeconds + 5, &rpcFailure);
+            std::printf("%s\n", result.dump(arguments.json ? -1 : 2).c_str());
+            return 0;
+        }
         const auto outputPath = std::filesystem::absolute(arguments.outputPath).lexically_normal();
         params["path"] = pathToUtf8(outputPath);
         const auto result = callInstance(instance, "screenshot.capture", params, arguments.timeoutSeconds + 5, &rpcFailure);
@@ -764,6 +883,11 @@ void printCommandLineHelp()
         "  woby [--instance ID] [--scene PATH] [--file PATH ...]\n"
         "  woby ctl instances [--json]\n"
         "  woby ctl --instance ID screenshot PATH [--timeout SECONDS] [--json]\n"
+        "  woby ctl --instance ID scene save [--json]\n"
+        "  woby ctl --instance ID scene save-as PATH [--overwrite] [--json]\n"
+        "  woby ctl --instance ID scene open PATH [--on-dirty error|save|discard] [--save-path PATH] [--overwrite]\n"
+        "  woby ctl --instance ID scene new [--on-dirty error|save|discard] [--save-path PATH] [--overwrite]\n"
+        "  woby ctl --instance ID quit [--on-dirty error|save|discard] [--save-path PATH] [--overwrite]\n"
         "  woby ctl --instance ID objects [--timeout SECONDS] [--json]\n"
         "  woby ctl --instance ID object OBJECT_ID [--timeout SECONDS] [--json]\n"
         "  woby ctl --instance ID command COMMAND_ID [--json]\n"

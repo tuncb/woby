@@ -8,6 +8,17 @@
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
+#include <random>
+#include <system_error>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
+#include <cerrno>
+#include <unistd.h>
+#endif
 
 namespace woby {
 namespace {
@@ -538,12 +549,11 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
     return document;
 }
 
-void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocument& document)
+void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocument& document, bool overwrite)
 {
-    std::ofstream stream(scenePath, std::ios::trunc);
-    if (!stream) {
-        throw std::runtime_error("Failed to write scene file: " + scenePath.string());
-    }
+    // Serialize before touching the destination. Relative paths use its final location.
+    std::ostringstream stream;
+    stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
     const bool usesImporters = std::any_of(document.files.begin(), document.files.end(),
@@ -631,6 +641,56 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         writeTomlFloat3(stream, node.settings.rotationDegrees);
         stream << "\n";
     }
+    const auto contents = stream.str();
+    // An exclusively created sibling directory owns the temporary file. Both the
+    // file and destination are on the same filesystem, including on Windows.
+    std::filesystem::path temporaryDirectory;
+    std::random_device random;
+    for (int attempt = 0; attempt < 32; ++attempt) {
+        auto candidate = scenePath.parent_path() / (".woby-save-" + std::to_string(random())
+            + "-" + std::to_string(random()));
+        if (std::filesystem::create_directory(candidate)) {
+            temporaryDirectory = std::move(candidate);
+            break;
+        }
+    }
+    if (temporaryDirectory.empty()) {
+        throw std::runtime_error("Cannot create a temporary scene file.");
+    }
+    const auto temporaryPath = temporaryDirectory / "scene.tmp";
+    try {
+        std::ofstream output;
+        output.exceptions(std::ios::badbit | std::ios::failbit);
+        output.open(temporaryPath, std::ios::binary | std::ios::trunc);
+        output.write(contents.data(), static_cast<std::streamsize>(contents.size()));
+        output.flush();
+        output.close();
+#ifdef _WIN32
+        if (!MoveFileExW(temporaryPath.c_str(), scenePath.c_str(), overwrite ? MOVEFILE_REPLACE_EXISTING : 0)) {
+            const auto code = GetLastError();
+            const auto error = code == ERROR_FILE_EXISTS || code == ERROR_ALREADY_EXISTS
+                ? std::make_error_code(std::errc::file_exists)
+                : std::error_code(static_cast<int>(code), std::system_category());
+            throw std::filesystem::filesystem_error("Cannot install saved scene", scenePath, error);
+        }
+#else
+        if (overwrite) {
+            std::filesystem::rename(temporaryPath, scenePath);
+        } else if (::link(temporaryPath.c_str(), scenePath.c_str()) != 0) {
+            throw std::filesystem::filesystem_error("Cannot install saved scene", scenePath,
+                std::error_code(errno, std::generic_category()));
+        }
+#endif
+    } catch (...) {
+        std::error_code ignored;
+        std::filesystem::remove(temporaryPath, ignored);
+        std::filesystem::remove(temporaryDirectory, ignored);
+        throw;
+    }
+    // Cleanup failure cannot turn an already committed save into a failed save.
+    std::error_code ignored;
+    std::filesystem::remove(temporaryPath, ignored);
+    std::filesystem::remove(temporaryDirectory, ignored);
 }
 
 } // namespace woby
