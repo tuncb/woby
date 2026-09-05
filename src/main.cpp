@@ -4,6 +4,7 @@
 #include "command_line.h"
 #include "file_discovery.h"
 #include "hover_pick.h"
+#include "comparison_view.h"
 #include "imgui_bgfx.h"
 #include "model_load.h"
 #include "native_dialogs.h"
@@ -2520,6 +2521,7 @@ int main(int argc, char** argv)
         const auto pointLayout = pointSpriteVertexLayout();
         const auto helperLayout = helperLineVertexLayout();
         woby::UiState ui;
+        woby::ComparisonRuntime comparison;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument;
@@ -2549,6 +2551,8 @@ int main(int argc, char** argv)
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
         bgfx::UniformHandle colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
         bgfx::UniformHandle pointParamsUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4);
+        comparison.program = woby::loadProgram(assets, "vs_comparison.bin", "fs_comparison.bin");
+        comparison.parameters = bgfx::createUniform("u_comparison", bgfx::UniformType::Vec4);
         woby::logDuration("startup_shaders", elapsedMilliseconds(shaderStart));
 
         const auto imguiStart = woby::PerformanceClock::now();
@@ -3254,6 +3258,8 @@ int main(int argc, char** argv)
                     ImGui::EndChild();
                 }
 
+                woby::drawComparisonPanel(ui, comparison);
+
                 if (ImGui::CollapsingHeader("Importers")) {
                     const bool importerActionDisabled = processingFiles
                         || modelFileDialogIsOpen(modelFileDialogState)
@@ -3475,6 +3481,8 @@ int main(int argc, char** argv)
             }
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
 
+            woby::updateComparisonRuntime(comparison, ui);
+
             const uint32_t sceneViewportWidth = std::max(width, 1u);
             bgfx::setViewRect(
                 sceneView,
@@ -3527,6 +3535,7 @@ int main(int argc, char** argv)
                 || backgroundLoad.active
                 || gpuFinalize.active;
             const bool hoverPickingEnabled = mouseInsideViewport
+                && !ui.comparison.enabled
                 && !cameraInteractionActive
                 && !dialogOpen;
             if (!hoverPickingEnabled) {
@@ -3566,19 +3575,21 @@ int main(int argc, char** argv)
             hoveredVertex = hoverPickCache.hoveredVertex;
             recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
-            submitSceneFiles(
-                sceneView,
-                files,
-                ui.sceneNodes,
-                runtimes,
-                masterVertexPointSize,
-                meshProgram,
-                colorProgram,
-                pointSpriteProgram,
-                colorUniform,
-                pointParamsUniform,
-                sceneViewportWidth,
-                height);
+            if (!woby::submitComparisonScene(sceneView, ui, comparison, colorProgram, colorUniform)) {
+                submitSceneFiles(
+                    sceneView,
+                    files,
+                    ui.sceneNodes,
+                    runtimes,
+                    masterVertexPointSize,
+                    meshProgram,
+                    colorProgram,
+                    pointSpriteProgram,
+                    colorUniform,
+                    pointParamsUniform,
+                    sceneViewportWidth,
+                    height);
+            }
             recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
             submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
@@ -3599,7 +3610,8 @@ int main(int argc, char** argv)
                     helperLayout,
                     sceneBounds,
                     camera,
-                    homogeneousDepth);
+                    homogeneousDepth,
+                    &comparison);
             } catch (const std::exception& exception) {
                 failSceneScreenshotCapture(sceneScreenshot);
                 if (automationScreenshotCommandId) {
@@ -3667,6 +3679,7 @@ int main(int argc, char** argv)
         ImGui::DestroyContext();
 
         bgfx::destroy(pointParamsUniform);
+        woby::destroyComparisonRuntime(comparison);
         bgfx::destroy(colorUniform);
         bgfx::destroy(pointSpriteProgram);
         bgfx::destroy(colorProgram);

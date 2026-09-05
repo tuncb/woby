@@ -20,6 +20,20 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Command Line
 
+### Mesh comparison prototype
+
+Open `assets/samples/mesh-comparison/compare.woby` to inspect a sample before/after
+repair pair, or load two meshes and select them in **Compare meshes**. The
+prototype offers bidirectional unsigned distance heatmaps, tolerance and color
+range controls, original/repaired views, a wireframe overlay, and edge
+diagnostics. Comparison settings are saved in `.woby` scenes.
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\woby.exe --scene .\assets\samples\mesh-comparison\compare.woby
+```
+
+See the [sample walkthrough and prototype limits](assets/samples/mesh-comparison/README.md).
+
 Run the app:
 
 ```powershell

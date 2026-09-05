@@ -1,4 +1,5 @@
 #include "scene_screenshot.h"
+#include "comparison_view.h"
 
 #include <bimg/bimg.h>
 #include <bx/allocator.h>
@@ -222,10 +223,15 @@ void submitSceneScreenshotCapture(
     const bgfx::VertexLayout& helperLayout,
     const Bounds& sceneBounds,
     const SceneCamera& camera,
-    bool homogeneousDepth)
+    bool homogeneousDepth,
+    const ComparisonRuntime* comparison)
 {
     if (!screenshot.captureRequested) {
         return;
+    }
+    if (ui.comparison.enabled && comparison != nullptr && !comparison->ready) {
+        if (!comparison->error.empty()) { throw std::runtime_error(comparison->error); }
+        return; // Keep the request pending until its comparison is ready.
     }
 
     ensureSceneScreenshotFramebuffer(screenshot);
@@ -259,19 +265,21 @@ void submitSceneScreenshotCapture(
     bgfx::setViewTransform(screenshotSceneView, view, projection);
     bgfx::setViewTransform(screenshotHelperView, view, projection);
 
-    submitSceneFiles(
-        screenshotSceneView,
-        files,
-        ui.sceneNodes,
-        runtimes,
-        masterVertexPointSize,
-        meshProgram,
-        colorProgram,
-        pointSpriteProgram,
-        colorUniform,
-        pointParamsUniform,
-        screenshotWidth,
-        screenshotHeight);
+    if (comparison == nullptr || !submitComparisonScene(screenshotSceneView, ui, *comparison, colorProgram, colorUniform)) {
+        submitSceneFiles(
+            screenshotSceneView,
+            files,
+            ui.sceneNodes,
+            runtimes,
+            masterVertexPointSize,
+            meshProgram,
+            colorProgram,
+            pointSpriteProgram,
+            colorUniform,
+            pointParamsUniform,
+            screenshotWidth,
+            screenshotHeight);
+    }
     submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
 
     bgfx::blit(

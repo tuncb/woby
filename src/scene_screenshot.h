@@ -14,6 +14,8 @@
 
 namespace woby {
 
+struct ComparisonRuntime;
+
 struct SceneScreenshotRuntime {
     bgfx::FrameBufferHandle frameBuffer = BGFX_INVALID_HANDLE;
     bgfx::TextureHandle colorTexture = BGFX_INVALID_HANDLE;
@@ -42,7 +44,8 @@ void submitSceneScreenshotCapture(
     const bgfx::VertexLayout& helperLayout,
     const Bounds& sceneBounds,
     const SceneCamera& camera,
-    bool homogeneousDepth);
+    bool homogeneousDepth,
+    const ComparisonRuntime* comparison = nullptr);
 void failSceneScreenshotCapture(SceneScreenshotRuntime& screenshot);
 [[nodiscard]] std::optional<std::string> completeSceneScreenshotReadback(
     SceneScreenshotRuntime& screenshot,

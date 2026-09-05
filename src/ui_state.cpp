@@ -686,6 +686,7 @@ SceneNodeSettings sceneNodeSettings(const UiSceneNodeSettings& settings)
 SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
+    document.comparison = state.comparison;
     document.masterVertexPointSize = state.masterVertexPointSize;
     document.showOrigin = state.showOrigin;
     document.showGrid = state.showGrid;

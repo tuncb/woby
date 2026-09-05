@@ -784,7 +784,8 @@ TEST_CASE("scene document writer omits camera state")
     std::filesystem::remove(path);
 
     CHECK(text.find("[camera]") == std::string::npos);
-    CHECK(text.find("distance") == std::string::npos);
+    // Comparison has its own distance settings; only the camera key is forbidden.
+    CHECK(text.find("\ndistance =") == std::string::npos);
     CHECK(text.find("vertical_fov_degrees") == std::string::npos);
 }
 

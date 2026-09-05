@@ -91,6 +91,7 @@ struct UiSceneNode {
 };
 
 struct UiState {
+    ComparisonSettings comparison;
     bool running = true;
     bool isDirty = false;
     bool showOrigin = true;

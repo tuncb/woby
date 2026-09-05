@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene_up_axis.h"
+#include "comparison_settings.h"
 
 #include <array>
 #include <filesystem>
@@ -80,6 +81,7 @@ struct SceneNodeRecord {
 };
 
 struct SceneDocument {
+    ComparisonSettings comparison;
     float masterVertexPointSize = 4.0f;
     bool showOrigin = true;
     bool showGrid = true;

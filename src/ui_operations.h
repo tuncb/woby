@@ -9,6 +9,9 @@
 
 namespace woby {
 
+void setComparisonSettings(UiState& state, ComparisonSettings settings);
+void frameComparisonBounds(UiState& state, const Bounds& bounds);
+
 enum class UiRenderMode {
     solidMesh,
     triangles,

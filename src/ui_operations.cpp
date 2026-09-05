@@ -7,6 +7,19 @@
 #include <utility>
 
 namespace woby {
+void setComparisonSettings(UiState& state, ComparisonSettings settings)
+{
+    state.comparison = normalizedComparisonSettings(settings, state.files.size());
+}
+
+void frameComparisonBounds(UiState& state, const Bounds& bounds)
+{
+    if (!finitePosition(bounds.min) || !finitePosition(bounds.max)) {
+        return;
+    }
+    state.camera = frameCameraBounds(bounds, state.upAxis);
+}
+
 namespace {
 
 float finiteOr(float value, float fallback)
@@ -706,7 +719,13 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
         return false;
     }
 
+    auto comparison = state.comparison;
+    for (int* index : {&comparison.originalFile, &comparison.repairedFile}) {
+        if (*index >= 0 && static_cast<size_t>(*index) == fileIndex) { *index = -1; }
+        else if (*index >= 0 && static_cast<size_t>(*index) > fileIndex) { --*index; }
+    }
     state.files.erase(state.files.begin() + static_cast<std::ptrdiff_t>(fileIndex));
+    setComparisonSettings(state, comparison);
     state.sceneNodes.erase(
         std::remove_if(
             state.sceneNodes.begin(),
@@ -742,6 +761,7 @@ UiState prepareSceneReplacement(const UiState& current,
     setShowOrigin(prepared, document.showOrigin);
     setShowGrid(prepared, document.showGrid);
     setMasterVertexPointSize(prepared, document.masterVertexPointSize);
+    setComparisonSettings(prepared, document.comparison);
     recalculateSceneBounds(prepared);
     prepared.camera = frameCameraBounds(prepared.sceneBounds, prepared.upAxis);
     clearSceneDirty(prepared);

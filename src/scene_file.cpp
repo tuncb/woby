@@ -501,6 +501,31 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     document.showGrid = parseTomlBool(value);
                 } else if (key == "up_axis") {
                     document.upAxis = parseSceneUpAxis(value);
+                } else if (key == "comparison_enabled") {
+                    document.comparison.enabled = parseTomlBool(value);
+                } else if (key == "comparison_original_file") {
+                    document.comparison.originalFile = parseTomlInteger(value);
+                } else if (key == "comparison_repaired_file") {
+                    document.comparison.repairedFile = parseTomlInteger(value);
+                } else if (key == "comparison_mode") {
+                    const auto mode = parseTomlString(value);
+                    if (mode == "distance") { document.comparison.mode = ComparisonMode::distance; }
+                    else if (mode == "original") { document.comparison.mode = ComparisonMode::original; }
+                    else if (mode == "repaired") { document.comparison.mode = ComparisonMode::repaired; }
+                    else if (mode == "overlay") { document.comparison.mode = ComparisonMode::overlay; }
+                    else { throw std::runtime_error("Unknown comparison mode."); }
+                } else if (key == "comparison_distance_on_original") {
+                    document.comparison.distanceOnOriginal = parseTomlBool(value);
+                } else if (key == "comparison_tolerance") {
+                    document.comparison.tolerance = parseTomlFloat(value);
+                } else if (key == "comparison_color_range") {
+                    document.comparison.colorRange = parseTomlFloat(value);
+                } else if (key == "comparison_show_edges") {
+                    document.comparison.showEdges = parseTomlBool(value);
+                } else if (key == "comparison_show_boundaries") {
+                    document.comparison.showBoundaries = parseTomlBool(value);
+                } else if (key == "comparison_show_non_manifold") {
+                    document.comparison.showNonManifold = parseTomlBool(value);
                 }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
@@ -546,6 +571,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
     }
 
+    document.comparison = normalizedComparisonSettings(document.comparison, document.files.size());
     return document;
 }
 
@@ -565,6 +591,24 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
     stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
     stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
+    const auto comparison = normalizedComparisonSettings(document.comparison, document.files.size());
+    const char* mode = "distance";
+    switch (comparison.mode) {
+    case ComparisonMode::distance: break;
+    case ComparisonMode::original: mode = "original"; break;
+    case ComparisonMode::repaired: mode = "repaired"; break;
+    case ComparisonMode::overlay: mode = "overlay"; break;
+    }
+    stream << "comparison_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
+    stream << "comparison_original_file = " << comparison.originalFile << "\n";
+    stream << "comparison_repaired_file = " << comparison.repairedFile << "\n";
+    stream << "comparison_mode = \"" << mode << "\"\n";
+    stream << "comparison_distance_on_original = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
+    stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
+    stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
+    stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
+    stream << "comparison_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
+    stream << "comparison_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
 
     for (const auto& file : document.files) {
         const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);

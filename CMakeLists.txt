@@ -35,6 +35,9 @@ endif()
 woby_enable_project_warnings(woby_automation)
 
 add_executable(woby
+    src/mesh_comparison.cpp
+    src/comparison_scene.cpp
+    src/comparison_view.cpp
     src/control_importers.cpp
     src/control_importers.h
     src/control_scene.cpp
@@ -145,6 +148,19 @@ woby_compile_bgfx_shader(woby
 )
 
 woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/comparison.vert.sc"
+    TYPE vertex
+    OUTPUT_NAME vs_comparison
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/comparison.frag.sc"
+    TYPE fragment
+    OUTPUT_NAME fs_comparison
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
+)
+
+woby_compile_bgfx_shader(woby
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/color.vert.sc"
     TYPE vertex
     OUTPUT_NAME vs_color
@@ -211,6 +227,9 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        src/mesh_comparison.cpp
+        src/comparison_scene.cpp
+        tests/mesh_comparison_tests.cpp
         src/control_importers.cpp
         src/control_importers.h
         src/control_scene.cpp
