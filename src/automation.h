@@ -35,6 +35,7 @@ struct AutomationObjectCommand {
 
 using AutomationCommandPayload = std::variant<AutomationScreenshotCommand, AutomationObjectsCommand, AutomationObjectCommand>;
 using AutomationCommandId = uint64_t;
+inline constexpr size_t maxAutomationCommands = 8;
 
 struct AutomationCommand {
     AutomationCommandId id = 0;
@@ -60,8 +61,9 @@ struct AutomationObjectResult {
 
 using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationObjectsResult, AutomationObjectResult, AutomationCommandError>;
 
-// Called only by the main thread. At most one command is outstanding. Taking a
-// command starts it; its slot remains reserved until completion, even after timeout.
+// Main thread only, after UI/state updates and before rendering. Starts the oldest
+// queued command whose deadline has not expired. Only one
+// command executes at a time, until completion even after an HTTP timeout.
 [[nodiscard]] std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtime);
 // Returns false for an unknown, unstarted, or completed command ID, or a result
 // whose type does not match the command.

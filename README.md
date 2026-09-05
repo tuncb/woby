@@ -128,8 +128,9 @@ but excluding the application controls. It uses the current camera.
 Exit code `0` means success; `1` means failure. `--json` emits one JSON value on stdout,
 including `{"error":"..."}` for command failures. Instance listing returns an array;
 capture returns `{"instance":"review","path":"C:\\output\\view.png"}` only after saving.
-Captures fail explicitly if the instance is starting, processing model files, or already
-capturing. After a timeout, queued work is canceled; a capture already submitted to the
+Commands queue in admission order, with at most eight active/queued commands total.
+Captures fail explicitly if the instance is starting, processing model files, or the
+UI screenshot pipeline is busy. After a timeout, queued work is canceled; a capture already submitted to the
 GPU may still finish and save. Closing the viewer releases waiting clients.
 
 See [the local HTTP API](doc/automation.md) for direct scripting and discovery details.
@@ -147,6 +148,13 @@ while objects stay loaded, even when another file is removed and indices shift. 
 objects, reopened scenes, and restarted viewers invalidate old IDs. IDs are not saved
 in `.woby` files. See [object discovery and lifetime](doc/automation.md#discover-and-resolve-scene-objects)
 for response fields and stale-ID errors.
+
+Scene commands return an admission `sequence` as a decimal string. They execute on
+the main thread in FIFO order through a bounded queue; a screenshot finishes writing
+before the next command executes. Automation assumes one coordinating client and no
+manual scene edits during a workflow. Concurrent clients and UI input are serialized
+safely, but their effects may interleave. See [command ordering](doc/automation.md#command-ordering-and-concurrency)
+for queue, timeout, and concurrency semantics.
 
 ## Build
 

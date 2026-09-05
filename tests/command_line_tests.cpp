@@ -101,6 +101,14 @@ TEST_CASE("control CLI supports object enumeration and lookup")
     CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "object", "id", "other"}), std::runtime_error);
 }
 
+TEST_CASE("control CLI rejects removed revision commands and options")
+{
+    CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "revision"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "screenshot", "view.png", "--if-revision", "old-token"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "objects", "--if-revision", "old-token"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "object", "some-id", "--if-revision", "old-token"}), std::runtime_error);
+}
+
 TEST_CASE("control CLI rejects ambiguous and incomplete commands")
 {
     const std::vector<std::vector<std::string>> cases = {

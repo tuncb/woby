@@ -2841,34 +2841,6 @@ int main(int argc, char** argv)
                 setToastMessage(toast, screenshotDialogStatus);
             }
 
-            if (const auto command = woby::takeAutomationCommand(*automation)) {
-                try {
-                    std::visit([&](const auto& payload) {
-                        using Command = std::decay_t<decltype(payload)>;
-                        if constexpr (std::is_same_v<Command, woby::AutomationScreenshotCommand>) {
-                            if (backgroundLoad.active || gpuFinalize.active) {
-                                throw std::runtime_error("Cannot capture while model files are being processed.");
-                            }
-                            requestSceneScreenshotCapture(sceneScreenshot, payload.outputPath);
-                            automationScreenshotCommandId = command->id;
-                        } else if constexpr (std::is_same_v<Command, woby::AutomationObjectsCommand>) {
-                            woby::completeAutomationCommand(*automation, command->id, woby::AutomationObjectsResult{woby::sceneObjects(ui)});
-                        } else {
-                            static_assert(std::is_same_v<Command, woby::AutomationObjectCommand>);
-                            const auto object = woby::findSceneObject(ui, payload.objectId);
-                            if (object) {
-                                woby::completeAutomationCommand(*automation, command->id, woby::AutomationObjectResult{*object});
-                            } else {
-                                woby::completeAutomationCommand(*automation, command->id,
-                                    woby::AutomationCommandError{"Unknown or stale object ID.", -32005});
-                            }
-                        }
-                    }, command->payload);
-                } catch (const std::exception& exception) {
-                    woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what()});
-                }
-            }
-
             const auto droppedPaths = takePendingDropPaths(dragDropState);
             if (!droppedPaths.empty()) {
                 if (processingFiles) {
@@ -3269,6 +3241,40 @@ int main(int argc, char** argv)
             woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
+            // UI and loading commits have finished. No logical edits occur between
+            // executing commands here and submitting their screenshots below.
+            for (size_t executed = 0; executed < woby::maxAutomationCommands; ++executed) {
+                const auto command = woby::takeAutomationCommand(*automation);
+                if (!command) {
+                    break;
+                }
+                try {
+                    std::visit([&](const auto& payload) {
+                        using Command = std::decay_t<decltype(payload)>;
+                        if constexpr (std::is_same_v<Command, woby::AutomationScreenshotCommand>) {
+                            if (backgroundLoad.active || gpuFinalize.active) {
+                                throw std::runtime_error("Cannot capture while model files are being processed.");
+                            }
+                            requestSceneScreenshotCapture(sceneScreenshot, payload.outputPath);
+                            automationScreenshotCommandId = command->id;
+                        } else if constexpr (std::is_same_v<Command, woby::AutomationObjectsCommand>) {
+                            woby::completeAutomationCommand(*automation, command->id,
+                                woby::AutomationObjectsResult{woby::sceneObjects(ui)});
+                        } else {
+                            static_assert(std::is_same_v<Command, woby::AutomationObjectCommand>);
+                            const auto object = woby::findSceneObject(ui, payload.objectId);
+                            if (object) {
+                                woby::completeAutomationCommand(*automation, command->id, woby::AutomationObjectResult{*object});
+                            } else {
+                                woby::completeAutomationCommand(*automation, command->id,
+                                    woby::AutomationCommandError{"Unknown or stale object ID.", -32005});
+                            }
+                        }
+                    }, command->payload);
+                } catch (const std::exception& exception) {
+                    woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what()});
+                }
+            }
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
 
             const uint32_t sceneViewportWidth = std::max(width, 1u);
@@ -3399,7 +3405,8 @@ int main(int argc, char** argv)
             } catch (const std::exception& exception) {
                 failSceneScreenshotCapture(sceneScreenshot);
                 if (automationScreenshotCommandId) {
-                    woby::completeAutomationCommand(*automation, *automationScreenshotCommandId, woby::AutomationCommandError{exception.what()});
+                    woby::completeAutomationCommand(*automation, *automationScreenshotCommandId,
+                        woby::AutomationCommandError{exception.what()});
                     automationScreenshotCommandId.reset();
                 }
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
@@ -3419,14 +3426,16 @@ int main(int argc, char** argv)
                 if (screenshotStatus.has_value()) {
                     setToastMessage(toast, screenshotStatus.value());
                     if (automationScreenshotCommandId) {
-                        woby::completeAutomationCommand(*automation, *automationScreenshotCommandId, woby::AutomationScreenshotResult{sceneScreenshot.outputPath});
+                        woby::completeAutomationCommand(*automation, *automationScreenshotCommandId,
+                            woby::AutomationScreenshotResult{sceneScreenshot.outputPath});
                         automationScreenshotCommandId.reset();
                     }
                 }
             } catch (const std::exception& exception) {
                 sceneScreenshot.readbackPending = false;
                 if (automationScreenshotCommandId) {
-                    woby::completeAutomationCommand(*automation, *automationScreenshotCommandId, woby::AutomationCommandError{exception.what()});
+                    woby::completeAutomationCommand(*automation, *automationScreenshotCommandId,
+                        woby::AutomationCommandError{exception.what()});
                     automationScreenshotCommandId.reset();
                 }
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());

@@ -11,6 +11,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
+#include <deque>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -36,6 +37,7 @@ struct AutomationRuntime {
     bool stopping = false;
     AutomationCommandId nextCommandId = 1;
     std::string objectIdPrefix;
+    std::deque<std::shared_ptr<AutomationRequest>> pending;
     std::shared_ptr<AutomationRequest> request;
 };
 
@@ -53,16 +55,17 @@ Json rpcResult(const Json& id, const Json& result)
     return {{"jsonrpc", "2.0"}, {"id", id}, {"result", result}};
 }
 
-Json instanceInfo(const AutomationRuntime& runtime)
+Json instanceInfo(AutomationRuntime& runtime)
 {
+    std::lock_guard lock(runtime.mutex);
     const auto& instance = runtime.registration.instance;
     return {{"id", instance.id}, {"pid", instance.pid}, {"apiVersion", 1},
         {"url", "http://127.0.0.1:" + std::to_string(instance.port) + "/rpc"},
-        {"ready", runtime.ready.load()}};
+        {"ready", runtime.ready.load()}, {"queuedCommands", runtime.pending.size()},
+        {"activeSequence", runtime.request ? Json(std::to_string(runtime.request->command.id)) : Json(nullptr)}};
 }
 
 struct AutomationCommandMessages {
-    const char* busy;
     const char* timedOut;
     const char* expired;
 };
@@ -70,7 +73,6 @@ struct AutomationCommandMessages {
 AutomationCommandMessages commandMessages(const AutomationScreenshotCommand&)
 {
     return {
-        "A screenshot is already pending.",
         "Screenshot timed out; a capture already in progress may still be saved.",
         "Screenshot timed out before capture.",
     };
@@ -78,7 +80,7 @@ AutomationCommandMessages commandMessages(const AutomationScreenshotCommand&)
 
 AutomationCommandMessages commandMessages(const AutomationObjectsCommand&)
 {
-    return {"An object query is already pending.", "Object query timed out.", "Object query timed out before execution."};
+    return {"Object query timed out.", "Object query timed out before execution."};
 }
 
 AutomationCommandMessages commandMessages(const AutomationObjectCommand&)
@@ -134,6 +136,15 @@ Json commandResponse(const AutomationRuntime&, const AutomationCommandError& err
     return rpcError(nullptr, error.code, error.message);
 }
 
+Json completedResponse(const AutomationRuntime& runtime, const AutomationCommand& command,
+    const AutomationCommandResult& result)
+{
+    auto response = std::visit([&](const auto& value) { return commandResponse(runtime, value); }, result);
+    auto& metadata = response.contains("error") ? response["error"]["data"] : response["result"];
+    metadata["sequence"] = std::to_string(command.id);
+    return response;
+}
+
 bool resultMatches(const AutomationScreenshotCommand&, const AutomationCommandResult& result)
 {
     return std::holds_alternative<AutomationScreenshotResult>(result);
@@ -159,22 +170,26 @@ Json submitAutomationCommand(
     if (runtime.stopping || !runtime.ready.load()) {
         return rpcError(id, -32001, "Instance is not ready.");
     }
-    if (runtime.request) {
-        const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, runtime.request->command.payload);
-        return rpcError(id, -32002, messages.busy);
+    if (runtime.pending.size() + (runtime.request ? 1u : 0u) >= maxAutomationCommands) {
+        return rpcError(id, -32002, "Automation command queue is full.");
+    }
+    if (runtime.nextCommandId == 0) {
+        return rpcError(id, -32603, "Automation command sequences exhausted.");
     }
     auto request = std::make_shared<AutomationRequest>();
     request->command = {runtime.nextCommandId++, std::move(payload)};
     request->deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds);
     const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, request->command.payload);
-    runtime.request = request;
+    runtime.pending.push_back(request);
     if (!runtime.changed.wait_until(lock, request->deadline, [&] { return request->finished || runtime.stopping; })) {
         // Started work may still finish after the HTTP deadline. Reserve its slot
         // until the main thread completes that command, so results cannot cross requests.
-        if (!request->started && runtime.request == request) {
-            runtime.request.reset();
+        if (!request->started) {
+            std::erase(runtime.pending, request);
         }
-        return rpcError(id, -32003, messages.timedOut);
+        auto response = rpcError(id, -32003, messages.timedOut);
+        response["error"]["data"]["sequence"] = std::to_string(request->command.id);
+        return response;
     }
     if (runtime.stopping) {
         return rpcError(id, -32001, "Instance is shutting down.");
@@ -213,8 +228,9 @@ Json captureScreenshot(AutomationRuntime& runtime, const Json& id, const Json& p
     return submitAutomationCommand(runtime, id, AutomationScreenshotCommand{path.lexically_normal()}, timeoutSeconds);
 }
 
-Json queryObjects(AutomationRuntime& runtime, const Json& id, const Json& params, bool singleObject)
+Json queryScene(AutomationRuntime& runtime, const Json& id, const Json& params, const std::string& method)
 {
+    const bool singleObject = method == "object.get";
     for (const auto& item : params.items()) {
         if (item.key() != "timeoutSeconds" && !(singleObject && item.key() == "id")) {
             return rpcError(id, -32602, "Unknown object query parameter: " + item.key());
@@ -301,7 +317,7 @@ void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, http
             } else if (method == "screenshot.capture") {
                 result = captureScreenshot(runtime, id, params);
             } else if (method == "objects.list" || method == "object.get") {
-                result = queryObjects(runtime, id, params, method == "object.get");
+                result = queryScene(runtime, id, params, method);
             } else {
                 result = rpcError(id, -32601, "Unknown method: " + method);
             }
@@ -312,7 +328,8 @@ void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, http
     response.set_content(result.dump(), "application/json");
 }
 
-Json callInstance(const AutomationInstance& instance, const std::string& method, const Json& params, int timeoutSeconds)
+Json callInstance(const AutomationInstance& instance, const std::string& method, const Json& params,
+    int timeoutSeconds, Json* rpcFailure = nullptr)
 {
     httplib::Client client("127.0.0.1", instance.port);
     client.set_connection_timeout(1, 0);
@@ -332,6 +349,9 @@ Json callInstance(const AutomationInstance& instance, const std::string& method,
         throw std::runtime_error("Invalid response from instance '" + instance.id + "'.");
     }
     if (body.contains("error")) {
+        if (rpcFailure) {
+            *rpcFailure = body["error"];
+        }
         throw std::runtime_error(body["error"].value("message", "Automation command failed."));
     }
     return body.at("result");
@@ -355,7 +375,9 @@ AutomationOwner startAutomation(const std::optional<std::string>& instanceId, co
     const auto directory = registryDirectory.empty() ? automationRegistryDirectory() : registryDirectory;
     reserveAutomationInstance(runtime->registration, directory, instanceId.value_or("woby-" + automationRandomHex(8u)));
     auto* pointer = runtime.get();
-    runtime->server.new_task_queue = [] { return new httplib::ThreadPool(4, 4, 16); };
+    // Waiting scene commands must leave HTTP workers available for discovery and
+    // rejecting excess work. Admission is bounded independently of the HTTP pool.
+    runtime->server.new_task_queue = [] { return new httplib::ThreadPool(maxAutomationCommands + 4, maxAutomationCommands + 4, 32); };
     runtime->server.set_payload_max_length(16384u);
     runtime->server.set_read_timeout(5, 0);
     runtime->server.set_write_timeout(5, 0);
@@ -409,23 +431,34 @@ void setAutomationReady(AutomationRuntime& runtime)
 std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtime)
 {
     std::lock_guard lock(runtime.mutex);
-    if (!runtime.request || runtime.request->started || runtime.stopping) {
+    if (runtime.request || runtime.stopping) {
         return {};
     }
-    if (std::chrono::steady_clock::now() >= runtime.request->deadline) {
-        const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, runtime.request->command.payload);
-        runtime.request->response = rpcError(nullptr, -32003, messages.expired);
-        runtime.request->finished = true;
-        runtime.request.reset();
-        runtime.changed.notify_all();
-        return {};
+    while (!runtime.pending.empty()) {
+        const auto& request = runtime.pending.front();
+        std::optional<AutomationCommandError> error;
+        if (std::chrono::steady_clock::now() >= request->deadline) {
+            const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, request->command.payload);
+            error = AutomationCommandError{messages.expired, -32003};
+        }
+        if (error) {
+            request->response = completedResponse(runtime, request->command, *error);
+            request->finished = true;
+            runtime.pending.pop_front();
+            runtime.changed.notify_all();
+            continue;
+        }
+        auto command = request->command;
+        request->started = true;
+        runtime.request = request;
+        runtime.pending.pop_front();
+        return command;
     }
-    const auto command = runtime.request->command;
-    runtime.request->started = true;
-    return command;
+    return {};
 }
 
-bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId id, const AutomationCommandResult& result)
+bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId id,
+    const AutomationCommandResult& result)
 {
     std::lock_guard lock(runtime.mutex);
     if (runtime.stopping || !runtime.request || !runtime.request->started || runtime.request->command.id != id) {
@@ -435,7 +468,7 @@ bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId i
         && !std::visit([&](const auto& command) { return resultMatches(command, result); }, runtime.request->command.payload)) {
         return false;
     }
-    runtime.request->response = std::visit([&](const auto& value) { return commandResponse(runtime, value); }, result);
+    runtime.request->response = completedResponse(runtime, runtime.request->command, result);
     runtime.request->finished = true;
     runtime.request.reset();
     runtime.changed.notify_all();
@@ -444,6 +477,7 @@ bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId i
 
 int runAutomationCommand(const ControlArguments& arguments, const std::filesystem::path& registryDirectory)
 {
+    Json rpcFailure;
     try {
         const auto directory = registryDirectory.empty() ? automationRegistryDirectory() : registryDirectory;
         if (arguments.command == ControlCommand::instances) {
@@ -474,20 +508,21 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
         }
         const auto instance = readAutomationInstance(directory, *arguments.instanceId);
         verifyInstance(instance);
+        Json params = {{"timeoutSeconds", arguments.timeoutSeconds}};
         if (arguments.command == ControlCommand::objects || arguments.command == ControlCommand::object) {
-            Json params = {{"timeoutSeconds", arguments.timeoutSeconds}};
             if (arguments.command == ControlCommand::object) {
                 params["id"] = arguments.objectId;
             }
             const auto result = callInstance(instance,
-                arguments.command == ControlCommand::objects ? "objects.list" : "object.get",
-                params, arguments.timeoutSeconds + 5);
+                arguments.command == ControlCommand::objects ? "objects.list"
+                    : "object.get",
+                params, arguments.timeoutSeconds + 5, &rpcFailure);
             std::printf("%s\n", result.dump(arguments.json ? -1 : 2).c_str());
             return 0;
         }
         const auto outputPath = std::filesystem::absolute(arguments.outputPath).lexically_normal();
-        const auto result = callInstance(instance, "screenshot.capture",
-            {{"path", pathToUtf8(outputPath)}, {"timeoutSeconds", arguments.timeoutSeconds}}, arguments.timeoutSeconds + 5);
+        params["path"] = pathToUtf8(outputPath);
+        const auto result = callInstance(instance, "screenshot.capture", params, arguments.timeoutSeconds + 5, &rpcFailure);
         if (arguments.json) {
             std::printf("%s\n", result.dump().c_str());
         } else {
@@ -496,7 +531,13 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
         return 0;
     } catch (const std::exception& error) {
         if (arguments.json) {
-            const Json result = {{"error", error.what()}};
+            Json result = {{"error", error.what()}};
+            if (rpcFailure.contains("code")) {
+                result["code"] = rpcFailure["code"];
+            }
+            if (rpcFailure.contains("data")) {
+                result["data"] = rpcFailure["data"];
+            }
             std::printf("%s\n", result.dump().c_str());
         } else {
             std::fprintf(stderr, "%s\n", error.what());

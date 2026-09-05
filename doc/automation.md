@@ -1,13 +1,14 @@
 # Local automation API (version 1)
 
 Every viewer exposes `POST http://127.0.0.1:<port>/rpc` on an OS-assigned port. CLI
-and HTTP requests share the same command slot. Control commands execute before SDL
+and HTTP requests share the same bounded FIFO command queue. Control commands execute before SDL
 initialization, so they do not create a second window or renderer.
 
 ## Instance discovery
 
 Use `woby ctl instances --json` to list live instances. Each result includes `id`, `pid`,
-`url`, `apiVersion`, and `ready`. Discovery checks the authenticated endpoint and ignores
+`url`, `apiVersion`, `ready`, `queuedCommands`, and `activeSequence` (a string, or null).
+The queued count excludes the active command. Discovery checks the authenticated endpoint and ignores
 stale records, including records left by a crashed process. An instance may be listed
 as `ready: false` while startup loads models. Wait until ready before requesting capture.
 
@@ -61,12 +62,12 @@ optional integer from 1 to 3600 (default 60). Unknown parameters are rejected. T
 response waits for GPU readback and PNG writing, then returns:
 
 ```json
-{"jsonrpc":"2.0","id":2,"result":{"instance":"review","path":"C:\\output\\view.png"}}
+{"jsonrpc":"2.0","id":2,"result":{"instance":"review","path":"C:\\output\\view.png","sequence":"2"}}
 ```
 
 The result path reflects `.png` extension normalization. Parent directories are created;
 existing files are overwritten. Output matches the UI screenshot: 1920 × 1800, current
-camera, scene and helpers, no controls. Only one automation capture is outstanding at a
+camera, scene and helpers, no controls. Only one automation command executes at a
 time. HTTP handlers never access UiState or GPU handles; the main thread takes the
 request, uses the existing screenshot pipeline, and signals completion.
 
@@ -74,9 +75,51 @@ Internally, validated requests become typed `AutomationCommand` payloads. The ma
 thread takes them through `takeAutomationCommand` and reports a typed result or error
 through `completeAutomationCommand`. Each command has an internal ID independent of
 the client's JSON-RPC ID; stale or duplicate completions cannot finish another command.
-The runtime currently allows one outstanding command, retaining its slot until started
-work completes even if the HTTP deadline expires. Screenshot is the first command type.
+The runtime retains the active command until started work completes even if the HTTP
+deadline expires. Subsequent commands stay queued until that completion.
 Instance discovery remains a runtime-only query and does not wait for main-thread work.
+
+### Command ordering and concurrency
+
+Every successful scene command returns a `sequence` alongside its result. Sequences
+are decimal strings assigned in increasing order when commands are admitted to the
+queue, independently of the client's JSON-RPC `id`. Strings preserve all 64 bits in
+clients that represent JSON numbers as floating point.
+
+Commands execute in FIFO admission order, with at most eight admitted commands total
+(active plus queued). A full queue returns `-32002`. Admission order across concurrent
+connections is defined by the returned sequence, not by client send time or response
+arrival time. Dependent scripts should wait for each response before submitting the
+next command. The runtime leaves HTTP workers available for discovery while scene
+requests wait.
+
+HTTP handlers only validate and enqueue commands. Scene commands, UI input, and load
+commits execute on the main thread. Query results own their data, and object IDs are
+resolved afresh at execution. A screenshot holds the execution slot through GPU
+readback and PNG writing, so subsequent commands cannot overtake it. Manual screenshot
+requests also reject a capture if another is pending.
+
+Automation assumes a single coordinating client and no manual changes during a
+workflow. Multiple clients and UI edits can interleave safely, but the application
+does not detect intervening changes or guarantee a consistent scene across separate
+requests. Commands use the state present when they execute. A later query waits for
+earlier admitted commands, but does not wait for unrelated background loads. Separate
+requests are not an atomic batch.
+
+Timeouts include queue waiting. Expired queued commands are removed without execution;
+started commands retain the execution slot until completion. Later commands retain
+their relative order when earlier commands expire or fail. Accepted-command timeouts
+include their `sequence` in error `data`; sequence gaps are expected. Disconnecting a
+client is not cancellation. Viewer shutdown releases both active and queued clients.
+CLI JSON errors expose the `error` message, RPC `code`, and available `data`.
+
+Scene revision tracking has been removed. `scene.revision` is an unknown method
+(`-32601`), `ifRevision` is an unknown parameter (`-32602`), and the CLI rejects
+`revision` and `--if-revision`. Results no longer include a `revision` field.
+
+For future mutating handlers, update logical state and bounds/dirty tracking on the
+main thread before completing the command. Render code must continue to read
+already-updated state.
 
 ### Discover and resolve scene objects
 
@@ -125,7 +168,7 @@ In addition to standard parse/request/method/parameter/internal errors:
 | Code | Meaning |
 | --- | --- |
 | -32001 | Instance is starting or shutting down |
-| -32002 | An automation command is already pending |
+| -32002 | Automation queue is full (eight admitted commands) |
 | -32003 | Command deadline expired |
 | -32004 | Main-thread capture failed, including busy loading/UI capture or file-write errors |
 | -32005 | Unknown or stale object ID |
@@ -151,5 +194,6 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($instance.port)/rpc" `
     -ContentType 'application/json' -Body $request -TimeoutSec 65
 ```
 
-Version 1 exposes instance discovery, screenshot capture, object enumeration, and object
-lookup. Scene editing, job/event APIs, and MCP integration can use the same runtime boundary.
+Version 1 exposes instance discovery, screenshot capture, object enumeration, object
+lookup, and FIFO command ordering. Scene editing, job/event APIs, and MCP
+integration can use the same runtime boundary.
