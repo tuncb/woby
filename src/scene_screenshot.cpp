@@ -1,11 +1,13 @@
 #include "scene_screenshot.h"
 
 #include <bimg/bimg.h>
-#include <bx/file.h>
+#include <bx/allocator.h>
 #include <bx/math.h>
+#include <bx/readerwriter.h>
 
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <stdexcept>
 
 namespace woby {
@@ -19,16 +21,19 @@ constexpr uint16_t screenshotHeight = 1800;
 
 std::string fileDisplayName(const std::filesystem::path& path)
 {
-    const auto filename = path.filename().string();
+    const auto filenameUtf8 = path.filename().u8string();
+    const std::string filename(filenameUtf8.begin(), filenameUtf8.end());
     if (!filename.empty()) {
         return filename;
     }
-    return path.string();
+    const auto text = path.u8string();
+    return std::string(text.begin(), text.end());
 }
 
 std::filesystem::path pngPath(const std::filesystem::path& path)
 {
-    std::string extension = path.extension().string();
+    const auto extensionUtf8 = path.extension().u8string();
+    std::string extension(extensionUtf8.begin(), extensionUtf8.end());
     std::transform(
         extension.begin(),
         extension.end(),
@@ -134,12 +139,19 @@ void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
         std::filesystem::create_directories(parentPath);
     }
 
-    bx::FileWriter writer;
-    bx::Error error;
-    const std::string outputPath = screenshot.outputPath.string();
-    if (!writer.open(bx::FilePath(outputPath.c_str()), false, &error)) {
-        throw std::runtime_error("Failed to open screenshot file: " + outputPath);
+    // Encode to memory, then use filesystem-aware output so Windows Unicode paths work.
+    // RGBA lets bimg write whole rows instead of making a writer call for every channel.
+    auto rgbaPixels = screenshot.pixels;
+    for (size_t index = 0; index < rgbaPixels.size(); index += 4u) {
+        std::swap(rgbaPixels[index], rgbaPixels[index + 2u]);
     }
+    bx::DefaultAllocator allocator;
+    bx::MemoryBlock block(&allocator);
+    block.more(static_cast<uint32_t>(rgbaPixels.size()) + screenshotHeight * 16u + 1024u);
+    bx::MemoryWriter writer(&block);
+    bx::Error error;
+    const auto outputPathUtf8 = screenshot.outputPath.u8string();
+    const std::string outputPath(outputPathUtf8.begin(), outputPathUtf8.end());
 
     const bool yflip = bgfx::getCaps()->originBottomLeft;
     const int32_t result = bimg::imageWritePng(
@@ -147,12 +159,17 @@ void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
         screenshotWidth,
         screenshotHeight,
         screenshotWidth * 4u,
-        screenshot.pixels.data(),
-        bimg::TextureFormat::BGRA8,
+        rgbaPixels.data(),
+        bimg::TextureFormat::RGBA8,
         yflip,
         &error);
-    writer.close();
     if (result <= 0 || !error.isOk()) {
+        throw std::runtime_error("Failed to encode screenshot PNG: " + outputPath);
+    }
+    std::ofstream output(screenshot.outputPath, std::ios::binary | std::ios::trunc);
+    output.write(static_cast<const char*>(block.more()), static_cast<std::streamsize>(writer.seek()));
+    output.close();
+    if (!output) {
         throw std::runtime_error("Failed to write screenshot PNG: " + outputPath);
     }
 }

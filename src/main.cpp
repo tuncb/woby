@@ -13,6 +13,7 @@
 #include "scene_screenshot.h"
 #include "ui_operations.h"
 #include "ui_state.h"
+#include "automation.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -388,9 +389,10 @@ std::filesystem::path normalizedPath(const std::filesystem::path& path)
 
 std::string appWindowTitle(
     const std::optional<std::filesystem::path>& currentScenePath,
-    bool isDirty)
+    bool isDirty,
+    const std::string& instanceId)
 {
-    std::string title = "woby - ";
+    std::string title = "woby [" + instanceId + "] - ";
     title += currentScenePath.has_value()
         ? fileDisplayName(currentScenePath.value())
         : "untitled";
@@ -404,9 +406,10 @@ std::string appWindowTitle(
 void updateAppWindowTitle(
     SDL_Window* window,
     const std::optional<std::filesystem::path>& currentScenePath,
-    bool isDirty)
+    bool isDirty,
+    const std::string& instanceId)
 {
-    SDL_SetWindowTitle(window, appWindowTitle(currentScenePath, isDirty).c_str());
+    SDL_SetWindowTitle(window, appWindowTitle(currentScenePath, isDirty, instanceId).c_str());
 }
 
 void setLastItemTooltip(const char* text)
@@ -2415,9 +2418,17 @@ int main(int argc, char** argv)
 {
     bool sdlInitialized = false;
     bool bgfxInitialized = false;
+    woby::AutomationOwner automation(nullptr, &woby::stopAutomation);
 
     try {
         const auto commandLine = woby::parseCommandLine(argc, argv);
+        if (commandLine.showHelp) {
+            woby::printCommandLineHelp();
+            return 0;
+        }
+        if (commandLine.control.command != woby::ControlCommand::none) {
+            return woby::runAutomationCommand(commandLine.control);
+        }
         initializeLogging(commandLine);
         const auto startupStart = woby::PerformanceClock::now();
         if (commandLine.showVersion) {
@@ -2426,13 +2437,16 @@ int main(int argc, char** argv)
             return 0;
         }
 
+        automation = woby::startAutomation(commandLine.instanceId);
+        const std::string instanceId = woby::automationInstanceId(*automation);
+
         const auto sdlStart = woby::PerformanceClock::now();
         if (!SDL_Init(SDL_INIT_VIDEO)) {
             throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
         }
         sdlInitialized = true;
 
-        SDL_Window* rawWindow = SDL_CreateWindow("woby", 1280, 720, SDL_WINDOW_RESIZABLE);
+        SDL_Window* rawWindow = SDL_CreateWindow(("woby [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);
         if (rawWindow == nullptr) {
             throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
         }
@@ -2529,6 +2543,7 @@ int main(int argc, char** argv)
         BackgroundLoadRuntime backgroundLoad;
         GpuFinalizeRuntime gpuFinalize;
         SceneScreenshotRuntime sceneScreenshot;
+        bool automationScreenshotActive = false;
         DragDropState dragDropState;
         std::optional<std::filesystem::path> pendingDirtyOpenScenePath;
         bool requestDirtyOpenWarning = false;
@@ -2544,6 +2559,7 @@ int main(int argc, char** argv)
         woby::FrameTimingAccumulator frameTimingAccumulator;
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
+        woby::setAutomationReady(*automation);
         while (running) {
             woby::FrameTimings frameTimings;
             frameTimings.frameIndex = ++frameIndex;
@@ -2754,6 +2770,18 @@ int main(int argc, char** argv)
                 setToastMessage(toast, screenshotDialogStatus);
             }
 
+            if (const auto screenshotPath = woby::takeAutomationScreenshot(*automation)) {
+                try {
+                    if (backgroundLoad.active || gpuFinalize.active) {
+                        throw std::runtime_error("Cannot capture while model files are being processed.");
+                    }
+                    requestSceneScreenshotCapture(sceneScreenshot, *screenshotPath);
+                    automationScreenshotActive = true;
+                } catch (const std::exception& exception) {
+                    woby::completeAutomationScreenshot(*automation, {}, exception.what());
+                }
+            }
+
             const auto droppedPaths = takePendingDropPaths(dragDropState);
             if (!droppedPaths.empty()) {
                 if (processingFiles) {
@@ -2773,7 +2801,7 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::pendingIo, stageStart);
 
             woby::updateSceneDirty(ui, cleanSceneDocument);
-            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
+            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
 
             const auto now = std::chrono::steady_clock::now();
             const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();
@@ -3119,7 +3147,7 @@ int main(int argc, char** argv)
 
             woby::recalculateSceneBounds(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
-            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty);
+            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
 
             const uint32_t sceneViewportWidth = std::max(width, 1u);
@@ -3249,6 +3277,10 @@ int main(int argc, char** argv)
                     homogeneousDepth);
             } catch (const std::exception& exception) {
                 failSceneScreenshotCapture(sceneScreenshot);
+                if (automationScreenshotActive) {
+                    woby::completeAutomationScreenshot(*automation, {}, exception.what());
+                    automationScreenshotActive = false;
+                }
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
             }
 
@@ -3265,9 +3297,17 @@ int main(int argc, char** argv)
                     frameNumber);
                 if (screenshotStatus.has_value()) {
                     setToastMessage(toast, screenshotStatus.value());
+                    if (automationScreenshotActive) {
+                        woby::completeAutomationScreenshot(*automation, sceneScreenshot.outputPath);
+                        automationScreenshotActive = false;
+                    }
                 }
             } catch (const std::exception& exception) {
                 sceneScreenshot.readbackPending = false;
+                if (automationScreenshotActive) {
+                    woby::completeAutomationScreenshot(*automation, {}, exception.what());
+                    automationScreenshotActive = false;
+                }
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
             }
             recordFrameStage(frameTimings, woby::FrameStage::bgfxFrame, stageStart);
@@ -3285,6 +3325,7 @@ int main(int argc, char** argv)
             }
         }
 
+        automation.reset();
         backgroundLoad.cancelRequested.store(true);
         if (backgroundLoad.worker.joinable()) {
             backgroundLoad.worker.join();
@@ -3311,6 +3352,7 @@ int main(int argc, char** argv)
 
         return 0;
     } catch (const std::exception& exception) {
+        automation.reset();
         std::fprintf(stderr, "%s\n", exception.what());
         if (bgfxInitialized) {
             bgfx::shutdown();

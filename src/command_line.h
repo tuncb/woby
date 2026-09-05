@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace woby {
@@ -23,8 +24,25 @@ struct ModelPathOption {
     std::filesystem::path path;
 };
 
+enum class ControlCommand {
+    none,
+    instances,
+    screenshot,
+};
+
+struct ControlArguments {
+    ControlCommand command = ControlCommand::none;
+    std::optional<std::string> instanceId;
+    std::filesystem::path outputPath;
+    int timeoutSeconds = 60;
+    bool json = false;
+};
+
 struct AppArguments {
+    bool showHelp = false;
     bool showVersion = false;
+    std::optional<std::string> instanceId;
+    ControlArguments control;
     LogLevel logLevel = LogLevel::off;
     std::optional<std::filesystem::path> logFile;
     bool logPerformance = false;
@@ -35,5 +53,6 @@ struct AppArguments {
 };
 
 AppArguments parseCommandLine(int argc, char** argv);
+[[nodiscard]] bool validInstanceId(const std::string& value);
 
 } // namespace woby

@@ -15,6 +15,22 @@ find_package(tinyobjloader CONFIG REQUIRED)
 find_package(meshoptimizer CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(httplib CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Threads REQUIRED)
+
+add_library(woby_automation STATIC
+    src/automation.cpp
+    src/automation.h
+    src/automation_registry.cpp
+    src/automation_registry.h
+)
+target_include_directories(woby_automation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(woby_automation PUBLIC httplib::httplib nlohmann_json::nlohmann_json Threads::Threads)
+if(WIN32)
+    target_link_libraries(woby_automation PRIVATE bcrypt advapi32 shell32 ole32)
+endif()
+woby_enable_project_warnings(woby_automation)
 
 add_executable(woby
     src/background_load.cpp
@@ -37,6 +53,7 @@ add_executable(woby
     src/main.cpp
     src/model_load.cpp
     src/model_load.h
+    src/utf8_path.h
     src/native_dialogs.cpp
     src/native_dialogs.h
     src/model_mesh.cpp
@@ -64,6 +81,7 @@ target_compile_features(woby PRIVATE cxx_std_20)
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby PRIVATE
+    woby_automation
     SDL3::SDL3
     bgfx::bgfx
     tinyobjloader::tinyobjloader
@@ -192,6 +210,7 @@ if(BUILD_TESTING)
         src/hover_pick.h
         src/model_load.cpp
         src/model_load.h
+        src/utf8_path.h
         src/model_mesh.cpp
         src/model_mesh.h
         src/obj_mesh.cpp
@@ -208,6 +227,7 @@ if(BUILD_TESTING)
         src/ui_operations.h
         src/ui_state.cpp
         src/ui_state.h
+        tests/automation_tests.cpp
         tests/background_load_tests.cpp
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
@@ -223,6 +243,7 @@ if(BUILD_TESTING)
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_link_libraries(woby_tests PRIVATE
+        woby_automation
         doctest::doctest
         bgfx::bgfx
         tinyobjloader::tinyobjloader

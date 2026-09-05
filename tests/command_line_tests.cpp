@@ -42,6 +42,69 @@ TEST_CASE("command line defaults keep logging off")
     CHECK_FALSE(arguments.logSlowFrameMilliseconds.has_value());
     CHECK_FALSE(arguments.scenePath.has_value());
     CHECK(arguments.inputPaths.empty());
+    CHECK_FALSE(arguments.instanceId.has_value());
+    CHECK(arguments.control.command == woby::ControlCommand::none);
+}
+
+TEST_CASE("instance IDs are explicit unique names with portable spelling")
+{
+    const auto arguments = parse({"woby", "--instance", "review-01", "--file", "model.obj"});
+    REQUIRE(arguments.instanceId.has_value());
+    CHECK(*arguments.instanceId == "review-01");
+    CHECK(arguments.inputPaths.size() == 1u);
+    for (const std::string id : {"", "Main", "../main", "has space", "-main", "a.b", "a/b", "a\\b"}) {
+        CHECK_FALSE(woby::validInstanceId(id));
+        CHECK_THROWS_AS(parse({"woby", "--instance", id}), std::runtime_error);
+    }
+    CHECK(woby::validInstanceId("main_2"));
+    CHECK(woby::validInstanceId(std::string(64u, 'a')));
+    CHECK_FALSE(woby::validInstanceId(std::string(65u, 'a')));
+    CHECK_THROWS_AS(parse({"woby", "--instance"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "--instance", "a", "--instance", "b"}), std::runtime_error);
+}
+
+TEST_CASE("control CLI supports discovery and synchronous screenshots")
+{
+    const auto list = parse({"woby", "ctl", "instances", "--json"});
+    CHECK(list.control.command == woby::ControlCommand::instances);
+    CHECK(list.control.json);
+    const auto capture = parse({"woby", "ctl", "--instance", "review", "screenshot", "folder/view.png", "--wait", "--timeout", "120", "--json"});
+    CHECK(capture.control.command == woby::ControlCommand::screenshot);
+    CHECK(capture.control.instanceId == "review");
+    CHECK(capture.control.outputPath == "folder/view.png");
+    CHECK(capture.control.timeoutSeconds == 120);
+    CHECK(capture.control.json);
+    const auto reordered = parse({"woby", "ctl", "screenshot", "view.png", "--instance", "main"});
+    CHECK(reordered.control.timeoutSeconds == 60);
+    const std::string unicodePath = "folder/\xc3\xbc-\xe6\xb5\x8b\xe8\xaf\x95.png";
+    const auto unicode = parse({"woby", "ctl", "--instance", "main", "screenshot", unicodePath});
+    const auto encodedPath = unicode.control.outputPath.u8string();
+    CHECK(std::string(encodedPath.begin(), encodedPath.end()) == unicodePath);
+    CHECK(parse({"woby", "--help"}).showHelp);
+    CHECK(parse({"woby", "ctl", "--help"}).showHelp);
+}
+
+TEST_CASE("control CLI rejects ambiguous and incomplete commands")
+{
+    const std::vector<std::vector<std::string>> cases = {
+        {"woby", "ctl"},
+        {"woby", "ctl", "screenshot", "view.png"},
+        {"woby", "ctl", "--instance", "main", "screenshot"},
+        {"woby", "ctl", "instances", "--instance", "main"},
+        {"woby", "ctl", "instances", "--wait"},
+        {"woby", "ctl", "instances", "--timeout", "2"},
+        {"woby", "ctl", "instances", "--json", "--json"},
+        {"woby", "ctl", "instances", "--file", "a.obj"},
+        {"woby", "ctl", "--instance", "main", "screenshot", "a.png", "b.png"},
+        {"woby", "ctl", "--instance", "main", "--instance", "other", "screenshot", "a.png"},
+        {"woby", "ctl", "--instance", "main", "screenshot", "a.png", "--timeout", "0"},
+        {"woby", "ctl", "--instance", "main", "screenshot", "a.png", "--timeout", "3601"},
+        {"woby", "ctl", "--instance", "main", "screenshot", "a.png", "--timeout", "1.5"},
+        {"woby", "ctl", "--instance", "main", "screenshot", "a.png", "--timeout", "1", "--timeout", "2"},
+    };
+    for (const auto& arguments : cases) {
+        CHECK_THROWS_AS(parse(arguments), std::runtime_error);
+    }
 }
 
 TEST_CASE("command line parses scene model and logging options")

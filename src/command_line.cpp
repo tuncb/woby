@@ -1,4 +1,5 @@
 #include "command_line.h"
+#include "utf8_path.h"
 
 #include <cmath>
 #include <stdexcept>
@@ -86,10 +87,98 @@ bool writesInfoLogs(LogLevel level)
     return level == LogLevel::trace || level == LogLevel::debug || level == LogLevel::info;
 }
 
+std::string parseInstanceId(int argc, char** argv, int& index)
+{
+    requireValue(argc, index, "--instance", "an ID");
+    const std::string value = argv[++index];
+    if (!validInstanceId(value)) {
+        throw std::runtime_error("Instance IDs must be 1-64 lowercase letters, digits, hyphens or underscores, starting with a letter or digit.");
+    }
+    return value;
+}
+
+AppArguments parseControlArguments(int argc, char** argv)
+{
+    AppArguments arguments;
+    auto& control = arguments.control;
+    bool timeoutSpecified = false;
+    bool waitSpecified = false;
+    for (int index = 2; index < argc; ++index) {
+        const std::string argument = argv[index];
+        if (argument == "--help" || argument == "-h") {
+            arguments.showHelp = true;
+        } else if (argument == "--instance") {
+            if (control.instanceId) {
+                throw std::runtime_error("Only one --instance option can be specified.");
+            }
+            control.instanceId = parseInstanceId(argc, argv, index);
+        } else if (argument == "--json") {
+            if (control.json) {
+                throw std::runtime_error("Only one --json option can be specified.");
+            }
+            control.json = true;
+        } else if (argument == "--timeout") {
+            requireValue(argc, index, argument, "a timeout in seconds");
+            const size_t seconds = parsePositiveSize(argv[++index], argument);
+            if (timeoutSpecified || seconds > 3600u) {
+                throw std::runtime_error("Specify --timeout once, with a value from 1 to 3600 seconds.");
+            }
+            timeoutSpecified = true;
+            control.timeoutSeconds = static_cast<int>(seconds);
+        } else if (argument == "--wait") {
+            if (waitSpecified) {
+                throw std::runtime_error("Only one --wait option can be specified.");
+            }
+            waitSpecified = true;
+        } else if (control.command == ControlCommand::none && argument == "instances") {
+            control.command = ControlCommand::instances;
+        } else if (control.command == ControlCommand::none && argument == "screenshot") {
+            control.command = ControlCommand::screenshot;
+        } else if (control.command == ControlCommand::screenshot && control.outputPath.empty()
+                   && !argument.empty() && argument.front() != '-') {
+            control.outputPath = pathFromUtf8(argument);
+        } else {
+            throw std::runtime_error("Unexpected control argument: " + argument);
+        }
+    }
+    if (arguments.showHelp) {
+        return arguments;
+    }
+    if (control.command == ControlCommand::none) {
+        throw std::runtime_error("Expected 'ctl instances' or 'ctl --instance ID screenshot PATH'.");
+    }
+    if (control.command == ControlCommand::instances && (control.instanceId || timeoutSpecified || waitSpecified)) {
+        throw std::runtime_error("ctl instances only accepts --json.");
+    }
+    if (control.command == ControlCommand::screenshot && (!control.instanceId || control.outputPath.empty())) {
+        throw std::runtime_error("Screenshot requires --instance ID and an output path.");
+    }
+    return arguments;
+}
+
 } // namespace
+
+bool validInstanceId(const std::string& value)
+{
+    const auto alphanumeric = [](char ch) {
+        return (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9');
+    };
+    if (value.empty() || value.size() > 64u || !alphanumeric(value.front())) {
+        return false;
+    }
+    for (const char ch : value) {
+        if (!alphanumeric(ch) && ch != '-' && ch != '_') {
+            return false;
+        }
+    }
+    return true;
+}
 
 AppArguments parseCommandLine(int argc, char** argv)
 {
+    if (argc > 1 && std::string(argv[1]) == "ctl") {
+        return parseControlArguments(argc, argv);
+    }
     AppArguments arguments;
     bool logLevelSpecified = false;
     bool logPerformanceSpecified = false;
@@ -98,6 +187,18 @@ AppArguments parseCommandLine(int argc, char** argv)
 
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
+
+        if (argument == "--help" || argument == "-h") {
+            arguments.showHelp = true;
+            continue;
+        }
+        if (argument == "--instance") {
+            if (arguments.instanceId) {
+                throw std::runtime_error("Only one --instance option can be specified.");
+            }
+            arguments.instanceId = parseInstanceId(argc, argv, index);
+            continue;
+        }
 
         if (argument == "--version") {
             arguments.showVersion = true;

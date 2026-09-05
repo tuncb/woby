@@ -19,6 +19,8 @@
       ]
     },
     "spdlog",
+    { "name": "cpp-httplib", "default-features": false },
+    "nlohmann-json",
     "doctest"
   ]
 }

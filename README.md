@@ -81,6 +81,48 @@ Enable frame performance logging:
 
 Frame performance logging is opt-in. `--log-frame-interval` controls how many frames are summarized per log entry, and defaults to `120`. `--log-slow-frame-ms` logs individual frames whose total duration exceeds the provided threshold.
 
+## Control a running instance
+
+Every Woby viewer automatically starts a local HTTP API. Its generated instance ID appears
+in the window title, for example `woby [woby-3c981bd42b76e80f] - untitled`.
+You can choose a custom ID when starting the viewer:
+
+```powershell
+woby.exe --instance review --file C:\models\part.obj
+```
+
+IDs are unique among running instances for the current user. They contain 1-64 lowercase
+letters, digits, hyphens or underscores, starting with a letter or digit. A duplicate ID
+fails startup instead of connecting to or replacing the existing viewer. Custom IDs can
+be reused after an instance exits. IDs belong to the running process and are not saved in `.woby` files.
+
+From another terminal, discover instances and save the current scene as a PNG:
+
+```powershell
+woby.exe ctl instances
+woby.exe ctl instances --json
+woby.exe ctl --instance review screenshot C:\output\view.png
+woby.exe ctl --instance review screenshot .\view.png --timeout 120 --json
+```
+
+`ctl` connects to an existing instance and never creates a viewer. Screenshot commands
+always wait until the PNG is written; `--wait` is accepted but optional. The default
+timeout is 60 seconds (`--timeout` accepts 1-3600). Relative output paths are resolved
+against the CLI's working directory. Parent directories are created and the extension
+is normalized to `.png`. Existing files are overwritten, matching the screenshot UI.
+The capture uses the existing 1920 × 1800 scene-only renderer, including scene helpers
+but excluding the application controls. It uses the current camera.
+
+Exit code `0` means success; `1` means failure. `--json` emits one JSON value on stdout,
+including `{"error":"..."}` for command failures. Instance listing returns an array;
+capture returns `{"instance":"review","path":"C:\\output\\view.png"}` only after saving.
+Captures fail explicitly if the instance is starting, processing model files, or already
+capturing. After a timeout, queued work is canceled; a capture already submitted to the
+GPU may still finish and save. Closing the viewer releases waiting clients.
+
+See [the local HTTP API](doc/automation.md) for direct scripting and discovery details.
+Run `woby.exe --help` for command syntax.
+
 ## Build
 
 Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:
