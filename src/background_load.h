@@ -19,6 +19,7 @@ struct BackgroundLoadProgress {
     std::filesystem::path currentPath;
     size_t completedCount = 0;
     size_t totalCount = 0;
+    float currentFileFraction = 0.0f;
 };
 
 using BackgroundLoadProgressCallback = std::function<void(const BackgroundLoadProgress&)>;

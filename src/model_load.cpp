@@ -4,9 +4,18 @@
 #include "obj_mesh.h"
 #include "stl_mesh.h"
 
-#include <stdexcept>
-
 namespace woby {
+
+ImportedModel loadModel(const std::filesystem::path& path, const std::string& requiredImporterId,
+    const ImportCallbacks& callbacks)
+{
+    if (!requiredImporterId.empty() || (!isObjPath(path) && !isStlPath(path))) {
+        return importModel(path, requiredImporterId, callbacks);
+    }
+    ImportedModel result;
+    result.mesh = loadModelMesh(path);
+    return result;
+}
 
 Mesh loadModelMesh(const std::filesystem::path& path)
 {
@@ -17,7 +26,7 @@ Mesh loadModelMesh(const std::filesystem::path& path)
         return loadStlMesh(path);
     }
 
-    throw std::runtime_error("Unsupported model file extension: " + path.string());
+    return importModel(path, {}, {}).mesh;
 }
 
 } // namespace woby

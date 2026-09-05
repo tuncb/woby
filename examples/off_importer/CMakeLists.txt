@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.24)
+project(woby_off_importer LANGUAGES CXX)
+add_library(woby_off_importer SHARED off_importer.cpp)
+target_compile_features(woby_off_importer PRIVATE cxx_std_20)
+target_compile_definitions(woby_off_importer PRIVATE WOBY_IMPORTER_BUILD)
+target_include_directories(woby_off_importer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
+set_target_properties(woby_off_importer PROPERTIES PREFIX "")

@@ -52,6 +52,7 @@ struct UiFileSettings {
 
 struct UiFileState {
     std::filesystem::path path;
+    std::string importerId;
     Mesh mesh;
     std::vector<UiGroupState> groupSettings;
     UiFileSettings fileSettings;
@@ -106,7 +107,8 @@ struct UiState {
 [[nodiscard]] UiFileState createUiFileState(
     std::filesystem::path modelPath,
     Mesh mesh,
-    size_t firstColorIndex);
+    size_t firstColorIndex,
+    std::string importerId = {});
 void groupTransformMatrix(const UiGroupState& settings, float* model);
 void fileTransformMatrix(const UiFileSettings& settings, float* model);
 void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model);

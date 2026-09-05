@@ -44,6 +44,7 @@ struct SceneGroupRecord {
 
 struct SceneFileRecord {
     std::filesystem::path path;
+    std::string importerId;
     SceneFileSettings settings;
     float vertexSizeScale = 1.0f;
     std::vector<SceneGroupRecord> groups;

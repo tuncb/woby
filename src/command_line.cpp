@@ -258,11 +258,21 @@ AppArguments parseCommandLine(int argc, char** argv)
             continue;
         }
 
+        if (argument == "--plugin" || argument == "--plugin-folder") {
+            requireValue(argc, index, argument, "a plugin path");
+            const std::string value = argv[++index];
+            if (value.empty() || value.rfind("--", 0u) == 0u) {
+                throw std::runtime_error(argument + " requires a plugin path.");
+            }
+            arguments.pluginPaths.push_back({argument == "--plugin-folder", woby::pathFromUtf8(value)});
+            continue;
+        }
+
         if (argument == "--file") {
             requireValue(argc, index, argument, "a model filename");
 
             ModelPathOption inputPath;
-            inputPath.path = argv[++index];
+            inputPath.path = woby::pathFromUtf8(argv[++index]);
             arguments.inputPaths.push_back(std::move(inputPath));
             continue;
         }
@@ -273,7 +283,7 @@ AppArguments parseCommandLine(int argc, char** argv)
                 throw std::runtime_error("Only one woby scene file can be specified.");
             }
 
-            arguments.scenePath = argv[++index];
+            arguments.scenePath = woby::pathFromUtf8(argv[++index]);
             continue;
         }
 
@@ -282,7 +292,7 @@ AppArguments parseCommandLine(int argc, char** argv)
 
             ModelPathOption inputPath;
             inputPath.folder = true;
-            inputPath.path = argv[++index];
+            inputPath.path = woby::pathFromUtf8(argv[++index]);
             arguments.inputPaths.push_back(std::move(inputPath));
             continue;
         }
@@ -293,7 +303,7 @@ AppArguments parseCommandLine(int argc, char** argv)
             ModelPathOption inputPath;
             inputPath.folder = true;
             inputPath.folderTree = true;
-            inputPath.path = argv[++index];
+            inputPath.path = woby::pathFromUtf8(argv[++index]);
             arguments.inputPaths.push_back(std::move(inputPath));
             continue;
         }

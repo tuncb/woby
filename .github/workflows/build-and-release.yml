@@ -182,6 +182,10 @@ jobs:
         shell: pwsh
         run: cmake --build "build/${{ matrix.package_name }}" --config Release --parallel
 
+      - name: Test
+        shell: pwsh
+        run: ctest --test-dir "build/${{ matrix.package_name }}" --build-config Release --output-on-failure
+
       - name: Stage runtime files
         shell: pwsh
         run: |

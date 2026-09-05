@@ -1,4 +1,6 @@
 #include "native_dialogs.h"
+#include "utf8_path.h"
+#include "importer_host.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_dialog.h>
@@ -26,7 +28,7 @@ void SDLCALL modelFileDialogCallback(void* userdata, const char* const* filelist
         showStatus = true;
     } else {
         for (size_t index = 0; filelist[index] != nullptr; ++index) {
-            selectedPaths.emplace_back(filelist[index]);
+            selectedPaths.push_back(woby::pathFromUtf8(filelist[index]));
         }
     }
 
@@ -59,7 +61,7 @@ void SDLCALL modelFolderTreeDialogCallback(void* userdata, const char* const* fi
         showStatus = true;
     } else {
         for (size_t index = 0; filelist[index] != nullptr; ++index) {
-            selectedPaths.emplace_back(filelist[index]);
+            selectedPaths.push_back(woby::pathFromUtf8(filelist[index]));
         }
     }
 
@@ -91,7 +93,7 @@ void SDLCALL openSceneDialogCallback(void* userdata, const char* const* filelist
         status = "Open scene canceled";
         showStatus = true;
     } else {
-        selectedPath = std::filesystem::path(filelist[0]);
+        selectedPath = woby::pathFromUtf8(filelist[0]);
     }
 
     std::lock_guard<std::mutex> lock(state->mutex);
@@ -119,7 +121,7 @@ void SDLCALL saveSceneDialogCallback(void* userdata, const char* const* filelist
         status = "Save scene canceled";
         showStatus = true;
     } else {
-        selectedPath = std::filesystem::path(filelist[0]);
+        selectedPath = woby::pathFromUtf8(filelist[0]);
     }
 
     std::lock_guard<std::mutex> lock(state->mutex);
@@ -147,7 +149,7 @@ void SDLCALL saveSceneScreenshotDialogCallback(void* userdata, const char* const
         status = "Save screenshot canceled";
         showStatus = true;
     } else {
-        selectedPath = std::filesystem::path(filelist[0]);
+        selectedPath = woby::pathFromUtf8(filelist[0]);
     }
 
     std::lock_guard<std::mutex> lock(state->mutex);
@@ -163,17 +165,28 @@ void SDLCALL saveSceneScreenshotDialogCallback(void* userdata, const char* const
 
 void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
 {
-    static constexpr SDL_DialogFileFilter filters[] = {
-        {"3D Models", "obj;stl"},
-        {"Wavefront OBJ", "obj"},
-        {"STL", "stl"},
-        {"All files", "*"},
-    };
-
     {
         std::lock_guard<std::mutex> lock(state.mutex);
         if (state.open || state.folderTreeOpen) {
             return;
+        }
+        state.filterNames = {"3D Models", "Wavefront OBJ", "STL"};
+        state.filterPatterns = {"obj;stl", "obj", "stl"};
+        for (const auto& importer : loadedImporters()) {
+            std::string pattern;
+            for (const auto& extension : importer.extensions) {
+                if (!pattern.empty()) { pattern += ';'; }
+                pattern += extension;
+                state.filterPatterns[0] += ';' + extension;
+            }
+            state.filterNames.push_back(importer.name);
+            state.filterPatterns.push_back(std::move(pattern));
+        }
+        state.filterNames.push_back("All files");
+        state.filterPatterns.push_back("*");
+        state.filters.clear();
+        for (size_t i = 0; i < state.filterNames.size(); ++i) {
+            state.filters.push_back({state.filterNames[i].c_str(), state.filterPatterns[i].c_str()});
         }
         state.open = true;
     }
@@ -182,10 +195,27 @@ void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
         modelFileDialogCallback,
         &state,
         window,
-        filters,
-        static_cast<int>(std::size(filters)),
+        state.filters.data(),
+        static_cast<int>(state.filters.size()),
         nullptr,
         true);
+}
+
+void showImporterFileDialog(SDL_Window* window, ModelFileDialogState& state)
+{
+#ifdef _WIN32
+    static constexpr SDL_DialogFileFilter filters[] = {{"Importer DLL", "dll"}};
+#elif defined(__APPLE__)
+    static constexpr SDL_DialogFileFilter filters[] = {{"Importer library", "dylib;so"}};
+#else
+    static constexpr SDL_DialogFileFilter filters[] = {{"Importer library", "so"}};
+#endif
+    {
+        std::lock_guard lock(state.mutex);
+        if (state.open) { return; }
+        state.open = true;
+    }
+    SDL_ShowOpenFileDialog(modelFileDialogCallback, &state, window, filters, 1, nullptr, true);
 }
 
 void showModelFolderTreeDialog(SDL_Window* window, ModelFileDialogState& state)

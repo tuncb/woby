@@ -436,3 +436,24 @@ TEST_CASE("command line rejects generated missing value and unknown option cases
             std::runtime_error);
     }
 }
+
+TEST_CASE("command line plugin options repeat and preserve file folder order")
+{
+    const auto arguments = parse({"woby", "--plugin-folder", "first folder", "--plugin", "one.dll",
+        "--plugin-folder", "second", "--plugin", "two.dll", "--file", "model.off"});
+    REQUIRE(arguments.pluginPaths.size() == 4u);
+    CHECK(arguments.pluginPaths[0].folder);
+    CHECK(arguments.pluginPaths[0].path == "first folder");
+    CHECK_FALSE(arguments.pluginPaths[1].folder);
+    CHECK(arguments.pluginPaths[1].path == "one.dll");
+    CHECK(arguments.pluginPaths[2].folder);
+    CHECK(arguments.pluginPaths[2].path == "second");
+    CHECK_FALSE(arguments.pluginPaths[3].folder);
+    CHECK(arguments.pluginPaths[3].path == "two.dll");
+    REQUIRE(arguments.inputPaths.size() == 1u);
+    for (const auto* option : {"--plugin", "--plugin-folder"}) {
+        CHECK_THROWS_AS(parse({"woby", option}), std::runtime_error);
+        CHECK_THROWS_AS(parse({"woby", option, ""}), std::runtime_error);
+        CHECK_THROWS_AS(parse({"woby", option, "--file", "a.obj"}), std::runtime_error);
+    }
+}

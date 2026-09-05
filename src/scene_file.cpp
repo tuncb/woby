@@ -1,4 +1,5 @@
 #include "scene_file.h"
+#include "utf8_path.h"
 
 #include <algorithm>
 #include <cctype>
@@ -330,7 +331,9 @@ std::filesystem::path sceneRelativePath(
 void assignSceneFileValue(SceneFileRecord& record, const std::string& key, std::string_view value)
 {
     if (key == "path") {
-        record.path = parseTomlString(value);
+        record.path = woby::pathFromUtf8(parseTomlString(value));
+    } else if (key == "importer_id") {
+        record.importerId = parseTomlString(value);
     } else if (key == "visible") {
         record.settings.visible = parseTomlBool(value);
     } else if (key == "scale") {
@@ -476,7 +479,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 2) {
+                    if (version != 2 && version != 3) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -543,7 +546,9 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     }
 
     stream << "# woby scene\n";
-    stream << "version = 2\n";
+    const bool usesImporters = std::any_of(document.files.begin(), document.files.end(),
+        [](const SceneFileRecord& file) { return !file.importerId.empty(); });
+    stream << "version = " << (usesImporters ? 3 : 2) << "\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
@@ -554,7 +559,12 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     for (const auto& file : document.files) {
         const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);
         stream << "\n[[files]]\n";
-        stream << "path = \"" << escapeTomlString(relativeModelPath.generic_string()) << "\"\n";
+        const auto encodedPath = relativeModelPath.generic_u8string();
+        const std::string pathText(reinterpret_cast<const char*>(encodedPath.data()), encodedPath.size());
+        stream << "path = \"" << escapeTomlString(pathText) << "\"\n";
+        if (!file.importerId.empty()) {
+            stream << "importer_id = \"" << escapeTomlString(file.importerId) << "\"\n";
+        }
         stream << "visible = " << (file.settings.visible ? "true" : "false") << "\n";
         stream << "scale = ";
         writeTomlFloat(stream, file.settings.scale);

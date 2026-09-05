@@ -24,6 +24,11 @@ struct ModelPathOption {
     std::filesystem::path path;
 };
 
+struct PluginPathOption {
+    bool folder = false;
+    std::filesystem::path path;
+};
+
 enum class ControlCommand {
     none,
     instances,
@@ -50,6 +55,7 @@ struct AppArguments {
     std::optional<double> logSlowFrameMilliseconds;
     std::optional<std::filesystem::path> scenePath;
     std::vector<ModelPathOption> inputPaths;
+    std::vector<PluginPathOption> pluginPaths;
 };
 
 AppArguments parseCommandLine(int argc, char** argv);

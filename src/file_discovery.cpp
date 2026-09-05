@@ -1,4 +1,5 @@
 #include "file_discovery.h"
+#include "importer_host.h"
 
 #include <algorithm>
 #include <cctype>
@@ -32,7 +33,7 @@ bool isStlPath(const std::filesystem::path& path)
 
 bool isModelPath(const std::filesystem::path& path)
 {
-    return isObjPath(path) || isStlPath(path);
+    return isObjPath(path) || isStlPath(path) || hasImporterForPath(path);
 }
 
 bool isWobyPath(const std::filesystem::path& path)

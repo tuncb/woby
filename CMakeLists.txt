@@ -51,6 +51,8 @@ add_executable(woby
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
+    src/importer_host.cpp
+    src/importer_host.h
     src/model_load.cpp
     src/model_load.h
     src/utf8_path.h
@@ -77,12 +79,14 @@ add_executable(woby
 )
 
 target_compile_features(woby PRIVATE cxx_std_20)
+target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby PRIVATE
     woby_automation
     SDL3::SDL3
+    ${CMAKE_DL_LIBS}
     bgfx::bgfx
     tinyobjloader::tinyobjloader
     meshoptimizer::meshoptimizer
@@ -208,6 +212,8 @@ if(BUILD_TESTING)
         src/hash_utils.h
         src/hover_pick.cpp
         src/hover_pick.h
+        src/importer_host.cpp
+        src/importer_host.h
         src/model_load.cpp
         src/model_load.h
         src/utf8_path.h
@@ -227,6 +233,7 @@ if(BUILD_TESTING)
         src/ui_operations.h
         src/ui_state.cpp
         src/ui_state.h
+        tests/importer_tests.cpp
         tests/automation_tests.cpp
         tests/background_load_tests.cpp
         tests/dummy_tests.cpp
@@ -241,10 +248,11 @@ if(BUILD_TESTING)
     )
 
     target_compile_features(woby_tests PRIVATE cxx_std_20)
-    target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_link_libraries(woby_tests PRIVATE
         woby_automation
         doctest::doctest
+        ${CMAKE_DL_LIBS}
         bgfx::bgfx
         tinyobjloader::tinyobjloader
         meshoptimizer::meshoptimizer
@@ -258,6 +266,38 @@ if(BUILD_TESTING)
     endforeach()
 
     woby_enable_project_warnings(woby_tests)
+
+    add_library(woby_importer_fixture SHARED tests/importer_fixture.cpp)
+    add_library(woby_importer_bad_abi SHARED tests/importer_fixture.cpp)
+    add_library(woby_importer_conflict SHARED tests/importer_fixture.cpp)
+    add_library(woby_importer_reserved SHARED tests/importer_fixture.cpp)
+    add_library(woby_importer_missing_export SHARED tests/importer_missing_export.cpp)
+    target_compile_definitions(woby_importer_bad_abi PRIVATE WOBY_TEST_BAD_ABI)
+    target_compile_definitions(woby_importer_conflict PRIVATE WOBY_TEST_CONFLICT)
+    target_compile_definitions(woby_importer_reserved PRIVATE WOBY_TEST_RESERVED)
+    foreach(fixture IN ITEMS woby_importer_fixture woby_importer_bad_abi woby_importer_missing_export woby_importer_conflict woby_importer_reserved)
+        target_include_directories(${fixture} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+        target_compile_definitions(${fixture} PRIVATE WOBY_IMPORTER_BUILD)
+        target_compile_features(${fixture} PRIVATE cxx_std_20)
+        set_target_properties(${fixture} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-plugins"
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-plugins")
+        woby_enable_project_warnings(${fixture})
+    endforeach()
+    add_subdirectory(examples/off_importer)
+    set_target_properties(woby_off_importer PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example-plugins"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example-plugins")
+    woby_enable_project_warnings(woby_off_importer)
+    add_dependencies(woby_tests woby_importer_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
+    target_compile_definitions(woby_tests PRIVATE
+        WOBY_TEST_IMPORTER="$<TARGET_FILE:woby_importer_fixture>"
+        WOBY_TEST_CONFLICT_IMPORTER="$<TARGET_FILE:woby_importer_conflict>"
+        WOBY_TEST_RESERVED_IMPORTER="$<TARGET_FILE:woby_importer_reserved>"
+        WOBY_TEST_BAD_IMPORTER="$<TARGET_FILE:woby_importer_bad_abi>"
+        WOBY_TEST_MISSING_EXPORT="$<TARGET_FILE:woby_importer_missing_export>"
+        WOBY_TEST_OFF_IMPORTER="$<TARGET_FILE:woby_off_importer>"
+    )
 
     doctest_discover_tests(woby_tests)
 

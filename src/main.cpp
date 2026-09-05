@@ -13,6 +13,7 @@
 #include "scene_screenshot.h"
 #include "ui_operations.h"
 #include "ui_state.h"
+#include "utf8_path.h"
 #include "automation.h"
 
 #include <SDL3/SDL.h>
@@ -1433,16 +1434,20 @@ LoadedModelFileWithRuntime loadModelFile(
     const std::filesystem::path& modelPath,
     const bgfx::VertexLayout& meshLayout,
     const bgfx::VertexLayout& pointSpriteLayout,
-    size_t firstColorIndex)
+    size_t firstColorIndex,
+    const woby::SceneFileRecord* sceneRecord = nullptr)
 {
     const auto totalStart = woby::PerformanceClock::now();
     LoadedModelFileWithRuntime loaded;
     try {
         const auto parseStart = woby::PerformanceClock::now();
-        woby::Mesh mesh = woby::loadModelMesh(modelPath);
+        auto imported = woby::loadModel(modelPath, sceneRecord ? sceneRecord->importerId : std::string{});
         const double parseMilliseconds = elapsedMilliseconds(parseStart);
 
-        loaded.file = woby::createUiFileState(modelPath, std::move(mesh), firstColorIndex);
+        loaded.file = woby::createUiFileState(modelPath, std::move(imported.mesh), firstColorIndex, std::move(imported.importerId));
+        if (sceneRecord != nullptr) {
+            woby::applySceneFileRecord(loaded.file, *sceneRecord);
+        }
 
         const auto gpuStart = woby::PerformanceClock::now();
         loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout, pointSpriteLayout);
@@ -1629,9 +1634,9 @@ void pushDroppedPath(DragDropState& state, const char* data)
     }
 
     if (state.active) {
-        state.batchPaths.emplace_back(data);
+        state.batchPaths.push_back(woby::pathFromUtf8(data));
     } else {
-        state.pendingPaths.emplace_back(data);
+        state.pendingPaths.push_back(woby::pathFromUtf8(data));
     }
 }
 
@@ -1753,8 +1758,7 @@ std::vector<LoadedModelFile> loadSceneFiles(
     try {
         for (const auto& record : document.files) {
             const std::filesystem::path modelPath = woby::sceneAbsolutePath(scenePath, record.path);
-            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
-            woby::applySceneFileRecord(loaded.file, record);
+            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex, &record);
             colorIndex += loaded.file.groupSettings.size();
             loadedRuntimes.push_back(std::move(loaded.runtime));
             loadedFiles.push_back(std::move(loaded.file));
@@ -2335,7 +2339,7 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
                     fileDisplayName(progress.currentPath).c_str());
             }
             if (progress.totalCount > 0u) {
-                const float fraction = static_cast<float>(std::min(progress.completedCount, progress.totalCount))
+                const float fraction = (static_cast<float>(std::min(progress.completedCount, progress.totalCount)) + progress.currentFileFraction)
                     / static_cast<float>(progress.totalCount);
                 ImGui::ProgressBar(
                     fraction,
@@ -2446,6 +2450,39 @@ int main(int argc, char** argv)
         }
         sdlInitialized = true;
 
+        std::filesystem::path importerSettingsPath;
+        std::vector<std::filesystem::path> rememberedImporters;
+        std::string importerStatus;
+        const auto reportImporterError = [&](const std::string& message) {
+            importerStatus += message + "\n";
+            std::fprintf(stderr, "%s\n", message.c_str());
+            spdlog::warn("{}", message);
+        };
+        // CLI entries take precedence over saved registrations; each folder is sorted.
+        const auto tryLoadImporter = [&](const std::filesystem::path& path) {
+            try { woby::loadImporter(path); }
+            catch (const std::exception& error) { reportImporterError(path.string() + ": " + error.what()); }
+        };
+        for (const auto& source : commandLine.pluginPaths) {
+            if (source.folder) {
+                try {
+                    for (const auto& path : woby::discoverImporterFiles(source.path)) { tryLoadImporter(path); }
+                } catch (const std::exception& error) { reportImporterError(error.what()); }
+            } else {
+                tryLoadImporter(source.path);
+            }
+        }
+        if (char* preferencePath = SDL_GetPrefPath("woby", "woby")) {
+            importerSettingsPath = woby::pathFromUtf8(preferencePath) / "importers.txt";
+            SDL_free(preferencePath);
+            try {
+                rememberedImporters = woby::readImporterSettings(importerSettingsPath);
+                for (const auto& path : rememberedImporters) { tryLoadImporter(path); }
+            } catch (const std::exception& error) { reportImporterError(error.what()); }
+        } else {
+            reportImporterError("Importer settings directory is unavailable; registrations are session-only.");
+        }
+
         SDL_Window* rawWindow = SDL_CreateWindow(("woby [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);
         if (rawWindow == nullptr) {
             throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
@@ -2538,6 +2575,7 @@ int main(int argc, char** argv)
         auto& masterVertexPointSize = ui.masterVertexPointSize;
         auto& viewerPaneWidth = ui.viewerPaneWidth;
         static ModelFileDialogState modelFileDialogState;
+        static ModelFileDialogState importerFileDialogState;
         static SceneFileDialogState sceneFileDialogState;
         static SceneScreenshotDialogState sceneScreenshotDialogState;
         BackgroundLoadRuntime backgroundLoad;
@@ -2549,7 +2587,11 @@ int main(int argc, char** argv)
         bool requestDirtyOpenWarning = false;
         bool requestDirtyQuitWarning = false;
         ToastMessage toast;
+        if (!importerStatus.empty()) {
+            setToastMessage(toast, "Some importers could not be loaded. See the Importers panel.");
+        }
         uint64_t observedModelFileDialogStatusVersion = 0;
+        uint64_t observedImporterFileDialogStatusVersion = 0;
         uint64_t observedSceneFileDialogStatusVersion = 0;
         uint64_t observedSceneScreenshotDialogStatusVersion = 0;
         auto previousFrame = std::chrono::steady_clock::now();
@@ -2680,7 +2722,34 @@ int main(int argc, char** argv)
                 cleanSceneDocument,
                 toast);
 
+            const auto importerDialogStatus = modelFileDialogStatus(
+                importerFileDialogState, observedImporterFileDialogStatusVersion);
+            if (!importerDialogStatus.empty()) { importerStatus = importerDialogStatus; }
             const bool processingFiles = backgroundLoad.active || gpuFinalize.active;
+            if (!processingFiles) {
+                for (const auto& path : takePendingModelPaths(importerFileDialogState)) {
+                    try {
+                        woby::loadImporter(path);
+                        const auto absolutePath = std::filesystem::canonical(path);
+                        auto updated = rememberedImporters;
+                        if (std::find(updated.begin(), updated.end(), absolutePath) == updated.end()) {
+                            updated.push_back(absolutePath);
+                        }
+                        if (!importerSettingsPath.empty()) {
+                            try {
+                                woby::writeImporterSettings(importerSettingsPath, updated);
+                                rememberedImporters = std::move(updated);
+                            } catch (const std::exception& error) {
+                                importerStatus = std::string("Loaded for this session; could not save registration: ") + error.what();
+                                continue;
+                            }
+                        }
+                        importerStatus = "Loaded " + path.filename().string();
+                    } catch (const std::exception& error) {
+                        importerStatus = error.what();
+                    }
+                }
+            }
             const auto pendingModelPaths = takePendingModelPaths(modelFileDialogState);
             if (!pendingModelPaths.empty()) {
                 if (processingFiles) {
@@ -2921,7 +2990,7 @@ int main(int argc, char** argv)
                             "SceneContent",
                             ImVec2(0.0f, sceneContentHeight),
                             ImGuiChildFlags_None)) {
-                        const bool fileDialogOpen = modelFileDialogIsOpen(modelFileDialogState);
+                        const bool fileDialogOpen = (modelFileDialogIsOpen(modelFileDialogState) || modelFileDialogIsOpen(importerFileDialogState));
                         const bool sceneDialogOpen = sceneFileDialogIsOpen(sceneFileDialogState);
                         const bool screenshotDialogOpen = sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
                         const bool anyFileDialogOpen = fileDialogOpen
@@ -3104,6 +3173,40 @@ int main(int argc, char** argv)
                     ImGui::EndChild();
                 }
 
+                if (ImGui::CollapsingHeader("Importers")) {
+                    const bool importerActionDisabled = processingFiles
+                        || modelFileDialogIsOpen(modelFileDialogState)
+                        || modelFileDialogIsOpen(importerFileDialogState)
+                        || sceneFileDialogIsOpen(sceneFileDialogState)
+                        || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+                    ImGui::BeginDisabled(importerActionDisabled);
+                    if (ImGui::Button("Add importer...")) {
+                        woby::showImporterFileDialog(window.get(), importerFileDialogState);
+                    }
+                    ImGui::EndDisabled();
+                    for (const auto& importer : woby::loadedImporters()) {
+                        ImGui::TextWrapped("%s (%s)", importer.name.c_str(), importer.version.c_str());
+                        setLastItemTooltip(importer.path.string().c_str());
+                    }
+                    for (size_t i = 0; i < rememberedImporters.size(); ++i) {
+                        ImGui::PushID(static_cast<int>(i));
+                        ImGui::TextWrapped("Startup: %s", rememberedImporters[i].filename().string().c_str());
+                        if (ImGui::SmallButton("Forget for next launch")) {
+                            try {
+                                auto updated = rememberedImporters;
+                                updated.erase(updated.begin() + static_cast<std::ptrdiff_t>(i));
+                                woby::writeImporterSettings(importerSettingsPath, updated);
+                                rememberedImporters = std::move(updated);
+                                importerStatus = "Registration removed. Loaded importers remain active until exit.";
+                            } catch (const std::exception& error) { importerStatus = error.what(); }
+                            ImGui::PopID();
+                            break;
+                        }
+                        ImGui::PopID();
+                    }
+                    if (!importerStatus.empty()) { ImGui::TextWrapped("%s", importerStatus.c_str()); }
+                }
+
                 const std::string filesPaneTitle = "Files (" + std::to_string(files.size()) + ")##Files";
                 const bool filesPaneOpen = ImGui::CollapsingHeader(
                     filesPaneTitle.c_str(),
@@ -3133,7 +3236,7 @@ int main(int argc, char** argv)
             }
                 ImGui::End();
             }
-            const bool screenshotActionDisabled = modelFileDialogIsOpen(modelFileDialogState)
+            const bool screenshotActionDisabled = (modelFileDialogIsOpen(modelFileDialogState) || modelFileDialogIsOpen(importerFileDialogState))
                 || sceneFileDialogIsOpen(sceneFileDialogState)
                 || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState)
                 || backgroundLoad.active
@@ -3194,7 +3297,7 @@ int main(int argc, char** argv)
             const bool cameraInteractionActive = cameraInput.orbiting
                 || cameraInput.rolling
                 || cameraInput.panning;
-            const bool nativeFileDialogOpen = modelFileDialogIsOpen(modelFileDialogState)
+            const bool nativeFileDialogOpen = (modelFileDialogIsOpen(modelFileDialogState) || modelFileDialogIsOpen(importerFileDialogState))
                 || sceneFileDialogIsOpen(sceneFileDialogState)
                 || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
             const bool dialogOpen = modalDialogOpen
@@ -3331,6 +3434,7 @@ int main(int argc, char** argv)
             backgroundLoad.worker.join();
         }
         abortGpuFinalize(gpuFinalize);
+        woby::unloadImporters();
 
         woby::imgui_bgfx::shutdown();
         ImGui_ImplSDL3_Shutdown();
@@ -3353,6 +3457,7 @@ int main(int argc, char** argv)
         return 0;
     } catch (const std::exception& exception) {
         automation.reset();
+        woby::unloadImporters();
         std::fprintf(stderr, "%s\n", exception.what());
         if (bgfxInitialized) {
             bgfx::shutdown();

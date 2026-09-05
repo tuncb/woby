@@ -352,7 +352,7 @@ void printCommandLineHelp()
         "IDs: 1-64 lowercase letters, digits, '-' or '_'; start with a letter or digit.\n"
         "Screenshot waits for the PNG to be saved (default timeout: 60 seconds).\n"
         "--wait is also accepted; waiting is always enabled. Existing PNGs are overwritten.\n"
-        "Other startup options: --folder, --folder-tree, --woby,\n"
+        "Other startup options: --folder, --folder-tree, --woby, --plugin, --plugin-folder,\n"
         "--log-level, --log-file, --log-performance, --log-frame-interval, --log-slow-frame-ms,\n"
         "--version, --help. See README.md for details.\n");
 }

@@ -499,10 +499,11 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
     return settings;
 }
 
-UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t firstColorIndex)
+UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t firstColorIndex, std::string importerId)
 {
     UiFileState file;
     file.path = std::move(modelPath);
+    file.importerId = std::move(importerId);
     file.mesh = std::move(mesh);
     file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex);
     file.fileSettings.center = file.mesh.bounds.center;
@@ -691,6 +692,7 @@ SceneDocument createSceneDocument(const UiState& state)
     for (const auto& file : state.files) {
         SceneFileRecord fileRecord;
         fileRecord.path = file.path;
+        fileRecord.importerId = file.importerId;
         fileRecord.settings = sceneFileSettings(file.fileSettings);
         fileRecord.vertexSizeScale = file.vertexSizeScale;
         fileRecord.groups.reserve(file.groupSettings.size());
@@ -721,6 +723,16 @@ SceneDocument createSceneDocument(const UiState& state)
 
 void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
 {
+    if (!record.importerId.empty()) {
+        if (record.importerId != file.importerId || record.groups.size() != file.mesh.nodes.size()) {
+            throw std::runtime_error("Saved importer or group layout does not match the imported file.");
+        }
+        for (size_t i = 0; i < record.groups.size(); ++i) {
+            if (record.groups[i].name != file.mesh.nodes[i].name) {
+                throw std::runtime_error("Importer group order changed; cannot restore saved group settings.");
+            }
+        }
+    }
     file.fileSettings.visible = record.settings.visible;
     file.fileSettings.scale = clampFinite(record.settings.scale, minGroupScale, maxGroupScale, 1.0f);
     file.fileSettings.opacity = clampFinite(record.settings.opacity, minGroupOpacity, maxGroupOpacity, 1.0f);

@@ -22,7 +22,8 @@ void reportProgress(
     const BackgroundLoadProgressCallback& progress,
     const std::filesystem::path& path,
     size_t completedCount,
-    size_t totalCount)
+    size_t totalCount,
+    float fraction = 0.0f)
 {
     if (!progress) {
         return;
@@ -32,6 +33,7 @@ void reportProgress(
     update.currentPath = path;
     update.completedCount = completedCount;
     update.totalCount = totalCount;
+    update.currentFileFraction = fraction;
     progress(update);
 }
 
@@ -85,10 +87,17 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
         const auto totalStart = PerformanceClock::now();
         try {
             const auto parseStart = PerformanceClock::now();
-            Mesh mesh = loadModelMesh(modelPath);
+            ImportedModel imported = loadModel(modelPath, {}, {shouldCancel, [&](float fraction) {
+                reportProgress(progress, modelPath, pathIndex, modelPaths.size(), fraction);
+            }});
+            if (imported.canceled) {
+                result.canceled = true;
+                break;
+            }
             const double parseMilliseconds = millisecondsBetween(parseStart, PerformanceClock::now());
 
-            UiFileState file = createUiFileState(modelPath, std::move(mesh), colorIndex);
+            UiFileState file = createUiFileState(
+                modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId));
             colorIndex += file.groupSettings.size();
             spdlog::info(
                 "perf model_cpu_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} total_ms={}",
@@ -147,8 +156,14 @@ SceneCpuLoadResult loadSceneCpu(
         const std::filesystem::path modelPath = sceneAbsolutePath(scenePath, record.path);
         reportProgress(progress, modelPath, result.files.size(), result.document.files.size());
         const auto loadStart = PerformanceClock::now();
-        Mesh mesh = loadModelMesh(modelPath);
-        UiFileState file = createUiFileState(modelPath, std::move(mesh), colorIndex);
+        ImportedModel imported = loadModel(modelPath, record.importerId, {shouldCancel, [&](float fraction) {
+            reportProgress(progress, modelPath, result.files.size(), result.document.files.size(), fraction);
+        }});
+        if (imported.canceled) {
+            result.canceled = true;
+            break;
+        }
+        UiFileState file = createUiFileState(modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId));
         applySceneFileRecord(file, record);
         colorIndex += file.groupSettings.size();
         spdlog::info(
