@@ -28,6 +28,7 @@ struct ComparisonRuntime
     uint64_t attemptedSignature = 0;
     uint64_t resultSignature = 0;
     bool ready = false;
+    bool openPanelRequested = false;
     MeshComparison result;
     ComparisonGpuSurface originalGpu, repairedGpu;
     bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;

@@ -7,9 +7,71 @@
 #include <utility>
 
 namespace woby {
+bool sceneObjectSelected(const UiState& state, SceneObjectId id)
+{
+    return std::find(state.selectedSceneObjects.begin(), state.selectedSceneObjects.end(), id)
+        != state.selectedSceneObjects.end();
+}
+
+void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool contextClick)
+{
+    if (!findSceneObject(state, id)) {
+        return;
+    }
+    const bool selected = sceneObjectSelected(state, id);
+    if (contextClick && selected) {
+        return;
+    }
+    if (!toggle || contextClick) {
+        state.selectedSceneObjects = {id};
+    } else if (selected) {
+        std::erase(state.selectedSceneObjects, id);
+    } else {
+        state.selectedSceneObjects.push_back(id);
+    }
+}
+
 void setComparisonSettings(UiState& state, ComparisonSettings settings)
 {
     state.comparison = normalizedComparisonSettings(settings, state.files.size());
+}
+
+namespace {
+bool selectionComparisonSettings(const UiState& state, ComparisonSettings& settings)
+{
+    if (state.selectedSceneObjects.size() != 2) {
+        return false;
+    }
+    const auto resolve = [&state](SceneObjectId id, int& fileIndex) {
+        if (id == invalidSceneObjectId) { return false; }
+        for (size_t i = 0; i < state.files.size(); ++i) {
+            const auto& file = state.files[i];
+            if (file.objectId == id && !file.mesh.indices.empty()) {
+                fileIndex = static_cast<int>(i);
+                return true;
+            }
+        }
+        return false;
+    };
+    return resolve(state.selectedSceneObjects[0], settings.originalFile)
+        && resolve(state.selectedSceneObjects[1], settings.repairedFile)
+        && settings.originalFile != settings.repairedFile;
+}
+} // namespace
+
+bool canCompareSceneSelection(const UiState& state)
+{
+    auto settings = state.comparison;
+    return selectionComparisonSettings(state, settings);
+}
+
+bool compareSceneSelection(UiState& state)
+{
+    auto settings = state.comparison;
+    if (!selectionComparisonSettings(state, settings)) { return false; }
+    settings.enabled = true;
+    setComparisonSettings(state, settings);
+    return state.comparison.enabled;
 }
 
 void frameComparisonBounds(UiState& state, const Bounds& bounds)
@@ -734,6 +796,9 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
                 return !pruneRemovedFile(node, fileIndex);
             }),
         state.sceneNodes.end());
+    std::erase_if(state.selectedSceneObjects, [&state](SceneObjectId id) {
+        return !findSceneObject(state, id).has_value();
+    });
     recalculateSceneBounds(state);
     frameCameraToScene(state);
     markSceneDirty(state);

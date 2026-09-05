@@ -432,7 +432,7 @@ void setLastItemTooltip(const char* text)
     }
 }
 
-void drawClippedTextItem(const char* id, const char* text, float width)
+void drawClippedTextItem(const char* id, const char* text, float width, bool selected)
 {
     const float itemWidth = std::max(width, 1.0f);
     const float itemHeight = ImGui::GetFrameHeight();
@@ -441,6 +441,10 @@ void drawClippedTextItem(const char* id, const char* text, float width)
     const ImGuiStyle& style = ImGui::GetStyle();
     const ImVec2 itemMin = ImGui::GetItemRectMin();
     const ImVec2 itemMax = ImGui::GetItemRectMax();
+    if (selected || ImGui::IsItemHovered()) {
+        ImGui::GetWindowDrawList()->AddRectFilled(itemMin, itemMax,
+            ImGui::GetColorU32(selected ? ImGuiCol_Header : ImGuiCol_HeaderHovered));
+    }
     const ImVec2 textPosition(itemMin.x, itemMin.y + style.FramePadding.y);
     const ImVec4 clipRect(itemMin.x, itemMin.y, itemMax.x, itemMax.y);
 
@@ -853,8 +857,35 @@ void drawSceneNodeMasterControls(woby::UiState& state, woby::UiSceneNode& node)
     }
 }
 
+void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
+    woby::ComparisonRuntime& comparison, bool treeNode)
+{
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && (!treeNode || !ImGui::IsItemToggledOpen())) {
+        woby::selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
+    }
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+        woby::selectSceneObject(state, id, false, true);
+    }
+    if (ImGui::BeginPopupContextItem("scene_item_context")) {
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+            ImGui::CloseCurrentPopup();
+        }
+        if (woby::canCompareSceneSelection(state)) {
+            if (ImGui::MenuItem("Compare")) {
+                if (woby::compareSceneSelection(state)) {
+                    comparison.openPanelRequested = true;
+                }
+            }
+        } else {
+            ImGui::TextDisabled("Select two mesh files to compare.");
+        }
+        ImGui::EndPopup();
+    }
+}
+
 void drawGroupControls(
     woby::UiState& state,
+    woby::ComparisonRuntime& comparison,
     const woby::MeshNode& node,
     const GpuNodeRange& range,
     LoadedModelFile& file,
@@ -873,11 +904,13 @@ void drawGroupControls(
     ImGui::SameLine();
     const float textStartX = ImGui::GetCursorPosX();
     const float nameWidth = controlsStartX - textStartX - style.ItemSpacing.x;
-    drawClippedTextItem("##name", node.name.c_str(), nameWidth);
+    drawClippedTextItem("##name", node.name.c_str(), nameWidth,
+        woby::sceneObjectSelected(state, settings.objectId));
     const std::string groupTooltip = node.name
         + "\n"
         + meshCountLine(range.pointIndexCount, node.indexCount / 3u);
     setLastItemTooltip(groupTooltip.c_str());
+    drawSceneItemInteraction(state, settings.objectId, comparison, false);
     ImGui::SameLine(controlsStartX, 0.0f);
     if (drawRenderModeIconButton(
             "solid_mesh",
@@ -1161,6 +1194,7 @@ size_t groupColorIndex(
 void drawSceneTreeNode(
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
+    woby::ComparisonRuntime& comparison,
     woby::UiSceneNode& node,
     std::optional<size_t>& removeFileIndex)
 {
@@ -1177,14 +1211,17 @@ void drawSceneTreeNode(
             woby::setSceneNodeSubtreeVisible(state, node, visibleCount != groupCount);
         }
         ImGui::SameLine();
-        const bool folderOpen = ImGui::TreeNode(node.name.c_str());
+        const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+            | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
+        const bool folderOpen = ImGui::TreeNodeEx(node.name.c_str(), flags);
+        drawSceneItemInteraction(state, node.objectId, comparison, true);
         ImGui::SameLine(controlsStartX, 0.0f);
         drawSceneNodeMasterControls(state, node);
         drawSceneNodeTransformControls(node.settings, std::max(state.sceneBounds.radius * 0.005f, 0.01f));
         if (folderOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
+                drawSceneTreeNode(state, runtimes, comparison, node.children[childIndex], removeFileIndex);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1219,8 +1256,18 @@ void drawSceneTreeNode(
             + meshCountLine(
                 file.mesh.vertices.size(),
                 file.mesh.indices.size() / 3u);
-        const bool fileTreeOpen = ImGui::TreeNode(label.c_str());
+        // Reserve the remove button's column for both drawing and hit testing.
+        const ImVec2 labelClipMin = ImGui::GetWindowDrawList()->GetClipRectMin();
+        ImVec2 labelClipMax = ImGui::GetWindowDrawList()->GetClipRectMax();
+        labelClipMax.x = ImGui::GetCursorScreenPos().x + removeControlStartX
+            - ImGui::GetCursorPosX() - style.ItemSpacing.x;
+        ImGui::PushClipRect(labelClipMin, labelClipMax, true);
+        const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+            | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
+        const bool fileTreeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
         setLastItemTooltip(tooltipText.c_str());
+        drawSceneItemInteraction(state, node.objectId, comparison, true);
+        ImGui::PopClipRect();
         ImGui::SameLine(removeControlStartX, 0.0f);
         if (drawRenderModeIconButton(
                 "remove",
@@ -1251,7 +1298,7 @@ void drawSceneTreeNode(
             drawFileTransformControls(file.fileSettings, translationSpeed);
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
+                drawSceneTreeNode(state, runtimes, comparison, node.children[childIndex], removeFileIndex);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1271,6 +1318,7 @@ void drawSceneTreeNode(
 
     drawGroupControls(
         state,
+        comparison,
         file.mesh.nodes[node.groupIndex],
         gpuMesh.nodeRanges[node.groupIndex],
         file,
@@ -2669,7 +2717,8 @@ int main(int argc, char** argv)
                 if (event.type == SDL_EVENT_DROP_COMPLETE) {
                     finishDropBatch(dragDropState);
                 }
-                if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE) {
+                if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE
+                    && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
                     if (ui.isDirty) {
                         requestDirtyQuitWarning = true;
                     } else {
@@ -3306,10 +3355,11 @@ int main(int argc, char** argv)
                             "FilesContent",
                             ImVec2(0.0f, filesContentHeight),
                             ImGuiChildFlags_None)) {
+                        ImGui::TextDisabled("Ctrl-click two files, then right-click to compare.");
                         std::optional<size_t> removeFileIndex;
                         for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                             ImGui::PushID(static_cast<int>(nodeIndex));
-                            drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex);
+                            drawSceneTreeNode(ui, runtimes, comparison, ui.sceneNodes[nodeIndex], removeFileIndex);
                             ImGui::PopID();
                         }
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {

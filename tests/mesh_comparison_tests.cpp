@@ -240,6 +240,124 @@ TEST_CASE("comparison settings clamp at operation boundaries and follow file rem
     CHECK_FALSE(state.comparison.enabled);
 }
 
+TEST_CASE("tree selection replaces toggles and preserves a pair on context click")
+{
+    auto state = stateWithFiles(3);
+    const auto clean = woby::createSceneDocument(state);
+    const auto first = state.files[0].objectId;
+    const auto second = state.files[1].objectId;
+    const auto third = state.files[2].objectId;
+    woby::selectSceneObject(state, first);
+    CHECK(woby::sceneObjectSelected(state, first));
+    woby::selectSceneObject(state, second, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second});
+    woby::selectSceneObject(state, first, false, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second});
+    woby::selectSceneObject(state, second, true, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second});
+    woby::selectSceneObject(state, first, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{second});
+    woby::selectSceneObject(state, first);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first});
+    woby::selectSceneObject(state, second, true);
+    woby::selectSceneObject(state, third, true, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{third});
+    woby::selectSceneObject(state, woby::invalidSceneObjectId);
+    woby::selectSceneObject(state, state.nextObjectId);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{third});
+    woby::updateSceneDirty(state, clean);
+    CHECK_FALSE(state.isDirty);
+    CHECK(woby::createSceneDocument(state) == clean);
+}
+
+TEST_CASE("tree comparison uses click order and preserves comparison display settings")
+{
+    auto state = stateWithFiles(2);
+    const auto clean = woby::createSceneDocument(state);
+    auto settings = state.comparison;
+    settings.mode = woby::ComparisonMode::overlay;
+    settings.tolerance = .25f;
+    woby::setComparisonSettings(state, settings);
+    woby::selectSceneObject(state, state.files[1].objectId);
+    woby::selectSceneObject(state, state.files[0].objectId, true);
+    REQUIRE(woby::canCompareSceneSelection(state));
+    REQUIRE(woby::compareSceneSelection(state));
+    CHECK(state.comparison.enabled);
+    CHECK(state.comparison.originalFile == 1);
+    CHECK(state.comparison.repairedFile == 0);
+    CHECK(state.comparison.mode == woby::ComparisonMode::overlay);
+    CHECK(state.comparison.tolerance == doctest::Approx(.25));
+    woby::updateSceneDirty(state, clean);
+    CHECK(state.isDirty);
+    const auto document = woby::createSceneDocument(state);
+    CHECK(document.comparison == state.comparison);
+    const auto replacement = woby::prepareSceneReplacement(state, state.files, document);
+    CHECK(replacement.comparison == state.comparison);
+    CHECK(replacement.selectedSceneObjects.empty());
+}
+
+TEST_CASE("tree comparison is unavailable for groups folders and invalid selection counts")
+{
+    auto state = stateWithFiles(3);
+    const auto original = state.comparison;
+    const auto unavailable = [&] {
+        CHECK_FALSE(woby::canCompareSceneSelection(state));
+        CHECK_FALSE(woby::compareSceneSelection(state));
+        CHECK(state.comparison == original);
+    };
+    unavailable();
+    woby::selectSceneObject(state, state.files[0].objectId);
+    unavailable();
+    woby::selectSceneObject(state, state.files[1].groupSettings[0].objectId, true);
+    unavailable();
+    woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId);
+    woby::selectSceneObject(state, state.files[1].groupSettings[0].objectId, true);
+    unavailable();
+    woby::UiSceneNode folder;
+    folder.name = "folder";
+    state.sceneNodes.push_back(folder);
+    woby::assignSceneObjectIds(state);
+    woby::selectSceneObject(state, state.sceneNodes.back().objectId);
+    woby::selectSceneObject(state, state.files[1].objectId, true);
+    unavailable();
+    woby::selectSceneObject(state, state.files[0].objectId);
+    woby::selectSceneObject(state, state.files[1].objectId, true);
+    woby::selectSceneObject(state, state.files[2].objectId, true);
+    unavailable();
+    state.selectedSceneObjects = {state.files[0].objectId, state.files[0].objectId};
+    unavailable();
+    state.selectedSceneObjects = {state.files[0].objectId, state.nextObjectId};
+    unavailable();
+    state.selectedSceneObjects = {state.files[0].objectId, state.files[1].objectId};
+    state.files[1].mesh.indices.clear();
+    unavailable();
+}
+
+TEST_CASE("tree selection follows file identity through removal and prunes removed groups and folders")
+{
+    auto state = stateWithFiles(3);
+    const auto first = state.files[1].objectId;
+    const auto second = state.files[2].objectId;
+    woby::selectSceneObject(state, first);
+    woby::selectSceneObject(state, second, true);
+    REQUIRE(woby::removeFileFromState(state, 0));
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second});
+    REQUIRE(woby::compareSceneSelection(state));
+    CHECK(state.comparison.originalFile == 0);
+    CHECK(state.comparison.repairedFile == 1);
+    woby::UiSceneNode folder;
+    folder.name = "parent";
+    folder.children.push_back(state.sceneNodes[0]);
+    state.sceneNodes[0] = folder;
+    woby::assignSceneObjectIds(state);
+    woby::selectSceneObject(state, state.sceneNodes[0].objectId, true);
+    woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId, true);
+    REQUIRE(woby::removeFileFromState(state, 0));
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{second});
+    CHECK_FALSE(woby::canCompareSceneSelection(state));
+    CHECK_FALSE(state.comparison.enabled);
+}
+
 TEST_CASE("comparison settings round trip through scene save and replacement with dirty tracking")
 {
     auto state = stateWithFiles(2);

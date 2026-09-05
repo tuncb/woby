@@ -28,6 +28,12 @@ prototype offers bidirectional unsigned distance heatmaps, tolerance and color
 range controls, original/repaired views, a wireframe overlay, and edge
 diagnostics. Comparison settings are saved in `.woby` scenes.
 
+You can also click a file in the tree, Ctrl-click a second file, then right-click
+either selected file and choose **Compare**. The first selected file is Original
+and the second is Repaired. Compare appears only for exactly two mesh files;
+selections containing mesh groups or folders do not offer it. Use the tree arrows
+or double-click a name to expand or collapse an item.
+
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --scene .\assets\samples\mesh-comparison\compare.woby
 ```

@@ -92,6 +92,8 @@ struct UiSceneNode {
 
 struct UiState {
     ComparisonSettings comparison;
+    // Transient tree selection in click order; excluded from scene files and dirty tracking.
+    std::vector<SceneObjectId> selectedSceneObjects;
     bool running = true;
     bool isDirty = false;
     bool showOrigin = true;

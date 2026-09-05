@@ -291,6 +291,10 @@ void destroyComparisonRuntime(ComparisonRuntime &runtime)
 
 void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
 {
+    if (runtime.openPanelRequested) {
+        ImGui::SetNextItemOpen(true);
+        runtime.openPanelRequested = false;
+    }
     if (!ImGui::CollapsingHeader("Compare meshes", ImGuiTreeNodeFlags_DefaultOpen))
     {
         return;
