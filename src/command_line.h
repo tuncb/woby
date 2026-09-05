@@ -35,6 +35,7 @@ enum class ControlCommand {
     screenshot,
     objects,
     object,
+    command,
 };
 
 struct ControlArguments {
@@ -42,6 +43,8 @@ struct ControlArguments {
     std::optional<std::string> instanceId;
     std::filesystem::path outputPath;
     std::string objectId;
+    std::string commandId;
+    std::optional<std::string> requestKey;
     int timeoutSeconds = 60;
     bool json = false;
 };
@@ -63,5 +66,6 @@ struct AppArguments {
 
 AppArguments parseCommandLine(int argc, char** argv);
 [[nodiscard]] bool validInstanceId(const std::string& value);
+[[nodiscard]] bool validAutomationRequestKey(const std::string& value);
 
 } // namespace woby

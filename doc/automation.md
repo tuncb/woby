@@ -62,7 +62,7 @@ optional integer from 1 to 3600 (default 60). Unknown parameters are rejected. T
 response waits for GPU readback and PNG writing, then returns:
 
 ```json
-{"jsonrpc":"2.0","id":2,"result":{"instance":"review","path":"C:\\output\\view.png","sequence":"2"}}
+{"jsonrpc":"2.0","id":2,"result":{"instance":"review","path":"C:\\output\\view.png","sequence":"2","commandId":"cmd-0123456789abcdef0123456789abcdef-2","state":"succeeded"}}
 ```
 
 The result path reflects `.png` extension normalization. Parent directories are created;
@@ -81,8 +81,8 @@ Instance discovery remains a runtime-only query and does not wait for main-threa
 
 ### Command ordering and concurrency
 
-Every successful scene command returns a `sequence` alongside its result. Sequences
-are decimal strings assigned in increasing order when commands are admitted to the
+Every successful scene command returns a `sequence`, `commandId`, and `state` alongside
+its result. Sequences are decimal strings assigned in increasing order when commands are admitted to the
 queue, independently of the client's JSON-RPC `id`. Strings preserve all 64 bits in
 clients that represent JSON numbers as floating point.
 
@@ -109,8 +109,8 @@ requests are not an atomic batch.
 Timeouts include queue waiting. Expired queued commands are removed without execution;
 started commands retain the execution slot until completion. Later commands retain
 their relative order when earlier commands expire or fail. Accepted-command timeouts
-include their `sequence` in error `data`; sequence gaps are expected. Disconnecting a
-client is not cancellation. Viewer shutdown releases both active and queued clients.
+include their `sequence`, `commandId`, and execution `state` in error `data`; sequence
+gaps are expected. Disconnecting a client is not cancellation. Viewer shutdown releases both active and queued clients.
 CLI JSON errors expose the `error` message, RPC `code`, and available `data`.
 
 Scene revision tracking has been removed. `scene.revision` is an unknown method
@@ -120,6 +120,86 @@ Scene revision tracking has been removed. `scene.revision` is an unknown method
 For future mutating handlers, update logical state and bounds/dirty tracking on the
 main thread before completing the command. Render code must continue to read
 already-updated state.
+
+### Recover commands and retry safely
+
+All three scene methods accept an optional `requestKey` (`--request-key KEY` in the
+CLI). Keys contain 1-128 ASCII letters, digits, `-`, `_`, `.`, or `:`. Choose a unique
+key for each intended operation and keep it before submitting the request.
+
+```powershell
+woby ctl --instance review screenshot C:\output\view.png --request-key capture-1 --timeout 60 --json
+woby ctl --instance review command --request-key capture-1 --json
+woby ctl --instance review command COMMAND_ID --json
+```
+
+The equivalent lookup requests are:
+
+```json
+{"jsonrpc":"2.0","id":5,"method":"command.get","params":{"requestKey":"capture-1"}}
+{"jsonrpc":"2.0","id":6,"method":"command.get","params":{"id":"COMMAND_ID"}}
+```
+
+Replace `COMMAND_ID` with the opaque `commandId` from a response. Unlike `sequence`,
+this ID includes a random launch identity; IDs from another viewer or a restarted
+viewer cannot refer to new commands. Lookup takes exactly one selector, returns
+immediately, and bypasses the scene queue. It consumes no admission slot or sequence.
+It returns `instance`, `commandId`, `sequence`, optional `requestKey`, and `state`:
+
+| State | Meaning |
+| --- | --- |
+| `queued` | Admitted but not started |
+| `running` | Started; may complete after the HTTP deadline |
+| `succeeded` | Finished; the original response result is in nested `result` |
+| `failed` | Finished; the original structured error is in nested `error` |
+| `expired-before-start` | Deadline expired without execution; original timeout error is in nested `error` |
+
+A successful lookup has CLI exit code 0 even when the inspected command failed;
+inspect `state` and nested `error`. Lookup failures use exit code 1 and the normal
+structured CLI error format.
+
+Retrying the same method and validated operation parameters with the same key never
+admits a second command in that viewer launch. Finished requests replay their original
+result or error with the retry's JSON-RPC `id`. Queued/running duplicates return
+`-32008` immediately with command metadata; they do not hold another HTTP worker.
+Use `command.get` to poll, or resubmit the identical keyed request later to recover its
+original response. A conflicting method or operation parameter returns `-32006`.
+Screenshot paths are compared after lexical normalization; different spellings that
+refer to the same file are not otherwise guaranteed to match. Object queries replay
+the original snapshot; use a new key or no key for a fresh query.
+
+`timeoutSeconds` is excluded from command identity. Only the first admission sets the
+execution deadline, including queue waiting; retries cannot extend it. A `-32003`
+response with `state: running` is a wait timeout, not the command's terminal outcome.
+The slot stays occupied until actual completion. `expired-before-start` is terminal
+and replayed on retries; a caller wanting to try that operation again must use a new
+key. The timeout message and eventual result both identify the same command.
+
+Completed results are retained in memory in completion order, up to 128 records and
+8 MiB of serialized responses combined. There is no time-based retention guarantee.
+An oversized response is delivered to its original waiter but is not retained.
+Active/queued records are retained independently. Evicted results return `-32009`,
+which means the outcome is unavailable, **not** that no work occurred.
+
+Used keys and their parameter fingerprints remain reserved for the entire viewer
+launch, even after result eviction. This ledger accepts at most 1,024 distinct keys;
+after that, new keyed commands return `-32010` before admission. Existing keys remain
+queryable/replayable subject to result retention, and unkeyed commands still work.
+Validation and admission failures do not reserve keys. Reusing an evicted key never
+starts new work; reconcile the outcome before choosing a fresh key.
+
+All history and key reservations disappear on viewer shutdown. The guarantee covers
+one viewer launch, not crashes or restarts, and is not durable exactly-once execution.
+An unknown key in a new launch says nothing about work performed by an earlier launch.
+After a lost connection, inspect using the saved key in the original launch; after a
+restart or unavailable result, reconcile the output before submitting another operation.
+JSON-RPC `id` is only response correlation and does not deduplicate commands.
+
+For future scene-editing methods, expose absolute setters (for example `visible=false`
+and `opacity=0.5`) and return actual values after operation-boundary validation and
+clamping. Complete edits only after updating bounds and dirty tracking. Relative
+operations and external side effects still require a retry key to prevent duplicate
+application. These are handler requirements; scene-editing methods are not yet exposed.
 
 ### Discover and resolve scene objects
 
@@ -172,10 +252,15 @@ In addition to standard parse/request/method/parameter/internal errors:
 | -32003 | Command deadline expired |
 | -32004 | Main-thread capture failed, including busy loading/UI capture or file-write errors |
 | -32005 | Unknown or stale object ID |
+| -32006 | Request key already belongs to different command parameters |
+| -32007 | Unknown command ID or request key in this viewer launch |
+| -32008 | Duplicate request is still queued/running; inspect with `command.get` |
+| -32009 | Command result was evicted; outcome is unavailable and the key cannot execute again |
+| -32010 | Session request-key capacity reached; no new command was admitted |
 
 A timeout cancels a request that has not started. GPU work already submitted may still
-save its PNG. Disconnecting the HTTP client is not cancellation; set a suitable deadline
-and avoid automatically retrying a timed-out capture with the same output path.
+save its PNG. Disconnecting the HTTP client is not cancellation. Use a request key and
+command lookup to recover the outcome; repeating an unkeyed capture can write another PNG.
 
 ## PowerShell example
 
@@ -195,5 +280,5 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($instance.port)/rpc" `
 ```
 
 Version 1 exposes instance discovery, screenshot capture, object enumeration, object
-lookup, and FIFO command ordering. Scene editing, job/event APIs, and MCP
-integration can use the same runtime boundary.
+lookup, FIFO command ordering, retry keys, and command status/result recovery. Scene
+editing, job/event APIs, and MCP integration can use the same runtime boundary.

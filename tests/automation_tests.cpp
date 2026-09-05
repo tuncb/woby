@@ -35,12 +35,12 @@ struct AutomationFixture {
     }
 };
 
-Json request(const woby::AutomationInstance& instance, const std::string& method, const Json& params = Json::object())
+Json request(const woby::AutomationInstance& instance, const std::string& method, const Json& params = Json::object(), const Json& rpcId = "test-request")
 {
     httplib::Client client("127.0.0.1", instance.port);
     client.set_connection_timeout(2, 0);
     client.set_read_timeout(5, 0);
-    const Json body = {{"jsonrpc", "2.0"}, {"id", "test-request"}, {"method", method}, {"params", params}};
+    const Json body = {{"jsonrpc", "2.0"}, {"id", rpcId}, {"method", method}, {"params", params}};
     const auto result = client.Post("/rpc", {{"Authorization", "Bearer " + instance.token}}, body.dump(), "application/json");
     if (!result || result->status != 200) {
         throw std::runtime_error("Automation test could not get an HTTP response.");
@@ -590,4 +590,246 @@ TEST_CASE("discovery skips stale records without contacting their old ports")
     fixture.server = woby::startAutomation("test", fixture.directory);
     CHECK(woby::readAutomationInstances(fixture.directory).size() == 1u);
     CHECK(woby::readAutomationInstance(fixture.directory, "test").token != fixture.instance.token);
+}
+
+
+TEST_CASE("retry keys deduplicate queued and running captures and replay with the current RPC id")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const auto path = fixture.directory / "retry.png";
+    Json params = {{"path", woby::pathToUtf8(path)}, {"requestKey", "capture:1"}, {"timeoutSeconds", 4}};
+    auto first = std::async(std::launch::async, [&] { return request(fixture.instance, "screenshot.capture", params, 11); });
+    REQUIRE(waitForQueued(fixture, 1));
+    const auto queued = request(fixture.instance, "command.get", {{"requestKey", "capture:1"}}).at("result");
+    CHECK(queued.at("state") == "queued");
+    const auto commandId = queued.at("commandId");
+    auto duplicate = request(fixture.instance, "screenshot.capture", params);
+    CHECK(duplicate.at("error").at("code") == -32008);
+    CHECK(duplicate.at("error").at("data").at("commandId") == commandId);
+    CHECK(waitForQueued(fixture, 1));
+    const auto active = waitForCommand(*fixture.server);
+    REQUIRE(active);
+    CHECK(request(fixture.instance, "command.get", {{"id", commandId}}).at("result").at("state") == "running");
+
+    std::vector<std::future<Json>> duplicates;
+    for (int i = 0; i < 20; ++i) {
+        duplicates.push_back(std::async(std::launch::async, [&] { return request(fixture.instance, "screenshot.capture", params); }));
+    }
+    for (auto& response : duplicates) {
+        CHECK(response.get().at("error").at("code") == -32008);
+    }
+    CHECK(request(fixture.instance, "instance.info").at("result").at("queuedCommands") == 0);
+    CHECK_FALSE(takeCommand(*fixture.server));
+    auto conflict = params;
+    conflict["path"] = woby::pathToUtf8(fixture.directory / "other.png");
+    CHECK(request(fixture.instance, "screenshot.capture", conflict).at("error").at("code") == -32006);
+    CHECK(request(fixture.instance, "objects.list", {{"requestKey", "capture:1"}}).at("error").at("code") == -32006);
+    REQUIRE(completeCommand(*fixture.server, active->id, woby::AutomationScreenshotResult{path}));
+    const auto original = first.get();
+    CHECK(original.at("id") == 11);
+    CHECK(original.at("result").at("state") == "succeeded");
+    // A new wait limit does not change the identity or extend the original deadline.
+    params["timeoutSeconds"] = 1;
+    const auto replay = request(fixture.instance, "screenshot.capture", params, "retry-response");
+    CHECK(replay.at("id") == "retry-response");
+    CHECK(replay.at("result") == original.at("result"));
+    CHECK(request(fixture.instance, "command.get", {{"id", commandId}}).at("result").at("result") == original.at("result"));
+    CHECK_FALSE(takeCommand(*fixture.server));
+}
+
+TEST_CASE("timed out captures retain late results while queued expiration is terminal")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const auto path = fixture.directory / "late-retry.png";
+    const Json params = {{"path", woby::pathToUtf8(path)}, {"requestKey", "late"}, {"timeoutSeconds", 1}};
+    auto capture = std::async(std::launch::async, [&] { return request(fixture.instance, "screenshot.capture", params); });
+    const auto active = waitForCommand(*fixture.server);
+    REQUIRE(active);
+    const auto timedOut = capture.get().at("error");
+    CHECK(timedOut.at("code") == -32003);
+    CHECK(timedOut.at("data").at("state") == "running");
+    CHECK(request(fixture.instance, "screenshot.capture", params).at("error").at("code") == -32008);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "late"}}).at("result").at("state") == "running");
+
+    const Json queuedParams = {{"requestKey", "queued"}, {"timeoutSeconds", 1}};
+    const auto expired = request(fixture.instance, "objects.list", queuedParams);
+    CHECK(expired.at("error").at("data").at("state") == "expired-before-start");
+    CHECK(request(fixture.instance, "objects.list", queuedParams) == expired);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "queued"}}).at("result").at("state") == "expired-before-start");
+    REQUIRE(completeCommand(*fixture.server, active->id, woby::AutomationScreenshotResult{path}));
+    const auto replay = request(fixture.instance, "screenshot.capture", params).at("result");
+    CHECK(replay.at("state") == "succeeded");
+    CHECK(replay.at("commandId") == timedOut.at("data").at("commandId"));
+    CHECK(replay.at("path") == woby::pathToUtf8(path));
+    CHECK_FALSE(takeCommand(*fixture.server));
+}
+
+TEST_CASE("retry keys retain failures and replay query snapshots")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    for (bool fail : {false, true}) {
+        const Json params = {{"requestKey", fail ? "failure" : "snapshot"}, {"timeoutSeconds", 4}};
+        auto response = std::async(std::launch::async, [&] { return request(fixture.instance, "objects.list", params); });
+        const auto command = waitForCommand(*fixture.server);
+        REQUIRE(command);
+        if (fail) {
+            REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationCommandError{"Cannot inspect scene.", -32004}));
+        } else {
+            woby::SceneObjectInfo object;
+            object.id = 1;
+            object.name = "Original name";
+            REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationObjectsResult{{object}}));
+        }
+        const auto original = response.get();
+        CHECK(request(fixture.instance, "objects.list", params) == original);
+        const auto status = request(fixture.instance, "command.get", {{"requestKey", params.at("requestKey")}}).at("result");
+        CHECK(status.at("state") == (fail ? "failed" : "succeeded"));
+        CHECK(status.at(fail ? "error" : "result") == original.at(fail ? "error" : "result"));
+        CHECK_FALSE(takeCommand(*fixture.server));
+    }
+}
+
+TEST_CASE("command history evicts results without ever reusing admitted retry keys")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    Json firstId;
+    Json lastId;
+    for (size_t i = 0; i < woby::maxAutomationRequestKeys; ++i) {
+        const Json params = {{"requestKey", "key-" + std::to_string(i)}, {"timeoutSeconds", 4}};
+        auto response = std::async(std::launch::async, [&] { return request(fixture.instance, "objects.list", params); });
+        const auto command = waitForCommand(*fixture.server);
+        REQUIRE(command);
+        REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationObjectsResult{}));
+        lastId = response.get().at("result").at("commandId");
+        if (i == 0) {
+            firstId = lastId;
+        }
+        if (i == woby::maxAutomationHistory - 1) {
+            CHECK(request(fixture.instance, "command.get", {{"id", firstId}}).at("result").at("state") == "succeeded");
+        }
+        if (i == woby::maxAutomationHistory) {
+            CHECK(request(fixture.instance, "command.get", {{"id", firstId}}).at("error").at("code") == -32009);
+        }
+    }
+    CHECK(request(fixture.instance, "command.get", {{"id", firstId}}).at("error").at("code") == -32009);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "key-0"}}).at("error").at("code") == -32009);
+    CHECK(request(fixture.instance, "objects.list", {{"requestKey", "key-0"}}).at("error").at("code") == -32009);
+    CHECK(request(fixture.instance, "command.get", {{"id", lastId}}).at("result").at("state") == "succeeded");
+    CHECK(request(fixture.instance, "objects.list", {{"requestKey", "key-1023"}}).contains("result"));
+    CHECK(request(fixture.instance, "objects.list", {{"requestKey", "new-key"}}).at("error").at("code") == -32010);
+    CHECK_FALSE(takeCommand(*fixture.server));
+    // The key ledger limit does not block ordinary unkeyed commands.
+    auto unkeyed = std::async(std::launch::async, [&] { return request(fixture.instance, "objects.list"); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationObjectsResult{}));
+    CHECK(unkeyed.get().contains("result"));
+}
+
+TEST_CASE("oversized results are delivered but not retained and foreign command ids never alias")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    auto response = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "objects.list", {{"requestKey", "large"}, {"timeoutSeconds", 4}});
+    });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    woby::SceneObjectInfo object;
+    object.id = 1;
+    object.name.assign(woby::maxAutomationHistoryBytes, 'x');
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationObjectsResult{{object}}));
+    const auto result = response.get().at("result");
+    CHECK(result.at("objects")[0].at("name").get_ref<const std::string&>().size() == woby::maxAutomationHistoryBytes);
+    CHECK(request(fixture.instance, "objects.list", {{"requestKey", "large"}}).at("error").at("code") == -32009);
+    const auto oldId = result.at("commandId");
+    fixture.server.reset();
+    fixture.server = woby::startAutomation("test", fixture.directory);
+    fixture.instance = woby::readAutomationInstance(fixture.directory, "test");
+    CHECK(request(fixture.instance, "command.get", {{"id", oldId}}).at("error").at("code") == -32007);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "large"}}).at("error").at("code") == -32007);
+}
+
+TEST_CASE("command lookup and retry key validation never schedule scene work")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    for (const Json& key : std::vector<Json>{nullptr, 1, "", "contains space", std::string(129, 'x')}) {
+        CHECK(request(fixture.instance, "objects.list", {{"requestKey", key}}).at("error").at("code") == -32602);
+        CHECK(request(fixture.instance, "command.get", {{"requestKey", key}}).at("error").at("code") == -32602);
+    }
+    for (const Json& params : std::vector<Json>{Json::object(), {{"id", 1}}, {{"id", "x"}, {"requestKey", "key"}},
+             {{"requestKey", "key"}, {"timeoutSeconds", 1}}, {{"unexpected", "key"}}}) {
+        CHECK(request(fixture.instance, "command.get", params).at("error").at("code") == -32602);
+    }
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "unknown"}}).at("error").at("code") == -32007);
+    CHECK_FALSE(takeCommand(*fixture.server));
+}
+
+
+TEST_CASE("a disconnected client recovers the original command by its preselected key")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const Json params = {{"path", woby::pathToUtf8(fixture.directory / "disconnected.png")},
+        {"requestKey", "connection-lost"}, {"timeoutSeconds", 4}};
+    auto disconnected = std::async(std::launch::async, [&] {
+        httplib::Client client("127.0.0.1", fixture.instance.port);
+        client.set_read_timeout(1, 0);
+        const Json body = {{"jsonrpc", "2.0"}, {"id", "lost"}, {"method", "screenshot.capture"}, {"params", params}};
+        const auto response = client.Post("/rpc", {{"Authorization", "Bearer " + fixture.instance.token}}, body.dump(), "application/json");
+        return !response;
+    });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    REQUIRE(disconnected.get());
+    const auto status = request(fixture.instance, "command.get", {{"requestKey", "connection-lost"}}).at("result");
+    CHECK(status.at("state") == "running");
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationScreenshotResult{fixture.directory / "disconnected.png"}));
+    const auto replay = request(fixture.instance, "screenshot.capture", params).at("result");
+    CHECK(replay.at("commandId") == status.at("commandId"));
+    CHECK(replay.at("state") == "succeeded");
+    CHECK_FALSE(takeCommand(*fixture.server));
+}
+
+TEST_CASE("full queues still allow retry recovery and do not reserve rejected keys")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    auto first = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "objects.list", {{"requestKey", "first"}, {"timeoutSeconds", 4}});
+    });
+    const auto active = waitForCommand(*fixture.server);
+    REQUIRE(active);
+    std::vector<std::future<Json>> queued;
+    for (size_t i = 1; i < woby::maxAutomationCommands; ++i) {
+        queued.push_back(std::async(std::launch::async, [&] { return request(fixture.instance, "objects.list", {{"timeoutSeconds", 4}}); }));
+    }
+    REQUIRE(waitForQueued(fixture, woby::maxAutomationCommands - 1));
+    CHECK(request(fixture.instance, "objects.list", {{"requestKey", "first"}}).at("error").at("code") == -32008);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "first"}}).at("result").at("state") == "running");
+    CHECK(request(fixture.instance, "objects.list", {{"requestKey", "rejected"}}).at("error").at("code") == -32002);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "rejected"}}).at("error").at("code") == -32007);
+    REQUIRE(completeCommand(*fixture.server, active->id, woby::AutomationObjectsResult{}));
+    CHECK(first.get().contains("result"));
+    for (size_t i = 1; i < woby::maxAutomationCommands; ++i) {
+        const auto next = waitForCommand(*fixture.server);
+        REQUIRE(next);
+        REQUIRE(completeCommand(*fixture.server, next->id, woby::AutomationObjectsResult{}));
+    }
+    for (auto& response : queued) {
+        CHECK(response.get().contains("result"));
+    }
+    auto accepted = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "objects.list", {{"requestKey", "rejected"}, {"timeoutSeconds", 4}});
+    });
+    const auto next = waitForCommand(*fixture.server);
+    REQUIRE(next);
+    CHECK(next->id == active->id + woby::maxAutomationCommands);
+    REQUIRE(completeCommand(*fixture.server, next->id, woby::AutomationObjectsResult{}));
+    CHECK(accepted.get().contains("result"));
 }

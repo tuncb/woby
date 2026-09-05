@@ -36,6 +36,9 @@ struct AutomationObjectCommand {
 using AutomationCommandPayload = std::variant<AutomationScreenshotCommand, AutomationObjectsCommand, AutomationObjectCommand>;
 using AutomationCommandId = uint64_t;
 inline constexpr size_t maxAutomationCommands = 8;
+inline constexpr size_t maxAutomationHistory = 128;
+inline constexpr size_t maxAutomationHistoryBytes = 8 * 1024 * 1024;
+inline constexpr size_t maxAutomationRequestKeys = 1024;
 
 struct AutomationCommand {
     AutomationCommandId id = 0;

@@ -12,6 +12,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <deque>
+#include <map>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -24,7 +25,14 @@ struct AutomationRequest {
     std::chrono::steady_clock::time_point deadline;
     bool started = false;
     bool finished = false;
+    std::string requestKey;
+    size_t responseBytes = 0;
     nlohmann::json response;
+};
+
+struct AutomationKeyRecord {
+    AutomationCommandId id = 0;
+    std::string fingerprint;
 };
 
 struct AutomationRuntime {
@@ -37,8 +45,13 @@ struct AutomationRuntime {
     bool stopping = false;
     AutomationCommandId nextCommandId = 1;
     std::string objectIdPrefix;
+    std::string commandIdPrefix;
     std::deque<std::shared_ptr<AutomationRequest>> pending;
     std::shared_ptr<AutomationRequest> request;
+    std::deque<std::shared_ptr<AutomationRequest>> history;
+    size_t historyBytes = 0;
+    // Never forget used keys within a session, even after their result is evicted.
+    std::map<std::string, AutomationKeyRecord> requestKeys;
 };
 
 namespace {
@@ -142,7 +155,142 @@ Json completedResponse(const AutomationRuntime& runtime, const AutomationCommand
     auto response = std::visit([&](const auto& value) { return commandResponse(runtime, value); }, result);
     auto& metadata = response.contains("error") ? response["error"]["data"] : response["result"];
     metadata["sequence"] = std::to_string(command.id);
+    metadata["commandId"] = runtime.commandIdPrefix + std::to_string(command.id);
     return response;
+}
+
+const char* commandState(const AutomationRequest& request)
+{
+    if (!request.finished) {
+        return request.started ? "running" : "queued";
+    }
+    if (!request.started) {
+        return "expired-before-start";
+    }
+    return request.response.contains("error") ? "failed" : "succeeded";
+}
+
+Json commandMetadata(const AutomationRuntime& runtime, const AutomationRequest& request)
+{
+    Json result = {{"sequence", std::to_string(request.command.id)},
+        {"commandId", runtime.commandIdPrefix + std::to_string(request.command.id)},
+        {"state", commandState(request)}};
+    if (!request.requestKey.empty()) {
+        result["requestKey"] = request.requestKey;
+    }
+    return result;
+}
+
+// All request/history helpers run under the runtime mutex.
+void finishRequest(AutomationRuntime& runtime, const std::shared_ptr<AutomationRequest>& request, Json response)
+{
+    request->response = std::move(response);
+    request->finished = true;
+    auto& metadata = request->response.contains("error") ? request->response["error"]["data"] : request->response["result"];
+    metadata.update(commandMetadata(runtime, *request));
+    request->responseBytes = request->response.dump().size();
+    if (request->responseBytes > maxAutomationHistoryBytes) {
+        runtime.changed.notify_all();
+        return;
+    }
+    runtime.history.push_back(request);
+    runtime.historyBytes += request->responseBytes;
+    while (runtime.history.size() > maxAutomationHistory || runtime.historyBytes > maxAutomationHistoryBytes) {
+        runtime.historyBytes -= runtime.history.front()->responseBytes;
+        runtime.history.pop_front();
+    }
+    runtime.changed.notify_all();
+}
+
+void expireQueuedRequests(AutomationRuntime& runtime)
+{
+    const auto now = std::chrono::steady_clock::now();
+    for (auto it = runtime.pending.begin(); it != runtime.pending.end();) {
+        const auto request = *it;
+        if (now < request->deadline) {
+            ++it;
+            continue;
+        }
+        it = runtime.pending.erase(it);
+        const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, request->command.payload);
+        finishRequest(runtime, request, completedResponse(runtime, request->command, AutomationCommandError{messages.expired, -32003}));
+    }
+}
+
+std::shared_ptr<AutomationRequest> findRequest(const AutomationRuntime& runtime, AutomationCommandId id)
+{
+    if (runtime.request && runtime.request->command.id == id) {
+        return runtime.request;
+    }
+    for (const auto& request : runtime.pending) {
+        if (request->command.id == id) {
+            return request;
+        }
+    }
+    for (const auto& request : runtime.history) {
+        if (request->command.id == id) {
+            return request;
+        }
+    }
+    return {};
+}
+
+Json unavailableCommand(const AutomationRuntime& runtime, const Json& id, AutomationCommandId commandId)
+{
+    auto response = rpcError(id, -32009, "Command result is no longer retained; its outcome is unknown. Do not blindly repeat it.");
+    response["error"]["data"] = {{"sequence", std::to_string(commandId)},
+        {"commandId", runtime.commandIdPrefix + std::to_string(commandId)}, {"state", "unavailable"}};
+    return response;
+}
+
+Json queryCommand(AutomationRuntime& runtime, const Json& id, const Json& params)
+{
+    if (params.size() != 1 || (!params.contains("id") && !params.contains("requestKey"))) {
+        return rpcError(id, -32602, "command.get requires exactly one of id or requestKey.");
+    }
+    std::lock_guard lock(runtime.mutex);
+    expireQueuedRequests(runtime);
+    AutomationCommandId commandId = 0;
+    if (params.contains("requestKey")) {
+        if (!params["requestKey"].is_string() || !validAutomationRequestKey(params["requestKey"].get<std::string>())) {
+            return rpcError(id, -32602, "Invalid requestKey.");
+        }
+        const auto key = runtime.requestKeys.find(params["requestKey"].get<std::string>());
+        if (key == runtime.requestKeys.end()) {
+            return rpcError(id, -32007, "Unknown request key in this viewer session.");
+        }
+        commandId = key->second.id;
+    } else {
+        if (!params["id"].is_string()) {
+            return rpcError(id, -32602, "Command id must be a string returned by a scene command.");
+        }
+        const auto text = params["id"].get<std::string>();
+        // Command IDs include a random launch prefix; a restart cannot alias old IDs.
+        if (!text.starts_with(runtime.commandIdPrefix)) {
+            return rpcError(id, -32007, "Unknown command ID in this viewer session.");
+        }
+        const auto* begin = text.data() + runtime.commandIdPrefix.size();
+        const auto* end = text.data() + text.size();
+        const auto parsed = std::from_chars(begin, end, commandId);
+        if (parsed.ec != std::errc{} || parsed.ptr != end || commandId == 0
+            || text != runtime.commandIdPrefix + std::to_string(commandId)) {
+            return rpcError(id, -32602, "Invalid command ID.");
+        }
+        if (runtime.nextCommandId != 0 && commandId >= runtime.nextCommandId) {
+            return rpcError(id, -32007, "Unknown command ID in this viewer session.");
+        }
+    }
+    const auto request = findRequest(runtime, commandId);
+    if (!request) {
+        return unavailableCommand(runtime, id, commandId);
+    }
+    auto result = commandMetadata(runtime, *request);
+    result["instance"] = runtime.registration.instance.id;
+    if (request->finished) {
+        const char* field = request->response.contains("error") ? "error" : "result";
+        result[field] = request->response[field];
+    }
+    return rpcResult(id, result);
 }
 
 bool resultMatches(const AutomationScreenshotCommand&, const AutomationCommandResult& result)
@@ -160,15 +308,68 @@ bool resultMatches(const AutomationObjectCommand&, const AutomationCommandResult
     return std::holds_alternative<AutomationObjectResult>(result);
 }
 
+Json commandFingerprint(const AutomationScreenshotCommand& command)
+{
+    return Json::array({"screenshot.capture", pathToUtf8(command.outputPath)});
+}
+
+Json commandFingerprint(const AutomationObjectsCommand&)
+{
+    return Json::array({"objects.list"});
+}
+
+Json commandFingerprint(const AutomationObjectCommand& command)
+{
+    return Json::array({"object.get", command.objectId});
+}
+
 Json submitAutomationCommand(
     AutomationRuntime& runtime,
     const Json& id,
     AutomationCommandPayload payload,
-    int timeoutSeconds)
+    int timeoutSeconds,
+    const Json& params)
 {
+    std::string requestKey;
+    if (params.contains("requestKey")) {
+        if (!params["requestKey"].is_string() || !validAutomationRequestKey(params["requestKey"].get<std::string>())) {
+            return rpcError(id, -32602, "requestKey must be 1-128 ASCII letters, digits, '-', '_', '.', or ':'.");
+        }
+        requestKey = params["requestKey"].get<std::string>();
+    }
+    const auto fingerprint = std::visit([](const auto& command) { return commandFingerprint(command).dump(); }, payload);
     std::unique_lock lock(runtime.mutex);
     if (runtime.stopping || !runtime.ready.load()) {
         return rpcError(id, -32001, "Instance is not ready.");
+    }
+    expireQueuedRequests(runtime);
+    if (!requestKey.empty()) {
+        const auto key = runtime.requestKeys.find(requestKey);
+        if (key != runtime.requestKeys.end()) {
+            if (key->second.fingerprint != fingerprint) {
+                auto response = rpcError(id, -32006, "requestKey was already used for different command parameters.");
+                response["error"]["data"] = {{"requestKey", requestKey},
+                    {"commandId", runtime.commandIdPrefix + std::to_string(key->second.id)},
+                    {"sequence", std::to_string(key->second.id)}};
+                return response;
+            }
+            const auto existing = findRequest(runtime, key->second.id);
+            if (!existing) {
+                return unavailableCommand(runtime, id, key->second.id);
+            }
+            if (existing->finished) {
+                auto response = existing->response;
+                response["id"] = id;
+                return response;
+            }
+            // Duplicate waiters must not exhaust the HTTP pool needed for status.
+            auto response = rpcError(id, -32008, "Command is already in progress; use command.get to inspect it.");
+            response["error"]["data"] = commandMetadata(runtime, *existing);
+            return response;
+        }
+        if (runtime.requestKeys.size() >= maxAutomationRequestKeys) {
+            return rpcError(id, -32010, "Viewer session request-key capacity reached; no command was admitted.");
+        }
     }
     if (runtime.pending.size() + (runtime.request ? 1u : 0u) >= maxAutomationCommands) {
         return rpcError(id, -32002, "Automation command queue is full.");
@@ -178,21 +379,30 @@ Json submitAutomationCommand(
     }
     auto request = std::make_shared<AutomationRequest>();
     request->command = {runtime.nextCommandId++, std::move(payload)};
+    request->requestKey = requestKey;
     request->deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds);
     const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, request->command.payload);
     runtime.pending.push_back(request);
+    if (!requestKey.empty()) {
+        runtime.requestKeys.emplace(requestKey, AutomationKeyRecord{request->command.id, fingerprint});
+    }
     if (!runtime.changed.wait_until(lock, request->deadline, [&] { return request->finished || runtime.stopping; })) {
         // Started work may still finish after the HTTP deadline. Reserve its slot
         // until the main thread completes that command, so results cannot cross requests.
         if (!request->started) {
-            std::erase(runtime.pending, request);
+            expireQueuedRequests(runtime);
+            auto response = request->response;
+            response["id"] = id;
+            return response;
         }
         auto response = rpcError(id, -32003, messages.timedOut);
-        response["error"]["data"]["sequence"] = std::to_string(request->command.id);
+        response["error"]["data"] = commandMetadata(runtime, *request);
         return response;
     }
     if (runtime.stopping) {
-        return rpcError(id, -32001, "Instance is shutting down.");
+        auto response = rpcError(id, -32001, "Instance is shutting down; command outcome may be unknown.");
+        response["error"]["data"] = commandMetadata(runtime, *request);
+        return response;
     }
     Json response = request->response;
     response["id"] = id;
@@ -205,7 +415,7 @@ Json captureScreenshot(AutomationRuntime& runtime, const Json& id, const Json& p
         return rpcError(id, -32602, "Screenshot requires an absolute output path.");
     }
     for (const auto& item : params.items()) {
-        if (item.key() != "path" && item.key() != "timeoutSeconds") {
+        if (item.key() != "path" && item.key() != "timeoutSeconds" && item.key() != "requestKey") {
             return rpcError(id, -32602, "Unknown screenshot parameter: " + item.key());
         }
     }
@@ -225,14 +435,14 @@ Json captureScreenshot(AutomationRuntime& runtime, const Json& id, const Json& p
         }
         timeoutSeconds = timeout.get<int>();
     }
-    return submitAutomationCommand(runtime, id, AutomationScreenshotCommand{path.lexically_normal()}, timeoutSeconds);
+    return submitAutomationCommand(runtime, id, AutomationScreenshotCommand{path.lexically_normal()}, timeoutSeconds, params);
 }
 
 Json queryScene(AutomationRuntime& runtime, const Json& id, const Json& params, const std::string& method)
 {
     const bool singleObject = method == "object.get";
     for (const auto& item : params.items()) {
-        if (item.key() != "timeoutSeconds" && !(singleObject && item.key() == "id")) {
+        if (item.key() != "timeoutSeconds" && item.key() != "requestKey" && !(singleObject && item.key() == "id")) {
             return rpcError(id, -32602, "Unknown object query parameter: " + item.key());
         }
     }
@@ -245,7 +455,7 @@ Json queryScene(AutomationRuntime& runtime, const Json& id, const Json& params, 
         timeoutSeconds = timeout.get<int>();
     }
     if (!singleObject) {
-        return submitAutomationCommand(runtime, id, AutomationObjectsCommand{}, timeoutSeconds);
+        return submitAutomationCommand(runtime, id, AutomationObjectsCommand{}, timeoutSeconds, params);
     }
     if (!params.contains("id") || !params["id"].is_string()) {
         return rpcError(id, -32602, "object.get requires an object ID from objects.list.");
@@ -266,7 +476,7 @@ Json queryScene(AutomationRuntime& runtime, const Json& id, const Json& params, 
     if (text.compare(0, prefixLength, runtime.objectIdPrefix) != 0) {
         return rpcError(id, -32005, "Unknown or stale object ID.");
     }
-    return submitAutomationCommand(runtime, id, AutomationObjectCommand{objectId}, timeoutSeconds);
+    return submitAutomationCommand(runtime, id, AutomationObjectCommand{objectId}, timeoutSeconds, params);
 }
 
 void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, httplib::Response& response)
@@ -316,6 +526,8 @@ void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, http
                                         : rpcError(id, -32602, "instance.info takes no parameters.");
             } else if (method == "screenshot.capture") {
                 result = captureScreenshot(runtime, id, params);
+            } else if (method == "command.get") {
+                result = queryCommand(runtime, id, params);
             } else if (method == "objects.list" || method == "object.get") {
                 result = queryScene(runtime, id, params, method);
             } else {
@@ -372,6 +584,7 @@ AutomationOwner startAutomation(const std::optional<std::string>& instanceId, co
 {
     AutomationOwner runtime(new AutomationRuntime, &stopAutomation);
     runtime->objectIdPrefix = "obj-" + automationRandomHex(16u) + "-";
+    runtime->commandIdPrefix = "cmd-" + automationRandomHex(16u) + "-";
     const auto directory = registryDirectory.empty() ? automationRegistryDirectory() : registryDirectory;
     reserveAutomationInstance(runtime->registration, directory, instanceId.value_or("woby-" + automationRandomHex(8u)));
     auto* pointer = runtime.get();
@@ -434,20 +647,9 @@ std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtim
     if (runtime.request || runtime.stopping) {
         return {};
     }
-    while (!runtime.pending.empty()) {
-        const auto& request = runtime.pending.front();
-        std::optional<AutomationCommandError> error;
-        if (std::chrono::steady_clock::now() >= request->deadline) {
-            const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, request->command.payload);
-            error = AutomationCommandError{messages.expired, -32003};
-        }
-        if (error) {
-            request->response = completedResponse(runtime, request->command, *error);
-            request->finished = true;
-            runtime.pending.pop_front();
-            runtime.changed.notify_all();
-            continue;
-        }
+    expireQueuedRequests(runtime);
+    if (!runtime.pending.empty()) {
+        const auto request = runtime.pending.front();
         auto command = request->command;
         request->started = true;
         runtime.request = request;
@@ -468,8 +670,7 @@ bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId i
         && !std::visit([&](const auto& command) { return resultMatches(command, result); }, runtime.request->command.payload)) {
         return false;
     }
-    runtime.request->response = completedResponse(runtime, runtime.request->command, result);
-    runtime.request->finished = true;
+    finishRequest(runtime, runtime.request, completedResponse(runtime, runtime.request->command, result));
     runtime.request.reset();
     runtime.changed.notify_all();
     return true;
@@ -508,7 +709,17 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
         }
         const auto instance = readAutomationInstance(directory, *arguments.instanceId);
         verifyInstance(instance);
+        if (arguments.command == ControlCommand::command) {
+            const Json lookup = arguments.requestKey ? Json{{"requestKey", *arguments.requestKey}}
+                                                     : Json{{"id", arguments.commandId}};
+            const auto result = callInstance(instance, "command.get", lookup, 5, &rpcFailure);
+            std::printf("%s\n", result.dump(arguments.json ? -1 : 2).c_str());
+            return 0;
+        }
         Json params = {{"timeoutSeconds", arguments.timeoutSeconds}};
+        if (arguments.requestKey) {
+            params["requestKey"] = *arguments.requestKey;
+        }
         if (arguments.command == ControlCommand::objects || arguments.command == ControlCommand::object) {
             if (arguments.command == ControlCommand::object) {
                 params["id"] = arguments.objectId;
@@ -555,10 +766,14 @@ void printCommandLineHelp()
         "  woby ctl --instance ID screenshot PATH [--timeout SECONDS] [--json]\n"
         "  woby ctl --instance ID objects [--timeout SECONDS] [--json]\n"
         "  woby ctl --instance ID object OBJECT_ID [--timeout SECONDS] [--json]\n"
+        "  woby ctl --instance ID command COMMAND_ID [--json]\n"
+        "  woby ctl --instance ID command --request-key KEY [--json]\n"
         "\nEvery viewer instance starts a local HTTP API and displays its ID in the title.\n"
         "IDs: 1-64 lowercase letters, digits, '-' or '_'; start with a letter or digit.\n"
         "Screenshot waits for the PNG to be saved (default timeout: 60 seconds).\n"
         "--wait is also accepted; waiting is always enabled. Existing PNGs are overwritten.\n"
+        "Scene commands accept --request-key KEY for safe retries within this viewer launch.\n"
+        "Duplicates in progress return code -32008 immediately; inspect them with ctl command.\n"
         "Other startup options: --folder, --folder-tree, --woby, --plugin, --plugin-folder,\n"
         "--log-level, --log-file, --log-performance, --log-frame-interval, --log-slow-frame-ms,\n"
         "--version, --help. See README.md for details.\n");

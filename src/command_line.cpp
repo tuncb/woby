@@ -1,6 +1,7 @@
 #include "command_line.h"
 #include "utf8_path.h"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -117,6 +118,13 @@ AppArguments parseControlArguments(int argc, char** argv)
                 throw std::runtime_error("Only one --json option can be specified.");
             }
             control.json = true;
+        } else if (argument == "--request-key") {
+            requireValue(argc, index, argument, "a request key");
+            const std::string key = argv[++index];
+            if (control.requestKey || !validAutomationRequestKey(key)) {
+                throw std::runtime_error("Specify --request-key once, with 1-128 ASCII letters, digits, '-', '_', '.', or ':'.");
+            }
+            control.requestKey = key;
         } else if (argument == "--timeout") {
             requireValue(argc, index, argument, "a timeout in seconds");
             const size_t seconds = parsePositiveSize(argv[++index], argument);
@@ -138,6 +146,11 @@ AppArguments parseControlArguments(int argc, char** argv)
             control.command = ControlCommand::objects;
         } else if (control.command == ControlCommand::none && argument == "object") {
             control.command = ControlCommand::object;
+        } else if (control.command == ControlCommand::none && argument == "command") {
+            control.command = ControlCommand::command;
+        } else if (control.command == ControlCommand::command && control.commandId.empty()
+                   && !argument.empty() && argument.front() != '-') {
+            control.commandId = argument;
         } else if (control.command == ControlCommand::object && control.objectId.empty()
                    && !argument.empty() && argument.front() != '-') {
             control.objectId = argument;
@@ -152,9 +165,9 @@ AppArguments parseControlArguments(int argc, char** argv)
         return arguments;
     }
     if (control.command == ControlCommand::none) {
-        throw std::runtime_error("Expected ctl instances, screenshot, objects, or object. See --help.");
+        throw std::runtime_error("Expected ctl instances, screenshot, objects, object, or command. See --help.");
     }
-    if (control.command == ControlCommand::instances && (control.instanceId || timeoutSpecified || waitSpecified)) {
+    if (control.command == ControlCommand::instances && (control.instanceId || timeoutSpecified || waitSpecified || control.requestKey)) {
         throw std::runtime_error("ctl instances only accepts --json.");
     }
     if (control.command == ControlCommand::screenshot && (!control.instanceId || control.outputPath.empty())) {
@@ -166,10 +179,23 @@ AppArguments parseControlArguments(int argc, char** argv)
     if (control.command == ControlCommand::object && control.objectId.empty()) {
         throw std::runtime_error("Object query requires an object ID from 'ctl objects'.");
     }
+    if (control.command == ControlCommand::command
+        && (!control.instanceId || (!control.commandId.empty() == control.requestKey.has_value())
+            || timeoutSpecified || waitSpecified)) {
+        throw std::runtime_error("Command lookup requires --instance ID and either COMMAND_ID or --request-key KEY; it does not wait.");
+    }
     return arguments;
 }
 
 } // namespace
+
+bool validAutomationRequestKey(const std::string& value)
+{
+    return !value.empty() && value.size() <= 128u && std::all_of(value.begin(), value.end(), [](char ch) {
+        return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+            || ch == '-' || ch == '_' || ch == '.' || ch == ':';
+    });
+}
 
 bool validInstanceId(const std::string& value)
 {

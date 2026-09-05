@@ -482,3 +482,30 @@ TEST_CASE("command line plugin options repeat and preserve file folder order")
         CHECK_THROWS_AS(parse({"woby", option, "--file", "a.obj"}), std::runtime_error);
     }
 }
+
+
+TEST_CASE("control retry keys and command lookup have unambiguous arguments")
+{
+    const auto capture = parse({"woby", "ctl", "--instance", "main", "screenshot", "view.png", "--request-key", "Capture:1.a_b-2"});
+    CHECK(capture.control.requestKey == "Capture:1.a_b-2");
+    const auto byId = parse({"woby", "ctl", "--instance", "main", "command", "cmd-opaque", "--json"});
+    CHECK(byId.control.command == woby::ControlCommand::command);
+    CHECK(byId.control.commandId == "cmd-opaque");
+    CHECK(byId.control.json);
+    const auto byKey = parse({"woby", "ctl", "--request-key", "capture", "command", "--instance", "main"});
+    CHECK(byKey.control.requestKey == "capture");
+    for (const auto& args : std::vector<std::vector<std::string>>{
+             {"woby", "ctl", "instances", "--request-key", "key"},
+             {"woby", "ctl", "command", "cmd-opaque"},
+             {"woby", "ctl", "--instance", "main", "command"},
+             {"woby", "ctl", "--instance", "main", "command", "id", "--request-key", "key"},
+             {"woby", "ctl", "--instance", "main", "command", "id", "--timeout", "1"},
+             {"woby", "ctl", "--instance", "main", "command", "id", "--wait"},
+             {"woby", "ctl", "--instance", "main", "objects", "--request-key"},
+             {"woby", "ctl", "--instance", "main", "objects", "--request-key", ""},
+             {"woby", "ctl", "--instance", "main", "objects", "--request-key", "bad key"},
+             {"woby", "ctl", "--instance", "main", "objects", "--request-key", std::string(129, 'x')},
+             {"woby", "ctl", "--instance", "main", "objects", "--request-key", "a", "--request-key", "b"}}) {
+        CHECK_THROWS_AS(parse(args), std::runtime_error);
+    }
+}
