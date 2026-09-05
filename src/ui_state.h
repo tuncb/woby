@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "model_mesh.h"
 #include "scene_file.h"
+#include "scene_objects.h"
 
 #include <array>
 #include <filesystem>
@@ -39,6 +40,7 @@ struct UiGroupState {
     std::array<float, 4> color{};
     Bounds localBounds;
     bool localBoundsValid = false;
+    SceneObjectId objectId = invalidSceneObjectId;
 };
 
 struct UiFileSettings {
@@ -57,6 +59,7 @@ struct UiFileState {
     std::vector<UiGroupState> groupSettings;
     UiFileSettings fileSettings;
     float vertexSizeScale = 1.0f;
+    SceneObjectId objectId = invalidSceneObjectId;
 };
 
 inline constexpr size_t invalidSceneNodeIndex = static_cast<size_t>(-1);
@@ -83,6 +86,8 @@ struct UiSceneNode {
     size_t fileIndex = invalidSceneNodeIndex;
     size_t groupIndex = invalidSceneNodeIndex;
     std::vector<UiSceneNode> children;
+    // Folder identity, or the referenced file/group's canonical identity.
+    SceneObjectId objectId = invalidSceneObjectId;
 };
 
 struct UiState {
@@ -99,6 +104,8 @@ struct UiState {
     bool viewerPaneVisible = true;
     std::vector<UiFileState> files;
     std::vector<UiSceneNode> sceneNodes;
+    // Session metadata: never saved, reset on scene open, or used for dirty tracking.
+    SceneObjectId nextObjectId = 1;
 };
 
 [[nodiscard]] std::array<float, 4> defaultGroupColor(size_t groupIndex);

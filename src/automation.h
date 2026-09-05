@@ -1,6 +1,7 @@
 #pragma once
 
 #include "command_line.h"
+#include "scene_objects.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -26,7 +27,13 @@ struct AutomationScreenshotCommand {
     std::filesystem::path outputPath;
 };
 
-using AutomationCommandPayload = std::variant<AutomationScreenshotCommand>;
+struct AutomationObjectsCommand {};
+
+struct AutomationObjectCommand {
+    SceneObjectId objectId = invalidSceneObjectId;
+};
+
+using AutomationCommandPayload = std::variant<AutomationScreenshotCommand, AutomationObjectsCommand, AutomationObjectCommand>;
 using AutomationCommandId = uint64_t;
 
 struct AutomationCommand {
@@ -40,14 +47,24 @@ struct AutomationScreenshotResult {
 
 struct AutomationCommandError {
     std::string message;
+    int code = -32004;
 };
 
-using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationCommandError>;
+struct AutomationObjectsResult {
+    std::vector<SceneObjectInfo> objects;
+};
+
+struct AutomationObjectResult {
+    SceneObjectInfo object;
+};
+
+using AutomationCommandResult = std::variant<AutomationScreenshotResult, AutomationObjectsResult, AutomationObjectResult, AutomationCommandError>;
 
 // Called only by the main thread. At most one command is outstanding. Taking a
 // command starts it; its slot remains reserved until completion, even after timeout.
 [[nodiscard]] std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtime);
-// Returns false for an unknown, unstarted, or already completed command ID.
+// Returns false for an unknown, unstarted, or completed command ID, or a result
+// whose type does not match the command.
 bool completeAutomationCommand(
     AutomationRuntime& runtime,
     AutomationCommandId id,

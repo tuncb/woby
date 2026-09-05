@@ -33,12 +33,15 @@ enum class ControlCommand {
     none,
     instances,
     screenshot,
+    objects,
+    object,
 };
 
 struct ControlArguments {
     ControlCommand command = ControlCommand::none;
     std::optional<std::string> instanceId;
     std::filesystem::path outputPath;
+    std::string objectId;
     int timeoutSeconds = 60;
     bool json = false;
 };

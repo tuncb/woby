@@ -695,6 +695,7 @@ void appendFolderTreeSceneNode(
     }
 
     state.sceneNodes.push_back(std::move(rootNode));
+    assignSceneObjectIds(state);
     refreshSceneTreeFolderCenters(state);
 }
 

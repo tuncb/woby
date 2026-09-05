@@ -597,6 +597,7 @@ UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex)
 {
     UiSceneNode fileNode;
     fileNode.kind = UiSceneNodeKind::file;
+    fileNode.objectId = file.objectId;
     fileNode.name = file.path.filename().string().empty()
         ? file.path.string()
         : file.path.filename().string();
@@ -607,6 +608,7 @@ UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex)
     for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
         UiSceneNode groupNode;
         groupNode.kind = UiSceneNodeKind::group;
+        groupNode.objectId = file.groupSettings[groupIndex].objectId;
         groupNode.name = file.mesh.nodes[groupIndex].name;
         groupNode.fileIndex = fileIndex;
         groupNode.groupIndex = groupIndex;
@@ -626,6 +628,7 @@ void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
     for (size_t fileIndex = firstFileIndex; fileIndex < state.files.size(); ++fileIndex) {
         state.sceneNodes.push_back(createFileSceneNode(state.files[fileIndex], fileIndex));
     }
+    assignSceneObjectIds(state);
 }
 
 void refreshSceneTreeFolderVisibility(UiState& state)
@@ -838,6 +841,7 @@ void applySceneNodeRecords(UiState& state, const std::vector<SceneNodeRecord>& r
     for (const size_t rootIndex : rootIndices) {
         state.sceneNodes.push_back(buildNode(buildNode, rootIndex));
     }
+    assignSceneObjectIds(state);
     refreshSceneTreeFolderVisibility(state);
     refreshSceneTreeFolderCenters(state);
 }

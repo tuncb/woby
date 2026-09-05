@@ -135,6 +135,19 @@ GPU may still finish and save. Closing the viewer releases waiting clients.
 See [the local HTTP API](doc/automation.md) for direct scripting and discovery details.
 Run `woby.exe --help` for command syntax.
 
+Discover loaded folders, files, and mesh groups, then resolve an object by its ID:
+
+```powershell
+woby.exe ctl --instance review objects --json
+woby.exe ctl --instance review object OBJECT_ID --json
+```
+
+Use an ID returned by `objects`; names and paths are not identifiers. IDs remain stable
+while objects stay loaded, even when another file is removed and indices shift. Removed
+objects, reopened scenes, and restarted viewers invalidate old IDs. IDs are not saved
+in `.woby` files. See [object discovery and lifetime](doc/automation.md#discover-and-resolve-scene-objects)
+for response fields and stale-ID errors.
+
 ## Build
 
 Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:

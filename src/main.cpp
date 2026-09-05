@@ -44,6 +44,7 @@
 #include <string>
 #include <system_error>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -1427,6 +1428,7 @@ void appendSceneNodesForResolvedInputs(
         }
     }
 
+    woby::assignSceneObjectIds(state);
     woby::refreshSceneTreeFolderCenters(state);
 }
 
@@ -2841,12 +2843,26 @@ int main(int argc, char** argv)
 
             if (const auto command = woby::takeAutomationCommand(*automation)) {
                 try {
-                    std::visit([&](const woby::AutomationScreenshotCommand& screenshot) {
-                        if (backgroundLoad.active || gpuFinalize.active) {
-                            throw std::runtime_error("Cannot capture while model files are being processed.");
+                    std::visit([&](const auto& payload) {
+                        using Command = std::decay_t<decltype(payload)>;
+                        if constexpr (std::is_same_v<Command, woby::AutomationScreenshotCommand>) {
+                            if (backgroundLoad.active || gpuFinalize.active) {
+                                throw std::runtime_error("Cannot capture while model files are being processed.");
+                            }
+                            requestSceneScreenshotCapture(sceneScreenshot, payload.outputPath);
+                            automationScreenshotCommandId = command->id;
+                        } else if constexpr (std::is_same_v<Command, woby::AutomationObjectsCommand>) {
+                            woby::completeAutomationCommand(*automation, command->id, woby::AutomationObjectsResult{woby::sceneObjects(ui)});
+                        } else {
+                            static_assert(std::is_same_v<Command, woby::AutomationObjectCommand>);
+                            const auto object = woby::findSceneObject(ui, payload.objectId);
+                            if (object) {
+                                woby::completeAutomationCommand(*automation, command->id, woby::AutomationObjectResult{*object});
+                            } else {
+                                woby::completeAutomationCommand(*automation, command->id,
+                                    woby::AutomationCommandError{"Unknown or stale object ID.", -32005});
+                            }
                         }
-                        requestSceneScreenshotCapture(sceneScreenshot, screenshot.outputPath);
-                        automationScreenshotCommandId = command->id;
                     }, command->payload);
                 } catch (const std::exception& exception) {
                     woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what()});

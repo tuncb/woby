@@ -70,6 +70,8 @@ add_executable(woby
     src/scene_renderer.h
     src/scene_screenshot.cpp
     src/scene_screenshot.h
+    src/scene_objects.cpp
+    src/scene_objects.h
     src/stl_mesh.cpp
     src/stl_mesh.h
     src/ui_operations.cpp
@@ -225,6 +227,8 @@ if(BUILD_TESTING)
         src/performance_log.h
         src/scene_file.cpp
         src/scene_file.h
+        src/scene_objects.cpp
+        src/scene_objects.h
         src/scene_renderer.cpp
         src/scene_renderer.h
         src/stl_mesh.cpp

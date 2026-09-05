@@ -1,7 +1,7 @@
 # Local automation API (version 1)
 
 Every viewer exposes `POST http://127.0.0.1:<port>/rpc` on an OS-assigned port. CLI
-and HTTP requests share the same capture queue. Control commands execute before SDL
+and HTTP requests share the same command slot. Control commands execute before SDL
 initialization, so they do not create a second window or renderer.
 
 ## Instance discovery
@@ -38,7 +38,7 @@ an Origin header. Browser/CORS access and remote network access are not supporte
 The request body is limited to 16 KiB. Tokens change on every launch, including when
 reusing a custom ID.
 
-This first API supports individual JSON-RPC 2.0 requests with an `id` and named parameters.
+This API supports individual JSON-RPC 2.0 requests with an `id` and named parameters.
 Batch requests are unsupported. Notifications (requests without an `id`) return HTTP 204
 and perform no work. Every executed command has an acknowledged result or error.
 
@@ -78,6 +78,46 @@ The runtime currently allows one outstanding command, retaining its slot until s
 work completes even if the HTTP deadline expires. Screenshot is the first command type.
 Instance discovery remains a runtime-only query and does not wait for main-thread work.
 
+### Discover and resolve scene objects
+
+```powershell
+woby ctl --instance review objects --json
+woby ctl --instance review object OBJECT_ID --json
+```
+
+These synchronous queries also accept `--timeout SECONDS` (1-3600, default 60).
+Without `--json`, their results are printed as indented JSON. The equivalent HTTP methods are:
+
+```json
+{"jsonrpc":"2.0","id":3,"method":"objects.list","params":{}}
+{"jsonrpc":"2.0","id":4,"method":"object.get","params":{"id":"OBJECT_ID","timeoutSeconds":60}}
+```
+
+Replace `OBJECT_ID` with an opaque string returned by `objects.list`. Listing returns
+`{"instance":"review","objects":[...]}`; lookup returns
+`{"instance":"review","object":{...}}`. Every object has `id`, `kind` (`folder`,
+`file`, or `group`), and `name`. Files also have `path`; groups have `fileId`, which
+identifies their owning file. The list is a flat inventory, not a hierarchy or a list
+of only visible objects. It includes loaded files and groups even if a saved scene's
+tree does not reference them. Repeated tree references share the underlying file or
+group ID and do not create duplicate inventory entries.
+
+IDs are independent of names, paths, vector indices, and visibility. They remain valid
+through edits, tree reordering, saves, and removal of other objects. Removing an object
+(including a folder pruned when its last file is removed) invalidates its ID. Reopening
+or replacing a scene gives its loaded objects new IDs, including when reopening the
+same `.woby` file. A newly added object never reuses a removed object's ID.
+
+IDs are scoped to one viewer launch. Another viewer, or a restarted viewer using the
+same instance name, rejects them. Treat IDs as opaque strings; do not derive or parse
+them. They are metadata rather than user-editable scene properties, are not persisted
+in `.woby` files, and do not affect dirty tracking. Both queries read the current
+committed scene on the main thread; they do not wait for a background load to finish.
+An object can disappear after listing, so clients must handle stale lookup errors.
+
+Malformed IDs return `-32602`. Unknown, removed, replaced, and foreign-session IDs
+return `-32005` rather than falling back to a name, path, or index.
+
 Authentication failures use HTTP 401, rejected Host/Origin uses 403, incorrect content
 type uses 415, and excessive payloads use 413. JSON-RPC results and errors use HTTP 200.
 In addition to standard parse/request/method/parameter/internal errors:
@@ -85,9 +125,10 @@ In addition to standard parse/request/method/parameter/internal errors:
 | Code | Meaning |
 | --- | --- |
 | -32001 | Instance is starting or shutting down |
-| -32002 | An automation capture is already pending |
-| -32003 | Capture deadline expired |
+| -32002 | An automation command is already pending |
+| -32003 | Command deadline expired |
 | -32004 | Main-thread capture failed, including busy loading/UI capture or file-write errors |
+| -32005 | Unknown or stale object ID |
 
 A timeout cancels a request that has not started. GPU work already submitted may still
 save its PNG. Disconnecting the HTTP client is not cancellation; set a suitable deadline
@@ -110,5 +151,5 @@ Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$($instance.port)/rpc" `
     -ContentType 'application/json' -Body $request -TimeoutSec 65
 ```
 
-Only discovery and screenshot capture are exposed in version 1. Scene editing, job/event
-APIs, and MCP integration can be added through this same runtime boundary later.
+Version 1 exposes instance discovery, screenshot capture, object enumeration, and object
+lookup. Scene editing, job/event APIs, and MCP integration can use the same runtime boundary.

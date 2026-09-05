@@ -84,6 +84,23 @@ TEST_CASE("control CLI supports discovery and synchronous screenshots")
     CHECK(parse({"woby", "ctl", "--help"}).showHelp);
 }
 
+TEST_CASE("control CLI supports object enumeration and lookup")
+{
+    const auto list = parse({"woby", "ctl", "objects", "--instance", "main", "--json", "--timeout", "5"});
+    CHECK(list.control.command == woby::ControlCommand::objects);
+    CHECK(list.control.instanceId == "main");
+    CHECK(list.control.json);
+    CHECK(list.control.timeoutSeconds == 5);
+    const auto object = parse({"woby", "ctl", "--instance", "main", "object", "obj-id", "--wait"});
+    CHECK(object.control.command == woby::ControlCommand::object);
+    CHECK(object.control.objectId == "obj-id");
+    CHECK_THROWS_AS(parse({"woby", "ctl", "objects"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "objects", "extra"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "object"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "ctl", "object", "id"}), std::runtime_error);
+    CHECK_THROWS_AS(parse({"woby", "ctl", "--instance", "main", "object", "id", "other"}), std::runtime_error);
+}
+
 TEST_CASE("control CLI rejects ambiguous and incomplete commands")
 {
     const std::vector<std::vector<std::string>> cases = {

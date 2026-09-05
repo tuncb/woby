@@ -134,6 +134,13 @@ AppArguments parseControlArguments(int argc, char** argv)
             control.command = ControlCommand::instances;
         } else if (control.command == ControlCommand::none && argument == "screenshot") {
             control.command = ControlCommand::screenshot;
+        } else if (control.command == ControlCommand::none && argument == "objects") {
+            control.command = ControlCommand::objects;
+        } else if (control.command == ControlCommand::none && argument == "object") {
+            control.command = ControlCommand::object;
+        } else if (control.command == ControlCommand::object && control.objectId.empty()
+                   && !argument.empty() && argument.front() != '-') {
+            control.objectId = argument;
         } else if (control.command == ControlCommand::screenshot && control.outputPath.empty()
                    && !argument.empty() && argument.front() != '-') {
             control.outputPath = pathFromUtf8(argument);
@@ -145,13 +152,19 @@ AppArguments parseControlArguments(int argc, char** argv)
         return arguments;
     }
     if (control.command == ControlCommand::none) {
-        throw std::runtime_error("Expected 'ctl instances' or 'ctl --instance ID screenshot PATH'.");
+        throw std::runtime_error("Expected ctl instances, screenshot, objects, or object. See --help.");
     }
     if (control.command == ControlCommand::instances && (control.instanceId || timeoutSpecified || waitSpecified)) {
         throw std::runtime_error("ctl instances only accepts --json.");
     }
     if (control.command == ControlCommand::screenshot && (!control.instanceId || control.outputPath.empty())) {
         throw std::runtime_error("Screenshot requires --instance ID and an output path.");
+    }
+    if ((control.command == ControlCommand::objects || control.command == ControlCommand::object) && !control.instanceId) {
+        throw std::runtime_error("Object queries require --instance ID.");
+    }
+    if (control.command == ControlCommand::object && control.objectId.empty()) {
+        throw std::runtime_error("Object query requires an object ID from 'ctl objects'.");
     }
     return arguments;
 }

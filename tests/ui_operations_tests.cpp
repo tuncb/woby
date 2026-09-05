@@ -10,6 +10,7 @@
 #include <limits>
 #include <random>
 #include <string>
+#include <set>
 
 namespace {
 
@@ -153,6 +154,125 @@ void compareFloat4(const std::array<float, 4>& left, const std::array<float, 4>&
 }
 
 } // namespace
+
+TEST_CASE("scene object IDs distinguish duplicate names and survive removal and edits")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("same.obj", "same", 0.0f, 1.0f, 0u));
+    state.files[0].mesh.nodes.push_back(state.files[0].mesh.nodes[0]);
+    state.files[0].groupSettings.push_back(state.files[0].groupSettings[0]);
+    state.files.push_back(makeFile("same.obj", "same", 2.0f, 3.0f, 1u));
+    woby::appendDefaultSceneNodesForFiles(state, 0u);
+    const auto objects = woby::sceneObjects(state);
+    REQUIRE(objects.size() == 5u);
+    std::set<woby::SceneObjectId> originalIds;
+    for (const auto& object : objects) {
+        CHECK(object.id != woby::invalidSceneObjectId);
+        CHECK(originalIds.insert(object.id).second);
+        REQUIRE(woby::findSceneObject(state, object.id).has_value());
+        CHECK(woby::findSceneObject(state, object.id)->name == object.name);
+    }
+    const auto removedId = state.files[0].objectId;
+    const auto removedGroupId = state.files[0].groupSettings[0].objectId;
+    const auto survivingId = state.files[1].objectId;
+    const auto survivingGroupId = state.files[1].groupSettings[0].objectId;
+    CHECK(state.sceneNodes[1].objectId == survivingId);
+    CHECK(state.sceneNodes[1].children[0].objectId == survivingGroupId);
+    REQUIRE(woby::removeFileFromState(state, 0u));
+    CHECK_FALSE(woby::findSceneObject(state, removedId));
+    CHECK_FALSE(woby::findSceneObject(state, removedGroupId));
+    CHECK(state.files[0].objectId == survivingId);
+    CHECK(state.sceneNodes[0].fileIndex == 0u);
+    CHECK(state.sceneNodes[0].objectId == survivingId);
+    CHECK(state.sceneNodes[0].children[0].objectId == survivingGroupId);
+
+    woby::setFileTranslation(state.files[0].fileSettings, {2.0f, 3.0f, 4.0f});
+    woby::setGroupVisible(state, state.files[0], state.files[0].groupSettings[0], false);
+    state.files[0].mesh.nodes[0].name = "renamed";
+    REQUIRE(woby::findSceneObject(state, survivingGroupId));
+    CHECK(woby::findSceneObject(state, survivingGroupId)->name == "renamed");
+    CHECK(woby::findSceneObject(state, survivingGroupId)->fileId == survivingId);
+    state.files.push_back(makeFile("same.obj", "same", 0.0f, 1.0f, 0u));
+    woby::appendDefaultSceneNodesForFiles(state, 1u);
+    CHECK_FALSE(originalIds.contains(state.files[1].objectId));
+    CHECK_FALSE(originalIds.contains(state.files[1].groupSettings[0].objectId));
+    CHECK_FALSE(woby::findSceneObject(state, woby::invalidSceneObjectId));
+    CHECK_FALSE(woby::findSceneObject(state, state.nextObjectId));
+}
+
+TEST_CASE("folder IDs survive tree moves and all replaced scene objects become stale")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("models/a/part.obj", "same", 0.0f, 1.0f, 0u));
+    state.files.push_back(makeFile("models/b/part.obj", "same", 2.0f, 3.0f, 1u));
+    woby::appendFolderTreeSceneNode(state, "models", 0u, 2u);
+    const auto original = woby::sceneObjects(state);
+    REQUIRE(original.size() == 7u);
+    const auto rootId = state.sceneNodes[0].objectId;
+    const auto removedFolderId = state.sceneNodes[0].children[0].objectId;
+    const auto retainedFolderId = state.sceneNodes[0].children[1].objectId;
+    std::swap(state.sceneNodes[0].children[0], state.sceneNodes[0].children[1]);
+    state.sceneNodes[0].children[0].name = "renamed";
+    woby::assignSceneObjectIds(state);
+    REQUIRE(woby::findSceneObject(state, retainedFolderId));
+    CHECK(woby::findSceneObject(state, retainedFolderId)->name == "renamed");
+    REQUIRE(woby::removeFileFromState(state, 0u));
+    CHECK_FALSE(woby::findSceneObject(state, removedFolderId));
+    CHECK(woby::findSceneObject(state, retainedFolderId).has_value());
+    CHECK(woby::findSceneObject(state, rootId).has_value());
+
+    const auto document = woby::createSceneDocument(state);
+    state.files.clear();
+    state.files.push_back(makeFile("models/b/part.obj", "same", 2.0f, 3.0f, 1u));
+    woby::applySceneNodeRecords(state, document.nodes);
+    for (const auto& object : original) {
+        CHECK_FALSE(woby::findSceneObject(state, object.id));
+    }
+    for (const auto& object : woby::sceneObjects(state)) {
+        CHECK(object.id != woby::invalidSceneObjectId);
+    }
+}
+
+TEST_CASE("assigning object IDs does not alter persisted scenes or dirty tracking")
+{
+    woby::UiState state;
+    CHECK(woby::sceneObjects(state).empty());
+    state.files.push_back(makeFile("part.obj", "part", 0.0f, 1.0f, 0u));
+    const auto document = woby::createSceneDocument(state);
+    woby::appendDefaultSceneNodesForFiles(state, 0u);
+    const auto firstId = state.files[0].objectId;
+    const auto nextId = state.nextObjectId;
+    woby::assignSceneObjectIds(state);
+    CHECK(state.nextObjectId == nextId);
+    CHECK(woby::createSceneDocument(state) == document);
+    woby::updateSceneDirty(state, document);
+    CHECK_FALSE(state.isDirty);
+
+    // Repeated tree references resolve to the same underlying file/group objects.
+    state.sceneNodes.push_back(woby::createFileSceneNode(state.files[0], 0u));
+    woby::assignSceneObjectIds(state);
+    CHECK(state.sceneNodes[1].objectId == firstId);
+    CHECK(woby::sceneObjects(state).size() == 2u);
+    state.files.clear();
+    woby::applySceneNodeRecords(state, {});
+    CHECK(woby::sceneObjects(state).empty());
+    CHECK_FALSE(woby::findSceneObject(state, firstId));
+    state.files.push_back(makeFile("part.obj", "part", 0.0f, 1.0f, 0u));
+    woby::applySceneNodeRecords(state, {});
+    CHECK(state.files[0].objectId != firstId);
+}
+
+TEST_CASE("scene object ID exhaustion never wraps to a reused identifier")
+{
+    woby::UiState state;
+    state.nextObjectId = std::numeric_limits<woby::SceneObjectId>::max();
+    state.files.emplace_back();
+    woby::assignSceneObjectIds(state);
+    CHECK(state.files[0].objectId == std::numeric_limits<woby::SceneObjectId>::max());
+    state.files.emplace_back();
+    CHECK_THROWS_AS(woby::assignSceneObjectIds(state), std::overflow_error);
+    CHECK(state.files[1].objectId == woby::invalidSceneObjectId);
+}
 
 TEST_CASE("scene render mode operations update all groups")
 {

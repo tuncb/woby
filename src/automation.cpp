@@ -5,7 +5,9 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <atomic>
+#include <charconv>
 #include <chrono>
 #include <condition_variable>
 #include <cstdio>
@@ -33,6 +35,7 @@ struct AutomationRuntime {
     std::condition_variable changed;
     bool stopping = false;
     AutomationCommandId nextCommandId = 1;
+    std::string objectIdPrefix;
     std::shared_ptr<AutomationRequest> request;
 };
 
@@ -73,14 +76,77 @@ AutomationCommandMessages commandMessages(const AutomationScreenshotCommand&)
     };
 }
 
+AutomationCommandMessages commandMessages(const AutomationObjectsCommand&)
+{
+    return {"An object query is already pending.", "Object query timed out.", "Object query timed out before execution."};
+}
+
+AutomationCommandMessages commandMessages(const AutomationObjectCommand&)
+{
+    return commandMessages(AutomationObjectsCommand{});
+}
+
+std::string publicObjectId(const AutomationRuntime& runtime, SceneObjectId id)
+{
+    char suffix[17];
+    std::snprintf(suffix, sizeof(suffix), "%016llx", static_cast<unsigned long long>(id));
+    return runtime.objectIdPrefix + suffix;
+}
+
+Json objectInfo(const AutomationRuntime& runtime, const SceneObjectInfo& object)
+{
+    const char* kind = "folder";
+    switch (object.kind) {
+    case SceneObjectKind::folder: break;
+    case SceneObjectKind::file: kind = "file"; break;
+    case SceneObjectKind::group: kind = "group"; break;
+    }
+    Json result = {{"id", publicObjectId(runtime, object.id)}, {"kind", kind}, {"name", object.name}};
+    if (object.kind == SceneObjectKind::file) {
+        result["path"] = pathToUtf8(object.path);
+    } else if (object.kind == SceneObjectKind::group) {
+        result["fileId"] = publicObjectId(runtime, object.fileId);
+    }
+    return result;
+}
+
 Json commandResponse(const AutomationRuntime& runtime, const AutomationScreenshotResult& result)
 {
     return rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"path", pathToUtf8(result.savedPath)}});
 }
 
+Json commandResponse(const AutomationRuntime& runtime, const AutomationObjectsResult& result)
+{
+    Json objects = Json::array();
+    for (const auto& object : result.objects) {
+        objects.push_back(objectInfo(runtime, object));
+    }
+    return rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"objects", std::move(objects)}});
+}
+
+Json commandResponse(const AutomationRuntime& runtime, const AutomationObjectResult& result)
+{
+    return rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"object", objectInfo(runtime, result.object)}});
+}
+
 Json commandResponse(const AutomationRuntime&, const AutomationCommandError& error)
 {
-    return rpcError(nullptr, -32004, error.message);
+    return rpcError(nullptr, error.code, error.message);
+}
+
+bool resultMatches(const AutomationScreenshotCommand&, const AutomationCommandResult& result)
+{
+    return std::holds_alternative<AutomationScreenshotResult>(result);
+}
+
+bool resultMatches(const AutomationObjectsCommand&, const AutomationCommandResult& result)
+{
+    return std::holds_alternative<AutomationObjectsResult>(result);
+}
+
+bool resultMatches(const AutomationObjectCommand&, const AutomationCommandResult& result)
+{
+    return std::holds_alternative<AutomationObjectResult>(result);
 }
 
 Json submitAutomationCommand(
@@ -147,6 +213,46 @@ Json captureScreenshot(AutomationRuntime& runtime, const Json& id, const Json& p
     return submitAutomationCommand(runtime, id, AutomationScreenshotCommand{path.lexically_normal()}, timeoutSeconds);
 }
 
+Json queryObjects(AutomationRuntime& runtime, const Json& id, const Json& params, bool singleObject)
+{
+    for (const auto& item : params.items()) {
+        if (item.key() != "timeoutSeconds" && !(singleObject && item.key() == "id")) {
+            return rpcError(id, -32602, "Unknown object query parameter: " + item.key());
+        }
+    }
+    int timeoutSeconds = 60;
+    if (params.contains("timeoutSeconds")) {
+        const auto& timeout = params["timeoutSeconds"];
+        if (!timeout.is_number_integer() || timeout < 1 || timeout > 3600) {
+            return rpcError(id, -32602, "timeoutSeconds must be an integer from 1 to 3600.");
+        }
+        timeoutSeconds = timeout.get<int>();
+    }
+    if (!singleObject) {
+        return submitAutomationCommand(runtime, id, AutomationObjectsCommand{}, timeoutSeconds);
+    }
+    if (!params.contains("id") || !params["id"].is_string()) {
+        return rpcError(id, -32602, "object.get requires an object ID from objects.list.");
+    }
+    const auto text = params["id"].get<std::string>();
+    constexpr size_t prefixLength = 37; // obj-<32 hex digits>-
+    const auto isHex = [](char value) { return (value >= '0' && value <= '9') || (value >= 'a' && value <= 'f'); };
+    if (text.size() != prefixLength + 16 || text.substr(0, 4) != "obj-" || text[36] != '-'
+        || !std::all_of(text.begin() + 4, text.begin() + 36, isHex)
+        || !std::all_of(text.begin() + prefixLength, text.end(), isHex)) {
+        return rpcError(id, -32602, "Invalid object ID; use an ID returned by objects.list.");
+    }
+    SceneObjectId objectId = invalidSceneObjectId;
+    const auto parsed = std::from_chars(text.data() + prefixLength, text.data() + text.size(), objectId, 16);
+    if (parsed.ec != std::errc{} || objectId == invalidSceneObjectId) {
+        return rpcError(id, -32602, "Invalid object ID; use an ID returned by objects.list.");
+    }
+    if (text.compare(0, prefixLength, runtime.objectIdPrefix) != 0) {
+        return rpcError(id, -32005, "Unknown or stale object ID.");
+    }
+    return submitAutomationCommand(runtime, id, AutomationObjectCommand{objectId}, timeoutSeconds);
+}
+
 void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, httplib::Response& response)
 {
     response.set_header("Cache-Control", "no-store");
@@ -194,6 +300,8 @@ void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, http
                                         : rpcError(id, -32602, "instance.info takes no parameters.");
             } else if (method == "screenshot.capture") {
                 result = captureScreenshot(runtime, id, params);
+            } else if (method == "objects.list" || method == "object.get") {
+                result = queryObjects(runtime, id, params, method == "object.get");
             } else {
                 result = rpcError(id, -32601, "Unknown method: " + method);
             }
@@ -243,6 +351,7 @@ Json verifyInstance(const AutomationInstance& instance)
 AutomationOwner startAutomation(const std::optional<std::string>& instanceId, const std::filesystem::path& registryDirectory)
 {
     AutomationOwner runtime(new AutomationRuntime, &stopAutomation);
+    runtime->objectIdPrefix = "obj-" + automationRandomHex(16u) + "-";
     const auto directory = registryDirectory.empty() ? automationRegistryDirectory() : registryDirectory;
     reserveAutomationInstance(runtime->registration, directory, instanceId.value_or("woby-" + automationRandomHex(8u)));
     auto* pointer = runtime.get();
@@ -322,6 +431,10 @@ bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId i
     if (runtime.stopping || !runtime.request || !runtime.request->started || runtime.request->command.id != id) {
         return false;
     }
+    if (!std::holds_alternative<AutomationCommandError>(result)
+        && !std::visit([&](const auto& command) { return resultMatches(command, result); }, runtime.request->command.payload)) {
+        return false;
+    }
     runtime.request->response = std::visit([&](const auto& value) { return commandResponse(runtime, value); }, result);
     runtime.request->finished = true;
     runtime.request.reset();
@@ -356,11 +469,22 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
             }
             return 0;
         }
-        if (arguments.command != ControlCommand::screenshot || !arguments.instanceId) {
+        if (arguments.command == ControlCommand::none || !arguments.instanceId) {
             throw std::runtime_error("Expected a control command.");
         }
         const auto instance = readAutomationInstance(directory, *arguments.instanceId);
         verifyInstance(instance);
+        if (arguments.command == ControlCommand::objects || arguments.command == ControlCommand::object) {
+            Json params = {{"timeoutSeconds", arguments.timeoutSeconds}};
+            if (arguments.command == ControlCommand::object) {
+                params["id"] = arguments.objectId;
+            }
+            const auto result = callInstance(instance,
+                arguments.command == ControlCommand::objects ? "objects.list" : "object.get",
+                params, arguments.timeoutSeconds + 5);
+            std::printf("%s\n", result.dump(arguments.json ? -1 : 2).c_str());
+            return 0;
+        }
         const auto outputPath = std::filesystem::absolute(arguments.outputPath).lexically_normal();
         const auto result = callInstance(instance, "screenshot.capture",
             {{"path", pathToUtf8(outputPath)}, {"timeoutSeconds", arguments.timeoutSeconds}}, arguments.timeoutSeconds + 5);
@@ -388,6 +512,8 @@ void printCommandLineHelp()
         "  woby [--instance ID] [--scene PATH] [--file PATH ...]\n"
         "  woby ctl instances [--json]\n"
         "  woby ctl --instance ID screenshot PATH [--timeout SECONDS] [--json]\n"
+        "  woby ctl --instance ID objects [--timeout SECONDS] [--json]\n"
+        "  woby ctl --instance ID object OBJECT_ID [--timeout SECONDS] [--json]\n"
         "\nEvery viewer instance starts a local HTTP API and displays its ID in the title.\n"
         "IDs: 1-64 lowercase letters, digits, '-' or '_'; start with a letter or digit.\n"
         "Screenshot waits for the PNG to be saved (default timeout: 60 seconds).\n"

@@ -239,6 +239,90 @@ TEST_CASE("automation command IDs prevent unknown and duplicate completions from
     CHECK(secondResult.at("result").at("path") == woby::pathToUtf8(savedPath));
 }
 
+TEST_CASE("object queries dispatch typed commands and expose session scoped string IDs")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const woby::SceneObjectInfo file{41, woby::SceneObjectKind::file, "same", fixture.directory / "same.obj", 0};
+    const woby::SceneObjectInfo group{42, woby::SceneObjectKind::group, "same", {}, 41};
+    auto listing = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "objects.list", {{"timeoutSeconds", 4}});
+    });
+    const auto listCommand = waitForCommand(*fixture.server);
+    REQUIRE(listCommand);
+    CHECK(std::holds_alternative<woby::AutomationObjectsCommand>(listCommand->payload));
+    CHECK_FALSE(woby::completeAutomationCommand(*fixture.server, listCommand->id, woby::AutomationScreenshotResult{}));
+    CHECK(listing.wait_for(0ms) == std::future_status::timeout);
+    CHECK(request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(fixture.directory / "busy.png")}})
+              .at("error").at("code") == -32002);
+    CHECK(woby::completeAutomationCommand(*fixture.server, listCommand->id, woby::AutomationObjectsResult{{file, group}}));
+    const auto list = listing.get();
+    CHECK(list.at("id") == "test-request");
+    CHECK(list.at("result").at("instance") == "test");
+    const auto& objects = list.at("result").at("objects");
+    REQUIRE(objects.size() == 2u);
+    const auto fileId = objects[0].at("id").get<std::string>();
+    const auto groupId = objects[1].at("id").get<std::string>();
+    CHECK(fileId != groupId);
+    CHECK(objects[0].at("path") == woby::pathToUtf8(file.path));
+    CHECK(objects[1].at("fileId") == fileId);
+    CHECK(objects[1].at("kind") == "group");
+    CHECK(list.dump().find(fixture.instance.token) == std::string::npos);
+
+    auto lookup = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "object.get", {{"id", groupId}, {"timeoutSeconds", 4}});
+    });
+    const auto getCommand = waitForCommand(*fixture.server);
+    REQUIRE(getCommand);
+    REQUIRE(std::holds_alternative<woby::AutomationObjectCommand>(getCommand->payload));
+    CHECK(std::get<woby::AutomationObjectCommand>(getCommand->payload).objectId == group.id);
+    CHECK(woby::completeAutomationCommand(*fixture.server, getCommand->id, woby::AutomationObjectResult{group}));
+    CHECK(lookup.get().at("result").at("object") == objects[1]);
+
+    auto stale = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "object.get", {{"id", groupId}, {"timeoutSeconds", 4}});
+    });
+    const auto staleCommand = waitForCommand(*fixture.server);
+    REQUIRE(staleCommand);
+    CHECK(woby::completeAutomationCommand(*fixture.server, staleCommand->id,
+        woby::AutomationCommandError{"Unknown or stale object ID.", -32005}));
+    CHECK(stale.get().at("error").at("code") == -32005);
+
+    AutomationFixture other;
+    woby::setAutomationReady(*other.server);
+    CHECK(request(other.instance, "object.get", {{"id", fileId}}).at("error").at("code") == -32005);
+    CHECK_FALSE(woby::takeAutomationCommand(*other.server));
+    fixture.server.reset();
+    fixture.server = woby::startAutomation("test", fixture.directory);
+    fixture.instance = woby::readAutomationInstance(fixture.directory, "test");
+    woby::setAutomationReady(*fixture.server);
+    CHECK(request(fixture.instance, "object.get", {{"id", fileId}}).at("error").at("code") == -32005);
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server));
+}
+
+TEST_CASE("object queries validate inputs before scheduling work")
+{
+    AutomationFixture fixture;
+    CHECK(request(fixture.instance, "objects.list").at("error").at("code") == -32001);
+    woby::setAutomationReady(*fixture.server);
+    for (const auto& params : std::vector<Json>{
+             Json::object(), {{"id", 1}}, {{"id", ""}}, {{"id", "same.obj"}},
+             {{"id", "obj-" + std::string(32, 'a') + "-0000000000000000"}},
+             {{"id", "obj-" + std::string(32, 'a') + "-000000000000000g"}},
+             {{"id", std::string(100, 'a')}},
+             {{"id", "obj-" + std::string(32, 'a') + "-0000000000000001"}, {"unexpected", true}},
+         }) {
+        CHECK(request(fixture.instance, "object.get", params).at("error").at("code") == -32602);
+    }
+    for (const auto& params : std::vector<Json>{
+             {{"id", "unused"}}, {{"unexpected", true}}, {{"timeoutSeconds", 0}},
+             {{"timeoutSeconds", 3601}}, {{"timeoutSeconds", 1.5}}, {{"timeoutSeconds", "2"}},
+         }) {
+        CHECK(request(fixture.instance, "objects.list", params).at("error").at("code") == -32602);
+    }
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server));
+}
+
 TEST_CASE("automation shutdown wakes waiting clients and removes discovery records")
 {
     AutomationFixture fixture;
