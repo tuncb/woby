@@ -14,6 +14,7 @@ void frameComparisonBounds(UiState& state, const Bounds& bounds);
 [[nodiscard]] bool sceneObjectSelected(const UiState& state, SceneObjectId id);
 // Plain click replaces, Ctrl-click toggles, context click preserves an existing selection.
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
+void clearSceneSelection(UiState& state);
 [[nodiscard]] bool canCompareSceneSelection(const UiState& state);
 bool compareSceneSelection(UiState& state);
 

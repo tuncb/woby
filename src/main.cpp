@@ -2719,11 +2719,7 @@ int main(int argc, char** argv)
                 }
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE
                     && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
-                    if (ui.isDirty) {
-                        requestDirtyQuitWarning = true;
-                    } else {
-                        woby::requestQuit(ui);
-                    }
+                    woby::clearSceneSelection(ui);
                 }
                 if (event.type == SDL_EVENT_KEY_DOWN
                     && event.key.key == SDLK_R

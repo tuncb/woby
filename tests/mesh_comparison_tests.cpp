@@ -265,6 +265,10 @@ TEST_CASE("tree selection replaces toggles and preserves a pair on context click
     woby::selectSceneObject(state, woby::invalidSceneObjectId);
     woby::selectSceneObject(state, state.nextObjectId);
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{third});
+    woby::clearSceneSelection(state);
+    CHECK(state.selectedSceneObjects.empty());
+    woby::clearSceneSelection(state);
+    CHECK(state.selectedSceneObjects.empty());
     woby::updateSceneDirty(state, clean);
     CHECK_FALSE(state.isDirty);
     CHECK(woby::createSceneDocument(state) == clean);

@@ -31,6 +31,11 @@ void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool conte
     }
 }
 
+void clearSceneSelection(UiState& state)
+{
+    state.selectedSceneObjects.clear();
+}
+
 void setComparisonSettings(UiState& state, ComparisonSettings settings)
 {
     state.comparison = normalizedComparisonSettings(settings, state.files.size());
