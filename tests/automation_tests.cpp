@@ -43,12 +43,12 @@ Json request(const woby::AutomationInstance& instance, const std::string& method
     return Json::parse(result->body);
 }
 
-std::optional<std::filesystem::path> waitForCapture(woby::AutomationRuntime& runtime)
+std::optional<woby::AutomationCommand> waitForCommand(woby::AutomationRuntime& runtime)
 {
     const auto deadline = std::chrono::steady_clock::now() + 2s;
     while (std::chrono::steady_clock::now() < deadline) {
-        if (auto path = woby::takeAutomationScreenshot(runtime)) {
-            return path;
+        if (auto command = woby::takeAutomationCommand(runtime)) {
+            return command;
         }
         std::this_thread::sleep_for(1ms);
     }
@@ -107,7 +107,7 @@ TEST_CASE("automation rejects unauthenticated and browser requests")
     const auto text = client.Post("/rpc", auth, body, "text/plain");
     REQUIRE(text);
     CHECK(text->status == 415);
-    CHECK_FALSE(woby::takeAutomationScreenshot(*fixture.server).has_value());
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server).has_value());
 }
 
 TEST_CASE("automation validates JSON RPC and capture parameters without scheduling work")
@@ -139,7 +139,7 @@ TEST_CASE("automation validates JSON RPC and capture parameters without scheduli
     for (const auto& params : invalid) {
         CHECK(request(fixture.instance, "screenshot.capture", params).at("error").at("code") == -32602);
     }
-    CHECK_FALSE(woby::takeAutomationScreenshot(*fixture.server).has_value());
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server).has_value());
 }
 
 TEST_CASE("automation screenshot waits for main thread completion and rejects concurrent captures")
@@ -150,13 +150,16 @@ TEST_CASE("automation screenshot waits for main thread completion and rejects co
     auto response = std::async(std::launch::async, [&] {
         return request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(path)}, {"timeoutSeconds", 4}});
     });
-    const auto requested = waitForCapture(*fixture.server);
+    const auto requested = waitForCommand(*fixture.server);
     REQUIRE(requested.has_value());
-    CHECK(*requested == path);
-    CHECK_FALSE(woby::takeAutomationScreenshot(*fixture.server).has_value());
+    CHECK(requested->id != 0);
+    REQUIRE(std::holds_alternative<woby::AutomationScreenshotCommand>(requested->payload));
+    CHECK(std::get<woby::AutomationScreenshotCommand>(requested->payload).outputPath == path);
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server).has_value());
     CHECK(response.wait_for(0ms) == std::future_status::timeout);
+    CHECK(request(fixture.instance, "instance.info").at("result").at("ready").get<bool>());
     CHECK(request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(path)}}).at("error").at("code") == -32002);
-    woby::completeAutomationScreenshot(*fixture.server, path);
+    CHECK(woby::completeAutomationCommand(*fixture.server, requested->id, woby::AutomationScreenshotResult{path}));
     const auto result = response.get();
     CHECK(result.at("id") == "test-request");
     CHECK(result.at("result").at("instance") == "test");
@@ -169,12 +172,13 @@ TEST_CASE("automation propagates capture failures and releases timed out queued 
     woby::setAutomationReady(*fixture.server);
     const auto path = woby::pathToUtf8(fixture.directory / "capture.png");
     CHECK(request(fixture.instance, "screenshot.capture", {{"path", path}, {"timeoutSeconds", 1}}).at("error").at("code") == -32003);
-    CHECK_FALSE(woby::takeAutomationScreenshot(*fixture.server).has_value());
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server).has_value());
     auto response = std::async(std::launch::async, [&] {
         return request(fixture.instance, "screenshot.capture", {{"path", path}, {"timeoutSeconds", 4}});
     });
-    REQUIRE(waitForCapture(*fixture.server).has_value());
-    woby::completeAutomationScreenshot(*fixture.server, {}, "Cannot write PNG.");
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command.has_value());
+    CHECK(woby::completeAutomationCommand(*fixture.server, command->id, woby::AutomationCommandError{"Cannot write PNG."}));
     const auto failure = response.get();
     CHECK(failure.at("error").at("code") == -32004);
     CHECK(failure.at("error").at("message") == "Cannot write PNG.");
@@ -188,11 +192,51 @@ TEST_CASE("timed out GPU captures retain their slot until completion")
     auto response = std::async(std::launch::async, [&] {
         return request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(path)}, {"timeoutSeconds", 1}});
     });
-    REQUIRE(waitForCapture(*fixture.server).has_value());
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command.has_value());
     CHECK(response.get().at("error").at("code") == -32003);
     CHECK(request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(path)}}).at("error").at("code") == -32002);
-    woby::completeAutomationScreenshot(*fixture.server, path);
-    CHECK_FALSE(woby::takeAutomationScreenshot(*fixture.server).has_value());
+    CHECK(woby::completeAutomationCommand(*fixture.server, command->id, woby::AutomationScreenshotResult{path}));
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server).has_value());
+}
+
+TEST_CASE("automation command IDs prevent unknown and duplicate completions from finishing other requests")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const auto inputPath = fixture.directory / "nested" / ".." / "capture.jpg";
+    const auto savedPath = fixture.directory / "capture.png";
+    const woby::AutomationScreenshotResult success{savedPath};
+    const woby::AutomationCommandError failure{"Late failure from an older command."};
+    CHECK_FALSE(woby::completeAutomationCommand(*fixture.server, 0, success));
+
+    auto firstResponse = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(inputPath)}, {"timeoutSeconds", 4}});
+    });
+    const auto first = waitForCommand(*fixture.server);
+    REQUIRE(first.has_value());
+    CHECK(std::get<woby::AutomationScreenshotCommand>(first->payload).outputPath == inputPath.lexically_normal());
+    CHECK_FALSE(woby::completeAutomationCommand(*fixture.server, 0, failure));
+    CHECK(firstResponse.wait_for(0ms) == std::future_status::timeout);
+    CHECK(woby::completeAutomationCommand(*fixture.server, first->id, success));
+    CHECK(firstResponse.get().at("result").at("path") == woby::pathToUtf8(savedPath));
+    CHECK_FALSE(woby::completeAutomationCommand(*fixture.server, first->id, success));
+
+    // Clients may reuse their JSON-RPC ID; internal command IDs must still differ.
+    auto secondResponse = std::async(std::launch::async, [&] {
+        return request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(savedPath)}, {"timeoutSeconds", 4}});
+    });
+    const auto second = waitForCommand(*fixture.server);
+    REQUIRE(second.has_value());
+    CHECK(second->id != first->id);
+    CHECK_FALSE(woby::completeAutomationCommand(*fixture.server, first->id, success));
+    CHECK_FALSE(woby::completeAutomationCommand(*fixture.server, first->id, failure));
+    CHECK(secondResponse.wait_for(0ms) == std::future_status::timeout);
+    CHECK_FALSE(woby::takeAutomationCommand(*fixture.server).has_value());
+    CHECK(woby::completeAutomationCommand(*fixture.server, second->id, success));
+    const auto secondResult = secondResponse.get();
+    CHECK(secondResult.at("id") == "test-request");
+    CHECK(secondResult.at("result").at("path") == woby::pathToUtf8(savedPath));
 }
 
 TEST_CASE("automation shutdown wakes waiting clients and removes discovery records")
@@ -202,7 +246,7 @@ TEST_CASE("automation shutdown wakes waiting clients and removes discovery recor
     auto response = std::async(std::launch::async, [&] {
         return request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(fixture.directory / "capture.png")}, {"timeoutSeconds", 4}});
     });
-    REQUIRE(waitForCapture(*fixture.server).has_value());
+    REQUIRE(waitForCommand(*fixture.server).has_value());
     fixture.server.reset();
     CHECK(response.get().at("error").at("code") == -32001);
     CHECK(woby::readAutomationInstances(fixture.directory).empty());

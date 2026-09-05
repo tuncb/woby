@@ -2581,7 +2581,7 @@ int main(int argc, char** argv)
         BackgroundLoadRuntime backgroundLoad;
         GpuFinalizeRuntime gpuFinalize;
         SceneScreenshotRuntime sceneScreenshot;
-        bool automationScreenshotActive = false;
+        std::optional<woby::AutomationCommandId> automationScreenshotCommandId;
         DragDropState dragDropState;
         std::optional<std::filesystem::path> pendingDirtyOpenScenePath;
         bool requestDirtyOpenWarning = false;
@@ -2839,15 +2839,17 @@ int main(int argc, char** argv)
                 setToastMessage(toast, screenshotDialogStatus);
             }
 
-            if (const auto screenshotPath = woby::takeAutomationScreenshot(*automation)) {
+            if (const auto command = woby::takeAutomationCommand(*automation)) {
                 try {
-                    if (backgroundLoad.active || gpuFinalize.active) {
-                        throw std::runtime_error("Cannot capture while model files are being processed.");
-                    }
-                    requestSceneScreenshotCapture(sceneScreenshot, *screenshotPath);
-                    automationScreenshotActive = true;
+                    std::visit([&](const woby::AutomationScreenshotCommand& screenshot) {
+                        if (backgroundLoad.active || gpuFinalize.active) {
+                            throw std::runtime_error("Cannot capture while model files are being processed.");
+                        }
+                        requestSceneScreenshotCapture(sceneScreenshot, screenshot.outputPath);
+                        automationScreenshotCommandId = command->id;
+                    }, command->payload);
                 } catch (const std::exception& exception) {
-                    woby::completeAutomationScreenshot(*automation, {}, exception.what());
+                    woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what()});
                 }
             }
 
@@ -3380,9 +3382,9 @@ int main(int argc, char** argv)
                     homogeneousDepth);
             } catch (const std::exception& exception) {
                 failSceneScreenshotCapture(sceneScreenshot);
-                if (automationScreenshotActive) {
-                    woby::completeAutomationScreenshot(*automation, {}, exception.what());
-                    automationScreenshotActive = false;
+                if (automationScreenshotCommandId) {
+                    woby::completeAutomationCommand(*automation, *automationScreenshotCommandId, woby::AutomationCommandError{exception.what()});
+                    automationScreenshotCommandId.reset();
                 }
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
             }
@@ -3400,16 +3402,16 @@ int main(int argc, char** argv)
                     frameNumber);
                 if (screenshotStatus.has_value()) {
                     setToastMessage(toast, screenshotStatus.value());
-                    if (automationScreenshotActive) {
-                        woby::completeAutomationScreenshot(*automation, sceneScreenshot.outputPath);
-                        automationScreenshotActive = false;
+                    if (automationScreenshotCommandId) {
+                        woby::completeAutomationCommand(*automation, *automationScreenshotCommandId, woby::AutomationScreenshotResult{sceneScreenshot.outputPath});
+                        automationScreenshotCommandId.reset();
                     }
                 }
             } catch (const std::exception& exception) {
                 sceneScreenshot.readbackPending = false;
-                if (automationScreenshotActive) {
-                    woby::completeAutomationScreenshot(*automation, {}, exception.what());
-                    automationScreenshotActive = false;
+                if (automationScreenshotCommandId) {
+                    woby::completeAutomationCommand(*automation, *automationScreenshotCommandId, woby::AutomationCommandError{exception.what()});
+                    automationScreenshotCommandId.reset();
                 }
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
             }

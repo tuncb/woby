@@ -12,11 +12,12 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 
 namespace woby {
 
-struct AutomationCapture {
-    std::filesystem::path outputPath;
+struct AutomationRequest {
+    AutomationCommand command;
     std::chrono::steady_clock::time_point deadline;
     bool started = false;
     bool finished = false;
@@ -31,7 +32,8 @@ struct AutomationRuntime {
     std::mutex mutex;
     std::condition_variable changed;
     bool stopping = false;
-    std::shared_ptr<AutomationCapture> capture;
+    AutomationCommandId nextCommandId = 1;
+    std::shared_ptr<AutomationRequest> request;
 };
 
 namespace {
@@ -54,6 +56,66 @@ Json instanceInfo(const AutomationRuntime& runtime)
     return {{"id", instance.id}, {"pid", instance.pid}, {"apiVersion", 1},
         {"url", "http://127.0.0.1:" + std::to_string(instance.port) + "/rpc"},
         {"ready", runtime.ready.load()}};
+}
+
+struct AutomationCommandMessages {
+    const char* busy;
+    const char* timedOut;
+    const char* expired;
+};
+
+AutomationCommandMessages commandMessages(const AutomationScreenshotCommand&)
+{
+    return {
+        "A screenshot is already pending.",
+        "Screenshot timed out; a capture already in progress may still be saved.",
+        "Screenshot timed out before capture.",
+    };
+}
+
+Json commandResponse(const AutomationRuntime& runtime, const AutomationScreenshotResult& result)
+{
+    return rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"path", pathToUtf8(result.savedPath)}});
+}
+
+Json commandResponse(const AutomationRuntime&, const AutomationCommandError& error)
+{
+    return rpcError(nullptr, -32004, error.message);
+}
+
+Json submitAutomationCommand(
+    AutomationRuntime& runtime,
+    const Json& id,
+    AutomationCommandPayload payload,
+    int timeoutSeconds)
+{
+    std::unique_lock lock(runtime.mutex);
+    if (runtime.stopping || !runtime.ready.load()) {
+        return rpcError(id, -32001, "Instance is not ready.");
+    }
+    if (runtime.request) {
+        const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, runtime.request->command.payload);
+        return rpcError(id, -32002, messages.busy);
+    }
+    auto request = std::make_shared<AutomationRequest>();
+    request->command = {runtime.nextCommandId++, std::move(payload)};
+    request->deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds);
+    const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, request->command.payload);
+    runtime.request = request;
+    if (!runtime.changed.wait_until(lock, request->deadline, [&] { return request->finished || runtime.stopping; })) {
+        // Started work may still finish after the HTTP deadline. Reserve its slot
+        // until the main thread completes that command, so results cannot cross requests.
+        if (!request->started && runtime.request == request) {
+            runtime.request.reset();
+        }
+        return rpcError(id, -32003, messages.timedOut);
+    }
+    if (runtime.stopping) {
+        return rpcError(id, -32001, "Instance is shutting down.");
+    }
+    Json response = request->response;
+    response["id"] = id;
+    return response;
 }
 
 Json captureScreenshot(AutomationRuntime& runtime, const Json& id, const Json& params)
@@ -82,31 +144,7 @@ Json captureScreenshot(AutomationRuntime& runtime, const Json& id, const Json& p
         }
         timeoutSeconds = timeout.get<int>();
     }
-    std::unique_lock lock(runtime.mutex);
-    if (runtime.stopping || !runtime.ready.load()) {
-        return rpcError(id, -32001, "Instance is not ready.");
-    }
-    if (runtime.capture) {
-        return rpcError(id, -32002, "A screenshot is already pending.");
-    }
-    auto capture = std::make_shared<AutomationCapture>();
-    capture->outputPath = path.lexically_normal();
-    capture->deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds);
-    runtime.capture = capture;
-    if (!runtime.changed.wait_until(lock, capture->deadline, [&] { return capture->finished || runtime.stopping; })) {
-        // A capture already submitted to the GPU may still finish after the timeout.
-        // Keep it reserved until completion so another request cannot consume its result.
-        if (!capture->started && runtime.capture == capture) {
-            runtime.capture.reset();
-        }
-        return rpcError(id, -32003, "Screenshot timed out; a capture already in progress may still be saved.");
-    }
-    if (runtime.stopping) {
-        return rpcError(id, -32001, "Instance is shutting down.");
-    }
-    Json response = capture->response;
-    response["id"] = id;
-    return response;
+    return submitAutomationCommand(runtime, id, AutomationScreenshotCommand{path.lexically_normal()}, timeoutSeconds);
 }
 
 void handleRpc(AutomationRuntime& runtime, const httplib::Request& request, httplib::Response& response)
@@ -259,34 +297,36 @@ void setAutomationReady(AutomationRuntime& runtime)
     runtime.ready.store(true);
 }
 
-std::optional<std::filesystem::path> takeAutomationScreenshot(AutomationRuntime& runtime)
+std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtime)
 {
     std::lock_guard lock(runtime.mutex);
-    if (!runtime.capture || runtime.capture->started || runtime.stopping) {
+    if (!runtime.request || runtime.request->started || runtime.stopping) {
         return {};
     }
-    if (std::chrono::steady_clock::now() >= runtime.capture->deadline) {
-        runtime.capture->finished = true;
-        runtime.capture->response = rpcError(nullptr, -32003, "Screenshot timed out before capture.");
-        runtime.capture.reset();
+    if (std::chrono::steady_clock::now() >= runtime.request->deadline) {
+        const auto messages = std::visit([](const auto& command) { return commandMessages(command); }, runtime.request->command.payload);
+        runtime.request->response = rpcError(nullptr, -32003, messages.expired);
+        runtime.request->finished = true;
+        runtime.request.reset();
         runtime.changed.notify_all();
         return {};
     }
-    runtime.capture->started = true;
-    return runtime.capture->outputPath;
+    const auto command = runtime.request->command;
+    runtime.request->started = true;
+    return command;
 }
 
-void completeAutomationScreenshot(AutomationRuntime& runtime, const std::filesystem::path& savedPath, const std::string& error)
+bool completeAutomationCommand(AutomationRuntime& runtime, AutomationCommandId id, const AutomationCommandResult& result)
 {
     std::lock_guard lock(runtime.mutex);
-    if (runtime.capture && runtime.capture->started) {
-        runtime.capture->response = error.empty()
-            ? rpcResult(nullptr, {{"instance", runtime.registration.instance.id}, {"path", pathToUtf8(savedPath)}})
-            : rpcError(nullptr, -32004, error);
-        runtime.capture->finished = true;
-        runtime.capture.reset();
-        runtime.changed.notify_all();
+    if (runtime.stopping || !runtime.request || !runtime.request->started || runtime.request->command.id != id) {
+        return false;
     }
+    runtime.request->response = std::visit([&](const auto& value) { return commandResponse(runtime, value); }, result);
+    runtime.request->finished = true;
+    runtime.request.reset();
+    runtime.changed.notify_all();
+    return true;
 }
 
 int runAutomationCommand(const ControlArguments& arguments, const std::filesystem::path& registryDirectory)

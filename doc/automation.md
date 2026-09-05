@@ -70,6 +70,14 @@ camera, scene and helpers, no controls. Only one automation capture is outstandi
 time. HTTP handlers never access UiState or GPU handles; the main thread takes the
 request, uses the existing screenshot pipeline, and signals completion.
 
+Internally, validated requests become typed `AutomationCommand` payloads. The main
+thread takes them through `takeAutomationCommand` and reports a typed result or error
+through `completeAutomationCommand`. Each command has an internal ID independent of
+the client's JSON-RPC ID; stale or duplicate completions cannot finish another command.
+The runtime currently allows one outstanding command, retaining its slot until started
+work completes even if the HTTP deadline expires. Screenshot is the first command type.
+Instance discovery remains a runtime-only query and does not wait for main-thread work.
+
 Authentication failures use HTTP 401, rejected Host/Origin uses 403, incorrect content
 type uses 415, and excessive payloads use 413. JSON-RPC results and errors use HTTP 200.
 In addition to standard parse/request/method/parameter/internal errors:
