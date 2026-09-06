@@ -1,6 +1,7 @@
 #include "bgfx_helpers.h"
 #include "background_load.h"
 #include "camera.h"
+#include "scene_viewport.h"
 #include "command_line.h"
 #include "file_discovery.h"
 #include "hover_pick.h"
@@ -56,15 +57,16 @@
 namespace {
 
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
-constexpr bgfx::ViewId sceneView = 0;
-constexpr bgfx::ViewId helperView = 1;
+constexpr bgfx::ViewId clearView = 0;
+constexpr bgfx::ViewId sceneView = 1;
+constexpr bgfx::ViewId helperView = 2;
 constexpr bgfx::ViewId imguiView = 255;
 constexpr float defaultScenePaneHeight = 185.0f;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float viewerPaneBackgroundRed = 0.20f;
 constexpr float viewerPaneBackgroundGreen = 0.21f;
 constexpr float viewerPaneBackgroundBlue = 0.22f;
-constexpr float viewerPaneBackgroundAlpha = 0.76f;
+constexpr float viewerPaneBackgroundAlpha = 1.0f;
 constexpr float popupBackgroundRed = 0.20f;
 constexpr float popupBackgroundGreen = 0.21f;
 constexpr float popupBackgroundBlue = 0.22f;
@@ -371,6 +373,39 @@ std::array<float, 4> groupColor(
     auto color = scaledRgbColor(settings.color, rgbScale);
     color[3] = std::clamp(settings.opacity * opacityScale, woby::minGroupOpacity, woby::maxGroupOpacity);
     return color;
+}
+
+struct CanvasLayout {
+    float width = 1.0f;
+    float height = 1.0f;
+    float leftWidth = 0.0f;
+    float maxLeftWidth = 0.0f;
+    float rightWidth = 0.0f;
+    float rightEdge = 1.0f;
+    woby::SceneViewport viewport;
+};
+
+CanvasLayout canvasLayout(SDL_Window* window, const woby::UiState& state)
+{
+    int windowWidth = 1;
+    int windowHeight = 1;
+    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+    CanvasLayout layout;
+    layout.width = static_cast<float>(std::max(windowWidth, 1));
+    layout.height = static_cast<float>(std::max(windowHeight, 1));
+    const float toolbarWidth = renderModeButtonSize + 8.0f + viewerPaneTogglePaneMargin * 2.0f;
+    layout.rightEdge = std::max(layout.width - toolbarWidth, 1.0f);
+    layout.rightWidth = std::min(420.0f, layout.width * 0.36f);
+    const float reservedRight = state.comparisonPaneVisible ? layout.width - layout.rightEdge + layout.rightWidth : 0.0f;
+    layout.maxLeftWidth = std::max(layout.width - reservedRight
+        - std::min(minSceneViewportWidth, layout.width * 0.2f), 0.0f);
+    layout.leftWidth = state.viewerPaneVisible
+        ? std::clamp(state.viewerPaneWidth, 0.0f, layout.maxLeftWidth) : 0.0f;
+    uint32_t pixelWidth = 1;
+    uint32_t pixelHeight = 1;
+    getDrawableSize(window, pixelWidth, pixelHeight);
+    layout.viewport = woby::sceneViewport(pixelWidth, pixelHeight, layout.width, layout.leftWidth, reservedRight);
+    return layout;
 }
 
 MousePosition mousePositionInPixels(SDL_Window* window)
@@ -2596,7 +2631,8 @@ int main(int argc, char** argv)
         }
         bgfxInitialized = true;
 
-        bgfx::setViewClear(sceneView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
+        bgfx::setViewClear(clearView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
+        bgfx::setViewClear(sceneView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
         bgfx::setViewClear(helperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
         bgfx::setDebug(BGFX_DEBUG_TEXT);
         woby::logDuration("startup_bgfx", elapsedMilliseconds(bgfxStart));
@@ -2778,7 +2814,10 @@ int main(int argc, char** argv)
                     getDrawableSize(window.get(), width, height);
                     bgfx::reset(width, height, resetFlags);
                 }
-                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && !ImGui::GetIO().WantCaptureMouse) {
+                const auto inputLayout = canvasLayout(window.get(), ui);
+                const auto inputMouse = mousePositionInPixels(window.get());
+                const bool canvasInput = woby::contains(inputLayout.viewport, inputMouse.x, inputMouse.y);
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && canvasInput && !ImGui::GetIO().WantCaptureMouse) {
                     if (event.button.button == SDL_BUTTON_LEFT) {
                         const bool altPressed = (SDL_GetModState() & SDL_KMOD_ALT) != 0u;
                         if (altPressed) {
@@ -2808,10 +2847,12 @@ int main(int argc, char** argv)
                         woby::rollUiCamera(ui, event.motion.xrel);
                     }
                     if (cameraInput.panning) {
-                        woby::panUiCamera(ui, event.motion.xrel, event.motion.yrel, static_cast<float>(height));
+                        const float aspect = static_cast<float>(inputLayout.viewport.width) / static_cast<float>(inputLayout.viewport.height);
+                        const float panScale = 1.0f / std::min(aspect, 1.0f);
+                        woby::panUiCamera(ui, event.motion.xrel * panScale, event.motion.yrel * panScale, inputLayout.height);
                     }
                 }
-                if (event.type == SDL_EVENT_MOUSE_WHEEL && !ImGui::GetIO().WantCaptureMouse) {
+                if (event.type == SDL_EVENT_MOUSE_WHEEL && canvasInput && !ImGui::GetIO().WantCaptureMouse) {
                     const float wheelY = event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED
                         ? -event.wheel.y
                         : event.wheel.y;
@@ -3060,7 +3101,7 @@ int main(int argc, char** argv)
             const float minViewerPaneWidth = minimumViewerPaneWidth();
             const float maxViewerPaneWidth = std::max(
                 minViewerPaneWidth,
-                static_cast<float>(width) - minSceneViewportWidth);
+                canvasLayout(window.get(), ui).width - minSceneViewportWidth);
             woby::setViewerPaneWidth(ui, viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth);
 
             bgfx::dbgTextClear();
@@ -3129,16 +3170,16 @@ int main(int argc, char** argv)
             if (drawProcessingDialog(backgroundLoad, gpuFinalize)) {
                 modalDialogOpen = true;
             }
-            const float activeViewerPaneWidth = ui.viewerPaneVisible ? viewerPaneWidth : 0.0f;
+            const auto panelLayout = canvasLayout(window.get(), ui);
             if (ui.viewerPaneVisible) {
-                const float availableHeight = static_cast<float>(height);
+                const float availableHeight = panelLayout.height;
                 ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
                 ImGui::SetNextWindowSize(
-                    ImVec2(viewerPaneWidth, availableHeight),
+                    ImVec2(panelLayout.leftWidth, availableHeight),
                     ImGuiCond_Always);
                 ImGui::SetNextWindowSizeConstraints(
-                    ImVec2(minViewerPaneWidth, availableHeight),
-                    ImVec2(maxViewerPaneWidth, availableHeight));
+                    ImVec2(std::min(minViewerPaneWidth, panelLayout.leftWidth), availableHeight),
+                    ImVec2(panelLayout.maxLeftWidth, availableHeight));
                 const bool showViewerContent = ImGui::Begin(
                     "##ViewerPane",
                     nullptr,
@@ -3416,14 +3457,10 @@ int main(int argc, char** argv)
                 || gpuFinalize.active
                 || sceneScreenshot.captureRequested
                 || sceneScreenshot.readbackPending;
-            if (drawViewerPaneTogglePane(ui, static_cast<float>(width), screenshotActionDisabled)) {
+            if (drawViewerPaneTogglePane(ui, panelLayout.width, screenshotActionDisabled)) {
                 showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
             }
-            // Leave the upper-right toolbar available even while the panel is open.
-            const float comparisonRightEdge = static_cast<float>(width)
-                - renderModeButtonSize - 8.0f - viewerPaneTogglePaneMargin * 2.0f;
-            const float comparisonWidth = std::min(420.0f, static_cast<float>(width) * 0.36f);
-            woby::drawComparisonPanel(ui, comparison, comparisonRightEdge, comparisonWidth, static_cast<float>(height));
+            woby::drawComparisonPanel(ui, comparison, panelLayout.rightEdge, panelLayout.rightWidth, panelLayout.height);
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
 
             woby::recalculateSceneBounds(ui);
@@ -3607,16 +3644,19 @@ int main(int argc, char** argv)
 
             woby::updateComparisonRuntimes(comparison, ui);
 
-            const uint32_t sceneViewportWidth = std::max(width, 1u);
+            const auto viewport = canvasLayout(window.get(), ui).viewport;
+            const uint32_t sceneViewportWidth = viewport.width;
+            bgfx::setViewRect(clearView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
+            bgfx::touch(clearView);
             bgfx::setViewRect(
                 sceneView,
-                0,
+                static_cast<uint16_t>(viewport.x),
                 0,
                 static_cast<uint16_t>(sceneViewportWidth),
                 static_cast<uint16_t>(height));
             bgfx::setViewRect(
                 helperView,
-                0,
+                static_cast<uint16_t>(viewport.x),
                 0,
                 static_cast<uint16_t>(sceneViewportWidth),
                 static_cast<uint16_t>(height));
@@ -3633,7 +3673,7 @@ int main(int argc, char** argv)
                 woby::cameraUp(camera, ui.upAxis));
             bx::mtxProj(
                 projection,
-                camera.verticalFovDegrees,
+                woby::cameraViewportFov(camera, static_cast<float>(sceneViewportWidth) / static_cast<float>(height)),
                 static_cast<float>(sceneViewportWidth) / static_cast<float>(height),
                 camera.nearPlane,
                 woby::cameraFarPlane(camera, sceneBounds),
@@ -3643,11 +3683,9 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::viewSetup, stageStart);
 
             std::optional<HoveredVertex> hoveredVertex;
-            const MousePosition mouse = mousePositionInPixels(window.get());
-            const bool mouseInsideViewport = mouse.x >= activeViewerPaneWidth
-                && mouse.x < (ui.comparisonPaneVisible ? comparisonRightEdge - comparisonWidth : static_cast<float>(sceneViewportWidth))
-                && mouse.y >= 0.0f
-                && mouse.y < static_cast<float>(height);
+            const MousePosition windowMouse = mousePositionInPixels(window.get());
+            const bool mouseInsideViewport = woby::contains(viewport, windowMouse.x, windowMouse.y);
+            const MousePosition mouse{windowMouse.x - static_cast<float>(viewport.x), windowMouse.y};
             const bool cameraInteractionActive = cameraInput.orbiting
                 || cameraInput.rolling
                 || cameraInput.panning;
@@ -3659,6 +3697,7 @@ int main(int argc, char** argv)
                 || backgroundLoad.active
                 || gpuFinalize.active;
             const bool hoverPickingEnabled = mouseInsideViewport
+                && !ImGui::GetIO().WantCaptureMouse
                 && !cameraInteractionActive
                 && !dialogOpen;
             if (!hoverPickingEnabled) {

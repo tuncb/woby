@@ -386,10 +386,14 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
     ImGui::SetNextItemWidth(-1);
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
+    const bool resultReady = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state);
+    if (resultReady) { ImGui::TextUnformatted("Result ready"); }
+    ImGui::BeginDisabled(!resultReady);
+    if (ImGui::Button("Frame result", ImVec2(-1.0f, 0.0f))) { frameComparison(state, id); }
+    ImGui::EndDisabled();
     auto translation = comparison->translation;
     if (ImGui::DragFloat3("Result position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
     ImGui::TextDisabled("Display offset only, in model units.");
-    if (ImGui::Button("Frame result")) { frameComparison(state, id); }
     ImGui::Separator();
     ImGui::TextWrapped("Add objects from the scene's context menu. Right-click a branch or part below to remove it from that group.");
     ImGui::Separator();
@@ -502,6 +506,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
 void drawComparisonPanel(UiState& state, ComparisonRuntimes& runtimes, float rightEdge, float width, float height)
 {
     if (!state.comparisonPaneVisible) { return; }
+    ImGui::SetNextWindowBgAlpha(1.0f);
     ImGui::SetNextWindowPos(ImVec2(rightEdge - width, 0.0f), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
     bool visible = state.comparisonPaneVisible;

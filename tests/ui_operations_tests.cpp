@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "scene_viewport.h"
 
 #include <doctest/doctest.h>
 
@@ -1141,5 +1142,48 @@ TEST_CASE("generated camera operations keep finite clamped view state")
             CHECK(finiteBxVec3(woby::cameraUp(camera, upAxis)));
             CHECK(std::isfinite(woby::cameraFarPlane(camera, makeBounds(-1.0f, 1.0f))));
         }
+    }
+}
+
+TEST_CASE("Scene viewport reserves panels in drawable coordinates")
+{
+    for (const float scale : {1.0f, 1.25f, 1.5f, 2.0f}) {
+        for (const float left : {0.0f, 300.0f}) {
+            for (const float right : {0.0f, 400.0f}) {
+                const auto viewport = woby::sceneViewport(static_cast<uint32_t>(1200.0f * scale),
+                    static_cast<uint32_t>(800.0f * scale), 1200.0f, left, right);
+                CHECK(viewport.x == static_cast<uint32_t>(left * scale));
+                CHECK(viewport.width == static_cast<uint32_t>((1200.0f - left - right) * scale));
+                CHECK(viewport.height == static_cast<uint32_t>(800.0f * scale));
+                CHECK(woby::contains(viewport, static_cast<float>(viewport.x), 0.0f));
+                CHECK_FALSE(woby::contains(viewport, static_cast<float>(viewport.x) - 0.01f, 0.0f));
+                CHECK_FALSE(woby::contains(viewport, static_cast<float>(viewport.x + viewport.width), 0.0f));
+                CHECK_FALSE(woby::contains(viewport, static_cast<float>(viewport.x), static_cast<float>(viewport.height)));
+            }
+        }
+    }
+    const auto tiny = woby::sceneViewport(0, 0, 0.0f, 300.0f, 400.0f);
+    CHECK(tiny.width == 1);
+    CHECK(tiny.height == 1);
+    const auto fractional = woby::sceneViewport(1500, 1000, 1200.0f, 300.3f, 400.3f);
+    CHECK(fractional.x == 376);
+    CHECK(fractional.x + fractional.width == 999);
+}
+
+TEST_CASE("Framed bounds fit both canvas axes without changing logical camera")
+{
+    woby::Bounds bounds;
+    bounds.center = {20.0f, -30.0f, 10.0f};
+    bounds.radius = 10.0f;
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        const auto camera = woby::frameCameraBounds(bounds, up);
+        for (const float aspect : {0.1f, 0.4f, 1.0f, 1.5f, 3.0f}) {
+            const float vertical = woby::cameraViewportFov(camera, aspect) * 3.14159265f / 360.0f;
+            const float horizontal = std::atan(std::tan(vertical) * aspect);
+            CHECK(camera.distance * std::sin(vertical) > bounds.radius);
+            CHECK(camera.distance * std::sin(horizontal) > bounds.radius);
+            CHECK(camera.target == bounds.center);
+        }
+        CHECK(woby::cameraViewportFov(camera, 2.0f) == doctest::Approx(camera.verticalFovDegrees));
     }
 }

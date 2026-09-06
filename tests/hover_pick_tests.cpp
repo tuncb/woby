@@ -1,4 +1,5 @@
 #include "hover_pick.h"
+#include "scene_viewport.h"
 
 #include <doctest/doctest.h>
 
@@ -223,4 +224,28 @@ TEST_CASE("hover pick signatures change when hit-test inputs change")
         100u,
         true);
     CHECK(changedRuntime != baseline);
+}
+
+TEST_CASE("hover picking uses canvas local pixels after panel and DPI changes")
+{
+    const std::vector<woby::UiFileState> files = {pointFile()};
+    const std::vector<woby::LoadedModelRuntime> runtimes = {pointRuntime({0u})};
+    for (const float scale : {1.0f, 1.25f, 2.0f}) {
+        for (const float left : {0.0f, 300.0f}) {
+            for (const float right : {0.0f, 400.0f}) {
+                const auto viewport = woby::sceneViewport(static_cast<uint32_t>(1200.0f * scale),
+                    static_cast<uint32_t>(800.0f * scale), 1200.0f, left, right);
+                const woby::MousePosition windowMouse{
+                    static_cast<float>(viewport.x) + static_cast<float>(viewport.width) * 0.5f,
+                    static_cast<float>(viewport.height) * 0.5f};
+                REQUIRE(woby::contains(viewport, windowMouse.x, windowMouse.y));
+                const auto hit = woby::findHoveredVertex(files, {}, runtimes,
+                    {windowMouse.x - static_cast<float>(viewport.x), windowMouse.y},
+                    woby::defaultMasterVertexPointSize, identityMatrix.data(), identityMatrix.data(),
+                    viewport.width, viewport.height, true);
+                REQUIRE(hit.has_value());
+                CHECK(hit->distanceSquared == doctest::Approx(0.0f));
+            }
+        }
+    }
 }

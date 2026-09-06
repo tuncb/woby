@@ -14,9 +14,9 @@
 namespace woby {
 namespace {
 
-constexpr bgfx::ViewId screenshotSceneView = 2;
-constexpr bgfx::ViewId screenshotHelperView = 3;
-constexpr bgfx::ViewId screenshotReadbackView = 4;
+constexpr bgfx::ViewId screenshotSceneView = 3;
+constexpr bgfx::ViewId screenshotHelperView = 4;
+constexpr bgfx::ViewId screenshotReadbackView = 5;
 constexpr uint16_t screenshotWidth = 1920;
 constexpr uint16_t screenshotHeight = 1800;
 

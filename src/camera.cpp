@@ -103,6 +103,14 @@ SceneCamera frameCameraBounds(const Bounds& bounds, SceneUpAxis upAxis)
     return camera;
 }
 
+float cameraViewportFov(const SceneCamera& camera, float aspectRatio)
+{
+    // Keep the camera field of view on the shorter canvas axis so framing a
+    // bounding sphere remains valid with narrow canvases and open inspectors.
+    const float aspect = std::isfinite(aspectRatio) ? std::clamp(aspectRatio, 0.0001f, 1.0f) : 1.0f;
+    return 2.0f * std::atan(std::tan(camera.verticalFovDegrees * pi / 360.0f) / aspect) * 180.0f / pi;
+}
+
 bx::Vec3 cameraEye(const SceneCamera& camera, SceneUpAxis upAxis)
 {
     const std::array<float, 3> view = viewDirection(camera, upAxis);

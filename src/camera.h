@@ -28,6 +28,7 @@ struct CameraInput {
 [[nodiscard]] SceneCamera frameCameraBounds(
     const Bounds& bounds,
     SceneUpAxis upAxis = SceneUpAxis::z);
+[[nodiscard]] float cameraViewportFov(const SceneCamera& camera, float aspectRatio);
 [[nodiscard]] bx::Vec3 cameraEye(
     const SceneCamera& camera,
     SceneUpAxis upAxis = SceneUpAxis::z);

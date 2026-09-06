@@ -61,6 +61,7 @@ add_executable(woby
     src/bgfx_helpers.h
     src/camera.cpp
     src/camera.h
+    src/scene_viewport.h
     src/camera_sdl.cpp
     src/command_line.cpp
     src/command_line.h
