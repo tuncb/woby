@@ -773,6 +773,12 @@ bool drawViewerPaneTogglePane(woby::UiState& state, float windowWidth, bool scre
         if (screenshotDisabled) {
             ImGui::EndDisabled();
         }
+        if (drawRenderModeIconButton(
+                "toggle_comparison_pane", "A/B",
+                state.comparisonPaneVisible ? "Hide comparison panel" : "Show comparison panel",
+                state.comparisonPaneVisible ? RenderModeState::on : RenderModeState::off, false)) {
+            woby::setComparisonPaneVisible(state, !state.comparisonPaneVisible);
+        }
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -858,7 +864,7 @@ void drawSceneNodeMasterControls(woby::UiState& state, woby::UiSceneNode& node)
 }
 
 void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
-    woby::ComparisonRuntime& comparison, bool treeNode)
+    bool treeNode)
 {
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && (!treeNode || !ImGui::IsItemToggledOpen())) {
         woby::selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
@@ -870,33 +876,33 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             ImGui::CloseCurrentPopup();
         }
-        const auto parts = woby::comparisonObjectParts(state, state.selectedSceneObjects);
-        size_t inA = 0, inB = 0;
-        for (const auto& file : state.files) {
-            for (const auto& group : file.groupSettings) {
-                if (std::binary_search(parts.begin(), parts.end(), group.objectId)) {
-                    inA += group.comparison.a ? 1u : 0u;
-                    inB += group.comparison.b ? 1u : 0u;
-                }
+        bool hasParts = false;
+        for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+            const auto action = woby::comparisonMembershipAction(state, state.selectedSceneObjects, side);
+            const bool enabled = action != woby::ComparisonMembershipAction::unavailable;
+            const bool remove = action == woby::ComparisonMembershipAction::remove;
+            const char* label = side == woby::ComparisonSide::a
+                ? (remove ? "Remove from group A" : "Add to group A")
+                : (remove ? "Remove from group B" : "Add to group B");
+            hasParts = hasParts || enabled;
+            if (ImGui::MenuItem(label, nullptr, false, enabled)) {
+                woby::setComparisonObjects(state, state.selectedSceneObjects, side, !remove);
             }
         }
-        const auto membershipAction = [&](const char* label, woby::ComparisonSide side, bool member, bool enabled) {
-            if (ImGui::MenuItem(label, nullptr, false, enabled)) {
-                woby::setComparisonObjects(state, state.selectedSceneObjects, side, member);
-                comparison.openPanelRequested = true;
-            }
-        };
-        membershipAction("Add to group A", woby::ComparisonSide::a, true, inA < parts.size());
-        membershipAction("Add to group B", woby::ComparisonSide::b, true, inB < parts.size());
-        membershipAction("Remove from group A", woby::ComparisonSide::a, false, inA != 0);
-        membershipAction("Remove from group B", woby::ComparisonSide::b, false, inB != 0);
-        if (parts.empty()) { ImGui::TextDisabled("Select objects containing triangles."); }
+        if (!hasParts) { ImGui::TextDisabled("Select objects containing triangles."); }
         ImGui::Separator();
-        if (ImGui::MenuItem("Compare A and B", nullptr, false, woby::canCompareGroups(state))) {
+        if (woby::canCompareSceneSelection(state)) {
+            if (ImGui::MenuItem("Compare selected objects")) {
+                woby::compareSceneSelection(state);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("First selected object goes to A; second goes to B.");
+            }
+        } else if (ImGui::MenuItem("Compare A and B", nullptr, false, woby::canCompareGroups(state))) {
             auto settings = state.comparison;
             settings.enabled = true;
             woby::setComparisonSettings(state, settings);
-            comparison.openPanelRequested = true;
+            woby::setComparisonPaneVisible(state, true);
         }
         ImGui::EndPopup();
     }
@@ -904,7 +910,6 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
 
 void drawGroupControls(
     woby::UiState& state,
-    woby::ComparisonRuntime& comparison,
     const woby::MeshNode& node,
     const GpuNodeRange& range,
     LoadedModelFile& file,
@@ -932,7 +937,7 @@ void drawGroupControls(
         + "\n"
         + meshCountLine(range.pointIndexCount, node.indexCount / 3u);
     setLastItemTooltip(groupTooltip.c_str());
-    drawSceneItemInteraction(state, settings.objectId, comparison, false);
+    drawSceneItemInteraction(state, settings.objectId, false);
     ImGui::SameLine(controlsStartX, 0.0f);
     if (drawRenderModeIconButton(
             "solid_mesh",
@@ -1216,7 +1221,6 @@ size_t groupColorIndex(
 void drawSceneTreeNode(
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
-    woby::ComparisonRuntime& comparison,
     woby::UiSceneNode& node,
     std::optional<size_t>& removeFileIndex)
 {
@@ -1233,17 +1237,25 @@ void drawSceneTreeNode(
             woby::setSceneNodeSubtreeVisible(state, node, visibleCount != groupCount);
         }
         ImGui::SameLine();
-        const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+        // The selection bar fills the name column; keep its hit area out of the controls.
+        const ImVec2 labelClipMin = ImGui::GetWindowDrawList()->GetClipRectMin();
+        ImVec2 labelClipMax = ImGui::GetWindowDrawList()->GetClipRectMax();
+        labelClipMax.x = ImGui::GetCursorScreenPos().x + controlsStartX
+            - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x;
+        ImGui::PushClipRect(labelClipMin, labelClipMax, true);
+        const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
         const bool folderOpen = ImGui::TreeNodeEx(node.name.c_str(), flags);
-        drawSceneItemInteraction(state, node.objectId, comparison, true);
+        drawSceneItemInteraction(state, node.objectId, true);
+        ImGui::PopClipRect();
         ImGui::SameLine(controlsStartX, 0.0f);
         drawSceneNodeMasterControls(state, node);
         drawSceneNodeTransformControls(node.settings, std::max(state.sceneBounds.radius * 0.005f, 0.01f));
         if (folderOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, comparison, node.children[childIndex], removeFileIndex);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1284,11 +1296,12 @@ void drawSceneTreeNode(
         labelClipMax.x = ImGui::GetCursorScreenPos().x + removeControlStartX
             - ImGui::GetCursorPosX() - style.ItemSpacing.x;
         ImGui::PushClipRect(labelClipMin, labelClipMax, true);
-        const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+        const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
+            | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
         const bool fileTreeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
         setLastItemTooltip(tooltipText.c_str());
-        drawSceneItemInteraction(state, node.objectId, comparison, true);
+        drawSceneItemInteraction(state, node.objectId, true);
         ImGui::PopClipRect();
         ImGui::SameLine(removeControlStartX, 0.0f);
         if (drawRenderModeIconButton(
@@ -1320,7 +1333,7 @@ void drawSceneTreeNode(
             drawFileTransformControls(file.fileSettings, translationSpeed);
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, comparison, node.children[childIndex], removeFileIndex);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1340,7 +1353,6 @@ void drawSceneTreeNode(
 
     drawGroupControls(
         state,
-        comparison,
         file.mesh.nodes[node.groupIndex],
         gpuMesh.nodeRanges[node.groupIndex],
         file,
@@ -3325,8 +3337,6 @@ int main(int argc, char** argv)
                     ImGui::EndChild();
                 }
 
-                woby::drawComparisonPanel(ui, comparison);
-
                 if (ImGui::CollapsingHeader("Importers")) {
                     const bool importerActionDisabled = processingFiles
                         || modelFileDialogIsOpen(modelFileDialogState)
@@ -3377,7 +3387,7 @@ int main(int argc, char** argv)
                         std::optional<size_t> removeFileIndex;
                         for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                             ImGui::PushID(static_cast<int>(nodeIndex));
-                            drawSceneTreeNode(ui, runtimes, comparison, ui.sceneNodes[nodeIndex], removeFileIndex);
+                            drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex);
                             ImGui::PopID();
                         }
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
@@ -3401,6 +3411,11 @@ int main(int argc, char** argv)
             if (drawViewerPaneTogglePane(ui, static_cast<float>(width), screenshotActionDisabled)) {
                 showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
             }
+            // Leave the upper-right toolbar available even while the panel is open.
+            const float comparisonRightEdge = static_cast<float>(width)
+                - renderModeButtonSize - 8.0f - viewerPaneTogglePaneMargin * 2.0f;
+            const float comparisonWidth = std::min(420.0f, static_cast<float>(width) * 0.36f);
+            woby::drawComparisonPanel(ui, comparison, comparisonRightEdge, comparisonWidth, static_cast<float>(height));
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
 
             woby::recalculateSceneBounds(ui);
@@ -3589,7 +3604,7 @@ int main(int argc, char** argv)
             std::optional<HoveredVertex> hoveredVertex;
             const MousePosition mouse = mousePositionInPixels(window.get());
             const bool mouseInsideViewport = mouse.x >= activeViewerPaneWidth
-                && mouse.x < static_cast<float>(sceneViewportWidth)
+                && mouse.x < (ui.comparisonPaneVisible ? comparisonRightEdge - comparisonWidth : static_cast<float>(sceneViewportWidth))
                 && mouse.y >= 0.0f
                 && mouse.y < static_cast<float>(height);
             const bool cameraInteractionActive = cameraInput.orbiting

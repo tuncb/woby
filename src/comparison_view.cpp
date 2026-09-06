@@ -92,47 +92,57 @@ bool originalActive(const ComparisonSettings &settings)
     return settings.mode == ComparisonMode::original ||
            (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal);
 }
-void membershipList(UiState& state, ComparisonSide side)
+void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node)
+{
+    const auto id = std::to_string(node.objectId);
+    ImGui::PushID(id.c_str());
+    const bool leaf = node.children.empty();
+    const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
+        | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+        | (leaf ? ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen : ImGuiTreeNodeFlags_DefaultOpen);
+    const bool open = ImGui::TreeNodeEx("node", flags, "%s", node.name.c_str());
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("%zu parts, %zu triangles", node.partCount, node.triangleCount);
+        if (const auto object = findSceneObject(state, node.objectId); object && !object->path.empty()) {
+            ImGui::TextUnformatted(pathToUtf8(object->path).c_str());
+        }
+        ImGui::TextUnformatted("Right-click to remove from this comparison group.");
+        ImGui::EndTooltip();
+    }
+    if (ImGui::BeginPopupContextItem("membership")) {
+        const char* label = side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
+        if (ImGui::MenuItem(label)) { setComparisonObjects(state, {node.objectId}, side, false); }
+        ImGui::EndPopup();
+    }
+    if (open && !leaf) {
+        for (const auto& child : node.children) { drawComparisonTreeNode(state, side, child); }
+        ImGui::TreePop();
+    }
+    ImGui::PopID();
+}
+
+void membershipTree(UiState& state, ComparisonSide side)
 {
     const char* label = side == ComparisonSide::a ? "Group A" : "Group B";
+    const auto roots = comparisonTree(state, side);
+    size_t count = 0, triangles = 0;
+    for (const auto& root : roots) { count += root.partCount; triangles += root.triangleCount; }
     ImGui::PushID(label);
-    const size_t count = comparisonPartCount(state, side);
-    size_t triangles = 0;
-    for (const auto& file : state.files) {
-        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
-            if (comparisonMember(file.groupSettings[i].comparison, side)) {
-                triangles += file.mesh.nodes[i].indexCount / 3;
-            }
-        }
-    }
-    ImGui::Text("%s: %zu parts, %zu triangles", label, count, triangles);
+    const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_DefaultOpen,
+        "%s (%zu %s)", label, count, count == 1 ? "part" : "parts");
     ImGui::SameLine();
     ImGui::BeginDisabled(count == 0);
-    if (ImGui::SmallButton("Clear")) { clearComparisonGroup(state, side); }
+    const bool clear = ImGui::SmallButton("Clear");
+    if (clear) { clearComparisonGroup(state, side); }
     ImGui::EndDisabled();
-    if (count != 0) {
-        const float height = ImGui::GetTextLineHeightWithSpacing() * static_cast<float>(std::min(count, size_t{5}));
-        if (ImGui::BeginChild("members", ImVec2(0, height))) {
-            for (const auto& file : state.files) {
-                for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
-                    const auto& group = file.groupSettings[i];
-                    if (!comparisonMember(group.comparison, side)) { continue; }
-                    const std::string name = pathToUtf8(file.path.filename()) + " / " + file.mesh.nodes[i].name;
-                    const std::string id = std::to_string(group.objectId);
-                    ImGui::PushID(id.c_str());
-                    ImGui::TextUnformatted(name.c_str());
-                    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s", pathToUtf8(file.path).c_str()); }
-                    if (ImGui::BeginPopupContextItem("member")) {
-                        if (ImGui::MenuItem("Remove from group")) {
-                            setComparisonObjects(state, {group.objectId}, side, false);
-                        }
-                        ImGui::EndPopup();
-                    }
-                    ImGui::PopID();
-                }
-            }
+    if (open) {
+        if (roots.empty() || clear) { ImGui::TextDisabled("No objects added"); }
+        else {
+            ImGui::TextDisabled("%zu triangles", triangles);
+            for (const auto& root : roots) { drawComparisonTreeNode(state, side, root); }
         }
-        ImGui::EndChild();
+        ImGui::TreePop();
     }
     ImGui::PopID();
 }
@@ -305,19 +315,14 @@ void destroyComparisonRuntime(ComparisonRuntime &runtime)
     }
 }
 
-void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
+namespace {
+void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
 {
-    if (runtime.openPanelRequested) {
-        ImGui::SetNextItemOpen(true);
-        runtime.openPanelRequested = false;
-    }
-    if (!ImGui::CollapsingHeader("Compare groups", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        return;
-    }
-    ImGui::TextWrapped("Right-click scene objects to add or remove them from A and B. Files and folders add their current mesh parts.");
-    membershipList(state, ComparisonSide::a);
-    membershipList(state, ComparisonSide::b);
+    ImGui::TextWrapped("Add objects from the scene's context menu. Right-click a branch or part below to remove it from that group.");
+    ImGui::Separator();
+    membershipTree(state, ComparisonSide::a);
+    membershipTree(state, ComparisonSide::b);
+    ImGui::Separator();
     if (ImGui::Button("Swap A / B")) { swapComparisonGroups(state); }
     auto settings = state.comparison;
     const auto initial = settings;
@@ -425,6 +430,22 @@ void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
     ImGui::Text("Duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
     ImGui::TextWrapped(
         "Diagnostics describe combined surfaces; coincident edges across parts are matched. Open boundaries may be intentional. Self-intersections are not checked.");
+}
+
+} // namespace
+
+void drawComparisonPanel(UiState& state, ComparisonRuntime& runtime, float rightEdge, float width, float height)
+{
+    if (!state.comparisonPaneVisible) { return; }
+    ImGui::SetNextWindowPos(ImVec2(rightEdge - width, 0.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
+    bool visible = state.comparisonPaneVisible;
+    if (ImGui::Begin("Comparison", &visible, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+        | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
+        drawComparisonContents(state, runtime);
+    }
+    ImGui::End();
+    if (visible != state.comparisonPaneVisible) { setComparisonPaneVisible(state, visible); }
 }
 
 bool submitComparisonScene(bgfx::ViewId view, const UiState &state, const ComparisonRuntime &runtime,

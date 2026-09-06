@@ -106,6 +106,8 @@ struct UiState {
     Bounds sceneBounds;
     float viewerPaneWidth = 0.0f;
     bool viewerPaneVisible = true;
+    // Session-only panel visibility, like the left viewer pane; not scene content.
+    bool comparisonPaneVisible = false;
     std::vector<UiFileState> files;
     std::vector<UiSceneNode> sceneNodes;
     // Session metadata: never saved, reset on scene open, or used for dirty tracking.

@@ -96,6 +96,58 @@ void visitParts(const UiState& state, ComparisonSide side, const Visitor& visito
 }
 } // namespace
 
+std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side)
+{
+    std::set<std::pair<size_t, size_t>> visited;
+    const auto build = [&](auto&& self, const UiSceneNode& source) -> ComparisonTreeNode {
+        ComparisonTreeNode result;
+        result.objectId = source.objectId;
+        result.kind = source.kind;
+        result.name = source.name;
+        if (source.kind == UiSceneNodeKind::group) {
+            if (source.fileIndex >= state.files.size()) { return result; }
+            const auto& file = state.files[source.fileIndex];
+            if (source.groupIndex >= file.groupSettings.size() || source.groupIndex >= file.mesh.nodes.size()) {
+                return result;
+            }
+            const auto& part = file.groupSettings[source.groupIndex];
+            const auto& meshNode = file.mesh.nodes[source.groupIndex];
+            if (!comparisonMember(part.comparison, side) || meshNode.indexCount < 3 || meshNode.indexCount % 3 != 0
+                || static_cast<size_t>(meshNode.indexOffset) + meshNode.indexCount > file.mesh.indices.size()
+                || !visited.emplace(source.fileIndex, source.groupIndex).second) { return result; }
+            result.objectId = part.objectId;
+            result.partCount = 1;
+            result.triangleCount = meshNode.indexCount / 3;
+            return result;
+        }
+        const auto append = [&](const UiSceneNode& child) {
+            auto branch = self(self, child);
+            if (branch.partCount == 0) { return; }
+            result.partCount += branch.partCount;
+            result.triangleCount += branch.triangleCount;
+            result.children.push_back(std::move(branch));
+        };
+        if (source.kind == UiSceneNodeKind::file && source.children.empty() && source.fileIndex < state.files.size()) {
+            const auto fileNode = createFileSceneNode(state.files[source.fileIndex], source.fileIndex);
+            for (const auto& child : fileNode.children) { append(child); }
+        } else {
+            for (const auto& child : source.children) { append(child); }
+        }
+        return result;
+    };
+    std::vector<ComparisonTreeNode> result;
+    const auto appendRoot = [&](const UiSceneNode& source) {
+        auto root = build(build, source);
+        if (root.partCount != 0) { result.push_back(std::move(root)); }
+    };
+    if (state.sceneNodes.empty()) {
+        for (size_t i = 0; i < state.files.size(); ++i) { appendRoot(createFileSceneNode(state.files[i], i)); }
+    } else {
+        for (const auto& source : state.sceneNodes) { appendRoot(source); }
+    }
+    return result;
+}
+
 Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side)
 {
     Mesh result;

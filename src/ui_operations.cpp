@@ -97,20 +97,69 @@ size_t comparisonPartCount(const UiState& state, ComparisonSide side)
     return count;
 }
 
+ComparisonMembershipAction comparisonMembershipAction(
+    const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side)
+{
+    const auto parts = comparisonObjectParts(state, objects);
+    if (parts.empty()) { return ComparisonMembershipAction::unavailable; }
+    for (const auto& file : state.files) {
+        for (const auto& group : file.groupSettings) {
+            if (std::binary_search(parts.begin(), parts.end(), group.objectId)
+                && !comparisonMember(group.comparison, side)) {
+                return ComparisonMembershipAction::add;
+            }
+        }
+    }
+    return ComparisonMembershipAction::remove;
+}
+
 bool canCompareGroups(const UiState& state)
 {
     return comparisonPartCount(state, ComparisonSide::a) != 0 && comparisonPartCount(state, ComparisonSide::b) != 0;
 }
 
+bool canCompareSceneSelection(const UiState& state)
+{
+    if (state.selectedSceneObjects.size() != 2 || state.selectedSceneObjects[0] == state.selectedSceneObjects[1]) {
+        return false;
+    }
+    for (const auto& file : state.files) {
+        for (const auto& group : file.groupSettings) {
+            if (group.comparison.a || group.comparison.b) { return false; }
+        }
+    }
+    return !comparisonObjectParts(state, {state.selectedSceneObjects[0]}).empty()
+        && !comparisonObjectParts(state, {state.selectedSceneObjects[1]}).empty();
+}
+
+bool compareSceneSelection(UiState& state)
+{
+    if (!canCompareSceneSelection(state)) { return false; }
+    setComparisonObjects(state, {state.selectedSceneObjects[0]}, ComparisonSide::a, true);
+    setComparisonObjects(state, {state.selectedSceneObjects[1]}, ComparisonSide::b, true);
+    auto settings = state.comparison;
+    settings.enabled = true;
+    setComparisonSettings(state, settings);
+    return state.comparison.enabled;
+}
+
 void setComparisonSettings(UiState& state, ComparisonSettings settings)
 {
+    const bool wasEnabled = state.comparison.enabled;
     state.comparison = normalizedComparisonSettings(settings);
     if (!canCompareGroups(state)) { state.comparison.enabled = false; }
+    if (state.comparison.enabled && !wasEnabled) { setComparisonPaneVisible(state, true); }
+}
+
+void setComparisonPaneVisible(UiState& state, bool visible)
+{
+    state.comparisonPaneVisible = visible;
 }
 
 void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member)
 {
     const auto parts = comparisonObjectParts(state, objects);
+    if (member && !parts.empty()) { setComparisonPaneVisible(state, true); }
     for (auto& file : state.files) {
         for (auto& group : file.groupSettings) {
             if (std::binary_search(parts.begin(), parts.end(), group.objectId)) {
@@ -872,6 +921,7 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.running = current.running;
     prepared.viewerPaneWidth = current.viewerPaneWidth;
     prepared.viewerPaneVisible = current.viewerPaneVisible;
+    prepared.comparisonPaneVisible = current.comparisonPaneVisible;
     prepared.nextObjectId = current.nextObjectId;
     prepared.files = std::move(files);
     // Every replacement receives fresh IDs, even when reopening the same file.

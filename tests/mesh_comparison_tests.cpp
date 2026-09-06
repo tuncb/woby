@@ -520,3 +520,285 @@ TEST_CASE("comparison load normalizes invalid settings and disables empty sides"
     CHECK(document.comparison.colorRange >= document.comparison.tolerance);
     std::filesystem::remove(path);
 }
+
+TEST_CASE("comparison tree preserves folders files and parts and prunes removed children")
+{
+    auto state = stateWithFiles(3);
+    woby::UiSceneNode assembly;
+    assembly.name = "Assembly";
+    woby::UiSceneNode subassembly;
+    subassembly.name = "Subassembly";
+    subassembly.children = {state.sceneNodes[0], state.sceneNodes[1]};
+    assembly.children = {subassembly, state.sceneNodes[2]};
+    state.sceneNodes = {assembly};
+    woby::assignSceneObjectIds(state);
+    const auto assemblyId = state.sceneNodes[0].objectId;
+    woby::setComparisonObjects(state, {assemblyId}, woby::ComparisonSide::a, true);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true);
+    auto tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 1);
+    CHECK(tree[0].objectId == assemblyId);
+    CHECK(tree[0].kind == woby::UiSceneNodeKind::folder);
+    CHECK(tree[0].name == "Assembly");
+    CHECK(tree[0].partCount == 3);
+    CHECK(tree[0].triangleCount == 6);
+    REQUIRE(tree[0].children.size() == 2);
+    const auto& nested = tree[0].children[0];
+    CHECK(nested.name == "Subassembly");
+    REQUIRE(nested.children.size() == 2);
+    CHECK(nested.children[0].kind == woby::UiSceneNodeKind::file);
+    CHECK(nested.children[0].objectId == state.files[0].objectId);
+    REQUIRE(nested.children[0].children.size() == 1);
+    CHECK(nested.children[0].children[0].kind == woby::UiSceneNodeKind::group);
+    CHECK(nested.children[0].children[0].objectId == state.files[0].groupSettings[0].objectId);
+    woby::setComparisonObjects(state, {state.files[0].groupSettings[0].objectId}, woby::ComparisonSide::a, false);
+    tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 1);
+    REQUIRE(tree[0].children.size() == 2);
+    REQUIRE(tree[0].children[0].children.size() == 1);
+    CHECK(tree[0].children[0].children[0].objectId == state.files[1].objectId);
+    CHECK(tree[0].partCount == 2);
+    // Removing a nested branch affects only its membership on that side.
+    woby::setComparisonObjects(state, {tree[0].children[0].objectId}, woby::ComparisonSide::a, false);
+    tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 1);
+    REQUIRE(tree[0].children.size() == 1);
+    CHECK(tree[0].children[0].objectId == state.files[2].objectId);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == 1);
+    CHECK(state.files.size() == 3);
+    woby::clearComparisonGroup(state, woby::ComparisonSide::a);
+    CHECK(woby::comparisonTree(state, woby::ComparisonSide::a).empty());
+}
+
+TEST_CASE("comparison trees show only included parts and retain hierarchy after scene reload")
+{
+    woby::UiState state;
+    auto model = square();
+    model.nodes = {{"Part one", 0, 3}, {"Part two", 3, 3}};
+    state.files.push_back(woby::createUiFileState("assembly.obj", model, 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::UiSceneNode folder;
+    folder.name = "Folder";
+    folder.children = std::move(state.sceneNodes);
+    state.sceneNodes = {folder};
+    woby::assignSceneObjectIds(state);
+    woby::setComparisonObjects(state, {state.sceneNodes[0].objectId}, woby::ComparisonSide::a, true);
+    woby::setComparisonObjects(state, {state.files[0].groupSettings[0].objectId}, woby::ComparisonSide::a, false);
+    state.files[0].fileSettings.visible = false;
+    const auto document = woby::createSceneDocument(state);
+    const auto loaded = woby::prepareSceneReplacement(state, state.files, document);
+    const auto tree = woby::comparisonTree(loaded, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 1);
+    CHECK(tree[0].name == "Folder");
+    REQUIRE(tree[0].children.size() == 1);
+    REQUIRE(tree[0].children[0].children.size() == 1);
+    const auto& part = tree[0].children[0].children[0];
+    CHECK(part.name == "Part two");
+    CHECK(part.objectId == loaded.files[0].groupSettings[1].objectId);
+    CHECK(part.objectId != state.files[0].groupSettings[1].objectId);
+    CHECK(tree[0].triangleCount == 1);
+    CHECK(woby::comparisonTree(loaded, woby::ComparisonSide::b).empty());
+}
+
+TEST_CASE("comparison tree handles implicit hierarchy duplicate references and removed files")
+{
+    auto state = stateWithFiles(2);
+    woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, woby::ComparisonSide::a, true);
+    state.sceneNodes[0].children.push_back(state.sceneNodes[0].children[0]);
+    auto tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 2);
+    CHECK(tree[0].partCount == 1);
+    CHECK(tree[0].children.size() == 1);
+    state.sceneNodes[0].children.clear();
+    tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    CHECK(tree[0].children.size() == 1);
+    state.sceneNodes.clear();
+    tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 2);
+    CHECK(tree[0].children.size() == 1);
+    REQUIRE(woby::removeFileFromState(state, 0));
+    tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 1);
+    CHECK(tree[0].objectId == state.files[0].objectId);
+}
+
+TEST_CASE("comparison panel opens on adding objects and starting comparison but can stay hidden")
+{
+    auto state = stateWithFiles(2);
+    CHECK_FALSE(state.comparisonPaneVisible);
+    woby::setComparisonObjects(state, {state.nextObjectId}, woby::ComparisonSide::a, true);
+    CHECK_FALSE(state.comparisonPaneVisible);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true);
+    CHECK(state.comparisonPaneVisible);
+    woby::setComparisonPaneVisible(state, false);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true);
+    CHECK(state.comparisonPaneVisible);
+    woby::setComparisonPaneVisible(state, false);
+    auto settings = state.comparison;
+    settings.enabled = true;
+    woby::setComparisonSettings(state, settings);
+    REQUIRE(state.comparison.enabled);
+    CHECK(state.comparisonPaneVisible);
+    const auto document = woby::createSceneDocument(state);
+    const auto signature = woby::comparisonGeometrySignature(state);
+    woby::setComparisonPaneVisible(state, false);
+    woby::updateSceneDirty(state, document);
+    CHECK_FALSE(state.isDirty);
+    CHECK(state.comparison.enabled);
+    CHECK(woby::comparisonGeometrySignature(state) == signature);
+    // Editing display settings while hidden should not force the panel open again.
+    settings.colorRange = 2;
+    woby::setComparisonSettings(state, settings);
+    CHECK_FALSE(state.comparisonPaneVisible);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, false);
+    CHECK_FALSE(state.comparisonPaneVisible);
+    CHECK_FALSE(state.comparison.enabled);
+    const auto restored = woby::prepareSceneReplacement(state, state.files, document);
+    CHECK(restored.comparisonPaneVisible);
+    CHECK(restored.comparison.enabled);
+}
+
+TEST_CASE("quick comparison assigns selected objects in click order and opens the panel")
+{
+    auto state = stateWithFiles(2);
+    auto settings = state.comparison;
+    settings.mode = woby::ComparisonMode::overlay;
+    settings.tolerance = .25f;
+    woby::setComparisonSettings(state, settings);
+    const auto clean = woby::createSceneDocument(state);
+    const auto first = state.files[1].objectId, second = state.files[0].objectId;
+    woby::selectSceneObject(state, first);
+    woby::selectSceneObject(state, second, true);
+    woby::selectSceneObject(state, first, false, true);
+    REQUIRE(woby::canCompareSceneSelection(state));
+    REQUIRE(woby::compareSceneSelection(state));
+    CHECK(state.comparison.enabled);
+    CHECK(state.comparisonPaneVisible);
+    CHECK(state.comparison.mode == woby::ComparisonMode::overlay);
+    CHECK(state.comparison.tolerance == doctest::Approx(.25));
+    CHECK(state.files[1].groupSettings[0].comparison.a);
+    CHECK_FALSE(state.files[1].groupSettings[0].comparison.b);
+    CHECK(state.files[0].groupSettings[0].comparison.b);
+    CHECK_FALSE(state.files[0].groupSettings[0].comparison.a);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second});
+    woby::updateSceneDirty(state, clean);
+    CHECK(state.isDirty);
+    const auto document = woby::createSceneDocument(state);
+    const auto restored = woby::prepareSceneReplacement(state, state.files, document);
+    CHECK(restored.comparison.enabled);
+    CHECK(restored.files[1].groupSettings[0].comparison.a);
+    CHECK(restored.files[0].groupSettings[0].comparison.b);
+}
+
+TEST_CASE("quick comparison supports folders and mesh parts including shared descendants")
+{
+    auto state = stateWithFiles(2);
+    woby::UiSceneNode folder;
+    folder.name = "Assembly";
+    folder.children = std::move(state.sceneNodes);
+    state.sceneNodes = {folder};
+    woby::assignSceneObjectIds(state);
+    woby::selectSceneObject(state, state.sceneNodes[0].objectId);
+    woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId, true);
+    REQUIRE(woby::compareSceneSelection(state));
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 2);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == 1);
+    const auto tree = woby::comparisonTree(state, woby::ComparisonSide::a);
+    REQUIRE(tree.size() == 1);
+    CHECK(tree[0].name == "Assembly");
+    CHECK(tree[0].children.size() == 2);
+}
+
+TEST_CASE("quick comparison leaves existing memberships and invalid selections untouched")
+{
+    auto state = stateWithFiles(3);
+    const auto unchanged = [&] {
+        const auto document = woby::createSceneDocument(state);
+        const auto selection = state.selectedSceneObjects;
+        const bool visible = state.comparisonPaneVisible;
+        CHECK_FALSE(woby::canCompareSceneSelection(state));
+        CHECK_FALSE(woby::compareSceneSelection(state));
+        CHECK(woby::createSceneDocument(state) == document);
+        CHECK(state.selectedSceneObjects == selection);
+        CHECK(state.comparisonPaneVisible == visible);
+    };
+    unchanged();
+    woby::selectSceneObject(state, state.files[0].objectId);
+    unchanged();
+    woby::selectSceneObject(state, state.files[1].objectId, true);
+    woby::selectSceneObject(state, state.files[2].objectId, true);
+    unchanged();
+    state.selectedSceneObjects = {state.files[0].objectId, state.files[0].objectId};
+    unchanged();
+    state.selectedSceneObjects = {state.files[0].objectId, state.nextObjectId};
+    unchanged();
+    state.selectedSceneObjects = {state.files[0].objectId, 0};
+    unchanged();
+    woby::UiSceneNode empty;
+    state.sceneNodes.push_back(empty);
+    woby::assignSceneObjectIds(state);
+    state.selectedSceneObjects = {state.files[0].objectId, state.sceneNodes.back().objectId};
+    unchanged();
+    state.selectedSceneObjects = {state.files[0].objectId, state.files[1].objectId};
+    for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+        woby::setComparisonObjects(state, {state.files[2].objectId}, side, true);
+        unchanged();
+        woby::clearComparisonGroup(state, side);
+    }
+    state.files[1].mesh.indices.clear();
+    unchanged();
+}
+
+TEST_CASE("comparison membership menu chooses add or remove independently for each side")
+{
+    auto state = stateWithFiles(2);
+    const auto object = state.files[0].objectId;
+    using Action = woby::ComparisonMembershipAction;
+    CHECK(woby::comparisonMembershipAction(state, {object}, woby::ComparisonSide::a) == Action::add);
+    CHECK(woby::comparisonMembershipAction(state, {object}, woby::ComparisonSide::b) == Action::add);
+    woby::setComparisonObjects(state, {object}, woby::ComparisonSide::a, true);
+    CHECK(woby::comparisonMembershipAction(state, {object}, woby::ComparisonSide::a) == Action::remove);
+    CHECK(woby::comparisonMembershipAction(state, {object}, woby::ComparisonSide::b) == Action::add);
+    woby::setComparisonObjects(state, {object}, woby::ComparisonSide::b, true);
+    CHECK(woby::comparisonMembershipAction(state, {object}, woby::ComparisonSide::b) == Action::remove);
+    woby::setComparisonObjects(state, {object}, woby::ComparisonSide::a, false);
+    CHECK(woby::comparisonMembershipAction(state, {object}, woby::ComparisonSide::a) == Action::add);
+    CHECK(woby::comparisonMembershipAction(state, {object}, woby::ComparisonSide::b) == Action::remove);
+    // Other members on either side do not influence the selected object's action.
+    CHECK(woby::comparisonMembershipAction(state, {state.files[1].objectId}, woby::ComparisonSide::b) == Action::add);
+}
+
+TEST_CASE("mixed comparison selections add missing parts before offering removal")
+{
+    auto state = stateWithFiles(3);
+    woby::UiSceneNode folder;
+    folder.name = "Assembly";
+    folder.children = {state.sceneNodes[0], state.sceneNodes[1]};
+    state.sceneNodes = {folder, state.sceneNodes[2]};
+    woby::assignSceneObjectIds(state);
+    const auto parent = state.sceneNodes[0].objectId;
+    const auto child = state.files[0].groupSettings[0].objectId;
+    const std::vector<woby::SceneObjectId> selection = {parent, child, state.files[0].objectId};
+    using Action = woby::ComparisonMembershipAction;
+    woby::setComparisonObjects(state, {child}, woby::ComparisonSide::a, true);
+    CHECK(woby::comparisonMembershipAction(state, selection, woby::ComparisonSide::a) == Action::add);
+    woby::setComparisonObjects(state, selection, woby::ComparisonSide::a, true);
+    CHECK(woby::comparisonMembershipAction(state, selection, woby::ComparisonSide::a) == Action::remove);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 2);
+    CHECK_FALSE(state.files[2].groupSettings[0].comparison.a);
+    const std::vector<woby::SceneObjectId> multiple = {state.files[0].objectId, state.files[2].objectId};
+    CHECK(woby::comparisonMembershipAction(state, multiple, woby::ComparisonSide::a) == Action::add);
+    woby::setComparisonObjects(state, selection, woby::ComparisonSide::a, false);
+    CHECK(woby::comparisonMembershipAction(state, selection, woby::ComparisonSide::a) == Action::add);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 0);
+}
+
+TEST_CASE("comparison membership menu is unavailable without any comparable parts")
+{
+    auto state = stateWithFiles(1);
+    using Action = woby::ComparisonMembershipAction;
+    CHECK(woby::comparisonMembershipAction(state, {}, woby::ComparisonSide::a) == Action::unavailable);
+    CHECK(woby::comparisonMembershipAction(state, {0, state.nextObjectId}, woby::ComparisonSide::b) == Action::unavailable);
+    state.files[0].mesh.indices.clear();
+    CHECK(woby::comparisonMembershipAction(state, {state.files[0].objectId}, woby::ComparisonSide::a) == Action::unavailable);
+}

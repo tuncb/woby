@@ -26,12 +26,19 @@ Open `assets/samples/mesh-comparison/compare.woby` to inspect a sample before/af
 repair pair, or build comparison groups **A** and **B** from scene objects.
 Right-click files, folders, or individual mesh parts and choose **Add to group A**
 or **Add to group B**. Ctrl-click selects multiple objects. The same context menu
-removes objects from either group and starts **Compare A and B**.
+shows one membership action for each side: **Remove** if every selected part is
+already included, otherwise **Add** to include missing parts. It also starts
+**Compare A and B**. When both groups
+are empty, selecting two objects also offers **Compare selected objects**: the first
+selected object goes to A, the second to B, and comparison starts immediately.
 
 Files and folders add their current mesh parts; each part is included once per
 group. Individual parts can be removed afterward, and a part may belong to both
-sides. Tree badges show part membership. The **Compare groups** panel lists both
-sides and provides Clear and Swap controls. Membership is independent of visibility.
+sides. Tree badges show part membership. The **A/B** button at the upper right
+toggles the separate **Comparison** panel. Adding objects or starting a comparison
+opens it automatically. Its A/B trees retain the scene folder/file/part hierarchy;
+right-click any branch or part to remove it from that side. Clear and Swap controls
+are also available. Membership is independent of visibility.
 
 Comparison uses the combined surfaces at their scene positions, with bidirectional
 unsigned distance heatmaps, tolerance and color range controls, A/B views, a

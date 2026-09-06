@@ -15,7 +15,11 @@ mesh parts from either group. Ctrl-click selects multiple objects. Adding a
 parent includes each part once; removing a child removes just that part. New
 children are not automatically added. A part may belong to both sides.
 
-Try these controls in **Compare groups**:
+The **Comparison** panel opens on the right when you add objects or start comparing.
+Use the upper-right **A/B** button to hide/show it. Its trees show each side using
+the scene hierarchy; right-click a branch or part to remove it from that side.
+
+Try these controls in **Comparison**:
 
 1. **Surface distance** shows the repaired surface's unsigned distance from the
    original. The filled patch and flattened bump should stand out.

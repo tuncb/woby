@@ -5,6 +5,20 @@
 namespace woby
 {
 
+struct ComparisonTreeNode
+{
+    SceneObjectId objectId = invalidSceneObjectId;
+    UiSceneNodeKind kind = UiSceneNodeKind::folder;
+    std::string name;
+    size_t partCount = 0;
+    size_t triangleCount = 0;
+    std::vector<ComparisonTreeNode> children;
+};
+
+// A filtered view of the source hierarchy; empty branches are omitted.
+// Membership remains canonical on UiGroupState, including after removing children.
+[[nodiscard]] std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side);
+
 // Group comparison uses the same hierarchy transforms as the renderer,
 // independently of ordinary scene visibility and appearance settings.
 [[nodiscard]] Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side);
