@@ -766,12 +766,13 @@ TEST_CASE("scene document mapping preserves nested scene nodes")
 
 TEST_CASE("scene document writer omits camera state")
 {
-    woby::UiState state;
-    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
-    state.camera.distance = 42.0f;
-    const woby::SceneDocument document = woby::createSceneDocument(state);
     const std::filesystem::path path = std::filesystem::temp_directory_path()
         / "woby_scene_document_writer_omits_camera_state.woby";
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    state.files[0].path = path.parent_path() / state.files[0].path;
+    state.camera.distance = 42.0f;
+    const woby::SceneDocument document = woby::createSceneDocument(state);
 
     woby::writeSceneDocument(path, document);
     std::string text;

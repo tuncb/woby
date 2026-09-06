@@ -117,6 +117,7 @@ jobs:
             libegl1-mesa-dev \
             libgl1-mesa-dev \
             libibus-1.0-dev \
+            libltdl-dev \
             libpulse-dev \
             libtool \
             libudev-dev \

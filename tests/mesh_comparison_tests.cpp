@@ -364,7 +364,12 @@ TEST_CASE("tree selection follows file identity through removal and prunes remov
 
 TEST_CASE("comparison settings round trip through scene save and replacement with dirty tracking")
 {
+    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-roundtrip.woby";
     auto state = stateWithFiles(2);
+    for (auto& file : state.files)
+    {
+        file.path = path.parent_path() / file.path;
+    }
     const auto clean = woby::createSceneDocument(state);
     auto settings = state.comparison;
     settings.enabled = true;
@@ -381,7 +386,6 @@ TEST_CASE("comparison settings round trip through scene save and replacement wit
     woby::updateSceneDirty(state, clean);
     CHECK(state.isDirty);
     const auto document = woby::createSceneDocument(state);
-    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-roundtrip.woby";
     woby::writeSceneDocument(path, document);
     const auto read = woby::readSceneDocument(path);
     CHECK(read.comparison == settings);
