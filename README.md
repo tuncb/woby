@@ -18,6 +18,29 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Remove files from a scene without touching the source model files.
 - Load large model batches and scenes in the background with progress, cancellation, and unsaved-change prompts.
 
+## Getting started
+
+The top actions are arranged in three rows of two: **New scene** / **Open Scene...**,
+**Save Scene** / **Save Scene as...**, and **Add models...** / **Add model folder...**.
+New scene starts an untitled scene and asks before discarding unsaved changes.
+Save Scene updates the current file (or asks for a path for an untitled scene);
+Save Scene as always asks for a destination.
+
+Use Add models for OBJ, STL, or installed importer formats, and Open Scene for
+saved `.woby` scenes. The empty viewport offers both actions and accepts dropped
+model files, folders, and scenes. Add model folder imports models recursively.
+
+The **Objects** tree lists scene content, and **Display** contains global viewing
+controls. The Frame icon beside the Y/Z up-axis button fits the scene in view;
+the camera icon immediately after it saves a screenshot. Geometry counts and
+renderer/FPS details sit at the bottom of the left pane. File actions are disabled
+while a dialog or file-processing operation is active; New scene and Screenshot
+also wait for outstanding image captures.
+
+Left drag or arrow keys orbit, right/middle drag pans, and the wheel or `+`/`-`
+zooms. `R` frames the scene, `Ctrl+B` toggles the left pane, and the upper-right
+Comparison/pin button toggles the comparison pane.
+
 ## Command Line
 
 ### Comparison objects
@@ -26,7 +49,7 @@ Scenes can contain multiple named comparisons alongside the original models.
 Ctrl-click two files, folders, or mesh parts, then right-click and choose
 **Create comparison**. The first selected object supplies **A**, the second **B**.
 Alternatively, use **New comparison** in the scene tree and add inputs through
-**Comparison membership → comparison name → Add to A / Add to B**.
+**Comparison membership Ã¢â€ â€™ comparison name Ã¢â€ â€™ Add to A / Add to B**.
 
 Each comparison has independent visibility, tolerance, color range, A/B display
 mode, edge diagnostics, and **Result position**. Select its tree row to edit its
@@ -54,7 +77,7 @@ concurrently; screenshots wait for all visible results and report incomplete
 inputs or computation errors instead of exporting a partial comparison scene.
 
 Version 5 `.woby` scenes save comparison objects and source references. Version
-2–4 scenes remain readable; existing A/B memberships migrate into one comparison
+2Ã¢â‚¬â€œ4 scenes remain readable; existing A/B memberships migrate into one comparison
 at the original source positions. Older woby builds cannot read version 5 scenes.
 Open `assets/samples/mesh-comparison/compare.woby` for a before/after repair example.
 
@@ -172,7 +195,7 @@ always wait until the PNG is written; `--wait` is accepted but optional. The def
 timeout is 60 seconds (`--timeout` accepts 1-3600). Relative output paths are resolved
 against the CLI's working directory. Parent directories are created and the extension
 is normalized to `.png`. Existing files are overwritten, matching the screenshot UI.
-The capture uses the existing 1920 × 1800 scene-only renderer, including scene helpers
+The capture uses the existing 1920 Ãƒâ€” 1800 scene-only renderer, including scene helpers
 but excluding the application controls. It uses the current camera.
 
 Exit code `0` means success; `1` means failure. `--json` emits one JSON value on stdout,

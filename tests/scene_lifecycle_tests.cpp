@@ -149,6 +149,66 @@ TEST_CASE("failed save preserves path baseline and dirty scene")
     }
 }
 
+TEST_CASE("save-as switches subsequent saves to the new file without changing the original")
+{
+    LifecycleFixture fixture;
+    const auto original = fixture.root / "original.woby";
+    REQUIRE_FALSE(woby::saveSceneState(fixture.state, fixture.path, fixture.clean, original, false));
+    const auto originalDocument = fixture.clean;
+    fixture.dirty();
+
+    woby::SceneLifecycleCommand command;
+    command.action = woby::SceneAction::saveAs;
+    command.path = fixture.root / "copy.woby";
+    REQUIRE_FALSE(fixture.begin(command));
+    CHECK(fixture.path == command.path);
+    CHECK_FALSE(fixture.state.isDirty);
+    CHECK(woby::readSceneDocument(original) == originalDocument);
+    CHECK_FALSE(woby::readSceneDocument(command.path).showGrid);
+
+    woby::setShowOrigin(fixture.state, false);
+    command.action = woby::SceneAction::save;
+    command.path.clear();
+    REQUIRE_FALSE(fixture.begin(command));
+    CHECK_FALSE(woby::readSceneDocument(*fixture.path).showOrigin);
+    CHECK(woby::readSceneDocument(original) == originalDocument);
+}
+
+TEST_CASE("new scene replacement clears content and editing state but retains pane preferences")
+{
+    LifecycleFixture fixture;
+    woby::UiFileState file;
+    file.path = fixture.root / "model.obj";
+    fixture.state.files.push_back(file);
+    woby::appendDefaultSceneNodesForFiles(fixture.state, 0);
+    const auto comparisonId = woby::createComparison(fixture.state);
+    woby::selectSceneObject(fixture.state, comparisonId);
+    woby::setShowGrid(fixture.state, false);
+    woby::setShowOrigin(fixture.state, false);
+    woby::setSceneUpAxis(fixture.state, woby::SceneUpAxis::y);
+    woby::setMasterVertexPointSize(fixture.state, 12.0f);
+    woby::setCameraOrbiting(fixture.state, true);
+    woby::setCameraPanning(fixture.state, true);
+    woby::setCameraRolling(fixture.state, true);
+    woby::setViewerPaneVisible(fixture.state, false);
+    const auto allocator = fixture.state.nextObjectId;
+
+    const auto empty = woby::prepareSceneReplacement(fixture.state, {}, {});
+    CHECK(empty.files.empty());
+    CHECK(empty.sceneNodes.empty());
+    CHECK(empty.comparisons.empty());
+    CHECK(empty.selectedSceneObjects.empty());
+    CHECK(empty.activeComparisonId == woby::invalidSceneObjectId);
+    CHECK_FALSE(empty.cameraInput.orbiting);
+    CHECK_FALSE(empty.cameraInput.panning);
+    CHECK_FALSE(empty.cameraInput.rolling);
+    CHECK_FALSE(empty.isDirty);
+    CHECK_FALSE(empty.viewerPaneVisible);
+    CHECK(empty.comparisonPaneVisible == fixture.state.comparisonPaneVisible);
+    CHECK(empty.nextObjectId == allocator);
+    CHECK(woby::createSceneDocument(empty) == woby::createSceneDocument(woby::UiState{}));
+}
+
 #ifdef _WIN32
 TEST_CASE("locked Windows save destination retains its original bytes")
 {
