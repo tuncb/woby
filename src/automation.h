@@ -4,6 +4,8 @@
 #include "scene_objects.h"
 #include "scene_lifecycle_types.h"
 
+#include <nlohmann/json.hpp>
+
 #include <cstdint>
 #include <filesystem>
 #include <memory>

@@ -13,7 +13,8 @@
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_VS_GLOBALS": "UseMultiToolTask=true;EnforceProcessCountAcrossBuilds=true"
       }
     },
     {
@@ -21,7 +22,10 @@
       "displayName": "Visual Studio 2026 with installed packages",
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
-      "binaryDir": "${sourceDir}/build/${presetName}"
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_VS_GLOBALS": "UseMultiToolTask=true;EnforceProcessCountAcrossBuilds=true"
+      }
     },
     {
       "name": "ninja-vcpkg",
@@ -47,11 +51,13 @@
     {
       "name": "vs2026-vcpkg",
       "configurePreset": "vs2026-vcpkg",
+      "jobs": 2,
       "configuration": "Debug"
     },
     {
       "name": "vs2026",
       "configurePreset": "vs2026",
+      "jobs": 2,
       "configuration": "Debug"
     },
     {

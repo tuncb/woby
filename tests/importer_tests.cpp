@@ -6,6 +6,7 @@
 #include "control_importers.h"
 
 #include <doctest/doctest.h>
+#include <nlohmann/json.hpp>
 
 #include <cmath>
 #include <chrono>

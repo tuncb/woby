@@ -2,6 +2,8 @@
 #include "ui_operations.h"
 #include "utf8_path.h"
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>

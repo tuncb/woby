@@ -6,8 +6,20 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+set(WOBY_RUNTIME_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+if(CMAKE_CONFIGURATION_TYPES)
+    string(APPEND WOBY_RUNTIME_DIRECTORY "/$<CONFIG>")
+endif()
+
+# Runtime DLLs are staged from CMake's transitive link graph below. Avoid adding
+# vcpkg's unconditional PowerShell deployment events to every executable/DLL.
+if(WIN32)
+    set(VCPKG_APPLOCAL_DEPS OFF)
+endif()
 
 include(cmake/WobyWarnings.cmake)
+include(cmake/WobyPrecompiledHeaders.cmake)
+include(cmake/WobyRuntimeFiles.cmake)
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(bgfx CONFIG REQUIRED)
@@ -33,6 +45,7 @@ if(WIN32)
     target_link_libraries(woby_automation PRIVATE bcrypt advapi32 shell32 ole32)
 endif()
 woby_enable_project_warnings(woby_automation)
+woby_enable_precompiled_headers(woby_automation <nlohmann/json.hpp>)
 
 add_executable(woby
     src/mesh_comparison.cpp
@@ -122,14 +135,7 @@ endforeach()
 
 woby_enable_project_warnings(woby)
 woby_enable_enum_switch_warnings(woby)
-
-add_custom_target(woby_assets
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/assets"
-            "${CMAKE_CURRENT_BINARY_DIR}/assets"
-    COMMENT "Copying runtime assets"
-    VERBATIM
-)
+woby_enable_precompiled_headers(woby)
 
 include(cmake/BgfxShaders.cmake)
 
@@ -202,23 +208,8 @@ woby_compile_bgfx_shader(woby
     VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
 )
 
-add_dependencies(woby woby_assets)
-
-add_custom_command(TARGET woby POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
-            "${CMAKE_CURRENT_BINARY_DIR}/assets"
-            "$<TARGET_FILE_DIR:woby>/assets"
-    VERBATIM
-)
-
-if(WIN32 AND TARGET SDL3::SDL3-shared)
-    add_custom_command(TARGET woby POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                "$<TARGET_FILE:SDL3::SDL3-shared>"
-                "$<TARGET_FILE_DIR:woby>"
-        VERBATIM
-    )
-endif()
+woby_stage_assets(woby "${WOBY_RUNTIME_DIRECTORY}")
+set(woby_runtime_targets woby)
 
 include(CTest)
 
@@ -305,6 +296,9 @@ if(BUILD_TESTING)
     endforeach()
 
     woby_enable_project_warnings(woby_tests)
+    woby_enable_precompiled_headers(woby_tests <doctest/doctest.h>)
+    # doctest's implementation macro must take effect before its first include.
+    set_source_files_properties(tests/dummy_tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
     add_library(woby_importer_fixture SHARED tests/importer_fixture.cpp)
     add_library(woby_importer_bad_abi SHARED tests/importer_fixture.cpp)
@@ -338,10 +332,31 @@ if(BUILD_TESTING)
         WOBY_TEST_OFF_IMPORTER="$<TARGET_FILE:woby_off_importer>"
     )
 
-    doctest_discover_tests(woby_tests)
+    include(cmake/WobyTestDiscovery.cmake)
+    woby_discover_tests(woby_tests)
+    list(APPEND woby_runtime_targets woby_tests)
+
+    add_test(NAME woby_runtime_staging COMMAND "${CMAKE_COMMAND}"
+        "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
+        "-DSTAGING_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/StageRuntimeFiles.cmake"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/runtime_files_tests.cmake")
+    add_test(NAME woby_test_discovery COMMAND "${CMAKE_COMMAND}"
+        "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
+        "-DDISCOVERY_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTestsIfNeeded.cmake"
+        "-DDOCTEST_SCRIPT=${_DOCTEST_DISCOVER_TESTS_SCRIPT}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/test_discovery_tests.cmake")
+    add_test(NAME woby_runtime_build_graph COMMAND "${CMAKE_COMMAND}"
+        "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
+        "-DRUNTIME_MODULE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/WobyRuntimeFiles.cmake"
+        "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+        "-DTEST_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
+        "-DTEST_CONFIG=$<CONFIG>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/runtime_build_tests.cmake")
 
     add_test(NAME woby_version COMMAND woby --version)
     set_tests_properties(woby_version PROPERTIES
         PASS_REGULAR_EXPRESSION "^${PROJECT_VERSION}\r?\n?$"
     )
 endif()
+
+woby_stage_runtime_dlls("${WOBY_RUNTIME_DIRECTORY}" ${woby_runtime_targets})

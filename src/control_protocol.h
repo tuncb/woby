@@ -1,7 +1,7 @@
 #pragma once
 
 #include "scene_objects.h"
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 #include <array>
 #include <filesystem>
 #include <optional>

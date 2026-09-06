@@ -1,6 +1,7 @@
 #include "control_importers.h"
 #include "importer_host.h"
 #include "utf8_path.h"
+#include <nlohmann/json.hpp>
 #include <algorithm>
 #include <stdexcept>
 

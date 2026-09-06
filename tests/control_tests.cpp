@@ -2,6 +2,7 @@
 #include "command_line.h"
 #include "ui_operations.h"
 #include <doctest/doctest.h>
+#include <nlohmann/json.hpp>
 #include <cmath>
 #include <limits>
 

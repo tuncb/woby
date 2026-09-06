@@ -27,6 +27,7 @@ if(NOT BGFX_SHADER_INCLUDE_DIR)
 endif()
 
 set(WOBY_BGFX_SHADER_PROFILES)
+file(GLOB WOBY_BGFX_SHADER_HEADERS CONFIGURE_DEPENDS "${BGFX_SHADER_INCLUDE_DIR}/bgfx/*.sh")
 
 if(WIN32)
     list(APPEND WOBY_BGFX_SHADER_PROFILES "dx11|windows|s_5_0")
@@ -71,6 +72,8 @@ function(woby_compile_bgfx_shader target)
                     --varyingdef "${ARG_VARYING}"
                     -i "${BGFX_SHADER_INCLUDE_DIR}"
             DEPENDS "${ARG_SOURCE}" "${ARG_VARYING}"
+                    "${BGFX_SHADERC_EXECUTABLE}"
+                    ${WOBY_BGFX_SHADER_HEADERS}
             COMMENT "Compiling ${ARG_OUTPUT_NAME} for ${shader_folder}"
             VERBATIM
         )
@@ -78,7 +81,7 @@ function(woby_compile_bgfx_shader target)
         list(APPEND outputs "${output_file}")
     endforeach()
 
-    set(shader_target "${target}_${ARG_OUTPUT_NAME}_shader")
-    add_custom_target("${shader_target}" DEPENDS ${outputs})
-    add_dependencies("${target}" "${shader_target}")
+    # The assets target owns these output rules, avoiding one MSBuild project
+    # per shader and duplicate producers when compiling/staging in parallel.
+    set_property(TARGET "${target}" APPEND PROPERTY WOBY_SHADER_OUTPUTS ${outputs})
 endfunction()

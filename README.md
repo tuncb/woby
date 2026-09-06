@@ -207,5 +207,22 @@ Run tests:
 ctest --preset vs2026-vcpkg
 ```
 
+The Visual Studio presets build two projects concurrently and use MSBuild's
+shared compiler worker pool across them. To limit compiler workers on a smaller
+machine, append `-- /p:MultiProcMaxCount=8` to the build command. CI continues to
+use Ninja's own parallel scheduling.
+
+Stable headers are precompiled separately for the app, automation library, and
+tests. To check compilation without precompiled headers, configure with
+`cmake --preset vs2026-vcpkg -DWOBY_USE_PCH=OFF`; set it back to `ON` to restore
+the default.
+
+Builds stage changed assets and shaders and repair missing runtime files.
+Removed assets are removed from the staged directory; unrelated files are
+preserved. Windows DLLs are copied from CMake's transitive runtime dependency
+list, without repeated PowerShell dependency scans. Test discovery is cached
+per configuration and refreshed by CTest when the executable or discovery
+configuration changes, including after building just `woby_tests`.
+
 See [CI builds and releases](doc/ci.md) for dependency caching, the pinned CI
 toolchain, and reuse of main-build packages when publishing a version tag.
