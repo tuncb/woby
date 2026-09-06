@@ -5,13 +5,16 @@
 #include <array>
 #include <cstddef>
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 namespace woby {
 
-// An omitted ID targets the comparison currently shown in the inspector.
+// An omitted ID targets the last active comparison (also retained while inspecting sources).
 [[nodiscard]] const UiComparison* findComparison(const UiState& state, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] UiComparison* findComparison(UiState& state, SceneObjectId id = invalidSceneObjectId);
+// Only a single selected comparison is shown in the shared Properties pane.
+[[nodiscard]] const UiComparison* selectedComparison(const UiState& state);
 [[nodiscard]] ComparisonSettings comparisonSettings(const UiState& state, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] bool comparisonContains(const UiState& state, SceneObjectId part, ComparisonSide side,
     SceneObjectId id = invalidSceneObjectId);
@@ -24,12 +27,31 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
 void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 void frameComparison(UiState& state, SceneObjectId id);
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id = invalidSceneObjectId);
-void setComparisonPaneVisible(UiState& state, bool visible);
+void setPropertiesPaneVisible(UiState& state, bool visible);
 void frameComparisonBounds(UiState& state, const Bounds& bounds);
 [[nodiscard]] bool sceneObjectSelected(const UiState& state, SceneObjectId id);
 // Plain click replaces, Ctrl-click toggles, context click preserves an existing selection.
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
 void clearSceneSelection(UiState& state);
+
+enum class UiObjectProperty {
+    translationX, translationY, translationZ,
+    rotationX, rotationY, rotationZ,
+    scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue,
+};
+enum class UiPropertyGroup { translation, rotation, scale, transform, appearance };
+struct UiPropertyValue {
+    float value = 0.0f;
+    bool available = false;
+    bool mixed = false;
+};
+// Values are local to each selected object. A property is available only when
+// every target supports it. Comparisons use their dedicated inspector.
+[[nodiscard]] UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty property);
+// Edit only this component on explicit targets, including both parent and child
+// when both are selected. Never expand a parent selection to its descendants.
+void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float value);
+void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group);
 // Files/folders expand to their current triangular mesh parts. IDs are deduplicated.
 [[nodiscard]] std::vector<SceneObjectId> comparisonObjectParts(
     const UiState& state, const std::vector<SceneObjectId>& objects);

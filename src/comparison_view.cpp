@@ -103,10 +103,10 @@ bool originalActive(const ComparisonSettings &settings)
     return settings.mode == ComparisonMode::original ||
            (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal);
 }
-void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node)
+void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node, SceneObjectId id)
 {
-    const auto id = std::to_string(node.objectId);
-    ImGui::PushID(id.c_str());
+    const auto nodeId = std::to_string(node.objectId);
+    ImGui::PushID(nodeId.c_str());
     const bool leaf = node.children.empty();
     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
         | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
@@ -123,20 +123,20 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
     }
     if (ImGui::BeginPopupContextItem("membership")) {
         const char* label = side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
-        if (ImGui::MenuItem(label)) { setComparisonObjects(state, {node.objectId}, side, false); }
+        if (ImGui::MenuItem(label)) { setComparisonObjects(state, {node.objectId}, side, false, id); }
         ImGui::EndPopup();
     }
     if (open && !leaf) {
-        for (const auto& child : node.children) { drawComparisonTreeNode(state, side, child); }
+        for (const auto& child : node.children) { drawComparisonTreeNode(state, side, child, id); }
         ImGui::TreePop();
     }
     ImGui::PopID();
 }
 
-void membershipTree(UiState& state, ComparisonSide side)
+void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
 {
     const char* label = side == ComparisonSide::a ? "Group A" : "Group B";
-    const auto roots = comparisonTree(state, side);
+    const auto roots = comparisonTree(state, side, id);
     size_t count = 0, triangles = 0;
     for (const auto& root : roots) { count += root.partCount; triangles += root.triangleCount; }
     ImGui::PushID(label);
@@ -145,15 +145,15 @@ void membershipTree(UiState& state, ComparisonSide side)
     ImGui::SameLine();
     ImGui::BeginDisabled(count == 0);
     const bool clear = ImGui::SmallButton("Clear");
-    if (clear) { clearComparisonGroup(state, side); }
+    if (clear) { clearComparisonGroup(state, side, id); }
     ImGui::EndDisabled();
     if (open) {
         if (roots.empty() || clear) { ImGui::TextDisabled("No objects added"); }
         else {
             ImGui::TextDisabled("%zu triangles", triangles);
-            for (const auto& root : roots) { drawComparisonTreeNode(state, side, root); }
+            for (const auto& root : roots) { drawComparisonTreeNode(state, side, root, id); }
         }
-        if (const auto* comparison = findComparison(state)) {
+        if (const auto* comparison = findComparison(state, id)) {
             const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
             bool missing = false;
             for (const auto& part : members) {
@@ -162,13 +162,13 @@ void membershipTree(UiState& state, ComparisonSide side)
                     missing = true;
                 }
             }
-            if (missing && ImGui::SmallButton("Remove missing references")) { removeMissingComparisonParts(state, side); }
+            if (missing && ImGui::SmallButton("Remove missing references")) { removeMissingComparisonParts(state, side, id); }
         }
         ImGui::TreePop();
     }
     ImGui::PopID();
 }
-void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges)
+void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges, SceneObjectId id)
 {
     if (edges.empty())
     {
@@ -180,7 +180,7 @@ void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges)
     points[1].position = edge.b;
     auto bounds = calculateBounds(points);
     bounds.radius = std::max(bounds.radius * 3, state.sceneBounds.radius * .06f);
-    if (const auto* comparison = findComparison(state)) {
+    if (const auto* comparison = findComparison(state, id)) {
         for (size_t k = 0; k < 3; ++k) {
             bounds.min[k] += comparison->translation[k];
             bounds.max[k] += comparison->translation[k];
@@ -190,7 +190,7 @@ void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges)
     frameComparisonBounds(state, bounds);
 }
 void diagnosticRow(UiState &state, const char *name, const std::vector<DiagnosticEdge> &original,
-                   const std::vector<DiagnosticEdge> &repaired, bool useOriginal)
+                   const std::vector<DiagnosticEdge> &repaired, bool useOriginal, SceneObjectId id)
 {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
@@ -205,7 +205,7 @@ void diagnosticRow(UiState &state, const char *name, const std::vector<Diagnosti
     ImGui::BeginDisabled(active.empty());
     if (ImGui::SmallButton("First"))
     {
-        auto settings = comparisonSettings(state);
+        auto settings = comparisonSettings(state, id);
         if (std::string(name) == "Boundary")
         {
             settings.showBoundaries = true;
@@ -214,8 +214,8 @@ void diagnosticRow(UiState &state, const char *name, const std::vector<Diagnosti
         {
             settings.showNonManifold = true;
         }
-        setComparisonSettings(state, settings);
-        frameEdges(state, active);
+        setComparisonSettings(state, settings, id);
+        frameEdges(state, active, id);
     }
     ImGui::EndDisabled();
     ImGui::PopID();
@@ -377,16 +377,16 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
 }
 
 namespace {
-void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
+void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObjectId id)
 {
-    const auto* comparison = findComparison(state);
+    const auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
-    const auto id = comparison->objectId;
+    ImGui::TextUnformatted("Comparison");
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
     ImGui::SetNextItemWidth(-1);
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
-    const bool resultReady = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state);
+    const bool resultReady = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state, id);
     if (resultReady) { ImGui::TextUnformatted("Result ready"); }
     ImGui::BeginDisabled(!resultReady);
     if (ImGui::Button("Frame result", ImVec2(-1.0f, 0.0f))) { frameComparison(state, id); }
@@ -397,13 +397,13 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
     ImGui::Separator();
     ImGui::TextWrapped("Add objects from the scene's context menu. Right-click a branch or part below to remove it from that group.");
     ImGui::Separator();
-    membershipTree(state, ComparisonSide::a);
-    membershipTree(state, ComparisonSide::b);
+    membershipTree(state, ComparisonSide::a, id);
+    membershipTree(state, ComparisonSide::b, id);
     ImGui::Separator();
-    if (ImGui::Button("Swap A / B")) { swapComparisonGroups(state); }
-    auto settings = comparisonSettings(state);
+    if (ImGui::Button("Swap A / B")) { swapComparisonGroups(state, id); }
+    auto settings = comparisonSettings(state, id);
     const auto initial = settings;
-    const bool valid = canCompareGroups(state);
+    const bool valid = canCompareGroups(state, id);
     ImGui::SameLine();
 
     ImGui::Checkbox("Visible", &settings.enabled);
@@ -442,16 +442,16 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
     // Merely opening the panel must not change scene settings.
     if (settings != initial)
     {
-        setComparisonSettings(state, settings);
+        setComparisonSettings(state, settings, id);
     }
-    if (!valid || !comparisonSettings(state).enabled)
+    if (!valid || !comparisonSettings(state, id).enabled)
     {
         return;
     }
-    const bool current = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state);
+    const bool current = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state, id);
     if (!current)
     {
-        if (!runtime.error.empty() && runtime.attemptedSignature == comparisonGeometrySignature(state))
+        if (!runtime.error.empty() && runtime.attemptedSignature == comparisonGeometrySignature(state, id))
         {
             ImGui::TextWrapped("%s", runtime.error.c_str());
             if (ImGui::Button("Retry comparison"))
@@ -465,20 +465,20 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
         }
         return;
     }
-    const bool useOriginal = originalActive(comparisonSettings(state));
+    const bool useOriginal = originalActive(comparisonSettings(state, id));
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
-    if (comparisonSettings(state).mode == ComparisonMode::distance)
+    if (comparisonSettings(state, id).mode == ComparisonMode::distance)
     {
         if (ImGui::Button("Fit color range"))
         {
-            settings = comparisonSettings(state);
+            settings = comparisonSettings(state, id);
             settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
-            setComparisonSettings(state, settings);
+            setComparisonSettings(state, settings, id);
         }
         ImGui::Text("Sample max: %.5g", surface.maximum);
         ImGui::Text("Area-weighted mean: %.5g", surface.mean);
         ImGui::Text("Area-weighted P95: %.5g", surface.percentile95);
-        ImGui::Text("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state).tolerance));
+        ImGui::Text("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
         ImGui::TextWrapped("Approximate unsigned distance, four samples per triangle. Values are in model units.");
     }
     const auto &a = runtime.result.original.diagnostics;
@@ -490,9 +490,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
         ImGui::TableSetupColumn("B");
         ImGui::TableSetupColumn("Focus");
         ImGui::TableHeadersRow();
-        diagnosticRow(state, "Boundary", a.boundaryEdges, b.boundaryEdges, useOriginal);
-        diagnosticRow(state, "Non-manifold", a.nonManifoldEdges, b.nonManifoldEdges, useOriginal);
-        diagnosticRow(state, "Winding", a.inconsistentWindingEdges, b.inconsistentWindingEdges, useOriginal);
+        diagnosticRow(state, "Boundary", a.boundaryEdges, b.boundaryEdges, useOriginal, id);
+        diagnosticRow(state, "Non-manifold", a.nonManifoldEdges, b.nonManifoldEdges, useOriginal, id);
+        diagnosticRow(state, "Winding", a.inconsistentWindingEdges, b.inconsistentWindingEdges, useOriginal, id);
         ImGui::EndTable();
     }
     ImGui::Text("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
@@ -505,12 +505,15 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
 
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
 {
-    if (findComparison(state)) {
-        drawComparisonContents(state, runtimes.objects[state.activeComparisonId]);
-    } else {
-        ImGui::TextWrapped("Select two source objects and choose Create comparison, or start an empty comparison.");
-        if (ImGui::Button("New comparison")) { createComparison(state); }
+    const auto* comparison = selectedComparison(state);
+    if (!comparison) { return; }
+    const auto id = comparison->objectId;
+    ImGui::PushID(std::to_string(id).c_str());
+    if (ImGui::BeginChild("comparison_properties")) {
+        drawComparisonContents(state, runtimes.objects[id], id);
     }
+    ImGui::EndChild();
+    ImGui::PopID();
 }
 
 static void submitComparisonScene(bgfx::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,

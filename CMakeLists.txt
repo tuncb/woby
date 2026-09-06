@@ -74,6 +74,8 @@ add_executable(woby
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
+    src/scene_inspector.cpp
+    src/scene_inspector.h
     src/importer_host.cpp
     src/importer_host.h
     src/model_load.cpp
@@ -100,6 +102,7 @@ add_executable(woby
     src/stl_mesh.cpp
     src/stl_mesh.h
     src/ui_operations.cpp
+    src/ui_property_operations.cpp
     src/ui_operations.h
     src/ui_state.cpp
     src/ui_state.h
@@ -259,6 +262,7 @@ if(BUILD_TESTING)
         src/stl_mesh.cpp
         src/stl_mesh.h
         src/ui_operations.cpp
+        src/ui_property_operations.cpp
         src/ui_operations.h
         src/ui_state.cpp
         src/ui_state.h

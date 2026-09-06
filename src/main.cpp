@@ -12,6 +12,7 @@
 #include "native_dialogs.h"
 #include "performance_log.h"
 #include "scene_file.h"
+#include "scene_inspector.h"
 #include "scene_lifecycle.h"
 #include "scene_renderer.h"
 #include "scene_screenshot.h"
@@ -117,7 +118,6 @@ constexpr const char* trianglesIcon = "\xef\x81\x8b";
 constexpr const char* verticesIcon = "\xef\x86\x92";
 constexpr const char* frameSceneIcon = "\xef\x81\xa5";
 constexpr const char* screenshotIcon = "\xef\x80\xb0";
-constexpr const char* transformIcon = "\xef\x82\xb2";
 constexpr const char* visibleIcon = "\xef\x81\xae";
 constexpr const char* hiddenIcon = "\xef\x81\xb0";
 constexpr const char* mixedStateIcon = "\xef\x81\xa8";
@@ -126,8 +126,6 @@ constexpr const char* gridIcon = "\xf3\xb0\x8b\x81";
 constexpr const char* viewerPanePinnedIcon = "\xee\xae\xa0";
 constexpr const char* viewerPaneUnpinnedIcon = "\xf3\xb0\xa4\xb0";
 constexpr float renderModeButtonSize = 26.0f;
-constexpr float groupVertexSizeControlWidth = 70.0f;
-constexpr float viewerPaneWidthPadding = 20.0f;
 constexpr float viewerPaneTogglePaneMargin = 6.0f;
 constexpr float toastDurationSeconds = 3.0f;
 constexpr float toastMargin = 12.0f;
@@ -198,18 +196,6 @@ void getDrawableSize(SDL_Window* window, uint32_t& width, uint32_t& height)
     height = static_cast<uint32_t>(std::max(pixelHeight, 1));
 }
 
-std::array<float, 4> scaledRgbColor(const std::array<float, 4>& color, float scale)
-{
-    return {
-        std::clamp(color[0] * scale, 0.0f, 1.0f),
-        std::clamp(color[1] * scale, 0.0f, 1.0f),
-        std::clamp(color[2] * scale, 0.0f, 1.0f),
-        color[3],
-    };
-}
-
-using GroupRenderSettings = woby::UiGroupState;
-using FileRenderSettings = woby::UiFileSettings;
 using LoadedModelFile = woby::UiFileState;
 using woby::GpuNodeRange;
 using woby::HoverPickCache;
@@ -363,16 +349,6 @@ const char* backgroundLoadFailurePrefix(AsyncLoadKind kind)
     return "Processing files failed: ";
 }
 
-std::array<float, 4> groupColor(
-    const GroupRenderSettings& settings,
-    float rgbScale,
-    float opacityScale = 1.0f)
-{
-    auto color = scaledRgbColor(settings.color, rgbScale);
-    color[3] = std::clamp(settings.opacity * opacityScale, woby::minGroupOpacity, woby::maxGroupOpacity);
-    return color;
-}
-
 struct CanvasLayout {
     float width = 1.0f;
     float height = 1.0f;
@@ -393,7 +369,7 @@ CanvasLayout canvasLayout(SDL_Window* window, const woby::UiState& state)
     layout.height = static_cast<float>(std::max(windowHeight, 1));
     layout.rightEdge = layout.width;
     layout.rightWidth = std::min(420.0f, layout.width * 0.36f);
-    const float reservedRight = state.comparisonPaneVisible ? layout.width - layout.rightEdge + layout.rightWidth : 0.0f;
+    const float reservedRight = state.propertiesPaneVisible ? layout.width - layout.rightEdge + layout.rightWidth : 0.0f;
     layout.maxLeftWidth = std::max(layout.width - reservedRight
         - std::min(minSceneViewportWidth, layout.width * 0.2f), 0.0f);
     layout.leftWidth = state.viewerPaneVisible
@@ -499,11 +475,6 @@ void drawClippedTextItem(const char* id, const char* text, float width, bool sel
         nullptr,
         0.0f,
         &clipRect);
-}
-
-ImVec4 toImVec4(const std::array<float, 4>& color)
-{
-    return ImVec4(color[0], color[1], color[2], color[3]);
 }
 
 void setStyleColor(ImGuiCol colorIndex, float red, float green, float blue, float alpha)
@@ -735,42 +706,9 @@ float renderModeButtonRowWidth()
     return renderModeButtonSize * 3.0f + style.ItemSpacing.x * 2.0f;
 }
 
-float groupControlStartOffset()
-{
-    const ImGuiStyle& style = ImGui::GetStyle();
-    return renderModeButtonRowWidth() * 2.0f
-        + style.ItemSpacing.x
-        + renderModeButtonSize
-        + style.ItemSpacing.x;
-}
-
-float transformControlStartOffset()
-{
-    const ImGuiStyle& style = ImGui::GetStyle();
-    return groupControlStartOffset()
-        + renderModeButtonRowWidth()
-        + groupVertexSizeControlWidth
-        + style.ItemSpacing.x
-        + renderModeButtonSize
-        + style.ItemSpacing.x;
-}
-
 float minimumViewerPaneWidth()
 {
-    const ImGuiStyle& style = ImGui::GetStyle();
-    const float groupControlWidth = renderModeButtonRowWidth()
-        + groupVertexSizeControlWidth
-        + style.ItemSpacing.x
-        + renderModeButtonSize
-        + style.ItemSpacing.x
-        + renderModeButtonSize;
-
-    return groupControlStartOffset()
-        + groupControlWidth
-        + style.WindowPadding.x * 2.0f
-        + style.ScrollbarSize
-        + viewerPaneWidthPadding;
-
+    return 380.0f;
 }
 
 void drawViewerPaneToggleButton(woby::UiState& state)
@@ -785,31 +723,35 @@ void drawViewerPaneToggleButton(woby::UiState& state)
     }
 }
 
-void drawComparisonPaneToggleButton(woby::UiState& state)
+void drawPropertiesPaneToggleButton(woby::UiState& state)
 {
     if (drawRenderModeIconButton(
-            "toggle_comparison_pane",
-            state.comparisonPaneVisible ? viewerPanePinnedIcon : viewerPaneUnpinnedIcon,
-            state.comparisonPaneVisible ? "Hide comparison pane" : "Show comparison pane",
-            state.comparisonPaneVisible ? RenderModeState::on : RenderModeState::off,
+            "toggle_properties_pane",
+            state.propertiesPaneVisible ? viewerPanePinnedIcon : viewerPaneUnpinnedIcon,
+            state.propertiesPaneVisible ? "Hide properties pane" : "Show properties pane",
+            state.propertiesPaneVisible ? RenderModeState::on : RenderModeState::off,
             false)) {
-        woby::setComparisonPaneVisible(state, !state.comparisonPaneVisible);
+        woby::setPropertiesPaneVisible(state, !state.propertiesPaneVisible);
     }
 }
 
-void drawComparisonPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes, const CanvasLayout& layout)
+void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes, const CanvasLayout& layout)
 {
-    if (!state.comparisonPaneVisible) { return; }
+    if (!state.propertiesPaneVisible) { return; }
     ImGui::SetNextWindowBgAlpha(1.0f);
     ImGui::SetNextWindowPos(ImVec2(layout.rightEdge - layout.rightWidth, 0.0f), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(layout.rightWidth, layout.height), ImGuiCond_Always);
-    if (ImGui::Begin("##ComparisonPane", nullptr, ImGuiWindowFlags_NoTitleBar
+    if (ImGui::Begin("##PropertiesPane", nullptr, ImGuiWindowFlags_NoTitleBar
         | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
-        drawComparisonPaneToggleButton(state);
+        drawPropertiesPaneToggleButton(state);
         ImGui::SameLine();
-        ImGui::TextUnformatted("Comparison");
+        ImGui::TextUnformatted("Properties");
         ImGui::Separator();
-        woby::drawComparisonPanelContents(state, runtimes);
+        if (woby::selectedComparison(state)) {
+            woby::drawComparisonPanelContents(state, runtimes);
+        } else {
+            woby::drawSceneInspector(state);
+        }
     }
     ImGui::End();
 }
@@ -832,15 +774,15 @@ void drawPaneToggles(woby::UiState& state, float windowWidth)
         }
         ImGui::End();
     }
-    if (!state.comparisonPaneVisible) {
+    if (!state.propertiesPaneVisible) {
         ImGui::SetNextWindowBgAlpha(1.0f);
         ImGui::SetNextWindowPos(
             ImVec2(windowWidth - viewerPaneTogglePaneMargin, viewerPaneTogglePaneMargin),
             ImGuiCond_Always, ImVec2(1.0f, 0.0f));
-        if (ImGui::Begin("##ShowComparisonPane", nullptr, flags)) {
-            drawComparisonPaneToggleButton(state);
+        if (ImGui::Begin("##ShowPropertiesPane", nullptr, flags)) {
+            drawPropertiesPaneToggleButton(state);
             ImGui::SameLine();
-            ImGui::TextUnformatted("Comparison");
+            ImGui::TextUnformatted("Properties");
         }
         ImGui::End();
     }
@@ -868,61 +810,6 @@ void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
 {
     const std::string countLine = meshCountLine(vertexCount, triangleCount);
     ImGui::TextUnformatted(countLine.c_str());
-}
-
-void drawSceneNodeMasterControls(woby::UiState& state, woby::UiSceneNode& node)
-{
-    const size_t groupCount = woby::countSceneNodeGroups(state, node);
-    const size_t solidMeshCount = woby::countEnabledSceneNodeRenderMode(
-        state,
-        node,
-        woby::UiRenderMode::solidMesh);
-    if (drawTriStateMasterIconButton(
-            "solid_mesh",
-            solidMeshIcon,
-            "Solid mesh",
-            solidMeshCount,
-            groupCount)) {
-        woby::setSceneNodeSubtreeRenderMode(
-            state,
-            node,
-            woby::UiRenderMode::solidMesh,
-            solidMeshCount != groupCount);
-    }
-    ImGui::SameLine();
-    const size_t triangleCount = woby::countEnabledSceneNodeRenderMode(
-        state,
-        node,
-        woby::UiRenderMode::triangles);
-    if (drawTriStateMasterIconButton(
-            "triangles",
-            trianglesIcon,
-            "Triangles",
-            triangleCount,
-            groupCount)) {
-        woby::setSceneNodeSubtreeRenderMode(
-            state,
-            node,
-            woby::UiRenderMode::triangles,
-            triangleCount != groupCount);
-    }
-    ImGui::SameLine();
-    const size_t vertexCount = woby::countEnabledSceneNodeRenderMode(
-        state,
-        node,
-        woby::UiRenderMode::vertices);
-    if (drawTriStateMasterIconButton(
-            "vertices",
-            verticesIcon,
-            "Vertices",
-            vertexCount,
-            groupCount)) {
-        woby::setSceneNodeSubtreeRenderMode(
-            state,
-            node,
-            woby::UiRenderMode::vertices,
-            vertexCount != groupCount);
-    }
 }
 
 void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
@@ -970,310 +857,24 @@ void drawGroupControls(
     const woby::MeshNode& node,
     const GpuNodeRange& range,
     LoadedModelFile& file,
-    size_t nodeIndex,
-    size_t colorIndex,
-    float translationSpeed)
+    size_t nodeIndex)
 {
     ImGui::PushID(static_cast<int>(nodeIndex));
     auto& settings = file.groupSettings[nodeIndex];
-    const ImGuiStyle& style = ImGui::GetStyle();
-    const float rowStartX = ImGui::GetCursorPosX();
-    const float controlsStartX = rowStartX + groupControlStartOffset();
-    if (drawVisibilityButton("visible", settings.visible, "group")) {
+    if (drawVisibilityButton("visible", settings.visible, "part")) {
         woby::toggleGroupVisible(state, file, settings);
     }
     ImGui::SameLine();
-    const float textStartX = ImGui::GetCursorPosX();
-    const float nameWidth = controlsStartX - textStartX - style.ItemSpacing.x;
     const bool memberA = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::a);
     const bool memberB = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::b);
-    const std::string comparisonBadge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
-    const std::string displayName = comparisonBadge + node.name;
-    drawClippedTextItem("##name", displayName.c_str(), nameWidth,
+    const std::string badge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
+    const std::string displayName = badge + node.name;
+    drawClippedTextItem("##name", displayName.c_str(), ImGui::GetContentRegionAvail().x,
         woby::sceneObjectSelected(state, settings.objectId));
-    const std::string groupTooltip = node.name
-        + "\n"
-        + meshCountLine(range.pointIndexCount, node.indexCount / 3u);
-    setLastItemTooltip(groupTooltip.c_str());
+    const std::string tooltip = node.name + "\n" + meshCountLine(range.pointIndexCount, node.indexCount / 3u);
+    setLastItemTooltip(tooltip.c_str());
     drawSceneItemInteraction(state, settings.objectId, false);
-    ImGui::SameLine(controlsStartX, 0.0f);
-    if (drawRenderModeIconButton(
-            "solid_mesh",
-            solidMeshIcon,
-            "Solid mesh for this group",
-            settings.showSolidMesh ? RenderModeState::on : RenderModeState::off,
-            false)) {
-        woby::toggleGroupRenderMode(settings, woby::UiRenderMode::solidMesh);
-    }
-    ImGui::SameLine();
-    if (drawRenderModeIconButton(
-            "triangles",
-            trianglesIcon,
-            "Triangles for this group",
-            settings.showTriangles ? RenderModeState::on : RenderModeState::off,
-            false)) {
-        woby::toggleGroupRenderMode(settings, woby::UiRenderMode::triangles);
-    }
-    ImGui::SameLine();
-    if (drawRenderModeIconButton(
-            "vertices",
-            verticesIcon,
-            "Vertices for this group",
-            settings.showVertices ? RenderModeState::on : RenderModeState::off,
-            false)) {
-        woby::toggleGroupRenderMode(settings, woby::UiRenderMode::vertices);
-    }
-    ImGui::SameLine(0.0f, 0.0f);
-    float vertexSizeScale = settings.vertexSizeScale;
-    ImGui::SetNextItemWidth(groupVertexSizeControlWidth);
-    pushRenderModeControlHeight();
-    if (ImGui::DragFloat(
-        "##vertex_size",
-        &vertexSizeScale,
-        0.02f,
-        woby::minVertexSizeScale,
-        woby::maxVertexSizeScale,
-        "%.2fx")) {
-        woby::setGroupVertexSizeScale(settings, vertexSizeScale);
-    }
-    ImGui::PopStyleVar();
-    setLastItemTooltip("Vertex size multiplier for this group");
-    ImGui::SameLine();
-    if (ImGui::ColorButton(
-            "##color",
-            toImVec4(groupColor(settings, 1.0f)),
-            ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoTooltip,
-            ImVec2(renderModeButtonSize, renderModeButtonSize))) {
-        ImGui::OpenPopup("Color");
-    }
-    setLastItemTooltip("Color for this group");
-    ImGui::SameLine();
-    const RenderModeState transformState = woby::groupTransformIsDefault(settings)
-        ? RenderModeState::off
-        : RenderModeState::on;
-    if (drawRenderModeIconButton(
-            "transform",
-            transformIcon,
-            "Transform geometry",
-            transformState,
-            false)) {
-        ImGui::OpenPopup("Transform");
-    }
-    if (ImGui::BeginPopup("Color")) {
-        ImGui::TextUnformatted(node.name.c_str());
-        std::array<float, 4> color = settings.color;
-        if (ImGui::ColorPicker3("##color_picker", color.data())) {
-            woby::setGroupColor(settings, color);
-        }
-        if (ImGui::Button("Reset")) {
-            woby::resetGroupColor(settings, colorIndex);
-        }
-        ImGui::EndPopup();
-    }
-    if (ImGui::BeginPopup("Transform")) {
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted("Transform geometry");
-        ImGui::SameLine();
-        if (ImGui::Button("Reset")) {
-            woby::resetGroupTransform(settings);
-        }
-        std::array<float, 3> translation = settings.translation;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat3(
-            "Move",
-            translation.data(),
-            translationSpeed)) {
-            woby::setGroupTranslation(settings, translation);
-        }
-        setLastItemTooltip("Position offset for this group");
-        std::array<float, 3> rotationDegrees = settings.rotationDegrees;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat3(
-            "Rotate",
-            rotationDegrees.data(),
-            1.0f,
-            -180.0f,
-            180.0f,
-            "%.0f deg")) {
-            woby::setGroupRotationDegrees(settings, rotationDegrees);
-        }
-        setLastItemTooltip("Rotation in degrees for this group");
-        float scale = settings.scale;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat(
-            "Scale",
-            &scale,
-            0.01f,
-            woby::minGroupScale,
-            woby::maxGroupScale,
-            "%.2fx")) {
-            woby::setGroupScale(settings, scale);
-        }
-        setLastItemTooltip("Uniform scale for this group");
-        float opacity = settings.opacity;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::SliderFloat(
-            "Opacity",
-            &opacity,
-            woby::minGroupOpacity,
-            woby::maxGroupOpacity,
-            "%.2f")) {
-            woby::setGroupOpacity(settings, opacity);
-        }
-        setLastItemTooltip("Opacity for this group");
-        ImGui::EndPopup();
-    }
     ImGui::PopID();
-}
-
-void drawFileTransformControls(FileRenderSettings& settings, float translationSpeed)
-{
-    ImGui::SameLine();
-    const RenderModeState transformState = woby::fileTransformIsDefault(settings)
-        ? RenderModeState::off
-        : RenderModeState::on;
-    if (drawRenderModeIconButton(
-            "transform",
-            transformIcon,
-            "Transform geometry",
-            transformState,
-            false)) {
-        ImGui::OpenPopup("Transform");
-    }
-    if (ImGui::BeginPopup("Transform")) {
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted("Transform geometry");
-        ImGui::SameLine();
-        if (ImGui::Button("Reset")) {
-            woby::resetFileTransform(settings);
-        }
-        std::array<float, 3> translation = settings.translation;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat3(
-            "Move",
-            translation.data(),
-            translationSpeed)) {
-            woby::setFileTranslation(settings, translation);
-        }
-        setLastItemTooltip("Position offset for this file");
-        std::array<float, 3> rotationDegrees = settings.rotationDegrees;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat3(
-            "Rotate",
-            rotationDegrees.data(),
-            1.0f,
-            -180.0f,
-            180.0f,
-            "%.0f deg")) {
-            woby::setFileRotationDegrees(settings, rotationDegrees);
-        }
-        setLastItemTooltip("Rotation in degrees for this file");
-        float scale = settings.scale;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat(
-            "Scale",
-            &scale,
-            0.01f,
-            woby::minGroupScale,
-            woby::maxGroupScale,
-            "%.2fx")) {
-            woby::setFileScale(settings, scale);
-        }
-        setLastItemTooltip("Uniform scale for this file");
-        float opacity = settings.opacity;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::SliderFloat(
-            "Opacity",
-            &opacity,
-            woby::minGroupOpacity,
-            woby::maxGroupOpacity,
-            "%.2f")) {
-            woby::setFileOpacity(settings, opacity);
-        }
-        setLastItemTooltip("Opacity for this file");
-        ImGui::EndPopup();
-    }
-}
-
-void drawSceneNodeTransformControls(woby::UiSceneNodeSettings& settings, float translationSpeed)
-{
-    ImGui::SameLine();
-    const RenderModeState transformState = woby::sceneNodeTransformIsDefault(settings)
-        ? RenderModeState::off
-        : RenderModeState::on;
-    if (drawRenderModeIconButton(
-            "transform",
-            transformIcon,
-            "Transform geometry",
-            transformState,
-            false)) {
-        ImGui::OpenPopup("Transform");
-    }
-    if (ImGui::BeginPopup("Transform")) {
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted("Transform geometry");
-        ImGui::SameLine();
-        if (ImGui::Button("Reset")) {
-            woby::resetSceneNodeTransform(settings);
-        }
-        std::array<float, 3> translation = settings.translation;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat3(
-            "Move",
-            translation.data(),
-            translationSpeed)) {
-            woby::setSceneNodeTranslation(settings, translation);
-        }
-        setLastItemTooltip("Position offset for this folder");
-        std::array<float, 3> rotationDegrees = settings.rotationDegrees;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat3(
-            "Rotate",
-            rotationDegrees.data(),
-            1.0f,
-            -180.0f,
-            180.0f,
-            "%.0f deg")) {
-            woby::setSceneNodeRotationDegrees(settings, rotationDegrees);
-        }
-        setLastItemTooltip("Rotation in degrees for this folder");
-        float scale = settings.scale;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::DragFloat(
-            "Scale",
-            &scale,
-            0.01f,
-            woby::minGroupScale,
-            woby::maxGroupScale,
-            "%.2fx")) {
-            woby::setSceneNodeScale(settings, scale);
-        }
-        setLastItemTooltip("Uniform scale for this folder");
-        float opacity = settings.opacity;
-        ImGui::SetNextItemWidth(260.0f);
-        if (ImGui::SliderFloat(
-            "Opacity",
-            &opacity,
-            woby::minGroupOpacity,
-            woby::maxGroupOpacity,
-            "%.2f")) {
-            woby::setSceneNodeOpacity(settings, opacity);
-        }
-        setLastItemTooltip("Opacity for this folder");
-        ImGui::EndPopup();
-    }
-}
-
-size_t groupColorIndex(
-    const std::vector<LoadedModelFile>& files,
-    size_t fileIndex,
-    size_t groupIndex)
-{
-    size_t colorIndex = groupIndex;
-    for (size_t index = 0; index < fileIndex && index < files.size(); ++index) {
-        colorIndex += files[index].groupSettings.size();
-    }
-    return colorIndex;
 }
 
 void drawSceneTreeNode(
@@ -1283,8 +884,6 @@ void drawSceneTreeNode(
     std::optional<size_t>& removeFileIndex)
 {
     if (node.kind == woby::UiSceneNodeKind::folder) {
-        const float rowStartX = ImGui::GetCursorPosX();
-        const float controlsStartX = rowStartX + groupControlStartOffset();
         const size_t groupCount = woby::countSceneNodeGroups(state, node);
         const size_t visibleCount = woby::countVisibleSceneNodeGroups(state, node);
         if (drawTriStateVisibilityButton(
@@ -1295,21 +894,11 @@ void drawSceneTreeNode(
             woby::setSceneNodeSubtreeVisible(state, node, visibleCount != groupCount);
         }
         ImGui::SameLine();
-        // The selection bar fills the name column; keep its hit area out of the controls.
-        const ImVec2 labelClipMin = ImGui::GetWindowDrawList()->GetClipRectMin();
-        ImVec2 labelClipMax = ImGui::GetWindowDrawList()->GetClipRectMax();
-        labelClipMax.x = ImGui::GetCursorScreenPos().x + controlsStartX
-            - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x;
-        ImGui::PushClipRect(labelClipMin, labelClipMax, true);
         const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
         const bool folderOpen = ImGui::TreeNodeEx(node.name.c_str(), flags);
         drawSceneItemInteraction(state, node.objectId, true);
-        ImGui::PopClipRect();
-        ImGui::SameLine(controlsStartX, 0.0f);
-        drawSceneNodeMasterControls(state, node);
-        drawSceneNodeTransformControls(node.settings, std::max(state.sceneBounds.radius * 0.005f, 0.01f));
         if (folderOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
@@ -1329,9 +918,7 @@ void drawSceneTreeNode(
         auto& file = state.files[node.fileIndex];
         const ImGuiStyle& style = ImGui::GetStyle();
         const float rowStartX = ImGui::GetCursorPosX();
-        const float removeControlStartX = rowStartX
-            + style.IndentSpacing
-            + transformControlStartOffset();
+        const float removeControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize;
         const std::string label = node.name + "##file_" + std::to_string(node.fileIndex);
         const size_t fileGroupCount = woby::countSceneNodeGroups(state, node);
         const size_t fileVisibleCount = woby::countVisibleSceneNodeGroups(state, node);
@@ -1371,24 +958,6 @@ void drawSceneTreeNode(
             removeFileIndex = node.fileIndex;
         }
         if (fileTreeOpen) {
-            drawSceneNodeMasterControls(state, node);
-            ImGui::SameLine(0.0f, 0.0f);
-            const float translationSpeed = std::max(file.mesh.bounds.radius * 0.005f, 0.01f);
-            float fileVertexSizeScale = file.vertexSizeScale;
-            ImGui::SetNextItemWidth(renderModeButtonRowWidth());
-            pushRenderModeControlHeight();
-            if (ImGui::DragFloat(
-                "##vertex_size",
-                &fileVertexSizeScale,
-                0.02f,
-                woby::minVertexSizeScale,
-                woby::maxVertexSizeScale,
-                "%.2fx")) {
-                woby::setFileVertexSizeScale(file, fileVertexSizeScale);
-            }
-            ImGui::PopStyleVar();
-            setLastItemTooltip("Vertex size multiplier for this file");
-            drawFileTransformControls(file.fileSettings, translationSpeed);
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
                 drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
@@ -1414,9 +983,7 @@ void drawSceneTreeNode(
         file.mesh.nodes[node.groupIndex],
         gpuMesh.nodeRanges[node.groupIndex],
         file,
-        node.groupIndex,
-        groupColorIndex(state.files, node.fileIndex, node.groupIndex),
-        std::max(file.mesh.bounds.radius * 0.005f, 0.01f));
+        node.groupIndex);
 }
 
 struct SdlDeleter {
@@ -3534,7 +3101,7 @@ int main(int argc, char** argv)
             drawPaneToggles(ui, panelLayout.width);
             if (files.empty() && ui.comparisons.empty() && !backgroundLoad.active && !gpuFinalize.active) {
                 const float viewportWidth = panelLayout.width - panelLayout.leftWidth
-                    - (ui.comparisonPaneVisible ? panelLayout.rightWidth : 0.0f);
+                    - (ui.propertiesPaneVisible ? panelLayout.rightWidth : 0.0f);
                 ImGui::SetNextWindowPos(
                     ImVec2(panelLayout.leftWidth + viewportWidth * 0.5f, panelLayout.height * 0.5f),
                     ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -3561,7 +3128,7 @@ int main(int argc, char** argv)
                 }
                 ImGui::End();
             }
-            drawComparisonPane(ui, comparison, panelLayout);
+            drawPropertiesPane(ui, comparison, panelLayout);
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
 
             woby::recalculateSceneBounds(ui);

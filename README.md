@@ -15,6 +15,9 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Adjust global, per-file, and per-group vertex point sizes.
 - Arrange files and groups with translation, rotation, scale, opacity, and reset controls.
 - Assign and reset per-group display colors.
+- Select a folder, file, or part to edit its persistent **Properties** inspector on the right. Transform fields label X/Y/Z in model units and degrees; opacity uses percent and scale uses a uniform multiplier. Type a value and press Enter to apply it, or Escape to cancel.
+- Ctrl-click multiple objects to edit shared properties. **Mixed** fields have differing local values; editing a field sets only that field on every selected object. Parent transforms compose with part transforms and their opacities multiply. Selecting both a parent and its child edits both. Color and render modes are part properties; selecting a comparison shows its controls in the same Properties pane.
+- Reset translation, rotation, scale, all transforms, or appearance independently. Transform resets preserve opacity; appearance resets preserve transforms and unselected child overrides. Geometry shows mesh statistics and local bounds for a single file or part. These edits use the existing `.woby` save/load settings.
 - Remove files from a scene without touching the source model files.
 - Load large model batches and scenes in the background with progress, cancellation, and unsaved-change prompts.
 
@@ -39,7 +42,8 @@ also wait for outstanding image captures.
 
 Left drag or arrow keys orbit, right/middle drag pans, and the wheel or `+`/`-`
 zooms. `R` frames the scene, `Ctrl+B` toggles the left pane, and the upper-right
-Comparison/pin button toggles the comparison pane.
+Properties/pin button toggles the right-hand Properties pane. Selecting an object
+opens this pane and shows the properties for that selection.
 
 ## Command Line
 

@@ -108,7 +108,7 @@ struct UiComparison {
 
 struct UiState {
     std::vector<UiComparison> comparisons;
-    // Session-only inspector target, retained while selecting source objects.
+    // Last active comparison, retained for source membership commands and badges.
     SceneObjectId activeComparisonId = invalidSceneObjectId;
     // Transient tree selection in click order; excluded from scene files and dirty tracking.
     std::vector<SceneObjectId> selectedSceneObjects;
@@ -123,8 +123,8 @@ struct UiState {
     Bounds sceneBounds;
     float viewerPaneWidth = 0.0f;
     bool viewerPaneVisible = true;
-    // Session-only panel visibility, like the left viewer pane; not scene content.
-    bool comparisonPaneVisible = false;
+    // Shared right-hand inspector visibility; session-only, not scene content.
+    bool propertiesPaneVisible = false;
     std::vector<UiFileState> files;
     std::vector<UiSceneNode> sceneNodes;
     // Session metadata: never saved, reset on scene open, or used for dirty tracking.

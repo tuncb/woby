@@ -13,6 +13,241 @@
 #include <string>
 #include <set>
 
+TEST_CASE("shared properties pane follows selection without changing scene content")
+{
+    woby::UiState state;
+    woby::Mesh mesh;
+    mesh.nodes.push_back({"part", 0u, 0u});
+    state.files.push_back(woby::createUiFileState("a.obj", mesh, 0u));
+    woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0u, 1u);
+    const auto firstComparison = woby::createComparison(state);
+    const auto secondComparison = woby::createComparison(state);
+    const auto document = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state);
+
+    for (const auto id : {state.sceneNodes[0].objectId, state.files[0].objectId,
+            state.files[0].groupSettings[0].objectId}) {
+        woby::setPropertiesPaneVisible(state, false);
+        woby::selectSceneObject(state, id);
+        CHECK(state.propertiesPaneVisible);
+        CHECK(woby::selectedComparison(state) == nullptr);
+        CHECK(state.activeComparisonId == secondComparison);
+        CHECK(woby::selectedObjectProperty(state, woby::UiObjectProperty::opacity).available);
+    }
+    for (const auto id : {firstComparison, secondComparison}) {
+        woby::setPropertiesPaneVisible(state, false);
+        woby::selectSceneObject(state, id);
+        CHECK(state.propertiesPaneVisible);
+        REQUIRE(woby::selectedComparison(state) != nullptr);
+        CHECK(woby::selectedComparison(state)->objectId == id);
+        CHECK(state.activeComparisonId == id);
+    }
+    woby::selectSceneObject(state, state.files[0].objectId, true);
+    CHECK(woby::selectedComparison(state) == nullptr);
+    woby::selectSceneObject(state, state.files[0].objectId, true);
+    REQUIRE(woby::selectedComparison(state) != nullptr);
+    CHECK(woby::selectedComparison(state)->objectId == secondComparison);
+    woby::clearSceneSelection(state);
+    CHECK(woby::selectedComparison(state) == nullptr);
+    woby::setPropertiesPaneVisible(state, false);
+    woby::selectSceneObject(state, state.nextObjectId + 10);
+    CHECK_FALSE(state.propertiesPaneVisible);
+    CHECK(woby::createSceneDocument(state) == document);
+    CHECK_FALSE(state.isDirty);
+}
+
+TEST_CASE("properties pane does not inspect a stale comparison after removal or scene replacement")
+{
+    woby::UiState state;
+    const auto first = woby::createComparison(state);
+    const auto second = woby::createComparison(state);
+    woby::removeComparison(state, second);
+    CHECK(state.activeComparisonId == first);
+    CHECK(woby::selectedComparison(state) == nullptr);
+    state.selectedSceneObjects = {second};
+    CHECK(woby::selectedComparison(state) == nullptr);
+    state.selectedSceneObjects = {woby::invalidSceneObjectId};
+    CHECK(woby::selectedComparison(state) == nullptr);
+    woby::selectSceneObject(state, first);
+    REQUIRE(woby::selectedComparison(state) != nullptr);
+    const auto restored = woby::prepareSceneReplacement(state, {}, woby::createSceneDocument(state));
+    CHECK(restored.propertiesPaneVisible);
+    CHECK(woby::selectedComparison(restored) == nullptr);
+    CHECK(restored.selectedSceneObjects.empty());
+}
+
+TEST_CASE("inspector edits preserve mixed components and selection is transient")
+{
+    using P = woby::UiObjectProperty;
+    woby::UiState state;
+    for (int i = 0; i < 2; ++i) {
+        woby::UiFileState file;
+        file.path = i == 0 ? "a.obj" : "b.obj";
+        file.fileSettings.translation = {static_cast<float>(i), static_cast<float>(i + 2), 3.0f};
+        state.files.push_back(file);
+    }
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    const auto clean = woby::createSceneDocument(state);
+    woby::selectSceneObject(state, state.files[0].objectId);
+    woby::selectSceneObject(state, state.files[1].objectId, true);
+    CHECK(woby::createSceneDocument(state) == clean);
+    CHECK_FALSE(state.isDirty);
+    CHECK(woby::selectedObjectProperty(state, P::translationX).mixed);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::translationZ).mixed);
+    woby::setSelectedObjectProperty(state, P::translationX, 12.345f);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::translationX).mixed);
+    CHECK(state.files[0].fileSettings.translation[0] == doctest::Approx(12.345f));
+    CHECK(state.files[1].fileSettings.translation[0] == doctest::Approx(12.345f));
+    CHECK(state.files[0].fileSettings.translation[1] == 2.0f);
+    CHECK(state.files[1].fileSettings.translation[1] == 3.0f);
+    CHECK(state.isDirty);
+    woby::clearSceneDirty(state);
+    woby::setSelectedObjectProperty(state, P::translationX, 12.345f);
+    CHECK_FALSE(state.isDirty);
+    for (const float invalid : {std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()}) {
+        woby::setSelectedObjectProperty(state, P::translationX, invalid);
+        CHECK(state.files[0].fileSettings.translation[0] == doctest::Approx(12.345f));
+        CHECK_FALSE(state.isDirty);
+    }
+    woby::setSelectedObjectProperty(state, P::opacity, -2.0f);
+    CHECK(woby::selectedObjectProperty(state, P::opacity).value == 0.0f);
+    woby::setSelectedObjectProperty(state, P::scale, 100.0f);
+    CHECK(woby::selectedObjectProperty(state, P::scale).value == woby::maxGroupScale);
+    woby::setSelectedObjectProperty(state, P::rotationZ, -900.0f);
+    CHECK(woby::selectedObjectProperty(state, P::rotationZ).value == woby::minRotationDegrees);
+}
+
+TEST_CASE("inspector resets only the selected property group and explicit targets")
+{
+    using P = woby::UiObjectProperty;
+    using G = woby::UiPropertyGroup;
+    woby::UiState state;
+    woby::Mesh mesh;
+    mesh.nodes.push_back({"part", 0u, 0u});
+    state.files.push_back(woby::createUiFileState("a.obj", mesh, 0u));
+    woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0u, 1u);
+    const auto folderId = state.sceneNodes[0].objectId;
+    const auto fileId = state.files[0].objectId;
+    const auto partId = state.files[0].groupSettings[0].objectId;
+    auto& folder = state.sceneNodes[0].settings;
+    auto& file = state.files[0].fileSettings;
+    auto& part = state.files[0].groupSettings[0];
+    woby::selectSceneObject(state, folderId);
+    woby::setSelectedObjectProperty(state, P::translationX, 10.0f);
+    CHECK(folder.translation[0] == 10.0f);
+    CHECK(file.translation[0] == 0.0f);
+    CHECK(part.translation[0] == 0.0f);
+    woby::selectSceneObject(state, fileId, true);
+    woby::selectSceneObject(state, partId, true);
+    CHECK(woby::selectedObjectProperty(state, P::translationX).mixed);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::red).available);
+    woby::setSelectedObjectProperty(state, P::translationY, 7.0f);
+    woby::setSelectedObjectProperty(state, P::rotationZ, 15.0f);
+    woby::setSelectedObjectProperty(state, P::scale, 2.0f);
+    woby::setSelectedObjectProperty(state, P::opacity, 0.25f);
+    CHECK(folder.translation[1] == 7.0f);
+    CHECK(file.translation[1] == 7.0f);
+    CHECK(part.translation[1] == 7.0f);
+    woby::resetSelectedObjectProperties(state, G::translation);
+    CHECK(folder.translation == std::array<float, 3>{});
+    CHECK(file.translation == std::array<float, 3>{});
+    CHECK(part.translation == std::array<float, 3>{});
+    CHECK(part.rotationDegrees[2] == 15.0f);
+    CHECK(part.scale == 2.0f);
+    CHECK(part.opacity == 0.25f);
+    woby::resetSelectedObjectProperties(state, G::rotation);
+    CHECK(part.rotationDegrees == std::array<float, 3>{});
+    CHECK(part.scale == 2.0f);
+    woby::resetSelectedObjectProperties(state, G::scale);
+    CHECK(part.scale == 1.0f);
+    CHECK(part.opacity == 0.25f);
+    woby::setSelectedObjectProperty(state, P::translationX, 9.0f);
+    woby::resetSelectedObjectProperties(state, G::transform);
+    CHECK(folder.translation[0] == 0.0f);
+    CHECK(file.opacity == 0.25f);
+    CHECK(part.opacity == 0.25f);
+    woby::selectSceneObject(state, partId);
+    woby::setSelectedObjectProperty(state, P::red, 0.1f);
+    woby::setSelectedObjectProperty(state, P::triangles, 0.0f);
+    woby::setSelectedObjectProperty(state, P::vertexSize, 3.0f);
+    woby::setSelectedObjectProperty(state, P::translationZ, 5.0f);
+    woby::selectSceneObject(state, fileId);
+    woby::resetSelectedObjectProperties(state, G::appearance);
+    CHECK(file.opacity == 1.0f);
+    CHECK(part.opacity == 0.25f);
+    CHECK(part.color[0] == doctest::Approx(0.1f));
+    CHECK_FALSE(part.showTriangles);
+    woby::selectSceneObject(state, partId);
+    woby::resetSelectedObjectProperties(state, G::appearance);
+    CHECK(part.opacity == 1.0f);
+    CHECK(part.color == woby::defaultGroupColor(0));
+    CHECK(part.showTriangles);
+    CHECK(part.vertexSizeScale == 1.0f);
+    CHECK(part.translation[2] == 5.0f);
+    CHECK(folder.opacity == 0.25f);
+}
+
+TEST_CASE("inspector rejects unsupported or stale selections without partial edits")
+{
+    using P = woby::UiObjectProperty;
+    woby::UiState state;
+    state.files.emplace_back();
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    const auto fileId = state.files[0].objectId;
+    woby::selectSceneObject(state, fileId);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::red).available);
+    woby::setSelectedObjectProperty(state, P::red, 0.0f);
+    CHECK_FALSE(state.isDirty);
+    const auto comparisonId = woby::createComparison(state);
+    woby::selectSceneObject(state, fileId);
+    woby::selectSceneObject(state, comparisonId, true);
+    const auto clean = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state);
+    woby::setSelectedObjectProperty(state, P::opacity, 0.2f);
+    woby::resetSelectedObjectProperties(state, woby::UiPropertyGroup::appearance);
+    CHECK(woby::createSceneDocument(state) == clean);
+    CHECK_FALSE(state.isDirty);
+    state.selectedSceneObjects = {fileId, state.nextObjectId + 10};
+    woby::setSelectedObjectProperty(state, P::translationX, 1.0f);
+    CHECK(state.files[0].fileSettings.translation[0] == 0.0f);
+    woby::clearSceneSelection(state);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::opacity).available);
+}
+
+TEST_CASE("inspector edits retain the existing scene save load mapping")
+{
+    using P = woby::UiObjectProperty;
+    woby::UiState state;
+    woby::Mesh mesh;
+    mesh.nodes.push_back({"part", 0u, 0u});
+    const auto modelPath = std::filesystem::current_path() / "inspector.obj";
+    state.files.push_back(woby::createUiFileState(modelPath, mesh, 0));
+    woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0, 1);
+    woby::selectSceneObject(state, state.sceneNodes[0].objectId);
+    woby::selectSceneObject(state, state.files[0].objectId, true);
+    woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId, true);
+    woby::setSelectedObjectProperty(state, P::translationZ, 1.25f);
+    woby::setSelectedObjectProperty(state, P::rotationY, 37.5f);
+    woby::setSelectedObjectProperty(state, P::scale, 2.5f);
+    woby::setSelectedObjectProperty(state, P::opacity, 0.375f);
+    woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId);
+    woby::setSelectedObjectProperty(state, P::red, 0.125f);
+    woby::setSelectedObjectProperty(state, P::vertexSize, 2.0f);
+    woby::setSelectedObjectProperty(state, P::vertices, 0.0f);
+    const auto expected = woby::createSceneDocument(state);
+    const auto path = std::filesystem::temp_directory_path() / "woby_inspector_round_trip.woby";
+    woby::writeSceneDocument(path, expected);
+    auto loaded = woby::readSceneDocument(path);
+    loaded.files[0].path = woby::sceneAbsolutePath(path, loaded.files[0].path);
+    CHECK(loaded == expected);
+    auto restoredFile = woby::createUiFileState(modelPath, mesh, 0);
+    woby::applySceneFileRecord(restoredFile, loaded.files[0]);
+    const auto restored = woby::prepareSceneReplacement(state, {restoredFile}, loaded);
+    CHECK(woby::createSceneDocument(restored) == expected);
+    CHECK(restored.selectedSceneObjects.empty());
+    std::filesystem::remove(path);
+}
+
 namespace {
 
 woby::Bounds makeBounds(float minX, float maxX)

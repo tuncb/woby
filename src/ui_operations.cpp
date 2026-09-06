@@ -19,9 +19,9 @@ void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool conte
     if (!findSceneObject(state, id)) {
         return;
     }
+    setPropertiesPaneVisible(state, true);
     if (findComparison(state, id)) {
         state.activeComparisonId = id;
-        setComparisonPaneVisible(state, true);
     }
     const bool selected = sceneObjectSelected(state, id);
     if (contextClick && selected) {
@@ -39,6 +39,12 @@ void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool conte
 void clearSceneSelection(UiState& state)
 {
     state.selectedSceneObjects.clear();
+}
+
+const UiComparison* selectedComparison(const UiState& state)
+{
+    return state.selectedSceneObjects.size() == 1 && state.selectedSceneObjects.front() != invalidSceneObjectId
+        ? findComparison(state, state.selectedSceneObjects.front()) : nullptr;
 }
 
 namespace {
@@ -274,15 +280,15 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
     if (auto* comparison = findComparison(state, id)) {
         const bool wasEnabled = comparison->settings.enabled;
         comparison->settings = normalizedComparisonSettings(settings);
-        if (comparison->settings.enabled && !wasEnabled) { setComparisonPaneVisible(state, true); }
+        if (comparison->settings.enabled && !wasEnabled) { setPropertiesPaneVisible(state, true); }
         recalculateSceneBounds(state);
         markSceneDirty(state);
     }
 }
 
-void setComparisonPaneVisible(UiState& state, bool visible)
+void setPropertiesPaneVisible(UiState& state, bool visible)
 {
-    state.comparisonPaneVisible = visible;
+    state.propertiesPaneVisible = visible;
 }
 
 void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member,
@@ -308,7 +314,7 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
             std::erase_if(members, [part](const UiComparisonPart& entry) { return entry.objectId == part; });
         }
     }
-    if (member) { setComparisonPaneVisible(state, true); }
+    if (member) { setPropertiesPaneVisible(state, true); }
     recalculateSceneBounds(state);
     markSceneDirty(state);
 }
@@ -1098,7 +1104,7 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.running = current.running;
     prepared.viewerPaneWidth = current.viewerPaneWidth;
     prepared.viewerPaneVisible = current.viewerPaneVisible;
-    prepared.comparisonPaneVisible = current.comparisonPaneVisible;
+    prepared.propertiesPaneVisible = current.propertiesPaneVisible;
     prepared.nextObjectId = current.nextObjectId;
     prepared.files = std::move(files);
     // Every replacement receives fresh IDs, even when reopening the same file.

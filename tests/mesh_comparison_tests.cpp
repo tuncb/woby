@@ -240,7 +240,7 @@ TEST_CASE("multiple comparison objects round trip with fresh identities and inde
     CHECK(restored.comparisons[1].a[0].objectId == restored.files[0].groupSettings[0].objectId);
     CHECK(woby::createSceneDocument(restored) == document);
     woby::selectSceneObject(state, first);
-    woby::setComparisonPaneVisible(state, false);
+    woby::setPropertiesPaneVisible(state, false);
     woby::updateSceneDirty(state, document);
     CHECK_FALSE(state.isDirty);
     woby::setComparisonTranslation(state, second, {9, 8, 7});
@@ -964,25 +964,25 @@ TEST_CASE("comparison tree handles implicit hierarchy duplicate references and r
 TEST_CASE("comparison panel opens on adding objects and starting comparison but can stay hidden")
 {
     auto state = stateWithFiles(2);
-    CHECK_FALSE(state.comparisonPaneVisible);
+    CHECK_FALSE(state.propertiesPaneVisible);
     woby::setComparisonObjects(state, {state.nextObjectId}, woby::ComparisonSide::a, true);
-    CHECK_FALSE(state.comparisonPaneVisible);
+    CHECK_FALSE(state.propertiesPaneVisible);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true);
-    CHECK(state.comparisonPaneVisible);
-    woby::setComparisonPaneVisible(state, false);
+    CHECK(state.propertiesPaneVisible);
+    woby::setPropertiesPaneVisible(state, false);
     woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true);
-    CHECK(state.comparisonPaneVisible);
-    woby::setComparisonPaneVisible(state, false);
+    CHECK(state.propertiesPaneVisible);
+    woby::setPropertiesPaneVisible(state, false);
     auto settings = woby::comparisonSettings(state);
     settings.enabled = false;
     woby::setComparisonSettings(state, settings);
     settings.enabled = true;
     woby::setComparisonSettings(state, settings);
     REQUIRE(woby::comparisonSettings(state).enabled);
-    CHECK(state.comparisonPaneVisible);
+    CHECK(state.propertiesPaneVisible);
     const auto document = woby::createSceneDocument(state);
     const auto signature = woby::comparisonGeometrySignature(state);
-    woby::setComparisonPaneVisible(state, false);
+    woby::setPropertiesPaneVisible(state, false);
     woby::updateSceneDirty(state, document);
     CHECK_FALSE(state.isDirty);
     CHECK(woby::comparisonSettings(state).enabled);
@@ -990,13 +990,13 @@ TEST_CASE("comparison panel opens on adding objects and starting comparison but 
     // Editing display settings while hidden should not force the panel open again.
     settings.colorRange = 2;
     woby::setComparisonSettings(state, settings);
-    CHECK_FALSE(state.comparisonPaneVisible);
+    CHECK_FALSE(state.propertiesPaneVisible);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, false);
-    CHECK_FALSE(state.comparisonPaneVisible);
+    CHECK_FALSE(state.propertiesPaneVisible);
     CHECK(woby::comparisonSettings(state).enabled);
     CHECK_FALSE(woby::canCompareGroups(state));
     const auto restored = woby::prepareSceneReplacement(state, state.files, document);
-    CHECK_FALSE(restored.comparisonPaneVisible);
+    CHECK_FALSE(restored.propertiesPaneVisible);
     CHECK(woby::comparisonSettings(restored).enabled);
 }
 
@@ -1011,7 +1011,7 @@ TEST_CASE("quick comparison assigns selected objects in click order and opens th
     REQUIRE(woby::canCompareSceneSelection(state));
     REQUIRE(woby::compareSceneSelection(state));
     CHECK(woby::comparisonSettings(state).enabled);
-    CHECK(state.comparisonPaneVisible);
+    CHECK(state.propertiesPaneVisible);
     CHECK(woby::comparisonSettings(state).mode == woby::ComparisonMode::distance);
     CHECK(woby::comparisonSettings(state).tolerance == doctest::Approx(.05));
     CHECK(woby::comparisonContains(state, state.files[1].groupSettings[0].objectId, woby::ComparisonSide::a));
@@ -1053,12 +1053,12 @@ TEST_CASE("quick comparison leaves existing memberships and invalid selections u
     const auto unchanged = [&] {
         const auto document = woby::createSceneDocument(state);
         const auto selection = state.selectedSceneObjects;
-        const bool visible = state.comparisonPaneVisible;
+        const bool visible = state.propertiesPaneVisible;
         CHECK_FALSE(woby::canCompareSceneSelection(state));
         CHECK_FALSE(woby::compareSceneSelection(state));
         CHECK(woby::createSceneDocument(state) == document);
         CHECK(state.selectedSceneObjects == selection);
-        CHECK(state.comparisonPaneVisible == visible);
+        CHECK(state.propertiesPaneVisible == visible);
     };
     unchanged();
     woby::selectSceneObject(state, state.files[0].objectId);

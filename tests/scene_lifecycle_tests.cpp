@@ -204,7 +204,7 @@ TEST_CASE("new scene replacement clears content and editing state but retains pa
     CHECK_FALSE(empty.cameraInput.rolling);
     CHECK_FALSE(empty.isDirty);
     CHECK_FALSE(empty.viewerPaneVisible);
-    CHECK(empty.comparisonPaneVisible == fixture.state.comparisonPaneVisible);
+    CHECK(empty.propertiesPaneVisible == fixture.state.propertiesPaneVisible);
     CHECK(empty.nextObjectId == allocator);
     CHECK(woby::createSceneDocument(empty) == woby::createSceneDocument(woby::UiState{}));
 }
