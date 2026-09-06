@@ -304,11 +304,12 @@ TEST_CASE("new and duplicated comparisons are placed beyond existing result boun
 TEST_CASE("comparison load rejects malformed references and retains changed source layouts as missing")
 {
     auto state = stateWithFiles(2);
+    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-malformed.woby";
+    for (auto& file : state.files) { file.path = path.parent_path() / file.path; }
     const auto id = woby::createComparison(state);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
     woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
     auto document = woby::createSceneDocument(state);
-    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-malformed.woby";
     document.comparisons[0].a[0].groupIndex = 99;
     woby::writeSceneDocument(path, document);
     CHECK_THROWS_WITH((void)woby::readSceneDocument(path), "Comparison references an invalid source part.");
