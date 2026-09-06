@@ -97,7 +97,7 @@ std::vector<Triangle> meshTriangles(const Mesh &mesh)
     if (mesh.indices.empty() || mesh.indices.size() % 3 != 0)
         throw std::runtime_error("Comparison needs nonempty triangular meshes.");
     if (mesh.indices.size() / 3 > comparisonTriangleLimit)
-        throw std::runtime_error("Prototype comparison supports up to 50,000 triangles per file.");
+        throw std::runtime_error("Prototype comparison supports up to 50,000 triangles per comparison group.");
     std::vector<Triangle> triangles;
     triangles.reserve(mesh.indices.size() / 3);
     for (size_t i = 0; i < mesh.indices.size(); i += 3)
@@ -284,14 +284,8 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
 }
 } // namespace
 
-ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings, size_t fileCount)
+ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
-    if (settings.originalFile < 0 || static_cast<size_t>(settings.originalFile) >= fileCount)
-        settings.originalFile = -1;
-    if (settings.repairedFile < 0 || static_cast<size_t>(settings.repairedFile) >= fileCount)
-        settings.repairedFile = -1;
-    if (settings.originalFile < 0 || settings.repairedFile < 0 || settings.originalFile == settings.repairedFile)
-        settings.enabled = false;
     if (settings.mode != ComparisonMode::distance && settings.mode != ComparisonMode::original &&
         settings.mode != ComparisonMode::repaired && settings.mode != ComparisonMode::overlay)
         settings.mode = ComparisonMode::distance;

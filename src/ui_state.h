@@ -27,6 +27,7 @@ inline constexpr float defaultDisplayBoundsMin = -10.0f;
 inline constexpr float defaultDisplayBoundsMax = 10.0f;
 
 struct UiGroupState {
+    ComparisonMembership comparison;
     bool visible = true;
     bool showSolidMesh = true;
     bool showTriangles = true;

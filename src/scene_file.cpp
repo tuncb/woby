@@ -366,6 +366,10 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
         record.name = parseTomlString(value);
     } else if (key == "visible") {
         record.settings.visible = parseTomlBool(value);
+    } else if (key == "comparison_a") {
+        record.settings.comparison.a = parseTomlBool(value);
+    } else if (key == "comparison_b") {
+        record.settings.comparison.b = parseTomlBool(value);
     } else if (key == "show_solid_mesh") {
         record.settings.showSolidMesh = parseTomlBool(value);
     } else if (key == "show_triangles") {
@@ -490,7 +494,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 2 && version != 3) {
+                    if (version != 2 && version != 3 && version != 4) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -503,18 +507,14 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     document.upAxis = parseSceneUpAxis(value);
                 } else if (key == "comparison_enabled") {
                     document.comparison.enabled = parseTomlBool(value);
-                } else if (key == "comparison_original_file") {
-                    document.comparison.originalFile = parseTomlInteger(value);
-                } else if (key == "comparison_repaired_file") {
-                    document.comparison.repairedFile = parseTomlInteger(value);
                 } else if (key == "comparison_mode") {
                     const auto mode = parseTomlString(value);
                     if (mode == "distance") { document.comparison.mode = ComparisonMode::distance; }
-                    else if (mode == "original") { document.comparison.mode = ComparisonMode::original; }
-                    else if (mode == "repaired") { document.comparison.mode = ComparisonMode::repaired; }
+                    else if (mode == "a") { document.comparison.mode = ComparisonMode::original; }
+                    else if (mode == "b") { document.comparison.mode = ComparisonMode::repaired; }
                     else if (mode == "overlay") { document.comparison.mode = ComparisonMode::overlay; }
                     else { throw std::runtime_error("Unknown comparison mode."); }
-                } else if (key == "comparison_distance_on_original") {
+                } else if (key == "comparison_distance_on_a") {
                     document.comparison.distanceOnOriginal = parseTomlBool(value);
                 } else if (key == "comparison_tolerance") {
                     document.comparison.tolerance = parseTomlFloat(value);
@@ -571,7 +571,16 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
     }
 
-    document.comparison = normalizedComparisonSettings(document.comparison, document.files.size());
+    document.comparison = normalizedComparisonSettings(document.comparison);
+    const auto hasSide = [&](ComparisonSide side) {
+        for (const auto& file : document.files) {
+            for (const auto& group : file.groups) {
+                if (comparisonMember(group.settings.comparison, side)) { return true; }
+            }
+        }
+        return false;
+    };
+    if (!hasSide(ComparisonSide::a) || !hasSide(ComparisonSide::b)) { document.comparison.enabled = false; }
     return document;
 }
 
@@ -582,28 +591,24 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    const bool usesImporters = std::any_of(document.files.begin(), document.files.end(),
-        [](const SceneFileRecord& file) { return !file.importerId.empty(); });
-    stream << "version = " << (usesImporters ? 3 : 2) << "\n";
+    stream << "version = 4\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
     stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
     stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
-    const auto comparison = normalizedComparisonSettings(document.comparison, document.files.size());
+    const auto comparison = normalizedComparisonSettings(document.comparison);
     const char* mode = "distance";
     switch (comparison.mode) {
     case ComparisonMode::distance: break;
-    case ComparisonMode::original: mode = "original"; break;
-    case ComparisonMode::repaired: mode = "repaired"; break;
+    case ComparisonMode::original: mode = "a"; break;
+    case ComparisonMode::repaired: mode = "b"; break;
     case ComparisonMode::overlay: mode = "overlay"; break;
     }
     stream << "comparison_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
-    stream << "comparison_original_file = " << comparison.originalFile << "\n";
-    stream << "comparison_repaired_file = " << comparison.repairedFile << "\n";
     stream << "comparison_mode = \"" << mode << "\"\n";
-    stream << "comparison_distance_on_original = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
+    stream << "comparison_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
     stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
     stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
     stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
@@ -640,6 +645,8 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             stream << "\n[[files.groups]]\n";
             stream << "name = \"" << escapeTomlString(group.name) << "\"\n";
             stream << "visible = " << (group.settings.visible ? "true" : "false") << "\n";
+            stream << "comparison_a = " << (group.settings.comparison.a ? "true" : "false") << "\n";
+            stream << "comparison_b = " << (group.settings.comparison.b ? "true" : "false") << "\n";
             stream << "show_solid_mesh = " << (group.settings.showSolidMesh ? "true" : "false") << "\n";
             stream << "show_triangles = " << (group.settings.showTriangles ? "true" : "false") << "\n";
             stream << "show_vertices = " << (group.settings.showVertices ? "true" : "false") << "\n";

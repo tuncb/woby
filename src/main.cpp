@@ -870,14 +870,33 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             ImGui::CloseCurrentPopup();
         }
-        if (woby::canCompareSceneSelection(state)) {
-            if (ImGui::MenuItem("Compare")) {
-                if (woby::compareSceneSelection(state)) {
-                    comparison.openPanelRequested = true;
+        const auto parts = woby::comparisonObjectParts(state, state.selectedSceneObjects);
+        size_t inA = 0, inB = 0;
+        for (const auto& file : state.files) {
+            for (const auto& group : file.groupSettings) {
+                if (std::binary_search(parts.begin(), parts.end(), group.objectId)) {
+                    inA += group.comparison.a ? 1u : 0u;
+                    inB += group.comparison.b ? 1u : 0u;
                 }
             }
-        } else {
-            ImGui::TextDisabled("Select two mesh files to compare.");
+        }
+        const auto membershipAction = [&](const char* label, woby::ComparisonSide side, bool member, bool enabled) {
+            if (ImGui::MenuItem(label, nullptr, false, enabled)) {
+                woby::setComparisonObjects(state, state.selectedSceneObjects, side, member);
+                comparison.openPanelRequested = true;
+            }
+        };
+        membershipAction("Add to group A", woby::ComparisonSide::a, true, inA < parts.size());
+        membershipAction("Add to group B", woby::ComparisonSide::b, true, inB < parts.size());
+        membershipAction("Remove from group A", woby::ComparisonSide::a, false, inA != 0);
+        membershipAction("Remove from group B", woby::ComparisonSide::b, false, inB != 0);
+        if (parts.empty()) { ImGui::TextDisabled("Select objects containing triangles."); }
+        ImGui::Separator();
+        if (ImGui::MenuItem("Compare A and B", nullptr, false, woby::canCompareGroups(state))) {
+            auto settings = state.comparison;
+            settings.enabled = true;
+            woby::setComparisonSettings(state, settings);
+            comparison.openPanelRequested = true;
         }
         ImGui::EndPopup();
     }
@@ -904,7 +923,10 @@ void drawGroupControls(
     ImGui::SameLine();
     const float textStartX = ImGui::GetCursorPosX();
     const float nameWidth = controlsStartX - textStartX - style.ItemSpacing.x;
-    drawClippedTextItem("##name", node.name.c_str(), nameWidth,
+    const std::string comparisonBadge = settings.comparison.a
+        ? (settings.comparison.b ? "[A B] " : "[A] ") : (settings.comparison.b ? "[B] " : "");
+    const std::string displayName = comparisonBadge + node.name;
+    drawClippedTextItem("##name", displayName.c_str(), nameWidth,
         woby::sceneObjectSelected(state, settings.objectId));
     const std::string groupTooltip = node.name
         + "\n"
@@ -3351,7 +3373,7 @@ int main(int argc, char** argv)
                             "FilesContent",
                             ImVec2(0.0f, filesContentHeight),
                             ImGuiChildFlags_None)) {
-                        ImGui::TextDisabled("Ctrl-click two files, then right-click to compare.");
+                        ImGui::TextDisabled("Ctrl-click to select objects; right-click to edit A/B groups.");
                         std::optional<size_t> removeFileIndex;
                         for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                             ImGui::PushID(static_cast<int>(nodeIndex));

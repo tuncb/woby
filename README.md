@@ -23,16 +23,20 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ### Mesh comparison prototype
 
 Open `assets/samples/mesh-comparison/compare.woby` to inspect a sample before/after
-repair pair, or load two meshes and select them in **Compare meshes**. The
-prototype offers bidirectional unsigned distance heatmaps, tolerance and color
-range controls, original/repaired views, a wireframe overlay, and edge
-diagnostics. Comparison settings are saved in `.woby` scenes.
+repair pair, or build comparison groups **A** and **B** from scene objects.
+Right-click files, folders, or individual mesh parts and choose **Add to group A**
+or **Add to group B**. Ctrl-click selects multiple objects. The same context menu
+removes objects from either group and starts **Compare A and B**.
 
-You can also click a file in the tree, Ctrl-click a second file, then right-click
-either selected file and choose **Compare**. The first selected file is Original
-and the second is Repaired. Compare appears only for exactly two mesh files;
-selections containing mesh groups or folders do not offer it. Use the tree arrows
-or double-click a name to expand or collapse an item.
+Files and folders add their current mesh parts; each part is included once per
+group. Individual parts can be removed afterward, and a part may belong to both
+sides. Tree badges show part membership. The **Compare groups** panel lists both
+sides and provides Clear and Swap controls. Membership is independent of visibility.
+
+Comparison uses the combined surfaces at their scene positions, with bidirectional
+unsigned distance heatmaps, tolerance and color range controls, A/B views, a
+wireframe overlay, and edge diagnostics. It does not perform a Boolean union.
+Membership and display settings are saved in version 4 `.woby` scenes.
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --scene .\assets\samples\mesh-comparison\compare.woby

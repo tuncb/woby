@@ -92,31 +92,47 @@ bool originalActive(const ComparisonSettings &settings)
     return settings.mode == ComparisonMode::original ||
            (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal);
 }
-void filePicker(const UiState &state, const char *label, int &index)
+void membershipList(UiState& state, ComparisonSide side)
 {
-    const std::string preview = index >= 0 && static_cast<size_t>(index) < state.files.size()
-                                    ? pathToUtf8(state.files[static_cast<size_t>(index)].path.filename())
-                                    : "Select file";
-    ImGui::SetNextItemWidth(-1);
-    ImGui::TextUnformatted(label);
+    const char* label = side == ComparisonSide::a ? "Group A" : "Group B";
     ImGui::PushID(label);
-    if (ImGui::BeginCombo("##file", preview.c_str()))
-    {
-        for (size_t i = 0; i < state.files.size(); ++i)
-        {
-            ImGui::PushID(static_cast<int>(i));
-            const auto name = pathToUtf8(state.files[i].path.filename());
-            if (ImGui::Selectable(name.c_str(), index == static_cast<int>(i)))
-            {
-                index = static_cast<int>(i);
+    const size_t count = comparisonPartCount(state, side);
+    size_t triangles = 0;
+    for (const auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+            if (comparisonMember(file.groupSettings[i].comparison, side)) {
+                triangles += file.mesh.nodes[i].indexCount / 3;
             }
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::SetTooltip("%s", pathToUtf8(state.files[i].path).c_str());
-            }
-            ImGui::PopID();
         }
-        ImGui::EndCombo();
+    }
+    ImGui::Text("%s: %zu parts, %zu triangles", label, count, triangles);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(count == 0);
+    if (ImGui::SmallButton("Clear")) { clearComparisonGroup(state, side); }
+    ImGui::EndDisabled();
+    if (count != 0) {
+        const float height = ImGui::GetTextLineHeightWithSpacing() * static_cast<float>(std::min(count, size_t{5}));
+        if (ImGui::BeginChild("members", ImVec2(0, height))) {
+            for (const auto& file : state.files) {
+                for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+                    const auto& group = file.groupSettings[i];
+                    if (!comparisonMember(group.comparison, side)) { continue; }
+                    const std::string name = pathToUtf8(file.path.filename()) + " / " + file.mesh.nodes[i].name;
+                    const std::string id = std::to_string(group.objectId);
+                    ImGui::PushID(id.c_str());
+                    ImGui::TextUnformatted(name.c_str());
+                    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s", pathToUtf8(file.path).c_str()); }
+                    if (ImGui::BeginPopupContextItem("member")) {
+                        if (ImGui::MenuItem("Remove from group")) {
+                            setComparisonObjects(state, {group.objectId}, side, false);
+                        }
+                        ImGui::EndPopup();
+                    }
+                    ImGui::PopID();
+                }
+            }
+        }
+        ImGui::EndChild();
     }
     ImGui::PopID();
 }
@@ -255,8 +271,8 @@ void updateComparisonRuntime(ComparisonRuntime &runtime, const UiState &state)
     runtime.error.clear();
     try
     {
-        auto original = comparisonWorldMesh(state, static_cast<size_t>(state.comparison.originalFile));
-        auto repaired = comparisonWorldMesh(state, static_cast<size_t>(state.comparison.repairedFile));
+        auto original = comparisonWorldMesh(state, ComparisonSide::a);
+        auto repaired = comparisonWorldMesh(state, ComparisonSide::b);
         runtime.stop = std::stop_source{};
         const auto stop = runtime.stop.get_token();
         runtime.worker = std::async(std::launch::async, [original = std::move(original), repaired = std::move(repaired),
@@ -295,39 +311,29 @@ void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
         ImGui::SetNextItemOpen(true);
         runtime.openPanelRequested = false;
     }
-    if (!ImGui::CollapsingHeader("Compare meshes", ImGuiTreeNodeFlags_DefaultOpen))
+    if (!ImGui::CollapsingHeader("Compare groups", ImGuiTreeNodeFlags_DefaultOpen))
     {
         return;
     }
+    ImGui::TextWrapped("Right-click scene objects to add or remove them from A and B. Files and folders add their current mesh parts.");
+    membershipList(state, ComparisonSide::a);
+    membershipList(state, ComparisonSide::b);
+    if (ImGui::Button("Swap A / B")) { swapComparisonGroups(state); }
     auto settings = state.comparison;
-    if (settings.originalFile < 0 && !state.files.empty())
-    {
-        settings.originalFile = 0;
-    }
-    if (settings.repairedFile < 0 && state.files.size() > 1)
-    {
-        settings.repairedFile = 1;
-    }
     const auto initial = settings;
-    filePicker(state, "Original", settings.originalFile);
-    filePicker(state, "Repaired", settings.repairedFile);
-    const bool valid =
-        settings.originalFile >= 0 && settings.repairedFile >= 0 && settings.originalFile != settings.repairedFile;
-    ImGui::BeginDisabled(!valid);
-    if (ImGui::Button(settings.enabled ? "Exit comparison" : "Compare"))
-    {
+    const bool valid = canCompareGroups(state);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!valid && !settings.enabled);
+    if (ImGui::Button(settings.enabled ? "Exit comparison" : "Compare A and B")) {
         settings.enabled = !settings.enabled;
     }
     ImGui::EndDisabled();
-    if (!valid)
-    {
-        ImGui::TextWrapped("Load and select two different mesh files.");
-    }
+    if (!valid) { ImGui::TextWrapped("Add at least one mesh part with triangles to each group."); }
     if (settings.enabled)
     {
         ImGui::TextWrapped(
-            "Whole files, scene positions, model units. Other scene objects are hidden during comparison.");
-        const char *modes[] = {"Surface distance", "Original", "Repaired", "Overlay"};
+            "Combined surfaces at scene positions, in model units. Hidden members are included. Other scene objects are hidden during comparison.");
+        const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay"};
         int mode = static_cast<int>(settings.mode);
         ImGui::SetNextItemWidth(-1);
         if (ImGui::Combo("##comparison_mode", &mode, modes, 4))
@@ -336,9 +342,9 @@ void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
         }
         if (settings.mode == ComparisonMode::distance)
         {
-            ImGui::Checkbox("Measure on original", &settings.distanceOnOriginal);
-            ImGui::TextWrapped(settings.distanceOnOriginal ? "Original -> repaired: inspect removed regions."
-                                                           : "Repaired -> original: inspect new surface regions.");
+            ImGui::Checkbox("Measure on A", &settings.distanceOnOriginal);
+            ImGui::TextWrapped(settings.distanceOnOriginal ? "A -> B: distance from A to the nearest surface in B."
+                                                           : "B -> A: distance from B to the nearest surface in A.");
             ImGui::SetNextItemWidth(110);
             ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
             ImGui::SetNextItemWidth(110);
@@ -348,14 +354,14 @@ void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
         }
         if (settings.mode == ComparisonMode::overlay)
         {
-            ImGui::TextColored(ImVec4(.3f, .75f, 1, 1), "Blue: original wireframe (X-ray)");
-            ImGui::TextWrapped("Solid gray: repaired surface");
+            ImGui::TextColored(ImVec4(.3f, .75f, 1, 1), "Blue: group A wireframe (X-ray)");
+            ImGui::TextWrapped("Solid gray: group B surface");
         }
         ImGui::Checkbox("Triangle edges", &settings.showEdges);
         ImGui::Checkbox("Boundary edges (yellow)", &settings.showBoundaries);
         ImGui::Checkbox("Non-manifold / winding edges", &settings.showNonManifold);
     }
-    // Merely opening the panel must not create a dirty scene or choose files.
+    // Merely opening the panel must not change scene settings.
     if (settings != initial)
     {
         setComparisonSettings(state, settings);
@@ -383,7 +389,7 @@ void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
     }
     const bool useOriginal = originalActive(state.comparison);
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
-    if (ImGui::Button("Frame compared mesh"))
+    if (ImGui::Button("Frame compared group"))
     {
         frameComparisonBounds(state, surface.source.bounds);
     }
@@ -406,8 +412,8 @@ void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
     if (ImGui::BeginTable("Comparison diagnostics", 4, ImGuiTableFlags_SizingStretchProp))
     {
         ImGui::TableSetupColumn("Edges");
-        ImGui::TableSetupColumn("Before");
-        ImGui::TableSetupColumn("After");
+        ImGui::TableSetupColumn("A");
+        ImGui::TableSetupColumn("B");
         ImGui::TableSetupColumn("Focus");
         ImGui::TableHeadersRow();
         diagnosticRow(state, "Boundary", a.boundaryEdges, b.boundaryEdges, useOriginal);
@@ -418,7 +424,7 @@ void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime)
     ImGui::Text("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
     ImGui::Text("Duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
     ImGui::TextWrapped(
-        "Focus uses the displayed mesh. Open boundaries may be intentional. Self-intersections are not checked.");
+        "Diagnostics describe combined surfaces; coincident edges across parts are matched. Open boundaries may be intentional. Self-intersections are not checked.");
 }
 
 bool submitComparisonScene(bgfx::ViewId view, const UiState &state, const ComparisonRuntime &runtime,

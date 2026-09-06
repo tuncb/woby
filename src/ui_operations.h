@@ -15,8 +15,14 @@ void frameComparisonBounds(UiState& state, const Bounds& bounds);
 // Plain click replaces, Ctrl-click toggles, context click preserves an existing selection.
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
 void clearSceneSelection(UiState& state);
-[[nodiscard]] bool canCompareSceneSelection(const UiState& state);
-bool compareSceneSelection(UiState& state);
+// Files/folders expand to their current triangular mesh parts. IDs are deduplicated.
+[[nodiscard]] std::vector<SceneObjectId> comparisonObjectParts(
+    const UiState& state, const std::vector<SceneObjectId>& objects);
+[[nodiscard]] size_t comparisonPartCount(const UiState& state, ComparisonSide side);
+[[nodiscard]] bool canCompareGroups(const UiState& state);
+void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member);
+void clearComparisonGroup(UiState& state, ComparisonSide side);
+void swapComparisonGroups(UiState& state);
 
 enum class UiRenderMode {
     solidMesh,
