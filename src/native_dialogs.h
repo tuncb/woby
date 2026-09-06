@@ -43,7 +43,6 @@ struct SceneScreenshotDialogState {
     bool saveDialogOpen = false;
 };
 
-void showImporterFileDialog(SDL_Window* window, ModelFileDialogState& state);
 void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state);
 void showModelFolderTreeDialog(SDL_Window* window, ModelFileDialogState& state);
 [[nodiscard]] std::vector<std::filesystem::path> takePendingModelPaths(ModelFileDialogState& state);

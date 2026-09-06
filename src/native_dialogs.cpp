@@ -201,23 +201,6 @@ void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
         true);
 }
 
-void showImporterFileDialog(SDL_Window* window, ModelFileDialogState& state)
-{
-#ifdef _WIN32
-    static constexpr SDL_DialogFileFilter filters[] = {{"Importer DLL", "dll"}};
-#elif defined(__APPLE__)
-    static constexpr SDL_DialogFileFilter filters[] = {{"Importer library", "dylib;so"}};
-#else
-    static constexpr SDL_DialogFileFilter filters[] = {{"Importer library", "so"}};
-#endif
-    {
-        std::lock_guard lock(state.mutex);
-        if (state.open) { return; }
-        state.open = true;
-    }
-    SDL_ShowOpenFileDialog(modelFileDialogCallback, &state, window, filters, 1, nullptr, true);
-}
-
 void showModelFolderTreeDialog(SDL_Window* window, ModelFileDialogState& state)
 {
     {

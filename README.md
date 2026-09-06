@@ -5,7 +5,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ## Features
 
 - Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
-- Add file formats with user-supplied importer DLLs/shared libraries; register them in the Importers panel or through repeatable `--plugin` and `--plugin-folder` options.
+- Add file formats with user-supplied importer DLLs/shared libraries; register them through the CLI.
 - Open, save, and drag in `.woby` scene files with persisted model paths, scene tree hierarchy, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
 - View renderer, FPS, vertex, and triangle counts while working.
@@ -147,7 +147,7 @@ Load importer plugins and a model in an additional format:
 ```
 
 Plugin folders are scanned non-recursively. CLI registrations apply to the current launch;
-registrations added through the Importers panel are remembered. See [the importer guide](doc/importers.md)
+registrations added through `wobyctl importers add PATH --remember` are remembered. See [the importer guide](doc/importers.md)
 for the C API, scene persistence rules, and a buildable OFF importer example.
 
 Print the application version:

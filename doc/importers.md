@@ -24,14 +24,14 @@ Loading the same physical file more than once has no effect. Duplicate importer
 IDs and extension conflicts are reported, with the earlier registration retained.
 OBJ, STL, and the `.woby` scene extension are reserved.
 
-CLI registrations apply only to that launch. The **Importers** panel's **Add
-importer...** button loads a library and saves its absolute path for future
-launches. Registrations are stored in `importers.txt` in SDL's per-user preference
+Startup options apply only to that launch. Use `wobyctl importers add PATH --remember`
+to load a library and save its absolute path for future launches. Registrations are
+stored in `importers.txt` in SDL's per-user preference
 directory for organization/application `woby/woby`. CLI registrations are loaded
 before saved registrations. Invalid registrations produce diagnostics on stderr,
-in enabled logs, and in the Importers panel; other plugins can still load.
-**Forget for next launch** removes a saved registration. Already loaded plugins
-stay loaded until exit. Restart woby after replacing a DLL.
+in enabled logs and through `wobyctl importers list`; other plugins can still load.
+Use `wobyctl importers forget PATH` to remove a saved registration. Already loaded
+plugins stay loaded until exit. Restart woby after replacing a DLL.
 
 Registered formats are available through the model dialog, `--file`, recursive
 `--folder` / `--folder-tree`, drag and drop, and scene reopening. File dialog filter
