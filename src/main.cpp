@@ -659,12 +659,6 @@ std::string meshCountLine(size_t vertexCount, size_t triangleCount)
         + "  Triangles: " + std::to_string(triangleCount);
 }
 
-void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
-{
-    const std::string countLine = meshCountLine(vertexCount, triangleCount);
-    ImGui::TextUnformatted(countLine.c_str());
-}
-
 void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool treeNode)
 {
@@ -1157,73 +1151,6 @@ void removeModelFile(
     destroyGpuMesh(runtimes[fileIndex].gpuMesh);
     runtimes.erase(runtimes.begin() + static_cast<std::ptrdiff_t>(fileIndex));
     (void)woby::removeFileFromState(state, fileIndex);
-}
-
-bool appendModelFiles(
-    const std::vector<std::filesystem::path>& modelPaths,
-    const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
-    woby::UiState& state,
-    std::vector<LoadedModelRuntime>& runtimes,
-    std::string& status)
-{
-    const auto start = woby::PerformanceClock::now();
-    size_t addedCount = 0;
-    size_t skippedCount = 0;
-    size_t failedCount = 0;
-    std::string lastError;
-    size_t colorIndex = woby::totalGroupCount(state);
-    const size_t firstAddedFileIndex = state.files.size();
-    state.files.reserve(state.files.size() + modelPaths.size());
-    runtimes.reserve(runtimes.size() + modelPaths.size());
-
-    for (const auto& modelPath : modelPaths) {
-        if (!woby::isModelPath(modelPath)) {
-            ++skippedCount;
-            continue;
-        }
-
-        try {
-            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
-            colorIndex += loaded.file.groupSettings.size();
-            state.files.push_back(std::move(loaded.file));
-            runtimes.push_back(std::move(loaded.runtime));
-            ++addedCount;
-        } catch (const std::exception& exception) {
-            ++failedCount;
-            lastError = exception.what();
-        }
-    }
-
-    status = "Added " + std::to_string(addedCount) + " model file";
-    if (addedCount != 1u) {
-        status += "s";
-    }
-    if (skippedCount > 0u) {
-        status += ", skipped " + std::to_string(skippedCount) + " non-model";
-    }
-    if (failedCount > 0u) {
-        status += ", failed " + std::to_string(failedCount);
-        if (!lastError.empty()) {
-            status += ": " + lastError;
-        }
-    }
-
-    if (addedCount > 0u) {
-        woby::appendDefaultSceneNodesForFiles(state, firstAddedFileIndex);
-        woby::recalculateSceneBounds(state);
-        woby::frameCameraToScene(state);
-        woby::markSceneDirty(state);
-    }
-
-    spdlog::info(
-        "perf append_model_files requested_count={} added_count={} skipped_count={} failed_count={} duration_ms={}",
-        modelPaths.size(),
-        addedCount,
-        skippedCount,
-        failedCount,
-        elapsedMilliseconds(start));
-    return addedCount > 0u;
 }
 
 void pushDroppedPath(DragDropState& state, const char* data)

@@ -222,9 +222,10 @@ TEST_CASE("inspector edits retain the existing scene save load mapping")
     woby::UiState state;
     woby::Mesh mesh;
     mesh.nodes.push_back({"part", 0u, 0u});
-    const auto modelPath = std::filesystem::current_path() / "inspector.obj";
+    const auto testDirectory = std::filesystem::temp_directory_path();
+    const auto modelPath = testDirectory / "inspector.obj";
     state.files.push_back(woby::createUiFileState(modelPath, mesh, 0));
-    woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0, 1);
+    woby::appendFolderTreeSceneNode(state, testDirectory, 0, 1);
     woby::selectSceneObject(state, state.sceneNodes[0].objectId);
     woby::selectSceneObject(state, state.files[0].objectId, true);
     woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId, true);
@@ -237,7 +238,7 @@ TEST_CASE("inspector edits retain the existing scene save load mapping")
     woby::setSelectedObjectProperty(state, P::vertexSize, 2.0f);
     woby::setSelectedObjectProperty(state, P::vertices, 0.0f);
     const auto expected = woby::createSceneDocument(state);
-    const auto path = std::filesystem::temp_directory_path() / "woby_inspector_round_trip.woby";
+    const auto path = testDirectory / "woby_inspector_round_trip.woby";
     woby::writeSceneDocument(path, expected);
     auto loaded = woby::readSceneDocument(path);
     loaded.files[0].path = woby::sceneAbsolutePath(path, loaded.files[0].path);
