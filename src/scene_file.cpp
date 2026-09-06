@@ -2,7 +2,9 @@
 #include "utf8_path.h"
 
 #include <algorithm>
+#include <tuple>
 #include <cctype>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -450,6 +452,9 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         file,
         group,
         node,
+        comparison,
+        comparisonA,
+        comparisonB,
     };
 
     SceneDocument document;
@@ -465,6 +470,18 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
 
         try {
+            if (text == "[[comparisons]]") {
+                document.comparisons.emplace_back();
+                section = Section::comparison;
+                continue;
+            }
+            if (text == "[[comparisons.a]]" || text == "[[comparisons.b]]") {
+                if (document.comparisons.empty()) { throw std::runtime_error("Comparison input appeared before comparison."); }
+                const bool a = text == "[[comparisons.a]]";
+                (a ? document.comparisons.back().a : document.comparisons.back().b).emplace_back();
+                section = a ? Section::comparisonA : Section::comparisonB;
+                continue;
+            }
             if (text == "[[files]]") {
                 document.files.emplace_back();
                 section = Section::file;
@@ -494,7 +511,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 2 && version != 3 && version != 4) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -527,6 +544,38 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 } else if (key == "comparison_show_non_manifold") {
                     document.comparison.showNonManifold = parseTomlBool(value);
                 }
+            } else if (section == Section::comparison) {
+                auto& record = document.comparisons.back();
+                if (key == "name") { record.name = parseTomlString(value);
+                } else if (key == "translation") { record.translation = parseTomlFloat3(value);
+                } else if (key == "comparison_enabled") {
+                    record.settings.enabled = parseTomlBool(value);
+                } else if (key == "comparison_mode") {
+                    const auto mode = parseTomlString(value);
+                    if (mode == "distance") { record.settings.mode = ComparisonMode::distance; }
+                    else if (mode == "a") { record.settings.mode = ComparisonMode::original; }
+                    else if (mode == "b") { record.settings.mode = ComparisonMode::repaired; }
+                    else if (mode == "overlay") { record.settings.mode = ComparisonMode::overlay; }
+                    else { throw std::runtime_error("Unknown comparison mode."); }
+                } else if (key == "comparison_distance_on_a") {
+                    record.settings.distanceOnOriginal = parseTomlBool(value);
+                } else if (key == "comparison_tolerance") {
+                    record.settings.tolerance = parseTomlFloat(value);
+                } else if (key == "comparison_color_range") {
+                    record.settings.colorRange = parseTomlFloat(value);
+                } else if (key == "comparison_show_edges") {
+                    record.settings.showEdges = parseTomlBool(value);
+                } else if (key == "comparison_show_boundaries") {
+                    record.settings.showBoundaries = parseTomlBool(value);
+                } else if (key == "comparison_show_non_manifold") {
+                    record.settings.showNonManifold = parseTomlBool(value);
+                }
+            } else if (section == Section::comparisonA || section == Section::comparisonB) {
+                auto& comparison = document.comparisons.back();
+                auto& part = (section == Section::comparisonA ? comparison.a : comparison.b).back();
+                if (key == "file_index") { part.fileIndex = parseTomlInteger(value); }
+                else if (key == "group_index") { part.groupIndex = parseTomlInteger(value); }
+                else if (key == "name") { part.name = parseTomlString(value); }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
             } else if (section == Section::group) {
@@ -571,16 +620,50 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
     }
 
-    document.comparison = normalizedComparisonSettings(document.comparison);
-    const auto hasSide = [&](ComparisonSide side) {
-        for (const auto& file : document.files) {
-            for (const auto& group : file.groups) {
-                if (comparisonMember(group.settings.comparison, side)) { return true; }
-            }
+    // Migrate v2-v4 membership into one object, then discard legacy input fields.
+    SceneComparisonRecord legacy;
+    legacy.name = "Comparison 1";
+    legacy.settings = normalizedComparisonSettings(document.comparison);
+    for (size_t f = 0; f < document.files.size(); ++f) {
+        auto& file = document.files[f];
+        for (size_t g = 0; g < file.groups.size(); ++g) {
+            auto& group = file.groups[g];
+            const SceneComparisonPartRecord part{static_cast<int>(f), static_cast<int>(g),
+                pathToUtf8(file.path.filename()) + " / " + group.name};
+            if (group.settings.comparison.a) { legacy.a.push_back(part); }
+            if (group.settings.comparison.b) { legacy.b.push_back(part); }
+            group.settings.comparison = {};
         }
-        return false;
-    };
-    if (!hasSide(ComparisonSide::a) || !hasSide(ComparisonSide::b)) { document.comparison.enabled = false; }
+    }
+    if (document.comparisons.empty() && (!legacy.a.empty() || !legacy.b.empty()
+        || document.comparison != ComparisonSettings{})) {
+        document.comparisons.push_back(std::move(legacy));
+    }
+    document.comparison = {};
+    for (auto& comparison : document.comparisons) {
+        if (comparison.name.empty()) { comparison.name = "Comparison"; }
+        comparison.settings = normalizedComparisonSettings(comparison.settings);
+        if (!std::all_of(comparison.translation.begin(), comparison.translation.end(), [](float v) { return std::isfinite(v); })) {
+            comparison.translation = {};
+        }
+        for (auto* members : {&comparison.a, &comparison.b}) {
+            for (const auto& part : *members) {
+                if (part.fileIndex == -1 && part.groupIndex == -1) { continue; }
+                if (part.fileIndex < 0 || static_cast<size_t>(part.fileIndex) >= document.files.size()
+                    || part.groupIndex < 0 || static_cast<size_t>(part.groupIndex)
+                        >= document.files[static_cast<size_t>(part.fileIndex)].groups.size()) {
+                    throw std::runtime_error("Comparison references an invalid source part.");
+                }
+            }
+            std::sort(members->begin(), members->end(), [](const auto& a, const auto& b) {
+                return std::tie(a.fileIndex, a.groupIndex, a.name) < std::tie(b.fileIndex, b.groupIndex, b.name);
+            });
+            members->erase(std::unique(members->begin(), members->end(), [](const auto& a, const auto& b) {
+                return a.fileIndex == b.fileIndex && a.groupIndex == b.groupIndex
+                    && (a.fileIndex >= 0 || a.name == b.name);
+            }), members->end());
+        }
+    }
     return document;
 }
 
@@ -591,29 +674,13 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 4\n";
+    stream << "version = 5\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
     stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
     stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
-    const auto comparison = normalizedComparisonSettings(document.comparison);
-    const char* mode = "distance";
-    switch (comparison.mode) {
-    case ComparisonMode::distance: break;
-    case ComparisonMode::original: mode = "a"; break;
-    case ComparisonMode::repaired: mode = "b"; break;
-    case ComparisonMode::overlay: mode = "overlay"; break;
-    }
-    stream << "comparison_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
-    stream << "comparison_mode = \"" << mode << "\"\n";
-    stream << "comparison_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
-    stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
-    stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
-    stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
-    stream << "comparison_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
-    stream << "comparison_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
 
     for (const auto& file : document.files) {
         const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);
@@ -645,8 +712,6 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             stream << "\n[[files.groups]]\n";
             stream << "name = \"" << escapeTomlString(group.name) << "\"\n";
             stream << "visible = " << (group.settings.visible ? "true" : "false") << "\n";
-            stream << "comparison_a = " << (group.settings.comparison.a ? "true" : "false") << "\n";
-            stream << "comparison_b = " << (group.settings.comparison.b ? "true" : "false") << "\n";
             stream << "show_solid_mesh = " << (group.settings.showSolidMesh ? "true" : "false") << "\n";
             stream << "show_triangles = " << (group.settings.showTriangles ? "true" : "false") << "\n";
             stream << "show_vertices = " << (group.settings.showVertices ? "true" : "false") << "\n";
@@ -691,6 +756,36 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "rotation_degrees = ";
         writeTomlFloat3(stream, node.settings.rotationDegrees);
         stream << "\n";
+    }
+    for (const auto& record : document.comparisons) {
+        stream << "\n[[comparisons]]\n";
+        stream << "name = \"" << escapeTomlString(record.name) << "\"\n";
+        stream << "translation = "; writeTomlFloat3(stream, record.translation); stream << "\n";
+        const auto comparison = normalizedComparisonSettings(record.settings);
+        const char* mode = "distance";
+        switch (comparison.mode) {
+        case ComparisonMode::distance: break;
+        case ComparisonMode::original: mode = "a"; break;
+        case ComparisonMode::repaired: mode = "b"; break;
+        case ComparisonMode::overlay: mode = "overlay"; break;
+        }
+        stream << "comparison_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
+        stream << "comparison_mode = \"" << mode << "\"\n";
+        stream << "comparison_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
+        stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
+        stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
+        stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
+        stream << "comparison_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
+        stream << "comparison_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
+
+        for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+            for (const auto& part : side == ComparisonSide::a ? record.a : record.b) {
+                stream << (side == ComparisonSide::a ? "\n[[comparisons.a]]\n" : "\n[[comparisons.b]]\n");
+                stream << "file_index = " << part.fileIndex << "\n";
+                stream << "group_index = " << part.groupIndex << "\n";
+                stream << "name = \"" << escapeTomlString(part.name) << "\"\n";
+            }
+        }
     }
     const auto contents = stream.str();
     // An exclusively created sibling directory owns the temporary file. Both the

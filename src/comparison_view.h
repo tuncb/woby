@@ -4,6 +4,7 @@
 #include "scene_renderer.h"
 
 #include <future>
+#include <map>
 #include <string>
 
 namespace woby
@@ -30,15 +31,22 @@ struct ComparisonRuntime
     bool ready = false;
     MeshComparison result;
     ComparisonGpuSurface originalGpu, repairedGpu;
-    bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;
-    bgfx::UniformHandle parameters = BGFX_INVALID_HANDLE;
     std::string error;
 };
 
-void updateComparisonRuntime(ComparisonRuntime &runtime, const UiState &state);
-void destroyComparisonRuntime(ComparisonRuntime &runtime);
-void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime, float rightEdge, float width, float height);
-[[nodiscard]] bool submitComparisonScene(bgfx::ViewId view, const UiState &state, const ComparisonRuntime &runtime,
-                                         bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform);
+struct ComparisonRuntimes {
+    std::map<SceneObjectId, ComparisonRuntime> objects;
+    bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;
+    bgfx::UniformHandle parameters = BGFX_INVALID_HANDLE;
+};
+
+void updateComparisonRuntimes(ComparisonRuntimes& runtimes, const UiState& state);
+void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
+void drawComparisonObjects(UiState& state);
+void drawComparisonPanel(UiState& state, ComparisonRuntimes& runtimes, float rightEdge, float width, float height);
+void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
+    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform);
+// False while any visible, valid comparison is queued/computing. Errors are reported to the caller.
+[[nodiscard]] bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntimes& runtimes);
 
 } // namespace woby

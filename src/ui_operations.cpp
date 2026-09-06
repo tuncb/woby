@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "comparison_scene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,6 +18,10 @@ void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool conte
 {
     if (!findSceneObject(state, id)) {
         return;
+    }
+    if (findComparison(state, id)) {
+        state.activeComparisonId = id;
+        setComparisonPaneVisible(state, true);
     }
     const bool selected = sceneObjectSelected(state, id);
     if (contextClick && selected) {
@@ -86,69 +91,193 @@ std::vector<SceneObjectId> comparisonObjectParts(const UiState& state, const std
     return parts;
 }
 
-size_t comparisonPartCount(const UiState& state, ComparisonSide side)
+const UiComparison* findComparison(const UiState& state, SceneObjectId id)
+{
+    if (id == invalidSceneObjectId) { id = state.activeComparisonId; }
+    for (const auto& comparison : state.comparisons) {
+        if (comparison.objectId == id) { return &comparison; }
+    }
+    return nullptr;
+}
+
+UiComparison* findComparison(UiState& state, SceneObjectId id)
+{
+    if (id == invalidSceneObjectId) { id = state.activeComparisonId; }
+    for (auto& comparison : state.comparisons) {
+        if (comparison.objectId == id) { return &comparison; }
+    }
+    return nullptr;
+}
+
+ComparisonSettings comparisonSettings(const UiState& state, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    return comparison ? comparison->settings : ComparisonSettings{};
+}
+
+bool comparisonContains(const UiState& state, SceneObjectId part, ComparisonSide side, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison || part == invalidSceneObjectId) { return false; }
+    const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    return std::any_of(members.begin(), members.end(), [part](const UiComparisonPart& member) {
+        return member.objectId == part;
+    });
+}
+
+size_t comparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id)
 {
     size_t count = 0;
     for (const auto& file : state.files) {
         for (size_t i = 0; i < file.groupSettings.size(); ++i) {
-            if (comparablePart(file, i) && comparisonMember(file.groupSettings[i].comparison, side)) { ++count; }
+            if (comparablePart(file, i) && comparisonContains(state, file.groupSettings[i].objectId, side, id)) { ++count; }
         }
     }
     return count;
 }
 
+size_t missingComparisonPartCount(const UiState& state, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison) { return 0; }
+    return comparison->a.size() + comparison->b.size()
+        - comparisonPartCount(state, ComparisonSide::a, id) - comparisonPartCount(state, ComparisonSide::b, id);
+}
+
+SceneObjectId createComparison(UiState& state)
+{
+    UiComparison comparison;
+    size_t number = 1;
+    do {
+        comparison.name = "Comparison " + std::to_string(number++);
+    } while (std::any_of(state.comparisons.begin(), state.comparisons.end(), [&](const UiComparison& other) {
+        return other.name == comparison.name;
+    }));
+    comparison.settings.enabled = true;
+    const auto bounds = combineBounds(state.files, state.sceneNodes);
+    float rightEdge = bounds.max[0];
+    for (const auto& other : state.comparisons) {
+        if (const auto display = comparisonDisplayBounds(state, other.objectId)) {
+            rightEdge = std::max(rightEdge, display->max[0]);
+        }
+    }
+    comparison.translation[0] = rightEdge - bounds.min[0] + std::max(bounds.max[0] - bounds.min[0], 1.0f) * .25f;
+    if (!finitePosition(comparison.translation)) { comparison.translation = {}; }
+    state.comparisons.push_back(std::move(comparison));
+    assignSceneObjectIds(state);
+    const auto id = state.comparisons.back().objectId;
+    selectSceneObject(state, id);
+    markSceneDirty(state);
+    return id;
+}
+
+SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
+{
+    const auto* source = findComparison(state, id);
+    if (!source) { return invalidSceneObjectId; }
+    auto copy = *source;
+    copy.objectId = invalidSceneObjectId;
+    copy.name += " copy";
+    const auto sourceBounds = comparisonDisplayBounds(state, id);
+    float rightEdge = combineBounds(state.files, state.sceneNodes).max[0];
+    for (const auto& other : state.comparisons) {
+        if (const auto display = comparisonDisplayBounds(state, other.objectId)) {
+            rightEdge = std::max(rightEdge, display->max[0]);
+        }
+    }
+    if (sourceBounds) {
+        copy.translation[0] += rightEdge - sourceBounds->min[0]
+            + std::max(sourceBounds->max[0] - sourceBounds->min[0], 1.0f) * .25f;
+    }
+    if (!finitePosition(copy.translation)) { copy.translation = source->translation; }
+    state.comparisons.push_back(std::move(copy));
+    assignSceneObjectIds(state);
+    const auto created = state.comparisons.back().objectId;
+    selectSceneObject(state, created);
+    recalculateSceneBounds(state);
+    markSceneDirty(state);
+    return created;
+}
+
+void removeComparison(UiState& state, SceneObjectId id)
+{
+    if (id == invalidSceneObjectId || !findComparison(state, id)) { return; }
+    std::erase_if(state.comparisons, [id](const UiComparison& comparison) { return comparison.objectId == id; });
+    std::erase(state.selectedSceneObjects, id);
+    if (state.activeComparisonId == id) {
+        state.activeComparisonId = state.comparisons.empty() ? invalidSceneObjectId : state.comparisons.front().objectId;
+    }
+    recalculateSceneBounds(state);
+    markSceneDirty(state);
+}
+
+void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
+{
+    if (auto* comparison = findComparison(state, id)) {
+        comparison->name = name.empty() ? "Comparison" : name;
+        markSceneDirty(state);
+    }
+}
+
+void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array<float, 3>& translation)
+{
+    if (!finitePosition(translation)) { return; }
+    if (auto* comparison = findComparison(state, id)) {
+        comparison->translation = translation;
+        recalculateSceneBounds(state);
+        markSceneDirty(state);
+    }
+}
+
+void frameComparison(UiState& state, SceneObjectId id)
+{
+    if (const auto bounds = comparisonDisplayBounds(state, id)) { frameComparisonBounds(state, *bounds); }
+}
+
 ComparisonMembershipAction comparisonMembershipAction(
-    const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side)
+    const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, SceneObjectId id)
 {
     const auto parts = comparisonObjectParts(state, objects);
     if (parts.empty()) { return ComparisonMembershipAction::unavailable; }
-    for (const auto& file : state.files) {
-        for (const auto& group : file.groupSettings) {
-            if (std::binary_search(parts.begin(), parts.end(), group.objectId)
-                && !comparisonMember(group.comparison, side)) {
-                return ComparisonMembershipAction::add;
-            }
-        }
+    for (const auto part : parts) {
+        if (!comparisonContains(state, part, side, id)) { return ComparisonMembershipAction::add; }
     }
     return ComparisonMembershipAction::remove;
 }
 
-bool canCompareGroups(const UiState& state)
+bool canCompareGroups(const UiState& state, SceneObjectId id)
 {
-    return comparisonPartCount(state, ComparisonSide::a) != 0 && comparisonPartCount(state, ComparisonSide::b) != 0;
+    return comparisonPartCount(state, ComparisonSide::a, id) != 0
+        && comparisonPartCount(state, ComparisonSide::b, id) != 0 && missingComparisonPartCount(state, id) == 0;
 }
 
 bool canCompareSceneSelection(const UiState& state)
 {
-    if (state.selectedSceneObjects.size() != 2 || state.selectedSceneObjects[0] == state.selectedSceneObjects[1]) {
-        return false;
-    }
-    for (const auto& file : state.files) {
-        for (const auto& group : file.groupSettings) {
-            if (group.comparison.a || group.comparison.b) { return false; }
-        }
-    }
-    return !comparisonObjectParts(state, {state.selectedSceneObjects[0]}).empty()
+    return state.selectedSceneObjects.size() == 2 && state.selectedSceneObjects[0] != state.selectedSceneObjects[1]
+        && !comparisonObjectParts(state, {state.selectedSceneObjects[0]}).empty()
         && !comparisonObjectParts(state, {state.selectedSceneObjects[1]}).empty();
 }
 
 bool compareSceneSelection(UiState& state)
 {
     if (!canCompareSceneSelection(state)) { return false; }
-    setComparisonObjects(state, {state.selectedSceneObjects[0]}, ComparisonSide::a, true);
-    setComparisonObjects(state, {state.selectedSceneObjects[1]}, ComparisonSide::b, true);
-    auto settings = state.comparison;
-    settings.enabled = true;
-    setComparisonSettings(state, settings);
-    return state.comparison.enabled;
+    const auto selection = state.selectedSceneObjects;
+    const auto id = createComparison(state);
+    setComparisonObjects(state, {selection[0]}, ComparisonSide::a, true, id);
+    setComparisonObjects(state, {selection[1]}, ComparisonSide::b, true, id);
+    frameCameraToScene(state);
+    return true;
 }
 
-void setComparisonSettings(UiState& state, ComparisonSettings settings)
+void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id)
 {
-    const bool wasEnabled = state.comparison.enabled;
-    state.comparison = normalizedComparisonSettings(settings);
-    if (!canCompareGroups(state)) { state.comparison.enabled = false; }
-    if (state.comparison.enabled && !wasEnabled) { setComparisonPaneVisible(state, true); }
+    if (auto* comparison = findComparison(state, id)) {
+        const bool wasEnabled = comparison->settings.enabled;
+        comparison->settings = normalizedComparisonSettings(settings);
+        if (comparison->settings.enabled && !wasEnabled) { setComparisonPaneVisible(state, true); }
+        recalculateSceneBounds(state);
+        markSceneDirty(state);
+    }
 }
 
 void setComparisonPaneVisible(UiState& state, bool visible)
@@ -156,36 +285,62 @@ void setComparisonPaneVisible(UiState& state, bool visible)
     state.comparisonPaneVisible = visible;
 }
 
-void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member)
+void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member,
+    SceneObjectId id)
 {
     const auto parts = comparisonObjectParts(state, objects);
-    if (member && !parts.empty()) { setComparisonPaneVisible(state, true); }
-    for (auto& file : state.files) {
-        for (auto& group : file.groupSettings) {
-            if (std::binary_search(parts.begin(), parts.end(), group.objectId)) {
-                (side == ComparisonSide::a ? group.comparison.a : group.comparison.b) = member;
-            }
+    if (parts.empty()) { return; }
+    if (!findComparison(state, id) && member && id == invalidSceneObjectId) {
+        const auto selection = state.selectedSceneObjects;
+        id = createComparison(state);
+        state.selectedSceneObjects = selection;
+    }
+    auto* comparison = findComparison(state, id);
+    if (!comparison) { return; }
+    auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    for (const auto part : parts) {
+        if (member) {
+            if (comparisonContains(state, part, side, comparison->objectId)) { continue; }
+            const auto info = findSceneObject(state, part);
+            const auto file = info ? findSceneObject(state, info->fileId) : std::nullopt;
+            members.push_back({part, (file ? file->name + " / " : "") + (info ? info->name : "Missing part")});
+        } else {
+            std::erase_if(members, [part](const UiComparisonPart& entry) { return entry.objectId == part; });
         }
     }
-    setComparisonSettings(state, state.comparison);
+    if (member) { setComparisonPaneVisible(state, true); }
+    recalculateSceneBounds(state);
+    markSceneDirty(state);
 }
 
-void clearComparisonGroup(UiState& state, ComparisonSide side)
+void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id)
 {
-    for (auto& file : state.files) {
-        for (auto& group : file.groupSettings) {
-            (side == ComparisonSide::a ? group.comparison.a : group.comparison.b) = false;
-        }
+    if (auto* comparison = findComparison(state, id)) {
+        auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+        std::erase_if(members, [&](const UiComparisonPart& part) {
+            return comparisonObjectParts(state, {part.objectId}).empty();
+        });
+        recalculateSceneBounds(state);
+        markSceneDirty(state);
     }
-    setComparisonSettings(state, state.comparison);
 }
 
-void swapComparisonGroups(UiState& state)
+void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id)
 {
-    for (auto& file : state.files) {
-        for (auto& group : file.groupSettings) { std::swap(group.comparison.a, group.comparison.b); }
+    if (auto* comparison = findComparison(state, id)) {
+        (side == ComparisonSide::a ? comparison->a : comparison->b).clear();
+        recalculateSceneBounds(state);
+        markSceneDirty(state);
     }
-    setComparisonSettings(state, state.comparison);
+}
+
+void swapComparisonGroups(UiState& state, SceneObjectId id)
+{
+    if (auto* comparison = findComparison(state, id)) {
+        std::swap(comparison->a, comparison->b);
+        recalculateSceneBounds(state);
+        markSceneDirty(state);
+    }
 }
 
 void frameComparisonBounds(UiState& state, const Bounds& bounds)
@@ -571,6 +726,10 @@ void toggleFileVisible(UiFileState& file)
 void setAllSceneVisible(UiState& state, bool visible)
 {
     bool changed = false;
+    for (auto& comparison : state.comparisons) {
+        changed = changed || comparison.settings.enabled != visible;
+        comparison.settings.enabled = visible;
+    }
     for (auto& node : state.sceneNodes) {
         changed = setFolderNodesVisible(node, visible) || changed;
     }
@@ -841,6 +1000,25 @@ bool sceneNodeTransformIsDefault(const UiSceneNodeSettings& settings)
 void recalculateSceneBounds(UiState& state)
 {
     state.sceneBounds = combineBounds(state.files, state.sceneNodes);
+    std::vector<Vertex> corners;
+    if (countVisibleSceneGroups(state) != 0) {
+        corners.resize(2);
+        corners[0].position = state.sceneBounds.min;
+        corners[1].position = state.sceneBounds.max;
+    }
+    bool hasComparisonBounds = false;
+    for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled) { continue; }
+        if (const auto bounds = comparisonDisplayBounds(state, comparison.objectId)) {
+            hasComparisonBounds = true;
+            Vertex first, last;
+            first.position = bounds->min;
+            last.position = bounds->max;
+            corners.push_back(first);
+            corners.push_back(last);
+        }
+    }
+    if (hasComparisonBounds) { state.sceneBounds = calculateBounds(corners); }
 }
 
 void frameCameraToScene(UiState& state)
@@ -896,7 +1074,6 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
     }
 
     state.files.erase(state.files.begin() + static_cast<std::ptrdiff_t>(fileIndex));
-    setComparisonSettings(state, state.comparison);
     state.sceneNodes.erase(
         std::remove_if(
             state.sceneNodes.begin(),
@@ -936,18 +1113,37 @@ UiState prepareSceneReplacement(const UiState& current,
     setShowOrigin(prepared, document.showOrigin);
     setShowGrid(prepared, document.showGrid);
     setMasterVertexPointSize(prepared, document.masterVertexPointSize);
-    // Restore membership using saved part records, never old session object IDs.
-    for (size_t i = 0; i < prepared.files.size(); ++i) {
-        auto& file = prepared.files[i];
-        for (size_t j = 0; j < file.groupSettings.size(); ++j) {
-            ComparisonMembership membership;
-            if (i < document.files.size() && j < document.files[i].groups.size()) {
-                membership = document.files[i].groups[j].settings.comparison;
+    for (const auto& record : document.comparisons) {
+        UiComparison comparison;
+        comparison.name = record.name.empty() ? "Comparison" : record.name;
+        comparison.settings = normalizedComparisonSettings(record.settings);
+        comparison.translation = finitePosition(record.translation) ? record.translation : std::array<float, 3>{};
+        const auto loadParts = [&](const std::vector<SceneComparisonPartRecord>& references) {
+            std::vector<UiComparisonPart> result;
+            for (const auto& reference : references) {
+                UiComparisonPart part{invalidSceneObjectId, reference.name};
+                if (reference.fileIndex >= 0 && static_cast<size_t>(reference.fileIndex) < prepared.files.size()
+                    && reference.groupIndex >= 0) {
+                    const auto f = static_cast<size_t>(reference.fileIndex);
+                    const auto g = static_cast<size_t>(reference.groupIndex);
+                    const auto& file = prepared.files[f];
+                    if (comparablePart(file, g) && f < document.files.size() && g < document.files[f].groups.size()
+                        && file.mesh.nodes[g].name == document.files[f].groups[g].name) {
+                        part.objectId = file.groupSettings[g].objectId;
+                    }
+                }
+                if (part.objectId == invalidSceneObjectId || std::none_of(result.begin(), result.end(), [&](const auto& other) {
+                    return other.objectId == part.objectId;
+                })) { result.push_back(std::move(part)); }
             }
-            file.groupSettings[j].comparison = comparablePart(file, j) ? membership : ComparisonMembership{};
-        }
+            return result;
+        };
+        comparison.a = loadParts(record.a);
+        comparison.b = loadParts(record.b);
+        prepared.comparisons.push_back(std::move(comparison));
     }
-    setComparisonSettings(prepared, document.comparison);
+    assignSceneObjectIds(prepared);
+    if (!prepared.comparisons.empty()) { prepared.activeComparisonId = prepared.comparisons.front().objectId; }
     recalculateSceneBounds(prepared);
     prepared.camera = frameCameraBounds(prepared.sceneBounds, prepared.upAxis);
     clearSceneDirty(prepared);

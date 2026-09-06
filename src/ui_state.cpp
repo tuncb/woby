@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 #include <utility>
+#include <tuple>
 
 #include <bx/math.h>
 
@@ -659,7 +660,6 @@ SceneFileSettings sceneFileSettings(const UiFileSettings& settings)
 SceneGroupSettings sceneGroupSettings(const UiGroupState& settings)
 {
     SceneGroupSettings result;
-    result.comparison = settings.comparison;
     result.visible = settings.visible;
     result.showSolidMesh = settings.showSolidMesh;
     result.showTriangles = settings.showTriangles;
@@ -687,7 +687,36 @@ SceneNodeSettings sceneNodeSettings(const UiSceneNodeSettings& settings)
 SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
-    document.comparison = state.comparison;
+    for (const auto& comparison : state.comparisons) {
+        SceneComparisonRecord record;
+        record.name = comparison.name;
+        record.settings = comparison.settings;
+        record.translation = comparison.translation;
+        const auto saveParts = [&](const std::vector<UiComparisonPart>& members) {
+            std::vector<SceneComparisonPartRecord> result;
+            for (const auto& part : members) {
+                SceneComparisonPartRecord reference;
+                reference.name = part.name;
+                for (size_t f = 0; f < state.files.size(); ++f) {
+                    const auto& groups = state.files[f].groupSettings;
+                    for (size_t g = 0; g < groups.size() && g < state.files[f].mesh.nodes.size(); ++g) {
+                        if (part.objectId != invalidSceneObjectId && groups[g].objectId == part.objectId) {
+                            reference.fileIndex = static_cast<int>(f);
+                            reference.groupIndex = static_cast<int>(g);
+                        }
+                    }
+                }
+                result.push_back(std::move(reference));
+            }
+            std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) {
+                return std::tie(a.fileIndex, a.groupIndex, a.name) < std::tie(b.fileIndex, b.groupIndex, b.name);
+            });
+            return result;
+        };
+        record.a = saveParts(comparison.a);
+        record.b = saveParts(comparison.b);
+        document.comparisons.push_back(std::move(record));
+    }
     document.masterVertexPointSize = state.masterVertexPointSize;
     document.showOrigin = state.showOrigin;
     document.showGrid = state.showGrid;
@@ -752,7 +781,6 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
     for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
         auto& group = file.groupSettings[groupIndex];
         const auto& recordGroup = record.groups[groupIndex].settings;
-        group.comparison = recordGroup.comparison;
         group.visible = recordGroup.visible;
         group.showSolidMesh = recordGroup.showSolidMesh;
         group.showTriangles = recordGroup.showTriangles;

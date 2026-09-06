@@ -51,6 +51,11 @@ bool visitFolders(const std::vector<UiSceneNode>& nodes, const Visitor& visitor)
 template <typename Visitor>
 void visitObjects(const UiState& state, const Visitor& visitor)
 {
+    for (const auto& comparison : state.comparisons) {
+        if (comparison.objectId != invalidSceneObjectId
+            && visitor(SceneObjectInfo{comparison.objectId, SceneObjectKind::comparison,
+                comparison.name, {}, invalidSceneObjectId})) { return; }
+    }
     if (visitFolders(state.sceneNodes, visitor)) {
         return;
     }
@@ -74,6 +79,11 @@ void visitObjects(const UiState& state, const Visitor& visitor)
 
 void assignSceneObjectIds(UiState& state)
 {
+    for (auto& comparison : state.comparisons) {
+        if (comparison.objectId == invalidSceneObjectId) {
+            comparison.objectId = allocateObjectId(state);
+        }
+    }
     for (auto& file : state.files) {
         if (file.objectId == invalidSceneObjectId) {
             file.objectId = allocateObjectId(state);

@@ -15,6 +15,7 @@ enum class SceneObjectKind {
     folder,
     file,
     group,
+    comparison,
 };
 
 struct SceneObjectInfo {

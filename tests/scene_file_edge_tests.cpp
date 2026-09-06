@@ -53,7 +53,7 @@ TEST_CASE("scene document reader reports malformed files")
     writeText(
         unsupportedVersion,
         "# comment\n"
-        "version = 5\n");
+        "version = 6\n");
     checkReadThrowsContaining(unsupportedVersion, ":2: Unsupported scene version.");
 
     const std::filesystem::path groupBeforeFile = root / "group_before_file.woby";

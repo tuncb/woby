@@ -125,6 +125,7 @@ Json objectInfo(const AutomationRuntime& runtime, const SceneObjectInfo& object)
     case SceneObjectKind::folder: break;
     case SceneObjectKind::file: kind = "file"; break;
     case SceneObjectKind::group: kind = "group"; break;
+    case SceneObjectKind::comparison: kind = "comparison"; break;
     }
     Json result = {{"id", publicObjectId(runtime, object.id)}, {"kind", kind}, {"name", object.name}};
     if (object.kind == SceneObjectKind::file) {

@@ -2,8 +2,10 @@
 #include "comparison_scene.h"
 #include "ui_operations.h"
 #include "obj_mesh.h"
+#include "control_scene.h"
 
 #include <doctest/doctest.h>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -65,6 +67,242 @@ woby::UiState stateWithFiles(size_t count)
     return state;
 }
 } // namespace
+
+TEST_CASE("comparison objects share inputs and keep independent settings and geometry signatures")
+{
+    auto state = stateWithFiles(3);
+    const auto first = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, first);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, first);
+    const auto second = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, second);
+    woby::setComparisonObjects(state, {state.files[2].objectId}, woby::ComparisonSide::b, true, second);
+    REQUIRE(woby::canCompareGroups(state, first));
+    REQUIRE(woby::canCompareGroups(state, second));
+    const auto a = woby::comparisonGeometrySignature(state, first);
+    const auto b = woby::comparisonGeometrySignature(state, second);
+    woby::setComparisonTranslation(state, first, {20, -3, 2});
+    auto settings = woby::comparisonSettings(state, first);
+    settings.tolerance = .3f;
+    settings.mode = woby::ComparisonMode::overlay;
+    settings.enabled = false;
+    woby::setComparisonSettings(state, settings, first);
+    CHECK(woby::comparisonSettings(state, second).enabled);
+    CHECK(woby::comparisonSettings(state, second).tolerance == doctest::Approx(.05));
+    CHECK(woby::comparisonGeometrySignature(state, first) == a);
+    CHECK(woby::comparisonGeometrySignature(state, second) == b);
+    woby::setGroupTranslation(state.files[1].groupSettings[0], {0, 0, 1});
+    CHECK(woby::comparisonGeometrySignature(state, first) != a);
+    CHECK(woby::comparisonGeometrySignature(state, second) == b);
+    const auto measured = woby::compareMeshes(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, first),
+        woby::comparisonWorldMesh(state, woby::ComparisonSide::b, first));
+    CHECK(measured.original.maximum == doctest::Approx(1));
+    woby::setGroupTranslation(state.files[0].groupSettings[0], {0, 0, 2});
+    CHECK(woby::comparisonGeometrySignature(state, second) != b);
+    woby::selectSceneObject(state, first);
+    CHECK(state.activeComparisonId == first);
+    woby::selectSceneObject(state, state.files[2].objectId);
+    CHECK(state.activeComparisonId == first);
+    CHECK(woby::comparisonObjectParts(state, {first, second}).empty());
+}
+
+TEST_CASE("comparison duplication deletion and selection preserve source ownership")
+{
+    auto state = stateWithFiles(2);
+    const auto sourceIds = woby::sceneObjects(state);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    woby::renameComparison(state, id, "Repair check");
+    const auto copy = woby::duplicateComparison(state, id);
+    REQUIRE(copy != id);
+    REQUIRE(woby::findComparison(state, copy));
+    CHECK(woby::findComparison(state, copy)->name == "Repair check copy");
+    CHECK(woby::findComparison(state, copy)->a == woby::findComparison(state, id)->a);
+    CHECK(woby::findComparison(state, copy)->translation != woby::findComparison(state, id)->translation);
+    CHECK(woby::findSceneObject(state, copy)->kind == woby::SceneObjectKind::comparison);
+    woby::clearComparisonGroup(state, woby::ComparisonSide::a, copy);
+    CHECK(woby::canCompareGroups(state, id));
+    CHECK_FALSE(woby::canCompareGroups(state, copy));
+    woby::removeComparison(state, copy);
+    CHECK(state.activeComparisonId == id);
+    CHECK_FALSE(woby::findSceneObject(state, copy));
+    woby::removeComparison(state, id);
+    CHECK(state.activeComparisonId == woby::invalidSceneObjectId);
+    CHECK(state.selectedSceneObjects.empty());
+    CHECK(state.files.size() == 2);
+    for (const auto& source : sourceIds) { CHECK(woby::findSceneObject(state, source.id).has_value()); }
+    CHECK(woby::createComparison(state) > copy);
+}
+
+TEST_CASE("missing comparison inputs block partial results and survive save and reopen")
+{
+    auto state = stateWithFiles(3);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[2].objectId}, woby::ComparisonSide::b, true, id);
+    const auto missingName = woby::findComparison(state, id)->a[0].name;
+    REQUIRE(woby::removeFileFromState(state, 0));
+    CHECK(woby::findComparison(state, id)->settings.enabled);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a, id) == 1);
+    CHECK(woby::missingComparisonPartCount(state, id) == 1);
+    CHECK_FALSE(woby::canCompareGroups(state, id));
+    CHECK(woby::comparisonGeometrySignature(state, id) == 0);
+    CHECK_THROWS((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id));
+    CHECK_FALSE(woby::comparisonDisplayBounds(state, id));
+    const auto document = woby::createSceneDocument(state);
+    REQUIRE(document.comparisons[0].a.size() == 2);
+    CHECK(document.comparisons[0].a[0].fileIndex == -1);
+    CHECK(document.comparisons[0].a[0].name == missingName);
+    auto restored = woby::prepareSceneReplacement(state, state.files, document);
+    CHECK(woby::missingComparisonPartCount(restored) == 1);
+    CHECK(woby::createSceneDocument(restored) == document);
+    woby::removeMissingComparisonParts(restored, woby::ComparisonSide::a);
+    CHECK(woby::canCompareGroups(restored));
+    CHECK(woby::comparisonWorldMesh(restored, woby::ComparisonSide::a).indices.size() == 6);
+}
+
+TEST_CASE("comparison offsets affect framing but never measured source coordinates")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    woby::setComparisonTranslation(state, id, {20, 30, 40});
+    const auto bounds = woby::comparisonDisplayBounds(state, id);
+    REQUIRE(bounds);
+    CHECK(bounds->min == std::array<float, 3>{20, 30, 40});
+    CHECK(bounds->max == std::array<float, 3>{21, 31, 40});
+    CHECK(state.sceneBounds.max == bounds->max);
+    woby::setFileVisible(state.files[0], false);
+    woby::setFileVisible(state.files[1], false);
+    woby::recalculateSceneBounds(state);
+    CHECK(state.sceneBounds.min == bounds->min);
+    CHECK(state.sceneBounds.max == bounds->max);
+    woby::setFileVisible(state.files[0], true);
+    woby::setFileVisible(state.files[1], true);
+    woby::frameComparison(state, id);
+    CHECK(state.camera.target == bounds->center);
+    woby::setComparisonTranslation(state, id, {NAN, 0, 0});
+    CHECK(woby::findComparison(state, id)->translation == std::array<float, 3>{20, 30, 40});
+    CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id).bounds.min == std::array<float, 3>{0, 0, 0});
+    auto settings = woby::comparisonSettings(state, id);
+    settings.enabled = false;
+    woby::setComparisonSettings(state, settings, id);
+    CHECK(state.sceneBounds.max == std::array<float, 3>{1, 1, 0});
+}
+
+TEST_CASE("multiple comparison objects round trip with fresh identities and independent dirty tracking")
+{
+    auto state = stateWithFiles(3);
+    const auto path = std::filesystem::temp_directory_path() / "woby-multiple-comparisons.woby";
+    for (auto& file : state.files) { file.path = path.parent_path() / file.path; }
+    const auto first = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, first);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, first);
+    const auto second = woby::duplicateComparison(state, first);
+    woby::setComparisonObjects(state, {state.files[2].objectId}, woby::ComparisonSide::b, true, second);
+    woby::renameComparison(state, second, "Repair \"B\" \\ check");
+    auto settings = woby::comparisonSettings(state, second);
+    settings.enabled = false;
+    settings.tolerance = .15f;
+    woby::setComparisonSettings(state, settings, second);
+    const auto document = woby::createSceneDocument(state);
+    woby::writeSceneDocument(path, document);
+    auto read = woby::readSceneDocument(path);
+    for (auto& file : read.files) { file.path = woby::sceneAbsolutePath(path, file.path); }
+    CHECK(read == document);
+    const auto restored = woby::prepareSceneReplacement(state, state.files, read);
+    REQUIRE(restored.comparisons.size() == 2);
+    CHECK(restored.comparisons[0].objectId > second);
+    CHECK(restored.comparisons[1].a[0].objectId == restored.files[0].groupSettings[0].objectId);
+    CHECK(woby::createSceneDocument(restored) == document);
+    woby::selectSceneObject(state, first);
+    woby::setComparisonPaneVisible(state, false);
+    woby::updateSceneDirty(state, document);
+    CHECK_FALSE(state.isDirty);
+    woby::setComparisonTranslation(state, second, {9, 8, 7});
+    woby::updateSceneDirty(state, document);
+    CHECK(state.isDirty);
+    CHECK(woby::findComparison(state, first)->translation == document.comparisons[0].translation);
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("comparison control inspection visibility and translation use object identities")
+{
+    CHECK(woby::controlCapabilities()["objectKinds"].back() == "comparison");
+    CHECK(woby::controlCapabilities()["comparisonTransformFields"] == nlohmann::json::array({"translation"}));
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    const auto format = [](woby::SceneObjectId object) { return std::to_string(object); };
+    const auto clean = woby::createSceneDocument(state);
+    const auto details = woby::controlObjectDetails(state, id, format);
+    CHECK(details["valid"] == true);
+    CHECK(details["a"][0]["id"] == format(state.files[0].groupSettings[0].objectId));
+    CHECK(details["occurrences"].size() == 1);
+    CHECK(woby::controlSceneTree(state, format).back()["kind"] == "comparison");
+    woby::ControlOperation command;
+    command.objectId = id;
+    command.target = format(id);
+    command.action = woby::ControlAction::transformSet;
+    command.translation = std::array<float, 3>{3, 4, 5};
+    woby::applyControlSceneOperation(state, clean, command, format, 100, 800);
+    CHECK(woby::findComparison(state, id)->translation == *command.translation);
+    command.scale = 2.0f;
+    CHECK_THROWS(woby::applyControlSceneOperation(state, clean, command, format, 100, 800));
+    CHECK(woby::findComparison(state, id)->translation == *command.translation);
+    command = {};
+    command.objectId = id;
+    command.action = woby::ControlAction::visibility;
+    command.visible = false;
+    woby::applyControlSceneOperation(state, clean, command, format, 100, 800);
+    CHECK_FALSE(woby::comparisonSettings(state, id).enabled);
+    CHECK(state.files[0].groupSettings[0].visible);
+}
+
+TEST_CASE("new and duplicated comparisons are placed beyond existing result bounds")
+{
+    auto state = stateWithFiles(2);
+    const auto first = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, first);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, first);
+    const auto moved = woby::duplicateComparison(state, first);
+    woby::setComparisonTranslation(state, moved, {30, 0, 0});
+    const auto copy = woby::duplicateComparison(state, first);
+    REQUIRE(woby::comparisonDisplayBounds(state, copy));
+    CHECK(woby::comparisonDisplayBounds(state, copy)->min[0] > 31);
+    const auto created = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, created);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, created);
+    CHECK(woby::comparisonDisplayBounds(state, created)->min[0] > woby::comparisonDisplayBounds(state, copy)->max[0]);
+}
+
+TEST_CASE("comparison load rejects malformed references and retains changed source layouts as missing")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    auto document = woby::createSceneDocument(state);
+    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-malformed.woby";
+    document.comparisons[0].a[0].groupIndex = 99;
+    woby::writeSceneDocument(path, document);
+    CHECK_THROWS_WITH((void)woby::readSceneDocument(path), "Comparison references an invalid source part.");
+    document = woby::createSceneDocument(state);
+    document.comparisons[0].translation = {NAN, 2, 3};
+    document.comparisons[0].a.push_back(document.comparisons[0].a[0]);
+    woby::writeSceneDocument(path, document);
+    const auto normalized = woby::readSceneDocument(path);
+    CHECK(normalized.comparisons[0].a.size() == 1);
+    CHECK(normalized.comparisons[0].translation == std::array<float, 3>{});
+    state.files[0].mesh.nodes[0].name = "replacement group";
+    const auto restored = woby::prepareSceneReplacement(state, state.files, normalized);
+    CHECK(woby::missingComparisonPartCount(restored) == 1);
+    CHECK_FALSE(woby::canCompareGroups(restored));
+    std::filesystem::remove(path);
+}
 
 TEST_CASE("point triangle distances cover face edge vertex and degenerate regions")
 {
@@ -265,12 +503,12 @@ TEST_CASE("folder and file comparison actions expand current parts without dupli
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 2);
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 12);
     woby::setComparisonObjects(state, {partId}, woby::ComparisonSide::a, false);
-    CHECK_FALSE(state.files[0].groupSettings[0].comparison.a);
-    CHECK(state.files[1].groupSettings[0].comparison.a);
+    CHECK_FALSE(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::a));
+    CHECK(woby::comparisonContains(state, state.files[1].groupSettings[0].objectId, woby::ComparisonSide::a));
     state.files.push_back(woby::createUiFileState("new.obj", square(), 0));
     state.sceneNodes[0].children.push_back(woby::createFileSceneNode(state.files.back(), 2));
     woby::assignSceneObjectIds(state);
-    CHECK_FALSE(state.files.back().groupSettings[0].comparison.a);
+    CHECK_FALSE(woby::comparisonContains(state, state.files.back().groupSettings[0].objectId, woby::ComparisonSide::a));
     woby::setComparisonObjects(state, {folderId}, woby::ComparisonSide::a, false);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 0);
 }
@@ -290,18 +528,19 @@ TEST_CASE("parts in one file can belong to either or both comparison groups")
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 3);
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::b).indices.size() == 3);
     woby::setComparisonObjects(state, {first}, woby::ComparisonSide::b, true);
-    CHECK(state.files[0].groupSettings[0].comparison.a);
-    CHECK(state.files[0].groupSettings[0].comparison.b);
+    CHECK(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::a));
+    CHECK(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::b));
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == 2);
     woby::swapComparisonGroups(state);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 2);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == 1);
-    auto settings = state.comparison;
+    auto settings = woby::comparisonSettings(state);
     settings.enabled = true;
     woby::setComparisonSettings(state, settings);
-    REQUIRE(state.comparison.enabled);
+    REQUIRE(woby::comparisonSettings(state).enabled);
     woby::clearComparisonGroup(state, woby::ComparisonSide::b);
-    CHECK_FALSE(state.comparison.enabled);
+    CHECK(woby::comparisonSettings(state).enabled);
+    CHECK_FALSE(woby::canCompareGroups(state));
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 2);
     CHECK_THROWS((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::b));
 }
@@ -321,10 +560,10 @@ TEST_CASE("comparison selection ignores stale IDs empty folders and objects with
     woby::updateSceneDirty(state, clean);
     CHECK_FALSE(state.isDirty);
     CHECK_FALSE(woby::canCompareGroups(state));
-    auto settings = state.comparison;
+    auto settings = woby::comparisonSettings(state);
     settings.enabled = true;
     woby::setComparisonSettings(state, settings);
-    CHECK_FALSE(state.comparison.enabled);
+    CHECK_FALSE(woby::comparisonSettings(state).enabled);
     CHECK(woby::comparisonGeometrySignature(state) == 0);
 }
 
@@ -406,21 +645,22 @@ TEST_CASE("comparison settings clamp and memberships survive unrelated file remo
     woby::selectSceneObject(state, second, true);
     woby::setComparisonObjects(state, {first}, woby::ComparisonSide::a, true);
     woby::setComparisonObjects(state, {second}, woby::ComparisonSide::b, true);
-    auto settings = state.comparison;
+    auto settings = woby::comparisonSettings(state);
     settings.enabled = true;
     settings.tolerance = NAN;
     settings.colorRange = -4;
     woby::setComparisonSettings(state, settings);
-    CHECK(state.comparison.tolerance == doctest::Approx(.05));
-    CHECK(state.comparison.colorRange >= state.comparison.tolerance);
+    CHECK(woby::comparisonSettings(state).tolerance == doctest::Approx(.05));
+    CHECK(woby::comparisonSettings(state).colorRange >= woby::comparisonSettings(state).tolerance);
     REQUIRE(woby::removeFileFromState(state, 0));
-    CHECK(state.comparison.enabled);
+    CHECK(woby::comparisonSettings(state).enabled);
     CHECK(state.files[0].objectId == first);
-    CHECK(state.files[0].groupSettings[0].comparison.a);
-    CHECK(state.files[1].groupSettings[0].comparison.b);
+    CHECK(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::a));
+    CHECK(woby::comparisonContains(state, state.files[1].groupSettings[0].objectId, woby::ComparisonSide::b));
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second});
     REQUIRE(woby::removeFileFromState(state, 0));
-    CHECK_FALSE(state.comparison.enabled);
+    CHECK(woby::comparisonSettings(state).enabled);
+    CHECK_FALSE(woby::canCompareGroups(state));
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 0);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == 1);
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{second});
@@ -434,7 +674,7 @@ TEST_CASE("comparison memberships and settings round trip with fresh IDs and dir
     const auto clean = woby::createSceneDocument(state);
     woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, woby::ComparisonSide::a, true);
     woby::setComparisonObjects(state, {state.files[1].objectId, state.files[2].objectId}, woby::ComparisonSide::b, true);
-    auto settings = state.comparison;
+    auto settings = woby::comparisonSettings(state);
     settings.enabled = true;
     settings.mode = woby::ComparisonMode::overlay;
     settings.distanceOnOriginal = true;
@@ -450,7 +690,7 @@ TEST_CASE("comparison memberships and settings round trip with fresh IDs and dir
     woby::writeSceneDocument(path, document);
     auto read = woby::readSceneDocument(path);
     for (auto& file : read.files) { file.path = woby::sceneAbsolutePath(path, file.path); }
-    CHECK(read.comparison == document.comparison);
+    CHECK(read.comparisons == document.comparisons);
     CHECK(read.nodes == document.nodes);
     REQUIRE(read.files.size() == document.files.size());
     for (size_t i = 0; i < read.files.size(); ++i) {
@@ -463,12 +703,10 @@ TEST_CASE("comparison memberships and settings round trip with fresh IDs and dir
     CHECK(read == document);
     auto loadedFiles = state.files;
     for (size_t i = 0; i < loadedFiles.size(); ++i) {
-        loadedFiles[i].groupSettings[0].comparison = {};
         woby::applySceneFileRecord(loadedFiles[i], read.files[i]);
-        CHECK(loadedFiles[i].groupSettings[0].comparison == state.files[i].groupSettings[0].comparison);
     }
     const auto replacement = woby::prepareSceneReplacement(state, std::move(loadedFiles), read);
-    CHECK(replacement.comparison == settings);
+    CHECK(woby::comparisonSettings(replacement) == settings);
     CHECK(woby::createSceneDocument(replacement) == document);
     CHECK(replacement.files[0].groupSettings[0].objectId != state.files[0].groupSettings[0].objectId);
     CHECK(replacement.selectedSceneObjects.empty());
@@ -501,12 +739,12 @@ TEST_CASE("sample loads with repairs and A B comparison membership")
     const auto state = woby::prepareSceneReplacement({}, {
         woby::createUiFileState(root / "original.obj", original, 0),
         woby::createUiFileState(root / "repaired.obj", repaired, 0)}, scene);
-    CHECK(state.comparison.enabled);
+    CHECK(woby::comparisonSettings(state).enabled);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == original.nodes.size());
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == repaired.nodes.size());
 }
 
-TEST_CASE("comparison load normalizes invalid settings and disables empty sides")
+TEST_CASE("comparison load normalizes settings and preserves incomplete objects")
 {
     const auto path = std::filesystem::temp_directory_path() / "woby-comparison-invalid.woby";
     {
@@ -515,9 +753,11 @@ TEST_CASE("comparison load normalizes invalid settings and disables empty sides"
                "comparison_tolerance = nan\ncomparison_color_range = -10\n[[files]]\npath = \"mesh.obj\"\n";
     }
     const auto document = woby::readSceneDocument(path);
-    CHECK_FALSE(document.comparison.enabled);
-    CHECK(document.comparison.tolerance == doctest::Approx(.05));
-    CHECK(document.comparison.colorRange >= document.comparison.tolerance);
+    REQUIRE(document.comparisons.size() == 1);
+    CHECK(document.comparisons[0].settings.enabled);
+    CHECK(document.comparisons[0].a.empty());
+    CHECK(document.comparisons[0].settings.tolerance == doctest::Approx(.05));
+    CHECK(document.comparisons[0].settings.colorRange >= document.comparisons[0].settings.tolerance);
     std::filesystem::remove(path);
 }
 
@@ -634,17 +874,19 @@ TEST_CASE("comparison panel opens on adding objects and starting comparison but 
     woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true);
     CHECK(state.comparisonPaneVisible);
     woby::setComparisonPaneVisible(state, false);
-    auto settings = state.comparison;
+    auto settings = woby::comparisonSettings(state);
+    settings.enabled = false;
+    woby::setComparisonSettings(state, settings);
     settings.enabled = true;
     woby::setComparisonSettings(state, settings);
-    REQUIRE(state.comparison.enabled);
+    REQUIRE(woby::comparisonSettings(state).enabled);
     CHECK(state.comparisonPaneVisible);
     const auto document = woby::createSceneDocument(state);
     const auto signature = woby::comparisonGeometrySignature(state);
     woby::setComparisonPaneVisible(state, false);
     woby::updateSceneDirty(state, document);
     CHECK_FALSE(state.isDirty);
-    CHECK(state.comparison.enabled);
+    CHECK(woby::comparisonSettings(state).enabled);
     CHECK(woby::comparisonGeometrySignature(state) == signature);
     // Editing display settings while hidden should not force the panel open again.
     settings.colorRange = 2;
@@ -652,19 +894,16 @@ TEST_CASE("comparison panel opens on adding objects and starting comparison but 
     CHECK_FALSE(state.comparisonPaneVisible);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, false);
     CHECK_FALSE(state.comparisonPaneVisible);
-    CHECK_FALSE(state.comparison.enabled);
+    CHECK(woby::comparisonSettings(state).enabled);
+    CHECK_FALSE(woby::canCompareGroups(state));
     const auto restored = woby::prepareSceneReplacement(state, state.files, document);
-    CHECK(restored.comparisonPaneVisible);
-    CHECK(restored.comparison.enabled);
+    CHECK_FALSE(restored.comparisonPaneVisible);
+    CHECK(woby::comparisonSettings(restored).enabled);
 }
 
 TEST_CASE("quick comparison assigns selected objects in click order and opens the panel")
 {
     auto state = stateWithFiles(2);
-    auto settings = state.comparison;
-    settings.mode = woby::ComparisonMode::overlay;
-    settings.tolerance = .25f;
-    woby::setComparisonSettings(state, settings);
     const auto clean = woby::createSceneDocument(state);
     const auto first = state.files[1].objectId, second = state.files[0].objectId;
     woby::selectSceneObject(state, first);
@@ -672,22 +911,22 @@ TEST_CASE("quick comparison assigns selected objects in click order and opens th
     woby::selectSceneObject(state, first, false, true);
     REQUIRE(woby::canCompareSceneSelection(state));
     REQUIRE(woby::compareSceneSelection(state));
-    CHECK(state.comparison.enabled);
+    CHECK(woby::comparisonSettings(state).enabled);
     CHECK(state.comparisonPaneVisible);
-    CHECK(state.comparison.mode == woby::ComparisonMode::overlay);
-    CHECK(state.comparison.tolerance == doctest::Approx(.25));
-    CHECK(state.files[1].groupSettings[0].comparison.a);
-    CHECK_FALSE(state.files[1].groupSettings[0].comparison.b);
-    CHECK(state.files[0].groupSettings[0].comparison.b);
-    CHECK_FALSE(state.files[0].groupSettings[0].comparison.a);
-    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second});
+    CHECK(woby::comparisonSettings(state).mode == woby::ComparisonMode::distance);
+    CHECK(woby::comparisonSettings(state).tolerance == doctest::Approx(.05));
+    CHECK(woby::comparisonContains(state, state.files[1].groupSettings[0].objectId, woby::ComparisonSide::a));
+    CHECK_FALSE(woby::comparisonContains(state, state.files[1].groupSettings[0].objectId, woby::ComparisonSide::b));
+    CHECK(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::b));
+    CHECK_FALSE(woby::comparisonContains(state, state.files[0].groupSettings[0].objectId, woby::ComparisonSide::a));
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{state.activeComparisonId});
     woby::updateSceneDirty(state, clean);
     CHECK(state.isDirty);
     const auto document = woby::createSceneDocument(state);
     const auto restored = woby::prepareSceneReplacement(state, state.files, document);
-    CHECK(restored.comparison.enabled);
-    CHECK(restored.files[1].groupSettings[0].comparison.a);
-    CHECK(restored.files[0].groupSettings[0].comparison.b);
+    CHECK(woby::comparisonSettings(restored).enabled);
+    CHECK(woby::comparisonContains(restored, restored.files[1].groupSettings[0].objectId, woby::ComparisonSide::a));
+    CHECK(woby::comparisonContains(restored, restored.files[0].groupSettings[0].objectId, woby::ComparisonSide::b));
 }
 
 TEST_CASE("quick comparison supports folders and mesh parts including shared descendants")
@@ -740,11 +979,12 @@ TEST_CASE("quick comparison leaves existing memberships and invalid selections u
     state.selectedSceneObjects = {state.files[0].objectId, state.sceneNodes.back().objectId};
     unchanged();
     state.selectedSceneObjects = {state.files[0].objectId, state.files[1].objectId};
-    for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
-        woby::setComparisonObjects(state, {state.files[2].objectId}, side, true);
-        unchanged();
-        woby::clearComparisonGroup(state, side);
-    }
+    woby::setComparisonObjects(state, {state.files[2].objectId}, woby::ComparisonSide::a, true);
+    const auto existingId = state.activeComparisonId;
+    REQUIRE(woby::compareSceneSelection(state));
+    CHECK(state.comparisons.size() == 2);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a, existingId) == 1);
+    state.selectedSceneObjects = {state.files[0].objectId, state.files[1].objectId};
     state.files[1].mesh.indices.clear();
     unchanged();
 }
@@ -785,7 +1025,7 @@ TEST_CASE("mixed comparison selections add missing parts before offering removal
     woby::setComparisonObjects(state, selection, woby::ComparisonSide::a, true);
     CHECK(woby::comparisonMembershipAction(state, selection, woby::ComparisonSide::a) == Action::remove);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 2);
-    CHECK_FALSE(state.files[2].groupSettings[0].comparison.a);
+    CHECK_FALSE(woby::comparisonContains(state, state.files[2].groupSettings[0].objectId, woby::ComparisonSide::a));
     const std::vector<woby::SceneObjectId> multiple = {state.files[0].objectId, state.files[2].objectId};
     CHECK(woby::comparisonMembershipAction(state, multiple, woby::ComparisonSide::a) == Action::add);
     woby::setComparisonObjects(state, selection, woby::ComparisonSide::a, false);

@@ -12,6 +12,7 @@
 namespace woby {
 
 struct SceneGroupSettings {
+    // Legacy v2-v4 read mapping; cleared when migrating to comparison records.
     ComparisonMembership comparison;
     bool visible = true;
     bool showSolidMesh = true;
@@ -81,7 +82,24 @@ struct SceneNodeRecord {
     friend bool operator==(const SceneNodeRecord&, const SceneNodeRecord&) = default;
 };
 
+struct SceneComparisonPartRecord {
+    int fileIndex = -1;
+    int groupIndex = -1;
+    std::string name;
+    friend bool operator==(const SceneComparisonPartRecord&, const SceneComparisonPartRecord&) = default;
+};
+
+struct SceneComparisonRecord {
+    std::string name;
+    ComparisonSettings settings;
+    std::array<float, 3> translation{};
+    std::vector<SceneComparisonPartRecord> a, b;
+    friend bool operator==(const SceneComparisonRecord&, const SceneComparisonRecord&) = default;
+};
+
 struct SceneDocument {
+    std::vector<SceneComparisonRecord> comparisons;
+    // Legacy v2-v4 input only. New scenes store comparison objects above.
     ComparisonSettings comparison;
     float masterVertexPointSize = 4.0f;
     bool showOrigin = true;

@@ -220,10 +220,11 @@ Json controlCapabilities()
             {"positional", method.positional}, {"parameters", parameters}, {"options", method.options},
             {"requiredOptions", method.required}, {"requiresValues", method.requiresValues}, {"mutating", method.mutating}});
     }
-    return {{"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group"}},
+    return {{"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "comparison"}},
+        {"comparisonTransformFields", {"translation"}},
         {"cameraPersistent", false}, {"screenshot", {{"width", 1920}, {"height", 1800}, {"overwrite", true}}},
-        {"scopes", {{"visibility.set", {"scene", "folder", "file", "group"}},
-            {"render.set", {"scene", "folder", "file", "group"}}, {"transform", {"folder", "file", "group"}},
+        {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "comparison"}},
+            {"render.set", {"scene", "folder", "file", "group"}}, {"transform", {"folder", "file", "group", "comparison"}},
             {"opacity.set", {"folder", "file", "group"}}, {"color", {"group"}},
             {"vertex-size.set", {"scene", "file", "group"}}, {"model.remove", {"file"}}}}};
 }

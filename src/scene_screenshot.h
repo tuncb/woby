@@ -14,7 +14,7 @@
 
 namespace woby {
 
-struct ComparisonRuntime;
+struct ComparisonRuntimes;
 
 struct SceneScreenshotRuntime {
     bgfx::FrameBufferHandle frameBuffer = BGFX_INVALID_HANDLE;
@@ -45,7 +45,7 @@ void submitSceneScreenshotCapture(
     const Bounds& sceneBounds,
     const SceneCamera& camera,
     bool homogeneousDepth,
-    const ComparisonRuntime* comparison = nullptr);
+    const ComparisonRuntimes* comparison = nullptr);
 void failSceneScreenshotCapture(SceneScreenshotRuntime& screenshot);
 [[nodiscard]] std::optional<std::string> completeSceneScreenshotReadback(
     SceneScreenshotRuntime& screenshot,

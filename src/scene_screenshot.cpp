@@ -224,14 +224,13 @@ void submitSceneScreenshotCapture(
     const Bounds& sceneBounds,
     const SceneCamera& camera,
     bool homogeneousDepth,
-    const ComparisonRuntime* comparison)
+    const ComparisonRuntimes* comparison)
 {
     if (!screenshot.captureRequested) {
         return;
     }
-    if (ui.comparison.enabled && comparison != nullptr && !comparison->ready) {
-        if (!comparison->error.empty()) { throw std::runtime_error(comparison->error); }
-        return; // Keep the request pending until its comparison is ready.
+    if (comparison != nullptr && !comparisonsReadyForScreenshot(ui, *comparison)) {
+        return; // Keep the request pending until all visible results are ready.
     }
 
     ensureSceneScreenshotFramebuffer(screenshot);
@@ -265,7 +264,8 @@ void submitSceneScreenshotCapture(
     bgfx::setViewTransform(screenshotSceneView, view, projection);
     bgfx::setViewTransform(screenshotHelperView, view, projection);
 
-    if (comparison == nullptr || !submitComparisonScene(screenshotSceneView, ui, *comparison, colorProgram, colorUniform)) {
+    bgfx::setViewMode(screenshotSceneView, bgfx::ViewMode::Sequential);
+    {
         submitSceneFiles(
             screenshotSceneView,
             files,
@@ -280,6 +280,7 @@ void submitSceneScreenshotCapture(
             screenshotWidth,
             screenshotHeight);
     }
+    if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform); }
     submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
 
     bgfx::blit(

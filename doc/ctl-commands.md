@@ -1,6 +1,6 @@
 # CTL command reference
 
-Updated 2026-09-05. All commands in the current-command tables below are implemented
+Updated 2026-09-06. All commands in the current-command tables below are implemented
 in the CLI and local JSON-RPC API. The 34 commands exposing existing application
 features are now available, alongside the earlier lifecycle, capture, and recovery
 commands. See [automation.md](automation.md) for transport, ordering, retries, and
@@ -50,6 +50,18 @@ or provide job progress. `instance.info` and `command.get` remain immediate runt
 queries. `ready` means startup completed, not idle; a scene query does not wait for
 unrelated manual background loading. `status.busy` describes loading, capture, and
 dialog activity, not an idle barrier or the automation queue itself.
+
+Comparison objects appear in `objects` and `scene tree` with kind `comparison`.
+`object` includes their input references, missing-input status, and display
+settings; `scene info` includes `comparisonCount`. Comparison IDs support
+`visibility set`, `transform get`, translation-only `transform set`, and
+`transform reset` (resetting their display offset). Rotation, scale, opacity,
+and mesh render-mode commands do not apply to comparison results. Use the UI to
+create comparisons and edit their inputs and measurement settings.
+
+Screenshot capture waits for every visible comparison to finish. Incomplete
+inputs or failed computations fail capture; hide or repair the affected object
+before retrying.
 
 ## Visibility, rendering, transforms, and appearance
 

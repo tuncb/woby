@@ -876,33 +876,28 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
             ImGui::CloseCurrentPopup();
         }
-        bool hasParts = false;
-        for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
-            const auto action = woby::comparisonMembershipAction(state, state.selectedSceneObjects, side);
-            const bool enabled = action != woby::ComparisonMembershipAction::unavailable;
-            const bool remove = action == woby::ComparisonMembershipAction::remove;
-            const char* label = side == woby::ComparisonSide::a
-                ? (remove ? "Remove from group A" : "Add to group A")
-                : (remove ? "Remove from group B" : "Add to group B");
-            hasParts = hasParts || enabled;
-            if (ImGui::MenuItem(label, nullptr, false, enabled)) {
-                woby::setComparisonObjects(state, state.selectedSceneObjects, side, !remove);
-            }
+        if (ImGui::MenuItem("Create comparison", nullptr, false, woby::canCompareSceneSelection(state))) {
+            woby::compareSceneSelection(state);
         }
-        if (!hasParts) { ImGui::TextDisabled("Select objects containing triangles."); }
-        ImGui::Separator();
-        if (woby::canCompareSceneSelection(state)) {
-            if (ImGui::MenuItem("Compare selected objects")) {
-                woby::compareSceneSelection(state);
+        if (ImGui::BeginMenu("Comparison membership", !state.comparisons.empty())) {
+            for (const auto& comparisonObject : state.comparisons) {
+                ImGui::PushID(std::to_string(comparisonObject.objectId).c_str());
+                if (ImGui::BeginMenu(comparisonObject.name.c_str())) {
+                    for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+                        const auto action = woby::comparisonMembershipAction(state, state.selectedSceneObjects, side, comparisonObject.objectId);
+                        const bool remove = action == woby::ComparisonMembershipAction::remove;
+                        const char* label = side == woby::ComparisonSide::a
+                            ? (remove ? "Remove from A" : "Add to A") : (remove ? "Remove from B" : "Add to B");
+                        if (ImGui::MenuItem(label, nullptr, false, action != woby::ComparisonMembershipAction::unavailable)) {
+                            woby::setComparisonObjects(state, state.selectedSceneObjects, side, !remove, comparisonObject.objectId);
+                            woby::selectSceneObject(state, comparisonObject.objectId);
+                        }
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::PopID();
             }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("First selected object goes to A; second goes to B.");
-            }
-        } else if (ImGui::MenuItem("Compare A and B", nullptr, false, woby::canCompareGroups(state))) {
-            auto settings = state.comparison;
-            settings.enabled = true;
-            woby::setComparisonSettings(state, settings);
-            woby::setComparisonPaneVisible(state, true);
+            ImGui::EndMenu();
         }
         ImGui::EndPopup();
     }
@@ -928,8 +923,9 @@ void drawGroupControls(
     ImGui::SameLine();
     const float textStartX = ImGui::GetCursorPosX();
     const float nameWidth = controlsStartX - textStartX - style.ItemSpacing.x;
-    const std::string comparisonBadge = settings.comparison.a
-        ? (settings.comparison.b ? "[A B] " : "[A] ") : (settings.comparison.b ? "[B] " : "");
+    const bool memberA = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::a);
+    const bool memberB = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::b);
+    const std::string comparisonBadge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
     const std::string displayName = comparisonBadge + node.name;
     drawClippedTextItem("##name", displayName.c_str(), nameWidth,
         woby::sceneObjectSelected(state, settings.objectId));
@@ -2603,7 +2599,7 @@ int main(int argc, char** argv)
         const auto pointLayout = pointSpriteVertexLayout();
         const auto helperLayout = helperLineVertexLayout();
         woby::UiState ui;
-        woby::ComparisonRuntime comparison;
+        woby::ComparisonRuntimes comparison;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument;
@@ -3371,7 +3367,7 @@ int main(int argc, char** argv)
                     if (!importerStatus.empty()) { ImGui::TextWrapped("%s", importerStatus.c_str()); }
                 }
 
-                const std::string filesPaneTitle = "Files (" + std::to_string(files.size()) + ")##Files";
+                const std::string filesPaneTitle = "Scene (" + std::to_string(files.size()) + " files)##Files";
                 const bool filesPaneOpen = ImGui::CollapsingHeader(
                     filesPaneTitle.c_str(),
                     ImGuiTreeNodeFlags_DefaultOpen);
@@ -3390,6 +3386,7 @@ int main(int argc, char** argv)
                             drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex);
                             ImGui::PopID();
                         }
+                        woby::drawComparisonObjects(ui);
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
                             const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
                             removeModelFile(ui, runtimes, removeFileIndex.value());
@@ -3564,7 +3561,7 @@ int main(int argc, char** argv)
             }
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
 
-            woby::updateComparisonRuntime(comparison, ui);
+            woby::updateComparisonRuntimes(comparison, ui);
 
             const uint32_t sceneViewportWidth = std::max(width, 1u);
             bgfx::setViewRect(
@@ -3618,7 +3615,6 @@ int main(int argc, char** argv)
                 || backgroundLoad.active
                 || gpuFinalize.active;
             const bool hoverPickingEnabled = mouseInsideViewport
-                && !ui.comparison.enabled
                 && !cameraInteractionActive
                 && !dialogOpen;
             if (!hoverPickingEnabled) {
@@ -3658,7 +3654,8 @@ int main(int argc, char** argv)
             hoveredVertex = hoverPickCache.hoveredVertex;
             recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
-            if (!woby::submitComparisonScene(sceneView, ui, comparison, colorProgram, colorUniform)) {
+            bgfx::setViewMode(sceneView, bgfx::ViewMode::Sequential);
+            {
                 submitSceneFiles(
                     sceneView,
                     files,
@@ -3673,6 +3670,7 @@ int main(int argc, char** argv)
                     sceneViewportWidth,
                     height);
             }
+            woby::submitComparisonScenes(sceneView, ui, comparison, colorProgram, colorUniform);
             recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
             submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
@@ -3762,7 +3760,7 @@ int main(int argc, char** argv)
         ImGui::DestroyContext();
 
         bgfx::destroy(pointParamsUniform);
-        woby::destroyComparisonRuntime(comparison);
+        woby::destroyComparisonRuntimes(comparison);
         bgfx::destroy(colorUniform);
         bgfx::destroy(pointSpriteProgram);
         bgfx::destroy(colorProgram);

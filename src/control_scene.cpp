@@ -63,6 +63,19 @@ Json fileInfo(const UiFileState& file)
 }
 Json localObjectDetails(const UiState& state, SceneObjectId id)
 {
+    if (id != invalidSceneObjectId) {
+        if (const auto* comparison = findComparison(state, id)) {
+            const auto& settings = comparison->settings;
+            const char* mode = settings.mode == ComparisonMode::distance ? "distance"
+                : settings.mode == ComparisonMode::original ? "a" : settings.mode == ComparisonMode::repaired ? "b" : "overlay";
+            return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
+                {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
+                {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
+                {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}}},
+                {"valid", canCompareGroups(state, id)}, {"missingPartCount", missingComparisonPartCount(state, id)},
+                {"aPartCount", comparison->a.size()}, {"bPartCount", comparison->b.size()}};
+        }
+    }
     if (const auto* folder = findFolder(state.sceneNodes, id)) {
         auto settings = settingsInfo(folder->settings);
         Json modes = Json::object();
@@ -206,7 +219,7 @@ Json controlSceneInfo(const UiState& state)
     modes["solid"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::solidMesh), groups);
     modes["triangles"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::triangles), groups);
     modes["vertices"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::vertices), groups);
-    return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"groupCount", groups},
+    return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"comparisonCount", state.comparisons.size()}, {"groupCount", groups},
         {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles},
         {"showGrid", state.showGrid}, {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
         {"masterVertexPointSize", state.masterVertexPointSize}, {"renderModes", modes}, {"bounds", boundsInfo(state.sceneBounds)}};
@@ -239,12 +252,36 @@ Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
             result.push_back(treeNode(state, state.sceneNodes[index], formatId, identity, true, 1, {index}));
         }
     }
+    for (const auto& comparison : state.comparisons) {
+        std::array<float, 16> world{};
+        bx::mtxTranslate(world.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+        result.push_back({{"id", formatId(comparison.objectId)}, {"name", comparison.name}, {"kind", "comparison"},
+            {"occurrence", {result.size()}}, {"implicit", false}, {"children", Json::array()},
+            {"settings", localObjectDetails(state, comparison.objectId)["settings"]},
+            {"effective", {{"visible", comparison.settings.enabled && canCompareGroups(state, comparison.objectId)},
+                {"opacity", 1}, {"worldMatrix", world}}}});
+    }
     return result;
 }
 
 Json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectIdFormatter& formatId)
 {
     auto result = localObjectDetails(state, id);
+    if (id != invalidSceneObjectId) {
+        if (const auto* comparison = findComparison(state, id)) {
+            const auto inputs = [&](const std::vector<UiComparisonPart>& members) {
+                auto list = Json::array();
+                for (const auto& part : members) {
+                    const bool missing = comparisonObjectParts(state, {part.objectId}).empty();
+                    list.push_back({{"id", missing ? Json(nullptr) : Json(formatId(part.objectId))},
+                        {"name", part.name}, {"missing", missing}});
+                }
+                return list;
+            };
+            result["a"] = inputs(comparison->a);
+            result["b"] = inputs(comparison->b);
+        }
+    }
     result["occurrences"] = Json::array();
     collectOccurrences(controlSceneTree(state, formatId), formatId(id), result["occurrences"]);
     return result;
@@ -254,6 +291,28 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     const ControlOperation& command, const ObjectIdFormatter& formatId, float minPaneWidth, float maxPaneWidth)
 {
     using A = ControlAction;
+    if (command.objectId != invalidSceneObjectId && findComparison(state, command.objectId)) {
+        if (command.action == A::transformGet) {
+            return {{"target", command.target}, {"settings", localObjectDetails(state, command.objectId)["settings"]}};
+        }
+        if (command.action == A::visibility) {
+            auto settings = comparisonSettings(state, command.objectId);
+            settings.enabled = *command.visible;
+            setComparisonSettings(state, settings, command.objectId);
+        } else if (command.action == A::transformSet || command.action == A::transformReset) {
+            if (command.rotationDegrees || command.scale || command.value) {
+                throw std::invalid_argument("Comparison transforms support display translation only.");
+            }
+            if (command.action == A::transformReset || command.translation) {
+                setComparisonTranslation(state, command.objectId, command.translation.value_or(std::array<float, 3>{}));
+            }
+        } else {
+            throw std::invalid_argument("This command does not apply to comparison objects.");
+        }
+        updateSceneDirty(state, cleanDocument);
+        return {{"target", command.target}, {"applied", localObjectDetails(state, command.objectId)["settings"]},
+            {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
+    }
     Target target;
     if (command.objectId != invalidSceneObjectId) { target = resolveTarget(state, command.objectId); }
     const bool scene = command.target == "scene";

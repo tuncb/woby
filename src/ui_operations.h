@@ -9,7 +9,21 @@
 
 namespace woby {
 
-void setComparisonSettings(UiState& state, ComparisonSettings settings);
+// An omitted ID targets the comparison currently shown in the inspector.
+[[nodiscard]] const UiComparison* findComparison(const UiState& state, SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] UiComparison* findComparison(UiState& state, SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] ComparisonSettings comparisonSettings(const UiState& state, SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] bool comparisonContains(const UiState& state, SceneObjectId part, ComparisonSide side,
+    SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] size_t missingComparisonPartCount(const UiState& state, SceneObjectId id = invalidSceneObjectId);
+SceneObjectId createComparison(UiState& state);
+SceneObjectId duplicateComparison(UiState& state, SceneObjectId id);
+void removeComparison(UiState& state, SceneObjectId id);
+void renameComparison(UiState& state, SceneObjectId id, const std::string& name);
+void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array<float, 3>& translation);
+void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
+void frameComparison(UiState& state, SceneObjectId id);
+void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id = invalidSceneObjectId);
 void setComparisonPaneVisible(UiState& state, bool visible);
 void frameComparisonBounds(UiState& state, const Bounds& bounds);
 [[nodiscard]] bool sceneObjectSelected(const UiState& state, SceneObjectId id);
@@ -19,18 +33,19 @@ void clearSceneSelection(UiState& state);
 // Files/folders expand to their current triangular mesh parts. IDs are deduplicated.
 [[nodiscard]] std::vector<SceneObjectId> comparisonObjectParts(
     const UiState& state, const std::vector<SceneObjectId>& objects);
-[[nodiscard]] size_t comparisonPartCount(const UiState& state, ComparisonSide side);
+[[nodiscard]] size_t comparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 enum class ComparisonMembershipAction { unavailable, add, remove };
 // Mixed selections add missing parts; fully included selections remove their parts.
 [[nodiscard]] ComparisonMembershipAction comparisonMembershipAction(
-    const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side);
-[[nodiscard]] bool canCompareGroups(const UiState& state);
-// With both sides empty, assign two distinct selected objects to A/B in click order.
+    const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] bool canCompareGroups(const UiState& state, SceneObjectId id = invalidSceneObjectId);
+// Create a new comparison from two distinct selected objects in click order.
 [[nodiscard]] bool canCompareSceneSelection(const UiState& state);
 bool compareSceneSelection(UiState& state);
-void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member);
-void clearComparisonGroup(UiState& state, ComparisonSide side);
-void swapComparisonGroups(UiState& state);
+void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member,
+    SceneObjectId id = invalidSceneObjectId);
+void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
+void swapComparisonGroups(UiState& state, SceneObjectId id = invalidSceneObjectId);
 
 enum class UiRenderMode {
     solidMesh,

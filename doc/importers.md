@@ -54,9 +54,10 @@ importer_id = "org.woby.example.off"
 The DLL path and binary are not embedded in a scene. Opening a scene never loads
 a DLL by a path from that scene. The matching importer must already be registered
 on that machine. Missing importers fail scene loading before the existing scene
-is replaced. Scenes save as version 4, which includes per-part A/B comparison
-membership. Version 2 and 3 scene structure remains readable, but the old two-file
-comparison settings are not migrated. Older woby versions reject version 4 explicitly.
+is replaced. Scenes save as version 5, which includes independent comparison
+objects referencing saved file/group indexes. Version 2–4 scenes remain readable;
+legacy per-part A/B membership migrates into one comparison object. Older woby
+versions reject version 5 explicitly.
 
 Saved group settings are indexed. Importers must preserve unique group names and
 their order for the same file across versions. Reopening rejects a changed group

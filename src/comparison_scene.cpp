@@ -1,6 +1,7 @@
 #include "comparison_scene.h"
 #include "mesh_comparison.h"
 #include "hash_utils.h"
+#include "ui_operations.h"
 
 #include <bx/math.h>
 
@@ -50,14 +51,14 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
 // One traversal supplies both geometry snapshots and their cache signatures.
 // Each canonical mesh part is visited once, irrespective of overlapping selections.
 template <typename Visitor>
-void visitParts(const UiState& state, ComparisonSide side, const Visitor& visitor)
+void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, const Visitor& visitor)
 {
     std::set<std::pair<size_t, size_t>> visited;
     const auto part = [&](size_t fileIndex, size_t groupIndex, const float* parent) {
         if (fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[fileIndex];
         if (groupIndex >= file.groupSettings.size() || groupIndex >= file.mesh.nodes.size()) { return; }
-        if (!comparisonMember(file.groupSettings[groupIndex].comparison, side)
+        if (!comparisonContains(state, file.groupSettings[groupIndex].objectId, side, id)
             || file.mesh.nodes[groupIndex].indexCount == 0
             || !visited.emplace(fileIndex, groupIndex).second) { return; }
         visitor(file, groupIndex, parent);
@@ -96,7 +97,7 @@ void visitParts(const UiState& state, ComparisonSide side, const Visitor& visito
 }
 } // namespace
 
-std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side)
+std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side, SceneObjectId id)
 {
     std::set<std::pair<size_t, size_t>> visited;
     const auto build = [&](auto&& self, const UiSceneNode& source) -> ComparisonTreeNode {
@@ -112,7 +113,7 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
             }
             const auto& part = file.groupSettings[source.groupIndex];
             const auto& meshNode = file.mesh.nodes[source.groupIndex];
-            if (!comparisonMember(part.comparison, side) || meshNode.indexCount < 3 || meshNode.indexCount % 3 != 0
+            if (!comparisonContains(state, part.objectId, side, id) || meshNode.indexCount < 3 || meshNode.indexCount % 3 != 0
                 || static_cast<size_t>(meshNode.indexOffset) + meshNode.indexCount > file.mesh.indices.size()
                 || !visited.emplace(source.fileIndex, source.groupIndex).second) { return result; }
             result.objectId = part.objectId;
@@ -148,10 +149,16 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
     return result;
 }
 
-Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side)
+Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectId id)
 {
+    const auto* comparison = findComparison(state, id);
+    if (!comparison) { throw std::runtime_error("Comparison no longer exists."); }
+    const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    if (members.size() != comparisonPartCount(state, side, id)) {
+        throw std::runtime_error("Comparison has missing or invalid source parts.");
+    }
     Mesh result;
-    visitParts(state, side, [&](const UiFileState& file, size_t index, const float* parent) {
+    visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
         appendGroup(result, file, index, parent);
     });
     if (result.indices.empty()) {
@@ -162,13 +169,14 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side)
     return result;
 }
 
-uint64_t comparisonGeometrySignature(const UiState &state)
+uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
 {
+    if (!canCompareGroups(state, id)) { return 0; }
     uint64_t seed = 17;
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
         size_t count = 0;
-        visitParts(state, side, [&](const UiFileState& file, size_t index, const float* parent) {
+        visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
             ++count;
             hashCombine(seed, file.objectId);
             hashCombine(seed, file.groupSettings[index].objectId);
@@ -187,5 +195,32 @@ uint64_t comparisonGeometrySignature(const UiState &state)
         hashCombine(seed, count);
     }
     return seed;
+}
+std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison || !canCompareGroups(state, id)) { return std::nullopt; }
+    std::vector<Vertex> corners;
+    for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+        visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
+            const auto& group = file.groupSettings[index];
+            float local[16], model[16];
+            groupTransformMatrix(group, local);
+            bx::mtxMul(model, parent, local);
+            const auto& bounds = group.localBoundsValid ? group.localBounds : file.mesh.bounds;
+            for (unsigned mask = 0; mask < 8; ++mask) {
+                Vertex corner;
+                std::array<float, 3> p{};
+                for (size_t k = 0; k < 3; ++k) { p[k] = (mask & (1u << k)) ? bounds.max[k] : bounds.min[k]; }
+                for (size_t k = 0; k < 3; ++k) {
+                    corner.position[k] = model[k] * p[0] + model[k + 4] * p[1] + model[k + 8] * p[2]
+                        + model[k + 12] + comparison->translation[k];
+                }
+                if (finitePosition(corner.position)) { corners.push_back(corner); }
+            }
+        });
+    }
+    if (corners.empty()) { return std::nullopt; }
+    return calculateBounds(corners);
 }
 } // namespace woby

@@ -142,6 +142,17 @@ void membershipTree(UiState& state, ComparisonSide side)
             ImGui::TextDisabled("%zu triangles", triangles);
             for (const auto& root : roots) { drawComparisonTreeNode(state, side, root); }
         }
+        if (const auto* comparison = findComparison(state)) {
+            const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+            bool missing = false;
+            for (const auto& part : members) {
+                if (comparisonObjectParts(state, {part.objectId}).empty()) {
+                    ImGui::TextWrapped("Missing / invalid: %s", part.name.c_str());
+                    missing = true;
+                }
+            }
+            if (missing && ImGui::SmallButton("Remove missing references")) { removeMissingComparisonParts(state, side); }
+        }
         ImGui::TreePop();
     }
     ImGui::PopID();
@@ -158,6 +169,13 @@ void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges)
     points[1].position = edge.b;
     auto bounds = calculateBounds(points);
     bounds.radius = std::max(bounds.radius * 3, state.sceneBounds.radius * .06f);
+    if (const auto* comparison = findComparison(state)) {
+        for (size_t k = 0; k < 3; ++k) {
+            bounds.min[k] += comparison->translation[k];
+            bounds.max[k] += comparison->translation[k];
+            bounds.center[k] += comparison->translation[k];
+        }
+    }
     frameComparisonBounds(state, bounds);
 }
 void diagnosticRow(UiState &state, const char *name, const std::vector<DiagnosticEdge> &original,
@@ -176,7 +194,7 @@ void diagnosticRow(UiState &state, const char *name, const std::vector<Diagnosti
     ImGui::BeginDisabled(active.empty());
     if (ImGui::SmallButton("First"))
     {
-        auto settings = state.comparison;
+        auto settings = comparisonSettings(state);
         if (std::string(name) == "Boundary")
         {
             settings.showBoundaries = true;
@@ -192,15 +210,13 @@ void diagnosticRow(UiState &state, const char *name, const std::vector<Diagnosti
     ImGui::PopID();
 }
 void submitEdges(bgfx::ViewId view, bgfx::VertexBufferHandle vertices, bgfx::ProgramHandle program,
-                 bgfx::UniformHandle uniform, const std::array<float, 4> &color)
+                 bgfx::UniformHandle uniform, const std::array<float, 4> &color, const float* transform)
 {
     if (!bgfx::isValid(vertices))
     {
         return;
     }
-    float identity[16];
-    bx::mtxIdentity(identity);
-    bgfx::setTransform(identity);
+    bgfx::setTransform(transform);
     bgfx::setVertexBuffer(0, vertices);
     bgfx::setUniform(uniform, color.data());
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_PT_LINES | BGFX_STATE_DEPTH_TEST_ALWAYS |
@@ -208,11 +224,9 @@ void submitEdges(bgfx::ViewId view, bgfx::VertexBufferHandle vertices, bgfx::Pro
     bgfx::submit(view, program);
 }
 void submitWire(bgfx::ViewId view, const ComparisonGpuSurface &gpu, bgfx::ProgramHandle program,
-                bgfx::UniformHandle uniform, const std::array<float, 4> &color, bool xray)
+                bgfx::UniformHandle uniform, const std::array<float, 4> &color, bool xray, const float* transform)
 {
-    float identity[16];
-    bx::mtxIdentity(identity);
-    bgfx::setTransform(identity);
+    bgfx::setTransform(transform);
     bgfx::setVertexBuffer(0, gpu.vertices);
     bgfx::setIndexBuffer(gpu.lines);
     bgfx::setUniform(uniform, color.data());
@@ -222,9 +236,9 @@ void submitWire(bgfx::ViewId view, const ComparisonGpuSurface &gpu, bgfx::Progra
 }
 } // namespace
 
-void updateComparisonRuntime(ComparisonRuntime &runtime, const UiState &state)
+static void updateComparisonRuntime(ComparisonRuntime& runtime, const UiState& state, SceneObjectId id, bool allowStart)
 {
-    const uint64_t wanted = state.comparison.enabled ? comparisonGeometrySignature(state) : 0;
+    const uint64_t wanted = comparisonSettings(state, id).enabled ? comparisonGeometrySignature(state, id) : 0;
     if (runtime.worker.valid() && wanted != runtime.workerSignature)
     {
         runtime.stop.request_stop();
@@ -272,7 +286,7 @@ void updateComparisonRuntime(ComparisonRuntime &runtime, const UiState &state)
             }
         }
     }
-    if (wanted == 0 || runtime.ready || runtime.worker.valid() || wanted == runtime.attemptedSignature)
+    if (wanted == 0 || runtime.ready || runtime.worker.valid() || wanted == runtime.attemptedSignature || !allowStart)
     {
         return;
     }
@@ -281,8 +295,8 @@ void updateComparisonRuntime(ComparisonRuntime &runtime, const UiState &state)
     runtime.error.clear();
     try
     {
-        auto original = comparisonWorldMesh(state, ComparisonSide::a);
-        auto repaired = comparisonWorldMesh(state, ComparisonSide::b);
+        auto original = comparisonWorldMesh(state, ComparisonSide::a, id);
+        auto repaired = comparisonWorldMesh(state, ComparisonSide::b, id);
         runtime.stop = std::stop_source{};
         const auto stop = runtime.stop.get_token();
         runtime.worker = std::async(std::launch::async, [original = std::move(original), repaired = std::move(repaired),
@@ -294,7 +308,7 @@ void updateComparisonRuntime(ComparisonRuntime &runtime, const UiState &state)
     }
 }
 
-void destroyComparisonRuntime(ComparisonRuntime &runtime)
+static void destroyComparisonRuntime(ComparisonRuntime &runtime)
 {
     if (runtime.worker.valid())
     {
@@ -303,41 +317,85 @@ void destroyComparisonRuntime(ComparisonRuntime &runtime)
     }
     destroySurface(runtime.originalGpu);
     destroySurface(runtime.repairedGpu);
-    if (bgfx::isValid(runtime.program))
-    {
-        bgfx::destroy(runtime.program);
-        runtime.program = BGFX_INVALID_HANDLE;
+}
+
+void updateComparisonRuntimes(ComparisonRuntimes& runtimes, const UiState& state)
+{
+    for (auto it = runtimes.objects.begin(); it != runtimes.objects.end();) {
+        if (!findComparison(state, it->first)) {
+            destroyComparisonRuntime(it->second);
+            it = runtimes.objects.erase(it);
+        } else { ++it; }
     }
-    if (bgfx::isValid(runtime.parameters))
-    {
-        bgfx::destroy(runtime.parameters);
-        runtime.parameters = BGFX_INVALID_HANDLE;
+    for (const auto& comparison : state.comparisons) {
+        auto& runtime = runtimes.objects[comparison.objectId];
+        const auto active = std::count_if(runtimes.objects.begin(), runtimes.objects.end(), [](const auto& item) {
+            return item.second.worker.valid();
+        });
+        updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
     }
+}
+
+void destroyComparisonRuntimes(ComparisonRuntimes& runtimes)
+{
+    for (auto& [id, runtime] : runtimes.objects) { (void)id; runtime.stop.request_stop(); }
+    for (auto& [id, runtime] : runtimes.objects) { (void)id; destroyComparisonRuntime(runtime); }
+    runtimes.objects.clear();
+    if (bgfx::isValid(runtimes.program)) { bgfx::destroy(runtimes.program); runtimes.program = BGFX_INVALID_HANDLE; }
+    if (bgfx::isValid(runtimes.parameters)) { bgfx::destroy(runtimes.parameters); runtimes.parameters = BGFX_INVALID_HANDLE; }
+}
+
+bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntimes& runtimes)
+{
+    bool ready = true;
+    for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled) { continue; }
+        if (!canCompareGroups(state, comparison.objectId)) {
+            throw std::runtime_error(comparison.name + ": comparison inputs are incomplete.");
+        }
+        const auto signature = comparisonGeometrySignature(state, comparison.objectId);
+        const auto it = runtimes.objects.find(comparison.objectId);
+        if (it == runtimes.objects.end()) { ready = false; continue; }
+        const auto& runtime = it->second;
+        if (!runtime.error.empty() && runtime.attemptedSignature == signature) {
+            throw std::runtime_error(comparison.name + ": " + runtime.error);
+        }
+        ready = ready && runtime.ready && runtime.resultSignature == signature;
+    }
+    return ready;
 }
 
 namespace {
 void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
 {
+    const auto* comparison = findComparison(state);
+    if (!comparison) { return; }
+    const auto id = comparison->objectId;
+    std::array<char, 512> name{};
+    std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
+    auto translation = comparison->translation;
+    if (ImGui::DragFloat3("Result position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
+    ImGui::TextDisabled("Display offset only, in model units.");
+    if (ImGui::Button("Frame result")) { frameComparison(state, id); }
+    ImGui::Separator();
     ImGui::TextWrapped("Add objects from the scene's context menu. Right-click a branch or part below to remove it from that group.");
     ImGui::Separator();
     membershipTree(state, ComparisonSide::a);
     membershipTree(state, ComparisonSide::b);
     ImGui::Separator();
     if (ImGui::Button("Swap A / B")) { swapComparisonGroups(state); }
-    auto settings = state.comparison;
+    auto settings = comparisonSettings(state);
     const auto initial = settings;
     const bool valid = canCompareGroups(state);
     ImGui::SameLine();
-    ImGui::BeginDisabled(!valid && !settings.enabled);
-    if (ImGui::Button(settings.enabled ? "Exit comparison" : "Compare A and B")) {
-        settings.enabled = !settings.enabled;
-    }
-    ImGui::EndDisabled();
-    if (!valid) { ImGui::TextWrapped("Add at least one mesh part with triangles to each group."); }
-    if (settings.enabled)
+
+    ImGui::Checkbox("Visible", &settings.enabled);
+    if (!valid) { ImGui::TextWrapped("Incomplete: each side needs mesh parts, and all missing or invalid references must be repaired or removed."); }
     {
         ImGui::TextWrapped(
-            "Combined surfaces at scene positions, in model units. Hidden members are included. Other scene objects are hidden during comparison.");
+            "Combined surfaces at scene positions, in model units. Hidden members are included. Other scene objects retain their own appearance.");
         const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay"};
         int mode = static_cast<int>(settings.mode);
         ImGui::SetNextItemWidth(-1);
@@ -371,7 +429,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
     {
         setComparisonSettings(state, settings);
     }
-    if (!state.comparison.enabled)
+    if (!valid || !comparisonSettings(state).enabled)
     {
         return;
     }
@@ -392,24 +450,20 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
         }
         return;
     }
-    const bool useOriginal = originalActive(state.comparison);
+    const bool useOriginal = originalActive(comparisonSettings(state));
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
-    if (ImGui::Button("Frame compared group"))
-    {
-        frameComparisonBounds(state, surface.source.bounds);
-    }
-    if (state.comparison.mode == ComparisonMode::distance)
+    if (comparisonSettings(state).mode == ComparisonMode::distance)
     {
         if (ImGui::Button("Fit color range"))
         {
-            settings = state.comparison;
+            settings = comparisonSettings(state);
             settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
             setComparisonSettings(state, settings);
         }
         ImGui::Text("Sample max: %.5g", surface.maximum);
         ImGui::Text("Area-weighted mean: %.5g", surface.mean);
         ImGui::Text("Area-weighted P95: %.5g", surface.percentile95);
-        ImGui::Text("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, state.comparison.tolerance));
+        ImGui::Text("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state).tolerance));
         ImGui::TextWrapped("Approximate unsigned distance, four samples per triangle. Values are in model units.");
     }
     const auto &a = runtime.result.original.diagnostics;
@@ -434,7 +488,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
 
 } // namespace
 
-void drawComparisonPanel(UiState& state, ComparisonRuntime& runtime, float rightEdge, float width, float height)
+void drawComparisonPanel(UiState& state, ComparisonRuntimes& runtimes, float rightEdge, float width, float height)
 {
     if (!state.comparisonPaneVisible) { return; }
     ImGui::SetNextWindowPos(ImVec2(rightEdge - width, 0.0f), ImGuiCond_Always);
@@ -442,61 +496,96 @@ void drawComparisonPanel(UiState& state, ComparisonRuntime& runtime, float right
     bool visible = state.comparisonPaneVisible;
     if (ImGui::Begin("Comparison", &visible, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
         | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
-        drawComparisonContents(state, runtime);
+        if (findComparison(state)) {
+            drawComparisonContents(state, runtimes.objects[state.activeComparisonId]);
+        } else {
+            ImGui::TextWrapped("Select two source objects and choose Create comparison, or start an empty comparison.");
+            if (ImGui::Button("New comparison")) { createComparison(state); }
+        }
     }
     ImGui::End();
     if (visible != state.comparisonPaneVisible) { setComparisonPaneVisible(state, visible); }
 }
 
-bool submitComparisonScene(bgfx::ViewId view, const UiState &state, const ComparisonRuntime &runtime,
+static void submitComparisonScene(bgfx::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,
+                           const ComparisonRuntimes& runtimes,
                            bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform)
 {
-    bgfx::setViewMode(view, state.comparison.enabled ? bgfx::ViewMode::Sequential : bgfx::ViewMode::Default);
-    if (!state.comparison.enabled)
-    {
-        return false;
-    }
-    // Never present a stale result while recomputing after geometry changes.
-    if (!runtime.ready)
-    {
-        return true;
-    }
-    const auto &settings = state.comparison;
+    if (!comparison.settings.enabled || !runtime.ready) { return; }
+    const auto& settings = comparison.settings;
     const bool useOriginal = originalActive(settings);
     const auto &gpu = useOriginal ? runtime.originalGpu : runtime.repairedGpu;
     const bool heatmap = settings.mode == ComparisonMode::distance;
     float identity[16];
-    bx::mtxIdentity(identity);
+    bx::mtxTranslate(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
     const std::array<float, 4> parameters = {settings.tolerance, settings.colorRange, heatmap ? 1.0f : 0.0f, 0};
     const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
     bgfx::setTransform(identity);
-    bgfx::setUniform(runtime.parameters, parameters.data());
+    bgfx::setUniform(runtimes.parameters, parameters.data());
     bgfx::setUniform(colorUniform, gray.data());
     bgfx::setVertexBuffer(0, heatmap ? gpu.samples : gpu.vertices);
     if (!heatmap)
     {
         bgfx::setIndexBuffer(gpu.triangles);
     }
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS |
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LEQUAL |
                    BGFX_STATE_MSAA);
-    bgfx::submit(view, runtime.program);
+    bgfx::submit(view, runtimes.program);
     if (settings.showEdges)
     {
-        submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false);
+        submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false, identity);
     }
     if (settings.mode == ComparisonMode::overlay)
     {
-        submitWire(view, runtime.originalGpu, colorProgram, colorUniform, {.3f, .75f, 1, 1}, true);
+        submitWire(view, runtime.originalGpu, colorProgram, colorUniform, {.3f, .75f, 1, 1}, true, identity);
     }
     if (settings.showBoundaries)
     {
-        submitEdges(view, gpu.boundaries, colorProgram, colorUniform, {1, .85f, .15f, 1});
+        submitEdges(view, gpu.boundaries, colorProgram, colorUniform, {1, .85f, .15f, 1}, identity);
     }
     if (settings.showNonManifold)
     {
-        submitEdges(view, gpu.nonManifold, colorProgram, colorUniform, {1, .15f, .55f, 1});
-        submitEdges(view, gpu.winding, colorProgram, colorUniform, {1, .2f, .2f, 1});
+        submitEdges(view, gpu.nonManifold, colorProgram, colorUniform, {1, .15f, .55f, 1}, identity);
+        submitEdges(view, gpu.winding, colorProgram, colorUniform, {1, .2f, .2f, 1}, identity);
     }
-    return true;
+}
+
+void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
+    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform)
+{
+    for (const auto& comparison : state.comparisons) {
+        const auto it = runtimes.objects.find(comparison.objectId);
+        if (it != runtimes.objects.end()) {
+            submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform);
+        }
+    }
+}
+
+void drawComparisonObjects(UiState& state)
+{
+    ImGui::Separator();
+    ImGui::TextUnformatted("Comparisons");
+    ImGui::SameLine();
+    if (ImGui::SmallButton("New comparison")) { createComparison(state); }
+    for (const auto& comparison : state.comparisons) {
+        const auto id = comparison.objectId;
+        const auto label = std::to_string(id);
+        ImGui::PushID(label.c_str());
+        auto settings = comparison.settings;
+        if (ImGui::Checkbox("##visible", &settings.enabled)) { setComparisonSettings(state, settings, id); }
+        ImGui::SameLine();
+        if (ImGui::Selectable(comparison.name.c_str(), sceneObjectSelected(state, id))) { selectSceneObject(state, id); }
+        bool changed = false;
+        if (ImGui::BeginPopupContextItem("comparison_object")) {
+            if (ImGui::MenuItem("Properties")) { selectSceneObject(state, id); }
+            if (ImGui::MenuItem("Frame result", nullptr, false, canCompareGroups(state, id))) { frameComparison(state, id); }
+            if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
+            if (ImGui::MenuItem("Delete comparison")) { removeComparison(state, id); changed = true; }
+            ImGui::EndPopup();
+        }
+        if (!changed && !canCompareGroups(state, id)) { ImGui::TextDisabled("    Incomplete inputs"); }
+        ImGui::PopID();
+        if (changed) { break; }
+    }
 }
 } // namespace woby

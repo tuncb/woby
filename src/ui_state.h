@@ -27,7 +27,6 @@ inline constexpr float defaultDisplayBoundsMin = -10.0f;
 inline constexpr float defaultDisplayBoundsMax = 10.0f;
 
 struct UiGroupState {
-    ComparisonMembership comparison;
     bool visible = true;
     bool showSolidMesh = true;
     bool showTriangles = true;
@@ -91,8 +90,26 @@ struct UiSceneNode {
     SceneObjectId objectId = invalidSceneObjectId;
 };
 
+struct UiComparisonPart {
+    SceneObjectId objectId = invalidSceneObjectId;
+    // Retained when a source is removed, so missing inputs remain repairable.
+    std::string name;
+    friend bool operator==(const UiComparisonPart&, const UiComparisonPart&) = default;
+};
+
+struct UiComparison {
+    SceneObjectId objectId = invalidSceneObjectId;
+    std::string name;
+    ComparisonSettings settings;
+    // Presentation only: source measurements always use source world transforms.
+    std::array<float, 3> translation{};
+    std::vector<UiComparisonPart> a, b;
+};
+
 struct UiState {
-    ComparisonSettings comparison;
+    std::vector<UiComparison> comparisons;
+    // Session-only inspector target, retained while selecting source objects.
+    SceneObjectId activeComparisonId = invalidSceneObjectId;
     // Transient tree selection in click order; excluded from scene files and dirty tracking.
     std::vector<SceneObjectId> selectedSceneObjects;
     bool running = true;

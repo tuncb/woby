@@ -20,30 +20,43 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Command Line
 
-### Mesh comparison prototype
+### Comparison objects
 
-Open `assets/samples/mesh-comparison/compare.woby` to inspect a sample before/after
-repair pair, or build comparison groups **A** and **B** from scene objects.
-Right-click files, folders, or individual mesh parts and choose **Add to group A**
-or **Add to group B**. Ctrl-click selects multiple objects. The same context menu
-shows one membership action for each side: **Remove** if every selected part is
-already included, otherwise **Add** to include missing parts. It also starts
-**Compare A and B**. When both groups
-are empty, selecting two objects also offers **Compare selected objects**: the first
-selected object goes to A, the second to B, and comparison starts immediately.
+Scenes can contain multiple named comparisons alongside the original models.
+Ctrl-click two files, folders, or mesh parts, then right-click and choose
+**Create comparison**. The first selected object supplies **A**, the second **B**.
+Alternatively, use **New comparison** in the scene tree and add inputs through
+**Comparison membership → comparison name → Add to A / Add to B**.
 
-Files and folders add their current mesh parts; each part is included once per
-group. Individual parts can be removed afterward, and a part may belong to both
-sides. Tree badges show part membership. The **A/B** button at the upper right
-toggles the separate **Comparison** panel. Adding objects or starting a comparison
-opens it automatically. Its A/B trees retain the scene folder/file/part hierarchy;
-right-click any branch or part to remove it from that side. Clear and Swap controls
-are also available. Membership is independent of visibility.
+Each comparison has independent visibility, tolerance, color range, A/B display
+mode, edge diagnostics, and **Result position**. Select its tree row to edit its
+properties. Right-click the row to duplicate, frame, or delete it. New results
+are placed beside existing results. Result position is a display offset: moving
+it never changes measured distances or source transforms. Normal scene meshes
+continue to render with their own settings.
 
-Comparison uses the combined surfaces at their scene positions, with bidirectional
-unsigned distance heatmaps, tolerance and color range controls, A/B views, a
-wireframe overlay, and edge diagnostics. It does not perform a Boolean union.
-Membership and display settings are saved in version 4 `.woby` scenes.
+Files and folders contribute their current triangular parts, deduplicated per
+side. Parts can belong to both sides and to multiple comparisons. Future children
+are not automatically included. Source visibility and appearance do not affect
+measurements. Deleting a source leaves a named missing reference; repair the
+inputs or explicitly remove missing references before computing again. Deleting
+a comparison never deletes its sources.
+
+The upper-right **A/B** button toggles the comparison inspector. Its A/B trees
+retain the source hierarchy; right-click a branch or part to remove it from that
+side. Clear and Swap operate only on that comparison. Part badges in the scene
+tree describe the comparison currently targeted by the inspector.
+
+Comparison uses combined surfaces at their source scene positions, with
+bidirectional unsigned distance heatmaps, A/B views, a wireframe overlay, and edge
+diagnostics. It does not perform a Boolean union. Up to two comparisons compute
+concurrently; screenshots wait for all visible results and report incomplete
+inputs or computation errors instead of exporting a partial comparison scene.
+
+Version 5 `.woby` scenes save comparison objects and source references. Version
+2–4 scenes remain readable; existing A/B memberships migrate into one comparison
+at the original source positions. Older woby builds cannot read version 5 scenes.
+Open `assets/samples/mesh-comparison/compare.woby` for a before/after repair example.
 
 ```powershell
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --scene .\assets\samples\mesh-comparison\compare.woby
