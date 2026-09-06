@@ -659,6 +659,7 @@ SceneFileSettings sceneFileSettings(const UiFileSettings& settings)
 SceneGroupSettings sceneGroupSettings(const UiGroupState& settings)
 {
     SceneGroupSettings result;
+    result.comparison = settings.comparison;
     result.visible = settings.visible;
     result.showSolidMesh = settings.showSolidMesh;
     result.showTriangles = settings.showTriangles;
@@ -751,6 +752,7 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
     for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
         auto& group = file.groupSettings[groupIndex];
         const auto& recordGroup = record.groups[groupIndex].settings;
+        group.comparison = recordGroup.comparison;
         group.visible = recordGroup.visible;
         group.showSolidMesh = recordGroup.showSolidMesh;
         group.showTriangles = recordGroup.showTriangles;

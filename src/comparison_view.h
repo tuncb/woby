@@ -28,7 +28,6 @@ struct ComparisonRuntime
     uint64_t attemptedSignature = 0;
     uint64_t resultSignature = 0;
     bool ready = false;
-    bool openPanelRequested = false;
     MeshComparison result;
     ComparisonGpuSurface originalGpu, repairedGpu;
     bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;
@@ -38,7 +37,7 @@ struct ComparisonRuntime
 
 void updateComparisonRuntime(ComparisonRuntime &runtime, const UiState &state);
 void destroyComparisonRuntime(ComparisonRuntime &runtime);
-void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime);
+void drawComparisonPanel(UiState &state, ComparisonRuntime &runtime, float rightEdge, float width, float height);
 [[nodiscard]] bool submitComparisonScene(bgfx::ViewId view, const UiState &state, const ComparisonRuntime &runtime,
                                          bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform);
 

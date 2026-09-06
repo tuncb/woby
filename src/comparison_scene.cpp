@@ -5,6 +5,8 @@
 #include <bx/math.h>
 
 #include <stdexcept>
+#include <set>
+#include <utility>
 
 namespace woby
 {
@@ -27,7 +29,7 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
     }
     if (result.indices.size() + group.indexCount > comparisonTriangleLimit * 3)
     {
-        throw std::runtime_error("Prototype comparison supports up to 50,000 triangles per file.");
+        throw std::runtime_error("Prototype comparison supports up to 50,000 triangles per comparison group.");
     }
     for (size_t i = group.indexOffset; i < end; ++i)
     {
@@ -45,94 +47,115 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
         result.vertices.push_back(vertex);
     }
 }
-void appendNode(Mesh &result, const UiState &state, const UiSceneNode &node, size_t fileIndex, const float *parent)
+// One traversal supplies both geometry snapshots and their cache signatures.
+// Each canonical mesh part is visited once, irrespective of overlapping selections.
+template <typename Visitor>
+void visitParts(const UiState& state, ComparisonSide side, const Visitor& visitor)
 {
-    float model[16], local[16];
-    if (node.kind == UiSceneNodeKind::folder)
-    {
-        sceneNodeTransformMatrix(node.settings, local);
-        bx::mtxMul(model, parent, local);
-    }
-    else if (node.kind == UiSceneNodeKind::file)
-    {
-        if (node.fileIndex != fileIndex)
-        {
+    std::set<std::pair<size_t, size_t>> visited;
+    const auto part = [&](size_t fileIndex, size_t groupIndex, const float* parent) {
+        if (fileIndex >= state.files.size()) { return; }
+        const auto& file = state.files[fileIndex];
+        if (groupIndex >= file.groupSettings.size() || groupIndex >= file.mesh.nodes.size()) { return; }
+        if (!comparisonMember(file.groupSettings[groupIndex].comparison, side)
+            || file.mesh.nodes[groupIndex].indexCount == 0
+            || !visited.emplace(fileIndex, groupIndex).second) { return; }
+        visitor(file, groupIndex, parent);
+    };
+    const auto nodeVisitor = [&](auto&& self, const UiSceneNode& node, const float* parent) -> void {
+        float local[16], model[16];
+        if (node.kind == UiSceneNodeKind::group) {
+            part(node.fileIndex, node.groupIndex, parent);
             return;
         }
-        const auto &file = state.files[fileIndex];
-        fileTransformMatrix(file.fileSettings, local);
+        if (node.kind == UiSceneNodeKind::folder) {
+            sceneNodeTransformMatrix(node.settings, local);
+        } else {
+            if (node.fileIndex >= state.files.size()) { return; }
+            fileTransformMatrix(state.files[node.fileIndex].fileSettings, local);
+        }
         bx::mtxMul(model, parent, local);
-        if (node.children.empty())
-        {
-            for (size_t i = 0; i < file.mesh.nodes.size(); ++i)
-            {
-                appendGroup(result, file, i, model);
+        if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
+            for (size_t i = 0; i < state.files[node.fileIndex].groupSettings.size(); ++i) {
+                part(node.fileIndex, i, model);
             }
         }
-    }
-    else
-    {
-        if (node.fileIndex == fileIndex)
-        {
-            appendGroup(result, state.files[fileIndex], node.groupIndex, parent);
+        for (const auto& child : node.children) { self(self, child, model); }
+    };
+    float identity[16];
+    bx::mtxIdentity(identity);
+    if (state.sceneNodes.empty()) {
+        for (size_t i = 0; i < state.files.size(); ++i) {
+            float model[16];
+            fileTransformMatrix(state.files[i].fileSettings, model);
+            for (size_t j = 0; j < state.files[i].groupSettings.size(); ++j) { part(i, j, model); }
         }
-        return;
-    }
-    for (const auto &child : node.children)
-    {
-        appendNode(result, state, child, fileIndex, model);
-    }
-}
-void hashTransform(uint64_t &seed, const auto &settings)
-{
-    hashFloat(seed, settings.scale);
-    hashArray3(seed, settings.translation);
-    hashArray3(seed, settings.rotationDegrees);
-    hashArray3(seed, settings.center);
-}
-void hashNode(uint64_t &seed, const UiSceneNode &node)
-{
-    hashCombine(seed, static_cast<uint64_t>(node.kind));
-    hashCombine(seed, node.fileIndex);
-    hashCombine(seed, node.groupIndex);
-    hashTransform(seed, node.settings);
-    hashCombine(seed, node.children.size());
-    for (const auto &child : node.children)
-    {
-        hashNode(seed, child);
+    } else {
+        for (const auto& node : state.sceneNodes) { nodeVisitor(nodeVisitor, node, identity); }
     }
 }
 } // namespace
 
-Mesh comparisonWorldMesh(const UiState &state, size_t fileIndex)
+std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side)
 {
-    const auto &file = state.files.at(fileIndex);
-    if (file.mesh.indices.size() / 3 > comparisonTriangleLimit)
-    {
-        throw std::runtime_error("Prototype comparison supports up to 50,000 triangles per file.");
+    std::set<std::pair<size_t, size_t>> visited;
+    const auto build = [&](auto&& self, const UiSceneNode& source) -> ComparisonTreeNode {
+        ComparisonTreeNode result;
+        result.objectId = source.objectId;
+        result.kind = source.kind;
+        result.name = source.name;
+        if (source.kind == UiSceneNodeKind::group) {
+            if (source.fileIndex >= state.files.size()) { return result; }
+            const auto& file = state.files[source.fileIndex];
+            if (source.groupIndex >= file.groupSettings.size() || source.groupIndex >= file.mesh.nodes.size()) {
+                return result;
+            }
+            const auto& part = file.groupSettings[source.groupIndex];
+            const auto& meshNode = file.mesh.nodes[source.groupIndex];
+            if (!comparisonMember(part.comparison, side) || meshNode.indexCount < 3 || meshNode.indexCount % 3 != 0
+                || static_cast<size_t>(meshNode.indexOffset) + meshNode.indexCount > file.mesh.indices.size()
+                || !visited.emplace(source.fileIndex, source.groupIndex).second) { return result; }
+            result.objectId = part.objectId;
+            result.partCount = 1;
+            result.triangleCount = meshNode.indexCount / 3;
+            return result;
+        }
+        const auto append = [&](const UiSceneNode& child) {
+            auto branch = self(self, child);
+            if (branch.partCount == 0) { return; }
+            result.partCount += branch.partCount;
+            result.triangleCount += branch.triangleCount;
+            result.children.push_back(std::move(branch));
+        };
+        if (source.kind == UiSceneNodeKind::file && source.children.empty() && source.fileIndex < state.files.size()) {
+            const auto fileNode = createFileSceneNode(state.files[source.fileIndex], source.fileIndex);
+            for (const auto& child : fileNode.children) { append(child); }
+        } else {
+            for (const auto& child : source.children) { append(child); }
+        }
+        return result;
+    };
+    std::vector<ComparisonTreeNode> result;
+    const auto appendRoot = [&](const UiSceneNode& source) {
+        auto root = build(build, source);
+        if (root.partCount != 0) { result.push_back(std::move(root)); }
+    };
+    if (state.sceneNodes.empty()) {
+        for (size_t i = 0; i < state.files.size(); ++i) { appendRoot(createFileSceneNode(state.files[i], i)); }
+    } else {
+        for (const auto& source : state.sceneNodes) { appendRoot(source); }
     }
+    return result;
+}
+
+Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side)
+{
     Mesh result;
-    float identity[16];
-    bx::mtxIdentity(identity);
-    if (state.sceneNodes.empty())
-    {
-        float model[16];
-        fileTransformMatrix(file.fileSettings, model);
-        for (size_t i = 0; i < file.mesh.nodes.size(); ++i)
-        {
-            appendGroup(result, file, i, model);
-        }
-    }
-    else
-    {
-        for (const auto &node : state.sceneNodes)
-        {
-            appendNode(result, state, node, fileIndex, identity);
-        }
-    }
-    if (result.indices.empty())
-    {
-        throw std::runtime_error("The selected file has no triangles in the scene.");
+    visitParts(state, side, [&](const UiFileState& file, size_t index, const float* parent) {
+        appendGroup(result, file, index, parent);
+    });
+    if (result.indices.empty()) {
+        throw std::runtime_error("Each comparison group needs at least one mesh part with triangles.");
     }
     result.bounds = calculateBounds(result.vertices);
     result.nodes.push_back({"Comparison", 0, static_cast<uint32_t>(result.indices.size())});
@@ -142,27 +165,26 @@ Mesh comparisonWorldMesh(const UiState &state, size_t fileIndex)
 uint64_t comparisonGeometrySignature(const UiState &state)
 {
     uint64_t seed = 17;
-    for (int index : {state.comparison.originalFile, state.comparison.repairedFile})
-    {
-        if (index < 0 || static_cast<size_t>(index) >= state.files.size())
-        {
-            return 0;
-        }
-        const auto &file = state.files[static_cast<size_t>(index)];
-        hashCombine(seed, file.objectId);
-        hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.vertices.data()));
-        hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.indices.data()));
-        hashCombine(seed, file.mesh.vertices.size());
-        hashCombine(seed, file.mesh.indices.size());
-        hashTransform(seed, file.fileSettings);
-        for (const auto &group : file.groupSettings)
-        {
-            hashTransform(seed, group);
-        }
-    }
-    for (const auto &node : state.sceneNodes)
-    {
-        hashNode(seed, node);
+    for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+        hashCombine(seed, static_cast<uint64_t>(side));
+        size_t count = 0;
+        visitParts(state, side, [&](const UiFileState& file, size_t index, const float* parent) {
+            ++count;
+            hashCombine(seed, file.objectId);
+            hashCombine(seed, file.groupSettings[index].objectId);
+            hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.vertices.data()));
+            hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.indices.data()));
+            hashCombine(seed, file.mesh.vertices.size());
+            hashCombine(seed, file.mesh.indices.size());
+            hashCombine(seed, file.mesh.nodes[index].indexOffset);
+            hashCombine(seed, file.mesh.nodes[index].indexCount);
+            float local[16], model[16];
+            groupTransformMatrix(file.groupSettings[index], local);
+            bx::mtxMul(model, parent, local);
+            for (const auto value : model) { hashFloat(seed, value); }
+        });
+        if (count == 0) { return 0; }
+        hashCombine(seed, count);
     }
     return seed;
 }

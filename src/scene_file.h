@@ -12,6 +12,7 @@
 namespace woby {
 
 struct SceneGroupSettings {
+    ComparisonMembership comparison;
     bool visible = true;
     bool showSolidMesh = true;
     bool showTriangles = true;

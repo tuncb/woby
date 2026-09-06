@@ -36,47 +36,156 @@ void clearSceneSelection(UiState& state)
     state.selectedSceneObjects.clear();
 }
 
-void setComparisonSettings(UiState& state, ComparisonSettings settings)
-{
-    state.comparison = normalizedComparisonSettings(settings, state.files.size());
-}
-
 namespace {
-bool selectionComparisonSettings(const UiState& state, ComparisonSettings& settings)
+bool comparablePart(const UiFileState& file, size_t index)
 {
-    if (state.selectedSceneObjects.size() != 2) {
-        return false;
-    }
-    const auto resolve = [&state](SceneObjectId id, int& fileIndex) {
-        if (id == invalidSceneObjectId) { return false; }
-        for (size_t i = 0; i < state.files.size(); ++i) {
-            const auto& file = state.files[i];
-            if (file.objectId == id && !file.mesh.indices.empty()) {
-                fileIndex = static_cast<int>(i);
-                return true;
-            }
-        }
-        return false;
-    };
-    return resolve(state.selectedSceneObjects[0], settings.originalFile)
-        && resolve(state.selectedSceneObjects[1], settings.repairedFile)
-        && settings.originalFile != settings.repairedFile;
+    if (index >= file.mesh.nodes.size() || index >= file.groupSettings.size()) { return false; }
+    const auto& node = file.mesh.nodes[index];
+    return node.indexCount >= 3 && node.indexCount % 3 == 0
+        && static_cast<size_t>(node.indexOffset) + node.indexCount <= file.mesh.indices.size();
 }
 } // namespace
 
+std::vector<SceneObjectId> comparisonObjectParts(const UiState& state, const std::vector<SceneObjectId>& objects)
+{
+    std::vector<SceneObjectId> parts;
+    const auto selected = [&objects](SceneObjectId id) {
+        return id != invalidSceneObjectId && std::find(objects.begin(), objects.end(), id) != objects.end();
+    };
+    const auto appendFile = [&parts](const UiFileState& file) {
+        for (size_t i = 0; i < file.groupSettings.size(); ++i) {
+            if (comparablePart(file, i)) { parts.push_back(file.groupSettings[i].objectId); }
+        }
+    };
+    // Resolve files and individual parts even when no explicit scene tree exists.
+    for (const auto& file : state.files) {
+        if (selected(file.objectId)) { appendFile(file); }
+        else {
+            for (size_t i = 0; i < file.groupSettings.size(); ++i) {
+                if (selected(file.groupSettings[i].objectId) && comparablePart(file, i)) {
+                    parts.push_back(file.groupSettings[i].objectId);
+                }
+            }
+        }
+    }
+    const auto visit = [&](auto&& self, const UiSceneNode& node, bool included) -> void {
+        included = included || selected(node.objectId);
+        if (included && node.fileIndex < state.files.size()) {
+            const auto& file = state.files[node.fileIndex];
+            if (node.kind == UiSceneNodeKind::file) { appendFile(file); }
+            else if (node.kind == UiSceneNodeKind::group && comparablePart(file, node.groupIndex)) {
+                parts.push_back(file.groupSettings[node.groupIndex].objectId);
+            }
+        }
+        for (const auto& child : node.children) { self(self, child, included); }
+    };
+    for (const auto& node : state.sceneNodes) { visit(visit, node, false); }
+    std::sort(parts.begin(), parts.end());
+    parts.erase(std::unique(parts.begin(), parts.end()), parts.end());
+    std::erase(parts, invalidSceneObjectId);
+    return parts;
+}
+
+size_t comparisonPartCount(const UiState& state, ComparisonSide side)
+{
+    size_t count = 0;
+    for (const auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size(); ++i) {
+            if (comparablePart(file, i) && comparisonMember(file.groupSettings[i].comparison, side)) { ++count; }
+        }
+    }
+    return count;
+}
+
+ComparisonMembershipAction comparisonMembershipAction(
+    const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side)
+{
+    const auto parts = comparisonObjectParts(state, objects);
+    if (parts.empty()) { return ComparisonMembershipAction::unavailable; }
+    for (const auto& file : state.files) {
+        for (const auto& group : file.groupSettings) {
+            if (std::binary_search(parts.begin(), parts.end(), group.objectId)
+                && !comparisonMember(group.comparison, side)) {
+                return ComparisonMembershipAction::add;
+            }
+        }
+    }
+    return ComparisonMembershipAction::remove;
+}
+
+bool canCompareGroups(const UiState& state)
+{
+    return comparisonPartCount(state, ComparisonSide::a) != 0 && comparisonPartCount(state, ComparisonSide::b) != 0;
+}
+
 bool canCompareSceneSelection(const UiState& state)
 {
-    auto settings = state.comparison;
-    return selectionComparisonSettings(state, settings);
+    if (state.selectedSceneObjects.size() != 2 || state.selectedSceneObjects[0] == state.selectedSceneObjects[1]) {
+        return false;
+    }
+    for (const auto& file : state.files) {
+        for (const auto& group : file.groupSettings) {
+            if (group.comparison.a || group.comparison.b) { return false; }
+        }
+    }
+    return !comparisonObjectParts(state, {state.selectedSceneObjects[0]}).empty()
+        && !comparisonObjectParts(state, {state.selectedSceneObjects[1]}).empty();
 }
 
 bool compareSceneSelection(UiState& state)
 {
+    if (!canCompareSceneSelection(state)) { return false; }
+    setComparisonObjects(state, {state.selectedSceneObjects[0]}, ComparisonSide::a, true);
+    setComparisonObjects(state, {state.selectedSceneObjects[1]}, ComparisonSide::b, true);
     auto settings = state.comparison;
-    if (!selectionComparisonSettings(state, settings)) { return false; }
     settings.enabled = true;
     setComparisonSettings(state, settings);
     return state.comparison.enabled;
+}
+
+void setComparisonSettings(UiState& state, ComparisonSettings settings)
+{
+    const bool wasEnabled = state.comparison.enabled;
+    state.comparison = normalizedComparisonSettings(settings);
+    if (!canCompareGroups(state)) { state.comparison.enabled = false; }
+    if (state.comparison.enabled && !wasEnabled) { setComparisonPaneVisible(state, true); }
+}
+
+void setComparisonPaneVisible(UiState& state, bool visible)
+{
+    state.comparisonPaneVisible = visible;
+}
+
+void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member)
+{
+    const auto parts = comparisonObjectParts(state, objects);
+    if (member && !parts.empty()) { setComparisonPaneVisible(state, true); }
+    for (auto& file : state.files) {
+        for (auto& group : file.groupSettings) {
+            if (std::binary_search(parts.begin(), parts.end(), group.objectId)) {
+                (side == ComparisonSide::a ? group.comparison.a : group.comparison.b) = member;
+            }
+        }
+    }
+    setComparisonSettings(state, state.comparison);
+}
+
+void clearComparisonGroup(UiState& state, ComparisonSide side)
+{
+    for (auto& file : state.files) {
+        for (auto& group : file.groupSettings) {
+            (side == ComparisonSide::a ? group.comparison.a : group.comparison.b) = false;
+        }
+    }
+    setComparisonSettings(state, state.comparison);
+}
+
+void swapComparisonGroups(UiState& state)
+{
+    for (auto& file : state.files) {
+        for (auto& group : file.groupSettings) { std::swap(group.comparison.a, group.comparison.b); }
+    }
+    setComparisonSettings(state, state.comparison);
 }
 
 void frameComparisonBounds(UiState& state, const Bounds& bounds)
@@ -786,13 +895,8 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
         return false;
     }
 
-    auto comparison = state.comparison;
-    for (int* index : {&comparison.originalFile, &comparison.repairedFile}) {
-        if (*index >= 0 && static_cast<size_t>(*index) == fileIndex) { *index = -1; }
-        else if (*index >= 0 && static_cast<size_t>(*index) > fileIndex) { --*index; }
-    }
     state.files.erase(state.files.begin() + static_cast<std::ptrdiff_t>(fileIndex));
-    setComparisonSettings(state, comparison);
+    setComparisonSettings(state, state.comparison);
     state.sceneNodes.erase(
         std::remove_if(
             state.sceneNodes.begin(),
@@ -817,6 +921,7 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.running = current.running;
     prepared.viewerPaneWidth = current.viewerPaneWidth;
     prepared.viewerPaneVisible = current.viewerPaneVisible;
+    prepared.comparisonPaneVisible = current.comparisonPaneVisible;
     prepared.nextObjectId = current.nextObjectId;
     prepared.files = std::move(files);
     // Every replacement receives fresh IDs, even when reopening the same file.
@@ -831,6 +936,17 @@ UiState prepareSceneReplacement(const UiState& current,
     setShowOrigin(prepared, document.showOrigin);
     setShowGrid(prepared, document.showGrid);
     setMasterVertexPointSize(prepared, document.masterVertexPointSize);
+    // Restore membership using saved part records, never old session object IDs.
+    for (size_t i = 0; i < prepared.files.size(); ++i) {
+        auto& file = prepared.files[i];
+        for (size_t j = 0; j < file.groupSettings.size(); ++j) {
+            ComparisonMembership membership;
+            if (i < document.files.size() && j < document.files[i].groups.size()) {
+                membership = document.files[i].groups[j].settings.comparison;
+            }
+            file.groupSettings[j].comparison = comparablePart(file, j) ? membership : ComparisonMembership{};
+        }
+    }
     setComparisonSettings(prepared, document.comparison);
     recalculateSceneBounds(prepared);
     prepared.camera = frameCameraBounds(prepared.sceneBounds, prepared.upAxis);

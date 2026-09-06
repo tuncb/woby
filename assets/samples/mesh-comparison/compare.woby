@@ -1,13 +1,11 @@
 # Mesh comparison prototype. Both OBJ files use millimeters.
-version = 2
+version = 4
 show_origin = false
 show_grid = false
 up_axis = "z"
 comparison_enabled = true
-comparison_original_file = 0
-comparison_repaired_file = 1
 comparison_mode = "distance"
-comparison_distance_on_original = false
+comparison_distance_on_a = false
 comparison_tolerance = 0.05
 comparison_color_range = 0.6
 comparison_show_edges = true
@@ -17,5 +15,15 @@ comparison_show_non_manifold = true
 [[files]]
 path = "original.obj"
 
+[[files.groups]]
+name = "surface"
+comparison_a = true
+color = [0.3, 0.75, 1.0, 1.0]
+
 [[files]]
 path = "repaired.obj"
+
+[[files.groups]]
+name = "surface"
+comparison_b = true
+color = [0.58, 0.63, 0.69, 1.0]

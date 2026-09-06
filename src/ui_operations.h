@@ -10,13 +10,27 @@
 namespace woby {
 
 void setComparisonSettings(UiState& state, ComparisonSettings settings);
+void setComparisonPaneVisible(UiState& state, bool visible);
 void frameComparisonBounds(UiState& state, const Bounds& bounds);
 [[nodiscard]] bool sceneObjectSelected(const UiState& state, SceneObjectId id);
 // Plain click replaces, Ctrl-click toggles, context click preserves an existing selection.
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
 void clearSceneSelection(UiState& state);
+// Files/folders expand to their current triangular mesh parts. IDs are deduplicated.
+[[nodiscard]] std::vector<SceneObjectId> comparisonObjectParts(
+    const UiState& state, const std::vector<SceneObjectId>& objects);
+[[nodiscard]] size_t comparisonPartCount(const UiState& state, ComparisonSide side);
+enum class ComparisonMembershipAction { unavailable, add, remove };
+// Mixed selections add missing parts; fully included selections remove their parts.
+[[nodiscard]] ComparisonMembershipAction comparisonMembershipAction(
+    const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side);
+[[nodiscard]] bool canCompareGroups(const UiState& state);
+// With both sides empty, assign two distinct selected objects to A/B in click order.
 [[nodiscard]] bool canCompareSceneSelection(const UiState& state);
 bool compareSceneSelection(UiState& state);
+void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member);
+void clearComparisonGroup(UiState& state, ComparisonSide side);
+void swapComparisonGroups(UiState& state);
 
 enum class UiRenderMode {
     solidMesh,

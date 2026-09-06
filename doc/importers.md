@@ -43,7 +43,7 @@ Scenes continue to reference the original model files. A plugin-imported file al
 records the importer's stable ID:
 
 ```toml
-version = 3
+version = 4
 
 [[files]]
 path = "models/part.off"
@@ -54,9 +54,9 @@ importer_id = "org.woby.example.off"
 The DLL path and binary are not embedded in a scene. Opening a scene never loads
 a DLL by a path from that scene. The matching importer must already be registered
 on that machine. Missing importers fail scene loading before the existing scene
-is replaced. Version 2 scenes remain readable, and scenes containing only built-in
-formats still save as version 2. Plugin scenes save as version 3 so older woby
-versions reject them explicitly.
+is replaced. Scenes save as version 4, which includes per-part A/B comparison
+membership. Version 2 and 3 scene structure remains readable, but the old two-file
+comparison settings are not migrated. Older woby versions reject version 4 explicitly.
 
 Saved group settings are indexed. Importers must preserve unique group names and
 their order for the same file across versions. Reopening rejects a changed group
