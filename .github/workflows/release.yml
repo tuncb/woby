@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Find build of tagged commit
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    outputs:
+      run-id: ${{ steps.build.outputs.run-id }}
+      build-required: ${{ steps.build.outputs.build-required }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: '[[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
+
+      - name: Find or wait for main build
+        id: build
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { resolveReleaseBuild } = require('./.github/scripts/resolve-release-build.cjs');
+            await resolveReleaseBuild({ github, context, core });
+
+  build:
+    name: Build tag without reusable packages
+    needs: resolve
+    if: needs.resolve.outputs.build-required == 'true'
+    uses: ./.github/workflows/build-and-release.yml
+
+  release:
+    name: Create GitHub release
+    needs: [resolve, build]
+    if: >-
+      !cancelled() && needs.resolve.result == 'success' &&
+      (needs.build.result == 'success' ||
+       (needs.build.result == 'skipped' && needs.resolve.outputs.run-id != ''))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download packages from the exact commit's build
+        uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.resolve.outputs.run-id || github.run_id }}
+          pattern: woby-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify all release packages
+        run: |
+          test -s release-assets/woby-windows-x64.zip
+          test -s release-assets/woby-linux-x64.tar.gz
+          test -s release-assets/woby-macos-arm64.tar.gz
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" release-assets/* --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              release-assets/* \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi

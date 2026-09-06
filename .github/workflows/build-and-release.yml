@@ -1,15 +1,14 @@
-name: Build and Release
+name: Build and Test
 
 on:
   push:
     branches:
       - main
-    tags:
-      - "v*.*.*"
   workflow_dispatch:
+  workflow_call:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   VCPKG_DISABLE_METRICS: "1"
@@ -20,6 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       WOBY_VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+      VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
       VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
     strategy:
       fail-fast: false
@@ -27,15 +27,15 @@ jobs:
         include:
           - os: windows-latest
             package_name: woby-windows-x64
-            vcpkg_triplet: x64-windows
+            vcpkg_triplet: woby-ci-x64-windows
             archive_extension: zip
           - os: ubuntu-latest
             package_name: woby-linux-x64
-            vcpkg_triplet: woby-x64-linux-dynamic
+            vcpkg_triplet: woby-ci-x64-linux
             archive_extension: tar.gz
           - os: macos-latest
             package_name: woby-macos-arm64
-            vcpkg_triplet: arm64-osx
+            vcpkg_triplet: woby-ci-arm64-osx
             archive_extension: tar.gz
 
     steps:
@@ -145,22 +145,48 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install autoconf automake libtool nasm ninja pkg-config
 
-      - name: Cache vcpkg packages
-        uses: actions/cache@v5
+      - name: Test CI helpers
+        shell: pwsh
+        run: node --test .github/scripts/ci-config.test.cjs .github/scripts/resolve-release-build.test.cjs
+
+      - name: Prepare pinned CI manifest and cache identity
+        id: ci
+        shell: pwsh
+        env:
+          WOBY_CI_TRIPLET: ${{ matrix.vcpkg_triplet }}
+        run: |
+          if ($IsWindows) {
+            $compiler = Get-Item (Get-Command cl.exe).Source
+            $env:WOBY_CI_COMPILER_ID = "$($compiler.VersionInfo.FileVersion);$env:VCToolsVersion;$env:WindowsSDKVersion"
+          } else {
+            $env:WOBY_CI_COMPILER_ID = (& c++ --version) -join "`n"
+            if ($LASTEXITCODE -ne 0) { throw "Could not identify the C++ compiler." }
+          }
+          node .github/scripts/ci-config.cjs
+
+      - name: Restore vcpkg packages
+        id: vcpkg-cache
+        uses: actions/cache/restore@v5
         with:
           path: .vcpkg-cache
-          key: vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg-triplets/**') }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}-${{ matrix.vcpkg_triplet }}-
+          key: ${{ steps.ci.outputs.cache-key }}
+          restore-keys: ${{ steps.ci.outputs.restore-prefix }}
 
       - name: Prepare vcpkg cache directory
         shell: pwsh
         run: New-Item -ItemType Directory -Force ".vcpkg-cache" | Out-Null
 
+      - name: Check out pinned vcpkg
+        uses: actions/checkout@v6
+        with:
+          repository: microsoft/vcpkg
+          ref: ${{ steps.ci.outputs.revision }}
+          path: .vcpkg
+          persist-credentials: false
+
       - name: Bootstrap vcpkg
         shell: pwsh
         run: |
-          git clone https://github.com/microsoft/vcpkg.git "$env:WOBY_VCPKG_ROOT"
           if ($IsWindows) {
             & "$env:WOBY_VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
           } else {
@@ -176,8 +202,18 @@ jobs:
             -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_TOOLCHAIN_FILE="$env:WOBY_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_MANIFEST_DIR="$env:GITHUB_WORKSPACE/build/ci-vcpkg" `
             -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/cmake/vcpkg-triplets" `
-            -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg_triplet }}"
+            -DVCPKG_TARGET_TRIPLET="${{ matrix.vcpkg_triplet }}" `
+            -DVCPKG_HOST_TRIPLET="${{ matrix.vcpkg_triplet }}"
+
+      # Preserve completed dependencies even when compiling or testing Woby later fails.
+      - name: Save vcpkg packages
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: .vcpkg-cache
+          key: ${{ steps.ci.outputs.cache-key }}
 
       - name: Build
         shell: pwsh
@@ -335,44 +371,3 @@ jobs:
           name: ${{ matrix.package_name }}
           path: ${{ steps.package.outputs.archive }}
           if-no-files-found: error
-
-  release:
-    name: Create GitHub release
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Validate release tag
-        id: tag
-        run: |
-          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "valid=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "valid=false" >> "$GITHUB_OUTPUT"
-            echo "Skipping release because '${GITHUB_REF_NAME}' is not a vX.Y.Z tag."
-          fi
-
-      - name: Download packages
-        if: steps.tag.outputs.valid == 'true'
-        uses: actions/download-artifact@v8
-        with:
-          path: release-assets
-          merge-multiple: true
-
-      - name: Create release
-        if: steps.tag.outputs.valid == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" release-assets/* --clobber
-          else
-            gh release create "${GITHUB_REF_NAME}" \
-              release-assets/* \
-              --title "${GITHUB_REF_NAME}" \
-              --generate-notes
-          fi

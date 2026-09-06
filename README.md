@@ -195,3 +195,6 @@ Run tests:
 ```powershell
 ctest --preset vs2026-vcpkg
 ```
+
+See [CI builds and releases](doc/ci.md) for dependency caching, the pinned CI
+toolchain, and reuse of main-build packages when publishing a version tag.
