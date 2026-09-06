@@ -6,6 +6,7 @@
 #include <array>
 #include <filesystem>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -92,7 +93,9 @@ struct SceneComparisonPartRecord {
 struct SceneComparisonRecord {
     std::string name;
     ComparisonSettings settings;
-    std::array<float, 3> translation{};
+    // Older scenes have no result position. Resolve an omitted position once,
+    // after source geometry is loaded; an explicit zero is an intentional overlay.
+    std::optional<std::array<float, 3>> translation;
     std::vector<SceneComparisonPartRecord> a, b;
     friend bool operator==(const SceneComparisonRecord&, const SceneComparisonRecord&) = default;
 };

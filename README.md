@@ -62,6 +62,10 @@ are placed beside existing results. Result position is a display offset: moving
 it never changes measured distances or source transforms. Normal scene meshes
 continue to render with their own settings.
 
+Scenes without a saved comparison position, including older `.woby` files, receive
+automatic spacing when opened. Saved positions, including an intentional zero
+offset, are preserved when reopening.
+
 Files and folders contribute their current triangular parts, deduplicated per
 side. Parts can belong to both sides and to multiple comparisons. Future children
 are not automatically included. Source visibility and appearance do not affect

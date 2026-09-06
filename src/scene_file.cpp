@@ -643,8 +643,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
     for (auto& comparison : document.comparisons) {
         if (comparison.name.empty()) { comparison.name = "Comparison"; }
         comparison.settings = normalizedComparisonSettings(comparison.settings);
-        if (!std::all_of(comparison.translation.begin(), comparison.translation.end(), [](float v) { return std::isfinite(v); })) {
-            comparison.translation = {};
+        if (comparison.translation && !std::all_of(comparison.translation->begin(), comparison.translation->end(), [](float v) { return std::isfinite(v); })) {
+            comparison.translation = std::array<float, 3>{};
         }
         for (auto* members : {&comparison.a, &comparison.b}) {
             for (const auto& part : *members) {
@@ -760,7 +760,9 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     for (const auto& record : document.comparisons) {
         stream << "\n[[comparisons]]\n";
         stream << "name = \"" << escapeTomlString(record.name) << "\"\n";
-        stream << "translation = "; writeTomlFloat3(stream, record.translation); stream << "\n";
+        if (record.translation) {
+            stream << "translation = "; writeTomlFloat3(stream, *record.translation); stream << "\n";
+        }
         const auto comparison = normalizedComparisonSettings(record.settings);
         const char* mode = "distance";
         switch (comparison.mode) {

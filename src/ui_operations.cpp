@@ -55,6 +55,22 @@ bool comparablePart(const UiFileState& file, size_t index)
     return node.indexCount >= 3 && node.indexCount % 3 == 0
         && static_cast<size_t>(node.indexOffset) + node.indexCount <= file.mesh.indices.size();
 }
+
+std::array<float, 3> initialComparisonTranslation(const UiState& state,
+    SceneObjectId excluded = invalidSceneObjectId)
+{
+    const auto bounds = combineBounds(state.files, state.sceneNodes);
+    float rightEdge = bounds.max[0];
+    for (const auto& other : state.comparisons) {
+        if (other.objectId == excluded) { continue; }
+        if (const auto display = comparisonDisplayBounds(state, other.objectId)) {
+            rightEdge = std::max(rightEdge, display->max[0]);
+        }
+    }
+    const std::array<float, 3> translation{
+        rightEdge - bounds.min[0] + std::max(bounds.max[0] - bounds.min[0], 1.0f) * .25f, 0, 0};
+    return finitePosition(translation) ? translation : std::array<float, 3>{};
+}
 } // namespace
 
 std::vector<SceneObjectId> comparisonObjectParts(const UiState& state, const std::vector<SceneObjectId>& objects)
@@ -160,15 +176,7 @@ SceneObjectId createComparison(UiState& state)
         return other.name == comparison.name;
     }));
     comparison.settings.enabled = true;
-    const auto bounds = combineBounds(state.files, state.sceneNodes);
-    float rightEdge = bounds.max[0];
-    for (const auto& other : state.comparisons) {
-        if (const auto display = comparisonDisplayBounds(state, other.objectId)) {
-            rightEdge = std::max(rightEdge, display->max[0]);
-        }
-    }
-    comparison.translation[0] = rightEdge - bounds.min[0] + std::max(bounds.max[0] - bounds.min[0], 1.0f) * .25f;
-    if (!finitePosition(comparison.translation)) { comparison.translation = {}; }
+    comparison.translation = initialComparisonTranslation(state);
     state.comparisons.push_back(std::move(comparison));
     assignSceneObjectIds(state);
     const auto id = state.comparisons.back().objectId;
@@ -1123,7 +1131,8 @@ UiState prepareSceneReplacement(const UiState& current,
         UiComparison comparison;
         comparison.name = record.name.empty() ? "Comparison" : record.name;
         comparison.settings = normalizedComparisonSettings(record.settings);
-        comparison.translation = finitePosition(record.translation) ? record.translation : std::array<float, 3>{};
+        comparison.translation = record.translation && finitePosition(*record.translation)
+            ? *record.translation : std::array<float, 3>{};
         const auto loadParts = [&](const std::vector<SceneComparisonPartRecord>& references) {
             std::vector<UiComparisonPart> result;
             for (const auto& reference : references) {
@@ -1149,6 +1158,12 @@ UiState prepareSceneReplacement(const UiState& current,
         prepared.comparisons.push_back(std::move(comparison));
     }
     assignSceneObjectIds(prepared);
+    for (size_t index = 0; index < document.comparisons.size(); ++index) {
+        if (!document.comparisons[index].translation) {
+            auto& comparison = prepared.comparisons[index];
+            comparison.translation = initialComparisonTranslation(prepared, comparison.objectId);
+        }
+    }
     if (!prepared.comparisons.empty()) { prepared.activeComparisonId = prepared.comparisons.front().objectId; }
     recalculateSceneBounds(prepared);
     prepared.camera = frameCameraBounds(prepared.sceneBounds, prepared.upAxis);

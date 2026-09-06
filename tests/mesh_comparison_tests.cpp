@@ -301,6 +301,55 @@ TEST_CASE("new and duplicated comparisons are placed beyond existing result boun
     CHECK(woby::comparisonDisplayBounds(state, created)->min[0] > woby::comparisonDisplayBounds(state, copy)->max[0]);
 }
 
+TEST_CASE("comparison load auto places omitted positions once and preserves explicit positions")
+{
+    auto source = stateWithFiles(2);
+    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-initial-placement.woby";
+    for (auto& file : source.files) {
+        file.path = path.parent_path() / file.path;
+        woby::setFileTranslation(file.fileSettings, {10, 2, 0});
+    }
+    const auto id = woby::createComparison(source);
+    woby::setComparisonObjects(source, {source.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(source, {source.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    const auto automatic = woby::findComparison(source, id)->translation;
+    auto document = woby::createSceneDocument(source);
+    std::array<float, 3> expected{};
+    SUBCASE("omitted position gets the same offset as a new comparison") {
+        document.comparisons[0].translation.reset();
+        expected = automatic;
+    }
+    SUBCASE("explicit zero keeps an intentional overlay") {
+        document.comparisons[0].translation = expected;
+    }
+    SUBCASE("an explicitly saved position is preserved") {
+        expected = {-20, 3, 4};
+        document.comparisons[0].translation = expected;
+    }
+    woby::writeSceneDocument(path, document);
+    const auto read = woby::readSceneDocument(path);
+    CHECK(read.comparisons[0].translation == document.comparisons[0].translation);
+    auto restored = woby::prepareSceneReplacement(source, source.files, read);
+    REQUIRE(restored.comparisons.size() == 1);
+    CHECK(restored.comparisons[0].translation == expected);
+    CHECK_FALSE(restored.isDirty);
+    const auto measured = woby::comparisonWorldMesh(restored, woby::ComparisonSide::a);
+    CHECK(measured.bounds.min == std::array<float, 3>{10, 2, 0});
+    if (!document.comparisons[0].translation) {
+        const auto display = woby::comparisonDisplayBounds(restored, restored.activeComparisonId);
+        REQUIRE(display);
+        CHECK(display->min[0] > measured.bounds.max[0]);
+        CHECK(restored.sceneBounds.max[0] >= display->max[0]);
+    }
+    const auto saved = woby::createSceneDocument(restored);
+    REQUIRE(saved.comparisons[0].translation.has_value());
+    woby::writeSceneDocument(path, saved);
+    const auto reopened = woby::prepareSceneReplacement(restored, restored.files, woby::readSceneDocument(path));
+    CHECK(reopened.comparisons[0].translation == expected);
+    CHECK(woby::createSceneDocument(reopened) == saved);
+    std::filesystem::remove(path);
+}
+
 TEST_CASE("comparison load rejects malformed references and retains changed source layouts as missing")
 {
     auto state = stateWithFiles(2);
@@ -314,7 +363,7 @@ TEST_CASE("comparison load rejects malformed references and retains changed sour
     woby::writeSceneDocument(path, document);
     CHECK_THROWS_WITH((void)woby::readSceneDocument(path), "Comparison references an invalid source part.");
     document = woby::createSceneDocument(state);
-    document.comparisons[0].translation = {NAN, 2, 3};
+    document.comparisons[0].translation = std::array<float, 3>{NAN, 2, 3};
     document.comparisons[0].a.push_back(document.comparisons[0].a[0]);
     woby::writeSceneDocument(path, document);
     const auto normalized = woby::readSceneDocument(path);
@@ -841,6 +890,11 @@ TEST_CASE("sample loads with repairs and A B comparison membership")
     CHECK(woby::comparisonSettings(state).enabled);
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == original.nodes.size());
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == repaired.nodes.size());
+    REQUIRE(scene.comparisons.size() == 1);
+    CHECK_FALSE(scene.comparisons[0].translation.has_value());
+    const auto display = woby::comparisonDisplayBounds(state, state.activeComparisonId);
+    REQUIRE(display);
+    CHECK(display->min[0] > woby::combineBounds(state.files, state.sceneNodes).max[0]);
 }
 
 TEST_CASE("comparison load normalizes settings and preserves incomplete objects")
@@ -854,6 +908,7 @@ TEST_CASE("comparison load normalizes settings and preserves incomplete objects"
     const auto document = woby::readSceneDocument(path);
     REQUIRE(document.comparisons.size() == 1);
     CHECK(document.comparisons[0].settings.enabled);
+    CHECK_FALSE(document.comparisons[0].translation.has_value());
     CHECK(document.comparisons[0].a.empty());
     CHECK(document.comparisons[0].settings.tolerance == doctest::Approx(.05));
     CHECK(document.comparisons[0].settings.colorRange >= document.comparisons[0].settings.tolerance);
