@@ -13,7 +13,11 @@ void main()
         color = vec3(0.56, 0.61, 0.67);
         if (v_texcoord0.x > u_comparison.x)
         {
-            float amount = clamp((v_texcoord0.x - u_comparison.x) / max(u_comparison.y - u_comparison.x, 0.000001), 0.0, 1.0);
+            float amount = 1.0;
+            if (u_comparison.y > u_comparison.x)
+            {
+                amount = clamp((v_texcoord0.x - u_comparison.x) / (u_comparison.y - u_comparison.x), 0.0, 1.0);
+            }
             color = mix(vec3(1.0, 0.77, 0.31), vec3(0.94, 0.22, 0.055), amount);
         }
     }

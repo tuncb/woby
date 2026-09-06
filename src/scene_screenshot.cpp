@@ -1,5 +1,9 @@
 #include "scene_screenshot.h"
 #include "comparison_view.h"
+#include "comparison_scene.h"
+#include "comparison_legend.h"
+#include "ui_operations.h"
+#include "imgui_bgfx.h"
 
 #include <bimg/bimg.h>
 #include <bx/allocator.h>
@@ -16,9 +20,8 @@ namespace {
 
 constexpr bgfx::ViewId screenshotSceneView = 3;
 constexpr bgfx::ViewId screenshotHelperView = 4;
-constexpr bgfx::ViewId screenshotReadbackView = 5;
-constexpr uint16_t screenshotWidth = 1920;
-constexpr uint16_t screenshotHeight = 1800;
+constexpr bgfx::ViewId screenshotAnnotationView = 5;
+constexpr bgfx::ViewId screenshotReadbackView = 6;
 
 std::string fileDisplayName(const std::filesystem::path& path)
 {
@@ -53,8 +56,16 @@ std::filesystem::path pngPath(const std::filesystem::path& path)
 
 void ensureSceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
 {
-    if (bgfx::isValid(screenshot.frameBuffer)) {
+    if (bgfx::isValid(screenshot.frameBuffer)
+        && screenshot.width == screenshot.options.width && screenshot.height == screenshot.options.height) {
         return;
+    }
+    destroySceneScreenshotFramebuffer(screenshot);
+    screenshot.width = static_cast<uint16_t>(screenshot.options.width);
+    screenshot.height = static_cast<uint16_t>(screenshot.options.height);
+    if (screenshot.width > bgfx::getCaps()->limits.maxTextureSize
+        || screenshot.height > bgfx::getCaps()->limits.maxTextureSize) {
+        throw std::runtime_error("Export resolution exceeds the renderer texture limit.");
     }
 
     if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_READ_BACK) == 0u) {
@@ -86,22 +97,22 @@ void ensureSceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
     }
 
     screenshot.colorTexture = bgfx::createTexture2D(
-        screenshotWidth,
-        screenshotHeight,
+        screenshot.width,
+        screenshot.height,
         false,
         1,
         bgfx::TextureFormat::BGRA8,
         colorFlags);
     screenshot.depthTexture = bgfx::createTexture2D(
-        screenshotWidth,
-        screenshotHeight,
+        screenshot.width,
+        screenshot.height,
         false,
         1,
         bgfx::TextureFormat::D24S8,
         depthFlags);
     screenshot.readbackTexture = bgfx::createTexture2D(
-        screenshotWidth,
-        screenshotHeight,
+        screenshot.width,
+        screenshot.height,
         false,
         1,
         bgfx::TextureFormat::BGRA8,
@@ -130,7 +141,7 @@ void ensureSceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
     bgfx::setName(screenshot.colorTexture, "Scene Screenshot Color");
     bgfx::setName(screenshot.depthTexture, "Scene Screenshot Depth");
     bgfx::setName(screenshot.readbackTexture, "Scene Screenshot Readback");
-    screenshot.pixels.resize(static_cast<size_t>(screenshotWidth) * screenshotHeight * 4u);
+    screenshot.pixels.resize(static_cast<size_t>(screenshot.width) * screenshot.height * 4u);
 }
 
 void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
@@ -148,7 +159,7 @@ void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
     }
     bx::DefaultAllocator allocator;
     bx::MemoryBlock block(&allocator);
-    block.more(static_cast<uint32_t>(rgbaPixels.size()) + screenshotHeight * 16u + 1024u);
+    block.more(static_cast<uint32_t>(rgbaPixels.size()) + screenshot.height * 16u + 1024u);
     bx::MemoryWriter writer(&block);
     bx::Error error;
     const auto outputPathUtf8 = screenshot.outputPath.u8string();
@@ -157,9 +168,9 @@ void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
     const bool yflip = bgfx::getCaps()->originBottomLeft;
     const int32_t result = bimg::imageWritePng(
         &writer,
-        screenshotWidth,
-        screenshotHeight,
-        screenshotWidth * 4u,
+        screenshot.width,
+        screenshot.height,
+        screenshot.width * 4u,
         rgbaPixels.data(),
         bimg::TextureFormat::RGBA8,
         yflip,
@@ -199,12 +210,14 @@ void destroySceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
     screenshot.pixels.clear();
 }
 
-void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std::filesystem::path& outputPath)
+void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std::filesystem::path& outputPath,
+    ScreenshotSettings options)
 {
     if (screenshot.captureRequested || screenshot.readbackPending) {
         throw std::runtime_error("A screenshot is already pending.");
     }
 
+    screenshot.options = normalizedScreenshotSettings(options);
     screenshot.outputPath = pngPath(outputPath);
     screenshot.captureRequested = true;
 }
@@ -233,7 +246,61 @@ void submitSceneScreenshotCapture(
         return; // Keep the request pending until all visible results are ready.
     }
 
+    const bool visibleResults = std::any_of(ui.comparisons.begin(), ui.comparisons.end(),
+        [](const auto& item) { return item.settings.enabled; });
+    if (screenshot.options.resultsOnly && !visibleResults) {
+        throw std::runtime_error("No visible comparison results to export.");
+    }
+    if (visibleResults && comparison == nullptr) {
+        throw std::runtime_error("Comparison results are unavailable for export.");
+    }
     ensureSceneScreenshotFramebuffer(screenshot);
+    const auto& options = screenshot.options;
+    const bool annotations = visibleResults && (options.legend || options.comparisonName || options.sources
+        || options.direction || options.tolerance);
+    const auto panelWidth = annotations ? static_cast<uint16_t>(screenshot.width * .43f) : uint16_t{0};
+    const auto sceneWidth = static_cast<uint16_t>(screenshot.width - panelWidth);
+    // Build and validate all annotations before submitting a readback. Never clip metadata silently.
+    ImDrawList annotationDraw(ImGui::GetDrawListSharedData());
+    annotationDraw._ResetForNewFrame();
+    annotationDraw.PushClipRect({0, 0}, {static_cast<float>(screenshot.width), static_cast<float>(screenshot.height)});
+    annotationDraw.PushTexture(ImGui::GetIO().Fonts->TexRef);
+    if (annotations) {
+        const float fontSize = 20.0f;
+        const float x = static_cast<float>(sceneWidth) + 24;
+        const float wrap = static_cast<float>(panelWidth) - 48;
+        float y = 24;
+        annotationDraw.AddRectFilled({static_cast<float>(sceneWidth), 0},
+            {static_cast<float>(screenshot.width), static_cast<float>(screenshot.height)}, IM_COL32(24, 28, 34, 255));
+        const auto line = [&](const std::string& text) {
+            const auto size = ImGui::GetFont()->CalcTextSizeA(fontSize, 100000, wrap, text.c_str());
+            if (y + size.y > static_cast<float>(screenshot.height) - 24) {
+                throw std::runtime_error("Export annotations do not fit. Increase image height or export fewer visible comparisons.");
+            }
+            const auto color = text.starts_with("SATURATED:") ? IM_COL32(255, 170, 65, 255) : IM_COL32(235, 239, 245, 255);
+            annotationDraw.AddText(ImGui::GetFont(), fontSize, {x, y}, color,
+                text.c_str(), nullptr, wrap);
+            y += size.y + 8;
+        };
+        line(options.resultsOnly ? "Woby | Visible comparison results" : "Woby | Scene and visible results");
+        for (const auto& item : ui.comparisons) {
+            if (!item.settings.enabled) { continue; }
+            y += 12;
+            const auto a = comparisonInputSummary(ui, ComparisonSide::a, item.objectId);
+            const auto b = comparisonInputSummary(ui, ComparisonSide::b, item.objectId);
+            for (const auto& text : comparisonReportLines(item.name, a.sourceNames, b.sourceNames, item.settings,
+                     comparison->objects.at(item.objectId).result, options)) { line(text); }
+            if (options.legend && item.settings.mode == ComparisonMode::distance) {
+                const float used = drawComparisonLegend(annotationDraw, {x, y}, wrap, fontSize, item.settings);
+                y += used;
+                if (y > static_cast<float>(screenshot.height) - 24) {
+                    throw std::runtime_error("Export legends do not fit. Increase image height or export fewer visible comparisons.");
+                }
+            }
+        }
+    }
+    annotationDraw.PopTexture();
+    annotationDraw.PopClipRect();
 
     bgfx::setViewName(screenshotSceneView, "Scene Screenshot");
     bgfx::setViewName(screenshotHelperView, "Scene Screenshot Helpers");
@@ -242,8 +309,8 @@ void submitSceneScreenshotCapture(
     bgfx::setViewFrameBuffer(screenshotHelperView, screenshot.frameBuffer);
     bgfx::setViewClear(screenshotSceneView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
     bgfx::setViewClear(screenshotHelperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
-    bgfx::setViewRect(screenshotSceneView, 0, 0, screenshotWidth, screenshotHeight);
-    bgfx::setViewRect(screenshotHelperView, 0, 0, screenshotWidth, screenshotHeight);
+    bgfx::setViewRect(screenshotSceneView, 0, 0, sceneWidth, screenshot.height);
+    bgfx::setViewRect(screenshotHelperView, 0, 0, sceneWidth, screenshot.height);
     bgfx::touch(screenshotSceneView);
     bgfx::touch(screenshotHelperView);
 
@@ -256,8 +323,8 @@ void submitSceneScreenshotCapture(
         cameraUp(camera, ui.upAxis));
     bx::mtxProj(
         projection,
-        camera.verticalFovDegrees,
-        static_cast<float>(screenshotWidth) / static_cast<float>(screenshotHeight),
+        cameraViewportFov(camera, static_cast<float>(sceneWidth) / static_cast<float>(screenshot.height)),
+        static_cast<float>(sceneWidth) / static_cast<float>(screenshot.height),
         camera.nearPlane,
         cameraFarPlane(camera, sceneBounds),
         homogeneousDepth);
@@ -265,7 +332,7 @@ void submitSceneScreenshotCapture(
     bgfx::setViewTransform(screenshotHelperView, view, projection);
 
     bgfx::setViewMode(screenshotSceneView, bgfx::ViewMode::Sequential);
-    {
+    if (!options.resultsOnly) {
         submitSceneFiles(
             screenshotSceneView,
             files,
@@ -277,11 +344,25 @@ void submitSceneScreenshotCapture(
             pointSpriteProgram,
             colorUniform,
             pointParamsUniform,
-            screenshotWidth,
-            screenshotHeight);
+            sceneWidth,
+            screenshot.height);
     }
     if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform); }
-    submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
+    if (!options.resultsOnly) {
+        submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
+    }
+    if (annotations) {
+        ImDrawData drawData;
+        drawData.Valid = true;
+        drawData.DisplayPos = {0, 0};
+        drawData.DisplaySize = {static_cast<float>(screenshot.width), static_cast<float>(screenshot.height)};
+        drawData.FramebufferScale = {1, 1};
+        drawData.Textures = &ImGui::GetPlatformIO().Textures;
+        drawData.AddDrawList(&annotationDraw);
+        bgfx::setViewFrameBuffer(screenshotAnnotationView, screenshot.frameBuffer);
+        bgfx::setViewClear(screenshotAnnotationView, BGFX_CLEAR_NONE);
+        imgui_bgfx::renderToView(&drawData, screenshotAnnotationView);
+    }
 
     bgfx::blit(
         screenshotReadbackView,
@@ -291,11 +372,43 @@ void submitSceneScreenshotCapture(
         screenshot.colorTexture,
         0,
         0,
-        screenshotWidth,
-        screenshotHeight);
+        screenshot.width,
+        screenshot.height);
     screenshot.readFrame = bgfx::readTexture(screenshot.readbackTexture, screenshot.pixels.data());
     screenshot.captureRequested = false;
     screenshot.readbackPending = true;
+}
+
+bool drawSceneScreenshotOptions(UiState& state)
+{
+    bool save = false;
+    ImGui::SetNextWindowSize({440, 0}, ImGuiCond_Always);
+    if (ImGui::BeginPopup("Export PNG")) {
+        auto options = state.screenshotSettings;
+        const auto initial = options;
+        ImGui::TextUnformatted("Export PNG");
+        ImGui::Separator();
+        ImGui::SetNextItemWidth(140);
+        ImGui::InputInt("Width (px)", &options.width, 0);
+        ImGui::SetNextItemWidth(140);
+        ImGui::InputInt("Height (px)", &options.height, 0);
+        ImGui::TextDisabled("960-7680 wide, 720-4320 high");
+        ImGui::Checkbox("Visible results only", &options.resultsOnly);
+        ImGui::TextWrapped("Otherwise includes the scene, helpers and visible results. Uses the current camera.");
+        ImGui::SeparatorText("Comparison annotations");
+        ImGui::Checkbox("Numeric legend and statistics", &options.legend);
+        ImGui::Checkbox("Comparison name", &options.comparisonName);
+        ImGui::Checkbox("A / B sources", &options.sources);
+        ImGui::Checkbox("Measurement direction", &options.direction);
+        ImGui::BeginDisabled(options.legend);
+        ImGui::Checkbox("Tolerance", &options.tolerance);
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("Legends always include tolerance and units. Export waits for complete visible results.");
+        if (options != initial) { setScreenshotSettings(state, options); }
+        if (ImGui::Button("Save PNG...")) { save = true; ImGui::CloseCurrentPopup(); }
+        ImGui::EndPopup();
+    }
+    return save;
 }
 
 void failSceneScreenshotCapture(SceneScreenshotRuntime& screenshot)

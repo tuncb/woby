@@ -286,6 +286,7 @@ TEST_CASE("multiple comparison objects round trip with fresh identities and inde
     auto settings = woby::comparisonSettings(state, second);
     settings.enabled = false;
     settings.tolerance = .15f;
+    settings.unitLabel = "custom \"units\"";
     woby::setComparisonSettings(state, settings, second);
     const auto document = woby::createSceneDocument(state);
     woby::writeSceneDocument(path, document);
@@ -1288,4 +1289,124 @@ TEST_CASE("comparison membership menu is unavailable without any comparable part
     CHECK(woby::comparisonMembershipAction(state, {0, state.nextObjectId}, woby::ComparisonSide::b) == Action::unavailable);
     state.files[0].mesh.indices.clear();
     CHECK(woby::comparisonMembershipAction(state, {state.files[0].objectId}, woby::ComparisonSide::a) == Action::unavailable);
+}
+
+
+TEST_CASE("comparison report identifies source roles and unsigned approximate measurements")
+{
+    woby::MeshComparison result;
+    result.original.maximum = .25;
+    result.original.mean = .125;
+    result.original.percentile95 = .2;
+    result.repaired.maximum = .833;
+    result.repaired.mean = .3;
+    result.repaired.percentile95 = .7;
+    result.repaired.distances = {0, .833};
+    result.repaired.sampleAreas = {1, 3};
+    woby::ComparisonSettings settings;
+    const auto report = [&](const woby::ScreenshotSettings& options = {}) {
+        std::string text;
+        for (const auto& line : woby::comparisonReportLines("Repair check", "original.obj", "repaired.obj",
+                 settings, result, options)) { text += line + "\n"; }
+        return text;
+    };
+    auto text = report();
+    for (const auto* expected : {"Repair check", "A: original.obj", "B: repaired.obj", "B -> A: measured B; reference A",
+             "Approximate unsigned", "Four samples per triangle", "model units", "Tolerance: 0.05", ">= saturates",
+             "SATURATED", "Sample max: 0.833", "Area-weighted mean: 0.3", "Area-weighted P95: 0.7",
+             "Area above tolerance: 75%"}) { CHECK(text.find(expected) != std::string::npos); }
+    CHECK(text.find("mm") == std::string::npos);
+    settings.distanceOnOriginal = true;
+    settings.unitLabel = "inches";
+    text = report();
+    CHECK(text.find("A -> B: measured A; reference B") != std::string::npos);
+    CHECK(text.find("Sample max: 0.25 inches") != std::string::npos);
+    CHECK(text.find("SATURATED") == std::string::npos);
+    result.original.maximum = settings.colorRange;
+    CHECK(report().find("SATURATED") == std::string::npos);
+    woby::ScreenshotSettings options;
+    options.comparisonName = options.sources = options.direction = options.tolerance = false;
+    text = report(options);
+    CHECK(text.find("Repair check") == std::string::npos);
+    CHECK(text.find("original.obj") == std::string::npos);
+    CHECK(text.find("measured A") == std::string::npos);
+    CHECK(text.find("Tolerance:") != std::string::npos); // A legend always includes its threshold.
+    options.legend = false;
+    text = report(options);
+    CHECK(text.find("Tolerance:") == std::string::npos);
+    CHECK(text.find("Sample max:") == std::string::npos);
+    settings.mode = woby::ComparisonMode::overlay;
+    text = report();
+    CHECK(text.find("A blue wireframe; B gray surface") != std::string::npos);
+    CHECK(text.find("unsigned") == std::string::npos);
+}
+
+TEST_CASE("heatmap legend palette preserves threshold and saturation boundaries")
+{
+    woby::ComparisonSettings settings;
+    settings.tolerance = .1f;
+    settings.colorRange = .5f;
+    const auto gray = woby::comparisonHeatmapColor(0, settings);
+    CHECK(woby::comparisonHeatmapColor(settings.tolerance, settings) == gray);
+    const auto maximum = woby::comparisonHeatmapColor(settings.colorRange, settings);
+    CHECK(maximum[0] == doctest::Approx(.94));
+    CHECK(maximum[1] == doctest::Approx(.22));
+    CHECK(maximum[2] == doctest::Approx(.055));
+    CHECK(woby::comparisonHeatmapColor(.833, settings) == maximum);
+    const auto midpoint = woby::comparisonHeatmapColor((static_cast<double>(settings.tolerance) + settings.colorRange) / 2, settings);
+    CHECK(midpoint[1] == doctest::Approx(.495));
+    settings.colorRange = settings.tolerance;
+    CHECK(woby::comparisonHeatmapColor(settings.tolerance, settings) == gray);
+    CHECK(woby::comparisonHeatmapColor(.833, settings) == maximum);
+    CHECK(woby::comparisonHeatmapColor(std::nextafter(settings.tolerance, 1.0f), settings) == maximum);
+}
+
+TEST_CASE("unit labels normalize at operation and load boundaries without changing geometry")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    auto settings = woby::comparisonSettings(state, id);
+    CHECK(woby::comparisonUnits(settings) == "model units");
+    settings.unitLabel = "  mm\n\t  ";
+    state.isDirty = false;
+    woby::setComparisonSettings(state, settings, id);
+    CHECK(state.isDirty);
+    CHECK(woby::comparisonSettings(state, id).unitLabel == "mm");
+    CHECK(woby::comparisonGeometrySignature(state, id) == signature);
+    settings.unitLabel = std::string(63, 'a') + "\xc2\xb5";
+    CHECK(woby::normalizedComparisonSettings(settings).unitLabel == std::string(63, 'a'));
+    settings.unitLabel = "   ";
+    CHECK(woby::comparisonUnits(woby::normalizedComparisonSettings(settings)) == "model units");
+    const auto path = std::filesystem::temp_directory_path() / "woby-unit-label-load.woby";
+    {
+        std::ofstream file(path);
+        file << "version = 5\n[[comparisons]]\nname = \"check\"\ncomparison_unit_label = \"  inches  \"\n";
+    }
+    CHECK(woby::readSceneDocument(path).comparisons.at(0).settings.unitLabel == "inches");
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("screenshot preferences validate resolution and remain outside scene dirty tracking")
+{
+    woby::UiState state;
+    const auto original = woby::createSceneDocument(state);
+    auto options = state.screenshotSettings;
+    options.width = -1;
+    options.height = 999999;
+    options.resultsOnly = true;
+    options.legend = false;
+    woby::setScreenshotSettings(state, options);
+    CHECK(state.screenshotSettings.width == 960);
+    CHECK(state.screenshotSettings.height == 4320);
+    CHECK(state.screenshotSettings.resultsOnly);
+    CHECK_FALSE(state.screenshotSettings.legend);
+    CHECK(woby::createSceneDocument(state) == original);
+    CHECK_FALSE(state.isDirty);
+    options.width = 3840;
+    options.height = 2160;
+    woby::setScreenshotSettings(state, options);
+    CHECK(state.screenshotSettings == options);
 }

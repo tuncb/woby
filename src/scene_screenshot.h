@@ -17,6 +17,9 @@ namespace woby {
 struct ComparisonRuntimes;
 
 struct SceneScreenshotRuntime {
+    ScreenshotSettings options;
+    uint16_t width = 0;
+    uint16_t height = 0;
     bgfx::FrameBufferHandle frameBuffer = BGFX_INVALID_HANDLE;
     bgfx::TextureHandle colorTexture = BGFX_INVALID_HANDLE;
     bgfx::TextureHandle depthTexture = BGFX_INVALID_HANDLE;
@@ -29,7 +32,10 @@ struct SceneScreenshotRuntime {
 };
 
 void destroySceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot);
-void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std::filesystem::path& outputPath);
+void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std::filesystem::path& outputPath,
+    ScreenshotSettings options = {});
+// Returns true when the user chooses Save PNG in the export options popup.
+bool drawSceneScreenshotOptions(UiState& state);
 void submitSceneScreenshotCapture(
     SceneScreenshotRuntime& screenshot,
     const std::vector<UiFileState>& files,

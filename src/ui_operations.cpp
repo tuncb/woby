@@ -304,6 +304,11 @@ void setPropertiesPaneVisible(UiState& state, bool visible)
     state.propertiesPaneVisible = visible;
 }
 
+void setScreenshotSettings(UiState& state, ScreenshotSettings settings)
+{
+    state.screenshotSettings = normalizedScreenshotSettings(settings);
+}
+
 void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member,
     SceneObjectId id)
 {

@@ -1,5 +1,6 @@
 #include "comparison_view.h"
 #include "comparison_scene.h"
+#include "comparison_legend.h"
 #include "ui_operations.h"
 #include "utf8_path.h"
 
@@ -449,8 +450,19 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
             ImGui::SetNextItemWidth(110);
             ImGui::InputFloat("Color maximum", &settings.colorRange, 0, 0, "%.5g");
-            ImGui::TextColored(ImVec4(.65f, .70f, .77f, 1), "Gray: within tolerance");
-            ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "Yellow -> orange: increasing distance");
+            ImGui::BeginDisabled(!resultReady);
+            if (ImGui::Button("Fit color range")) {
+                const auto& surface = settings.distanceOnOriginal ? runtime.result.original : runtime.result.repaired;
+                settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
+            }
+            ImGui::EndDisabled();
+            std::array<char, 256> units{};
+            std::copy_n(settings.unitLabel.data(), std::min(settings.unitLabel.size(), units.size() - 1), units.data());
+            ImGui::SetNextItemWidth(110);
+            if (ImGui::InputTextWithHint("Unit label", "model units", units.data(), units.size())) {
+                settings.unitLabel = units.data();
+            }
+            ImGui::TextWrapped("Label only; does not convert coordinates. Blank = model units.");
         }
         if (settings.mode == ComparisonMode::overlay)
         {
@@ -465,6 +477,16 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (settings != initial)
     {
         setComparisonSettings(state, settings, id);
+    }
+    if (comparisonSettings(state, id).mode == ComparisonMode::distance) {
+        const auto currentSettings = comparisonSettings(state, id);
+        ImGui::Text("Distance (%s)", comparisonUnits(currentSettings).c_str());
+        const float legendHeight = drawComparisonLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
+            ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), currentSettings);
+        ImGui::Dummy({0, legendHeight});
+        ImGui::TextWrapped(currentSettings.colorRange == currentSettings.tolerance ?
+            "Gray: at or below tolerance. Above tolerance saturates orange-red." :
+            "Gray: at or below tolerance. >= color maximum saturates orange-red.");
     }
     if (!valid || !comparisonSettings(state, id).enabled)
     {
@@ -491,17 +513,17 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
     if (comparisonSettings(state, id).mode == ComparisonMode::distance)
     {
-        if (ImGui::Button("Fit color range"))
-        {
-            settings = comparisonSettings(state, id);
-            settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
-            setComparisonSettings(state, settings, id);
+        if (surface.maximum > comparisonSettings(state, id).colorRange) {
+            ImGui::PushTextWrapPos();
+            ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "SATURATED: sample max exceeds color maximum");
+            ImGui::PopTextWrapPos();
         }
-        ImGui::Text("Sample max: %.5g", surface.maximum);
-        ImGui::Text("Area-weighted mean: %.5g", surface.mean);
-        ImGui::Text("Area-weighted P95: %.5g", surface.percentile95);
+        const auto units = comparisonUnits(comparisonSettings(state, id));
+        ImGui::TextWrapped("Sample max: %.5g %s", surface.maximum, units.c_str());
+        ImGui::TextWrapped("Area-weighted mean: %.5g %s", surface.mean, units.c_str());
+        ImGui::TextWrapped("Area-weighted P95: %.5g %s", surface.percentile95, units.c_str());
         ImGui::Text("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
-        ImGui::TextWrapped("Approximate unsigned distance, four samples per triangle. Values are in model units.");
+        ImGui::TextWrapped("Approximate unsigned distance, four samples per triangle; not an exact maximum. Surface shading affects brightness.");
     }
     const auto &a = runtime.result.original.diagnostics;
     const auto &b = runtime.result.repaired.diagnostics;

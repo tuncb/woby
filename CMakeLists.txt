@@ -48,6 +48,8 @@ woby_enable_project_warnings(woby_automation)
 woby_enable_precompiled_headers(woby_automation <nlohmann/json.hpp>)
 
 add_executable(woby
+    src/comparison_report.cpp
+    src/comparison_legend.cpp
     src/mesh_comparison.cpp
     src/comparison_scene.cpp
     src/comparison_view.cpp
@@ -222,6 +224,7 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        src/comparison_report.cpp
         src/mesh_comparison.cpp
         src/comparison_scene.cpp
         tests/mesh_comparison_tests.cpp

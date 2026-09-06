@@ -1,6 +1,7 @@
 #pragma once
 
 #include "camera.h"
+#include "comparison_report.h"
 #include "model_mesh.h"
 #include "scene_file.h"
 #include "scene_objects.h"
@@ -107,6 +108,8 @@ struct UiComparison {
 };
 
 struct UiState {
+    // Export preferences are session-only, not scene content or dirty state.
+    ScreenshotSettings screenshotSettings;
     std::vector<UiComparison> comparisons;
     // Last active comparison, retained for source membership commands and badges.
     SceneObjectId activeComparisonId = invalidSceneObjectId;

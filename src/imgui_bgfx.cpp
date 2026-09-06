@@ -255,6 +255,11 @@ void shutdown()
 
 void render(ImDrawData* drawData)
 {
+    renderToView(drawData, state.viewId);
+}
+
+void renderToView(ImDrawData* drawData, bgfx::ViewId viewId)
+{
     const int32_t framebufferWidth = static_cast<int32_t>(drawData->DisplaySize.x * drawData->FramebufferScale.x);
     const int32_t framebufferHeight = static_cast<int32_t>(drawData->DisplaySize.y * drawData->FramebufferScale.y);
     if (framebufferWidth <= 0 || framebufferHeight <= 0) {
@@ -263,10 +268,10 @@ void render(ImDrawData* drawData)
 
     updateTextures(drawData);
 
-    bgfx::setViewName(state.viewId, "Dear ImGui");
-    bgfx::setViewMode(state.viewId, bgfx::ViewMode::Sequential);
+    bgfx::setViewName(viewId, "Dear ImGui");
+    bgfx::setViewMode(viewId, bgfx::ViewMode::Sequential);
     bgfx::setViewRect(
-        state.viewId,
+        viewId,
         0,
         0,
         static_cast<uint16_t>(framebufferWidth),
@@ -278,7 +283,7 @@ void render(ImDrawData* drawData)
     const float top = drawData->DisplayPos.y;
     const float bottom = drawData->DisplayPos.y + drawData->DisplaySize.y;
     bx::mtxOrtho(ortho, left, right, bottom, top, 0.0f, 1000.0f, 0.0f, bgfx::getCaps()->homogeneousDepth);
-    bgfx::setViewTransform(state.viewId, nullptr, ortho);
+    bgfx::setViewTransform(viewId, nullptr, ortho);
 
     const ImVec2 clipOffset = drawData->DisplayPos;
     const ImVec2 clipScale = drawData->FramebufferScale;
@@ -290,6 +295,7 @@ void render(ImDrawData* drawData)
 
         if (bgfx::getAvailTransientVertexBuffer(vertexCount, state.layout) < vertexCount
             || bgfx::getAvailTransientIndexBuffer(indexCount, sizeof(ImDrawIdx) == 4) < indexCount) {
+            if (viewId != state.viewId) { throw std::runtime_error("Insufficient GPU buffer space for export annotations."); }
             break;
         }
 
@@ -337,7 +343,7 @@ void render(ImDrawData* drawData)
             bgfx::setTexture(0, state.textureSampler, texture);
             bgfx::setVertexBuffer(0, &vertexBuffer, command.VtxOffset, vertexCount - command.VtxOffset);
             bgfx::setIndexBuffer(&indexBuffer, command.IdxOffset, command.ElemCount);
-            bgfx::submit(state.viewId, state.program);
+            bgfx::submit(viewId, state.program);
         }
     }
 }

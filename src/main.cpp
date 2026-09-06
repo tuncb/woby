@@ -2634,7 +2634,7 @@ int main(int argc, char** argv)
             const auto pendingSceneScreenshotPath = takePendingSaveSceneScreenshotPath(sceneScreenshotDialogState);
             if (pendingSceneScreenshotPath.has_value()) {
                 try {
-                    requestSceneScreenshotCapture(sceneScreenshot, pendingSceneScreenshotPath.value());
+                    requestSceneScreenshotCapture(sceneScreenshot, pendingSceneScreenshotPath.value(), ui.screenshotSettings);
                     setToastMessage(toast, "Saving screenshot...");
                 } catch (const std::exception& exception) {
                     setSceneScreenshotDialogStatus(
@@ -2914,10 +2914,13 @@ int main(int argc, char** argv)
                         ImGui::BeginDisabled(fileActionsDisabled()
                             || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
                         if (drawRenderModeIconButton("scene_screenshot", screenshotIcon,
-                                "Screenshot", RenderModeState::off, false)) {
-                            showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
+                                "Export PNG", RenderModeState::off, false)) {
+                            ImGui::OpenPopup("Export PNG");
                         }
                         ImGui::EndDisabled();
+                        if (woby::drawSceneScreenshotOptions(ui)) {
+                            showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
+                        }
                         const size_t groupCount = woby::totalGroupCount(ui);
                         const size_t visibleCount = woby::countVisibleSceneGroups(ui);
                         if (drawTriStateVisibilityButton(
@@ -3099,7 +3102,7 @@ int main(int argc, char** argv)
                             if (backgroundLoad.active || gpuFinalize.active) {
                                 throw std::runtime_error("Cannot capture while model files are being processed.");
                             }
-                            requestSceneScreenshotCapture(sceneScreenshot, payload.outputPath);
+                            requestSceneScreenshotCapture(sceneScreenshot, payload.outputPath, ui.screenshotSettings);
                             automationScreenshotCommandId = command->id;
                         } else if constexpr (std::is_same_v<Command, woby::AutomationObjectsCommand>) {
                             woby::completeAutomationCommand(*automation, command->id,

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 
 namespace woby
 {
@@ -34,6 +35,8 @@ struct ComparisonSettings
     bool distanceOnOriginal = false;
     float tolerance = 0.05f;
     float colorRange = 0.5f;
+    // Empty means model units; labels never rescale measurements.
+    std::string unitLabel;
     bool showEdges = false;
     bool showBoundaries = true;
     bool showNonManifold = true;

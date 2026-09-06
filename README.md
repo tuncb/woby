@@ -19,6 +19,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Ctrl-click multiple objects to edit shared properties. **Mixed** fields have differing local values; editing a field sets only that field on every selected object. Parent transforms compose with part transforms and their opacities multiply. Selecting both a parent and its child edits both. Color and render modes are part properties; selecting a comparison shows its controls in the same Properties pane.
 - Reset translation, rotation, scale, all transforms, or appearance independently. Transform resets preserve opacity; appearance resets preserve transforms and unselected child overrides. Geometry shows mesh statistics and local bounds for a single file or part. These edits use the existing `.woby` save/load settings.
 - Remove files from a scene without touching the source model files.
+- Compare surfaces with a numeric heatmap legend, tolerance, saturation warning, and sampled maximum/mean/P95/area statistics. Distances are approximate and unsigned. A comparison's optional unit label is saved with the scene; it labels model coordinates without converting them or inferring units from OBJ/STL.
 - Load large model batches and scenes in the background with progress, cancellation, and unsaved-change prompts.
 
 ## Getting started
@@ -36,7 +37,11 @@ model files, folders, and scenes. Add model folder imports models recursively.
 
 The **Objects** tree lists scene content, and **Display** contains global viewing
 controls. The Frame icon beside the Y/Z up-axis button fits the scene in view;
-the camera icon immediately after it saves a screenshot. Geometry counts and
+the camera icon immediately after it opens PNG export options. Choose resolution,
+the scene or visible comparison results, and legend/name/source/direction/threshold
+annotations. Comparison exports wait for complete visible results and report an
+error if annotations cannot fit; increase the image height or reduce visible results.
+Geometry counts and
 renderer/FPS details sit at the bottom of the left pane. File actions are disabled
 while a dialog or file-processing operation is active; New scene and Screenshot
 also wait for outstanding image captures.

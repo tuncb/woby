@@ -360,6 +360,15 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.tolerance = std::isfinite(settings.tolerance) ? std::clamp(settings.tolerance, 0.0f, 1e12f) : .05f;
     settings.colorRange = std::isfinite(settings.colorRange) ? std::clamp(settings.colorRange, 1e-6f, 1e12f) : .5f;
     settings.colorRange = std::max(settings.colorRange, settings.tolerance);
+    std::erase_if(settings.unitLabel, [](unsigned char c) { return c < 32 || c == 127; });
+    const auto first = settings.unitLabel.find_first_not_of(' ');
+    settings.unitLabel = first == std::string::npos ? "" :
+        settings.unitLabel.substr(first, settings.unitLabel.find_last_not_of(' ') - first + 1);
+    if (settings.unitLabel.size() > 64) {
+        size_t end = 64;
+        while (end > 0 && (static_cast<unsigned char>(settings.unitLabel[end]) & 0xc0) == 0x80) { --end; }
+        settings.unitLabel.resize(end);
+    }
     return settings;
 }
 

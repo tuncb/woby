@@ -561,6 +561,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     record.settings.distanceOnOriginal = parseTomlBool(value);
                 } else if (key == "comparison_tolerance") {
                     record.settings.tolerance = parseTomlFloat(value);
+                } else if (key == "comparison_unit_label") {
+                    record.settings.unitLabel = parseTomlString(value);
                 } else if (key == "comparison_color_range") {
                     record.settings.colorRange = parseTomlFloat(value);
                 } else if (key == "comparison_show_edges") {
@@ -776,6 +778,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "comparison_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
         stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
         stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
+        stream << "comparison_unit_label = \"" << escapeTomlString(comparison.unitLabel) << "\"\n";
         stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
         stream << "comparison_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
         stream << "comparison_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
