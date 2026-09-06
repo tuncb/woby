@@ -76,6 +76,11 @@ enum class UiRenderMode {
     vertices,
 };
 
+enum class UiInspectionPreset { solid, edges, vertices };
+// Presets edit the existing persisted display properties on all current parts.
+void applyInspectionPreset(UiState& state, UiInspectionPreset preset);
+void setUiScale(UiState& state, float scale);
+
 [[nodiscard]] size_t totalGroupCount(const std::vector<UiFileState>& files);
 [[nodiscard]] size_t totalGroupCount(const UiState& state);
 [[nodiscard]] size_t countVisibleGroups(const std::vector<UiGroupState>& groups);

@@ -992,7 +992,7 @@ TEST_CASE("scene save retries replay success without writing the destination aga
     woby::setAutomationReady(*fixture.server);
     woby::UiState state;
     woby::SceneDocument clean = woby::createSceneDocument(state);
-    woby::setShowGrid(state, false);
+    woby::setShowGrid(state, true);
     std::optional<std::filesystem::path> currentPath;
     const auto path = fixture.directory / "saved.woby";
     const Json params = {{"path", woby::pathToUtf8(path)}, {"requestKey", "save-once"}};
@@ -1025,7 +1025,7 @@ TEST_CASE("lifecycle errors replay their original dirty state and actionable rea
     woby::setAutomationReady(*fixture.server);
     woby::UiState state;
     woby::SceneDocument clean = woby::createSceneDocument(state);
-    woby::setShowGrid(state, false);
+    woby::setShowGrid(state, true);
     std::optional<std::filesystem::path> path;
     const Json params = {{"requestKey", "new-failed"}};
     auto future = std::async(std::launch::async, [&] { return request(fixture.instance, "scene.new", params); });

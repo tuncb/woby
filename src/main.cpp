@@ -18,6 +18,8 @@
 #include "scene_screenshot.h"
 #include "ui_operations.h"
 #include "ui_state.h"
+#include "ui_layout.h"
+#include "ui_icon_controls.h"
 #include "utf8_path.h"
 #include "automation.h"
 #include "control_scene.h"
@@ -43,6 +45,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <fstream>
 #include <iterator>
 #include <memory>
 #include <mutex>
@@ -57,6 +60,15 @@
 
 namespace {
 
+using woby::RenderModeState;
+using woby::uiSize;
+using woby::renderModeButtonSize;
+using woby::drawRenderModeIconButton;
+using woby::drawTriStateMasterIconButton;
+using woby::drawTriStateVisibilityButton;
+using woby::drawVisibilityButton;
+using woby::drawRemoveButton;
+
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
 constexpr bgfx::ViewId clearView = 0;
 constexpr bgfx::ViewId sceneView = 1;
@@ -70,12 +82,10 @@ constexpr float viewerPaneBackgroundAlpha = 1.0f;
 constexpr float popupBackgroundRed = 0.20f;
 constexpr float popupBackgroundGreen = 0.21f;
 constexpr float popupBackgroundBlue = 0.22f;
-constexpr float popupBackgroundAlpha = 0.88f;
-constexpr float appFontSize = 15.0f;
+constexpr float popupBackgroundAlpha = 1.0f;
+constexpr float appFontSize = 17.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
-    0x0020,
-    0x00ff,
     0xf04b,
     0xf04b,
     0xf00d,
@@ -112,22 +122,17 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xea80,
     0,
 };
-constexpr const char* removeFileIcon = "\xef\x80\x8d";
 constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 constexpr const char* trianglesIcon = "\xef\x81\x8b";
 constexpr const char* verticesIcon = "\xef\x86\x92";
 constexpr const char* frameSceneIcon = "\xef\x81\xa5";
 constexpr const char* screenshotIcon = "\xef\x80\xb0";
-constexpr const char* visibleIcon = "\xef\x81\xae";
-constexpr const char* hiddenIcon = "\xef\x81\xb0";
-constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 constexpr const char* originIcon = "\xf3\xb0\xad\x83";
 constexpr const char* gridIcon = "\xf3\xb0\x8b\x81";
 constexpr const char* viewerPanePinnedIcon = "\xee\xae\xa0";
 constexpr const char* viewerPaneUnpinnedIcon = "\xf3\xb0\xa4\xb0";
-constexpr float renderModeButtonSize = 26.0f;
 constexpr float viewerPaneTogglePaneMargin = 6.0f;
-constexpr float toastDurationSeconds = 3.0f;
+constexpr float toastDurationSeconds = 8.0f;
 constexpr float toastMargin = 12.0f;
 
 bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
@@ -175,13 +180,13 @@ void loadAppFont(const std::filesystem::path& assets)
     }
 
     ImGuiIO& io = ImGui::GetIO();
-    ImFont* font = io.Fonts->AddFontFromFileTTF(
-        fontPath.string().c_str(),
-        appFontSize,
-        nullptr,
-        appFontGlyphRanges);
-    if (font == nullptr) {
-        throw std::runtime_error("Failed to load app font: " + fontPath.string());
+    const auto textPath = assets / "fonts" / "Lato-Regular.ttf";
+    ImFont* font = io.Fonts->AddFontFromFileTTF(textPath.string().c_str(), appFontSize);
+    if (!font) { throw std::runtime_error("Failed to load UI font: " + textPath.string()); }
+    ImFontConfig icons;
+    icons.MergeMode = true;
+    if (!io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), appFontSize, &icons, appFontGlyphRanges)) {
+        throw std::runtime_error("Failed to load icon font: " + fontPath.string());
     }
 
     io.FontDefault = font;
@@ -368,7 +373,7 @@ CanvasLayout canvasLayout(SDL_Window* window, const woby::UiState& state)
     layout.width = static_cast<float>(std::max(windowWidth, 1));
     layout.height = static_cast<float>(std::max(windowHeight, 1));
     layout.rightEdge = layout.width;
-    layout.rightWidth = std::min(420.0f, layout.width * 0.36f);
+    layout.rightWidth = std::min(uiSize(420.0f), layout.width * 0.42f);
     const float reservedRight = state.propertiesPaneVisible ? layout.width - layout.rightEdge + layout.rightWidth : 0.0f;
     layout.maxLeftWidth = std::max(layout.width - reservedRight
         - std::min(minSceneViewportWidth, layout.width * 0.2f), 0.0f);
@@ -508,207 +513,55 @@ void configureAppStyle()
         popupBackgroundGreen,
         popupBackgroundBlue,
         popupBackgroundAlpha);
+    auto& style = ImGui::GetStyle();
+    style.FrameRounding = 3.0f;
+    style.FrameBorderSize = 1.0f;
+    style.FramePadding = ImVec2(8.0f, 5.0f);
+    style.ItemSpacing = ImVec2(8.0f, 6.0f);
+    style.Colors[ImGuiCol_Text] = ImVec4(.94f, .95f, .96f, 1);
+    style.Colors[ImGuiCol_TextDisabled] = ImVec4(.65f, .67f, .70f, 1);
+    style.Colors[ImGuiCol_Button] = ImVec4(.28f, .29f, .31f, 1);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(.36f, .38f, .40f, 1);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(.42f, .44f, .47f, 1);
+    style.Colors[ImGuiCol_Header] = ImVec4(.29f, .31f, .33f, 1);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(.36f, .38f, .40f, 1);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(.42f, .44f, .47f, 1);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(.14f, .15f, .17f, 1);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(.23f, .25f, .28f, 1);
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(.29f, .31f, .34f, 1);
+    style.Colors[ImGuiCol_CheckMark] = ImVec4(.40f, .78f, .92f, 1);
+    style.Colors[ImGuiCol_SliderGrab] = style.Colors[ImGuiCol_CheckMark];
 }
 
-enum class RenderModeState {
-    off,
-    mixed,
-    on,
-};
-
-RenderModeState renderModeState(size_t enabledCount, size_t totalCount)
+std::filesystem::path uiPreferencePath()
 {
-    if (totalCount > 0u && enabledCount == totalCount) {
-        return RenderModeState::on;
-    }
-    if (enabledCount > 0u && enabledCount < totalCount) {
-        return RenderModeState::mixed;
-    }
-    return RenderModeState::off;
+    char* directory = SDL_GetPrefPath("woby", "woby");
+    if (!directory) { return {}; }
+    auto path = woby::pathFromUtf8(directory) / "ui-scale.txt";
+    SDL_free(directory);
+    return path;
 }
 
-void pushRenderModeButtonColors(RenderModeState state)
+void updateUiScale(SDL_Window* window, woby::UiState& state, const ImGuiStyle& baseStyle)
 {
-    const ImVec4 buttonColor = ImGui::GetStyleColorVec4(ImGuiCol_Button);
-    const ImVec4 activeColor = ImGui::GetStyleColorVec4(ImGuiCol_Header);
-    const ImVec4 activeHoveredColor = ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered);
-    const ImVec4 mixedColor(0.55f, 0.40f, 0.14f, 0.75f);
-    const ImVec4 mixedHoveredColor(0.70f, 0.50f, 0.18f, 0.90f);
-    const ImVec4 offTextColor = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
-    const ImVec4 onTextColor = ImGui::GetStyleColorVec4(ImGuiCol_Text);
-
-    if (state == RenderModeState::on) {
-        ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, activeHoveredColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, activeHoveredColor);
-        ImGui::PushStyleColor(ImGuiCol_Text, onTextColor);
-        return;
-    }
-    if (state == RenderModeState::mixed) {
-        ImGui::PushStyleColor(ImGuiCol_Button, mixedColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, mixedHoveredColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, mixedHoveredColor);
-        ImGui::PushStyleColor(ImGuiCol_Text, onTextColor);
-        return;
-    }
-
-    ImGui::PushStyleColor(ImGuiCol_Button, buttonColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonColor);
-    ImGui::PushStyleColor(ImGuiCol_Text, offTextColor);
-}
-
-void drawMixedRenderModeMark()
-{
-    const ImVec2 buttonMax = ImGui::GetItemRectMax();
-    const float fontSize = ImGui::GetFontSize() * 0.72f;
-    const ImVec2 textSize = ImGui::CalcTextSize(mixedStateIcon);
-    const ImVec2 position(
-        buttonMax.x - textSize.x - 4.0f,
-        buttonMax.y - fontSize - 3.0f);
-    ImGui::GetWindowDrawList()->AddText(
-        ImGui::GetFont(),
-        fontSize,
-        position,
-        ImGui::GetColorU32(ImGuiCol_Text),
-        mixedStateIcon);
-}
-
-bool drawRenderModeIconButton(
-    const char* id,
-    const char* icon,
-    const char* tooltip,
-    RenderModeState state,
-    bool disabled)
-{
-    const std::string label = std::string(icon) + "##" + id;
-
-    if (disabled) {
-        ImGui::BeginDisabled();
-    }
-    pushRenderModeButtonColors(state);
-    const bool changed = ImGui::Button(
-        label.c_str(),
-        ImVec2(renderModeButtonSize, renderModeButtonSize));
-    ImGui::PopStyleColor(4);
-    if (state == RenderModeState::mixed) {
-        drawMixedRenderModeMark();
-    }
-    if (disabled) {
-        ImGui::EndDisabled();
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s", tooltip);
-    }
-
-    return changed;
-}
-
-bool drawTriStateMasterIconButton(
-    const char* id,
-    const char* icon,
-    const char* label,
-    size_t enabledCount,
-    size_t totalCount)
-{
-    const RenderModeState state = renderModeState(enabledCount, totalCount);
-    const std::string tooltip = std::string(label)
-        + " enabled for "
-        + std::to_string(enabledCount)
-        + " of "
-        + std::to_string(totalCount)
-        + " groups";
-
-    return drawRenderModeIconButton(
-        id,
-        icon,
-        tooltip.c_str(),
-        state,
-        totalCount == 0u);
-}
-
-bool drawVisibilityIconButton(
-    const char* id,
-    RenderModeState state,
-    const char* tooltip,
-    bool disabled)
-{
-    const char* icon = state == RenderModeState::off ? hiddenIcon : visibleIcon;
-    const std::string label = std::string("##") + id;
-
-    if (disabled) {
-        ImGui::BeginDisabled();
-    }
-    pushRenderModeButtonColors(state);
-    const bool changed = ImGui::Button(
-        label.c_str(),
-        ImVec2(renderModeButtonSize, renderModeButtonSize));
-    const ImVec2 buttonMin = ImGui::GetItemRectMin();
-    const ImVec2 buttonMax = ImGui::GetItemRectMax();
-    const ImVec2 iconSize = ImGui::CalcTextSize(icon);
-    const ImVec2 iconPosition(
-        std::floor(buttonMin.x + (buttonMax.x - buttonMin.x - iconSize.x) * 0.5f - 1.0f),
-        std::floor(buttonMin.y + (buttonMax.y - buttonMin.y - iconSize.y) * 0.5f));
-    ImGui::GetWindowDrawList()->AddText(
-        iconPosition,
-        ImGui::GetColorU32(ImGuiCol_Text),
-        icon);
-    ImGui::PopStyleColor(4);
-    if (state == RenderModeState::mixed) {
-        drawMixedRenderModeMark();
-    }
-    if (disabled) {
-        ImGui::EndDisabled();
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s", tooltip);
-    }
-
-    return changed;
-}
-
-bool drawTriStateVisibilityButton(
-    const char* id,
-    const char* label,
-    size_t visibleCount,
-    size_t totalCount)
-{
-    const RenderModeState state = renderModeState(visibleCount, totalCount);
-    const std::string tooltip = std::string(label)
-        + " visibility: "
-        + std::to_string(visibleCount)
-        + " of "
-        + std::to_string(totalCount)
-        + " groups shown";
-
-    return drawVisibilityIconButton(
-        id,
-        state,
-        tooltip.c_str(),
-        totalCount == 0u);
-}
-
-bool drawVisibilityButton(const char* id, bool visible, const char* itemName)
-{
-    const std::string tooltip = std::string(visible ? "Hide " : "Show ")
-        + itemName;
-
-    return drawVisibilityIconButton(
-        id,
-        visible ? RenderModeState::on : RenderModeState::off,
-        tooltip.c_str(),
-        false);
+    const float scale = woby::logicalUiScale(state.uiScale,
+        SDL_GetWindowDisplayScale(window), SDL_GetWindowPixelDensity(window));
+    auto& style = ImGui::GetStyle();
+    if (style.FontScaleMain == scale) { return; }
+    const float ratio = scale / style.FontScaleMain;
+    woby::setViewerPaneWidth(state, state.viewerPaneWidth * ratio, 380.0f * scale, 10000.0f);
+    style = woby::scaledUiStyle(baseStyle, scale);
 }
 
 float renderModeButtonRowWidth()
 {
     const ImGuiStyle& style = ImGui::GetStyle();
-    return renderModeButtonSize * 3.0f + style.ItemSpacing.x * 2.0f;
+    return renderModeButtonSize() * 3.0f + style.ItemSpacing.x * 2.0f;
 }
 
 float minimumViewerPaneWidth()
 {
-    return 380.0f;
+    return uiSize(380.0f);
 }
 
 void drawViewerPaneToggleButton(woby::UiState& state)
@@ -793,7 +646,7 @@ void pushRenderModeControlHeight()
 {
     const ImGuiStyle& style = ImGui::GetStyle();
     const float paddingY = std::max(
-        (renderModeButtonSize - ImGui::GetFontSize()) * 0.5f,
+        (renderModeButtonSize() - ImGui::GetFontSize()) * 0.5f,
         0.0f);
     ImGui::PushStyleVar(
         ImGuiStyleVar_FramePadding,
@@ -815,6 +668,9 @@ void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
 void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool treeNode)
 {
+    if (woby::sceneObjectSelected(state, id)) {
+        woby::drawSceneItemOutline();
+    }
     // Ordinary clicks select on release so source drags keep the comparison inspector visible.
     // TreeNodeEx does not activate labels with Ctrl held, so Ctrl-clicks must be
     // handled on mouse-down instead of waiting for IsItemDeactivated().
@@ -946,7 +802,7 @@ void drawSceneTreeNode(
         auto& file = state.files[node.fileIndex];
         const ImGuiStyle& style = ImGui::GetStyle();
         const float rowStartX = ImGui::GetCursorPosX();
-        const float removeControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize;
+        const float removeControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         const std::string label = node.name + "##file_" + std::to_string(node.fileIndex);
         const size_t fileGroupCount = woby::countSceneNodeGroups(state, node);
         const size_t fileVisibleCount = woby::countVisibleSceneNodeGroups(state, node);
@@ -977,12 +833,7 @@ void drawSceneTreeNode(
         drawSceneItemInteraction(state, node.objectId, true);
         ImGui::PopClipRect();
         ImGui::SameLine(removeControlStartX, 0.0f);
-        if (drawRenderModeIconButton(
-                "remove",
-                removeFileIcon,
-                "Remove file from scene",
-                RenderModeState::off,
-                false)) {
+        if (drawRemoveButton("remove", "Remove file from scene")) {
             removeFileIndex = node.fileIndex;
         }
         if (fileTreeOpen) {
@@ -1568,7 +1419,7 @@ void resetSceneToUntitled(
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument)
 {
-    auto prepared = woby::prepareSceneReplacement(state, {}, {});
+    auto prepared = woby::prepareSceneReplacement(state, {}, woby::createSceneDocument(woby::UiState{}));
     auto clean = woby::createSceneDocument(prepared);
     destroyModelRuntimes(runtimes);
     state = std::move(prepared);
@@ -2018,42 +1869,23 @@ void processDroppedPaths(
 
 void drawToastMessage(const ToastMessage& toast, const woby::SceneViewport& viewport, uint32_t drawableWidth)
 {
-    if (toast.text.empty()) {
+    const float elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() - toast.startedAt).count();
+    if (toast.text.empty() || elapsed >= toastDurationSeconds) {
         return;
     }
-
-    const auto now = std::chrono::steady_clock::now();
-    const float elapsedSeconds = std::chrono::duration<float>(now - toast.startedAt).count();
-    if (elapsedSeconds >= toastDurationSeconds) {
-        return;
-    }
-
-    const float alpha = std::clamp(
-        (toastDurationSeconds - elapsedSeconds) / 0.35f,
-        0.0f,
-        1.0f);
+    const float alpha = std::clamp((toastDurationSeconds - elapsed) / 0.35f, 0.0f, 1.0f);
     // Rendering uses drawable pixels; ImGui positions use logical window coordinates.
     const float windowScale = ImGui::GetIO().DisplaySize.x / static_cast<float>(std::max(drawableWidth, 1u));
     const float centerX = (static_cast<float>(viewport.x) + static_cast<float>(viewport.width) * 0.5f) * windowScale;
     const float textWidth = std::max(1.0f, static_cast<float>(viewport.width) * windowScale
-        - toastMargin * 2.0f - 24.0f);
+        - uiSize(toastMargin * 2.0f + 24.0f));
     ImGui::SetNextWindowBgAlpha(0.86f * alpha);
-    ImGui::SetNextWindowPos(
-        ImVec2(centerX, toastMargin),
-        ImGuiCond_Always,
-        ImVec2(0.5f, 0.0f));
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+    ImGui::SetNextWindowPos(ImVec2(centerX, uiSize(toastMargin)), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(uiSize(12.0f), uiSize(8.0f)));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, alpha));
-    if (ImGui::Begin(
-            "##ToastMessage",
-            nullptr,
-            ImGuiWindowFlags_NoDecoration
-                | ImGuiWindowFlags_AlwaysAutoResize
-                | ImGuiWindowFlags_NoMove
-                | ImGuiWindowFlags_NoSavedSettings
-                | ImGuiWindowFlags_NoFocusOnAppearing
-                | ImGuiWindowFlags_NoInputs)) {
+    if (ImGui::Begin("##ToastMessage", nullptr, ImGuiWindowFlags_NoDecoration
+        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings
+        | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoInputs)) {
         ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + textWidth);
         ImGui::TextUnformatted(toast.text.c_str());
         ImGui::PopTextWrapPos();
@@ -2131,17 +1963,19 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
     return modalOpen;
 }
 
-void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex, uint32_t width, uint32_t height)
+void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex,
+    const woby::SceneViewport& viewport, uint32_t drawableWidth)
 {
     if (!hoveredVertex.has_value()) {
         return;
     }
 
-    ImGui::SetNextWindowBgAlpha(0.86f);
+    const float windowScale = ImGui::GetIO().DisplaySize.x / static_cast<float>(std::max(drawableWidth, 1u));
+    ImGui::SetNextWindowBgAlpha(1.0f);
     ImGui::SetNextWindowPos(
         ImVec2(
-            static_cast<float>(width) - toastMargin,
-            static_cast<float>(height) - toastMargin),
+            static_cast<float>(viewport.x + viewport.width) * windowScale - uiSize(toastMargin),
+            static_cast<float>(viewport.height) * windowScale - uiSize(toastMargin)),
         ImGuiCond_Always,
         ImVec2(1.0f, 1.0f));
 
@@ -2281,7 +2115,7 @@ int main(int argc, char** argv)
         woby::ComparisonRuntimes comparison;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
-        woby::SceneDocument cleanSceneDocument;
+        woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
 
         const auto initialLoadStart = woby::PerformanceClock::now();
         if (commandLine.scenePath.has_value()) {
@@ -2317,6 +2151,11 @@ int main(int argc, char** argv)
         ImGui::CreateContext();
         loadAppFont(assets);
         configureAppStyle();
+        const ImGuiStyle baseStyle = ImGui::GetStyle();
+        const auto preferencePath = uiPreferencePath();
+        float savedUiScale = 1.0f;
+        if (std::ifstream preference{preferencePath}; preference >> savedUiScale) { woby::setUiScale(ui, savedUiScale); }
+        updateUiScale(window.get(), ui, baseStyle);
 
         if (!ImGui_ImplSDL3_InitForOther(window.get())) {
             throw std::runtime_error("ImGui_ImplSDL3_InitForOther failed.");
@@ -2681,6 +2520,7 @@ int main(int argc, char** argv)
                 fpsWindowStart = now;
             }
 
+            updateUiScale(window.get(), ui, baseStyle);
             const float minViewerPaneWidth = minimumViewerPaneWidth();
             const float maxViewerPaneWidth = std::max(
                 minViewerPaneWidth,
@@ -2839,20 +2679,23 @@ int main(int argc, char** argv)
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Open (Ctrl+O)##open_scene", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Open...##open_scene", ImVec2(actionWidth, 0.0f))) {
                         documentCommand(woby::SceneAction::open);
                     }
+                    setLastItemTooltip("Open scene (Ctrl+O)");
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Save (Ctrl+S)##save_scene", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Save##save_scene", ImVec2(actionWidth, 0.0f))) {
                         documentCommand(woby::SceneAction::save);
                     }
+                    setLastItemTooltip("Save scene (Ctrl+S)");
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Save As (Ctrl+Shift+S)##save_scene_as", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Save as...##save_scene_as", ImVec2(actionWidth, 0.0f))) {
                         documentCommand(woby::SceneAction::saveAs);
                     }
+                    setLastItemTooltip("Save scene as (Ctrl+Shift+S)");
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(fileActionsDisabled());
                     if (ImGui::Button("Add models...##add_model_file", ImVec2(actionWidth, 0.0f))) {
@@ -2861,7 +2704,7 @@ int main(int argc, char** argv)
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Add model folder...##add_model_folder_tree", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Add folder...##add_model_folder_tree", ImVec2(actionWidth, 0.0f))) {
                         showModelFolderTreeDialog(window.get(), modelFileDialogState);
                     }
                     ImGui::EndDisabled();
@@ -2871,7 +2714,15 @@ int main(int argc, char** argv)
                         "Display",
                         ImGuiTreeNodeFlags_DefaultOpen);
                 if (scenePaneOpen) {
-                    const float sceneContentHeight = renderModeButtonSize * 2.0f + ImGui::GetStyle().ItemSpacing.y;
+                    ImGui::SetNextItemWidth(-1.0f);
+                    if (ImGui::BeginCombo("##inspection_preset", "Inspection presets")) {
+                        if (ImGui::Selectable("Solid")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::solid); }
+                        if (ImGui::Selectable("Solid + edges")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::edges); }
+                        if (ImGui::Selectable("Solid + edges + vertices")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::vertices); }
+                        ImGui::EndCombo();
+                    }
+                    setLastItemTooltip("Apply to all current parts; hide grid and origin. Visibility and transforms stay as set.");
+                    const float sceneContentHeight = renderModeButtonSize() * 2.0f + ImGui::GetStyle().ItemSpacing.y;
                     if (ImGui::BeginChild(
                             "SceneContent",
                             ImVec2(0.0f, sceneContentHeight),
@@ -2952,7 +2803,7 @@ int main(int argc, char** argv)
                         if (drawTriStateMasterIconButton(
                                 "triangles",
                                 trianglesIcon,
-                                "Triangles",
+                                "Triangle edges",
                                 triangleCount,
                                 groupCount)) {
                             woby::setAllSceneRenderModes(
@@ -2994,6 +2845,18 @@ int main(int argc, char** argv)
                     ImGui::EndChild();
                 }
 
+                if (ImGui::CollapsingHeader("Interface")) {
+                    int scaleIndex = static_cast<int>(std::round((ui.uiScale - 1.0f) * 4.0f));
+                    ImGui::SetNextItemWidth(-1.0f);
+                    if (ImGui::Combo("##ui_scale", &scaleIndex, "UI scale: 100%\0UI scale: 125%\0UI scale: 150%\0UI scale: 175%\0UI scale: 200%\0")) {
+                        woby::setUiScale(ui, 1.0f + static_cast<float>(scaleIndex) * 0.25f);
+                        if (!preferencePath.empty()) {
+                            std::ofstream preference(preferencePath);
+                            if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
+                        }
+                    }
+                    setLastItemTooltip("Text and control size, in addition to Windows display scaling. Saved for this user.");
+                }
                 const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
                 const bool filesPaneOpen = ImGui::CollapsingHeader(
                     filesPaneTitle.c_str(),
@@ -3006,9 +2869,7 @@ int main(int argc, char** argv)
                             "FilesContent",
                             ImVec2(0.0f, filesContentHeight),
                             ImGuiChildFlags_None)) {
-                        if (!files.empty() || !ui.comparisons.empty()) {
-                            ImGui::TextDisabled("Ctrl-click to select objects; right-click to edit A/B groups.");
-                        } else {
+                        if (files.empty() && ui.comparisons.empty()) {
                             ImGui::TextDisabled("No objects yet.");
                         }
                         std::optional<size_t> removeFileIndex;
@@ -3064,6 +2925,7 @@ int main(int argc, char** argv)
                     if (ImGui::Button("Open scene", ImVec2(-1.0f, 0.0f))) {
                         documentCommand(woby::SceneAction::open);
                     }
+                    setLastItemTooltip("Open scene (Ctrl+O)");
                     ImGui::EndDisabled();
                     ImGui::Spacing();
                     ImGui::TextWrapped("Models: OBJ, STL and installed importer formats. Scenes: .woby.");
@@ -3430,7 +3292,7 @@ int main(int argc, char** argv)
             }
 
             drawToastMessage(toast, viewport, width);
-            drawHoveredVertexOverlay(hoveredVertex, width, height);
+            drawHoveredVertexOverlay(hoveredVertex, viewport, width);
             ImGui::Render();
             woby::imgui_bgfx::render(ImGui::GetDrawData());
             recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);

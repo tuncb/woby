@@ -174,7 +174,7 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
     }
     if (!result.issue.empty()) { result.issue += ". Restore the source or remove missing references below."; }
     else if (result.partCount == 0) {
-        result.issue = "Input " + label + " is empty. Drag a source onto the group heading, or use Comparison membership in the scene tree context menu.";
+        result.issue = "Input " + label + " is empty. Use Comparison membership in the scene tree context menu.";
     }
     if (result.sourceNames.empty()) { result.sourceNames = "No available sources"; }
     return result;

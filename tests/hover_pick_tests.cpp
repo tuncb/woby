@@ -44,6 +44,7 @@ woby::UiFileState pointFile()
     file.path = "points.obj";
     file.mesh = pointMesh();
     file.groupSettings.emplace_back();
+    file.groupSettings.back().showVertices = true;
     return file;
 }
 

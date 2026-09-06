@@ -78,6 +78,8 @@ add_executable(woby
     src/main.cpp
     src/scene_inspector.cpp
     src/scene_inspector.h
+    src/ui_icon_controls.cpp
+    src/ui_icon_controls.h
     src/importer_host.cpp
     src/importer_host.h
     src/model_load.cpp
@@ -108,6 +110,7 @@ add_executable(woby
     src/ui_operations.h
     src/ui_state.cpp
     src/ui_state.h
+    src/ui_layout.h
 )
 
 target_compile_features(woby PRIVATE cxx_std_20)
@@ -236,6 +239,7 @@ if(BUILD_TESTING)
         src/background_load.h
         src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
+        src/ui_icon_controls.cpp
         src/camera.cpp
         src/command_line.cpp
         src/command_line.h
@@ -271,6 +275,7 @@ if(BUILD_TESTING)
         src/ui_operations.h
         src/ui_state.cpp
         src/ui_state.h
+        src/ui_layout.h
         tests/scene_lifecycle_tests.cpp
         tests/control_tests.cpp
         tests/importer_tests.cpp

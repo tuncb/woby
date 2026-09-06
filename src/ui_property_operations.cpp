@@ -162,8 +162,8 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
                     resetGroupColor(part, colorIndex);
                     setGroupVertexSizeScale(part, 1.0f);
                     setGroupRenderMode(part, UiRenderMode::solidMesh, true);
-                    setGroupRenderMode(part, UiRenderMode::triangles, true);
-                    setGroupRenderMode(part, UiRenderMode::vertices, true);
+                    setGroupRenderMode(part, UiRenderMode::triangles, false);
+                    setGroupRenderMode(part, UiRenderMode::vertices, false);
                 }
                 ++colorIndex;
             }

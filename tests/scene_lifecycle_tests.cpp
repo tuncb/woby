@@ -22,7 +22,13 @@ struct LifecycleFixture {
     std::optional<std::filesystem::path> path;
     woby::SceneDocument clean = woby::createSceneDocument(state);
 
-    LifecycleFixture() { std::filesystem::create_directory(root); }
+    LifecycleFixture() {
+        std::filesystem::create_directory(root);
+        // Lifecycle tests explicitly start with helpers on, then turn them off to dirty the scene.
+        state.showGrid = true;
+        state.showOrigin = true;
+        clean = woby::createSceneDocument(state);
+    }
     ~LifecycleFixture() {
         std::error_code ignored;
         std::filesystem::remove_all(root, ignored);
@@ -193,7 +199,7 @@ TEST_CASE("new scene replacement clears content and editing state but retains pa
     woby::setViewerPaneVisible(fixture.state, false);
     const auto allocator = fixture.state.nextObjectId;
 
-    const auto empty = woby::prepareSceneReplacement(fixture.state, {}, {});
+    const auto empty = woby::prepareSceneReplacement(fixture.state, {}, woby::createSceneDocument(woby::UiState{}));
     CHECK(empty.files.empty());
     CHECK(empty.sceneNodes.empty());
     CHECK(empty.comparisons.empty());
@@ -284,12 +290,12 @@ TEST_CASE("replacement assigns fresh IDs while preserving session preferences")
     CHECK_FALSE(replacement.isDirty);
     const auto freshId = replacement.files[0].objectId;
     const auto allocator = replacement.nextObjectId;
-    auto empty = woby::prepareSceneReplacement(replacement, {}, {});
+    auto empty = woby::prepareSceneReplacement(replacement, {}, woby::createSceneDocument(woby::UiState{}));
     CHECK(empty.files.empty());
     CHECK(empty.sceneNodes.empty());
     CHECK(empty.nextObjectId == allocator);
-    CHECK(empty.showGrid);
-    CHECK(empty.showOrigin);
+    CHECK_FALSE(empty.showGrid);
+    CHECK_FALSE(empty.showOrigin);
     CHECK_FALSE(empty.isDirty);
     auto reopened = woby::prepareSceneReplacement(empty, fixture.state.files, document);
     CHECK(reopened.files[0].objectId > freshId);

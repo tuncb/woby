@@ -1,5 +1,6 @@
 #include "ui_operations.h"
 #include "scene_viewport.h"
+#include "ui_layout.h"
 
 #include <doctest/doctest.h>
 
@@ -181,7 +182,8 @@ TEST_CASE("inspector resets only the selected property group and explicit target
     woby::resetSelectedObjectProperties(state, G::appearance);
     CHECK(part.opacity == 1.0f);
     CHECK(part.color == woby::defaultGroupColor(0));
-    CHECK(part.showTriangles);
+    CHECK_FALSE(part.showTriangles);
+    CHECK_FALSE(part.showVertices);
     CHECK(part.vertexSizeScale == 1.0f);
     CHECK(part.translation[2] == 5.0f);
     CHECK(folder.opacity == 0.25f);
@@ -517,7 +519,7 @@ TEST_CASE("scene render mode operations update all groups")
     state.files.push_back(makeFile("b.obj", "b", 2.0f, 3.0f, 1u));
 
     CHECK(woby::totalGroupCount(state) == 2u);
-    CHECK(woby::countEnabledSceneRenderMode(state, woby::UiRenderMode::vertices) == 2u);
+    CHECK(woby::countEnabledSceneRenderMode(state, woby::UiRenderMode::vertices) == 0u);
 
     woby::toggleGroupRenderMode(state.files[0].groupSettings[0], woby::UiRenderMode::vertices);
     CHECK(woby::countEnabledSceneRenderMode(state, woby::UiRenderMode::vertices) == 1u);
@@ -890,7 +892,7 @@ TEST_CASE("dirty tracking follows persisted scene document only")
     CHECK(state.isDirty);
 
     woby::setMasterVertexPointSize(state, woby::defaultMasterVertexPointSize);
-    woby::setShowGrid(state, false);
+    woby::setShowGrid(state, true);
     woby::updateSceneDirty(state, cleanDocument);
     CHECK(state.isDirty);
 
@@ -1421,4 +1423,124 @@ TEST_CASE("Framed bounds fit both canvas axes without changing logical camera")
         }
         CHECK(woby::cameraViewportFov(camera, 2.0f) == doctest::Approx(camera.verticalFovDegrees));
     }
+}
+
+TEST_CASE("new scenes are quiet and legacy scene display defaults are retained")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+    CHECK_FALSE(state.showOrigin);
+    CHECK_FALSE(state.showGrid);
+    const auto& group = state.files.front().groupSettings.front();
+    CHECK(group.showSolidMesh);
+    CHECK_FALSE(group.showTriangles);
+    CHECK_FALSE(group.showVertices);
+
+    // Scene-file defaults deliberately retain the behavior of old files that omit fields.
+    woby::SceneDocument legacy;
+    woby::SceneFileRecord record;
+    record.path = "a.obj";
+    record.groups.push_back({"a", {}});
+    legacy.files.push_back(record);
+    auto loaded = state.files;
+    woby::applySceneFileRecord(loaded[0], legacy.files[0]);
+    auto restored = woby::prepareSceneReplacement(state, loaded, legacy);
+    CHECK(restored.showOrigin);
+    CHECK(restored.showGrid);
+    CHECK(restored.files[0].groupSettings[0].showTriangles);
+    CHECK(restored.files[0].groupSettings[0].showVertices);
+    CHECK_FALSE(restored.isDirty);
+
+    auto fresh = woby::prepareSceneReplacement(restored, {}, woby::createSceneDocument(woby::UiState{}));
+    CHECK_FALSE(fresh.showOrigin);
+    CHECK_FALSE(fresh.showGrid);
+    CHECK(fresh.files.empty());
+    CHECK_FALSE(fresh.isDirty);
+}
+
+TEST_CASE("inspection presets edit persisted display flags without changing other properties")
+{
+    using Preset = woby::UiInspectionPreset;
+    for (const auto preset : {Preset::solid, Preset::edges, Preset::vertices}) {
+        woby::UiState state;
+        state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
+        state.files.push_back(makeFile("b.obj", "b", 2.0f, 3.0f, 1u));
+        state.showGrid = true;
+        state.showOrigin = true;
+        woby::setGroupVisible(state, state.files[0], state.files[0].groupSettings[0], false);
+        state.files[1].groupSettings[0].translation = {2, 3, 4};
+        state.files[1].groupSettings[0].opacity = .4f;
+        woby::appendDefaultSceneNodesForFiles(state, 0u);
+        auto expected = woby::createSceneDocument(state);
+        expected.showGrid = false;
+        expected.showOrigin = false;
+        for (auto& file : expected.files) {
+            for (auto& group : file.groups) {
+                group.settings.showSolidMesh = true;
+                group.settings.showTriangles = preset != Preset::solid;
+                group.settings.showVertices = preset == Preset::vertices;
+            }
+        }
+        woby::applyInspectionPreset(state, preset);
+        CHECK(state.isDirty);
+        CHECK(woby::createSceneDocument(state) == expected);
+        woby::clearSceneDirty(state);
+        woby::applyInspectionPreset(state, preset);
+        CHECK_FALSE(state.isDirty);
+        // Reload through the existing save/load mapping, with no preset-specific state.
+        auto loaded = state.files;
+        for (size_t i = 0; i < loaded.size(); ++i) { woby::applySceneFileRecord(loaded[i], expected.files[i]); }
+        const auto restored = woby::prepareSceneReplacement(state, loaded, expected);
+        CHECK(woby::createSceneDocument(restored) == expected);
+    }
+    woby::UiState empty;
+    woby::applyInspectionPreset(empty, Preset::solid);
+    CHECK_FALSE(empty.isDirty);
+    const auto before = woby::createSceneDocument(empty);
+    woby::applyInspectionPreset(empty, static_cast<Preset>(99));
+    CHECK(woby::createSceneDocument(empty) == before);
+}
+
+TEST_CASE("UI scale is bounded and survives scene replacement without dirtying documents")
+{
+    woby::UiState state;
+    const auto clean = woby::createSceneDocument(state);
+    for (const float scale : {1.0f, 1.25f, 1.5f, 1.75f, 2.0f}) {
+        woby::setUiScale(state, scale);
+        CHECK(state.uiScale == scale);
+        woby::updateSceneDirty(state, clean);
+        CHECK_FALSE(state.isDirty);
+        const auto replaced = woby::prepareSceneReplacement(state, {}, clean);
+        CHECK(replaced.uiScale == scale);
+    }
+    woby::setUiScale(state, 20.0f);
+    CHECK(state.uiScale == 2.0f);
+    woby::setUiScale(state, -1.0f);
+    CHECK(state.uiScale == 1.0f);
+    woby::setUiScale(state, std::numeric_limits<float>::quiet_NaN());
+    CHECK(state.uiScale == 1.0f);
+    woby::setUiScale(state, std::numeric_limits<float>::infinity());
+    CHECK(state.uiScale == 1.0f);
+}
+
+TEST_CASE("Windows scaling keeps the scene full height at every supported scale")
+{
+    for (const float monitor : {1.0f, 1.25f, 1.5f, 1.75f, 2.0f}) {
+        for (const float preference : {1.0f, 1.25f, 1.5f, 1.75f, 2.0f}) {
+            const float scale = woby::logicalUiScale(preference, monitor, 1.0f);
+            CHECK(scale == doctest::Approx(preference * monitor));
+            const auto viewport = woby::sceneViewport(3840, 2160, 3840.0f, 380 * scale, 420 * scale);
+            CHECK(viewport.x >= static_cast<unsigned>(380 * scale));
+            CHECK(viewport.x + viewport.width <= static_cast<unsigned>(3840 - 420 * scale));
+            CHECK(viewport.height == 2160);
+            CHECK(woby::contains(viewport, static_cast<float>(viewport.x), 2159.0f));
+            CHECK_FALSE(woby::contains(viewport, static_cast<float>(viewport.x), 2160.0f));
+            // High pixel density platforms already scale window coordinates.
+            CHECK(woby::logicalUiScale(preference, monitor, monitor) == doctest::Approx(preference));
+        }
+    }
+    CHECK(woby::logicalUiScale(1, 0, 0) == 1);
+    const auto tiny = woby::sceneViewport(1, 1, 1, 100, 100);
+    CHECK(tiny.width == 1);
+    CHECK(tiny.height == 1);
 }

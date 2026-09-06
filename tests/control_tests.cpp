@@ -131,7 +131,7 @@ TEST_CASE("ctl scene edits apply clamps refresh bounds and preserve save mapping
     run(state, clean, "opacity.set", {{"value", 0.5}}, folder);
     run(state, clean, "render.set", {{"target", "scene"}, {"solid", false}, {"vertices", false}});
     CHECK_FALSE(state.files[0].groupSettings[0].showSolidMesh);
-    CHECK(state.files[0].groupSettings[0].showTriangles);
+    CHECK_FALSE(state.files[0].groupSettings[0].showTriangles);
     run(state, clean, "color.set", {{"rgb", {-1, 0.25, 2}}}, group);
     CHECK(state.files[0].groupSettings[0].color == std::array<float, 4>{0, 0.25f, 1, 1});
     run(state, clean, "vertex-size.set", {{"scale", 2}}, file);

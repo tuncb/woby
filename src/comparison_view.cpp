@@ -2,6 +2,7 @@
 #include "comparison_scene.h"
 #include "comparison_legend.h"
 #include "ui_operations.h"
+#include "ui_icon_controls.h"
 #include "utf8_path.h"
 
 #include <imgui.h>
@@ -140,8 +141,12 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     const char* label = side == ComparisonSide::a ? "Group A" : "Group B";
     ImGui::PushID(label);
     const auto summary = comparisonInputSummary(state, side, id);
+    const auto roots = comparisonTree(state, side, id);
+    size_t triangles = 0;
+    for (const auto& root : roots) { triangles += root.triangleCount; }
     const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_DefaultOpen,
-        "%s (%zu %s)", label, summary.partCount, summary.partCount == 1 ? "part" : "parts");
+        "%s (%zu %s) %zu triangles", label, summary.partCount,
+        summary.partCount == 1 ? "part" : "parts", triangles);
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Right-click a group to clear it, or a source below to remove it.");
     }
@@ -173,10 +178,6 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     if (members.size() > current.partCount && ImGui::SmallButton("Remove missing references")) {
         removeMissingComparisonParts(state, side, id);
     }
-    const auto roots = comparisonTree(state, side, id);
-    size_t triangles = 0;
-    for (const auto& root : roots) { triangles += root.triangleCount; }
-    if (!roots.empty()) { ImGui::TextDisabled("%zu triangles", triangles); }
     for (const auto& root : roots) {
         drawComparisonTreeNode(state, side, root, id);
     }
@@ -401,7 +402,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
+    ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted("Comparison");
+    ImGui::SameLine();
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
     ImGui::SetNextItemWidth(-1);
@@ -412,18 +415,19 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (ImGui::Button("Frame result", ImVec2(-1.0f, 0.0f))) { frameComparison(state, id); }
     ImGui::EndDisabled();
     auto translation = comparison->translation;
-    if (ImGui::DragFloat3("Result position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
-    ImGui::TextDisabled("Display offset only, in model units.");
+    ImGui::TextUnformatted("Result position");
+    ImGui::SetNextItemWidth(-1.0f);
+    if (ImGui::DragFloat3("##result_position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Display offset only, in model units."); }
     ImGui::Separator();
     membershipTree(state, ComparisonSide::a, id);
     membershipTree(state, ComparisonSide::b, id);
     ImGui::Separator();
     if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
-    ImGui::TextWrapped("Swap exchanges assignments; measurement direction stays the same.");
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Swap exchanges assignments; measurement direction stays the same."); }
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool valid = canCompareGroups(state, id);
-    ImGui::Checkbox("Visible", &settings.enabled);
     {
         ImGui::TextWrapped(
             "Combined surfaces at scene positions, in model units. Hidden members are included. Other scene objects retain their own appearance.");
@@ -446,9 +450,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
                 (settings.distanceOnOriginal ? a.sourceNames : b.sourceNames).c_str());
             ImGui::TextWrapped("Reference surface (nearest distance): %s - %s", settings.distanceOnOriginal ? "B" : "A",
                 (settings.distanceOnOriginal ? b.sourceNames : a.sourceNames).c_str());
-            ImGui::SetNextItemWidth(110);
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
             ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
-            ImGui::SetNextItemWidth(110);
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
             ImGui::InputFloat("Color maximum", &settings.colorRange, 0, 0, "%.5g");
             ImGui::BeginDisabled(!resultReady);
             if (ImGui::Button("Fit color range")) {
@@ -458,11 +462,11 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::EndDisabled();
             std::array<char, 256> units{};
             std::copy_n(settings.unitLabel.data(), std::min(settings.unitLabel.size(), units.size() - 1), units.data());
-            ImGui::SetNextItemWidth(110);
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
             if (ImGui::InputTextWithHint("Unit label", "model units", units.data(), units.size())) {
                 settings.unitLabel = units.data();
             }
-            ImGui::TextWrapped("Label only; does not convert coordinates. Blank = model units.");
+            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Label only; does not convert coordinates. Blank = model units."); }
         }
         if (settings.mode == ComparisonMode::overlay)
         {
@@ -522,7 +526,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         ImGui::TextWrapped("Sample max: %.5g %s", surface.maximum, units.c_str());
         ImGui::TextWrapped("Area-weighted mean: %.5g %s", surface.mean, units.c_str());
         ImGui::TextWrapped("Area-weighted P95: %.5g %s", surface.percentile95, units.c_str());
-        ImGui::Text("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
+        ImGui::TextWrapped("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
         ImGui::TextWrapped("Approximate unsigned distance, four samples per triangle; not an exact maximum. Surface shading affects brightness.");
     }
     const auto &a = runtime.result.original.diagnostics;
@@ -539,8 +543,8 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         diagnosticRow(state, "Winding", a.inconsistentWindingEdges, b.inconsistentWindingEdges, useOriginal, id);
         ImGui::EndTable();
     }
-    ImGui::Text("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
-    ImGui::Text("Duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
+    ImGui::TextWrapped("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
+    ImGui::TextWrapped("Duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
     ImGui::TextWrapped(
         "Diagnostics describe combined surfaces; coincident edges across parts are matched. Open boundaries may be intentional. Self-intersections are not checked.");
 }
@@ -618,17 +622,30 @@ void drawComparisonObjects(UiState& state)
 {
     ImGui::Separator();
     ImGui::TextUnformatted("Comparisons");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("New comparison")) { createComparison(state); }
+    if (state.comparisons.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextWrapped("Right-click an object and choose Create comparison to add a comparison.");
+        ImGui::PopStyleColor();
+    }
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;
         const auto label = std::to_string(id);
         ImGui::PushID(label.c_str());
+        const float removeX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         auto settings = comparison.settings;
-        if (ImGui::Checkbox("##visible", &settings.enabled)) { setComparisonSettings(state, settings, id); }
+        if (drawVisibilityButton("visible", settings.enabled, "comparison")) {
+            settings.enabled = !settings.enabled;
+            setComparisonSettings(state, settings, id);
+        }
         ImGui::SameLine();
-        if (ImGui::Selectable(comparison.name.c_str(), sceneObjectSelected(state, id))) {
+        // Keep long names and their hit targets out of the remove button's column.
+        const float nameWidth = std::max(1.0f, removeX - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
+        if (drawSceneItemButton((comparison.name + "###comparison_row").c_str(), nameWidth,
+                sceneObjectSelected(state, id))) {
             selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
+        }
+        if (sceneObjectSelected(state, id)) {
+            drawSceneItemOutline();
         }
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectSceneObject(state, id, false, true); }
         bool changed = false;
@@ -638,6 +655,13 @@ void drawComparisonObjects(UiState& state)
             if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
             if (ImGui::MenuItem("Delete comparison")) { removeComparison(state, id); changed = true; }
             ImGui::EndPopup();
+        }
+        if (!changed) {
+            ImGui::SameLine(removeX, 0.0f);
+            if (drawRemoveButton("remove", "Remove comparison from scene")) {
+                removeComparison(state, id);
+                changed = true;
+            }
         }
         if (!changed && !canCompareGroups(state, id)) {
             for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {

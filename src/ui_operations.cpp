@@ -695,6 +695,26 @@ void setAllGroupRenderModes(std::vector<UiGroupState>& groups, UiRenderMode mode
     }
 }
 
+void setUiScale(UiState& state, float scale)
+{
+    state.uiScale = std::clamp(finiteOr(scale, 1.0f), 1.0f, 2.0f);
+}
+
+void applyInspectionPreset(UiState& state, UiInspectionPreset preset)
+{
+    switch (preset) {
+    case UiInspectionPreset::solid:
+    case UiInspectionPreset::edges:
+    case UiInspectionPreset::vertices: break;
+    default: return;
+    }
+    setAllSceneRenderModes(state, UiRenderMode::solidMesh, true);
+    setAllSceneRenderModes(state, UiRenderMode::triangles, preset != UiInspectionPreset::solid);
+    setAllSceneRenderModes(state, UiRenderMode::vertices, preset == UiInspectionPreset::vertices);
+    setShowOrigin(state, false);
+    setShowGrid(state, false);
+}
+
 void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled)
 {
     bool changed = false;
@@ -1120,6 +1140,7 @@ UiState prepareSceneReplacement(const UiState& current,
 {
     UiState prepared;
     prepared.running = current.running;
+    prepared.uiScale = current.uiScale;
     prepared.viewerPaneWidth = current.viewerPaneWidth;
     prepared.viewerPaneVisible = current.viewerPaneVisible;
     prepared.propertiesPaneVisible = current.propertiesPaneVisible;

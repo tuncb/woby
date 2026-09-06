@@ -30,8 +30,8 @@ inline constexpr float defaultDisplayBoundsMax = 10.0f;
 struct UiGroupState {
     bool visible = true;
     bool showSolidMesh = true;
-    bool showTriangles = true;
-    bool showVertices = true;
+    bool showTriangles = false;
+    bool showVertices = false;
     float scale = 1.0f;
     float opacity = 1.0f;
     float vertexSizeScale = 1.0f;
@@ -108,6 +108,8 @@ struct UiComparison {
 };
 
 struct UiState {
+    // Application preference, excluded from scene persistence and dirty tracking.
+    float uiScale = 1.0f;
     // Export preferences are session-only, not scene content or dirty state.
     ScreenshotSettings screenshotSettings;
     std::vector<UiComparison> comparisons;
@@ -117,8 +119,8 @@ struct UiState {
     std::vector<SceneObjectId> selectedSceneObjects;
     bool running = true;
     bool isDirty = false;
-    bool showOrigin = true;
-    bool showGrid = true;
+    bool showOrigin = false;
+    bool showGrid = false;
     SceneUpAxis upAxis = SceneUpAxis::z;
     float masterVertexPointSize = defaultMasterVertexPointSize;
     SceneCamera camera;

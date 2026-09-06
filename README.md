@@ -46,6 +46,21 @@ renderer/FPS details sit at the bottom of the left pane. File actions are disabl
 while a dialog or file-processing operation is active; New scene and Screenshot
 also wait for outstanding image captures.
 
+New scenes and newly added models start with solid surfaces, with edges, vertices,
+grid, and origin helpers off. Existing `.woby` scenes retain their saved appearance,
+including the defaults of older scene files. **Display > Inspection presets** offers
+**Solid**, **Solid + edges**, and **Solid + edges + vertices** for all current parts;
+each hides the helpers while preserving visibility, transforms, colors, and opacity.
+The individual display controls remain available. Enabled icon toggles have an
+outline, mixed toggles have a minus, and selected objects have an outline, so these states are distinguishable without color.
+
+**Interface > UI scale** adjusts text and controls from 100% to 200%, in addition to
+automatic monitor scaling. This preference is saved for the current user and survives
+scene changes without dirtying the scene. Panes scroll when needed at larger sizes.
+Save/load/export feedback appears in floating toasts at the top of the viewport
+and fades away after eight seconds. Contextual tooltips explain
+selection, comparison position, input swapping, and units.
+
 Left drag or arrow keys orbit, right/middle drag pans, and the wheel or `+`/`-`
 zooms. `R` frames the scene, `Ctrl+B` toggles the left pane, and the upper-right
 Properties/pin button toggles the right-hand Properties pane. Selecting an object
@@ -62,15 +77,15 @@ outside editing and popups it clears the selection.
 Scenes can contain multiple named comparisons alongside the original models.
 Ctrl-click two files, folders, or mesh parts, then right-click and choose
 **Create comparison**. The first selected object supplies **A**, the second **B**.
-Alternatively, use **New comparison** in the scene tree. Drag sources onto the
-**Group A** / **Group B** headings in Properties, or use the scene tree's
-**Comparison membership** context menu to assign sources to a named comparison.
+Use the scene tree's **Comparison membership** context menu to assign sources
+to a named comparison. Group A/B headings show part and triangle counts.
 Right-click preserves the existing selection and includes the clicked object;
 context-menu membership actions apply to all selected sources.
 
 Each comparison has independent visibility, tolerance, color range, A/B display
 mode, edge diagnostics, and **Result position**. Select its tree row to edit its
-properties. Right-click the row to duplicate, frame, or delete it. New results
+properties. The **x** at the end of its row deletes the comparison without removing
+its source objects. Right-click the row to duplicate, frame, or delete it. New results
 are placed beside existing results. Result position is a display offset: moving
 it never changes measured distances or source transforms. Normal scene meshes
 continue to render with their own settings.
