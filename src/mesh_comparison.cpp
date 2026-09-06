@@ -5,7 +5,6 @@
 #include <cmath>
 #include <limits>
 #include <map>
-#include <numeric>
 #include <stdexcept>
 #include <utility>
 
@@ -15,6 +14,27 @@ namespace
 {
 using Point = std::array<double, 3>;
 using Triangle = std::array<Point, 3>;
+void checkCanceled(std::stop_token stop)
+{
+    if (stop.stop_requested())
+        throw std::runtime_error("Comparison canceled.");
+}
+
+template <typename T>
+std::vector<T> copyWithCancellation(const std::vector<T>& values, std::stop_token stop)
+{
+    std::vector<T> result;
+    checkCanceled(stop);
+    result.reserve(values.size());
+    for (size_t i = 0; i < values.size(); ++i)
+    {
+        if (i % 256 == 0) { checkCanceled(stop); }
+        result.push_back(values[i]);
+    }
+    return result;
+}
+
+MeshDiagnostics inspectTriangles(const std::vector<Triangle>& triangles, std::stop_token stop);
 Point toPoint(const std::array<float, 3> &p)
 {
     return {p[0], p[1], p[2]};
@@ -92,16 +112,16 @@ double triangleSquared(const Point &p, const Triangle &t)
     return lengthSquared(sub(p, add(a, add(mul(ab, vb * denominator), mul(ac, vc * denominator)))));
 }
 
-std::vector<Triangle> meshTriangles(const Mesh &mesh)
+std::vector<Triangle> meshTriangles(const Mesh &mesh, std::stop_token stop)
 {
+    checkCanceled(stop);
     if (mesh.indices.empty() || mesh.indices.size() % 3 != 0)
         throw std::runtime_error("Comparison needs nonempty triangular meshes.");
-    if (mesh.indices.size() / 3 > comparisonTriangleLimit)
-        throw std::runtime_error("Prototype comparison supports up to 50,000 triangles per comparison group.");
     std::vector<Triangle> triangles;
     triangles.reserve(mesh.indices.size() / 3);
     for (size_t i = 0; i < mesh.indices.size(); i += 3)
     {
+        if (i % 768 == 0) { checkCanceled(stop); }
         Triangle t;
         for (size_t k = 0; k < 3; ++k)
         {
@@ -129,22 +149,22 @@ struct DistanceTree
 };
 size_t buildNode(DistanceTree &tree, size_t begin, size_t end)
 {
-    if (tree.stop.stop_requested())
-    {
-        throw std::runtime_error("Comparison canceled.");
-    }
+    checkCanceled(tree.stop);
     DistanceNode node;
     node.minimum.fill(std::numeric_limits<double>::infinity());
     node.maximum.fill(-std::numeric_limits<double>::infinity());
     node.begin = begin;
     node.end = end;
     for (size_t i = begin; i < end; ++i)
+    {
+        if (i % 256 == 0) { checkCanceled(tree.stop); }
         for (const auto &p : tree.triangles[tree.order[i]])
             for (size_t axis = 0; axis < 3; ++axis)
             {
                 node.minimum[axis] = std::min(node.minimum[axis], p[axis]);
                 node.maximum[axis] = std::max(node.maximum[axis], p[axis]);
             }
+    }
     const size_t index = tree.nodes.size();
     tree.nodes.push_back(node);
     if (end - begin > 8)
@@ -157,6 +177,7 @@ size_t buildNode(DistanceTree &tree, size_t begin, size_t end)
         std::nth_element(tree.order.begin() + static_cast<std::ptrdiff_t>(begin),
                          tree.order.begin() + static_cast<std::ptrdiff_t>(middle),
                          tree.order.begin() + static_cast<std::ptrdiff_t>(end), [&](size_t a, size_t b) {
+                             checkCanceled(tree.stop);
                              const auto &ta = tree.triangles[a];
                              const auto &tb = tree.triangles[b];
                              const double ca = ta[0][axis] + ta[1][axis] + ta[2][axis],
@@ -173,10 +194,15 @@ DistanceTree buildTree(const Mesh &mesh, std::stop_token stop)
 {
     DistanceTree tree;
     tree.stop = stop;
-    tree.triangles = meshTriangles(mesh);
-    tree.order.resize(tree.triangles.size());
-    std::iota(tree.order.begin(), tree.order.end(), size_t{0});
-    tree.nodes.reserve(tree.order.size() * 2);
+    tree.triangles = meshTriangles(mesh, stop);
+    tree.order.reserve(tree.triangles.size());
+    for (size_t i = 0; i < tree.triangles.size(); ++i)
+    {
+        if (i % 256 == 0) { checkCanceled(stop); }
+        tree.order.push_back(i);
+    }
+    // A leaf contains up to eight faces. Avoid reserving two nodes per face.
+    tree.nodes.reserve(tree.order.size() / 2 + 1);
     buildNode(tree, 0, tree.order.size());
     return tree;
 }
@@ -192,10 +218,7 @@ double boxSquared(const Point &p, const DistanceNode &node)
 }
 void nearest(const DistanceTree &tree, size_t index, const Point &p, double &best)
 {
-    if (tree.stop.stop_requested())
-    {
-        throw std::runtime_error("Comparison canceled.");
-    }
+    checkCanceled(tree.stop);
     if (best == 0)
     {
         return;
@@ -220,14 +243,22 @@ void nearest(const DistanceTree &tree, size_t index, const Point &p, double &bes
 
 SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, const DistanceTree &target)
 {
+    const auto stop = source.stop;
+    checkCanceled(stop);
     SurfaceComparison result;
-    result.source = mesh;
-    result.diagnostics = inspectMesh(mesh);
+    result.source.vertices = copyWithCancellation(mesh.vertices, stop);
+    result.source.indices = copyWithCancellation(mesh.indices, stop);
+    result.source.nodes = copyWithCancellation(mesh.nodes, stop);
+    result.source.bounds = mesh.bounds;
+    result.diagnostics = inspectTriangles(source.triangles, stop);
     result.sampled.vertices.reserve(source.triangles.size() * 12);
     result.sampled.indices.reserve(source.triangles.size() * 12);
+    result.distances.reserve(source.triangles.size() * 4);
+    result.sampleAreas.reserve(source.triangles.size() * 4);
     double weightedDistance = 0, totalArea = 0;
     for (const auto &t : source.triangles)
     {
+        checkCanceled(stop);
         const Point ab = mul(add(t[0], t[1]), .5), bc = mul(add(t[1], t[2]), .5), ca = mul(add(t[2], t[0]), .5);
         const std::array<Triangle, 4> parts = {Triangle{t[0], ab, ca}, Triangle{ab, t[1], bc}, Triangle{ca, bc, t[2]},
                                                Triangle{ab, bc, ca}};
@@ -260,18 +291,54 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
             }
         }
     }
-    result.sampled.bounds = calculateBounds(result.sampled.vertices);
+    // Compute bounds with cancellation between small batches of vertices.
+    auto& bounds = result.sampled.bounds;
+    bounds.min = result.sampled.vertices.front().position;
+    bounds.max = bounds.min;
+    for (size_t i = 0; i < result.sampled.vertices.size(); ++i)
+    {
+        if (i % 256 == 0) { checkCanceled(stop); }
+        for (size_t k = 0; k < 3; ++k)
+        {
+            bounds.min[k] = std::min(bounds.min[k], result.sampled.vertices[i].position[k]);
+            bounds.max[k] = std::max(bounds.max[k], result.sampled.vertices[i].position[k]);
+        }
+    }
+    for (size_t k = 0; k < 3; ++k) { bounds.center[k] = (bounds.min[k] + bounds.max[k]) * .5f; }
+    float radiusSquared = 0;
+    for (size_t i = 0; i < result.sampled.vertices.size(); ++i)
+    {
+        if (i % 256 == 0) { checkCanceled(stop); }
+        float squared = 0;
+        for (size_t k = 0; k < 3; ++k)
+        {
+            const float offset = result.sampled.vertices[i].position[k] - bounds.center[k];
+            squared += offset * offset;
+        }
+        radiusSquared = std::max(radiusSquared, squared);
+    }
+    bounds.radius = std::max(std::sqrt(radiusSquared), .001f);
     result.sampled.nodes.push_back({"Comparison", 0, static_cast<uint32_t>(result.sampled.indices.size())});
     if (totalArea > 0)
     {
         result.mean = weightedDistance / totalArea;
-        std::vector<size_t> sorted(result.distances.size());
-        std::iota(sorted.begin(), sorted.end(), size_t{0});
-        std::stable_sort(sorted.begin(), sorted.end(),
-                         [&](size_t a, size_t b) { return result.distances[a] < result.distances[b]; });
+        std::vector<size_t> sorted;
+        sorted.reserve(result.distances.size());
+        for (size_t i = 0; i < result.distances.size(); ++i)
+        {
+            if (i % 256 == 0) { checkCanceled(stop); }
+            sorted.push_back(i);
+        }
+        // Break ties by sample index to retain stable ordering without the
+        // temporary allocation and unchecked merge passes of stable_sort.
+        std::sort(sorted.begin(), sorted.end(), [&](size_t a, size_t b) {
+            checkCanceled(stop);
+            return result.distances[a] == result.distances[b] ? a < b : result.distances[a] < result.distances[b];
+        });
         double cumulative = 0;
         for (const size_t index : sorted)
         {
+            checkCanceled(stop);
             cumulative += result.sampleAreas[index];
             if (cumulative >= totalArea * .95)
             {
@@ -280,6 +347,7 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
             }
         }
     }
+    checkCanceled(stop);
     return result;
 }
 } // namespace
@@ -303,9 +371,11 @@ double pointTriangleDistance(const std::array<float, 3> &p, const std::array<flo
     return std::sqrt(triangleSquared(toPoint(p), {toPoint(a), toPoint(b), toPoint(c)}));
 }
 
-MeshDiagnostics inspectMesh(const Mesh &mesh)
+namespace
 {
-    const auto triangles = meshTriangles(mesh);
+MeshDiagnostics inspectTriangles(const std::vector<Triangle>& triangles, std::stop_token stop)
+{
+    checkCanceled(stop);
     MeshDiagnostics result;
     // Match geometric positions, so duplicated OBJ/STL seam vertices do not
     // masquerade as open edges. Nearby, unequal positions remain separate.
@@ -320,6 +390,7 @@ MeshDiagnostics inspectMesh(const Mesh &mesh)
     std::map<std::array<size_t, 3>, size_t> faces;
     for (const auto &t : triangles)
     {
+        checkCanceled(stop);
         if (degenerate(t))
         {
             ++result.degenerateTriangles;
@@ -347,6 +418,7 @@ MeshDiagnostics inspectMesh(const Mesh &mesh)
     }
     for (const auto &[indices, use] : edges)
     {
+        checkCanceled(stop);
         DiagnosticEdge edge;
         for (size_t k = 0; k < 3; ++k)
         {
@@ -362,13 +434,33 @@ MeshDiagnostics inspectMesh(const Mesh &mesh)
     }
     return result;
 }
+} // namespace
+
+uint32_t comparisonBufferBytes(size_t count, size_t elementBytes)
+{
+    if (elementBytes == 0 || count > std::numeric_limits<uint32_t>::max() / elementBytes)
+        throw std::runtime_error("Comparison exceeds the supported 32-bit buffer size. Reduce the selected geometry.");
+    return static_cast<uint32_t>(count * elementBytes);
+}
+
+void validateComparisonMeshSize(size_t vertexCount, size_t triangleCount)
+{
+    (void)comparisonBufferBytes(vertexCount, sizeof(Vertex));
+    (void)comparisonBufferBytes(triangleCount, 12 * sizeof(Vertex));
+    (void)comparisonBufferBytes(triangleCount, 12 * sizeof(uint32_t));
+    (void)comparisonBufferBytes(triangleCount, 6 * sizeof(uint32_t));
+}
+
+MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop)
+{
+    return inspectTriangles(meshTriangles(mesh, stop), stop);
+}
 
 MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop)
 {
-    if (stop.stop_requested())
-    {
-        throw std::runtime_error("Comparison canceled.");
-    }
+    checkCanceled(stop);
+    validateComparisonMeshSize(original.vertices.size(), original.indices.size() / 3);
+    validateComparisonMeshSize(repaired.vertices.size(), repaired.indices.size() / 3);
     const auto originalTree = buildTree(original, stop), repairedTree = buildTree(repaired, stop);
     return {compareSurface(original, originalTree, repairedTree), compareSurface(repaired, repairedTree, originalTree)};
 }

@@ -28,10 +28,8 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
     {
         throw std::runtime_error("Comparison encountered an invalid triangle range.");
     }
-    if (result.indices.size() + group.indexCount > comparisonTriangleLimit * 3)
-    {
-        throw std::runtime_error("Prototype comparison supports up to 50,000 triangles per comparison group.");
-    }
+    validateComparisonMeshSize(result.vertices.size() + group.indexCount,
+        (result.indices.size() + group.indexCount) / 3);
     for (size_t i = group.indexOffset; i < end; ++i)
     {
         const auto &p = file.mesh.vertices.at(file.mesh.indices[i]).position;
@@ -158,6 +156,14 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         throw std::runtime_error("Comparison has missing or invalid source parts.");
     }
     Mesh result;
+    // Check the whole side before allocating any expanded world geometry.
+    size_t triangleCount = 0;
+    visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float*) {
+        triangleCount += file.mesh.nodes[index].indexCount / 3;
+        validateComparisonMeshSize(triangleCount * 3, triangleCount);
+    });
+    result.vertices.reserve(triangleCount * 3);
+    result.indices.reserve(triangleCount * 3);
     visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
         appendGroup(result, file, index, parent);
     });

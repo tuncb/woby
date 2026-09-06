@@ -8,9 +8,11 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <limits>
 #include <random>
 
@@ -33,6 +35,26 @@ woby::Mesh mesh(std::initializer_list<std::array<float, 3>> positions, std::vect
 woby::Mesh square(float z = 0)
 {
     return mesh({{0, 0, z}, {1, 0, z}, {1, 1, z}, {0, 1, z}}, {0, 1, 2, 0, 2, 3});
+}
+woby::Mesh largeGrid(uint32_t width, float z = 0)
+{
+    woby::Mesh result;
+    for (uint32_t y = 0; y <= width; ++y)
+        for (uint32_t x = 0; x <= width; ++x)
+        {
+            woby::Vertex vertex;
+            vertex.position = {static_cast<float>(x), static_cast<float>(y), z};
+            result.vertices.push_back(vertex);
+        }
+    for (uint32_t y = 0; y < width; ++y)
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            const auto a = y * (width + 1) + x;
+            result.indices.insert(result.indices.end(), {a, a + 1, a + width + 2, a, a + width + 2, a + width + 1});
+        }
+    result.nodes.push_back({"grid", 0, static_cast<uint32_t>(result.indices.size())});
+    result.bounds = woby::calculateBounds(result.vertices);
+    return result;
 }
 woby::Mesh grid(bool hole)
 {
@@ -393,7 +415,7 @@ TEST_CASE("diagnostics weld identical seam positions and distinguish edge defect
     CHECK(woby::inspectMesh(duplicate).degenerateTriangles == 1);
 }
 
-TEST_CASE("comparison validates empty invalid and excessive input")
+TEST_CASE("comparison validates empty and invalid input")
 {
     auto a = square();
     CHECK_THROWS((void)woby::compareMeshes(a, {}));
@@ -405,9 +427,6 @@ TEST_CASE("comparison validates empty invalid and excessive input")
     CHECK_THROWS((void)woby::compareMeshes(a, invalid));
     invalid = a;
     invalid.indices.push_back(0);
-    CHECK_THROWS((void)woby::compareMeshes(a, invalid));
-    invalid = a;
-    invalid.indices.resize((woby::comparisonTriangleLimit + 1) * 3, 0);
     CHECK_THROWS((void)woby::compareMeshes(a, invalid));
     CHECK_THROWS((void)woby::surfacePercentAboveTolerance({}, -1));
 }
@@ -618,7 +637,7 @@ TEST_CASE("comparison supports implicit scene trees and deduplicates repeated pa
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
 }
 
-TEST_CASE("comparison triangle limit applies to selected parts across the whole side")
+TEST_CASE("comparison accepts more than 50000 selected triangles across the whole side")
 {
     auto state = stateWithFiles(2);
     for (auto& file : state.files) {
@@ -626,8 +645,9 @@ TEST_CASE("comparison triangle limit applies to selected parts across the whole 
         file.mesh.nodes[0].indexCount = 30000 * 3;
     }
     woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, woby::ComparisonSide::a, true);
-    CHECK_THROWS_WITH((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::a),
-        "Prototype comparison supports up to 50,000 triangles per comparison group.");
+    const auto combined = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
+    CHECK(combined.indices.size() == 60000 * 3);
+    CHECK(combined.vertices.size() == 60000 * 3);
     auto& file = state.files[0];
     file.mesh.indices.resize(60000 * 3, 0);
     file.mesh.nodes[0].indexCount = 3;
@@ -635,6 +655,84 @@ TEST_CASE("comparison triangle limit applies to selected parts across the whole 
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 3);
     file.mesh.vertices[0].position[0] = std::numeric_limits<float>::infinity();
     CHECK_THROWS((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::a));
+}
+
+TEST_CASE("comparison measures both surfaces above the former triangle cap")
+{
+    const auto a = largeGrid(160);
+    const auto b = largeGrid(160, .25f);
+    REQUIRE(a.indices.size() / 3 > 50000);
+    const auto result = woby::compareMeshes(a, b);
+    for (const auto* surface : {&result.original, &result.repaired})
+    {
+        CHECK(surface->maximum == doctest::Approx(.25));
+        CHECK(surface->mean == doctest::Approx(.25));
+        CHECK(surface->percentile95 == doctest::Approx(.25));
+        CHECK(surface->distances.size() == 4 * 51200);
+        CHECK(surface->sampled.vertices.size() == 12 * 51200);
+        CHECK(surface->sampled.indices.back() == surface->sampled.vertices.size() - 1);
+        CHECK(surface->diagnostics.boundaryEdges.size() == 640);
+        CHECK(surface->diagnostics.nonManifoldEdges.empty());
+        CHECK(woby::surfacePercentAboveTolerance(*surface, .2) == doctest::Approx(100));
+        const auto bounds = woby::calculateBounds(surface->sampled.vertices);
+        CHECK(surface->sampled.bounds.min == bounds.min);
+        CHECK(surface->sampled.bounds.max == bounds.max);
+        CHECK(surface->sampled.bounds.center == bounds.center);
+        CHECK(surface->sampled.bounds.radius == bounds.radius);
+    }
+    CHECK(a.vertices.front().position[2] == 0);
+    CHECK(b.vertices.front().position[2] == .25f);
+}
+
+TEST_CASE("comparison rejects unrepresentable buffers without allocating geometry")
+{
+    const size_t maxBytes = std::numeric_limits<uint32_t>::max();
+    CHECK(woby::comparisonBufferBytes(0, sizeof(woby::Vertex)) == 0);
+    CHECK(woby::comparisonBufferBytes(maxBytes, 1) == maxBytes);
+    for (const size_t stride : {sizeof(woby::Vertex), sizeof(uint32_t), 2 * sizeof(std::array<float, 3>)})
+    {
+        CHECK(woby::comparisonBufferBytes(maxBytes / stride, stride) == (maxBytes / stride) * stride);
+        CHECK_THROWS((void)woby::comparisonBufferBytes(maxBytes / stride + 1, stride));
+        CHECK_THROWS((void)woby::comparisonBufferBytes(std::numeric_limits<size_t>::max(), stride));
+    }
+    const size_t maxTriangles = maxBytes / (12 * sizeof(woby::Vertex));
+    CHECK_NOTHROW(woby::validateComparisonMeshSize(maxTriangles * 3, maxTriangles));
+    CHECK_THROWS(woby::validateComparisonMeshSize(3, maxTriangles + 1));
+    CHECK_THROWS(woby::validateComparisonMeshSize(maxBytes / sizeof(woby::Vertex) + 1, 1));
+}
+
+TEST_CASE("mesh diagnostics honor cancellation")
+{
+    std::stop_source stop;
+    stop.request_stop();
+    CHECK_THROWS_WITH((void)woby::inspectMesh(square(), stop.get_token()), "Comparison canceled.");
+}
+
+TEST_CASE("large comparison and diagnostics stop during background processing")
+{
+    const auto input = largeGrid(500);
+    for (const bool diagnosticsOnly : {true, false})
+    {
+        INFO("diagnostics only: ", diagnosticsOnly);
+        std::stop_source stop;
+        auto worker = std::async(std::launch::async, [&] {
+            try
+            {
+                if (diagnosticsOnly) { (void)woby::inspectMesh(input, stop.get_token()); }
+                else { (void)woby::compareMeshes(input, input, stop.get_token()); }
+                return std::string{};
+            }
+            catch (const std::exception& error) { return std::string(error.what()); }
+        });
+        // Give the worker time to enter a long stage, then cancel. The generous
+        // deadline tests responsiveness without depending on exact stage timings.
+        (void)worker.wait_for(std::chrono::milliseconds(20));
+        stop.request_stop();
+        CHECK(worker.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+        CHECK(worker.get() == "Comparison canceled.");
+    }
+    CHECK(input.indices.size() == 500 * 500 * 6);
+    CHECK(input.vertices.front().position == std::array<float, 3>{0, 0, 0});
 }
 
 TEST_CASE("comparison settings clamp and memberships survive unrelated file removal")

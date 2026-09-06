@@ -40,8 +40,14 @@ The example contains 153 original triangles and 160 repaired triangles.
 
 Prototype limits:
 
-- Up to 50,000 triangles in total per comparison group. Distance computation runs in the
-  background; changing transforms invalidates the result and recomputes it.
+- There is no fixed triangle-count cap. Comparisons are bounded by available memory
+  and the renderer's 32-bit buffer sizes; oversized buffers are rejected before
+  allocating expanded geometry. Each input triangle generates four samples and
+  twelve display vertices, so large selections can require substantial memory.
+  Distance computation runs in the background; changing transforms invalidates the
+  result and cancels obsolete work, including validation, diagnostics, tree building,
+  sampling, and statistics, before recomputing it. Scene snapshots and GPU uploads
+  still run on the main thread and can briefly pause interaction for large inputs.
 - Comparison uses combined member surfaces and their source scene hierarchy
   transforms. Results render alongside normal scene objects. Membership changes also recompute the result. Ordinary group visibility and appearance do not limit comparison.
 - Distances use four triangle-interior samples per source face and closest points

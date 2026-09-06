@@ -39,6 +39,7 @@ bgfx::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
     {
         return BGFX_INVALID_HANDLE;
     }
+    const auto bytes = comparisonBufferBytes(edges.size(), 2 * sizeof(std::array<float, 3>));
     std::vector<std::array<float, 3>> points;
     points.reserve(edges.size() * 2);
     for (const auto &edge : edges)
@@ -47,7 +48,7 @@ bgfx::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
         points.push_back(edge.b);
     }
     const auto handle = bgfx::createVertexBuffer(
-        bgfx::copy(points.data(), static_cast<uint32_t>(points.size() * sizeof(points[0]))), helperLineVertexLayout());
+        bgfx::copy(points.data(), bytes), helperLineVertexLayout());
     if (!bgfx::isValid(handle))
     {
         throw std::runtime_error("Cannot allocate comparison edge buffer.");
@@ -56,13 +57,23 @@ bgfx::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
 }
 void uploadSurface(ComparisonGpuSurface &gpu, const SurfaceComparison &surface)
 {
+    // Validate every upload before allocating CPU staging memory or GPU handles.
+    const auto vertexBytes = comparisonBufferBytes(surface.source.vertices.size(), sizeof(Vertex));
+    const auto indexBytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(uint32_t));
+    const auto lineBytes = comparisonBufferBytes(surface.source.indices.size(), 2 * sizeof(uint32_t));
+    const auto sampleBytes = comparisonBufferBytes(surface.sampled.vertices.size(), sizeof(Vertex));
+    for (const auto* edges : {&surface.diagnostics.boundaryEdges, &surface.diagnostics.nonManifoldEdges,
+                             &surface.diagnostics.inconsistentWindingEdges})
+    {
+        (void)comparisonBufferBytes(edges->size(), 2 * sizeof(std::array<float, 3>));
+    }
     auto vertices = surface.source.vertices;
     generateSmoothNormals(vertices, surface.source.indices);
     gpu.vertices = bgfx::createVertexBuffer(
-        bgfx::copy(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Vertex))), meshVertexLayout());
+        bgfx::copy(vertices.data(), vertexBytes), meshVertexLayout());
     const auto &indices = surface.source.indices;
     gpu.triangles = bgfx::createIndexBuffer(
-        bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint32_t))), BGFX_BUFFER_INDEX32);
+        bgfx::copy(indices.data(), indexBytes), BGFX_BUFFER_INDEX32);
     std::vector<uint32_t> lines;
     lines.reserve(indices.size() * 2);
     for (size_t i = 0; i < indices.size(); i += 3)
@@ -74,10 +85,10 @@ void uploadSurface(ComparisonGpuSurface &gpu, const SurfaceComparison &surface)
         }
     }
     gpu.lines = bgfx::createIndexBuffer(
-        bgfx::copy(lines.data(), static_cast<uint32_t>(lines.size() * sizeof(uint32_t))), BGFX_BUFFER_INDEX32);
+        bgfx::copy(lines.data(), lineBytes), BGFX_BUFFER_INDEX32);
     const auto &samples = surface.sampled.vertices;
     gpu.samples = bgfx::createVertexBuffer(
-        bgfx::copy(samples.data(), static_cast<uint32_t>(samples.size() * sizeof(Vertex))), meshVertexLayout());
+        bgfx::copy(samples.data(), sampleBytes), meshVertexLayout());
     if (!bgfx::isValid(gpu.vertices) || !bgfx::isValid(gpu.triangles) || !bgfx::isValid(gpu.lines) ||
         !bgfx::isValid(gpu.samples))
     {
