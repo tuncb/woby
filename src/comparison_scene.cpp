@@ -147,6 +147,39 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
     return result;
 }
 
+ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSide side, SceneObjectId id)
+{
+    ComparisonInputSummary result;
+    const auto appendNames = [&](auto&& self, const ComparisonTreeNode& node) -> void {
+        if (node.kind == UiSceneNodeKind::folder) {
+            for (const auto& child : node.children) { self(self, child); }
+        } else {
+            if (!result.sourceNames.empty()) { result.sourceNames += ", "; }
+            result.sourceNames += node.name;
+        }
+    };
+    for (const auto& root : comparisonTree(state, side, id)) {
+        result.partCount += root.partCount;
+        appendNames(appendNames, root);
+    }
+    const std::string label = side == ComparisonSide::a ? "A" : "B";
+    if (const auto* comparison = findComparison(state, id)) {
+        const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+        for (const auto& member : members) {
+            if (!comparisonObjectParts(state, {member.objectId}).empty()) { continue; }
+            if (result.issue.empty()) { result.issue = "Input " + label + " has missing or invalid references: "; }
+            else { result.issue += ", "; }
+            result.issue += member.name.empty() ? "Unnamed part" : member.name;
+        }
+    }
+    if (!result.issue.empty()) { result.issue += ". Restore the source or remove missing references below."; }
+    else if (result.partCount == 0) {
+        result.issue = "Input " + label + " is empty. Drag a source onto the group heading, or use Comparison membership in the scene tree context menu.";
+    }
+    if (result.sourceNames.empty()) { result.sourceNames = "No available sources"; }
+    return result;
+}
+
 Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);

@@ -10,6 +10,8 @@
 namespace woby
 {
 
+inline constexpr const char* comparisonSourcePayload = "WOBY_COMPARISON_SOURCES";
+
 struct ComparisonGpuSurface
 {
     bgfx::VertexBufferHandle vertices = BGFX_INVALID_HANDLE;

@@ -815,11 +815,32 @@ void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
 void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool treeNode)
 {
-    if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && (!treeNode || !ImGui::IsItemToggledOpen())) {
+    // Select on release so starting a source drag keeps the comparison inspector visible.
+    const auto selectionKey = ImGui::GetID(("source_click_" + std::to_string(id)).c_str());
+    auto* storage = ImGui::GetStateStorage();
+    if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+        storage->SetBool(selectionKey, !treeNode || !ImGui::IsItemToggledOpen());
+    }
+    const auto dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+    if (ImGui::IsItemDeactivated() && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left)
+        && storage->GetBool(selectionKey) && dragDelta.x == 0.0f && dragDelta.y == 0.0f) {
         woby::selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
     }
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
         woby::selectSceneObject(state, id, false, true);
+    }
+    if (ImGui::BeginDragDropSource()) {
+        const auto sources = woby::sceneObjectSelected(state, id)
+            ? state.selectedSceneObjects : std::vector<woby::SceneObjectId>{id};
+        const auto parts = woby::comparisonObjectParts(state, sources);
+        if (!parts.empty()) {
+            ImGui::SetDragDropPayload(woby::comparisonSourcePayload, parts.data(),
+                parts.size() * sizeof(woby::SceneObjectId));
+            ImGui::Text("Add %zu parts to comparison input A or B", parts.size());
+        } else {
+            ImGui::TextUnformatted("This source has no triangular mesh parts.");
+        }
+        ImGui::EndDragDropSource();
     }
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
         if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {

@@ -90,6 +90,64 @@ woby::UiState stateWithFiles(size_t count)
 }
 } // namespace
 
+TEST_CASE("comparison input summaries identify sides sources and invalid references")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::a, id).issue.find("Input A is empty") != std::string::npos);
+    CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::b, id).issue.find("Input B is empty") != std::string::npos);
+    woby::UiSceneNode folder;
+    folder.name = "Assembly";
+    folder.children = state.sceneNodes;
+    state.sceneNodes = {folder};
+    woby::assignSceneObjectIds(state);
+    woby::setComparisonObjects(state, {state.sceneNodes[0].objectId}, woby::ComparisonSide::a, true, id);
+    const auto summary = woby::comparisonInputSummary(state, woby::ComparisonSide::a, id);
+    CHECK(summary.partCount == 2);
+    CHECK(summary.sourceNames == "0.obj, 1.obj");
+    CHECK(summary.issue.empty());
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    state.files[1].mesh.nodes[0].indexCount = 1;
+    const auto invalid = woby::comparisonInputSummary(state, woby::ComparisonSide::b, id);
+    CHECK(invalid.partCount == 0);
+    CHECK(invalid.issue.find("Input B has missing or invalid references: 1.obj / surface") != std::string::npos);
+    CHECK(invalid.issue.find("remove missing references") != std::string::npos);
+    woby::removeMissingComparisonParts(state, woby::ComparisonSide::b, id);
+    CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::b, id).issue.find("Input B is empty") != std::string::npos);
+    state.files[1].mesh.nodes[0].indexCount = 6;
+    REQUIRE(woby::removeFileFromState(state, 0));
+    CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::a, id).issue.find("0.obj / surface") != std::string::npos);
+}
+
+TEST_CASE("direct comparison input edits and direction survive scene round trip")
+{
+    auto state = stateWithFiles(3);
+    const auto id = woby::createComparison(state);
+    const auto other = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[2].objectId}, woby::ComparisonSide::a, true, other);
+    const auto sources = woby::createSceneDocument(state);
+    const auto parts = woby::comparisonObjectParts(state, {state.files[0].objectId, state.files[1].objectId});
+    woby::setComparisonObjects(state, parts, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::a, false, id);
+    woby::setComparisonObjects(state, {state.files[2].objectId}, woby::ComparisonSide::b, true, id);
+    auto settings = woby::comparisonSettings(state, id);
+    settings.distanceOnOriginal = false;
+    woby::setComparisonSettings(state, settings, id);
+    woby::swapComparisonGroups(state, id);
+    CHECK_FALSE(woby::comparisonSettings(state, id).distanceOnOriginal);
+    CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::a, id).sourceNames == "2.obj");
+    CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::b, id).sourceNames == "0.obj");
+    const auto document = woby::createSceneDocument(state);
+    CHECK(document.files == sources.files);
+    CHECK(document.nodes == sources.nodes);
+    CHECK(document.comparisons[1] == sources.comparisons[1]);
+    const auto loaded = woby::prepareSceneReplacement(state, state.files, document);
+    CHECK(woby::createSceneDocument(loaded) == document);
+    CHECK_FALSE(loaded.comparisons[0].settings.distanceOnOriginal);
+    CHECK(woby::comparisonInputSummary(loaded, woby::ComparisonSide::a, loaded.comparisons[0].objectId).sourceNames == "2.obj");
+    CHECK(woby::comparisonInputSummary(loaded, woby::ComparisonSide::b, loaded.comparisons[0].objectId).sourceNames == "0.obj");
+}
+
 TEST_CASE("comparison objects share inputs and keep independent settings and geometry signatures")
 {
     auto state = stateWithFiles(3);
@@ -518,11 +576,13 @@ TEST_CASE("tree selection replaces toggles and preserves a pair on context click
     woby::selectSceneObject(state, first);
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first});
     woby::selectSceneObject(state, second, true);
+    woby::selectSceneObject(state, third, false, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second, third});
     woby::selectSceneObject(state, third, true, true);
-    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{third});
-    woby::selectSceneObject(state, woby::invalidSceneObjectId);
-    woby::selectSceneObject(state, state.nextObjectId);
-    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{third});
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second, third});
+    woby::selectSceneObject(state, woby::invalidSceneObjectId, false, true);
+    woby::selectSceneObject(state, state.nextObjectId, false, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{first, second, third});
     woby::clearSceneSelection(state);
     CHECK(state.selectedSceneObjects.empty());
     woby::clearSceneSelection(state);
@@ -530,6 +590,39 @@ TEST_CASE("tree selection replaces toggles and preserves a pair on context click
     woby::updateSceneDirty(state, clean);
     CHECK_FALSE(state.isDirty);
     CHECK(woby::createSceneDocument(state) == clean);
+}
+
+TEST_CASE("context selection keeps folders parts and comparisons and assigns all selected sources")
+{
+    auto state = stateWithFiles(3);
+    woby::UiSceneNode folder;
+    folder.name = "Assembly";
+    folder.children = {state.sceneNodes[0], state.sceneNodes[1]};
+    state.sceneNodes = {folder, state.sceneNodes[2]};
+    woby::assignSceneObjectIds(state);
+    const auto id = woby::createComparison(state);
+    const auto folderId = state.sceneNodes[0].objectId;
+    const auto partId = state.files[0].groupSettings[0].objectId;
+    const auto fileId = state.files[2].objectId;
+    const auto clean = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state);
+    woby::selectSceneObject(state, folderId);
+    woby::selectSceneObject(state, partId, true);
+    woby::selectSceneObject(state, partId, false, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{folderId, partId});
+    woby::selectSceneObject(state, fileId, false, true);
+    woby::selectSceneObject(state, id, false, true);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{folderId, partId, fileId, id});
+    CHECK(woby::selectedComparison(state) == nullptr);
+    CHECK(woby::createSceneDocument(state) == clean);
+    CHECK_FALSE(state.isDirty);
+    woby::setComparisonObjects(state, state.selectedSceneObjects, woby::ComparisonSide::a, true, id);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a, id) == 3);
+    CHECK(woby::createSceneDocument(state).files == clean.files);
+    CHECK(woby::createSceneDocument(state).nodes == clean.nodes);
+    woby::selectSceneObject(state, id);
+    REQUIRE(woby::selectedComparison(state) != nullptr);
+    CHECK(woby::selectedComparison(state)->objectId == id);
 }
 
 TEST_CASE("comparison groups assemble parts across files and compare combined surfaces")

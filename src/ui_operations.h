@@ -30,7 +30,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
 void setPropertiesPaneVisible(UiState& state, bool visible);
 void frameComparisonBounds(UiState& state, const Bounds& bounds);
 [[nodiscard]] bool sceneObjectSelected(const UiState& state, SceneObjectId id);
-// Plain click replaces, Ctrl-click toggles, context click preserves an existing selection.
+// Plain click replaces, Ctrl-click toggles, context click preserves selection and includes the clicked object.
 void selectSceneObject(UiState& state, SceneObjectId id, bool toggle = false, bool contextClick = false);
 void clearSceneSelection(UiState& state);
 

@@ -52,8 +52,11 @@ opens this pane and shows the properties for that selection.
 Scenes can contain multiple named comparisons alongside the original models.
 Ctrl-click two files, folders, or mesh parts, then right-click and choose
 **Create comparison**. The first selected object supplies **A**, the second **B**.
-Alternatively, use **New comparison** in the scene tree and add inputs through
-**Comparison membership Ã¢â€ â€™ comparison name Ã¢â€ â€™ Add to A / Add to B**.
+Alternatively, use **New comparison** in the scene tree. Drag sources onto the
+**Group A** / **Group B** headings in Properties, or use the scene tree's
+**Comparison membership** context menu to assign sources to a named comparison.
+Right-click preserves the existing selection and includes the clicked object;
+context-menu membership actions apply to all selected sources.
 
 Each comparison has independent visibility, tolerance, color range, A/B display
 mode, edge diagnostics, and **Result position**. Select its tree row to edit its
@@ -73,10 +76,16 @@ measurements. Deleting a source leaves a named missing reference; repair the
 inputs or explicitly remove missing references before computing again. Deleting
 a comparison never deletes its sources.
 
-The upper-right **A/B** button toggles the comparison inspector. Its A/B trees
-retain the source hierarchy; right-click a branch or part to remove it from that
-side. Clear and Swap operate only on that comparison. Part badges in the scene
-tree describe the comparison currently targeted by the inspector.
+The upper-right Properties button toggles the inspector. Its A/B trees show source
+names and part counts and retain the source hierarchy. Collapse or expand a group,
+right-click a branch or part to remove it, or right-click a group heading and choose
+**Clear group A** / **Clear group B**. Missing-input
+messages identify the side and any unavailable references. **Swap inputs A / B**
+exchanges assignments and keeps the chosen measurement direction. **A -> B** colors
+A by its nearest distance to B; **B -> A** colors B by its nearest distance to A.
+The direction controls name the measured (heatmap) and reference surfaces. These
+controls affect only the inspected comparison. Part badges in the scene tree
+show membership for the last active comparison.
 
 Comparison uses combined surfaces at their source scene positions, with
 bidirectional unsigned distance heatmaps, A/B views, a wireframe overlay, and edge

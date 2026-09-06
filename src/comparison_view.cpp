@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <stdexcept>
 
 namespace woby
@@ -136,36 +137,49 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
 void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
 {
     const char* label = side == ComparisonSide::a ? "Group A" : "Group B";
-    const auto roots = comparisonTree(state, side, id);
-    size_t count = 0, triangles = 0;
-    for (const auto& root : roots) { count += root.partCount; triangles += root.triangleCount; }
     ImGui::PushID(label);
+    const auto summary = comparisonInputSummary(state, side, id);
     const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_DefaultOpen,
-        "%s (%zu %s)", label, count, count == 1 ? "part" : "parts");
-    ImGui::SameLine();
-    ImGui::BeginDisabled(count == 0);
-    const bool clear = ImGui::SmallButton("Clear");
-    if (clear) { clearComparisonGroup(state, side, id); }
-    ImGui::EndDisabled();
-    if (open) {
-        if (roots.empty() || clear) { ImGui::TextDisabled("No objects added"); }
-        else {
-            ImGui::TextDisabled("%zu triangles", triangles);
-            for (const auto& root : roots) { drawComparisonTreeNode(state, side, root, id); }
-        }
-        if (const auto* comparison = findComparison(state, id)) {
-            const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
-            bool missing = false;
-            for (const auto& part : members) {
-                if (comparisonObjectParts(state, {part.objectId}).empty()) {
-                    ImGui::TextWrapped("Missing / invalid: %s", part.name.c_str());
-                    missing = true;
-                }
-            }
-            if (missing && ImGui::SmallButton("Remove missing references")) { removeMissingComparisonParts(state, side, id); }
-        }
-        ImGui::TreePop();
+        "%s (%zu %s)", label, summary.partCount, summary.partCount == 1 ? "part" : "parts");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Right-click a group to clear it, or a source below to remove it.");
     }
+    if (ImGui::BeginDragDropTarget()) {
+        if (const auto* payload = ImGui::AcceptDragDropPayload(comparisonSourcePayload)) {
+            if (payload->DataSize > 0 && payload->DataSize % sizeof(SceneObjectId) == 0) {
+                std::vector<SceneObjectId> parts(static_cast<size_t>(payload->DataSize) / sizeof(SceneObjectId));
+                std::memcpy(parts.data(), payload->Data, static_cast<size_t>(payload->DataSize));
+                setComparisonObjects(state, parts, side, true, id);
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+    const auto* comparison = findComparison(state, id);
+    const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    if (ImGui::BeginPopupContextItem("group_actions")) {
+        if (ImGui::MenuItem(side == ComparisonSide::a ? "Clear group A" : "Clear group B",
+                nullptr, false, !members.empty())) {
+            clearComparisonGroup(state, side, id);
+        }
+        ImGui::EndPopup();
+    }
+    if (!open) {
+        ImGui::PopID();
+        return;
+    }
+    const auto current = comparisonInputSummary(state, side, id);
+    if (!current.issue.empty()) { ImGui::TextWrapped("%s", current.issue.c_str()); }
+    if (members.size() > current.partCount && ImGui::SmallButton("Remove missing references")) {
+        removeMissingComparisonParts(state, side, id);
+    }
+    const auto roots = comparisonTree(state, side, id);
+    size_t triangles = 0;
+    for (const auto& root : roots) { triangles += root.triangleCount; }
+    if (!roots.empty()) { ImGui::TextDisabled("%zu triangles", triangles); }
+    for (const auto& root : roots) {
+        drawComparisonTreeNode(state, side, root, id);
+    }
+    ImGui::TreePop();
     ImGui::PopID();
 }
 void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges, SceneObjectId id)
@@ -362,7 +376,12 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled) { continue; }
         if (!canCompareGroups(state, comparison.objectId)) {
-            throw std::runtime_error(comparison.name + ": comparison inputs are incomplete.");
+            std::string issues;
+            for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+                const auto input = comparisonInputSummary(state, side, comparison.objectId);
+                if (!input.issue.empty()) { issues += " " + input.issue; }
+            }
+            throw std::runtime_error(comparison.name + ":" + issues);
         }
         const auto signature = comparisonGeometrySignature(state, comparison.objectId);
         const auto it = runtimes.objects.find(comparison.objectId);
@@ -395,19 +414,15 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (ImGui::DragFloat3("Result position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
     ImGui::TextDisabled("Display offset only, in model units.");
     ImGui::Separator();
-    ImGui::TextWrapped("Add objects from the scene's context menu. Right-click a branch or part below to remove it from that group.");
-    ImGui::Separator();
     membershipTree(state, ComparisonSide::a, id);
     membershipTree(state, ComparisonSide::b, id);
     ImGui::Separator();
-    if (ImGui::Button("Swap A / B")) { swapComparisonGroups(state, id); }
+    if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
+    ImGui::TextWrapped("Swap exchanges assignments; measurement direction stays the same.");
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool valid = canCompareGroups(state, id);
-    ImGui::SameLine();
-
     ImGui::Checkbox("Visible", &settings.enabled);
-    if (!valid) { ImGui::TextWrapped("Incomplete: each side needs mesh parts, and all missing or invalid references must be repaired or removed."); }
     {
         ImGui::TextWrapped(
             "Combined surfaces at scene positions, in model units. Hidden members are included. Other scene objects retain their own appearance.");
@@ -420,9 +435,16 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         }
         if (settings.mode == ComparisonMode::distance)
         {
-            ImGui::Checkbox("Measure on A", &settings.distanceOnOriginal);
-            ImGui::TextWrapped(settings.distanceOnOriginal ? "A -> B: distance from A to the nearest surface in B."
-                                                           : "B -> A: distance from B to the nearest surface in A.");
+            ImGui::TextUnformatted("Measurement direction");
+            if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
+            ImGui::SameLine();
+            if (ImGui::RadioButton("B -> A", !settings.distanceOnOriginal)) { settings.distanceOnOriginal = false; }
+            const auto a = comparisonInputSummary(state, ComparisonSide::a, id);
+            const auto b = comparisonInputSummary(state, ComparisonSide::b, id);
+            ImGui::TextWrapped("Measured surface (heatmap): %s - %s", settings.distanceOnOriginal ? "A" : "B",
+                (settings.distanceOnOriginal ? a.sourceNames : b.sourceNames).c_str());
+            ImGui::TextWrapped("Reference surface (nearest distance): %s - %s", settings.distanceOnOriginal ? "B" : "A",
+                (settings.distanceOnOriginal ? b.sourceNames : a.sourceNames).c_str());
             ImGui::SetNextItemWidth(110);
             ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
             ImGui::SetNextItemWidth(110);
@@ -583,7 +605,10 @@ void drawComparisonObjects(UiState& state)
         auto settings = comparison.settings;
         if (ImGui::Checkbox("##visible", &settings.enabled)) { setComparisonSettings(state, settings, id); }
         ImGui::SameLine();
-        if (ImGui::Selectable(comparison.name.c_str(), sceneObjectSelected(state, id))) { selectSceneObject(state, id); }
+        if (ImGui::Selectable(comparison.name.c_str(), sceneObjectSelected(state, id))) {
+            selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
+        }
+        if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectSceneObject(state, id, false, true); }
         bool changed = false;
         if (ImGui::BeginPopupContextItem("comparison_object")) {
             if (ImGui::MenuItem("Properties")) { selectSceneObject(state, id); }
@@ -592,7 +617,18 @@ void drawComparisonObjects(UiState& state)
             if (ImGui::MenuItem("Delete comparison")) { removeComparison(state, id); changed = true; }
             ImGui::EndPopup();
         }
-        if (!changed && !canCompareGroups(state, id)) { ImGui::TextDisabled("    Incomplete inputs"); }
+        if (!changed && !canCompareGroups(state, id)) {
+            for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+                const auto summary = comparisonInputSummary(state, side, id);
+                if (summary.issue.empty()) { continue; }
+                const auto& members = side == ComparisonSide::a ? comparison.a : comparison.b;
+                ImGui::TextDisabled("    Input %s: %s", side == ComparisonSide::a ? "A" : "B",
+                    members.empty() ? "empty" : "missing / invalid source");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("%s", summary.issue.c_str());
+                }
+            }
+        }
         ImGui::PopID();
         if (changed) { break; }
     }

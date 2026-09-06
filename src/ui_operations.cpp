@@ -27,12 +27,17 @@ void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool conte
     if (contextClick && selected) {
         return;
     }
-    if (!toggle || contextClick) {
+    if (contextClick) {
+        state.selectedSceneObjects.push_back(id);
+    } else if (!toggle) {
         state.selectedSceneObjects = {id};
     } else if (selected) {
         std::erase(state.selectedSceneObjects, id);
     } else {
         state.selectedSceneObjects.push_back(id);
+    }
+    if (const auto* comparison = selectedComparison(state)) {
+        state.activeComparisonId = comparison->objectId;
     }
 }
 
