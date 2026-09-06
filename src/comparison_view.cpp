@@ -503,24 +503,14 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime)
 
 } // namespace
 
-void drawComparisonPanel(UiState& state, ComparisonRuntimes& runtimes, float rightEdge, float width, float height)
+void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
 {
-    if (!state.comparisonPaneVisible) { return; }
-    ImGui::SetNextWindowBgAlpha(1.0f);
-    ImGui::SetNextWindowPos(ImVec2(rightEdge - width, 0.0f), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
-    bool visible = state.comparisonPaneVisible;
-    if (ImGui::Begin("Comparison", &visible, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
-        | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
-        if (findComparison(state)) {
-            drawComparisonContents(state, runtimes.objects[state.activeComparisonId]);
-        } else {
-            ImGui::TextWrapped("Select two source objects and choose Create comparison, or start an empty comparison.");
-            if (ImGui::Button("New comparison")) { createComparison(state); }
-        }
+    if (findComparison(state)) {
+        drawComparisonContents(state, runtimes.objects[state.activeComparisonId]);
+    } else {
+        ImGui::TextWrapped("Select two source objects and choose Create comparison, or start an empty comparison.");
+        if (ImGui::Button("New comparison")) { createComparison(state); }
     }
-    ImGui::End();
-    if (visible != state.comparisonPaneVisible) { setComparisonPaneVisible(state, visible); }
 }
 
 static void submitComparisonScene(bgfx::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,

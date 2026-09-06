@@ -393,8 +393,7 @@ CanvasLayout canvasLayout(SDL_Window* window, const woby::UiState& state)
     CanvasLayout layout;
     layout.width = static_cast<float>(std::max(windowWidth, 1));
     layout.height = static_cast<float>(std::max(windowHeight, 1));
-    const float toolbarWidth = renderModeButtonSize + 8.0f + viewerPaneTogglePaneMargin * 2.0f;
-    layout.rightEdge = std::max(layout.width - toolbarWidth, 1.0f);
+    layout.rightEdge = layout.width;
     layout.rightWidth = std::min(420.0f, layout.width * 0.36f);
     const float reservedRight = state.comparisonPaneVisible ? layout.width - layout.rightEdge + layout.rightWidth : 0.0f;
     layout.maxLeftWidth = std::max(layout.width - reservedRight
@@ -775,59 +774,78 @@ float minimumViewerPaneWidth()
         + viewerPaneWidthPadding;
 }
 
-bool drawViewerPaneTogglePane(woby::UiState& state, float windowWidth, bool screenshotDisabled)
+void drawViewerPaneToggleButton(woby::UiState& state)
 {
-    bool screenshotRequested = false;
-    ImGui::SetNextWindowBgAlpha(0.86f);
-    ImGui::SetNextWindowPos(
-        ImVec2(windowWidth - viewerPaneTogglePaneMargin, viewerPaneTogglePaneMargin),
-        ImGuiCond_Always,
-        ImVec2(1.0f, 0.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
-    if (ImGui::Begin(
-            "##ViewerPaneToggle",
-            nullptr,
-            ImGuiWindowFlags_NoDecoration
-                | ImGuiWindowFlags_AlwaysAutoResize
-                | ImGuiWindowFlags_NoMove
-                | ImGuiWindowFlags_NoSavedSettings
-                | ImGuiWindowFlags_NoFocusOnAppearing)) {
-        const char* icon = state.viewerPaneVisible ? viewerPanePinnedIcon : viewerPaneUnpinnedIcon;
-        const char* tooltip = state.viewerPaneVisible
-            ? "Hide left panes (Ctrl+B)"
-            : "Show left panes (Ctrl+B)";
-        if (drawRenderModeIconButton(
-                "toggle_viewer_pane",
-                icon,
-                tooltip,
-                state.viewerPaneVisible ? RenderModeState::on : RenderModeState::off,
-                false)) {
-            woby::toggleViewerPaneVisible(state);
-        }
-        if (screenshotDisabled) {
-            ImGui::BeginDisabled();
-        }
-        if (drawRenderModeIconButton(
-                "scene_screenshot",
-                screenshotIcon,
-                "Save scene screenshot",
-                RenderModeState::off,
-                false)) {
-            screenshotRequested = true;
-        }
-        if (screenshotDisabled) {
-            ImGui::EndDisabled();
-        }
-        if (drawRenderModeIconButton(
-                "toggle_comparison_pane", "A/B",
-                state.comparisonPaneVisible ? "Hide comparison panel" : "Show comparison panel",
-                state.comparisonPaneVisible ? RenderModeState::on : RenderModeState::off, false)) {
-            woby::setComparisonPaneVisible(state, !state.comparisonPaneVisible);
-        }
+    if (drawRenderModeIconButton(
+            "toggle_viewer_pane",
+            state.viewerPaneVisible ? viewerPanePinnedIcon : viewerPaneUnpinnedIcon,
+            state.viewerPaneVisible ? "Hide left pane (Ctrl+B)" : "Show left pane (Ctrl+B)",
+            state.viewerPaneVisible ? RenderModeState::on : RenderModeState::off,
+            false)) {
+        woby::toggleViewerPaneVisible(state);
+    }
+}
+
+void drawComparisonPaneToggleButton(woby::UiState& state)
+{
+    if (drawRenderModeIconButton(
+            "toggle_comparison_pane",
+            state.comparisonPaneVisible ? viewerPanePinnedIcon : viewerPaneUnpinnedIcon,
+            state.comparisonPaneVisible ? "Hide comparison pane" : "Show comparison pane",
+            state.comparisonPaneVisible ? RenderModeState::on : RenderModeState::off,
+            false)) {
+        woby::setComparisonPaneVisible(state, !state.comparisonPaneVisible);
+    }
+}
+
+void drawComparisonPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes, const CanvasLayout& layout)
+{
+    if (!state.comparisonPaneVisible) { return; }
+    ImGui::SetNextWindowBgAlpha(1.0f);
+    ImGui::SetNextWindowPos(ImVec2(layout.rightEdge - layout.rightWidth, 0.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(layout.rightWidth, layout.height), ImGuiCond_Always);
+    if (ImGui::Begin("##ComparisonPane", nullptr, ImGuiWindowFlags_NoTitleBar
+        | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+        drawComparisonPaneToggleButton(state);
+        ImGui::SameLine();
+        ImGui::TextUnformatted("Comparison");
+        ImGui::Separator();
+        woby::drawComparisonPanelContents(state, runtimes);
     }
     ImGui::End();
+}
+
+void drawPaneToggles(woby::UiState& state, float windowWidth)
+{
+    const auto flags = ImGuiWindowFlags_NoDecoration
+        | ImGuiWindowFlags_AlwaysAutoResize
+        | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoSavedSettings
+        | ImGuiWindowFlags_NoFocusOnAppearing;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+    if (!state.viewerPaneVisible) {
+        ImGui::SetNextWindowBgAlpha(1.0f);
+        ImGui::SetNextWindowPos(ImVec2(viewerPaneTogglePaneMargin, viewerPaneTogglePaneMargin), ImGuiCond_Always);
+        if (ImGui::Begin("##ShowViewerPane", nullptr, flags)) {
+            drawViewerPaneToggleButton(state);
+            ImGui::SameLine();
+            ImGui::TextUnformatted("Scene controls");
+        }
+        ImGui::End();
+    }
+    if (!state.comparisonPaneVisible) {
+        ImGui::SetNextWindowBgAlpha(1.0f);
+        ImGui::SetNextWindowPos(
+            ImVec2(windowWidth - viewerPaneTogglePaneMargin, viewerPaneTogglePaneMargin),
+            ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+        if (ImGui::Begin("##ShowComparisonPane", nullptr, flags)) {
+            drawComparisonPaneToggleButton(state);
+            ImGui::SameLine();
+            ImGui::TextUnformatted("Comparison");
+        }
+        ImGui::End();
+    }
     ImGui::PopStyleVar();
-    return screenshotRequested;
 }
 
 void pushRenderModeControlHeight()
@@ -3191,6 +3209,10 @@ int main(int argc, char** argv)
                         minViewerPaneWidth,
                         maxViewerPaneWidth);
 
+                    drawViewerPaneToggleButton(ui);
+                    ImGui::SameLine();
+                    ImGui::TextUnformatted("Scene controls");
+                    ImGui::Separator();
                     const bool scenePaneOpen = ImGui::CollapsingHeader(
                         "Scene",
                         ImGuiTreeNodeFlags_DefaultOpen);
@@ -3276,6 +3298,15 @@ int main(int argc, char** argv)
                             ImGui::EndDisabled();
                         }
                         setLastItemTooltip("Save scene");
+                        ImGui::SameLine();
+                        ImGui::BeginDisabled(anyFileDialogOpen
+                            || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
+                        if (drawRenderModeIconButton(
+                                "scene_screenshot", screenshotIcon, "Save scene screenshot",
+                                RenderModeState::off, false)) {
+                            showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
+                        }
+                        ImGui::EndDisabled();
                         ImGui::Text("Renderer: %s", bgfx::getRendererName(bgfx::getRendererType()));
                         ImGui::Text("FPS: %.1f", fps);
                         size_t vertexCountTotal = 0;
@@ -3450,17 +3481,8 @@ int main(int argc, char** argv)
             }
                 ImGui::End();
             }
-            const bool screenshotActionDisabled = (modelFileDialogIsOpen(modelFileDialogState) || modelFileDialogIsOpen(importerFileDialogState))
-                || sceneFileDialogIsOpen(sceneFileDialogState)
-                || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState)
-                || backgroundLoad.active
-                || gpuFinalize.active
-                || sceneScreenshot.captureRequested
-                || sceneScreenshot.readbackPending;
-            if (drawViewerPaneTogglePane(ui, panelLayout.width, screenshotActionDisabled)) {
-                showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
-            }
-            woby::drawComparisonPanel(ui, comparison, panelLayout.rightEdge, panelLayout.rightWidth, panelLayout.height);
+            drawPaneToggles(ui, panelLayout.width);
+            drawComparisonPane(ui, comparison, panelLayout);
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
 
             woby::recalculateSceneBounds(ui);

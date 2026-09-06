@@ -43,7 +43,7 @@ struct ComparisonRuntimes {
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, const UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
 void drawComparisonObjects(UiState& state);
-void drawComparisonPanel(UiState& state, ComparisonRuntimes& runtimes, float rightEdge, float width, float height);
+void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
     bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform);
 // False while any visible, valid comparison is queued/computing. Errors are reported to the caller.
