@@ -1,8 +1,8 @@
 # CTL command reference
 
 Updated 2026-09-06. All commands in the current-command tables below are implemented
-in the CLI and local JSON-RPC API. The 34 commands exposing existing application
-features are now available, alongside the earlier lifecycle, capture, and recovery
+in the CLI and local JSON-RPC API. Comparison controls and measurements are available
+alongside the existing scene controls, lifecycle, capture, and recovery
 commands. See [automation.md](automation.md) for transport, ordering, retries, and
 errors, and [ctl-roadmap.md](ctl-roadmap.md) for historical decisions.
 
@@ -56,12 +56,72 @@ Comparison objects appear in `objects` and `scene tree` with kind `comparison`.
 settings; `scene info` includes `comparisonCount`. Comparison IDs support
 `visibility set`, `transform get`, translation-only `transform set`, and
 `transform reset` (resetting their display offset). Rotation, scale, opacity,
-and mesh render-mode commands do not apply to comparison results. Use the UI to
-create comparisons and edit their inputs and measurement settings.
+and mesh render-mode commands do not apply to comparison results. The commands
+below create comparisons and edit their inputs and measurement settings.
 
 Screenshot capture waits for every visible comparison to finish. Incomplete
 inputs or failed computations fail capture; hide or repair the affected object
 before retrying.
+
+## Comparisons
+
+| CLI | RPC method | Behavior |
+| --- | --- | --- |
+| `comparison create [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `comparison.create` | Create a comparison, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
+| `comparison delete COMPARISON_ID` | `comparison.delete` | Delete the comparison without deleting its source models. Returns `removed` and `dirty`. |
+| `comparison set COMPARISON_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL]` | `comparison.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
+| `comparison add COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
+| `comparison remove COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.remove` | Remove the input's current triangular parts from the selected side. |
+| `comparison clear COMPARISON_ID --side a\|b` | `comparison.clear` | Clear the entire side, including missing references. |
+| `comparison swap COMPARISON_ID` | `comparison.swap` | Swap the A/B input lists. |
+| `comparison results COMPARISON_ID` | `comparison.results` | Wait for a fresh measurement and return both directed distance summaries and diagnostics. Works for hidden comparisons and in every display mode. |
+
+Use `objects`/`object` to discover comparisons and inspect their settings and inputs.
+Inputs are file, folder, or mesh group IDs; files/folders expand to current triangular
+parts, just as in the UI. Add multiple inputs by repeating `comparison add` calls.
+An input may belong to both sides or multiple comparisons. Empty/nontriangular inputs
+and comparison IDs are rejected as inputs. All IDs are validated before edits, so a
+bad B input does not leave a partially created comparison. Stale/foreign IDs fail with
+`-32005`; malformed parameters or unsupported kinds use `-32602`.
+
+Setters use the UI's normalization: tolerance is clamped to 0–1e12, color range to
+1e-6–1e12 and at least the tolerance. Nonfinite numbers are rejected. All edits persist
+in `.woby` scenes. Membership/settings setters return `target`, updated `object`,
+`dirty`, and `bounds`. Use a request key when retrying creation or swapping.
+
+Measurements use an immutable snapshot of the transformed A/B geometry and tolerance
+when the command starts. Ordinary source visibility and the comparison's display
+offset do not affect distances. A background CPU calculation keeps the viewer responsive;
+the command retains its FIFO slot until it finishes. Later CLI edits execute afterward.
+Manual UI edits during computation do not change the snapshot. Incomplete inputs fail
+with `-32602`; loading/capture/dialog activity rejects measurement with `-32014`.
+Computation failures return a command error, never partial metrics.
+
+Results include `target`, `tolerance`, `aToB`, and `bToA`. Each direction contains
+`maximum`, `mean`, `percentile95`, `percentAboveTolerance` (0–100, strictly above
+tolerance), `sampleCount`, `triangleCount`, and `diagnostics` counts (`boundaryEdges`,
+`nonManifoldEdges`, `inconsistentWindingEdges`, `degenerateTriangles`, `duplicateTriangles`).
+Distances are unsigned, in model units, using the same four centroid samples per
+triangle as the UI. Mean, P95, and percentage are weighted by surface area; maximum
+is the sample maximum, not an exact Hausdorff distance. Diagnostics describe the
+source side of each direction.
+
+After a client timeout, an already running measurement continues and its result can
+be recovered with `command` or the same request key. Reusing a measurement request key
+returns its original snapshot; use a new key (or omit it) for fresh results.
+
+For a running instance named `review`, with input IDs from `objects`:
+
+```powershell
+$comparison = woby.exe ctl --instance review comparison create --name "Repair check" --a A_ID --b B_ID --json | ConvertFrom-Json
+woby.exe ctl --instance review comparison set $comparison.target --tolerance 0.01 --mode distance
+woby.exe ctl --instance review comparison results $comparison.target --json
+woby.exe ctl --instance review scene save-as C:\output\comparison.woby
+```
+
+Direct RPC uses `target` for the comparison ID, `a`/`b` for creation inputs, `object`
+for an added/removed input, and camelCase settings such as `distanceOnA`, `colorRange`,
+and `showNonManifold`. All commands use the existing authenticated `/rpc` endpoint.
 
 ## Visibility, rendering, transforms, and appearance
 

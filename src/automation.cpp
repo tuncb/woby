@@ -604,16 +604,18 @@ Json executeControlOperation(AutomationRuntime& runtime, const Json& id, Json pa
     ControlOperation command;
     try { command = parseControlOperation(method, params); }
     catch (const std::exception& error) { return rpcError(id, -32602, error.what()); }
-    if (!command.target.empty() && command.target != "scene") {
-        const auto& text = command.target;
+    for (const auto& [text, resolved] : {std::pair{command.target, &command.objectId},
+        std::pair{command.a.value_or(""), &command.aId}, std::pair{command.b.value_or(""), &command.bId},
+        std::pair{command.object.value_or(""), &command.memberId}}) {
+        if (text.empty() || (resolved == &command.objectId && text == "scene")) { continue; }
         const auto isHex = [](char c) { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'); };
         if (text.size() != 53 || text.substr(0, 4) != "obj-" || text[36] != '-'
             || !std::all_of(text.begin() + 4, text.begin() + 36, isHex)
             || !std::all_of(text.begin() + 37, text.end(), isHex)) {
             return rpcError(id, -32602, "Invalid target; use scene or an ID returned by objects.list.");
         }
-        const auto parsed = std::from_chars(text.data() + 37, text.data() + text.size(), command.objectId, 16);
-        if (parsed.ec != std::errc{} || command.objectId == invalidSceneObjectId) { return rpcError(id, -32602, "Invalid target ID."); }
+        const auto parsed = std::from_chars(text.data() + 37, text.data() + text.size(), *resolved, 16);
+        if (parsed.ec != std::errc{} || *resolved == invalidSceneObjectId) { return rpcError(id, -32602, "Invalid target ID."); }
         if (text.compare(0, 37, runtime.objectIdPrefix) != 0) { return rpcError(id, -32005, "Unknown or stale object ID."); }
     }
     return submitAutomationCommand(runtime, id, command, timeout, originalParams);
@@ -952,15 +954,29 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
 
 void printCommandLineHelp()
 {
-    std::printf("Scene controls (prefix with woby ctl --instance ID):\n");
-    for (const auto& method : controlMethods()) {
-        std::printf("  %s\n", controlMethodUsage(method).c_str());
-    }
-    std::printf("Options use --kebab-case (e.g. --rotation-degrees X Y Z); booleans require true|false.\n"
-        "--tree and --remember are flags. All controls accept --json, --timeout, --wait, --request-key.\n\n");
     std::printf(
         "Usage:\n"
-        "  woby [--instance ID] [--scene PATH] [--file PATH ...]\n"
+        "  woby [STARTUP_OPTIONS]\n"
+        "  woby ctl --instance ID COMMAND [OPTIONS]\n"
+        "  woby --help | -h\n"
+        "  woby ctl --help | -h\n"
+        "\nStartup options:\n"
+        "  --instance ID              Choose the viewer's instance ID.\n"
+        "  --scene PATH | --woby PATH Open one saved .woby scene.\n"
+        "  --file PATH                Add a model; repeat for multiple files.\n"
+        "  --folder PATH              Recursively add models from a folder.\n"
+        "  --folder-tree PATH         Recursively add models and retain folder structure.\n"
+        "  --plugin PATH              Load an importer library; may be repeated.\n"
+        "  --plugin-folder PATH       Scan a plugin folder non-recursively; may be repeated.\n"
+        "  --log-level off|trace|debug|info|warn|error|critical  Default: off.\n"
+        "  --log-file PATH            Required with a non-off log level; otherwise invalid.\n"
+        "  --log-performance          Enable frame logs; requires trace, debug, or info.\n"
+        "  --log-frame-interval N     Positive frame count; default: 120. Requires --log-performance.\n"
+        "  --log-slow-frame-ms N      Positive threshold; requires --log-performance.\n"
+        "  --version                  Print the application version.\n"
+        "  --help | -h                Print this help.\n"
+        "Folder inputs may be repeated and combined with --file and --scene.\n"
+        "\nDiscovery, lifecycle, capture, and recovery:\n"
         "  woby ctl instances [--json]\n"
         "  woby ctl --instance ID screenshot PATH [--timeout SECONDS] [--json]\n"
         "  woby ctl --instance ID scene save [--json]\n"
@@ -972,15 +988,47 @@ void printCommandLineHelp()
         "  woby ctl --instance ID object OBJECT_ID [--timeout SECONDS] [--json]\n"
         "  woby ctl --instance ID command COMMAND_ID [--json]\n"
         "  woby ctl --instance ID command --request-key KEY [--json]\n"
-        "\nEvery viewer instance starts a local HTTP API and displays its ID in the title.\n"
-        "IDs: 1-64 lowercase letters, digits, '-' or '_'; start with a letter or digit.\n"
-        "Screenshot waits for the PNG to be saved (default timeout: 60 seconds).\n"
-        "--wait is also accepted; waiting is always enabled. Existing PNGs are overwritten.\n"
-        "Scene commands accept --request-key KEY for safe retries within this viewer launch.\n"
-        "Duplicates in progress return code -32008 immediately; inspect them with ctl command.\n"
-        "Other startup options: --folder, --folder-tree, --woby, --plugin, --plugin-folder,\n"
-        "--log-level, --log-file, --log-performance, --log-frame-interval, --log-slow-frame-ms,\n"
-        "--version, --help. See README.md for details.\n");
+        "\nScene controls (prefix each command with woby ctl --instance ID):\n");
+    for (const auto& method : controlMethods()) {
+        std::printf("  %s\n", controlMethodUsage(method).c_str());
+    }
+    std::printf(
+        "\nCommon control options:\n"
+        "  --json             Emit one JSON value; exit code 0 on success, 1 on failure.\n"
+        "  --timeout SECONDS  Integer from 1 to 3600; default: 60.\n"
+        "  --wait             Accepted for compatibility; commands always wait.\n"
+        "  --request-key KEY  Safe retries in this viewer launch; 1-128 ASCII letters,\n"
+        "                     digits, '-', '_', '.', or ':'. Reuse only for the same request.\n"
+        "These options apply to scene controls, lifecycle, capture, and object queries.\n"
+        "Exceptions: instances only accepts --json; command lookup accepts --json and\n"
+        "either COMMAND_ID or --request-key KEY, with no --timeout or --wait.\n"
+        "Duplicates in progress return RPC code -32008; inspect them with ctl command.\n"
+        "\nTargets and values:\n"
+        "Every viewer starts a local HTTP API and displays its instance ID in the title.\n"
+        "ctl connects to a running viewer; it never starts one. Discover it with ctl instances.\n"
+        "Instance IDs: 1-64 lowercase letters, digits, '-' or '_'; start with a letter or digit.\n"
+        "OBJECT_ID, FILE_ID, GROUP_ID, and COMPARISON_ID come from objects, not names or paths.\n"
+        "Object IDs expire on removal, scene replacement, or viewer restart.\n"
+        "TARGET is scene or a supported object ID. Use capabilities for target scopes.\n"
+        "Booleans require true|false. --tree, --remember, and --overwrite are flags.\n"
+        "Omitted setter values are preserved; setters require at least one value.\n"
+        "Vectors contain three finite numbers. Quote names and paths containing spaces.\n"
+        "Comparison transforms support display translation only.\n"
+        "\nComparisons:\n"
+        "create returns target (the new COMPARISON_ID); omitted A/B inputs leave empty sides.\n"
+        "--a, --b, and --object accept file, folder, or triangular mesh group IDs.\n"
+        "add/remove edit one side's current parts; clear removes all references on that side.\n"
+        "delete removes only the comparison; source models remain loaded.\n"
+        "results waits for a fresh geometry/tolerance snapshot calculation, even when hidden.\n"
+        "It returns aToB and bToA: sampled maximum, area-weighted mean/P95, percentage\n"
+        "above tolerance, and mesh diagnostics. Distances use model units.\n"
+        "Incomplete inputs fail. Reusing a results request key returns the original snapshot.\n"
+        "\nSaving and capture:\n"
+        "scene open/new and quit default to --on-dirty error. --save-path requires\n"
+        "--on-dirty save; --overwrite requires an explicit save destination.\n"
+        "Screenshot waits for visible comparisons and PNG writing; incomplete/failed\n"
+        "comparisons fail capture. Existing PNGs are overwritten. CLI paths may be relative.\n"
+        "\nSee README.md, doc/ctl-commands.md, and doc/automation.md for examples and details.\n");
 }
 
 } // namespace woby

@@ -165,6 +165,73 @@ TEST_CASE("extended camera commands execute once and replay the applied result u
     CHECK_FALSE(takeCommand(*fixture.server));
 }
 
+TEST_CASE("comparison RPC validates every input ID before admission and resolves membership IDs")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    const auto target = woby::automationObjectId(*fixture.server, 10);
+    const auto input = woby::automationObjectId(*fixture.server, 20);
+    auto foreign = input;
+    foreign[4] = foreign[4] == '0' ? '1' : '0';
+    for (const auto* field : {"a", "b"}) {
+        CHECK(request(fixture.instance, "comparison.create", {{field, "malformed"}})["error"]["code"] == -32602);
+        CHECK(request(fixture.instance, "comparison.create", {{field, foreign}})["error"]["code"] == -32005);
+        CHECK(request(fixture.instance, "comparison.create", {{field, "scene"}})["error"]["code"] == -32602);
+        CHECK_FALSE(takeCommand(*fixture.server));
+    }
+    CHECK(request(fixture.instance, "comparison.add", {{"target", target}, {"side", "a"}, {"object", foreign}})["error"]["code"] == -32005);
+    CHECK(request(fixture.instance, "comparison.set", {{"target", target}, {"mode", "invalid"}})["error"]["code"] == -32602);
+    CHECK_FALSE(takeCommand(*fixture.server));
+    for (const auto* method : {"comparison.add", "comparison.remove"}) {
+        auto pending = std::async(std::launch::async, [&] {
+            return request(fixture.instance, method, {{"target", target}, {"side", "b"}, {"object", input}});
+        });
+        const auto command = waitForCommand(*fixture.server);
+        REQUIRE(command);
+        const auto& operation = std::get<woby::ControlOperation>(command->payload);
+        CHECK(operation.objectId == 10);
+        CHECK(operation.memberId == 20);
+        CHECK(operation.side == "b");
+        CHECK(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{Json::object()}));
+        CHECK(pending.get().contains("result"));
+    }
+}
+
+TEST_CASE("comparison creation retries reuse the created object and recover its result")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    woby::UiState state;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes = {{"triangle", 0, 3}};
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    state.files.push_back(woby::createUiFileState("triangle.obj", mesh, 0));
+    woby::assignSceneObjectIds(state);
+    const auto clean = woby::createSceneDocument(state);
+    const auto input = woby::automationObjectId(*fixture.server, state.files[0].objectId);
+    const Json params = {{"name", "RPC comparison"}, {"a", input}, {"b", input}, {"requestKey", "create-once"}};
+    auto pending = std::async(std::launch::async, [&] { return request(fixture.instance, "comparison.create", params); });
+    const auto command = waitForCommand(*fixture.server);
+    REQUIRE(command);
+    const auto& operation = std::get<woby::ControlOperation>(command->payload);
+    CHECK(operation.aId == state.files[0].objectId);
+    CHECK(operation.bId == state.files[0].objectId);
+    const auto result = woby::applyControlSceneOperation(state, clean, operation,
+        [&](woby::SceneObjectId id) { return woby::automationObjectId(*fixture.server, id); }, 200, 800);
+    CHECK(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{result}));
+    const auto original = pending.get();
+    CHECK(original["result"]["object"]["valid"] == true);
+    CHECK(request(fixture.instance, "comparison.create", params)["result"] == original["result"]);
+    CHECK(request(fixture.instance, "command.get", {{"requestKey", "create-once"}})["result"]["result"] == original["result"]);
+    CHECK(state.comparisons.size() == 1);
+    auto conflicting = params;
+    conflicting["name"] = "Different";
+    CHECK(request(fixture.instance, "comparison.create", conflicting)["error"]["code"] == -32006);
+    CHECK_FALSE(takeCommand(*fixture.server));
+}
+
 TEST_CASE("automation rejects unauthenticated and browser requests")
 {
     AutomationFixture fixture;

@@ -70,6 +70,47 @@ def main():
             assert len(comparisons) == 2 and len(files) == 2
             assert ctl("scene", "info")["comparisonCount"] == 2
             first, second = [item["id"] for item in comparisons]
+            # Build and measure a comparison entirely through the CLI/server.
+            create_args = ("comparison", "create", "--name", "CLI comparison",
+                           "--a", files[0]["id"], "--b", files[1]["id"], "--request-key", "create-cli")
+            created = ctl(*create_args)
+            third = created["target"]
+            assert ctl(*create_args) == created  # Retries must not create duplicates.
+            assert ctl("scene", "info")["comparisonCount"] == 3
+            assert created["object"]["valid"]
+            configured = ctl("comparison", "set", third, "--visible", "false", "--mode", "distance",
+                             "--tolerance", ".01", "--color-range", ".2", "--distance-on-a", "true",
+                             "--show-edges", "true", "--show-boundaries", "false", "--show-non-manifold", "false")
+            assert configured["object"]["settings"]["distanceOnA"]
+            metrics = ctl("comparison", "results", third, "--request-key", "metrics-before")
+            for direction in ("aToB", "bToA"):
+                assert abs(metrics[direction]["maximum"] - .12) < 1e-5, metrics
+                assert 0 < metrics[direction]["mean"] <= metrics[direction]["maximum"]
+                assert metrics[direction]["diagnostics"]["boundaryEdges"] == 0
+            # A source change requires fresh results, even while the comparison is hidden.
+            ctl("transform", "set", files[1]["id"], "--translation", "0", "0", ".25")
+            moved = ctl("comparison", "results", third)
+            assert moved["bToA"]["maximum"] > metrics["bToA"]["maximum"] + .2
+            assert ctl("comparison", "results", third, "--request-key", "metrics-before") == metrics
+            ctl("transform", "reset", files[1]["id"])
+            ctl("comparison", "remove", third, "--side", "a", "--object", files[0]["id"])
+            ctl("comparison", "results", third, success=False)
+            ctl("comparison", "swap", third)
+            assert ctl("object", third)["object"]["bPartCount"] == 0
+            ctl("comparison", "add", third, "--side", "b", "--object", files[0]["id"])
+            ctl("comparison", "add", third, "--side", "b", "--object", files[0]["id"])
+            assert ctl("object", third)["object"]["bPartCount"] == 1
+            ctl("comparison", "clear", third, "--side", "a")
+            ctl("comparison", "add", third, "--side", "a", "--object", files[1]["id"])
+            ctl("comparison", "set", third, "--name", "Renamed via CLI", "--mode", "overlay")
+            cli_saved = root / "cli-created.woby"
+            ctl("scene", "save-as", cli_saved, "--overwrite")
+            assert 'name = "Renamed via CLI"' in cli_saved.read_text(encoding="utf-8")
+            ctl("comparison", "delete", third)
+            ctl("comparison", "results", third, success=False)
+            ctl("comparison", "create", "--a", third, "--b", files[0]["id"], success=False)
+            ctl("comparison", "delete", files[0]["id"], success=False)
+            assert ctl("scene", "info")["comparisonCount"] == 2
             ctl("camera", "frame")
             ctl("screenshot", root / "both.png")
             ctl("visibility", "set", first, "--visible", "false")
@@ -111,7 +152,13 @@ def main():
             for item in ctl("objects")["objects"]:
                 if item["kind"] == "comparison":
                     assert ctl("object", item["id"])["object"]["missingPartCount"] == 1
-            print("Comparison viewer smoke test passed: rendering, visibility, movement, recomputation, reopen, missing inputs.")
+            ctl("scene", "open", cli_saved)
+            restored = next(item for item in ctl("objects")["objects"] if item["name"] == "Renamed via CLI")
+            restored_settings = ctl("object", restored["id"])["object"]["settings"]
+            assert restored_settings["mode"] == "overlay" and not restored_settings["visible"]
+            assert restored_settings["showEdges"] and not restored_settings["showBoundaries"]
+            ctl("comparison", "results", restored["id"])
+            print("Comparison viewer smoke test passed: CLI creation, settings, membership, metrics, retries, deletion, rendering, persistence, and invalidation.")
         finally:
             if viewer.poll() is None:
                 try:

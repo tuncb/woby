@@ -5,6 +5,7 @@
 #include "file_discovery.h"
 #include "hover_pick.h"
 #include "comparison_view.h"
+#include "comparison_scene.h"
 #include "imgui_bgfx.h"
 #include "model_load.h"
 #include "native_dialogs.h"
@@ -306,6 +307,15 @@ struct AutomationAppendRuntime {
     size_t firstFileIndex = 0;
     std::vector<woby::ModelInputOutcome> outcomes;
     bool canceled = false;
+};
+
+struct AutomationComparisonRuntime {
+    woby::AutomationCommandId id = 0;
+    std::string target;
+    double tolerance = 0;
+    std::future<woby::MeshComparison> result;
+    // Destroyed first: requests cancellation and joins before releasing the future.
+    std::jthread worker;
 };
 
 struct ResolvedModelInputGroup {
@@ -2665,6 +2675,7 @@ int main(int argc, char** argv)
         std::optional<woby::AutomationCommandId> automationScreenshotCommandId;
         std::optional<woby::AutomationCommandId> automationOpenCommandId;
         std::optional<AutomationAppendRuntime> automationAppend;
+        std::optional<AutomationComparisonRuntime> automationComparison;
         const woby::ObjectIdFormatter formatObjectId = [&](woby::SceneObjectId id) { return woby::automationObjectId(*automation, id); };
         auto completeAppend = [&]() {
             if (!automationAppend) { return; }
@@ -3420,6 +3431,17 @@ int main(int argc, char** argv)
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
             // UI and loading commits have finished. No logical edits occur between
             // executing commands here and submitting their screenshots below.
+            if (automationComparison && automationComparison->result.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                try {
+                    auto result = woby::controlComparisonResults(automationComparison->result.get(), automationComparison->tolerance);
+                    result["target"] = automationComparison->target;
+                    woby::completeAutomationCommand(*automation, automationComparison->id,
+                        woby::AutomationControlResult{std::move(result)});
+                } catch (const std::exception& error) {
+                    woby::completeAutomationCommand(*automation, automationComparison->id, woby::AutomationCommandError{error.what()});
+                }
+                automationComparison.reset();
+            }
             for (size_t executed = 0; executed < woby::maxAutomationCommands; ++executed) {
                 const auto command = woby::takeAutomationCommand(*automation);
                 if (!command) {
@@ -3445,18 +3467,40 @@ int main(int argc, char** argv)
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
                                 || modelFileDialogIsOpen(importerFileDialogState)
                                 || sceneFileDialogIsOpen(sceneFileDialogState) || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
-                            if (payload.objectId != woby::invalidSceneObjectId && !woby::findSceneObject(ui, payload.objectId)) {
-                                woby::completeAutomationCommand(*automation, command->id,
-                                    woby::AutomationCommandError{"Unknown or stale object ID.", -32005});
-                                return;
+                            for (const auto id : {payload.objectId, payload.aId, payload.bId, payload.memberId}) {
+                                if (id != woby::invalidSceneObjectId && !woby::findSceneObject(ui, id)) {
+                                    woby::completeAutomationCommand(*automation, command->id,
+                                        woby::AutomationCommandError{"Unknown or stale object ID.", -32005});
+                                    return;
+                                }
                             }
-                            if (busy && woby::controlMethod(payload.action).mutating) {
+                            if (busy && (woby::controlMethod(payload.action).mutating || payload.action == A::comparisonResults)) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{"Scene is busy loading, capturing, or displaying a dialog.", -32014});
                                 return;
                             }
                             Json result;
-                            if (payload.action == A::status) {
+                            if (payload.action == A::comparisonResults) {
+                                const auto* source = woby::findComparison(ui, payload.objectId);
+                                if (!source) { throw std::invalid_argument("comparison.results requires a comparison ID."); }
+                                if (!woby::canCompareGroups(ui, payload.objectId)) {
+                                    throw std::invalid_argument("Comparison inputs are incomplete; each side needs mesh parts and no missing references.");
+                                }
+                                auto a = woby::comparisonWorldMesh(ui, woby::ComparisonSide::a, payload.objectId);
+                                auto b = woby::comparisonWorldMesh(ui, woby::ComparisonSide::b, payload.objectId);
+                                AutomationComparisonRuntime pending;
+                                pending.id = command->id;
+                                pending.target = payload.target;
+                                pending.tolerance = source->settings.tolerance;
+                                std::promise<woby::MeshComparison> promise;
+                                pending.result = promise.get_future();
+                                pending.worker = std::jthread([a = std::move(a), b = std::move(b), promise = std::move(promise)](std::stop_token stop) mutable {
+                                    try { promise.set_value(woby::compareMeshes(a, b, stop)); }
+                                    catch (...) { promise.set_exception(std::current_exception()); }
+                                });
+                                automationComparison.emplace(std::move(pending));
+                                return;
+                            } else if (payload.action == A::status) {
                                 result = woby::automationInstanceInfo(*automation);
                                 result.update({{"path", currentScenePath ? Json(woby::pathToUtf8(*currentScenePath)) : Json(nullptr)},
                                     {"dirty", ui.isDirty}, {"loading", backgroundLoad.active}, {"gpuFinalizing", gpuFinalize.active},
@@ -3748,6 +3792,7 @@ int main(int argc, char** argv)
         }
 
         automation.reset();
+        automationComparison.reset();
         backgroundLoad.cancelRequested.store(true);
         if (backgroundLoad.worker.joinable()) {
             backgroundLoad.worker.join();

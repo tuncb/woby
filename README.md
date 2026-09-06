@@ -64,6 +64,12 @@ Open `assets/samples/mesh-comparison/compare.woby` for a before/after repair exa
 
 See the [sample walkthrough and prototype limits](assets/samples/mesh-comparison/README.md).
 
+Comparisons can also be created and edited through the running viewer's local server
+with `woby.exe ctl --instance ID comparison create|set|add|remove|clear|swap|delete`.
+`comparison results COMPARISON_ID --json` waits for measurements in both directions,
+including maximum/mean/P95 distance, area above tolerance, and mesh diagnostics.
+See the [comparison CLI reference](doc/ctl-commands.md#comparisons) for a complete example.
+
 Run the app:
 
 ```powershell

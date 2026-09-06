@@ -291,6 +291,58 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     const ControlOperation& command, const ObjectIdFormatter& formatId, float minPaneWidth, float maxPaneWidth)
 {
     using A = ControlAction;
+    if (command.action == A::comparisonCreate || command.action == A::comparisonDelete
+        || command.action == A::comparisonSet || command.action == A::comparisonAdd
+        || command.action == A::comparisonRemove || command.action == A::comparisonClear
+        || command.action == A::comparisonSwap) {
+        // Validate all inputs before any mutation, including creation of an empty object.
+        if (command.action != A::comparisonCreate
+            && (command.objectId == invalidSceneObjectId || !findComparison(state, command.objectId))) {
+            throw std::invalid_argument("This command requires a comparison ID.");
+        }
+        for (const auto& [supplied, id] : {std::pair{command.a.has_value(), command.aId},
+            std::pair{command.b.has_value(), command.bId}, std::pair{command.object.has_value(), command.memberId}}) {
+            if (supplied && comparisonObjectParts(state, {id}).empty()) {
+                throw std::invalid_argument("Comparison inputs require a file, folder, or group containing triangles.");
+            }
+        }
+        auto id = command.objectId;
+        if (command.action == A::comparisonCreate) {
+            id = createComparison(state);
+            if (command.name) { renameComparison(state, id, *command.name); }
+            if (command.a) { setComparisonObjects(state, {command.aId}, ComparisonSide::a, true, id); }
+            if (command.b) { setComparisonObjects(state, {command.bId}, ComparisonSide::b, true, id); }
+        } else if (command.action == A::comparisonDelete) {
+            removeComparison(state, id);
+            updateSceneDirty(state, cleanDocument);
+            return {{"removed", command.target}, {"dirty", state.isDirty}};
+        } else if (command.action == A::comparisonSet) {
+            auto settings = comparisonSettings(state, id);
+            if (command.visible) { settings.enabled = *command.visible; }
+            if (command.mode) {
+                settings.mode = *command.mode == "distance" ? ComparisonMode::distance : *command.mode == "a"
+                    ? ComparisonMode::original : *command.mode == "b" ? ComparisonMode::repaired : ComparisonMode::overlay;
+            }
+            if (command.distanceOnA) { settings.distanceOnOriginal = *command.distanceOnA; }
+            if (command.tolerance) { settings.tolerance = *command.tolerance; }
+            if (command.colorRange) { settings.colorRange = *command.colorRange; }
+            if (command.showEdges) { settings.showEdges = *command.showEdges; }
+            if (command.showBoundaries) { settings.showBoundaries = *command.showBoundaries; }
+            if (command.showNonManifold) { settings.showNonManifold = *command.showNonManifold; }
+            setComparisonSettings(state, settings, id);
+            if (command.name) { renameComparison(state, id, *command.name); }
+        } else if (command.action == A::comparisonSwap) {
+            swapComparisonGroups(state, id);
+        } else {
+            const auto side = *command.side == "a" ? ComparisonSide::a : ComparisonSide::b;
+            if (command.action == A::comparisonClear) { clearComparisonGroup(state, side, id); }
+            else { setComparisonObjects(state, {command.memberId}, side, command.action == A::comparisonAdd, id); }
+        }
+        updateSceneDirty(state, cleanDocument);
+        auto object = controlObjectDetails(state, id, formatId);
+        object.update({{"id", formatId(id)}, {"name", findComparison(state, id)->name}, {"kind", "comparison"}});
+        return {{"target", formatId(id)}, {"object", std::move(object)}, {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
+    }
     if (command.objectId != invalidSceneObjectId && findComparison(state, command.objectId)) {
         if (command.action == A::transformGet) {
             return {{"target", command.target}, {"settings", localObjectDetails(state, command.objectId)["settings"]}};
@@ -364,7 +416,11 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         return {{"pane", {{"visible", state.viewerPaneVisible}, {"width", state.viewerPaneWidth}}}};
     case A::status: case A::capabilities: case A::modelAdd: case A::modelRemove: case A::folderAdd:
     case A::importersList: case A::importersAdd: case A::importersScan: case A::importersForget: case A::performance:
+    case A::comparisonResults:
         throw std::invalid_argument("Command requires a runtime adapter.");
+    case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:
+    case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap:
+        throw std::invalid_argument("Comparison command was not dispatched.");
     }
     recalculateSceneBounds(state);
     updateSceneDirty(state, cleanDocument);
@@ -373,5 +429,20 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
     }
     return controlSceneInfo(state);
+}
+
+Json controlComparisonResults(const MeshComparison& result, double tolerance)
+{
+    const auto surface = [tolerance](const SurfaceComparison& value) {
+        const auto& diagnostics = value.diagnostics;
+        return Json{{"maximum", value.maximum}, {"mean", value.mean}, {"percentile95", value.percentile95},
+            {"percentAboveTolerance", surfacePercentAboveTolerance(value, tolerance)},
+            {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
+            {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
+                {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},
+                {"inconsistentWindingEdges", diagnostics.inconsistentWindingEdges.size()},
+                {"degenerateTriangles", diagnostics.degenerateTriangles}, {"duplicateTriangles", diagnostics.duplicateTriangles}}}};
+    };
+    return {{"tolerance", tolerance}, {"aToB", surface(result.original)}, {"bToA", surface(result.repaired)}};
 }
 } // namespace woby
