@@ -23,11 +23,12 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Getting started
 
-The top actions are arranged in three rows of two: **New scene** / **Open Scene...**,
-**Save Scene** / **Save Scene as...**, and **Add models...** / **Add model folder...**.
+The top actions are arranged in three rows of two: **New scene** / **Open**,
+**Save** / **Save As**, and **Add models...** / **Add model folder...**.
 New scene starts an untitled scene and asks before discarding unsaved changes.
-Save Scene updates the current file (or asks for a path for an untitled scene);
-Save Scene as always asks for a destination.
+`Ctrl+O` opens a scene, `Ctrl+S` saves it (asking for a path for an untitled scene),
+and `Ctrl+Shift+S` opens Save As. Save As switches to the chosen destination only
+after a successful save; canceling keeps the active document unchanged.
 
 Use Add models for OBJ, STL, or installed importer formats, and Open Scene for
 saved `.woby` scenes. The empty viewport offers both actions and accepts dropped
@@ -43,7 +44,11 @@ also wait for outstanding image captures.
 Left drag or arrow keys orbit, right/middle drag pans, and the wheel or `+`/`-`
 zooms. `R` frames the scene, `Ctrl+B` toggles the left pane, and the upper-right
 Properties/pin button toggles the right-hand Properties pane. Selecting an object
-opens this pane and shows the properties for that selection.
+opens this pane and shows the properties for that selection. `W`/`A`/`S`/`D` move
+the camera, `Q`/`E` move vertically, and Shift speeds movement up. Camera keys are
+paused while editing fields, using Ctrl/Alt/Super commands, or displaying dialogs
+and popups. Escape dismisses context menus and cancels discard confirmations;
+outside editing and popups it clears the selection.
 
 ## Command Line
 

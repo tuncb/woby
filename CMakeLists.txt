@@ -231,6 +231,8 @@ if(BUILD_TESTING)
         src/control_scene.h
         src/background_load.cpp
         src/background_load.h
+        src/camera_sdl.cpp
+        tests/keyboard_input_tests.cpp
         src/camera.cpp
         src/command_line.cpp
         src/command_line.h
@@ -287,6 +289,7 @@ if(BUILD_TESTING)
     target_link_libraries(woby_tests PRIVATE
         woby_automation
         doctest::doctest
+        imgui::imgui
         ${CMAKE_DL_LIBS}
         bgfx::bgfx
         tinyobjloader::tinyobjloader

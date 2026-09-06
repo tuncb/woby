@@ -1,79 +1,76 @@
 #include "camera.h"
+#include "ui_operations.h"
 
-#include <SDL3/SDL.h>
 #include <imgui.h>
 
 #include <algorithm>
 
 namespace woby {
 
-void updateCameraFromKeyboard(
-    SceneCamera& camera,
-    const Bounds& bounds,
-    float deltaSeconds,
-    SceneUpAxis upAxis)
+void updateCameraFromKeyboard(UiState& state, float deltaSeconds)
 {
-    if (ImGui::GetIO().WantCaptureKeyboard) {
+    const auto& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard || io.WantTextInput || ImGui::IsAnyItemActive()
+        || io.KeyCtrl || io.KeyAlt || io.KeySuper
+        || ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
         return;
     }
 
-    const bool* keys = SDL_GetKeyboardState(nullptr);
-    float moveSpeed = std::max(bounds.radius, camera.distance * 0.35f) * deltaSeconds;
-    if (keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT]) {
+    float moveSpeed = std::max(state.sceneBounds.radius, state.camera.distance * 0.35f) * deltaSeconds;
+    if (io.KeyShift) {
         moveSpeed *= 4.0f;
-    }
-    if (keys[SDL_SCANCODE_LCTRL] || keys[SDL_SCANCODE_RCTRL]) {
-        moveSpeed *= 0.25f;
     }
 
     float right = 0.0f;
     float up = 0.0f;
     float forward = 0.0f;
-    if (keys[SDL_SCANCODE_A]) {
+    if (ImGui::IsKeyDown(ImGuiKey_A)) {
         right -= moveSpeed;
     }
-    if (keys[SDL_SCANCODE_D]) {
+    if (ImGui::IsKeyDown(ImGuiKey_D)) {
         right += moveSpeed;
     }
-    if (keys[SDL_SCANCODE_Q]) {
+    if (ImGui::IsKeyDown(ImGuiKey_Q)) {
         up -= moveSpeed;
     }
-    if (keys[SDL_SCANCODE_E]) {
+    if (ImGui::IsKeyDown(ImGuiKey_E)) {
         up += moveSpeed;
     }
-    if (keys[SDL_SCANCODE_W]) {
+    if (ImGui::IsKeyDown(ImGuiKey_W)) {
         forward += moveSpeed;
     }
-    if (keys[SDL_SCANCODE_S]) {
+    if (ImGui::IsKeyDown(ImGuiKey_S)) {
         forward -= moveSpeed;
     }
-    moveCameraLocal(camera, right, up, forward, upAxis);
+    if (right != 0.0f || up != 0.0f || forward != 0.0f) {
+        navigateUiCamera(state, {.right = right, .up = up, .forward = forward});
+    }
 
     constexpr float orbitPixelsPerSecond = 180.0f;
     float orbitX = 0.0f;
     float orbitY = 0.0f;
-    if (keys[SDL_SCANCODE_LEFT]) {
+    if (ImGui::IsKeyDown(ImGuiKey_LeftArrow)) {
         orbitX -= orbitPixelsPerSecond * deltaSeconds;
     }
-    if (keys[SDL_SCANCODE_RIGHT]) {
+    if (ImGui::IsKeyDown(ImGuiKey_RightArrow)) {
         orbitX += orbitPixelsPerSecond * deltaSeconds;
     }
-    if (keys[SDL_SCANCODE_UP]) {
+    if (ImGui::IsKeyDown(ImGuiKey_UpArrow)) {
         orbitY -= orbitPixelsPerSecond * deltaSeconds;
     }
-    if (keys[SDL_SCANCODE_DOWN]) {
+    if (ImGui::IsKeyDown(ImGuiKey_DownArrow)) {
         orbitY += orbitPixelsPerSecond * deltaSeconds;
     }
-    orbitCamera(camera, orbitX, orbitY, upAxis);
+    orbitUiCamera(state, orbitX, orbitY);
 
     float zoom = 0.0f;
-    if (keys[SDL_SCANCODE_EQUALS] || keys[SDL_SCANCODE_KP_PLUS]) {
+    if (ImGui::IsKeyDown(ImGuiKey_Equal) || ImGui::IsKeyDown(ImGuiKey_KeypadAdd)) {
         zoom -= 1.4f * deltaSeconds;
     }
-    if (keys[SDL_SCANCODE_MINUS] || keys[SDL_SCANCODE_KP_MINUS]) {
+    if (ImGui::IsKeyDown(ImGuiKey_Minus) || ImGui::IsKeyDown(ImGuiKey_KeypadSubtract)) {
         zoom += 1.4f * deltaSeconds;
     }
-    dollyCamera(camera, zoom);
+    dollyUiCamera(state, zoom);
 }
 
 } // namespace woby

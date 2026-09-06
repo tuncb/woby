@@ -57,10 +57,7 @@ void moveCameraLocal(
     float upAmount,
     float forwardAmount,
     SceneUpAxis upAxis = SceneUpAxis::z);
-void updateCameraFromKeyboard(
-    SceneCamera& camera,
-    const Bounds& bounds,
-    float deltaSeconds,
-    SceneUpAxis upAxis = SceneUpAxis::z);
+struct UiState;
+void updateCameraFromKeyboard(UiState& state, float deltaSeconds);
 
 } // namespace woby

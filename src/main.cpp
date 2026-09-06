@@ -815,16 +815,23 @@ void drawMeshCountLine(size_t vertexCount, size_t triangleCount)
 void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool treeNode)
 {
-    // Select on release so starting a source drag keeps the comparison inspector visible.
+    // Ordinary clicks select on release so source drags keep the comparison inspector visible.
+    // TreeNodeEx does not activate labels with Ctrl held, so Ctrl-clicks must be
+    // handled on mouse-down instead of waiting for IsItemDeactivated().
     const auto selectionKey = ImGui::GetID(("source_click_" + std::to_string(id)).c_str());
     auto* storage = ImGui::GetStateStorage();
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-        storage->SetBool(selectionKey, !treeNode || !ImGui::IsItemToggledOpen());
+        const bool select = !treeNode || !ImGui::IsItemToggledOpen();
+        const bool toggle = ImGui::GetIO().KeyCtrl;
+        storage->SetBool(selectionKey, select && !toggle);
+        if (select && toggle) {
+            woby::selectSceneObject(state, id, true);
+        }
     }
     const auto dragDelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
     if (ImGui::IsItemDeactivated() && ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left)
         && storage->GetBool(selectionKey) && dragDelta.x == 0.0f && dragDelta.y == 0.0f) {
-        woby::selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
+        woby::selectSceneObject(state, id);
     }
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
         woby::selectSceneObject(state, id, false, true);
@@ -2097,7 +2104,7 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
             } else {
                 ImGui::TextUnformatted("Preparing...");
             }
-            if (ImGui::Button("Cancel")) {
+            if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                 backgroundLoad.cancelRequested.store(true);
             }
         } else if (finalizingActive) {
@@ -2391,6 +2398,7 @@ int main(int argc, char** argv)
         woby::FrameTimings lastFrameTimings;
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
+        bool documentShortcutHeld = false;
         woby::setAutomationReady(*automation);
         while (running) {
             woby::FrameTimings frameTimings;
@@ -2418,22 +2426,6 @@ int main(int argc, char** argv)
                 }
                 if (event.type == SDL_EVENT_DROP_COMPLETE) {
                     finishDropBatch(dragDropState);
-                }
-                if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE
-                    && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
-                    woby::clearSceneSelection(ui);
-                }
-                if (event.type == SDL_EVENT_KEY_DOWN
-                    && event.key.key == SDLK_R
-                    && !ImGui::GetIO().WantCaptureKeyboard) {
-                    woby::frameCameraToScene(ui);
-                }
-                if (event.type == SDL_EVENT_KEY_DOWN
-                    && event.key.key == SDLK_B
-                    && (event.key.mod & SDL_KMOD_CTRL) != 0u
-                    && !event.key.repeat
-                    && !ImGui::GetIO().WantCaptureKeyboard) {
-                    woby::toggleViewerPaneVisible(ui);
                 }
                 if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
                     getDrawableSize(window.get(), width, height);
@@ -2621,20 +2613,16 @@ int main(int argc, char** argv)
                     pendingDirtyOpenScenePath,
                     requestDirtyOpenWarning);
             }
-            const auto pendingSaveScenePath = takePendingSaveScenePath(sceneFileDialogState);
-            if (pendingSaveScenePath.has_value()) {
+            const auto saveDocument = [&](const std::filesystem::path& path) {
                 try {
-                    const auto scenePath = saveSceneToPath(
-                        pendingSaveScenePath.value(),
-                        ui,
-                        currentScenePath,
-                        cleanSceneDocument);
-                    setToastMessage(toast, "Saved scene " + fileDisplayName(scenePath));
+                    const auto savedPath = saveSceneToPath(path, ui, currentScenePath, cleanSceneDocument);
+                    setToastMessage(toast, "Saved scene " + fileDisplayName(savedPath));
                 } catch (const std::exception& exception) {
-                    setSceneFileDialogStatus(
-                        sceneFileDialogState,
-                        std::string("Save scene failed: ") + exception.what());
+                    setToastMessage(toast, std::string("Save scene failed: ") + exception.what());
                 }
+            };
+            if (const auto path = takePendingSaveScenePath(sceneFileDialogState)) {
+                saveDocument(*path);
             }
             const std::string sceneDialogStatus = sceneFileDialogStatus(
                 sceneFileDialogState,
@@ -2693,9 +2681,6 @@ int main(int argc, char** argv)
                 fpsWindowStart = now;
             }
 
-            const auto& bounds = sceneBounds;
-            woby::updateCameraFromKeyboard(camera, bounds, deltaSeconds, ui.upAxis);
-
             const float minViewerPaneWidth = minimumViewerPaneWidth();
             const float maxViewerPaneWidth = std::max(
                 minViewerPaneWidth,
@@ -2705,6 +2690,7 @@ int main(int argc, char** argv)
             bgfx::dbgTextClear();
             recordFrameStage(frameTimings, woby::FrameStage::stateUpdate, stageStart);
 
+            const bool popupWasOpen = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
             bool modalDialogOpen = false;
@@ -2729,7 +2715,7 @@ int main(int argc, char** argv)
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Cancel")) { ImGui::CloseCurrentPopup(); }
+                if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) { ImGui::CloseCurrentPopup(); }
                 ImGui::EndPopup();
             }
             if (requestDirtyOpenWarning) {
@@ -2762,7 +2748,7 @@ int main(int argc, char** argv)
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Cancel")) {
+                if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                     pendingDirtyOpenScenePath.reset();
                     ImGui::CloseCurrentPopup();
                 }
@@ -2784,7 +2770,7 @@ int main(int argc, char** argv)
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Cancel")) {
+                if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
@@ -2798,6 +2784,18 @@ int main(int argc, char** argv)
                     || modelFileDialogIsOpen(modelFileDialogState)
                     || sceneFileDialogIsOpen(sceneFileDialogState)
                     || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+            };
+            const auto documentCommand = [&](woby::SceneAction action) {
+                if (fileActionsDisabled()) {
+                    return;
+                }
+                if (action == woby::SceneAction::open) {
+                    showOpenSceneDialog(window.get(), sceneFileDialogState);
+                } else if (action == woby::SceneAction::saveAs || !currentScenePath) {
+                    showSaveSceneDialog(window.get(), sceneFileDialogState);
+                } else if (action == woby::SceneAction::save) {
+                    saveDocument(*currentScenePath);
+                }
             };
             const auto panelLayout = canvasLayout(window.get(), ui);
             if (ui.viewerPaneVisible) {
@@ -2841,34 +2839,19 @@ int main(int argc, char** argv)
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Open Scene...##open_scene", ImVec2(actionWidth, 0.0f))) {
-                        showOpenSceneDialog(window.get(), sceneFileDialogState);
+                    if (ImGui::Button("Open (Ctrl+O)##open_scene", ImVec2(actionWidth, 0.0f))) {
+                        documentCommand(woby::SceneAction::open);
                     }
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Save Scene##save_scene", ImVec2(actionWidth, 0.0f))) {
-                        if (currentScenePath.has_value()) {
-                            try {
-                                const auto scenePath = saveSceneToPath(
-                                    currentScenePath.value(),
-                                    ui,
-                                    currentScenePath,
-                                    cleanSceneDocument);
-                                setToastMessage(toast, "Saved scene " + fileDisplayName(scenePath));
-                            } catch (const std::exception& exception) {
-                                setSceneFileDialogStatus(
-                                    sceneFileDialogState,
-                                    std::string("Save scene failed: ") + exception.what());
-                            }
-                        } else {
-                            showSaveSceneDialog(window.get(), sceneFileDialogState);
-                        }
+                    if (ImGui::Button("Save (Ctrl+S)##save_scene", ImVec2(actionWidth, 0.0f))) {
+                        documentCommand(woby::SceneAction::save);
                     }
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Save Scene as...##save_scene_as", ImVec2(actionWidth, 0.0f))) {
-                        showSaveSceneDialog(window.get(), sceneFileDialogState);
+                    if (ImGui::Button("Save As (Ctrl+Shift+S)##save_scene_as", ImVec2(actionWidth, 0.0f))) {
+                        documentCommand(woby::SceneAction::saveAs);
                     }
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(fileActionsDisabled());
@@ -3076,7 +3059,7 @@ int main(int argc, char** argv)
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(fileActionsDisabled());
                     if (ImGui::Button("Open scene", ImVec2(-1.0f, 0.0f))) {
-                        showOpenSceneDialog(window.get(), sceneFileDialogState);
+                        documentCommand(woby::SceneAction::open);
                     }
                     ImGui::EndDisabled();
                     ImGui::Spacing();
@@ -3259,6 +3242,45 @@ int main(int argc, char** argv)
                 }
             }
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
+
+            // Global document commands still work when the scene controls are hidden.
+            // Run after widgets have applied edits so Save includes this frame's changes.
+            if (!fileActionsDisabled() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
+                if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) {
+                    documentCommand(woby::SceneAction::open);
+                    documentShortcutHeld = true;
+                } else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
+                    documentCommand(woby::SceneAction::saveAs);
+                    documentShortcutHeld = true;
+                } else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
+                    documentCommand(woby::SceneAction::save);
+                    documentShortcutHeld = true;
+                }
+            }
+            if (!ImGui::IsKeyDown(ImGuiKey_S) && !ImGui::IsKeyDown(ImGuiKey_O)) {
+                documentShortcutHeld = false;
+            }
+            // Read keyboard input after widgets have claimed it, before drawing the scene.
+            const auto& keyboardIo = ImGui::GetIO();
+            const bool sceneKeyboardAvailable = !fileActionsDisabled() && !documentShortcutHeld
+                && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0u
+                && !keyboardIo.WantCaptureKeyboard && !keyboardIo.WantTextInput
+                && !ImGui::IsAnyItemActive()
+                && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
+            if (sceneKeyboardAvailable) {
+                if (!keyboardIo.KeyCtrl && !keyboardIo.KeyAlt && !keyboardIo.KeySuper) {
+                    if (!popupWasOpen && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+                        woby::clearSceneSelection(ui);
+                    }
+                    if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
+                        woby::frameCameraToScene(ui);
+                    }
+                }
+                if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_B)) {
+                    woby::toggleViewerPaneVisible(ui);
+                }
+                woby::updateCameraFromKeyboard(ui, deltaSeconds);
+            }
 
             woby::updateComparisonRuntimes(comparison, ui);
 
