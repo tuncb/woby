@@ -72,6 +72,14 @@ outside editing and popups it clears the selection.
 
 ## Command Line
 
+On Windows, double-clicking `woby.exe` opens only the viewer. When launched from
+a terminal, Woby attaches to that existing console and preserves redirected
+input/output. Startup errors appear in a dialog if no stderr destination exists.
+As with other Windows GUI executables, an interactive shell may return its prompt
+before Woby exits. In Command Prompt, use `start /wait "" woby.exe ctl instances`
+when you need to wait; in PowerShell, capturing or piping output waits for it,
+for example `$instances = .\woby.exe ctl instances --json`.
+
 ### Comparison objects
 
 Scenes can contain multiple named comparisons alongside the original models.
@@ -283,6 +291,30 @@ safely, but their effects may interleave. See [command ordering](doc/automation.
 for queue, timeout, and concurrency semantics.
 
 ## Build
+
+### macOS application bundle
+
+macOS builds produce `woby.app`. Double-click the app in Finder to launch the
+viewer without Terminal. Assets, including fonts and compiled shaders, live
+inside the bundle. The macOS release archive contains this app; it can be moved
+to `/Applications` or another folder.
+
+The command-line interface is also available through the bundled executable:
+
+```sh
+/Applications/woby.app/Contents/MacOS/woby --version
+/Applications/woby.app/Contents/MacOS/woby ctl instances
+```
+
+To prepare a distributable bundle from a local macOS build, run
+`cmake --install <build-directory> --config Debug --prefix <destination> --component Runtime`
+after building. Use `--config Release` for a Release build. Installation embeds
+required non-system libraries, repairs their paths, and applies an ad-hoc
+signature. This does not provide Developer ID signing or Apple notarization.
+
+### Windows development
+
+Windows launch tests require Python 3.
 
 Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:
 

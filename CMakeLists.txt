@@ -48,6 +48,8 @@ woby_enable_project_warnings(woby_automation)
 woby_enable_precompiled_headers(woby_automation <nlohmann/json.hpp>)
 
 add_executable(woby
+    src/console.cpp
+    src/console.h
     src/comparison_report.cpp
     src/comparison_legend.cpp
     src/mesh_comparison.cpp
@@ -116,6 +118,9 @@ add_executable(woby
 )
 
 target_compile_features(woby PRIVATE cxx_std_20)
+if(WIN32)
+    set_target_properties(woby PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
@@ -219,7 +224,13 @@ woby_compile_bgfx_shader(woby
     VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
 )
 
-woby_stage_assets(woby "${WOBY_RUNTIME_DIRECTORY}")
+set(woby_resource_directory "${WOBY_RUNTIME_DIRECTORY}")
+if(APPLE)
+    include(cmake/WobyMacOSBundle.cmake)
+    woby_configure_macos_bundle(woby "${WOBY_RUNTIME_DIRECTORY}" woby_resource_directory
+        "$<TARGET_FILE_DIR:SDL3::SDL3>")
+endif()
+woby_stage_assets(woby "${woby_resource_directory}")
 set(woby_runtime_targets woby)
 
 include(CTest)
@@ -376,6 +387,29 @@ if(BUILD_TESTING)
     set_tests_properties(woby_version PROPERTIES
         PASS_REGULAR_EXPRESSION "^${PROJECT_VERSION}\r?\n?$"
     )
+    if(APPLE)
+        add_test(NAME woby_macos_bundle COMMAND "${CMAKE_COMMAND}"
+            "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
+            "-DBUNDLE_MODULE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/WobyMacOSBundle.cmake"
+            "-DRUNTIME_MODULE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/WobyRuntimeFiles.cmake"
+            "-DTEST_GENERATOR=${CMAKE_GENERATOR}"
+            "-DTEST_CONFIG=$<CONFIG>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/macos_bundle_tests.cmake")
+    endif()
+    if(WIN32)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        add_executable(woby_console_probe WIN32 tests/windows_console_probe.cpp src/console.cpp)
+        add_executable(woby_console_parent tests/windows_console_probe.cpp)
+        target_compile_definitions(woby_console_parent PRIVATE WOBY_CONSOLE_PARENT)
+        foreach(target IN ITEMS woby_console_probe woby_console_parent)
+            target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+            woby_enable_project_warnings(${target})
+        endforeach()
+        add_test(NAME woby_windows_launch COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_launch_tests.py"
+            "$<TARGET_FILE:woby>" "$<TARGET_FILE:woby_console_probe>"
+            "$<TARGET_FILE:woby_console_parent>" "${PROJECT_VERSION}")
+    endif()
 endif()
 
 woby_stage_runtime_dlls("${WOBY_RUNTIME_DIRECTORY}" ${woby_runtime_targets})

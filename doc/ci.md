@@ -4,6 +4,25 @@ The `Build and Test` workflow runs on pushes to `main`, manual dispatch, and cal
 from the release workflow. All three platforms use Ninja, vcpkg, and Release
 builds, and run the application tests before uploading packages.
 
+Windows builds use the GUI subsystem for the viewer. Launch tests check the PE
+subsystem, an Explorer-style launch with no console, attachment to a hidden
+parent console, redirected streams, and CLI output and exit codes.
+
+## macOS packaging
+
+The macOS archive contains `woby.app`, with the executable under
+`Contents/MacOS` and assets under `Contents/Resources/assets`. CI installs the
+`Runtime` component to stage the bundle. CMake's BundleUtilities copies required
+non-system libraries into the bundle and rewrites their dependency paths, then
+verifies that dependencies are self-contained. Nested binaries and the app are
+ad-hoc signed after these changes; this is not Developer ID signing or notarization.
+
+The macOS test suite builds a small bundle with an indirect shared-library
+dependency, installs it, relocates it, makes the original build directory
+unavailable, and checks assets, dependency resolution, signatures, and execution.
+CI also runs the packaged Woby executable with `--version` and checks its font.
+Interactive Finder launch and rendering should be checked on a Mac.
+
 ## Dependency caching
 
 `cmake/ci-vcpkg-revision.txt` pins the vcpkg checkout. The CI configuration helper

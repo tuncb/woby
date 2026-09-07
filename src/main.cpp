@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "scene_viewport.h"
 #include "command_line.h"
+#include "console.h"
 #include "file_discovery.h"
 #include "hover_pick.h"
 #include "comparison_view.h"
@@ -1942,6 +1943,7 @@ void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex,
 
 int main(int argc, char** argv)
 {
+    woby::initializeConsole();
     bool sdlInitialized = false;
     bool bgfxInitialized = false;
     woby::AutomationOwner automation(nullptr, &woby::stopAutomation);
@@ -3300,6 +3302,9 @@ int main(int argc, char** argv)
         automation.reset();
         woby::unloadImporters();
         std::fprintf(stderr, "%s\n", exception.what());
+        if (!woby::hasStandardError()) {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Woby could not continue", exception.what(), nullptr);
+        }
         if (bgfxInitialized) {
             bgfx::shutdown();
         }
