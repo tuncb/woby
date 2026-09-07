@@ -87,6 +87,8 @@ constexpr float popupBackgroundAlpha = 1.0f;
 constexpr float appFontSize = 17.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
+    0xf05a,
+    0xf05a,
     0xf04b,
     0xf04b,
     0xf00d,
@@ -2633,11 +2635,10 @@ int main(int argc, char** argv)
                         showModelFolderTreeDialog(window.get(), modelFileDialogState);
                     }
                     ImGui::EndDisabled();
-                    setLastItemTooltip("Add models recursively, preserving the folder tree");
                     ImGui::Separator();
-                    const bool scenePaneOpen = ImGui::CollapsingHeader(
-                        "Display",
-                        ImGuiTreeNodeFlags_DefaultOpen);
+                    const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
+                        "Inspection presets apply to all current parts and hide grid and origin. "
+                        "Visibility and transforms stay as set.\n\nVertex size sets the base vertex point size for all groups.");
                 if (scenePaneOpen) {
                     ImGui::SetNextItemWidth(-1.0f);
                     if (ImGui::BeginCombo("##inspection_preset", "Inspection presets")) {
@@ -2646,7 +2647,6 @@ int main(int argc, char** argv)
                         if (ImGui::Selectable("Solid + edges + vertices")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::vertices); }
                         ImGui::EndCombo();
                     }
-                    setLastItemTooltip("Apply to all current parts; hide grid and origin. Visibility and transforms stay as set.");
                     const float sceneContentHeight = renderModeButtonSize() * 2.0f + ImGui::GetStyle().ItemSpacing.y;
                     if (ImGui::BeginChild(
                             "SceneContent",
@@ -2765,14 +2765,13 @@ int main(int argc, char** argv)
                             woby::setMasterVertexPointSize(ui, editedMasterVertexPointSize);
                         }
                         ImGui::PopStyleVar();
-                        setLastItemTooltip("Base vertex point size for all groups");
                     }
                     ImGui::EndChild();
                 }
 
                 if (ImGui::CollapsingHeader("Interface")) {
                     int scaleIndex = static_cast<int>(std::round((ui.uiScale - 1.0f) * 4.0f));
-                    ImGui::SetNextItemWidth(-1.0f);
+                    ImGui::SetNextItemWidth(-woby::informationIconSize() - ImGui::GetStyle().ItemSpacing.x);
                     if (ImGui::Combo("##ui_scale", &scaleIndex, "UI scale: 100%\0UI scale: 125%\0UI scale: 150%\0UI scale: 175%\0UI scale: 200%\0")) {
                         woby::setUiScale(ui, 1.0f + static_cast<float>(scaleIndex) * 0.25f);
                         if (!preferencePath.empty()) {
@@ -2780,7 +2779,9 @@ int main(int argc, char** argv)
                             if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
                         }
                     }
-                    setLastItemTooltip("Text and control size, in addition to Windows display scaling. Saved for this user.");
+                    ImGui::SameLine();
+                    woby::drawInformationIcon("interface_info", "Interface scale",
+                        "Text and control size, in addition to Windows display scaling. Saved for this user.");
                 }
                 const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
                 const bool filesPaneOpen = ImGui::CollapsingHeader(

@@ -3,6 +3,7 @@
 #include "comparison_scene.h"
 #include "comparison_legend.h"
 #include "ui_operations.h"
+#include "ui_icon_controls.h"
 #include "imgui_bgfx.h"
 
 #include <bimg/bimg.h>
@@ -389,15 +390,21 @@ bool drawSceneScreenshotOptions(UiState& state)
         auto options = state.screenshotSettings;
         const auto initial = options;
         ImGui::TextUnformatted("Export PNG");
+        ImGui::SameLine();
+        drawInformationIcon("export_info", "Export PNG",
+            "Choose a width from 960 to 7680 pixels and a height from 720 to 4320 pixels.\n\n"
+            "Visible results only exports comparison results. Otherwise the image includes the scene, helpers and visible results. "
+            "Uses the current camera.\n\nExport waits for complete visible results.");
         ImGui::Separator();
         ImGui::SetNextItemWidth(140);
         ImGui::InputInt("Width (px)", &options.width, 0);
         ImGui::SetNextItemWidth(140);
         ImGui::InputInt("Height (px)", &options.height, 0);
-        ImGui::TextDisabled("960-7680 wide, 720-4320 high");
         ImGui::Checkbox("Visible results only", &options.resultsOnly);
-        ImGui::TextWrapped("Otherwise includes the scene, helpers and visible results. Uses the current camera.");
-        ImGui::SeparatorText("Comparison annotations");
+        ImGui::Separator();
+        ImGui::TextUnformatted("Comparison annotations");
+        ImGui::SameLine();
+        drawInformationIcon("annotations_info", "Comparison annotations", "Legends always include tolerance and units.");
         ImGui::Checkbox("Numeric legend and statistics", &options.legend);
         ImGui::Checkbox("Comparison name", &options.comparisonName);
         ImGui::Checkbox("A / B sources", &options.sources);
@@ -405,7 +412,6 @@ bool drawSceneScreenshotOptions(UiState& state)
         ImGui::BeginDisabled(options.legend);
         ImGui::Checkbox("Tolerance", &options.tolerance);
         ImGui::EndDisabled();
-        ImGui::TextWrapped("Legends always include tolerance and units. Export waits for complete visible results.");
         if (options != initial) { setScreenshotSettings(state, options); }
         if (ImGui::Button("Save PNG...")) { save = true; ImGui::CloseCurrentPopup(); }
         ImGui::EndPopup();

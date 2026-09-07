@@ -113,6 +113,61 @@ bool drawRenderModeIconButton(
     return changed;
 }
 
+float informationIconSize() { return uiSize(20.0f); }
+
+void drawInformationIcon(const char* id, const char* title, const char* text)
+{
+    ImGui::PushID(id);
+    const float size = informationIconSize();
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, ImGui::GetContentRegionAvail().x - size));
+    const ImVec2 position = ImGui::GetCursorScreenPos();
+    ImGui::PushFont(ImGui::GetFont(), ImGui::GetFontSize() * 0.85f);
+    constexpr const char* icon = "\xef\x81\x9a";
+    const ImVec2 glyphSize = ImGui::CalcTextSize(icon);
+    ImGui::GetWindowDrawList()->AddText(
+        ImVec2(position.x + (size - glyphSize.x) * 0.5f, position.y + (size - glyphSize.y) * 0.5f),
+        ImGui::GetColorU32(ImGuiCol_Text), icon);
+    ImGui::PopFont();
+    // A passive item supplies hover bounds without button visuals or click/focus behavior.
+    ImGui::Dummy(ImVec2(size, size));
+    const auto& style = ImGui::GetStyle();
+    const auto* viewport = ImGui::GetMainViewport();
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip()) {
+        // Let the tooltip fit the entire explanation; no fixed-height scrolling hint.
+        ImGui::PushTextWrapPos(std::max(1.0f,
+            std::min(ImGui::GetFontSize() * 32.0f, viewport->WorkSize.x - 24.0f - style.WindowPadding.x * 2.0f)));
+        ImGui::TextUnformatted(title);
+        ImGui::Separator();
+        ImGui::TextUnformatted(text);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+    ImGui::PopID();
+}
+
+bool drawInformationHeader(const char* label, const char* title, const char* text)
+{
+    bool open = false;
+    // Separate columns keep the passive hint out of the header's toggle hit area.
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0, 0));
+    if (ImGui::BeginTable(label, 2, ImGuiTableFlags_NoSavedSettings
+            | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_NoPadInnerX)) {
+        ImGui::TableSetupColumn("section", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("information", ImGuiTableColumnFlags_WidthFixed,
+            informationIconSize() + ImGui::GetStyle().ItemSpacing.x);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen);
+        const float headerHeight = ImGui::GetItemRectSize().y;
+        ImGui::TableNextColumn();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (headerHeight - informationIconSize()) * 0.5f));
+        drawInformationIcon("info", title, text);
+        ImGui::EndTable();
+    }
+    ImGui::PopStyleVar();
+    return open;
+}
+
 bool drawTriStateMasterIconButton(
     const char* id,
     const char* icon,

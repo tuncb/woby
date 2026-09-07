@@ -1,5 +1,6 @@
 #include "scene_inspector.h"
 #include "ui_operations.h"
+#include "ui_icon_controls.h"
 #include "utf8_path.h"
 
 #include <imgui.h>
@@ -84,13 +85,13 @@ void renderModeField(UiState& state, const char* label, UiObjectProperty propert
     if (ImGui::Checkbox(label, &value)) {
         setSelectedObjectProperty(state, property, current.mixed || value ? 1.0f : 0.0f);
     }
-    if (current.mixed) { ImGui::SameLine(); ImGui::TextDisabled("Mixed (click to enable all)"); }
+    if (current.mixed) { ImGui::SameLine(); ImGui::TextDisabled("Mixed"); }
 }
 
 void drawGeometry(const UiState& state)
 {
     if (state.selectedSceneObjects.size() != 1) {
-        ImGui::TextWrapped("Select one file or part to inspect its mesh statistics and local bounds.");
+        ImGui::TextDisabled("No geometry selected");
         return;
     }
     const auto id = state.selectedSceneObjects.front();
@@ -117,7 +118,7 @@ void drawGeometry(const UiState& state)
                 static_cast<double>(bounds->min[axis]), static_cast<double>(bounds->max[axis]));
         }
     } else {
-        ImGui::TextWrapped("Select a child file or part for mesh statistics and local bounds.");
+        ImGui::TextDisabled("No geometry selected");
     }
 }
 
@@ -125,8 +126,18 @@ void drawGeometry(const UiState& state)
 
 void drawSceneInspector(UiState& state)
 {
+    ImGui::TextUnformatted("Local settings");
+    ImGui::SameLine();
+    drawInformationIcon("settings_info", "How settings apply",
+        "Select a folder, file, part, or comparison in the tree to edit its properties. Ctrl-click selects multiple objects.\n\n"
+        "Settings are local. Parent transforms compose with part transforms; parent and part opacity multiply. "
+        "Translation uses model units, with no assumed physical unit. Rotation uses degrees; scale is a uniform multiplier.\n\n"
+        "Edits set only the entered field on each selected object. Selected parents and children both change. "
+        "Mixed means values differ. Enter applies numeric entry; Escape cancels it. "
+        "Resets affect only their named property group on selected objects.\n\n"
+        "Select one comparison to edit its properties, or select only folders, files, and parts to edit shared scene properties.");
     if (state.selectedSceneObjects.empty()) {
-        ImGui::TextWrapped("Select a folder, file, part, or comparison in the tree to edit its properties. Ctrl-click selects multiple objects.");
+        ImGui::TextDisabled("No selection");
         return;
     }
     // Changing targets must not carry an in-progress numeric edit to another object.
@@ -151,21 +162,13 @@ void drawSceneInspector(UiState& state)
     }
     if (many) { ImGui::EndChild(); }
     if (!selectedObjectProperty(state, UiObjectProperty::opacity).available) {
-        ImGui::TextWrapped("Select one comparison to edit its properties, or select only folders, files, and parts to edit shared scene properties.");
+        ImGui::TextDisabled("No shared properties");
         ImGui::PopID();
         return;
     }
-    ImGui::TextDisabled("Local settings | Enter to apply");
-    ImGui::TextWrapped("Parent transforms and opacity also apply.");
-    if (many) { ImGui::TextWrapped("Mixed values: edits apply to each selected object."); }
     // Keep the target identity visible while scrolling through its properties.
     // The selection-scoped child also starts new targets at the top.
     if (ImGui::BeginChild("property_fields")) {
-        if (ImGui::TreeNode("How settings apply")) {
-            ImGui::TextWrapped("Parent transforms compose with part transforms; parent and part opacity multiply. Translation uses model units, with no assumed physical unit. Rotation uses degrees; scale is a uniform multiplier.");
-            ImGui::TextWrapped("Edits set only the entered field on each selected object. Selected parents and children both change. Mixed means values differ. Escape cancels numeric entry. Resets affect only their named property group on selected objects.");
-            ImGui::TreePop();
-        }
         if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
             resetButton(state, "Reset transform", UiPropertyGroup::transform);
             axisFields(state, "Translation (model units)", UiObjectProperty::translationX, UiPropertyGroup::translation);
@@ -176,9 +179,11 @@ void drawSceneInspector(UiState& state)
             }
             resetButton(state, "Reset scale", UiPropertyGroup::scale);
         }
-        if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (drawInformationHeader("Appearance", "Appearance overrides",
+                "Unselected children keep their overrides.\n\n"
+                "Color and render modes belong to parts. Select parts to edit these overrides. "
+                "For mixed render modes, click to enable all selected parts.")) {
             resetButton(state, "Reset appearance", UiPropertyGroup::appearance);
-            ImGui::TextWrapped("Unselected children keep their overrides.");
             if (ImGui::BeginTable("appearance", 2)) {
                 scalarField(state, "Opacity (0-100%)", UiObjectProperty::opacity, 100.0f);
                 scalarField(state, "Vertex size (x)", UiObjectProperty::vertexSize);
@@ -204,11 +209,13 @@ void drawSceneInspector(UiState& state)
                     ImGui::SameLine();
                     ImGui::TextDisabled("Mixed colors");
                 }
-            } else {
-                ImGui::TextWrapped("Color and render modes belong to parts. Select parts to edit these overrides.");
             }
         }
-        if (ImGui::CollapsingHeader("Geometry", ImGuiTreeNodeFlags_DefaultOpen)) { drawGeometry(state); }
+        if (drawInformationHeader("Geometry", "Geometry",
+                "Select one file or part to inspect its mesh statistics and local bounds. "
+                "For folders, select a child file or part. Bounds use model units.")) {
+            drawGeometry(state);
+        }
     }
     ImGui::EndChild();
     ImGui::PopID();
