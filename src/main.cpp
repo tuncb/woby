@@ -1956,6 +1956,9 @@ int main(int argc, char** argv)
             woby::printCommandLineHelp();
             return 0;
         }
+        if (commandLine.update.command != woby::UpdateCommand::none) {
+            return woby::runUpdateCommand(commandLine.update, WOBY_VERSION);
+        }
         if (commandLine.control.command != woby::ControlCommand::none) {
             return woby::runAutomationCommand(commandLine.control);
         }
@@ -1967,6 +1970,7 @@ int main(int argc, char** argv)
             return 0;
         }
 
+        const auto deploymentGuard = woby::guardViewerDeployment();
         automation = woby::startAutomation(commandLine.instanceId);
         const std::string instanceId = woby::automationInstanceId(*automation);
 

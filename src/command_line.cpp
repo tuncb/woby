@@ -276,6 +276,19 @@ bool validInstanceId(const std::string& value)
 
 AppArguments parseCommandLine(int argc, char** argv)
 {
+    if (argc > 1 && std::string(argv[1]) == "update") {
+        AppArguments arguments;
+        arguments.update.command = UpdateCommand::install;
+        for (int index = 2; index < argc; ++index) {
+            const std::string argument = argv[index];
+            if (argument == "--help" || argument == "-h") { arguments.showHelp = true; }
+            else if (argument == "--json" && !arguments.update.json) { arguments.update.json = true; }
+            else if ((argument == "--check" || argument == "--status") && arguments.update.command == UpdateCommand::install) {
+                arguments.update.command = argument == "--check" ? UpdateCommand::check : UpdateCommand::status;
+            } else { throw std::runtime_error("Unexpected update argument: " + argument + ". Use update [--check | --status] [--json]."); }
+        }
+        return arguments;
+    }
     if (argc > 1 && std::string(argv[1]) == "ctl") {
         return parseControlArguments(argc, argv);
     }
