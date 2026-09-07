@@ -31,15 +31,15 @@ SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen)
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted("UI scale");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::SetNextItemWidth(-informationIconSize() - ImGui::GetStyle().ItemSpacing.x);
         int scaleIndex = static_cast<int>(std::round((state.uiScale - 1.0f) * 4.0f));
         if (ImGui::Combo("##ui_scale", &scaleIndex, "100%\0" "125%\0" "150%\0" "175%\0" "200%\0")) {
             setUiScale(state, 1.0f + static_cast<float>(scaleIndex) * 0.25f);
             result.scaleChanged = true;
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Text and control size, in addition to Windows display scaling. Saved for this user.");
-        }
+        ImGui::SameLine();
+        drawInformationIcon("interface_info", "Interface scale",
+            "Text and control size, in addition to Windows display scaling. Saved for this user.");
         ImGui::Spacing();
         ImGui::Separator();
         const bool escape = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)

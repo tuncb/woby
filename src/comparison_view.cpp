@@ -124,7 +124,6 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
         if (const auto object = findSceneObject(state, node.objectId); object && !object->path.empty()) {
             ImGui::TextUnformatted(pathToUtf8(object->path).c_str());
         }
-        ImGui::TextUnformatted("Right-click to remove from this comparison group.");
         ImGui::EndTooltip();
     }
     if (ImGui::BeginPopupContextItem("membership")) {
@@ -150,9 +149,6 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_DefaultOpen,
         "%s (%zu %s) %zu triangles", label, summary.partCount,
         summary.partCount == 1 ? "part" : "parts", triangles);
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Right-click a group to clear it, or a source below to remove it.");
-    }
     if (ImGui::BeginDragDropTarget()) {
         if (const auto* payload = ImGui::AcceptDragDropPayload(comparisonSourcePayload)) {
             if (payload->DataSize > 0 && payload->DataSize % sizeof(SceneObjectId) == 0) {
@@ -177,8 +173,8 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
         return;
     }
     const auto current = comparisonInputSummary(state, side, id);
-    if (members.empty() && canInspectComparison(state, id)) {
-        ImGui::TextWrapped("Optional: add a second input for surface distance and overlay.");
+    if (members.empty()) {
+        ImGui::TextDisabled("No input");
     } else if (!current.issue.empty()) { ImGui::TextWrapped("%s", current.issue.c_str()); }
     if (members.size() > current.partCount && ImGui::SmallButton("Remove missing references")) {
         removeMissingComparisonParts(state, side, id);
@@ -410,8 +406,15 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     ImGui::SameLine();
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
-    ImGui::SetNextItemWidth(-1);
+    ImGui::SetNextItemWidth(-informationIconSize() - ImGui::GetStyle().ItemSpacing.x);
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
+    ImGui::SameLine();
+    drawInformationIcon("comparison_info", "Comparison inputs",
+        "Combined surfaces at scene positions, in model units. Hidden members are included. "
+        "Other scene objects retain their own appearance.\n\n"
+        "Use Comparison membership in the scene tree context menu, or drag sources onto group A or B. "
+        "Right-click a group to clear it, or a source below to remove it.\n\n"
+        "One input enables surface inspection. Add a second input for surface distance and overlay.");
     const bool resultReady = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state, id);
     if (resultReady) { ImGui::TextUnformatted("Result ready"); }
     ImGui::BeginDisabled(!resultReady);
@@ -419,23 +422,23 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     ImGui::EndDisabled();
     auto translation = comparison->translation;
     ImGui::TextUnformatted("Result position");
+    ImGui::SameLine();
+    drawInformationIcon("position_info", "Result position", "Display offset only, in model units.");
     ImGui::SetNextItemWidth(-1.0f);
     if (ImGui::DragFloat3("##result_position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
-    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Display offset only, in model units."); }
     ImGui::Separator();
     membershipTree(state, ComparisonSide::a, id);
     membershipTree(state, ComparisonSide::b, id);
     ImGui::Separator();
     if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
-    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Swap exchanges assignments; measurement direction stays the same."); }
+    ImGui::SameLine();
+    drawInformationIcon("swap_info", "Swap inputs", "Swap exchanges assignments; measurement direction stays the same.");
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool valid = canInspectComparison(state, id);
     const bool hasA = !comparison->a.empty(), hasB = !comparison->b.empty();
     const bool both = hasA && hasB;
     {
-        ImGui::TextWrapped(
-            "Combined surfaces at scene positions, in model units. Hidden members are included. Other scene objects retain their own appearance.");
         const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay"};
         if (both) {
             int mode = static_cast<int>(settings.mode);
@@ -445,20 +448,23 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             }
         } else if (valid) {
             ImGui::TextUnformatted(hasA ? "Group A surface" : "Group B surface");
-            ImGui::TextWrapped("Single-input inspection. Add another input for surface distance and overlay.");
         }
         if (both && settings.mode == ComparisonMode::distance)
         {
             ImGui::TextUnformatted("Measurement direction");
+            ImGui::SameLine();
+            const auto a = comparisonInputSummary(state, ComparisonSide::a, id);
+            const auto b = comparisonInputSummary(state, ComparisonSide::b, id);
+            const std::string directionHint = std::string("Measured surface (heatmap): ")
+                + (settings.distanceOnOriginal ? "A - " : "B - ")
+                + (settings.distanceOnOriginal ? a.sourceNames : b.sourceNames)
+                + "\n\nReference surface (nearest distance): "
+                + (settings.distanceOnOriginal ? "B - " : "A - ")
+                + (settings.distanceOnOriginal ? b.sourceNames : a.sourceNames);
+            drawInformationIcon("direction_info", "Measurement direction", directionHint.c_str());
             if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
             ImGui::SameLine();
             if (ImGui::RadioButton("B -> A", !settings.distanceOnOriginal)) { settings.distanceOnOriginal = false; }
-            const auto a = comparisonInputSummary(state, ComparisonSide::a, id);
-            const auto b = comparisonInputSummary(state, ComparisonSide::b, id);
-            ImGui::TextWrapped("Measured surface (heatmap): %s - %s", settings.distanceOnOriginal ? "A" : "B",
-                (settings.distanceOnOriginal ? a.sourceNames : b.sourceNames).c_str());
-            ImGui::TextWrapped("Reference surface (nearest distance): %s - %s", settings.distanceOnOriginal ? "B" : "A",
-                (settings.distanceOnOriginal ? b.sourceNames : a.sourceNames).c_str());
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
             ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
@@ -475,12 +481,13 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             if (ImGui::InputTextWithHint("Unit label", "model units", units.data(), units.size())) {
                 settings.unitLabel = units.data();
             }
-            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Label only; does not convert coordinates. Blank = model units."); }
+            ImGui::SameLine();
+            drawInformationIcon("units_info", "Unit label", "Label only; does not convert coordinates. Blank = model units.");
         }
         if (both && settings.mode == ComparisonMode::overlay)
         {
-            ImGui::TextColored(ImVec4(.3f, .75f, 1, 1), "Blue: group A wireframe (X-ray)");
-            ImGui::TextWrapped("Solid gray: group B surface");
+            drawInformationIcon("overlay_info", "Overlay colors",
+                "Blue: group A wireframe (X-ray).\n\nSolid gray: group B surface.");
         }
         drawVisibilityField("Triangle edges", settings.showEdges);
         drawVisibilityField("Boundary edges (yellow)", settings.showBoundaries);
@@ -494,12 +501,16 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (both && comparisonSettings(state, id).mode == ComparisonMode::distance) {
         const auto currentSettings = comparisonSettings(state, id);
         ImGui::Text("Distance (%s)", comparisonUnits(currentSettings).c_str());
+        ImGui::SameLine();
+        drawInformationIcon("distance_info", "Distance colors and statistics",
+            currentSettings.colorRange == currentSettings.tolerance ?
+            "Gray: at or below tolerance. Above tolerance saturates orange-red.\n\n"
+            "Approximate unsigned distance, four samples per triangle; not an exact maximum. Surface shading affects brightness." :
+            "Gray: at or below tolerance. >= color maximum saturates orange-red.\n\n"
+            "Approximate unsigned distance, four samples per triangle; not an exact maximum. Surface shading affects brightness.");
         const float legendHeight = drawComparisonLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
             ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), currentSettings);
         ImGui::Dummy({0, legendHeight});
-        ImGui::TextWrapped(currentSettings.colorRange == currentSettings.tolerance ?
-            "Gray: at or below tolerance. Above tolerance saturates orange-red." :
-            "Gray: at or below tolerance. >= color maximum saturates orange-red.");
     }
     if (!valid || !comparisonSettings(state, id).enabled)
     {
@@ -536,10 +547,14 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         ImGui::TextWrapped("Area-weighted mean: %.5g %s", surface.mean, units.c_str());
         ImGui::TextWrapped("Area-weighted P95: %.5g %s", surface.percentile95, units.c_str());
         ImGui::TextWrapped("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
-        ImGui::TextWrapped("Approximate unsigned distance, four samples per triangle; not an exact maximum. Surface shading affects brightness.");
     }
     const auto &a = runtime.result.original.diagnostics;
     const auto &b = runtime.result.repaired.diagnostics;
+    ImGui::TextUnformatted("Diagnostics");
+    ImGui::SameLine();
+    drawInformationIcon("diagnostics_info", "Surface diagnostics",
+        "Diagnostics describe combined surfaces; coincident edges across parts are matched. "
+        "Open boundaries may be intentional. Self-intersections are not checked.");
     if (ImGui::BeginTable("Comparison diagnostics", both ? 4 : 3, ImGuiTableFlags_SizingStretchProp))
     {
         ImGui::TableSetupColumn("Edges");
@@ -559,8 +574,6 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         ImGui::TextWrapped("Degenerate triangles: %zu", surface.diagnostics.degenerateTriangles);
         ImGui::TextWrapped("Duplicate triangles: %zu", surface.diagnostics.duplicateTriangles);
     }
-    ImGui::TextWrapped(
-        "Diagnostics describe combined surfaces; coincident edges across parts are matched. Open boundaries may be intentional. Self-intersections are not checked.");
 }
 
 } // namespace

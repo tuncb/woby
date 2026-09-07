@@ -8,6 +8,10 @@ enum class RenderModeState { off, mixed, on };
 
 float uiSize(float value);
 float renderModeButtonSize();
+float informationIconSize();
+// Draw last in a row; reserve its size plus ItemSpacing.x beside stretch controls.
+void drawInformationIcon(const char* id, const char* title, const char* text);
+bool drawInformationHeader(const char* label, const char* title, const char* text);
 bool drawRenderModeIconButton(const char* id, const char* icon, const char* tooltip,
     RenderModeState state, bool disabled);
 bool drawTriStateMasterIconButton(const char* id, const char* icon, const char* label,

@@ -91,6 +91,8 @@ constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
     0xf013,
     0xf013,
+    0xf05a,
+    0xf05a,
     0xf04b,
     0xf04b,
     0xf00d,
@@ -2647,11 +2649,10 @@ int main(int argc, char** argv)
                         showModelFolderTreeDialog(window.get(), modelFileDialogState);
                     }
                     ImGui::EndDisabled();
-                    setLastItemTooltip("Add models recursively, preserving the folder tree");
                     ImGui::Separator();
-                    const bool scenePaneOpen = ImGui::CollapsingHeader(
-                        "Display",
-                        ImGuiTreeNodeFlags_DefaultOpen);
+                    const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
+                        "Inspection presets apply to all current parts and hide grid and origin. "
+                        "Visibility and transforms stay as set.\n\nVertex size sets the base vertex point size for all groups.");
                 if (scenePaneOpen) {
                     ImGui::SetNextItemWidth(-1.0f);
                     if (ImGui::BeginCombo("##inspection_preset", "Inspection presets")) {
@@ -2660,7 +2661,6 @@ int main(int argc, char** argv)
                         if (ImGui::Selectable("Solid + edges + vertices")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::vertices); }
                         ImGui::EndCombo();
                     }
-                    setLastItemTooltip("Apply to all current parts; hide grid and origin. Visibility and transforms stay as set.");
                     const float sceneContentHeight = renderModeButtonSize() * 2.0f + ImGui::GetStyle().ItemSpacing.y;
                     if (ImGui::BeginChild(
                             "SceneContent",
@@ -2779,7 +2779,6 @@ int main(int argc, char** argv)
                             woby::setMasterVertexPointSize(ui, editedMasterVertexPointSize);
                         }
                         ImGui::PopStyleVar();
-                        setLastItemTooltip("Base vertex point size for all groups");
                     }
                     ImGui::EndChild();
                 }
