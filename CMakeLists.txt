@@ -268,8 +268,11 @@ if(BUILD_TESTING)
     add_test(NAME woby_update_packaging COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/.github/scripts/package_manifest_tests.py")
     add_test(NAME woby_update_helper_smoke COMMAND "${Python3_EXECUTABLE}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_smoke.py" "$<TARGET_FILE:woby>")
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_smoke.py" "$<TARGET_FILE:woby>"
+        "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets")
     set_tests_properties(woby_update_helper_smoke PROPERTIES TIMEOUT 180)
+    add_test(NAME woby_update_helper_fixtures COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
     include(doctest)
 

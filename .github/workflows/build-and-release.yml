@@ -147,7 +147,10 @@ jobs:
 
       - name: Test CI helpers
         shell: pwsh
-        run: node --test .github/scripts/ci-config.test.cjs .github/scripts/resolve-release-build.test.cjs
+        run: |
+          node --test .github/scripts/ci-config.test.cjs .github/scripts/resolve-release-build.test.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & .github/scripts/linux-runtime-dependencies.test.ps1
 
       - name: Prepare pinned CI manifest and cache identity
         id: ci
@@ -337,14 +340,10 @@ jobs:
             Copy-Item (Join-Path $binDir "woby-update-helper") $stageDir -Force
             chmod +x (Join-Path $stageDir "woby-update-helper")
 
-            $runtimeDeps = ldd $executable (Join-Path $binDir "woby-update-helper") |
-              ForEach-Object {
-                if ($_ -match "=>\s+(/\S+)") {
-                  $matches[1]
-                } elseif ($_ -match "^\s*(/\S+)") {
-                  $matches[1]
-                }
-              } |
+            . "$env:GITHUB_WORKSPACE/.github/scripts/linux-runtime-dependencies.ps1"
+            $lddOutput = ldd $executable (Join-Path $binDir "woby-update-helper")
+            if ($LASTEXITCODE -ne 0) { throw "Could not inspect Linux runtime dependencies." }
+            $runtimeDeps = ConvertFrom-LddOutput $lddOutput |
               Where-Object { $_ -and $_.StartsWith($env:GITHUB_WORKSPACE) } |
               Sort-Object -Unique
 

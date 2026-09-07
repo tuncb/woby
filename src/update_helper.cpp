@@ -15,8 +15,14 @@ int runUpdateHelper(int argc, char** argv)
         if (!recover && !(argc == 5 && std::string(argv[1]) == "--apply")) {
             throw std::runtime_error("Usage: woby-update-helper --recover DEPLOYMENT JOB (normally launched by woby update).");
         }
-        root = std::filesystem::canonical(pathFromUtf8(argv[2]));
+        root = pathFromUtf8(argv[2]);
         job = pathFromUtf8(argv[3]);
+        // Validate the supplied layout before resolving paths, so junctions and
+        // symbolic links cannot be hidden by canonicalization. Resolve both
+        // paths together: Windows callers may use an 8.3 deployment path.
+        validateUpdateJob(root, job);
+        root = std::filesystem::canonical(root);
+        job = std::filesystem::canonical(job);
         validateUpdateJob(root, job);
         if (!recover) {
             size_t consumed = 0;
