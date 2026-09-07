@@ -428,7 +428,7 @@ std::string appWindowTitle(
     bool isDirty,
     const std::string& instanceId)
 {
-    std::string title = "woby [" + instanceId + "] - ";
+    std::string title = "woby " WOBY_VERSION " [" + instanceId + "] - ";
     title += currentScenePath.has_value()
         ? fileDisplayName(currentScenePath.value())
         : "untitled";
@@ -2000,7 +2000,7 @@ int main(int argc, char** argv)
             reportImporterError("Importer settings directory is unavailable; registrations are session-only.");
         }
 
-        SDL_Window* rawWindow = SDL_CreateWindow(("woby [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);
+        SDL_Window* rawWindow = SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);
         if (rawWindow == nullptr) {
             throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
         }
