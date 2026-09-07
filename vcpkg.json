@@ -1,6 +1,6 @@
 {
   "name": "woby-obj-viewer",
-  "version-string": "0.10.0",
+  "version-string": "0.10.1",
   "dependencies": [
     "sdl3",
     {
