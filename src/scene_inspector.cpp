@@ -1,5 +1,6 @@
 #include "scene_inspector.h"
 #include "ui_operations.h"
+#include "ui_icon_controls.h"
 #include "utf8_path.h"
 
 #include <imgui.h>
@@ -81,10 +82,9 @@ void renderModeField(UiState& state, const char* label, UiObjectProperty propert
     const auto current = selectedObjectProperty(state, property);
     if (!current.available) { return; }
     bool value = current.value != 0.0f;
-    if (ImGui::Checkbox(label, &value)) {
-        setSelectedObjectProperty(state, property, current.mixed || value ? 1.0f : 0.0f);
+    if (drawVisibilityField(label, value, current.mixed)) {
+        setSelectedObjectProperty(state, property, value ? 1.0f : 0.0f);
     }
-    if (current.mixed) { ImGui::SameLine(); ImGui::TextDisabled("Mixed (click to enable all)"); }
 }
 
 void drawGeometry(const UiState& state)

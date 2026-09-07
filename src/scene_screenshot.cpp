@@ -3,6 +3,7 @@
 #include "comparison_scene.h"
 #include "comparison_legend.h"
 #include "ui_operations.h"
+#include "ui_icon_controls.h"
 #include "imgui_bgfx.h"
 
 #include <bimg/bimg.h>
@@ -398,12 +399,12 @@ bool drawSceneScreenshotOptions(UiState& state)
         ImGui::Checkbox("Visible results only", &options.resultsOnly);
         ImGui::TextWrapped("Otherwise includes the scene, helpers and visible results. Uses the current camera.");
         ImGui::SeparatorText("Comparison annotations");
-        ImGui::Checkbox("Numeric legend and statistics", &options.legend);
-        ImGui::Checkbox("Comparison name", &options.comparisonName);
-        ImGui::Checkbox("A / B sources", &options.sources);
-        ImGui::Checkbox("Measurement direction", &options.direction);
+        drawVisibilityField("Numeric legend and statistics", options.legend);
+        drawVisibilityField("Comparison name", options.comparisonName);
+        drawVisibilityField("A / B sources", options.sources);
+        drawVisibilityField("Measurement direction", options.direction);
         ImGui::BeginDisabled(options.legend);
-        ImGui::Checkbox("Tolerance", &options.tolerance);
+        drawVisibilityField("Tolerance", options.tolerance);
         ImGui::EndDisabled();
         ImGui::TextWrapped("Legends always include tolerance and units. Export waits for complete visible results.");
         if (options != initial) { setScreenshotSettings(state, options); }

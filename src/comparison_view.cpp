@@ -482,9 +482,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::TextColored(ImVec4(.3f, .75f, 1, 1), "Blue: group A wireframe (X-ray)");
             ImGui::TextWrapped("Solid gray: group B surface");
         }
-        ImGui::Checkbox("Triangle edges", &settings.showEdges);
-        ImGui::Checkbox("Boundary edges (yellow)", &settings.showBoundaries);
-        ImGui::Checkbox("Non-manifold / winding edges", &settings.showNonManifold);
+        drawVisibilityField("Triangle edges", settings.showEdges);
+        drawVisibilityField("Boundary edges (yellow)", settings.showBoundaries);
+        drawVisibilityField("Non-manifold / winding edges", settings.showNonManifold);
     }
     // Merely opening the panel must not change scene settings.
     if (settings != initial)

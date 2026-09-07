@@ -51,6 +51,71 @@ struct KeyboardFixture {
 
 } // namespace
 
+TEST_CASE("Visibility fields toggle independently and respect disabled and mixed states")
+{
+    for (const bool initiallyVisible : {false, true}) {
+        KeyboardFixture fixture;
+        bool visible = initiallyVisible;
+        bool otherVisible = true;
+        bool disabled = false;
+        bool mixed = false;
+        int changes = 0;
+        ImVec2 buttonPosition;
+        const auto frame = [&]() {
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2(500, 500));
+            ImGui::Begin("Visibility");
+            buttonPosition = ImGui::GetCursorScreenPos();
+            buttonPosition.x += woby::renderModeButtonSize() * 0.5f;
+            buttonPosition.y += woby::renderModeButtonSize() * 0.5f;
+            ImGui::BeginDisabled(disabled);
+            if (woby::drawVisibilityField("Triangle edges", visible, mixed)) {
+                ++changes;
+                mixed = false;
+            }
+            ImGui::EndDisabled();
+            CHECK_FALSE(woby::drawVisibilityField("Boundary edges", otherVisible));
+            ImGui::End();
+            ImGui::EndFrame();
+        };
+        const auto click = [&]() {
+            auto& io = ImGui::GetIO();
+            io.AddMousePosEvent(buttonPosition.x, buttonPosition.y);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            frame();
+            frame();
+        };
+        frame();
+        frame();
+        CHECK(visible == initiallyVisible);
+        CHECK(changes == 0);
+        click();
+        CHECK(visible == !initiallyVisible);
+        CHECK(changes == 1);
+        click();
+        CHECK(visible == initiallyVisible);
+        CHECK(changes == 2);
+        disabled = true;
+        click();
+        CHECK(visible == initiallyVisible);
+        CHECK(changes == 2);
+        disabled = false;
+        mixed = true;
+        frame();
+        CHECK(visible == initiallyVisible);
+        CHECK(mixed);
+        click();
+        CHECK(visible);
+        CHECK_FALSE(mixed);
+        CHECK(changes == 3);
+        CHECK(otherVisible);
+    }
+}
+
 TEST_CASE("Settings toolbar opens a dialog that closes and reopens without changing scale")
 {
     KeyboardFixture fixture;

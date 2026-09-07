@@ -210,6 +210,26 @@ bool drawVisibilityButton(const char* id, bool visible, const char* itemName)
         false);
 }
 
+bool drawVisibilityField(const char* label, bool& visible, bool mixed)
+{
+    ImGui::PushID(label);
+    ImGui::BeginGroup();
+    const std::string tooltip = mixed
+        ? std::string(label) + ": mixed visibility (click to show all)"
+        : std::string(visible ? "Hide " : "Show ") + label;
+    const bool changed = drawVisibilityIconButton("visible",
+        mixed ? RenderModeState::mixed : visible ? RenderModeState::on : RenderModeState::off,
+        tooltip.c_str(), false);
+    if (changed) { visible = mixed || !visible; }
+    ImGui::SameLine();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(label);
+    if (mixed) { ImGui::SameLine(); ImGui::TextDisabled("Mixed (click to show all)"); }
+    ImGui::EndGroup();
+    ImGui::PopID();
+    return changed;
+}
+
 bool drawRemoveButton(const char* id, const char* tooltip)
 {
     return drawRenderModeIconButton(id, "\xef\x80\x8d", tooltip, RenderModeState::off, false);
