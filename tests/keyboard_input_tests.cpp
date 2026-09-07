@@ -3,6 +3,7 @@
 #include "ui_layout.h"
 #include "ui_icon_controls.h"
 #include "ui_popup_controls.h"
+#include "settings_dialog.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
@@ -49,6 +50,113 @@ struct KeyboardFixture {
 };
 
 } // namespace
+
+TEST_CASE("Settings toolbar opens a dialog that closes and reopens without changing scale")
+{
+    KeyboardFixture fixture;
+    fixture.state.uiScale = 1.5f;
+    ImVec2 buttonPosition;
+    ImVec2 closePosition;
+    bool disabled = false;
+    woby::SettingsDialogResult result;
+    const auto frame = [&]() {
+        ImGui::NewFrame();
+        ImGui::Begin("Toolbar");
+        const bool requested = woby::drawSettingsButton(disabled);
+        const auto low = ImGui::GetItemRectMin();
+        buttonPosition = ImVec2(low.x + 10, low.y + 10);
+        ImGui::End();
+        result = woby::drawSettingsDialog(fixture.state, requested);
+        if (result.open) {
+            const auto* dialog = ImGui::FindWindowByName("Settings");
+            closePosition = ImVec2(dialog->DC.CursorStartPos.x + 10, dialog->DC.CursorPosPrevLine.y + 10);
+        }
+        CHECK_FALSE(result.scaleChanged);
+        woby::dismissPopupOnEscape();
+        ImGui::EndFrame();
+    };
+    const auto click = [&](ImVec2 position) {
+        auto& io = ImGui::GetIO();
+        io.AddMousePosEvent(position.x, position.y);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        frame();
+        frame();
+    };
+    frame();
+    frame();
+    CHECK_FALSE(result.open);
+    disabled = true;
+    click(buttonPosition);
+    CHECK_FALSE(result.open);
+    disabled = false;
+    click(buttonPosition);
+    REQUIRE(result.open);
+    click(closePosition);
+    CHECK_FALSE(result.open);
+    click(buttonPosition);
+    REQUIRE(result.open);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+    frame();
+    frame();
+    CHECK_FALSE(result.open);
+    CHECK(fixture.state.uiScale == 1.5f);
+}
+
+TEST_CASE("Settings scale dropdown applies every option and Escape dismisses the dropdown first")
+{
+    for (int option = 0; option < 5; ++option) {
+        KeyboardFixture fixture;
+        bool requestOpen = true;
+        bool changed = false;
+        const auto frame = [&]() {
+            ImGui::NewFrame();
+            const auto result = woby::drawSettingsDialog(fixture.state, requestOpen);
+            requestOpen = false;
+            changed = changed || result.scaleChanged;
+            woby::dismissPopupOnEscape();
+            ImGui::EndFrame();
+        };
+        const auto click = [&](ImVec2 position) {
+            auto& io = ImGui::GetIO();
+            io.AddMousePosEvent(position.x, position.y);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            frame();
+            frame();
+        };
+        frame();
+        frame();
+        const auto* dialog = ImGui::FindWindowByName("Settings");
+        REQUIRE(dialog != nullptr);
+        const auto& style = ImGui::GetStyle();
+        const ImVec2 comboPosition(dialog->Pos.x + dialog->Size.x - style.WindowPadding.x - 10,
+            dialog->DC.CursorStartPos.y + ImGui::GetFontSize() + style.SeparatorTextPadding.y * 2
+                + style.ItemSpacing.y + ImGui::GetFrameHeight() * 0.5f);
+        click(comboPosition);
+        REQUIRE(ImGui::GetCurrentContext()->OpenPopupStack.Size == 2);
+        ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+        frame();
+        CHECK(ImGui::GetCurrentContext()->OpenPopupStack.Size == 1);
+        CHECK_FALSE(changed);
+        ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, false);
+        frame();
+        click(comboPosition);
+        REQUIRE(ImGui::GetCurrentContext()->OpenPopupStack.Size == 2);
+        const auto* dropdown = ImGui::GetCurrentContext()->OpenPopupStack.back().Window;
+        REQUIRE(dropdown != nullptr);
+        click(ImVec2(dropdown->DC.CursorStartPos.x + 15,
+            dropdown->DC.CursorStartPos.y + ImGui::GetTextLineHeightWithSpacing() * static_cast<float>(option)
+                + ImGui::GetFontSize() * 0.5f));
+        CHECK(changed == (option != 0));
+        CHECK(fixture.state.uiScale == 1.0f + static_cast<float>(option) * 0.25f);
+        CHECK(ImGui::GetCurrentContext()->OpenPopupStack.Size == 1);
+    }
+}
 
 TEST_CASE("Escape dismisses color pickers and dropdowns without changing their values")
 {

@@ -21,6 +21,7 @@
 #include "ui_layout.h"
 #include "ui_icon_controls.h"
 #include "ui_popup_controls.h"
+#include "settings_dialog.h"
 #include "utf8_path.h"
 #include "automation.h"
 #include "control_scene.h"
@@ -87,6 +88,8 @@ constexpr float popupBackgroundAlpha = 1.0f;
 constexpr float appFontSize = 17.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
+    0xf013,
+    0xf013,
     0xf04b,
     0xf04b,
     0xf00d,
@@ -610,7 +613,7 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
     ImGui::End();
 }
 
-void drawPaneToggles(woby::UiState& state, float windowWidth)
+void drawPaneToggles(woby::UiState& state, float windowWidth, bool settingsDisabled, bool& requestSettings)
 {
     const auto flags = ImGuiWindowFlags_NoDecoration
         | ImGuiWindowFlags_AlwaysAutoResize
@@ -625,6 +628,8 @@ void drawPaneToggles(woby::UiState& state, float windowWidth)
             drawViewerPaneToggleButton(state);
             ImGui::SameLine();
             ImGui::TextUnformatted("Scene controls");
+            ImGui::SameLine();
+            if (woby::drawSettingsButton(settingsDisabled)) { requestSettings = true; }
         }
         ImGui::End();
     }
@@ -2458,7 +2463,8 @@ int main(int argc, char** argv)
             const bool popupWasOpen = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
-            bool modalDialogOpen = false;
+            bool modalDialogOpen = ImGui::IsPopupOpen("Settings");
+            bool requestSettings = false;
             const auto newScene = [&]() {
                 try {
                     resetSceneToUntitled(ui, runtimes, currentScenePath, cleanSceneDocument);
@@ -2586,6 +2592,10 @@ int main(int argc, char** argv)
                     drawViewerPaneToggleButton(ui);
                     ImGui::SameLine();
                     ImGui::TextUnformatted("Scene controls");
+                    ImGui::SameLine();
+                    ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x
+                        - renderModeButtonSize());
+                    if (woby::drawSettingsButton(fileActionsDisabled())) { requestSettings = true; }
                     ImGui::Separator();
                     const float statusHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f
                         + ImGui::GetStyle().ItemSpacing.y + 1.0f;
@@ -2770,18 +2780,6 @@ int main(int argc, char** argv)
                     ImGui::EndChild();
                 }
 
-                if (ImGui::CollapsingHeader("Interface")) {
-                    int scaleIndex = static_cast<int>(std::round((ui.uiScale - 1.0f) * 4.0f));
-                    ImGui::SetNextItemWidth(-1.0f);
-                    if (ImGui::Combo("##ui_scale", &scaleIndex, "UI scale: 100%\0UI scale: 125%\0UI scale: 150%\0UI scale: 175%\0UI scale: 200%\0")) {
-                        woby::setUiScale(ui, 1.0f + static_cast<float>(scaleIndex) * 0.25f);
-                        if (!preferencePath.empty()) {
-                            std::ofstream preference(preferencePath);
-                            if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
-                        }
-                    }
-                    setLastItemTooltip("Text and control size, in addition to Windows display scaling. Saved for this user.");
-                }
                 const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
                 const bool filesPaneOpen = ImGui::CollapsingHeader(
                     filesPaneTitle.c_str(),
@@ -2827,7 +2825,7 @@ int main(int argc, char** argv)
             }
                 ImGui::End();
             }
-            drawPaneToggles(ui, panelLayout.width);
+            drawPaneToggles(ui, panelLayout.width, fileActionsDisabled(), requestSettings);
             if (files.empty() && ui.comparisons.empty() && !backgroundLoad.active && !gpuFinalize.active) {
                 const float viewportWidth = panelLayout.width - panelLayout.leftWidth
                     - (ui.propertiesPaneVisible ? panelLayout.rightWidth : 0.0f);
@@ -2859,6 +2857,12 @@ int main(int argc, char** argv)
                 ImGui::End();
             }
             drawPropertiesPane(ui, comparison, panelLayout);
+            const auto settings = woby::drawSettingsDialog(ui, requestSettings);
+            modalDialogOpen = modalDialogOpen || settings.open;
+            if (settings.scaleChanged && !preferencePath.empty()) {
+                std::ofstream preference(preferencePath);
+                if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
+            }
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
 
             woby::recalculateSceneBounds(ui);

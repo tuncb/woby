@@ -76,6 +76,8 @@ add_executable(woby
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
+    src/settings_dialog.cpp
+    src/settings_dialog.h
     src/scene_inspector.cpp
     src/scene_inspector.h
     src/ui_icon_controls.cpp
@@ -239,6 +241,7 @@ if(BUILD_TESTING)
         src/background_load.h
         src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
+        src/settings_dialog.cpp
         src/ui_icon_controls.cpp
         src/camera.cpp
         src/command_line.cpp
