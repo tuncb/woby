@@ -2,6 +2,7 @@
 #include "ui_state.h"
 #include "ui_layout.h"
 #include "ui_icon_controls.h"
+#include "ui_popup_controls.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
@@ -48,6 +49,124 @@ struct KeyboardFixture {
 };
 
 } // namespace
+
+TEST_CASE("Escape dismisses color pickers and dropdowns without changing their values")
+{
+    for (const bool colorPicker : {true, false}) {
+        KeyboardFixture fixture;
+        float color[3]{0.2f, 0.4f, 0.6f};
+        int choice = 0;
+        ImVec2 clickPosition;
+        const auto frame = [&]() {
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2(500, 500));
+            ImGui::Begin("Properties");
+            clickPosition = ImGui::GetCursorScreenPos();
+            clickPosition.x += 8.0f;
+            clickPosition.y += 8.0f;
+            if (colorPicker) {
+                ImGui::ColorEdit3("Color picker", color, ImGuiColorEditFlags_NoInputs);
+            } else {
+                ImGui::Combo("Mode", &choice, "First\0Second\0");
+            }
+            ImGui::End();
+            woby::dismissPopupOnEscape();
+            ImGui::EndFrame();
+        };
+        frame();
+        auto& io = ImGui::GetIO();
+        io.AddMousePosEvent(clickPosition.x, clickPosition.y);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+        frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+        frame();
+        frame();
+        REQUIRE(ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup));
+        io.AddKeyEvent(ImGuiKey_Escape, true);
+        frame();
+        CHECK_FALSE(ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup));
+        CHECK(color[0] == 0.2f);
+        CHECK(color[1] == 0.4f);
+        CHECK(color[2] == 0.6f);
+        CHECK(choice == 0);
+        CHECK((io.ConfigFlags & ImGuiConfigFlags_NavEnableKeyboard) == 0);
+    }
+}
+
+TEST_CASE("Escape closes only the innermost popup and leaves modal cancellation to its owner")
+{
+    KeyboardFixture fixture;
+    bool modal = false;
+    SUBCASE("context menu with submenu") {}
+    SUBCASE("dropdown inside a modal") { modal = true; }
+    const auto frame = [&](bool open) {
+        ImGui::NewFrame();
+        ImGui::Begin("Scene");
+        if (open) { ImGui::OpenPopup("Parent"); }
+        const bool parent = modal ? ImGui::BeginPopupModal("Parent") : ImGui::BeginPopup("Parent");
+        if (parent) {
+            ImGui::TextUnformatted("Parent controls");
+            if (open) { ImGui::OpenPopup("Child"); }
+            if (ImGui::BeginPopup("Child")) {
+                ImGui::TextUnformatted("Child controls");
+                ImGui::EndPopup();
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::End();
+        woby::dismissPopupOnEscape();
+        ImGui::EndFrame();
+    };
+    frame(true);
+    REQUIRE(ImGui::GetCurrentContext()->OpenPopupStack.Size == 2);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+    frame(false);
+    CHECK(ImGui::GetCurrentContext()->OpenPopupStack.Size == 1);
+    // A held Escape must not cascade to the parent.
+    frame(false);
+    CHECK(ImGui::GetCurrentContext()->OpenPopupStack.Size == 1);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, false);
+    frame(false);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+    frame(false);
+    CHECK(ImGui::GetCurrentContext()->OpenPopupStack.Size == (modal ? 1 : 0));
+}
+
+TEST_CASE("Escape cancels text editing before dismissing its popup")
+{
+    KeyboardFixture fixture;
+    char value[32] = "Original";
+    const auto frame = [&](bool open) {
+        ImGui::NewFrame();
+        ImGui::Begin("Scene");
+        if (open) { ImGui::OpenPopup("Export PNG"); }
+        if (ImGui::BeginPopup("Export PNG")) {
+            if (open) { ImGui::SetKeyboardFocusHere(); }
+            ImGui::InputText("Name", value, sizeof(value));
+            ImGui::EndPopup();
+        }
+        ImGui::End();
+        woby::dismissPopupOnEscape();
+        ImGui::EndFrame();
+    };
+    frame(true);
+    frame(false);
+    REQUIRE(ImGui::IsAnyItemActive());
+    ImGui::GetIO().AddInputCharactersUTF8("Changed");
+    frame(false);
+    REQUIRE(std::string(value) != "Original");
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+    frame(false);
+    CHECK(std::string(value) == "Original");
+    CHECK(ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup));
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, false);
+    frame(false);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+    frame(false);
+    CHECK_FALSE(ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup));
+}
 
 TEST_CASE("camera keyboard controls move orbit and zoom without command modifiers")
 {

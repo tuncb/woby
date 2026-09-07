@@ -20,6 +20,7 @@
 #include "ui_state.h"
 #include "ui_layout.h"
 #include "ui_icon_controls.h"
+#include "ui_popup_controls.h"
 #include "utf8_path.h"
 #include "automation.h"
 #include "control_scene.h"
@@ -700,9 +701,6 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         ImGui::EndDragDropSource();
     }
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
-        if (ImGui::IsKeyPressed(ImGuiKey_Escape)) {
-            ImGui::CloseCurrentPopup();
-        }
         if (ImGui::MenuItem("Create comparison", nullptr, false, woby::canCompareSceneSelection(state))) {
             woby::compareSceneSelection(state);
         }
@@ -3053,6 +3051,7 @@ int main(int argc, char** argv)
                 documentShortcutHeld = false;
             }
             // Read keyboard input after widgets have claimed it, before drawing the scene.
+            woby::dismissPopupOnEscape();
             const auto& keyboardIo = ImGui::GetIO();
             const bool sceneKeyboardAvailable = !fileActionsDisabled() && !documentShortcutHeld
                 && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0u
