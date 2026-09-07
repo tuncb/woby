@@ -50,6 +50,13 @@ the same build workflow for the tagged commit. Publication requires that build
 to succeed. Package download and validation then happen before creating or
 updating the GitHub release. A manual Release dispatch must target a version tag.
 
+Every package contains `woby-update-helper` and `woby-manifest.json`. The manifest
+generator verifies both binaries' versions and hashes the final staged files.
+Release tags must match CMake and vcpkg versions; publication also checks each
+archive's manifest version, platform, file list, and hashes. This validation applies
+to reused main-build artifacts as well as newly built packages. See
+[portable updates](updates.md) for installation and recovery behavior.
+
 ## Local validation
 
 Run the CI helper tests with Node.js:

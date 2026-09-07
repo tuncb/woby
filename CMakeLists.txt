@@ -30,6 +30,32 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(CURL REQUIRED)
+find_package(LibArchive REQUIRED)
+include(cmake/WobyUpdateDependencies.cmake)
+if(NOT WIN32)
+    find_package(OpenSSL REQUIRED)
+endif()
+
+add_library(woby_update_core STATIC src/update_core.cpp src/update_platform.cpp src/update.h)
+target_include_directories(woby_update_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(woby_update_core PUBLIC nlohmann_json::nlohmann_json)
+if(WIN32)
+    target_link_libraries(woby_update_core PRIVATE bcrypt shell32 ole32)
+else()
+    target_link_libraries(woby_update_core PRIVATE OpenSSL::Crypto)
+endif()
+woby_enable_project_warnings(woby_update_core)
+add_library(woby_update STATIC src/update.cpp src/update_archive.cpp)
+target_link_libraries(woby_update PUBLIC woby_update_core PRIVATE CURL::libcurl ${woby_archive_target})
+woby_enable_project_warnings(woby_update)
+add_executable(woby-update-helper src/update_helper.cpp)
+target_compile_definitions(woby-update-helper PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
+target_link_libraries(woby-update-helper PRIVATE woby_update_core)
+woby_enable_project_warnings(woby-update-helper)
+if(UNIX AND NOT APPLE)
+    set_target_properties(woby-update-helper PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
+endif()
 
 add_library(woby_automation STATIC
     src/control_protocol.cpp
@@ -121,6 +147,7 @@ target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby PRIVATE
+    woby_update
     woby_automation
     SDL3::SDL3
     ${CMAKE_DL_LIBS}
@@ -220,15 +247,23 @@ woby_compile_bgfx_shader(woby
 )
 
 woby_stage_assets(woby "${WOBY_RUNTIME_DIRECTORY}")
-set(woby_runtime_targets woby)
+add_dependencies(woby woby-update-helper)
+set(woby_runtime_targets woby woby-update-helper)
 
 include(CTest)
 
 if(BUILD_TESTING)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_test(NAME woby_update_packaging COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/.github/scripts/package_manifest_tests.py")
+    add_test(NAME woby_update_helper_smoke COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_smoke.py" "$<TARGET_FILE:woby>")
+    set_tests_properties(woby_update_helper_smoke PROPERTIES TIMEOUT 180)
     find_package(doctest CONFIG REQUIRED)
     include(doctest)
 
     add_executable(woby_tests
+        tests/update_tests.cpp
         src/comparison_report.cpp
         src/mesh_comparison.cpp
         src/comparison_scene.cpp
@@ -298,6 +333,8 @@ if(BUILD_TESTING)
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_link_libraries(woby_tests PRIVATE
+        woby_update
+        ${woby_archive_target}
         woby_automation
         doctest::doctest
         imgui::imgui

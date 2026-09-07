@@ -2,6 +2,7 @@
 
 #include "scene_lifecycle_types.h"
 #include "control_protocol.h"
+#include "update.h"
 
 #include <cstddef>
 #include <filesystem>
@@ -62,6 +63,7 @@ struct AppArguments {
     bool showVersion = false;
     std::optional<std::string> instanceId;
     ControlArguments control;
+    UpdateArguments update;
     LogLevel logLevel = LogLevel::off;
     std::optional<std::filesystem::path> logFile;
     bool logPerformance = false;

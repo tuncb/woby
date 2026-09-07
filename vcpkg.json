@@ -21,6 +21,9 @@
     "spdlog",
     { "name": "cpp-httplib", "default-features": false },
     "nlohmann-json",
+    { "name": "curl", "default-features": false, "features": ["ssl"] },
+    { "name": "libarchive", "default-features": false },
+    { "name": "openssl", "platform": "!windows" },
     "doctest"
   ]
 }

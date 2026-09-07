@@ -197,6 +197,26 @@ Print the application version:
 .\build\vs2026-vcpkg\bin\Debug\woby.exe --version
 ```
 
+Update a portable release installation from GitHub:
+
+```powershell
+woby update --check
+woby update
+woby update --status
+```
+
+Close viewers using that installation before updating. The updater downloads the
+latest stable package for the executable's platform, verifies SHA-256 and the
+package manifest, and replaces package-owned files while preserving unrelated
+scenes and plugins. An external helper finishes installation after the CLI exits;
+exit code `2` means pending, so use `--status` to confirm completion. All three
+commands accept `--json`. See [updates and recovery](doc/updates.md).
+
+The first release containing the updater and `woby-manifest.json` must be installed
+manually. Older releases and development build folders cannot update themselves;
+`--check` still works from a build. Self-update supports writable, per-user portable
+installations; it does not elevate privileges or update package-manager installs.
+
 Enable file logging:
 
 ```powershell

@@ -1152,6 +1152,10 @@ TEST_CASE("comparison panel opens on adding objects and starting comparison but 
 TEST_CASE("single object comparison is ready for inspection and survives save load")
 {
     auto state = stateWithFiles(1);
+    const auto path = std::filesystem::temp_directory_path() / "woby-single-comparison.woby";
+    // Keep the model and scene on the same volume even when the checkout is
+    // on D: and the user's temporary directory is on C:.
+    state.files[0].path = path.parent_path() / state.files[0].path;
     woby::selectSceneObject(state, state.files[0].objectId);
     REQUIRE(woby::canCompareSceneSelection(state));
     REQUIRE(woby::compareSceneSelection(state));
@@ -1165,7 +1169,6 @@ TEST_CASE("single object comparison is ready for inspection and survives save lo
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == 0);
     CHECK(woby::effectiveComparisonSettings(state).mode == woby::ComparisonMode::original);
     const auto document = woby::createSceneDocument(state);
-    const auto path = std::filesystem::temp_directory_path() / "woby-single-comparison.woby";
     woby::writeSceneDocument(path, document);
     const auto loaded = woby::prepareSceneReplacement(state, state.files, woby::readSceneDocument(path));
     std::filesystem::remove(path);

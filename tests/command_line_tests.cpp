@@ -30,6 +30,24 @@ struct GeneratedLogLevel {
 
 } // namespace
 
+TEST_CASE("update command is independent of viewer and control arguments")
+{
+    CHECK(parse({"woby", "update"}).update.command == woby::UpdateCommand::install);
+    const auto check = parse({"woby", "update", "--json", "--check"});
+    CHECK(check.update.command == woby::UpdateCommand::check);
+    CHECK(check.update.json);
+    CHECK(check.control.command == woby::ControlCommand::none);
+    CHECK(parse({"woby", "update", "--status"}).update.command == woby::UpdateCommand::status);
+    CHECK(parse({"woby", "update", "--help"}).showHelp);
+    for (const auto& options : std::vector<std::vector<std::string>>{
+        {"--check", "--status"}, {"--check", "--check"}, {"--json", "--json"},
+        {"--file", "scene.obj"}, {"--force"}, {"--instance", "review"}, {"--version"}}) {
+        std::vector<std::string> args{"woby", "update"};
+        args.insert(args.end(), options.begin(), options.end());
+        CHECK_THROWS(parse(args));
+    }
+}
+
 TEST_CASE("command line defaults keep logging off")
 {
     const woby::AppArguments arguments = parse({"woby"});

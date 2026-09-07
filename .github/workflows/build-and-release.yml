@@ -236,6 +236,7 @@ jobs:
 
           if ($IsWindows) {
             Copy-Item (Join-Path $binDir "woby.exe") $stageDir -Force
+            Copy-Item (Join-Path $binDir "woby-update-helper.exe") $stageDir -Force
             Get-ChildItem $binDir -Filter "*.dll" -File | Copy-Item -Destination $stageDir -Force
           } elseif ($IsMacOS) {
             $executable = Join-Path $binDir "woby"
@@ -265,6 +266,8 @@ jobs:
 
             Copy-Item $executable $stageDir -Force
             chmod +x $stagedExecutable
+            Copy-Item (Join-Path $binDir "woby-update-helper") $stageDir -Force
+            chmod +x (Join-Path $stageDir "woby-update-helper")
 
             $vcpkgLibDirs = @(
               (Join-Path $buildDir "vcpkg_installed/${{ matrix.vcpkg_triplet }}/lib"),
@@ -276,6 +279,16 @@ jobs:
             }
 
             Add-MachORpathIfMissing $stagedExecutable "@executable_path"
+            $stagedHelper = Join-Path $stageDir "woby-update-helper"
+            Add-MachORpathIfMissing $stagedHelper "@executable_path"
+            $helperDeps = otool -L $stagedHelper | Select-Object -Skip 1 | ForEach-Object {
+              if ($_ -match "^\s+(.+?)\s+\(") { $matches[1] }
+            } | Where-Object { $_ -and $_.StartsWith($env:GITHUB_WORKSPACE) } | Sort-Object -Unique
+            foreach ($dependency in $helperDeps) {
+              Copy-Item $dependency $stageDir -Force
+              $dependencyName = Split-Path $dependency -Leaf
+              install_name_tool -change $dependency "@executable_path/$dependencyName" $stagedHelper
+            }
 
             $runtimeDeps = otool -L $executable |
               Select-Object -Skip 1 |
@@ -320,8 +333,10 @@ jobs:
             $executable = Join-Path $binDir "woby"
             Copy-Item $executable $stageDir -Force
             chmod +x (Join-Path $stageDir "woby")
+            Copy-Item (Join-Path $binDir "woby-update-helper") $stageDir -Force
+            chmod +x (Join-Path $stageDir "woby-update-helper")
 
-            $runtimeDeps = ldd $executable |
+            $runtimeDeps = ldd $executable (Join-Path $binDir "woby-update-helper") |
               ForEach-Object {
                 if ($_ -match "=>\s+(/\S+)") {
                   $matches[1]
@@ -347,6 +362,10 @@ jobs:
           Get-ChildItem $stageDir -Recurse -File |
             Select-Object FullName, Length |
             Format-Table -AutoSize
+
+      - name: Generate verified package manifest
+        shell: pwsh
+        run: python .github/scripts/package_manifest.py generate "dist/${{ matrix.package_name }}" "${{ runner.os == 'Windows' && 'windows-x64' || runner.os == 'macOS' && 'macos-arm64' || 'linux-x64' }}"
 
       - name: Create package
         id: package
