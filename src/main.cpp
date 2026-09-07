@@ -106,6 +106,8 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf070,
     0xf0b2,
     0xf0b2,
+    0xf0e2,
+    0xf0e2,
     0xf1b2,
     0xf1b2,
     0xf02c1,

@@ -1,4 +1,5 @@
 #include "scene_inspector.h"
+#include "ui_icon_controls.h"
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
 #include "utf8_path.h"
@@ -55,17 +56,43 @@ void scalarField(UiState& state, const char* label, UiObjectProperty property, f
     numericInput(state, property, displayScale);
 }
 
-void resetButton(UiState& state, const char* label, UiPropertyGroup group)
+void resetButton(UiState& state, const char* tooltip, UiPropertyGroup group)
 {
-    if (ImGui::SmallButton(label)) { resetSelectedObjectProperties(state, group); }
+    ImGui::PushID(static_cast<int>(group));
+    if (drawResetIconButton("reset", tooltip)) { resetSelectedObjectProperties(state, group); }
+    ImGui::PopID();
 }
 
-void axisFields(UiState& state, const char* title, UiObjectProperty first, UiPropertyGroup group)
+bool propertyHeading(UiState& state, const char* title, const char* tooltip,
+    UiPropertyGroup group, bool collapsible)
+{
+    bool open = false;
+    ImGui::PushID(static_cast<int>(group));
+    // A separate fixed-width cell keeps the reset hit target outside the header.
+    if (ImGui::BeginTable("heading", 2, ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableSetupColumn("Title", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFrameHeight());
+        ImGui::TableNextColumn();
+        if (collapsible) {
+            open = ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
+        } else {
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(title);
+            open = true;
+        }
+        ImGui::TableNextColumn();
+        resetButton(state, tooltip, group);
+        ImGui::EndTable();
+    }
+    ImGui::PopID();
+    return open;
+}
+
+void axisFields(UiState& state, const char* title, const char* tooltip,
+    UiObjectProperty first, UiPropertyGroup group)
 {
     ImGui::PushID(title);
-    ImGui::TextUnformatted(title);
-    ImGui::SameLine();
-    resetButton(state, "Reset", group);
+    propertyHeading(state, title, tooltip, group, false);
     if (ImGui::BeginTable("axes", 3)) {
         for (int axis = 0; axis < 3; ++axis) {
             ImGui::TableNextColumn();
@@ -166,18 +193,25 @@ void drawSceneInspector(UiState& state)
             ImGui::TextWrapped("Edits set only the entered field on each selected object. Selected parents and children both change. Mixed means values differ. Escape cancels numeric entry. Resets affect only their named property group on selected objects.");
             ImGui::TreePop();
         }
-        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-            resetButton(state, "Reset transform", UiPropertyGroup::transform);
-            axisFields(state, "Translation (model units)", UiObjectProperty::translationX, UiPropertyGroup::translation);
-            axisFields(state, "Rotation (degrees)", UiObjectProperty::rotationX, UiPropertyGroup::rotation);
-            if (ImGui::BeginTable("scale", 2)) {
+        if (propertyHeading(state, "Transform",
+                "Reset translation, rotation, and scale on selected objects.", UiPropertyGroup::transform, true)) {
+            axisFields(state, "Translation (model units)", "Reset translation on selected objects to zero.",
+                UiObjectProperty::translationX, UiPropertyGroup::translation);
+            axisFields(state, "Rotation (degrees)", "Reset rotation on selected objects to zero.",
+                UiObjectProperty::rotationX, UiPropertyGroup::rotation);
+            if (ImGui::BeginTable("scale", 3)) {
+                ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Reset", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFrameHeight());
                 scalarField(state, "Uniform scale (x)", UiObjectProperty::scale);
+                ImGui::TableNextColumn();
+                resetButton(state, "Reset scale on selected objects to 1.", UiPropertyGroup::scale);
                 ImGui::EndTable();
             }
-            resetButton(state, "Reset scale", UiPropertyGroup::scale);
         }
-        if (ImGui::CollapsingHeader("Appearance", ImGuiTreeNodeFlags_DefaultOpen)) {
-            resetButton(state, "Reset appearance", UiPropertyGroup::appearance);
+        if (propertyHeading(state, "Appearance",
+                "Reset opacity and applicable vertex size, color, and render modes on selected objects.\n"
+                "Unselected children keep their overrides.", UiPropertyGroup::appearance, true)) {
             ImGui::TextWrapped("Unselected children keep their overrides.");
             if (ImGui::BeginTable("appearance", 2)) {
                 scalarField(state, "Opacity (0-100%)", UiObjectProperty::opacity, 100.0f);

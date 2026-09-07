@@ -442,6 +442,61 @@ TEST_CASE("scene name rows align with visibility and remove controls at every UI
     }
 }
 
+TEST_CASE("reset icons fit an input row and activate only their own enabled control")
+{
+    for (const float scale : {0.75f, 1.0f, 1.5f, 2.0f}) {
+        for (const bool disabled : {false, true}) {
+            KeyboardFixture fixture;
+            ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), scale);
+            ImVec2 clickPosition;
+            int firstResets = 0;
+            int secondResets = 0;
+            const auto frame = [&]() {
+                ImGui::NewFrame();
+                ImGui::SetNextWindowPos(ImVec2(0, 0));
+                ImGui::SetNextWindowSize(ImVec2(700, 400));
+                ImGui::Begin("Reset controls");
+                float value = 2.0f;
+                ImGui::SetNextItemWidth(100.0f);
+                ImGui::InputFloat("##value", &value);
+                const auto inputMin = ImGui::GetItemRectMin();
+                const auto inputMax = ImGui::GetItemRectMax();
+                ImGui::SameLine();
+                ImGui::BeginDisabled(disabled);
+                ImGui::PushID("scale");
+                if (woby::drawResetIconButton("reset", "Reset scale")) { ++firstResets; }
+                const auto low = ImGui::GetItemRectMin();
+                const auto high = ImGui::GetItemRectMax();
+                CHECK(low.y == inputMin.y);
+                CHECK(high.y == inputMax.y);
+                CHECK(low.x > inputMax.x);
+                CHECK(high.x - low.x == doctest::Approx(high.y - low.y));
+                clickPosition = ImVec2((low.x + high.x) * 0.5f, (low.y + high.y) * 0.5f);
+                ImGui::PopID();
+                ImGui::EndDisabled();
+                ImGui::SameLine();
+                ImGui::PushID("appearance");
+                if (woby::drawResetIconButton("reset", "Reset appearance")) { ++secondResets; }
+                ImGui::PopID();
+                ImGui::End();
+                ImGui::EndFrame();
+            };
+            frame();
+            auto& io = ImGui::GetIO();
+            io.AddMousePosEvent(clickPosition.x, clickPosition.y);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            frame();
+            CHECK(firstResets == 0);
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            frame();
+            frame();
+            CHECK(firstResets == (disabled ? 0 : 1));
+            CHECK(secondResets == 0);
+        }
+    }
+}
+
 TEST_CASE("selected tree row outlines end inside the reserved delete column clip")
 {
     KeyboardFixture fixture;
