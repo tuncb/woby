@@ -241,15 +241,21 @@ void nearest(const DistanceTree &tree, size_t index, const Point &p, double &bes
     }
 }
 
-SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, const DistanceTree &target)
+SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop)
 {
-    const auto stop = source.stop;
     checkCanceled(stop);
     SurfaceComparison result;
     result.source.vertices = copyWithCancellation(mesh.vertices, stop);
     result.source.indices = copyWithCancellation(mesh.indices, stop);
     result.source.nodes = copyWithCancellation(mesh.nodes, stop);
     result.source.bounds = mesh.bounds;
+    return result;
+}
+
+SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, const DistanceTree &target)
+{
+    const auto stop = source.stop;
+    auto result = copySurface(mesh, stop);
     result.diagnostics = inspectTriangles(source.triangles, stop);
     result.sampled.vertices.reserve(source.triangles.size() * 12);
     result.sampled.indices.reserve(source.triangles.size() * 12);
@@ -470,6 +476,18 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
     checkCanceled(stop);
     validateComparisonMeshSize(original.vertices.size(), original.indices.size() / 3);
     validateComparisonMeshSize(repaired.vertices.size(), repaired.indices.size() / 3);
+    if (original.vertices.empty() && original.indices.empty()) {
+        MeshComparison result;
+        result.repaired = copySurface(repaired, stop);
+        result.repaired.diagnostics = inspectMesh(repaired, stop);
+        return result;
+    }
+    if (repaired.vertices.empty() && repaired.indices.empty()) {
+        MeshComparison result;
+        result.original = copySurface(original, stop);
+        result.original.diagnostics = inspectMesh(original, stop);
+        return result;
+    }
     const auto originalTree = buildTree(original, stop), repairedTree = buildTree(repaired, stop);
     return {compareSurface(original, originalTree, repairedTree), compareSurface(repaired, repairedTree, originalTree)};
 }

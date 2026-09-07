@@ -62,7 +62,10 @@ enum class ComparisonMembershipAction { unavailable, add, remove };
 [[nodiscard]] ComparisonMembershipAction comparisonMembershipAction(
     const UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] bool canCompareGroups(const UiState& state, SceneObjectId id = invalidSceneObjectId);
-// Create a new comparison from two distinct selected objects in click order.
+[[nodiscard]] bool canInspectComparison(const UiState& state, SceneObjectId id = invalidSceneObjectId);
+// Fall back to the populated side without changing the saved two-input mode.
+[[nodiscard]] ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id = invalidSceneObjectId);
+// Create a comparison from one object or two distinct objects in click order.
 [[nodiscard]] bool canCompareSceneSelection(const UiState& state);
 bool compareSceneSelection(UiState& state);
 void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member,

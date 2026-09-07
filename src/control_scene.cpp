@@ -72,7 +72,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
                 {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
                 {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}}},
-                {"valid", canCompareGroups(state, id)}, {"missingPartCount", missingComparisonPartCount(state, id)},
+                {"valid", canInspectComparison(state, id)}, {"missingPartCount", missingComparisonPartCount(state, id)},
                 {"aPartCount", comparison->a.size()}, {"bPartCount", comparison->b.size()}};
         }
     }
@@ -258,7 +258,7 @@ Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
         result.push_back({{"id", formatId(comparison.objectId)}, {"name", comparison.name}, {"kind", "comparison"},
             {"occurrence", {result.size()}}, {"implicit", false}, {"children", Json::array()},
             {"settings", localObjectDetails(state, comparison.objectId)["settings"]},
-            {"effective", {{"visible", comparison.settings.enabled && canCompareGroups(state, comparison.objectId)},
+            {"effective", {{"visible", comparison.settings.enabled && canInspectComparison(state, comparison.objectId)},
                 {"opacity", 1}, {"worldMatrix", world}}}});
     }
     return result;
@@ -435,8 +435,12 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
 {
     const auto surface = [tolerance](const SurfaceComparison& value) {
         const auto& diagnostics = value.diagnostics;
-        return Json{{"maximum", value.maximum}, {"mean", value.mean}, {"percentile95", value.percentile95},
-            {"percentAboveTolerance", surfacePercentAboveTolerance(value, tolerance)},
+        if (value.source.indices.empty()) { return Json(nullptr); }
+        const bool measured = !value.distances.empty();
+        return Json{{"maximum", measured ? Json(value.maximum) : Json(nullptr)},
+            {"mean", measured ? Json(value.mean) : Json(nullptr)},
+            {"percentile95", measured ? Json(value.percentile95) : Json(nullptr)},
+            {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
             {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
             {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
                 {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},

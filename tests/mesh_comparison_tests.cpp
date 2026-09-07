@@ -527,7 +527,7 @@ TEST_CASE("diagnostics weld identical seam positions and distinguish edge defect
 TEST_CASE("comparison validates empty and invalid input")
 {
     auto a = square();
-    CHECK_THROWS((void)woby::compareMeshes(a, {}));
+    CHECK_THROWS((void)woby::compareMeshes({}, {}));
     auto invalid = a;
     invalid.indices[0] = 99;
     CHECK_THROWS((void)woby::compareMeshes(a, invalid));
@@ -1149,6 +1149,127 @@ TEST_CASE("comparison panel opens on adding objects and starting comparison but 
     CHECK(woby::comparisonSettings(restored).enabled);
 }
 
+TEST_CASE("single object comparison is ready for inspection and survives save load")
+{
+    auto state = stateWithFiles(1);
+    woby::selectSceneObject(state, state.files[0].objectId);
+    REQUIRE(woby::canCompareSceneSelection(state));
+    REQUIRE(woby::compareSceneSelection(state));
+    CHECK(state.propertiesPaneVisible);
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{state.activeComparisonId});
+    CHECK(woby::canInspectComparison(state));
+    CHECK_FALSE(woby::canCompareGroups(state));
+    CHECK(woby::comparisonGeometrySignature(state) != 0);
+    CHECK(woby::comparisonDisplayBounds(state, state.activeComparisonId).has_value());
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 1);
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == 0);
+    CHECK(woby::effectiveComparisonSettings(state).mode == woby::ComparisonMode::original);
+    const auto document = woby::createSceneDocument(state);
+    const auto path = std::filesystem::temp_directory_path() / "woby-single-comparison.woby";
+    woby::writeSceneDocument(path, document);
+    const auto loaded = woby::prepareSceneReplacement(state, state.files, woby::readSceneDocument(path));
+    std::filesystem::remove(path);
+    CHECK(woby::canInspectComparison(loaded));
+    CHECK(woby::effectiveComparisonSettings(loaded).mode == woby::ComparisonMode::original);
+    CHECK(woby::comparisonGeometrySignature(loaded) != 0);
+    CHECK(woby::comparisonDisplayBounds(loaded, loaded.activeComparisonId).has_value());
+    CHECK(woby::createSceneDocument(state) == document);
+}
+
+TEST_CASE("single input comparison follows membership changes and preserves the requested mode")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    CHECK_FALSE(woby::canInspectComparison(state));
+    CHECK(woby::comparisonGeometrySignature(state) == 0);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true);
+    const auto single = woby::comparisonGeometrySignature(state);
+    REQUIRE(single != 0);
+    for (const auto mode : {woby::ComparisonMode::distance, woby::ComparisonMode::original,
+            woby::ComparisonMode::repaired, woby::ComparisonMode::overlay}) {
+        auto settings = woby::comparisonSettings(state);
+        settings.mode = mode;
+        woby::setComparisonSettings(state, settings);
+        CHECK(woby::effectiveComparisonSettings(state).mode == woby::ComparisonMode::original);
+        woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true);
+        CHECK(woby::canCompareGroups(state));
+        CHECK(woby::effectiveComparisonSettings(state).mode == mode);
+        CHECK(woby::comparisonGeometrySignature(state) != single);
+        woby::clearComparisonGroup(state, woby::ComparisonSide::b);
+        CHECK(woby::comparisonGeometrySignature(state) == single);
+        CHECK(woby::comparisonSettings(state).mode == mode);
+    }
+    woby::swapComparisonGroups(state);
+    CHECK(woby::canInspectComparison(state));
+    CHECK(woby::effectiveComparisonSettings(state).mode == woby::ComparisonMode::repaired);
+    CHECK(woby::comparisonGeometrySignature(state) != single);
+    const auto beforeMove = woby::comparisonGeometrySignature(state);
+    woby::setComparisonTranslation(state, id, {30, 0, 0});
+    CHECK(woby::comparisonGeometrySignature(state) == beforeMove);
+    REQUIRE(woby::comparisonDisplayBounds(state, id));
+    CHECK(woby::comparisonDisplayBounds(state, id)->min[0] == doctest::Approx(30));
+    woby::findComparison(state)->a.push_back({state.nextObjectId, "Missing source"});
+    CHECK_FALSE(woby::canInspectComparison(state));
+    CHECK(woby::comparisonGeometrySignature(state) == 0);
+    CHECK_FALSE(woby::comparisonDisplayBounds(state, id));
+    woby::removeMissingComparisonParts(state, woby::ComparisonSide::a);
+    CHECK(woby::canInspectComparison(state));
+    woby::clearComparisonGroup(state, woby::ComparisonSide::b);
+    CHECK_FALSE(woby::canInspectComparison(state));
+    CHECK(woby::comparisonGeometrySignature(state) == 0);
+}
+
+TEST_CASE("single input analysis provides topology without distance samples or misleading metrics")
+{
+    auto input = square();
+    input.indices.insert(input.indices.end(), {0, 1, 2, 0, 0, 1});
+    const auto expected = woby::inspectMesh(input);
+    for (const bool useA : {true, false}) {
+        const auto result = useA ? woby::compareMeshes(input, {}) : woby::compareMeshes({}, input);
+        const auto& surface = useA ? result.original : result.repaired;
+        CHECK(surface.source.indices == input.indices);
+        CHECK(surface.diagnostics.boundaryEdges.size() == expected.boundaryEdges.size());
+        CHECK(surface.diagnostics.nonManifoldEdges.size() == expected.nonManifoldEdges.size());
+        CHECK(surface.diagnostics.inconsistentWindingEdges.size() == expected.inconsistentWindingEdges.size());
+        CHECK(surface.diagnostics.duplicateTriangles == 1);
+        CHECK(surface.diagnostics.degenerateTriangles == 1);
+        CHECK(surface.sampled.vertices.empty());
+        CHECK(surface.distances.empty());
+        CHECK(surface.sampleAreas.empty());
+        const auto json = woby::controlComparisonResults(result, .05);
+        const auto& active = json[useA ? "aToB" : "bToA"];
+        CHECK(json[useA ? "bToA" : "aToB"].is_null());
+        CHECK(active["maximum"].is_null());
+        CHECK(active["mean"].is_null());
+        CHECK(active["percentile95"].is_null());
+        CHECK(active["percentAboveTolerance"].is_null());
+        CHECK(active["sampleCount"] == 0);
+        CHECK(active["diagnostics"]["duplicateTriangles"] == 1);
+    }
+    std::stop_source stop;
+    stop.request_stop();
+    CHECK_THROWS_WITH((void)woby::compareMeshes(input, {}, stop.get_token()), "Comparison canceled.");
+    CHECK_THROWS_WITH((void)woby::compareMeshes({}, input, stop.get_token()), "Comparison canceled.");
+    input.indices[0] = 999;
+    CHECK_THROWS((void)woby::compareMeshes(input, {}));
+    CHECK_THROWS((void)woby::compareMeshes({}, input));
+}
+
+TEST_CASE("single input report includes only its surface and edge annotations")
+{
+    auto state = stateWithFiles(1);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::b, true);
+    const auto result = woby::compareMeshes({}, square());
+    const auto lines = woby::comparisonReportLines("Inspection", "", "Model", woby::effectiveComparisonSettings(state), result, {});
+    CHECK(std::find(lines.begin(), lines.end(), "Group B surface") != lines.end());
+    CHECK(std::find(lines.begin(), lines.end(), "Yellow edges: boundary") != lines.end());
+    for (const auto& line : lines) {
+        CHECK_FALSE(line.starts_with("A:"));
+        CHECK(line.find("distance") == std::string::npos);
+        CHECK(line.find("Sample max") == std::string::npos);
+    }
+}
+
 TEST_CASE("quick comparison assigns selected objects in click order and opens the panel")
 {
     auto state = stateWithFiles(2);
@@ -1211,7 +1332,6 @@ TEST_CASE("quick comparison leaves existing memberships and invalid selections u
     };
     unchanged();
     woby::selectSceneObject(state, state.files[0].objectId);
-    unchanged();
     woby::selectSceneObject(state, state.files[1].objectId, true);
     woby::selectSceneObject(state, state.files[2].objectId, true);
     unchanged();

@@ -75,8 +75,13 @@ outside editing and popups it clears the selection.
 ### Comparison objects
 
 Scenes can contain multiple named comparisons alongside the original models.
-Ctrl-click two files, folders, or mesh parts, then right-click and choose
-**Create comparison**. The first selected object supplies **A**, the second **B**.
+Select one file, folder, or mesh part, then right-click and choose **Create comparison**
+to inspect its surface, triangle edges, boundaries, and non-manifold/winding edges.
+Inspection starts with either group populated. Distance measurements and overlay
+become available when both groups have inputs. To compare two objects, Ctrl-click
+them before creating the comparison: the first supplies **A**, the second **B**.
+Clearing one group returns to single-input inspection; adding it back restores
+the saved two-input display mode.
 Use the scene tree's **Comparison membership** context menu to assign sources
 to a named comparison. Group A/B headings show part and triangle counts.
 Right-click preserves the existing selection and includes the clicked object;
@@ -131,8 +136,10 @@ See the [sample walkthrough and prototype limits](assets/samples/mesh-comparison
 
 Comparisons can also be created and edited through the running viewer's local server
 with `woby.exe ctl --instance ID comparison create|set|add|remove|clear|swap|delete`.
-`comparison results COMPARISON_ID --json` waits for measurements in both directions,
-including maximum/mean/P95 distance, area above tolerance, and mesh diagnostics.
+`comparison results COMPARISON_ID --json` waits for mesh diagnostics and, when both
+inputs are populated, measurements in both directions including maximum/mean/P95
+distance and area above tolerance. With one input, unavailable distance metrics
+and the absent side are `null`.
 See the [comparison CLI reference](doc/ctl-commands.md#comparisons) for a complete example.
 
 Run the app:

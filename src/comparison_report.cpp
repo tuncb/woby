@@ -42,10 +42,15 @@ std::vector<std::string> comparisonReportLines(
 {
     std::vector<std::string> lines;
     if (options.comparisonName) { lines.push_back(name); }
-    if (options.sources) { lines.push_back("A: " + a); lines.push_back("B: " + b); }
+    if (options.sources) {
+        if (!a.empty()) { lines.push_back("A: " + a); }
+        if (!b.empty()) { lines.push_back("B: " + b); }
+    }
     if (settings.mode != ComparisonMode::distance) {
         lines.push_back(settings.mode == ComparisonMode::overlay ? "Overlay: A blue wireframe; B gray surface" :
             settings.mode == ComparisonMode::original ? "Group A surface" : "Group B surface");
+        if (settings.showBoundaries) { lines.push_back("Yellow edges: boundary"); }
+        if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
         return lines;
     }
     const auto& surface = settings.distanceOnOriginal ? result.original : result.repaired;

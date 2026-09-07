@@ -1,6 +1,6 @@
 # CTL command reference
 
-Updated 2026-09-06. All commands in the current-command tables below are implemented
+Updated 2026-09-07. All commands in the current-command tables below are implemented
 in the CLI and local JSON-RPC API. Comparison controls and measurements are available
 alongside the existing scene controls, lifecycle, capture, and recovery
 commands. See [automation.md](automation.md) for transport, ordering, retries, and
@@ -59,9 +59,9 @@ settings; `scene info` includes `comparisonCount`. Comparison IDs support
 and mesh render-mode commands do not apply to comparison results. The commands
 below create comparisons and edit their inputs and measurement settings.
 
-Screenshot capture waits for every visible comparison to finish. Incomplete
-inputs or failed computations fail capture; hide or repair the affected object
-before retrying.
+Screenshot capture waits for every visible comparison to finish, including
+single-input inspections. Empty comparisons, missing references, or failed
+computations fail capture; hide or repair the affected object before retrying.
 
 ## Comparisons
 
@@ -74,9 +74,12 @@ before retrying.
 | `comparison remove COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.remove` | Remove the input's current triangular parts from the selected side. |
 | `comparison clear COMPARISON_ID --side a\|b` | `comparison.clear` | Clear the entire side, including missing references. |
 | `comparison swap COMPARISON_ID` | `comparison.swap` | Swap the A/B input lists. |
-| `comparison results COMPARISON_ID` | `comparison.results` | Wait for a fresh measurement and return both directed distance summaries and diagnostics. Works for hidden comparisons and in every display mode. |
+| `comparison results COMPARISON_ID` | `comparison.results` | Wait for fresh diagnostics and, with two inputs, both directed distance summaries. Works for hidden comparisons and in every display mode. |
 
 Use `objects`/`object` to discover comparisons and inspect their settings and inputs.
+One populated side is sufficient for surface and edge inspection. Distance and
+overlay modes require both sides; with one side the viewer displays that surface
+and preserves the requested mode for when the second input is added.
 Inputs are file, folder, or mesh group IDs; files/folders expand to current triangular
 parts, just as in the UI. Add multiple inputs by repeating `comparison add` calls.
 An input may belong to both sides or multiple comparisons. Empty/nontriangular inputs
@@ -93,8 +96,9 @@ Measurements use an immutable snapshot of the transformed A/B geometry and toler
 when the command starts. Ordinary source visibility and the comparison's display
 offset do not affect distances. A background CPU calculation keeps the viewer responsive;
 the command retains its FIFO slot until it finishes. Later CLI edits execute afterward.
-Manual UI edits during computation do not change the snapshot. Incomplete inputs fail
-with `-32602`; loading/capture/dialog activity rejects measurement with `-32014`.
+Manual UI edits during computation do not change the snapshot. Empty comparisons
+or missing references fail with `-32602`; loading/capture/dialog activity rejects
+measurement with `-32014`.
 Computation failures return a command error, never partial metrics.
 
 Results include `target`, `tolerance`, `aToB`, and `bToA`. Each direction contains
@@ -105,6 +109,11 @@ Distances are unsigned, in model units, using the same four centroid samples per
 triangle as the UI. Mean, P95, and percentage are weighted by surface area; maximum
 is the sample maximum, not an exact Hausdorff distance. Diagnostics describe the
 source side of each direction.
+
+For single-input inspection, the absent direction is `null`. The populated direction
+contains triangle and diagnostic counts, `sampleCount: 0`, and `null` for
+`maximum`, `mean`, `percentile95`, and `percentAboveTolerance` because no distance
+measurement is available.
 
 After a client timeout, an already running measurement continues and its result can
 be recovered with `command` or the same request key. Reusing a measurement request key

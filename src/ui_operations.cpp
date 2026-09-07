@@ -272,9 +272,26 @@ bool canCompareGroups(const UiState& state, SceneObjectId id)
 
 bool canCompareSceneSelection(const UiState& state)
 {
-    return state.selectedSceneObjects.size() == 2 && state.selectedSceneObjects[0] != state.selectedSceneObjects[1]
-        && !comparisonObjectParts(state, {state.selectedSceneObjects[0]}).empty()
-        && !comparisonObjectParts(state, {state.selectedSceneObjects[1]}).empty();
+    const auto& selection = state.selectedSceneObjects;
+    return (selection.size() == 1 || (selection.size() == 2 && selection[0] != selection[1]))
+        && std::all_of(selection.begin(), selection.end(), [&](SceneObjectId object) {
+            return !comparisonObjectParts(state, {object}).empty();
+        });
+}
+
+bool canInspectComparison(const UiState& state, SceneObjectId id)
+{
+    return (comparisonPartCount(state, ComparisonSide::a, id) != 0
+        || comparisonPartCount(state, ComparisonSide::b, id) != 0) && missingComparisonPartCount(state, id) == 0;
+}
+
+ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id)
+{
+    auto settings = comparisonSettings(state, id);
+    const auto* comparison = findComparison(state, id);
+    if (comparison && comparison->b.empty() && !comparison->a.empty()) { settings.mode = ComparisonMode::original; }
+    if (comparison && comparison->a.empty() && !comparison->b.empty()) { settings.mode = ComparisonMode::repaired; }
+    return settings;
 }
 
 bool compareSceneSelection(UiState& state)
@@ -283,7 +300,7 @@ bool compareSceneSelection(UiState& state)
     const auto selection = state.selectedSceneObjects;
     const auto id = createComparison(state);
     setComparisonObjects(state, {selection[0]}, ComparisonSide::a, true, id);
-    setComparisonObjects(state, {selection[1]}, ComparisonSide::b, true, id);
+    if (selection.size() == 2) { setComparisonObjects(state, {selection[1]}, ComparisonSide::b, true, id); }
     frameCameraToScene(state);
     return true;
 }

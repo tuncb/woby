@@ -51,6 +51,7 @@ struct MeshComparison
 [[nodiscard]] double pointTriangleDistance(const std::array<float, 3> &point, const std::array<float, 3> &a,
                                            const std::array<float, 3> &b, const std::array<float, 3> &c);
 [[nodiscard]] MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop = {});
+// One empty mesh requests topology inspection only; no distance samples are produced.
 [[nodiscard]] MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop = {});
 [[nodiscard]] double surfacePercentAboveTolerance(const SurfaceComparison &surface, double tolerance);
 

@@ -94,7 +94,9 @@ def main():
             assert ctl("comparison", "results", third, "--request-key", "metrics-before") == metrics
             ctl("transform", "reset", files[1]["id"])
             ctl("comparison", "remove", third, "--side", "a", "--object", files[0]["id"])
-            ctl("comparison", "results", third, success=False)
+            single = ctl("comparison", "results", third)
+            assert single["aToB"] is None and single["bToA"]["maximum"] is None
+            assert single["bToA"]["triangleCount"] == 12
             ctl("comparison", "swap", third)
             assert ctl("object", third)["object"]["bPartCount"] == 0
             ctl("comparison", "add", third, "--side", "b", "--object", files[0]["id"])
@@ -158,7 +160,40 @@ def main():
             assert restored_settings["mode"] == "overlay" and not restored_settings["visible"]
             assert restored_settings["showEdges"] and not restored_settings["showBoundaries"]
             ctl("comparison", "results", restored["id"])
-            print("Comparison viewer smoke test passed: CLI creation, settings, membership, metrics, retries, deletion, rendering, persistence, and invalidation.")
+            # A single open mesh renders immediately, including boundary diagnostics,
+            # even when the saved mode normally requires both inputs.
+            open_mesh = (root / "cube-0.obj").read_text(encoding="utf-8").splitlines()
+            (root / "open.obj").write_text("\n".join(open_mesh[:-2]) + "\n", encoding="utf-8")
+            single_scene = root / "single.woby"
+            single_scene.write_text('version = 5\nshow_grid = false\nshow_origin = false\n'
+                                    '[[files]]\npath = "open.obj"\n', encoding="utf-8")
+            ctl("scene", "open", single_scene)
+            single_source = next(item for item in ctl("objects")["objects"] if item["kind"] == "file")
+            inspected = ctl("comparison", "create", "--name", "Single mesh", "--a", single_source["id"])
+            single_id = inspected["target"]
+            assert inspected["object"]["valid"] and inspected["object"]["bPartCount"] == 0
+            ctl("visibility", "set", single_source["id"], "--visible", "false")
+            ctl("comparison", "set", single_id, "--show-edges", "true")
+            ctl("camera", "frame")
+            ctl("screenshot", root / "single-a.png")
+            metrics = ctl("comparison", "results", single_id)
+            assert metrics["aToB"]["diagnostics"]["boundaryEdges"] == 4
+            assert metrics["aToB"]["sampleCount"] == 0 and metrics["aToB"]["maximum"] is None
+            assert metrics["bToA"] is None
+            ctl("comparison", "swap", single_id)
+            ctl("comparison", "set", single_id, "--mode", "overlay")
+            ctl("screenshot", root / "single-b.png")
+            metrics = ctl("comparison", "results", single_id)
+            assert metrics["aToB"] is None and metrics["bToA"]["diagnostics"]["boundaryEdges"] == 4
+            ctl("scene", "save-as", root / "single-saved.woby", "--overwrite")
+            ctl("scene", "open", root / "single-saved.woby")
+            single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "comparison")
+            assert ctl("object", single_id)["object"]["valid"]
+            ctl("screenshot", root / "single-reopened.png")
+            ctl("comparison", "clear", single_id, "--side", "b")
+            ctl("comparison", "results", single_id, success=False)
+            ctl("screenshot", root / "empty.png", success=False)
+            print("Comparison viewer smoke test passed: single-input inspection, CLI creation, settings, membership, metrics, retries, deletion, rendering, persistence, and invalidation.")
         finally:
             if viewer.poll() is None:
                 try:

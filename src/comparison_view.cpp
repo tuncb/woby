@@ -60,6 +60,7 @@ bgfx::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
 }
 void uploadSurface(ComparisonGpuSurface &gpu, const SurfaceComparison &surface)
 {
+    if (surface.source.indices.empty()) { return; }
     // Validate every upload before allocating CPU staging memory or GPU handles.
     const auto vertexBytes = comparisonBufferBytes(surface.source.vertices.size(), sizeof(Vertex));
     const auto indexBytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(uint32_t));
@@ -90,10 +91,12 @@ void uploadSurface(ComparisonGpuSurface &gpu, const SurfaceComparison &surface)
     gpu.lines = bgfx::createIndexBuffer(
         bgfx::copy(lines.data(), lineBytes), BGFX_BUFFER_INDEX32);
     const auto &samples = surface.sampled.vertices;
-    gpu.samples = bgfx::createVertexBuffer(
-        bgfx::copy(samples.data(), sampleBytes), meshVertexLayout());
+    if (!samples.empty()) {
+        gpu.samples = bgfx::createVertexBuffer(
+            bgfx::copy(samples.data(), sampleBytes), meshVertexLayout());
+    }
     if (!bgfx::isValid(gpu.vertices) || !bgfx::isValid(gpu.triangles) || !bgfx::isValid(gpu.lines) ||
-        !bgfx::isValid(gpu.samples))
+        (!samples.empty() && !bgfx::isValid(gpu.samples)))
     {
         throw std::runtime_error("Cannot allocate comparison surface buffers.");
     }
@@ -174,7 +177,9 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
         return;
     }
     const auto current = comparisonInputSummary(state, side, id);
-    if (!current.issue.empty()) { ImGui::TextWrapped("%s", current.issue.c_str()); }
+    if (members.empty() && canInspectComparison(state, id)) {
+        ImGui::TextWrapped("Optional: add a second input for surface distance and overlay.");
+    } else if (!current.issue.empty()) { ImGui::TextWrapped("%s", current.issue.c_str()); }
     if (members.size() > current.partCount && ImGui::SmallButton("Remove missing references")) {
         removeMissingComparisonParts(state, side, id);
     }
@@ -206,15 +211,13 @@ void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges, SceneO
     frameComparisonBounds(state, bounds);
 }
 void diagnosticRow(UiState &state, const char *name, const std::vector<DiagnosticEdge> &original,
-                   const std::vector<DiagnosticEdge> &repaired, bool useOriginal, SceneObjectId id)
+                   const std::vector<DiagnosticEdge> &repaired, bool useOriginal, bool hasA, bool hasB, SceneObjectId id)
 {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(name);
-    ImGui::TableNextColumn();
-    ImGui::Text("%zu", original.size());
-    ImGui::TableNextColumn();
-    ImGui::Text("%zu", repaired.size());
+    if (hasA) { ImGui::TableNextColumn(); ImGui::Text("%zu", original.size()); }
+    if (hasB) { ImGui::TableNextColumn(); ImGui::Text("%zu", repaired.size()); }
     ImGui::TableNextColumn();
     const auto &active = useOriginal ? original : repaired;
     ImGui::PushID(name);
@@ -322,8 +325,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, const UiState& s
     runtime.error.clear();
     try
     {
-        auto original = comparisonWorldMesh(state, ComparisonSide::a, id);
-        auto repaired = comparisonWorldMesh(state, ComparisonSide::b, id);
+        auto original = comparisonPartCount(state, ComparisonSide::a, id) ? comparisonWorldMesh(state, ComparisonSide::a, id) : Mesh{};
+        auto repaired = comparisonPartCount(state, ComparisonSide::b, id) ? comparisonWorldMesh(state, ComparisonSide::b, id) : Mesh{};
         runtime.stop = std::stop_source{};
         const auto stop = runtime.stop.get_token();
         runtime.worker = std::async(std::launch::async, [original = std::move(original), repaired = std::move(repaired),
@@ -377,7 +380,7 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
     bool ready = true;
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled) { continue; }
-        if (!canCompareGroups(state, comparison.objectId)) {
+        if (!canInspectComparison(state, comparison.objectId)) {
             std::string issues;
             for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
                 const auto input = comparisonInputSummary(state, side, comparison.objectId);
@@ -427,18 +430,24 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Swap exchanges assignments; measurement direction stays the same."); }
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
-    const bool valid = canCompareGroups(state, id);
+    const bool valid = canInspectComparison(state, id);
+    const bool hasA = !comparison->a.empty(), hasB = !comparison->b.empty();
+    const bool both = hasA && hasB;
     {
         ImGui::TextWrapped(
             "Combined surfaces at scene positions, in model units. Hidden members are included. Other scene objects retain their own appearance.");
         const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay"};
-        int mode = static_cast<int>(settings.mode);
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::Combo("##comparison_mode", &mode, modes, 4))
-        {
-            settings.mode = static_cast<ComparisonMode>(mode);
+        if (both) {
+            int mode = static_cast<int>(settings.mode);
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::Combo("##comparison_mode", &mode, modes, 4)) {
+                settings.mode = static_cast<ComparisonMode>(mode);
+            }
+        } else if (valid) {
+            ImGui::TextUnformatted(hasA ? "Group A surface" : "Group B surface");
+            ImGui::TextWrapped("Single-input inspection. Add another input for surface distance and overlay.");
         }
-        if (settings.mode == ComparisonMode::distance)
+        if (both && settings.mode == ComparisonMode::distance)
         {
             ImGui::TextUnformatted("Measurement direction");
             if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
@@ -468,7 +477,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             }
             if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Label only; does not convert coordinates. Blank = model units."); }
         }
-        if (settings.mode == ComparisonMode::overlay)
+        if (both && settings.mode == ComparisonMode::overlay)
         {
             ImGui::TextColored(ImVec4(.3f, .75f, 1, 1), "Blue: group A wireframe (X-ray)");
             ImGui::TextWrapped("Solid gray: group B surface");
@@ -482,7 +491,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     {
         setComparisonSettings(state, settings, id);
     }
-    if (comparisonSettings(state, id).mode == ComparisonMode::distance) {
+    if (both && comparisonSettings(state, id).mode == ComparisonMode::distance) {
         const auto currentSettings = comparisonSettings(state, id);
         ImGui::Text("Distance (%s)", comparisonUnits(currentSettings).c_str());
         const float legendHeight = drawComparisonLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
@@ -513,9 +522,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         }
         return;
     }
-    const bool useOriginal = originalActive(comparisonSettings(state, id));
+    const bool useOriginal = originalActive(effectiveComparisonSettings(state, id));
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
-    if (comparisonSettings(state, id).mode == ComparisonMode::distance)
+    if (both && comparisonSettings(state, id).mode == ComparisonMode::distance)
     {
         if (surface.maximum > comparisonSettings(state, id).colorRange) {
             ImGui::PushTextWrapPos();
@@ -531,20 +540,25 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     const auto &a = runtime.result.original.diagnostics;
     const auto &b = runtime.result.repaired.diagnostics;
-    if (ImGui::BeginTable("Comparison diagnostics", 4, ImGuiTableFlags_SizingStretchProp))
+    if (ImGui::BeginTable("Comparison diagnostics", both ? 4 : 3, ImGuiTableFlags_SizingStretchProp))
     {
         ImGui::TableSetupColumn("Edges");
-        ImGui::TableSetupColumn("A");
-        ImGui::TableSetupColumn("B");
+        if (hasA) { ImGui::TableSetupColumn("A"); }
+        if (hasB) { ImGui::TableSetupColumn("B"); }
         ImGui::TableSetupColumn("Focus");
         ImGui::TableHeadersRow();
-        diagnosticRow(state, "Boundary", a.boundaryEdges, b.boundaryEdges, useOriginal, id);
-        diagnosticRow(state, "Non-manifold", a.nonManifoldEdges, b.nonManifoldEdges, useOriginal, id);
-        diagnosticRow(state, "Winding", a.inconsistentWindingEdges, b.inconsistentWindingEdges, useOriginal, id);
+        diagnosticRow(state, "Boundary", a.boundaryEdges, b.boundaryEdges, useOriginal, hasA, hasB, id);
+        diagnosticRow(state, "Non-manifold", a.nonManifoldEdges, b.nonManifoldEdges, useOriginal, hasA, hasB, id);
+        diagnosticRow(state, "Winding", a.inconsistentWindingEdges, b.inconsistentWindingEdges, useOriginal, hasA, hasB, id);
         ImGui::EndTable();
     }
-    ImGui::TextWrapped("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
-    ImGui::TextWrapped("Duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
+    if (both) {
+        ImGui::TextWrapped("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
+        ImGui::TextWrapped("Duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
+    } else {
+        ImGui::TextWrapped("Degenerate triangles: %zu", surface.diagnostics.degenerateTriangles);
+        ImGui::TextWrapped("Duplicate triangles: %zu", surface.diagnostics.duplicateTriangles);
+    }
     ImGui::TextWrapped(
         "Diagnostics describe combined surfaces; coincident edges across parts are matched. Open boundaries may be intentional. Self-intersections are not checked.");
 }
@@ -566,10 +580,9 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
 
 static void submitComparisonScene(bgfx::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,
                            const ComparisonRuntimes& runtimes,
-                           bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform)
+                           bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, const ComparisonSettings& settings)
 {
     if (!comparison.settings.enabled || !runtime.ready) { return; }
-    const auto& settings = comparison.settings;
     const bool useOriginal = originalActive(settings);
     const auto &gpu = useOriginal ? runtime.originalGpu : runtime.repairedGpu;
     const bool heatmap = settings.mode == ComparisonMode::distance;
@@ -613,7 +626,8 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
     for (const auto& comparison : state.comparisons) {
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it != runtimes.objects.end()) {
-            submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform);
+            submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform,
+                effectiveComparisonSettings(state, comparison.objectId));
         }
     }
 }
@@ -651,7 +665,7 @@ void drawComparisonObjects(UiState& state)
         bool changed = false;
         if (ImGui::BeginPopupContextItem("comparison_object")) {
             if (ImGui::MenuItem("Properties")) { selectSceneObject(state, id); }
-            if (ImGui::MenuItem("Frame result", nullptr, false, canCompareGroups(state, id))) { frameComparison(state, id); }
+            if (ImGui::MenuItem("Frame result", nullptr, false, canInspectComparison(state, id))) { frameComparison(state, id); }
             if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
             if (ImGui::MenuItem("Delete comparison")) { removeComparison(state, id); changed = true; }
             ImGui::EndPopup();
@@ -663,7 +677,7 @@ void drawComparisonObjects(UiState& state)
                 changed = true;
             }
         }
-        if (!changed && !canCompareGroups(state, id)) {
+        if (!changed && !canInspectComparison(state, id)) {
             for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
                 const auto summary = comparisonInputSummary(state, side, id);
                 if (summary.issue.empty()) { continue; }

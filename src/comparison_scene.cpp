@@ -210,7 +210,7 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
 
 uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
 {
-    if (!canCompareGroups(state, id)) { return 0; }
+    if (!canInspectComparison(state, id)) { return 0; }
     uint64_t seed = 17;
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
@@ -230,7 +230,6 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
             bx::mtxMul(model, parent, local);
             for (const auto value : model) { hashFloat(seed, value); }
         });
-        if (count == 0) { return 0; }
         hashCombine(seed, count);
     }
     return seed;
@@ -238,7 +237,7 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
 std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);
-    if (!comparison || !canCompareGroups(state, id)) { return std::nullopt; }
+    if (!comparison || !canInspectComparison(state, id)) { return std::nullopt; }
     std::vector<Vertex> corners;
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {

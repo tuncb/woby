@@ -2919,11 +2919,11 @@ int main(int argc, char** argv)
                             if (payload.action == A::comparisonResults) {
                                 const auto* source = woby::findComparison(ui, payload.objectId);
                                 if (!source) { throw std::invalid_argument("comparison.results requires a comparison ID."); }
-                                if (!woby::canCompareGroups(ui, payload.objectId)) {
-                                    throw std::invalid_argument("Comparison inputs are incomplete; each side needs mesh parts and no missing references.");
+                                if (!woby::canInspectComparison(ui, payload.objectId)) {
+                                    throw std::invalid_argument("Comparison needs at least one populated input and no missing references.");
                                 }
-                                auto a = woby::comparisonWorldMesh(ui, woby::ComparisonSide::a, payload.objectId);
-                                auto b = woby::comparisonWorldMesh(ui, woby::ComparisonSide::b, payload.objectId);
+                                auto a = source->a.empty() ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::a, payload.objectId);
+                                auto b = source->b.empty() ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::b, payload.objectId);
                                 AutomationComparisonRuntime pending;
                                 pending.id = command->id;
                                 pending.target = payload.target;
