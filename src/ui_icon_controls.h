@@ -16,6 +16,7 @@ bool drawTriStateVisibilityButton(const char* id, const char* label,
     size_t visibleCount, size_t totalCount);
 bool drawVisibilityButton(const char* id, bool visible, const char* itemName);
 bool drawRemoveButton(const char* id, const char* tooltip);
+bool drawResetIconButton(const char* id, const char* tooltip);
 bool drawSceneItemButton(const char* label, float width, bool selected);
 void drawSceneItemOutline();
 

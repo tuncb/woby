@@ -215,6 +215,15 @@ bool drawRemoveButton(const char* id, const char* tooltip)
     return drawRenderModeIconButton(id, "\xef\x80\x8d", tooltip, RenderModeState::off, false);
 }
 
+bool drawResetIconButton(const char* id, const char* tooltip)
+{
+    const std::string label = std::string("\xef\x83\xa2##") + id;
+    const float size = ImGui::GetFrameHeight();
+    const bool pressed = ImGui::Button(label.c_str(), ImVec2(size, size));
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s", tooltip); }
+    return pressed;
+}
+
 bool drawSceneItemButton(const char* label, float width, bool selected)
 {
     ImGui::PushStyleColor(ImGuiCol_Button,
