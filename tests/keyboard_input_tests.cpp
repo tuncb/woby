@@ -56,10 +56,18 @@ struct KeyboardFixture {
 
 TEST_CASE("scene history shortcuts allow property popups but respect active text and busy state")
 {
+    bool macOSBehaviors = false;
+    SUBCASE("Windows and Linux modifiers") { macOSBehaviors = false; }
+    SUBCASE("macOS modifiers") { macOSBehaviors = true; }
+
     for (const bool redo : {false, true}) {
         for (const bool shift : {false, true}) {
+            CAPTURE(macOSBehaviors);
+            CAPTURE(redo);
+            CAPTURE(shift);
             KeyboardFixture fixture;
             auto& io = ImGui::GetIO();
+            io.ConfigMacOSXBehaviors = macOSBehaviors;
             woby::SceneHistoryCommand result = woby::SceneHistoryCommand::none;
             bool blocked = false;
             bool textInput = false;
@@ -80,7 +88,8 @@ TEST_CASE("scene history shortcuts allow property popups but respect active text
             frame(); // Register global shortcut routing before key presses.
             const auto key = redo && !shift ? ImGuiKey_Y : ImGuiKey_Z;
             const auto press = [&]() {
-                io.AddKeyEvent(ImGuiMod_Ctrl, true);
+                // ImGui maps physical Command input to logical Ctrl on macOS.
+                io.AddKeyEvent(macOSBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl, true);
                 io.AddKeyEvent(ImGuiMod_Shift, redo && shift);
                 io.AddKeyEvent(key, true);
                 frame();
