@@ -11,7 +11,7 @@
 namespace woby {
 
 enum class ControlAction {
-    status, capabilities, sceneInfo, sceneTree, sceneBounds,
+    status, capabilities, sceneInfo, sceneTree, sceneBounds, sceneUndo, sceneRedo,
     visibility, render, transformGet, transformSet, transformReset,
     opacity, colorSet, colorReset, vertexSize, grid, origin, upAxis,
     cameraGet, cameraFrame, cameraOrbit, cameraPan, cameraRoll, cameraDolly, cameraMove,

@@ -416,7 +416,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         return {{"pane", {{"visible", state.viewerPaneVisible}, {"width", state.viewerPaneWidth}}}};
     case A::status: case A::capabilities: case A::modelAdd: case A::modelRemove: case A::folderAdd:
     case A::importersList: case A::importersAdd: case A::importersScan: case A::importersForget: case A::performance:
-    case A::comparisonResults:
+    case A::comparisonResults: case A::sceneUndo: case A::sceneRedo:
         throw std::invalid_argument("Command requires a runtime adapter.");
     case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:
     case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap:

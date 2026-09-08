@@ -50,6 +50,7 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
     const auto path = std::filesystem::current_path().string();
     const std::vector<std::vector<std::string>> commands = {
         {"status"}, {"capabilities"}, {"scene", "info"}, {"scene", "tree"}, {"scene", "bounds"},
+        {"scene", "undo"}, {"scene", "redo"},
         {"visibility", "set", "scene", "--visible", "false"},
         {"render", "set", "scene", "--solid", "false", "--triangles", "true", "--vertices", "false"},
         {"transform", "get", "object"}, {"transform", "reset", "object"},
@@ -105,7 +106,8 @@ TEST_CASE("ctl rejects ambiguous incomplete conflicting and nonfinite edit param
         {"comparison", "set", "object", "--show-edges", "yes"}, {"comparison", "create", "--name", ""},
         {"comparison", "add", "object", "--side", "a"}, {"comparison", "clear", "object", "--side", "c"},
         {"comparison", "delete", "scene"}, {"comparison", "results", "object", "--mode", "a"},
-        {"status", "--remember"}, {"stats", "extra"}}) {
+        {"status", "--remember"}, {"stats", "extra"},
+        {"scene", "undo", "extra"}, {"scene", "redo", "--steps", "2"}, {"scene", "undo", "--on-dirty", "discard"}}) {
         CAPTURE(words);
         CHECK_THROWS(parse(words));
     }
@@ -113,6 +115,26 @@ TEST_CASE("ctl rejects ambiguous incomplete conflicting and nonfinite edit param
     CHECK_THROWS(woby::parseControlOperation(*opacity, {{"target", "object"}, {"value", "0.5"}}));
     CHECK_THROWS(woby::parseControlOperation(*opacity, {{"target", "object"}, {"value", 0.5}, {"unknown", true}}));
     CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("model.add"), {{"path", "relative.obj"}}));
+}
+
+TEST_CASE("ctl history triggers are parameterless mutating runtime commands")
+{
+    for (const auto action : {woby::ControlAction::sceneUndo, woby::ControlAction::sceneRedo}) {
+        const auto& method = woby::controlMethod(action);
+        CHECK(method.mutating);
+        CHECK(method.positional.empty());
+        CHECK(method.options.empty());
+        const auto command = woby::parseControlOperation(method, Json::object());
+        CHECK(command.action == action);
+        CHECK(woby::controlOperationParams(command).empty());
+        CHECK_THROWS(woby::parseControlOperation(method, {{"target", "scene"}}));
+        CHECK_THROWS(woby::parseControlOperation(method, {{"steps", 2}}));
+        auto state = scene();
+        const auto clean = woby::createSceneDocument(state);
+        CHECK_THROWS_WITH(woby::applyControlSceneOperation(state, clean, command, formatId, 200, 800),
+            "Command requires a runtime adapter.");
+        CHECK(woby::createSceneDocument(state) == clean);
+    }
 }
 
 TEST_CASE("ctl scene edits apply clamps refresh bounds and preserve save mapping")

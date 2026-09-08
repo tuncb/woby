@@ -2988,6 +2988,23 @@ int main(int argc, char** argv)
 
             woby::recalculateSceneBounds(ui);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
+            // Both UI and CTL use the same restoration and failure-consumption path.
+            const auto runSceneHistory = [&](bool redo) {
+                woby::finishSceneHistoryInteraction(sceneHistory);
+                try {
+                    const bool applied = applySceneHistory(sceneHistory, ui, cleanSceneDocument, runtimes, layout, pointLayout, redo);
+                    if (applied) {
+                        setToastMessage(toast, redo ? "Redid scene edit" : "Undid scene edit");
+                        updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
+                    }
+                    return applied;
+                } catch (const std::exception& error) {
+                    woby::skipSceneHistoryStep(sceneHistory, ui, redo);
+                    const auto message = std::string(redo ? "Redo skipped: " : "Undo skipped: ") + error.what();
+                    setToastMessage(toast, message);
+                    throw std::runtime_error(message);
+                }
+            };
             // UI and loading commits have finished. No logical edits occur between
             // executing commands here and submitting their screenshots below.
             if (automationComparison && automationComparison->result.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
@@ -3023,10 +3040,12 @@ int main(int argc, char** argv)
                         } else if constexpr (std::is_same_v<Command, woby::ControlOperation>) {
                             using A = woby::ControlAction;
                             using Json = nlohmann::json;
+                            const bool historyOperation = payload.action == A::sceneUndo || payload.action == A::sceneRedo;
                             const bool busy = backgroundLoad.active || gpuFinalize.active
                                 || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
-                                || sceneFileDialogIsOpen(sceneFileDialogState) || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+                                || sceneFileDialogIsOpen(sceneFileDialogState) || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState)
+                                || (historyOperation && (ImGui::IsAnyItemActive() || ImGui::GetIO().WantTextInput));
                             for (const auto id : {payload.objectId, payload.aId, payload.bId, payload.memberId}) {
                                 if (id != woby::invalidSceneObjectId && !woby::findSceneObject(ui, id)) {
                                     woby::completeAutomationCommand(*automation, command->id,
@@ -3036,11 +3055,15 @@ int main(int argc, char** argv)
                             }
                             if (busy && (woby::controlMethod(payload.action).mutating || payload.action == A::comparisonResults)) {
                                 woby::completeAutomationCommand(*automation, command->id,
-                                    woby::AutomationCommandError{"Scene is busy loading, capturing, or displaying a dialog.", -32014});
+                                    woby::AutomationCommandError{"Scene is busy loading, capturing, displaying a dialog, or editing a widget.", -32014});
                                 return;
                             }
                             Json result;
-                            if (payload.action == A::comparisonResults) {
+                            if (historyOperation) {
+                                const bool redo = payload.action == A::sceneRedo;
+                                const bool applied = runSceneHistory(redo);
+                                result = {{"action", redo ? "redo" : "undo"}, {"applied", applied}, {"dirty", ui.isDirty}};
+                            } else if (payload.action == A::comparisonResults) {
                                 const auto* source = woby::findComparison(ui, payload.objectId);
                                 if (!source) { throw std::invalid_argument("comparison.results requires a comparison ID."); }
                                 if (!woby::canInspectComparison(ui, payload.objectId)) {
@@ -3178,15 +3201,9 @@ int main(int argc, char** argv)
             if (historyCommand != woby::SceneHistoryCommand::none && !fileActionsDisabled()
                 && !sceneScreenshot.captureRequested && !sceneScreenshot.readbackPending) {
                 try {
-                    const bool redo = historyCommand == woby::SceneHistoryCommand::redo;
-                    if (applySceneHistory(sceneHistory, ui, cleanSceneDocument, runtimes, layout, pointLayout, redo)) {
-                        setToastMessage(toast, redo ? "Redid scene edit" : "Undid scene edit");
-                        updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
-                    }
-                } catch (const std::exception& error) {
-                    const bool redo = historyCommand == woby::SceneHistoryCommand::redo;
-                    woby::skipSceneHistoryStep(sceneHistory, ui, redo);
-                    setToastMessage(toast, std::string(redo ? "Redo skipped: " : "Undo skipped: ") + error.what());
+                    (void)runSceneHistory(historyCommand == woby::SceneHistoryCommand::redo);
+                } catch (const std::exception&) {
+                    // The shared adapter already consumed the action and displayed the error.
                 }
             }
             if (!fileActionsDisabled() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {

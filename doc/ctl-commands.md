@@ -1,6 +1,6 @@
 # CTL command reference
 
-Updated 2026-09-07. All commands in the current-command tables below are implemented
+Updated 2026-09-08. All commands in the current-command tables below are implemented
 in the CLI and local JSON-RPC API. Comparison controls and measurements are available
 alongside the existing scene controls, lifecycle, capture, and recovery
 commands. See [automation.md](automation.md) for transport, ordering, retries, and
@@ -29,6 +29,8 @@ be relative; RPC paths must be absolute.
 | `scene info` | `scene.info` | Scene path, dirty state, helper settings, up-axis, point size, mesh counts, render-mode counts, and bounds. |
 | `scene tree` | `scene.tree` | Ordered hierarchy, object IDs, local settings, and effective settings per tree occurrence. |
 | `scene bounds` | `scene.bounds` | Current visible-geometry bounds; default display bounds when no visible geometry remains. |
+| `scene undo` | `scene.undo` | Undo one scene edit. Returns `action`, `applied`, and `dirty`; `applied: false` if no step is available. |
+| `scene redo` | `scene.redo` | Redo one scene edit, with the same result fields as Undo. |
 | `objects` | `objects.list` | Flat identity inventory, including hidden and unreferenced loaded objects. |
 | `object OBJECT_ID` | `object.get` | Identity plus editable settings, counts, importer ID for files, local bounds where available, and effective values per tree occurrence. |
 | `screenshot PATH` | `screenshot.capture` | Current camera/scene/helpers, no controls, 1920 × 1800 PNG. Creates parents and overwrites existing output; completes after GPU readback and PNG writing. |
@@ -43,6 +45,17 @@ be relative; RPC paths must be absolute.
 (default `error`). With `save`, use `--save-path PATH` when needed and `--overwrite`
 to replace that explicit destination. CTL never opens confirmation dialogs.
 See [scene-lifecycle.md](scene-lifecycle.md).
+
+`scene undo` and `scene redo` share the UI's session history and take no operation
+parameters. They accept the common timeout, request-key, wait, and JSON options.
+If loading, GPU finalization, screenshot capture, a dialog, or an active widget edit
+is present when a trigger executes, it returns `-32014` without consuming a history step.
+Earlier CTL commands still finish first under the normal FIFO ordering. A failed
+source restoration returns `-32004` with an `Undo skipped:` or `Redo skipped:`
+message; it consumes that step and leaves the live scene unchanged. Retrying with
+the same request key replays the original result/error without moving history again.
+Each separately admitted trigger applies at most one step, including when several
+commands run in the same frame. Camera movement remains outside history.
 
 `status` and the other new inspection commands participate in the FIFO queue: they
 observe state after earlier commands finish. They do not bypass an active CTL load

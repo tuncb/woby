@@ -20,6 +20,8 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::sceneInfo, "scene.info", "scene info", {}, {}, {}},
         {ControlAction::sceneTree, "scene.tree", "scene tree", {}, {}, {}},
         {ControlAction::sceneBounds, "scene.bounds", "scene bounds", {}, {}, {}},
+        {ControlAction::sceneUndo, "scene.undo", "scene undo", {}, {}, {}, false, true},
+        {ControlAction::sceneRedo, "scene.redo", "scene redo", {}, {}, {}, false, true},
         {ControlAction::visibility, "visibility.set", "visibility set", "target", {"visible"}, {"visible"}, false, true},
         {ControlAction::render, "render.set", "render set", "target", {"solid", "triangles", "vertices"}, {}, true, true},
         {ControlAction::transformGet, "transform.get", "transform get", "target", {}, {}},

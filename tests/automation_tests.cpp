@@ -8,6 +8,7 @@
 #include "ui_operations.h"
 #include "scene_lifecycle.h"
 #include "control_scene.h"
+#include "scene_history.h"
 
 #include <algorithm>
 #include <chrono>
@@ -112,6 +113,59 @@ TEST_CASE("automation instances reserve IDs and publish independent authenticate
     CHECK(woby::automationInstanceId(*reused) == otherId);
 }
 
+TEST_CASE("automation history triggers preserve direction and replay outcomes without another step")
+{
+    for (const bool redo : {false, true}) {
+        for (const bool fail : {false, true}) {
+            INFO("redo: ", redo, "; failure: ", fail);
+            AutomationFixture fixture;
+            woby::setAutomationReady(*fixture.server);
+            woby::UiState state;
+            woby::SceneHistory history;
+            const auto clean = woby::createSceneDocument(state);
+            woby::resetSceneHistory(history, state);
+            woby::setShowGrid(state, true);
+            woby::recordSceneHistory(history, state);
+            if (redo) {
+                auto prepared = woby::prepareSceneHistoryStep(history, state, clean, false);
+                REQUIRE(prepared);
+                woby::commitSceneHistoryStep(history, state, std::move(*prepared), false);
+            }
+            const std::string method = redo ? "scene.redo" : "scene.undo";
+            const Json params = {{"requestKey", "history-step"}};
+            auto pending = std::async(std::launch::async, [&] { return request(fixture.instance, method, params); });
+            const auto command = waitForCommand(*fixture.server);
+            REQUIRE(command);
+            const auto* operation = std::get_if<woby::ControlOperation>(&command->payload);
+            REQUIRE(operation);
+            CHECK(operation->action == (redo ? woby::ControlAction::sceneRedo : woby::ControlAction::sceneUndo));
+            if (fail) {
+                // The runtime reports a consumed restoration failure to the queue.
+                woby::skipSceneHistoryStep(history, state, redo);
+                REQUIRE(completeCommand(*fixture.server, command->id,
+                    woby::AutomationCommandError{"History restoration skipped: source unavailable."}));
+            } else {
+                auto prepared = woby::prepareSceneHistoryStep(history, state, clean, redo);
+                REQUIRE(prepared);
+                woby::commitSceneHistoryStep(history, state, std::move(*prepared), redo);
+                REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{
+                    {{"action", redo ? "redo" : "undo"}, {"applied", true}, {"dirty", state.isDirty}}}));
+                CHECK(state.showGrid == redo);
+                CHECK_FALSE(woby::recordSceneHistory(history, state));
+            }
+            const auto original = pending.get();
+            const auto cursor = history.cursor;
+            const auto revision = state.sceneEditRevision;
+            const auto replay = request(fixture.instance, method, params, "retry");
+            CHECK(replay.at(fail ? "error" : "result") == original.at(fail ? "error" : "result"));
+            CHECK_FALSE(takeCommand(*fixture.server));
+            CHECK(history.cursor == cursor);
+            CHECK(state.sceneEditRevision == revision);
+            CHECK(request(fixture.instance, redo ? "scene.undo" : "scene.redo", params).at("error").at("code") == -32006);
+        }
+    }
+}
+
 TEST_CASE("extended automation rejects invalid input before admission and resolves session targets")
 {
     AutomationFixture fixture;
@@ -120,7 +174,8 @@ TEST_CASE("extended automation rejects invalid input before admission and resolv
         {"grid.set", {{"visible", "false"}}}, {"render.set", {{"target", "scene"}}},
         {"camera.dolly", {{"factor", 0}}}, {"camera.orbit", {{"yawDegrees", 1e100}}},
         {"status", {{"unexpected", 1}}}, {"scene.tree", {{"timeoutSeconds", 0}}},
-        {"model.add", {{"path", "relative.obj"}}}, {"color.reset", {{"target", "broken"}}}}) {
+        {"model.add", {{"path", "relative.obj"}}}, {"color.reset", {{"target", "broken"}}},
+        {"scene.undo", {{"steps", 2}}}, {"scene.redo", {{"target", "scene"}}}}) {
         CAPTURE(method);
         CHECK(request(fixture.instance, method, params)["error"]["code"] == -32602);
         CHECK_FALSE(takeCommand(*fixture.server));

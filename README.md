@@ -42,6 +42,8 @@ names and order still match. If the source is missing, unreadable, or incompatib
 an error is shown and that Undo/Redo action is skipped, leaving the scene unchanged.
 Camera navigation, selection, and app preferences are outside scene history.
 Active text fields use their own text undo.
+From the CLI, use `woby ctl --instance ID scene undo` or
+`woby ctl --instance ID scene redo` to trigger one step in the same history.
 
 Use Add models for OBJ, STL, or installed importer formats, and Open Scene for
 saved `.woby` scenes. The empty viewport offers both actions and accepts dropped

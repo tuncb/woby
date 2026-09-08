@@ -90,6 +90,14 @@ its result. Sequences are decimal strings assigned in increasing order when comm
 queue, independently of the client's JSON-RPC `id`. Strings preserve all 64 bits in
 clients that represent JSON numbers as floating point.
 
+`scene.undo` and `scene.redo` trigger one step of the same history used by the UI.
+They take no operation parameters and support the common `requestKey` and
+`timeoutSeconds` parameters. CLI equivalents are `woby ctl --instance review scene undo`
+and `woby ctl --instance review scene redo`. Success includes `action`, `applied`,
+and `dirty`; an empty history returns `applied: false`. Busy triggers return `-32014`
+without advancing history. Source restoration failures return `-32004`, consume the
+failed step, and preserve the live scene. Keyed retries replay the original outcome.
+
 Commands execute in FIFO admission order, with at most eight admitted commands total
 (active plus queued). A full queue returns `-32002`. Admission order across concurrent
 connections is defined by the returned sequence, not by client send time or response

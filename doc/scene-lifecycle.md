@@ -80,7 +80,9 @@ operations do not notify. Dirty-indicator synchronization does not notify either
 Notified edits are still compared with the current snapshot to discard no-ops;
 snapshots retain complete metadata, and changed drag frames still update it.
 Undo/Redo buttons and Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z restore the previous/next scene
-snapshot. A widget's active interaction, including its release frame, forms one
+snapshot. CTL `scene undo` / `scene redo` (RPC `scene.undo` / `scene.redo`) trigger
+the same restoration path, one step per command, with retry-key deduplication.
+A widget's active interaction, including its release frame, forms one
 action. Saving closes the current action and retains history; dirty state always
 compares restored content with the latest successfully saved document.
 
@@ -114,5 +116,8 @@ Run the normal unit suite with `ctest --preset vs2026-vcpkg`. With a desktop ses
 run `python tests/ctl_lifecycle_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe` for
 real CLI-to-viewer coverage, including screenshots after successful and rejected opens.
 The smoke test starts its own viewer and exits it; its scene/model files are temporary.
+Run `python tests/ctl_history_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe` for
+Undo/Redo triggers, no-op boundaries, retries, camera exclusion, save/open/new,
+branching, source reloads, and consumed restoration failures in a real viewer.
 GPU allocation failure cleanup is checked in the runtime, but is not fault-injected by
 unit tests because GPU creation depends on the renderer runtime.
