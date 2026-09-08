@@ -422,6 +422,9 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap:
         throw std::invalid_argument("Comparison command was not dispatched.");
     }
+    // Read-only and session-only operations return above. Struct-level setters
+    // in this batch need one scene-edit notification for history recording.
+    markSceneDirty(state);
     recalculateSceneBounds(state);
     updateSceneDirty(state, cleanDocument);
     if (command.objectId != invalidSceneObjectId) {

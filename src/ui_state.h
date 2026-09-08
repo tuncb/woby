@@ -134,6 +134,11 @@ struct UiState {
     std::vector<UiSceneNode> sceneNodes;
     // Session metadata: never saved, reset on scene open, or used for dirty tracking.
     SceneObjectId nextObjectId = 1;
+    // Logical document identity; successful New/Open starts a fresh undo history.
+    uint64_t sceneGeneration = 0;
+    // Operation notification, not persisted content. Camera/selection/preferences
+    // do not advance it. History consumes this revision at action boundaries.
+    uint64_t sceneEditRevision = 0;
 };
 
 [[nodiscard]] std::array<float, 4> defaultGroupColor(size_t groupIndex);

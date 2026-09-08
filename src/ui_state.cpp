@@ -1,4 +1,5 @@
 #include "ui_state.h"
+#include "ui_operations.h"
 
 #include <algorithm>
 #include <cmath>
@@ -630,6 +631,7 @@ void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
         state.sceneNodes.push_back(createFileSceneNode(state.files[fileIndex], fileIndex));
     }
     assignSceneObjectIds(state);
+    notifySceneEdit(state);
 }
 
 void refreshSceneTreeFolderVisibility(UiState& state)

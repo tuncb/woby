@@ -24,12 +24,24 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Getting started
 
-The top actions are arranged in three rows of two: **New scene** / **Open**,
-**Save** / **Save As**, and **Add models...** / **Add model folder...**.
+Undo and Redo arrow buttons sit beside Settings in the top toolbar.
+The file actions are arranged in three rows of two: **New scene** / **Open**,
+**Save** / **Save As**, and **Add models...** / **Add folder...**.
 New scene starts an untitled scene and asks before discarding unsaved changes.
 `Ctrl+O` opens a scene, `Ctrl+S` saves it (asking for a path for an untitled scene),
 and `Ctrl+Shift+S` opens Save As. Save As switches to the chosen destination only
 after a successful save; canceling keeps the active document unchanged.
+
+`Ctrl+Z` undoes a scene edit; `Ctrl+Y` or `Ctrl+Shift+Z` redoes it. This includes
+transforms, appearance, comparison membership, and object additions/removals.
+A continuous drag is one action. Session history has no action-count limit;
+New/Open starts fresh history, while Save keeps history and updates the clean-state
+baseline. History stores model paths and settings, not mesh buffers. Restoring a
+removed model reloads its source file; changed geometry is accepted when its part
+names and order still match. If the source is missing, unreadable, or incompatible,
+an error is shown and that Undo/Redo action is skipped, leaving the scene unchanged.
+Camera navigation, selection, and app preferences are outside scene history.
+Active text fields use their own text undo.
 
 Use Add models for OBJ, STL, or installed importer formats, and Open Scene for
 saved `.woby` scenes. The empty viewport offers both actions and accepts dropped

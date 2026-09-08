@@ -125,6 +125,11 @@ add_executable(woby
     src/obj_mesh.h
     src/performance_log.cpp
     src/performance_log.h
+    src/scene_history_load.cpp
+    src/scene_history_load.h
+    src/scene_history.cpp
+    src/scene_history.h
+    src/ui_history_controls.h
     src/scene_lifecycle.cpp
     src/scene_lifecycle.h
     src/scene_file.cpp
@@ -316,6 +321,11 @@ if(BUILD_TESTING)
         src/obj_mesh.h
         src/performance_log.cpp
         src/performance_log.h
+        src/scene_history_load.cpp
+        src/scene_history_load.h
+        src/scene_history.cpp
+        src/scene_history.h
+        src/ui_history_controls.h
         src/scene_lifecycle.cpp
         src/scene_lifecycle.h
         src/scene_file.cpp
@@ -332,6 +342,7 @@ if(BUILD_TESTING)
         src/ui_state.cpp
         src/ui_state.h
         src/ui_layout.h
+        tests/scene_history_tests.cpp
         tests/scene_lifecycle_tests.cpp
         tests/control_tests.cpp
         tests/importer_tests.cpp

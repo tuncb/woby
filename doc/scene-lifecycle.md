@@ -67,6 +67,47 @@ Retries replay the original result or error without re-saving, reopening, cleari
 or quitting again. After a retained failure, use a new key for a changed intention.
 After viewer exit/restart, reconcile files and instance identity before retrying.
 
+## Scene edit history
+
+The viewer records logical scene edits from UI controls and committed CTL changes.
+Editing operations notify history by advancing `UiState::sceneEditRevision` via
+`notifySceneEdit` (also called by `markSceneDirty`), even when the document is already
+dirty. Frame/action boundaries flush those notifications; idle frames with unchanged
+revisions do no document construction, comparison or snapshot allocation.
+Struct-level setters must be followed by a
+notification from their owning scene operation. Camera and other session-only
+operations do not notify. Dirty-indicator synchronization does not notify either.
+Notified edits are still compared with the current snapshot to discard no-ops;
+snapshots retain complete metadata, and changed drag frames still update it.
+Undo/Redo buttons and Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z restore the previous/next scene
+snapshot. A widget's active interaction, including its release frame, forms one
+action. Saving closes the current action and retains history; dirty state always
+compares restored content with the latest successfully saved document.
+
+History has no action-count limit and retains the session's edits. Snapshots contain
+source paths, importer IDs, part settings and object identities, with no vertices,
+triangle indices or other mesh buffers. Removing a model releases its geometry.
+No history is written to `.woby` files. New/Open clears history only after successful replacement;
+a failed or canceled replacement leaves it intact. A new edit after undo discards
+the redo branch. Camera, selection, pane/export preferences, and the monotonic object
+ID allocator are not rewound. Restored objects keep their original IDs, including
+comparison references and folder hierarchy.
+
+Restoration reuses live geometry by object ID. Absent models are reloaded from their
+source paths with their original importers. Changed geometry is accepted if the
+part count, names and order still match; geometric centers and bounds are refreshed.
+Logical state and missing GPU meshes are prepared before committing. Existing GPU
+meshes are reused; removed resources are destroyed after successful preparation.
+Sources are never written. Missing/unreadable sources, unavailable importers,
+incompatible parts or GPU preparation failures leave the live scene unchanged and
+show an error. The failed Undo/Redo action is consumed: the cursor advances and its
+snapshot is rebased to the unchanged scene, so the next frame cannot invent an edit
+or erase the redo branch. Later Undo/Redo commands proceed from that position.
+Dirty tracking compares saved scene metadata, not the contents of external models.
+History shortcuts are unavailable during active widget edits, modal/native dialogs,
+file processing, or screenshot capture; nonmodal property popups allow them after
+the active edit finishes. Text fields retain their own text undo.
+
 ## Validation
 
 Run the normal unit suite with `ctest --preset vs2026-vcpkg`. With a desktop session,

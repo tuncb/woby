@@ -169,6 +169,12 @@ bool removeFileFromState(UiState& state, size_t fileIndex);
 [[nodiscard]] UiState prepareSceneReplacement(const UiState& current,
     std::vector<UiFileState> files, const SceneDocument& document);
 void setSceneDirty(UiState& state, bool dirty);
+// Notify history after a scene operation, including batches of struct-level
+// setters. Does not change the saved-state indicator: tree construction can also
+// be used while initializing a clean scene. No-op notifications are filtered.
+void notifySceneEdit(UiState& state);
+// Notify an edit and provisionally mark the document dirty. clear/updateSceneDirty
+// only synchronize the saved-state indicator and do not notify history.
 void markSceneDirty(UiState& state);
 void clearSceneDirty(UiState& state);
 void updateSceneDirty(UiState& state, const SceneDocument& cleanDocument);

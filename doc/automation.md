@@ -240,6 +240,9 @@ through edits, tree reordering, saves, and removal of other objects. Removing an
 (including a folder pruned when its last file is removed) invalidates its ID. Reopening
 or replacing a scene gives its loaded objects new IDs, including when reopening the
 same `.woby` file. A newly added object never reuses a removed object's ID.
+Scene Undo restores removed objects with their original IDs and comparison
+references; an ID is unavailable while its object is absent. New/Open clears scene
+history, so IDs from a replaced scene cannot be restored.
 
 IDs are scoped to one viewer launch. Another viewer, or a restarted viewer using the
 same instance name, rejects them. Treat IDs as opaque strings; do not derive or parse

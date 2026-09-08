@@ -752,6 +752,7 @@ void setSceneNodeSubtreeRenderMode(
     UiRenderMode mode,
     bool enabled)
 {
+    notifySceneEdit(state);
     if (node.kind == UiSceneNodeKind::group) {
         if (validGroupIndex(state, node.fileIndex, node.groupIndex)) {
             setGroupRenderMode(state.files[node.fileIndex].groupSettings[node.groupIndex], mode, enabled);
@@ -829,6 +830,7 @@ void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible)
 {
     setSceneNodeSubtreeVisibleRecursive(state, node, visible);
     refreshSceneTreeFolderVisibility(state);
+    notifySceneEdit(state);
 }
 
 void setGroupVisible(UiGroupState& group, bool visible)
@@ -863,6 +865,7 @@ void setGroupVisible(UiState& state, UiFileState& file, UiGroupState& group, boo
 {
     setGroupVisible(file, group, visible);
     refreshSceneTreeFolderVisibility(state);
+    notifySceneEdit(state);
 }
 
 void toggleGroupVisible(UiState& state, UiFileState& file, UiGroupState& group)
@@ -1126,6 +1129,7 @@ void appendFolderTreeSceneNode(
     state.sceneNodes.push_back(std::move(rootNode));
     assignSceneObjectIds(state);
     refreshSceneTreeFolderCenters(state);
+    notifySceneEdit(state);
 }
 
 bool removeFileFromState(UiState& state, size_t fileIndex)
@@ -1162,6 +1166,7 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.viewerPaneVisible = current.viewerPaneVisible;
     prepared.propertiesPaneVisible = current.propertiesPaneVisible;
     prepared.nextObjectId = current.nextObjectId;
+    prepared.sceneGeneration = current.sceneGeneration + 1;
     prepared.files = std::move(files);
     // Every replacement receives fresh IDs, even when reopening the same file.
     for (auto& file : prepared.files) {
@@ -1224,8 +1229,14 @@ void setSceneDirty(UiState& state, bool dirty)
     state.isDirty = dirty;
 }
 
+void notifySceneEdit(UiState& state)
+{
+    ++state.sceneEditRevision;
+}
+
 void markSceneDirty(UiState& state)
 {
+    notifySceneEdit(state);
     setSceneDirty(state, true);
 }
 

@@ -5,6 +5,8 @@
 #include "ui_operations.h"
 #include "ui_popup_controls.h"
 #include "settings_dialog.h"
+#include "scene_history.h"
+#include "ui_history_controls.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
@@ -51,6 +53,98 @@ struct KeyboardFixture {
 };
 
 } // namespace
+
+TEST_CASE("scene history shortcuts allow property popups but respect active text and busy state")
+{
+    for (const bool redo : {false, true}) {
+        for (const bool shift : {false, true}) {
+            KeyboardFixture fixture;
+            auto& io = ImGui::GetIO();
+            woby::SceneHistoryCommand result = woby::SceneHistoryCommand::none;
+            bool blocked = false;
+            bool textInput = false;
+            const auto frame = [&]() {
+                ImGui::NewFrame();
+                ImGui::Begin("History shortcut test");
+                ImGui::OpenPopup("Properties");
+                if (ImGui::BeginPopup("Properties")) {
+                    ImGui::TextUnformatted("Transform geometry");
+                    ImGui::EndPopup();
+                }
+                io.WantTextInput = textInput;
+                result = woby::sceneHistoryShortcut(blocked);
+                ImGui::End();
+                ImGui::EndFrame();
+            };
+            frame();
+            frame(); // Register global shortcut routing before key presses.
+            const auto key = redo && !shift ? ImGuiKey_Y : ImGuiKey_Z;
+            const auto press = [&]() {
+                io.AddKeyEvent(ImGuiMod_Ctrl, true);
+                io.AddKeyEvent(ImGuiMod_Shift, redo && shift);
+                io.AddKeyEvent(key, true);
+                frame();
+            };
+            const auto release = [&]() { io.AddKeyEvent(key, false); frame(); frame(); };
+            press();
+            CHECK(result == (redo ? woby::SceneHistoryCommand::redo : woby::SceneHistoryCommand::undo));
+            release();
+            blocked = true;
+            press();
+            CHECK(result == woby::SceneHistoryCommand::none);
+            release();
+            blocked = false;
+            textInput = true;
+            press();
+            CHECK(result == woby::SceneHistoryCommand::none);
+        }
+    }
+}
+
+TEST_CASE("scene history records an actual ImGui drag as one action")
+{
+    KeyboardFixture fixture;
+    auto& state = fixture.state;
+    woby::SceneHistory history;
+    const auto clean = woby::createSceneDocument(state);
+    woby::resetSceneHistory(history, state);
+    auto& io = ImGui::GetIO();
+    ImVec2 position;
+    const auto frame = [&]() {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImVec2(500, 300));
+        ImGui::Begin("History drag test");
+        float value = state.masterVertexPointSize;
+        if (ImGui::DragFloat("Vertex size", &value, 0.1f, 1.0f, 40.0f)) {
+            woby::setMasterVertexPointSize(state, value);
+        }
+        position = ImGui::GetItemRectMin();
+        position.x += 30;
+        position.y += 10;
+        ImGui::End();
+        woby::recordSceneHistory(history, state, woby::sceneHistoryInteraction());
+        ImGui::EndFrame();
+    };
+    frame();
+    io.AddMousePosEvent(position.x, position.y);
+    frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+    frame();
+    for (int movement = 1; movement <= 10; ++movement) {
+        io.AddMousePosEvent(position.x + static_cast<float>(movement) * 5, position.y);
+        frame();
+    }
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+    frame();
+    frame();
+    CHECK(state.masterVertexPointSize > clean.masterVertexPointSize);
+    CHECK(history.cursor == 1);
+    auto prepared = woby::prepareSceneHistoryStep(history, state, clean, false);
+    REQUIRE(prepared);
+    CHECK(prepared->masterVertexPointSize == clean.masterVertexPointSize);
+    CHECK_FALSE(prepared->isDirty);
+}
 
 TEST_CASE("Visibility fields toggle independently and respect disabled and mixed states")
 {
@@ -535,6 +629,88 @@ TEST_CASE("object identity rows stay single-line and reveal complete wrapped nam
             CHECK_FALSE(ImGui::IsAnyItemActive());
             CHECK_FALSE(ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup));
         }
+    }
+}
+
+TEST_CASE("history toolbar buttons share the Settings row and respect history and busy states")
+{
+    for (const float scale : {1.0f, 1.5f, 2.0f}) {
+        KeyboardFixture fixture;
+        ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), scale);
+        woby::SceneHistory history;
+        const auto clean = woby::createSceneDocument(fixture.state);
+        woby::resetSceneHistory(history, fixture.state);
+        ImVec2 undoPosition, redoPosition;
+        bool blocked = false;
+        int actions = 0;
+        const auto frame = [&]() {
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2(woby::uiSize(380), 300));
+            ImGui::Begin("History toolbar");
+            ImGui::TextUnformatted("Scene controls");
+            const auto titleRight = ImGui::GetItemRectMax().x;
+            ImGui::SameLine();
+            const auto& style = ImGui::GetStyle();
+            const float size = woby::renderModeButtonSize();
+            ImGui::SetCursorPosX(ImGui::GetWindowWidth() - style.WindowPadding.x
+                - 3 * size - 2 * style.ItemSpacing.x);
+            const auto undoLow = ImGui::GetCursorScreenPos();
+            CHECK(undoLow.x > titleRight);
+            undoPosition = ImVec2(undoLow.x + size * 0.5f, undoLow.y + size * 0.5f);
+            const auto command = woby::drawSceneHistoryToolbar(
+                woby::canUndoScene(history), woby::canRedoScene(history), blocked);
+            const auto redoLow = ImGui::GetItemRectMin();
+            const auto redoHigh = ImGui::GetItemRectMax();
+            redoPosition = ImVec2(redoLow.x + size * 0.5f, redoLow.y + size * 0.5f);
+            CHECK(redoLow.y == undoLow.y);
+            CHECK(redoLow.x >= undoLow.x + size);
+            ImGui::SameLine();
+            CHECK_FALSE(woby::drawSettingsButton(blocked));
+            CHECK(ImGui::GetItemRectMin().y == undoLow.y);
+            CHECK(ImGui::GetItemRectMin().x >= redoHigh.x);
+            CHECK(ImGui::GetItemRectMax().x <= ImGui::GetWindowPos().x + ImGui::GetWindowWidth());
+            ImGui::End();
+            if (command != woby::SceneHistoryCommand::none) {
+                const bool redo = command == woby::SceneHistoryCommand::redo;
+                auto prepared = woby::prepareSceneHistoryStep(history, fixture.state, clean, redo);
+                REQUIRE(prepared);
+                woby::commitSceneHistoryStep(history, fixture.state, std::move(*prepared), redo);
+                ++actions;
+            }
+            ImGui::EndFrame();
+        };
+        const auto click = [&](ImVec2 position) {
+            auto& io = ImGui::GetIO();
+            io.AddMousePosEvent(position.x, position.y);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            frame();
+            frame();
+        };
+        frame();
+        frame();
+        click(undoPosition);
+        click(redoPosition);
+        CHECK(actions == 0);
+        woby::setMasterVertexPointSize(fixture.state, 12);
+        woby::recordSceneHistory(history, fixture.state);
+        blocked = true;
+        click(undoPosition);
+        CHECK(actions == 0);
+        blocked = false;
+        click(undoPosition);
+        CHECK(actions == 1);
+        CHECK(fixture.state.masterVertexPointSize == clean.masterVertexPointSize);
+        blocked = true;
+        click(redoPosition);
+        CHECK(actions == 1);
+        blocked = false;
+        click(redoPosition);
+        CHECK(actions == 2);
+        CHECK(fixture.state.masterVertexPointSize == 12);
     }
 }
 

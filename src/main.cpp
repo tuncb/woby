@@ -15,6 +15,9 @@
 #include "scene_file.h"
 #include "scene_inspector.h"
 #include "scene_lifecycle.h"
+#include "scene_history.h"
+#include "scene_history_load.h"
+#include "ui_history_controls.h"
 #include "scene_renderer.h"
 #include "scene_screenshot.h"
 #include "ui_operations.h"
@@ -91,6 +94,8 @@ constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
     0xf013,
     0xf013,
+    0xf01e,
+    0xf01e,
     0xf05a,
     0xf05a,
     0xf04b,
@@ -1168,6 +1173,39 @@ void removeModelFile(
     (void)woby::removeFileFromState(state, fileIndex);
 }
 
+bool applySceneHistory(woby::SceneHistory& history, woby::UiState& state,
+    const woby::SceneDocument& cleanDocument, std::vector<LoadedModelRuntime>& runtimes,
+    const bgfx::VertexLayout& layout, const bgfx::VertexLayout& pointLayout, bool redo)
+{
+    auto prepared = woby::loadSceneHistoryStep(history, state, cleanDocument, redo);
+    if (!prepared) { return false; }
+    std::vector<LoadedModelRuntime> staged(prepared->files.size());
+    std::vector<size_t> reuse(prepared->files.size(), woby::invalidSceneNodeIndex);
+    try {
+        for (size_t index = 0; index < prepared->files.size(); ++index) {
+            const auto& file = prepared->files[index];
+            for (size_t old = 0; old < state.files.size(); ++old) {
+                if (state.files[old].objectId == file.objectId) { reuse[index] = old; break; }
+            }
+            if (reuse[index] == woby::invalidSceneNodeIndex) {
+                staged[index].gpuMesh = createGpuMesh(file.mesh, layout, pointLayout);
+            }
+        }
+    } catch (...) {
+        destroyModelRuntimes(staged);
+        throw;
+    }
+    for (size_t index = 0; index < staged.size(); ++index) {
+        if (reuse[index] != woby::invalidSceneNodeIndex) {
+            staged[index] = std::exchange(runtimes[reuse[index]], LoadedModelRuntime{});
+        }
+    }
+    destroyModelRuntimes(runtimes);
+    runtimes = std::move(staged);
+    woby::commitSceneHistoryStep(history, state, std::move(*prepared), redo);
+    return true;
+}
+
 void pushDroppedPath(DragDropState& state, const char* data)
 {
     if (data == nullptr) {
@@ -2082,6 +2120,8 @@ int main(int argc, char** argv)
             woby::updateSceneDirty(ui, cleanSceneDocument);
         }
         woby::logDuration("startup_initial_scene", elapsedMilliseconds(initialLoadStart));
+        woby::SceneHistory sceneHistory;
+        woby::resetSceneHistory(sceneHistory, ui);
 
         const auto shaderStart = woby::PerformanceClock::now();
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
@@ -2378,6 +2418,10 @@ int main(int argc, char** argv)
                 currentScenePath,
                 cleanSceneDocument,
                 toast);
+            if (finalized) {
+                woby::finishSceneHistoryInteraction(sceneHistory);
+                woby::recordSceneHistory(sceneHistory, ui);
+            }
             if (automationAppend && gpuFinalize.gpuFailedCount > previousGpuFailures) {
                 for (auto& input : automationAppend->outcomes) {
                     if (input.path == finalizingPath) { input.state = "failed"; input.error = gpuFinalize.lastError; }
@@ -2451,6 +2495,8 @@ int main(int argc, char** argv)
                     requestDirtyOpenWarning);
             }
             const auto saveDocument = [&](const std::filesystem::path& path) {
+                woby::recordSceneHistory(sceneHistory, ui, woby::sceneHistoryInteraction());
+                woby::finishSceneHistoryInteraction(sceneHistory);
                 try {
                     const auto savedPath = saveSceneToPath(path, ui, currentScenePath, cleanSceneDocument);
                     setToastMessage(toast, "Saved scene " + fileDisplayName(savedPath));
@@ -2504,7 +2550,6 @@ int main(int argc, char** argv)
             }
             recordFrameStage(frameTimings, woby::FrameStage::pendingIo, stageStart);
 
-            woby::updateSceneDirty(ui, cleanSceneDocument);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
 
             const auto now = std::chrono::steady_clock::now();
@@ -2637,6 +2682,7 @@ int main(int argc, char** argv)
                 }
             };
             const auto panelLayout = canvasLayout(window.get(), ui);
+            auto historyCommand = woby::SceneHistoryCommand::none;
             if (ui.viewerPaneVisible) {
                 const float availableHeight = panelLayout.height;
                 ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
@@ -2662,7 +2708,11 @@ int main(int argc, char** argv)
                     ImGui::TextUnformatted("Scene controls");
                     ImGui::SameLine();
                     ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x
-                        - renderModeButtonSize());
+                        - 3.0f * renderModeButtonSize() - 2.0f * ImGui::GetStyle().ItemSpacing.x);
+                    historyCommand = woby::drawSceneHistoryToolbar(
+                        woby::canUndoScene(sceneHistory), woby::canRedoScene(sceneHistory),
+                        fileActionsDisabled() || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
+                    ImGui::SameLine();
                     if (woby::drawSettingsButton(fileActionsDisabled())) { requestSettings = true; }
                     ImGui::Separator();
                     const float statusHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f
@@ -2932,9 +2982,11 @@ int main(int argc, char** argv)
                 if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
             }
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
+            if (woby::recordSceneHistory(sceneHistory, ui, woby::sceneHistoryInteraction())) {
+                woby::updateSceneDirty(ui, cleanSceneDocument);
+            }
 
             woby::recalculateSceneBounds(ui);
-            woby::updateSceneDirty(ui, cleanSceneDocument);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
             // UI and loading commits have finished. No logical edits occur between
             // executing commands here and submitting their screenshots below.
@@ -2954,6 +3006,8 @@ int main(int argc, char** argv)
                 if (!command) {
                     break;
                 }
+                const auto beforeCommandRevision = ui.sceneEditRevision;
+                const auto beforeCommandGeneration = ui.sceneGeneration;
                 try {
                     std::visit([&](const auto& payload) {
                         using Command = std::decay_t<decltype(payload)>;
@@ -3102,11 +3156,39 @@ int main(int argc, char** argv)
                         woby::completeAutomationCommand(*automation, command->id, woby::AutomationCommandError{exception.what()});
                     }
                 }
+                if (beforeCommandRevision != ui.sceneEditRevision
+                    || beforeCommandGeneration != ui.sceneGeneration) {
+                    woby::finishSceneHistoryInteraction(sceneHistory);
+                    woby::recordSceneHistory(sceneHistory, ui);
+                }
+                if (const auto* lifecycle = std::get_if<woby::SceneLifecycleCommand>(&command->payload);
+                    lifecycle && (lifecycle->action == woby::SceneAction::save
+                        || lifecycle->action == woby::SceneAction::saveAs)) {
+                    woby::finishSceneHistoryInteraction(sceneHistory);
+                }
             }
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
 
             // Global document commands still work when the scene controls are hidden.
             // Run after widgets have applied edits so Save includes this frame's changes.
+            const auto historyShortcut = woby::sceneHistoryShortcut(fileActionsDisabled()
+                || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
+                || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) == 0u);
+            if (historyShortcut != woby::SceneHistoryCommand::none) { historyCommand = historyShortcut; }
+            if (historyCommand != woby::SceneHistoryCommand::none && !fileActionsDisabled()
+                && !sceneScreenshot.captureRequested && !sceneScreenshot.readbackPending) {
+                try {
+                    const bool redo = historyCommand == woby::SceneHistoryCommand::redo;
+                    if (applySceneHistory(sceneHistory, ui, cleanSceneDocument, runtimes, layout, pointLayout, redo)) {
+                        setToastMessage(toast, redo ? "Redid scene edit" : "Undid scene edit");
+                        updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
+                    }
+                } catch (const std::exception& error) {
+                    const bool redo = historyCommand == woby::SceneHistoryCommand::redo;
+                    woby::skipSceneHistoryStep(sceneHistory, ui, redo);
+                    setToastMessage(toast, std::string(redo ? "Redo skipped: " : "Undo skipped: ") + error.what());
+                }
+            }
             if (!fileActionsDisabled() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
                 if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) {
                     documentCommand(woby::SceneAction::open);
