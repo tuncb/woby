@@ -2,6 +2,7 @@
 #include "ui_state.h"
 #include "ui_layout.h"
 #include "ui_icon_controls.h"
+#include "ui_operations.h"
 #include "ui_popup_controls.h"
 #include "settings_dialog.h"
 
@@ -113,6 +114,157 @@ TEST_CASE("Visibility fields toggle independently and respect disabled and mixed
         CHECK_FALSE(mixed);
         CHECK(changes == 3);
         CHECK(otherVisible);
+    }
+}
+
+TEST_CASE("properties visibility icon sits before solid mesh and keeps hidden targets selected")
+{
+    for (const float scale : {0.75f, 1.0f, 1.5f, 2.0f}) {
+        KeyboardFixture fixture;
+        ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), scale);
+        auto& state = fixture.state;
+        woby::Mesh mesh;
+        mesh.nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
+        state.files.push_back(woby::createUiFileState("parts.obj", mesh, 0u));
+        woby::appendDefaultSceneNodesForFiles(state, 0u);
+        woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId);
+        woby::setSelectedObjectsVisible(state, false);
+        woby::selectSceneObject(state, state.files[0].groupSettings[1].objectId, true);
+        const auto selection = state.selectedSceneObjects;
+        REQUIRE(woby::selectedObjectVisibility(state).mixed);
+        ImVec2 clickPosition;
+        const auto frame = [&]() {
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImVec2(700, 400));
+            ImGui::Begin("Properties visibility");
+            const auto current = woby::selectedObjectVisibility(state);
+            bool visible = current.value != 0.0f;
+            if (woby::drawVisibilityIconField("selected objects", visible, current.mixed)) {
+                woby::setSelectedObjectsVisible(state, visible);
+            }
+            const auto low = ImGui::GetItemRectMin();
+            const auto high = ImGui::GetItemRectMax();
+            clickPosition = ImVec2((low.x + high.x) * 0.5f, (low.y + high.y) * 0.5f);
+            ImGui::SameLine();
+            bool solid = true;
+            CHECK_FALSE(woby::drawRenderModeField("Solid mesh", woby::solidMeshIcon, solid));
+            CHECK(ImGui::GetItemRectMin().x > high.x);
+            CHECK(ImGui::GetItemRectMin().y == low.y);
+            CHECK(ImGui::GetItemRectMax().y == high.y);
+            CHECK(high.x - low.x == doctest::Approx(woby::renderModeButtonSize()));
+            ImGui::End();
+            ImGui::EndFrame();
+        };
+        frame();
+        frame();
+        for (const bool expected : {true, false, true}) {
+            auto& io = ImGui::GetIO();
+            io.AddMousePosEvent(clickPosition.x, clickPosition.y);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            frame();
+            frame();
+            CHECK_FALSE(woby::selectedObjectVisibility(state).mixed);
+            CHECK(woby::selectedObjectVisibility(state).value == (expected ? 1.0f : 0.0f));
+            CHECK(state.selectedSceneObjects == selection);
+            CHECK(state.propertiesPaneVisible);
+            for (const auto& part : state.files[0].groupSettings) { CHECK(part.visible == expected); }
+        }
+    }
+}
+
+TEST_CASE("compact render mode fields align and apply mixed toggles only to selected parts")
+{
+    using P = woby::UiObjectProperty;
+    const std::array properties{P::solidMesh, P::triangles, P::vertices};
+    const std::array icons{woby::solidMeshIcon, woby::trianglesIcon, woby::verticesIcon};
+    const std::array labels{"Solid mesh", "Triangle edges", "Vertices"};
+    for (const float scale : {0.75f, 1.0f, 1.5f, 2.0f}) {
+        for (size_t target = 0; target < properties.size(); ++target) {
+            KeyboardFixture fixture;
+            ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), scale);
+            auto& state = fixture.state;
+            woby::Mesh mesh;
+            for (int i = 0; i < 3; ++i) { mesh.nodes.push_back({"part", 0u, 0u}); }
+            state.files.push_back(woby::createUiFileState("parts.obj", mesh, 0u));
+            woby::appendDefaultSceneNodesForFiles(state, 0u);
+            auto& parts = state.files[0].groupSettings;
+            woby::selectSceneObject(state, parts[0].objectId);
+            woby::setSelectedObjectProperty(state, properties[target], 0.0f);
+            woby::selectSceneObject(state, parts[1].objectId);
+            woby::setSelectedObjectProperty(state, properties[target], 1.0f);
+            woby::selectSceneObject(state, parts[0].objectId, true);
+            const auto original = woby::createSceneDocument(state);
+            woby::clearSceneDirty(state);
+            REQUIRE(woby::selectedObjectProperty(state, properties[target]).mixed);
+            bool disabled = false;
+            ImVec2 clickPosition;
+            const auto frame = [&]() {
+                ImGui::NewFrame();
+                ImGui::SetNextWindowPos(ImVec2(0, 0));
+                ImGui::SetNextWindowSize(ImVec2(700, 400));
+                ImGui::Begin("Compact render modes");
+                ImGui::BeginDisabled(disabled);
+                ImVec2 firstMin;
+                ImVec2 firstMax;
+                for (size_t i = 0; i < properties.size(); ++i) {
+                    if (i != 0u) { ImGui::SameLine(); }
+                    const auto current = woby::selectedObjectProperty(state, properties[i]);
+                    bool value = current.value != 0.0f;
+                    if (woby::drawRenderModeField(labels[i], icons[i], value, current.mixed)) {
+                        woby::setSelectedObjectProperty(state, properties[i], value ? 1.0f : 0.0f);
+                    }
+                    const auto low = ImGui::GetItemRectMin();
+                    const auto high = ImGui::GetItemRectMax();
+                    if (i == 0u) { firstMin = low; firstMax = high; }
+                    CHECK(low.y == firstMin.y);
+                    CHECK(high.y == firstMax.y);
+                    CHECK(high.x - low.x == doctest::Approx(woby::renderModeButtonSize()));
+                    if (i == target) { clickPosition = ImVec2((low.x + high.x) * 0.5f, (low.y + high.y) * 0.5f); }
+                }
+                ImGui::EndDisabled();
+                ImGui::End();
+                ImGui::EndFrame();
+            };
+            const auto click = [&]() {
+                auto& io = ImGui::GetIO();
+                io.AddMousePosEvent(clickPosition.x, clickPosition.y);
+                frame();
+                io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+                frame();
+                io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+                frame();
+                frame();
+            };
+            frame();
+            frame();
+            CHECK(woby::createSceneDocument(state) == original);
+            CHECK_FALSE(state.isDirty);
+            disabled = true;
+            click();
+            CHECK(woby::selectedObjectProperty(state, properties[target]).mixed);
+            CHECK_FALSE(state.isDirty);
+            disabled = false;
+            for (const float expected : {1.0f, 0.0f, 1.0f}) {
+                click();
+                const auto current = woby::selectedObjectProperty(state, properties[target]);
+                CHECK_FALSE(current.mixed);
+                CHECK(current.value == expected);
+                CHECK(state.isDirty);
+            }
+            // The third part and the other render modes retain their defaults.
+            for (size_t part = 0; part < parts.size(); ++part) {
+                woby::selectSceneObject(state, parts[part].objectId);
+                for (size_t mode = 0; mode < properties.size(); ++mode) {
+                    if (part < 2u && mode == target) { continue; }
+                    CHECK(woby::selectedObjectProperty(state, properties[mode]).value
+                        == (properties[mode] == P::solidMesh ? 1.0f : 0.0f));
+                }
+            }
+        }
     }
 }
 
@@ -316,6 +468,73 @@ TEST_CASE("information icons show full hints on hover without click behavior")
         frame();
         CHECK(tooltip() == nullptr);
         CHECK_FALSE(fixture.state.isDirty);
+    }
+}
+
+TEST_CASE("object identity rows stay single-line and reveal complete wrapped names on hover")
+{
+    const std::string longName = std::string(95, 'W') + "\xc3\xa7\xe6\xb5\x8b##part-end";
+    const std::string fileName = std::string(85, 'F') + "##file-end.obj";
+    const std::string path = "C:/models/" + fileName;
+    for (const float scale : {0.75f, 1.0f, 1.5f, 2.0f}) {
+        for (const float width : {150.0f, 500.0f}) {
+            KeyboardFixture fixture;
+            ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), scale);
+            ImVec2 hoverPosition;
+            std::string logged;
+            const auto frame = [&]() {
+                ImGui::NewFrame();
+                ImGui::SetNextWindowPos(ImVec2(0, 0));
+                ImGui::SetNextWindowSize(ImVec2(width, 500));
+                ImGui::Begin("Object identity", nullptr, ImGuiWindowFlags_NoMove);
+                ImGui::LogToBuffer();
+                const auto low = ImGui::GetCursorScreenPos();
+                const float available = ImGui::GetContentRegionAvail().x;
+                woby::drawObjectIdentityRow("Part", longName.c_str(), fileName.c_str(), path.c_str());
+                CHECK(ImGui::GetItemRectSize().x == doctest::Approx(available));
+                CHECK(ImGui::GetItemRectSize().y == doctest::Approx(ImGui::GetTextLineHeight()));
+                CHECK(ImGui::GetCursorScreenPos().y - low.y
+                    == doctest::Approx(ImGui::GetTextLineHeightWithSpacing()));
+                hoverPosition = ImVec2(low.x + available * 0.5f, low.y + ImGui::GetTextLineHeight() * 0.5f);
+                logged = ImGui::GetCurrentContext()->LogBuffer.c_str();
+                ImGui::LogFinish();
+                // Other selected objects also occupy exactly one row, even if
+                // importer names contain line breaks or tabs.
+                const float nextY = ImGui::GetCursorScreenPos().y;
+                woby::drawObjectIdentityRow("Part", "surface\nsecond\tline", "repaired.obj");
+                CHECK(ImGui::GetCursorScreenPos().y - nextY
+                    == doctest::Approx(ImGui::GetTextLineHeightWithSpacing()));
+                woby::drawObjectIdentityRow("Folder", "Models");
+                CHECK(ImGui::GetItemRectSize().y == doctest::Approx(ImGui::GetTextLineHeight()));
+                ImGui::End();
+                ImGui::EndFrame();
+            };
+            frame();
+            frame();
+            auto& io = ImGui::GetIO();
+            io.AddMousePosEvent(hoverPosition.x, hoverPosition.y);
+            frame();
+            frame();
+            ImGuiWindow* hint = nullptr;
+            for (auto* window : ImGui::GetCurrentContext()->Windows) {
+                if (window->Active && !window->Hidden && (window->Flags & ImGuiWindowFlags_Tooltip) != 0) { hint = window; }
+            }
+            REQUIRE(hint != nullptr);
+            CHECK(logged.find(longName) != std::string::npos);
+            CHECK(logged.find(fileName) != std::string::npos);
+            CHECK(logged.find(path) != std::string::npos);
+            CHECK(hint->Size.x <= io.DisplaySize.x);
+            CHECK(hint->Size.y <= io.DisplaySize.y);
+            CHECK(hint->ScrollMax.x == 0.0f);
+            CHECK(hint->ScrollMax.y == 0.0f);
+            CHECK(hint->ContentSize.y > ImGui::GetTextLineHeight() * 3.0f);
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            frame();
+            CHECK_FALSE(ImGui::IsAnyItemActive());
+            CHECK_FALSE(ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup));
+        }
     }
 }
 

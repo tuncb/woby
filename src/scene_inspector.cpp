@@ -4,6 +4,7 @@
 #include "utf8_path.h"
 
 #include <imgui.h>
+#include <algorithm>
 #include <charconv>
 #include <cstdlib>
 #include <string>
@@ -112,14 +113,15 @@ void axisFields(UiState& state, const char* title, const char* tooltip,
     ImGui::PopID();
 }
 
-void renderModeField(UiState& state, const char* label, UiObjectProperty property)
+void renderModeField(UiState& state, const char* label, const char* icon, UiObjectProperty property)
 {
     const auto current = selectedObjectProperty(state, property);
-    if (!current.available) { return; }
     bool value = current.value != 0.0f;
-    if (drawVisibilityField(label, value, current.mixed)) {
+    ImGui::BeginDisabled(!current.available);
+    if (drawRenderModeField(label, icon, value, current.mixed)) {
         setSelectedObjectProperty(state, property, value ? 1.0f : 0.0f);
     }
+    ImGui::EndDisabled();
 }
 
 void drawGeometry(const UiState& state)
@@ -160,16 +162,6 @@ void drawGeometry(const UiState& state)
 
 void drawSceneInspector(UiState& state)
 {
-    ImGui::TextUnformatted("Local settings");
-    ImGui::SameLine();
-    drawInformationIcon("settings_info", "How settings apply",
-        "Select a folder, file, part, or comparison in the tree to edit its properties. Ctrl-click selects multiple objects.\n\n"
-        "Settings are local. Parent transforms compose with part transforms; parent and part opacity multiply. "
-        "Translation uses model units, with no assumed physical unit. Rotation uses degrees; scale is a uniform multiplier.\n\n"
-        "Edits set only the entered field on each selected object. Selected parents and children both change. "
-        "Mixed means values differ. Enter applies numeric entry; Escape cancels it. "
-        "Resets affect only their named property group on selected objects.\n\n"
-        "Select one comparison to edit its properties, or select only folders, files, and parts to edit shared scene properties.");
     if (state.selectedSceneObjects.empty()) {
         ImGui::TextDisabled("No selection");
         return;
@@ -183,15 +175,16 @@ void drawSceneInspector(UiState& state)
     if (many) { ImGui::BeginChild("targets", ImVec2(0.0f, ImGui::GetTextLineHeightWithSpacing() * 3.0f)); }
     for (const auto id : state.selectedSceneObjects) {
         if (const auto object = findSceneObject(state, id)) {
-            ImGui::TextWrapped("%s: %s", objectType(object->kind), object->name.c_str());
+            std::string fileName;
+            std::string path = object->path.empty() ? std::string{} : pathToUtf8(object->path);
             if (object->kind == SceneObjectKind::group) {
                 if (const auto parent = findSceneObject(state, object->fileId)) {
-                    ImGui::TextWrapped("In file: %s", parent->name.c_str());
+                    fileName = parent->name;
+                    path = pathToUtf8(parent->path);
                 }
             }
-            if (!object->path.empty() && ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", pathToUtf8(object->path).c_str());
-            }
+            drawObjectIdentityRow(objectType(object->kind), object->name.c_str(),
+                fileName.empty() ? nullptr : fileName.c_str(), path.c_str());
         }
     }
     if (many) { ImGui::EndChild(); }
@@ -220,22 +213,54 @@ void drawSceneInspector(UiState& state)
             }
         }
         if (propertyHeading(state, "Appearance",
-                "Reset opacity and applicable vertex size, color, and render modes on selected objects.\n"
-                "Unselected children keep their overrides.", UiPropertyGroup::appearance, true,
+                "Reset selected objects' opacity and their own and contained parts' vertex size, color, and render modes.",
+                UiPropertyGroup::appearance, true,
                 "Appearance overrides",
-                "Unselected children keep their overrides.\n\n"
-                "Color and render modes belong to parts. Select parts to edit these overrides. "
-                "For mixed render modes, click to enable all selected parts.")) {
+                "Color and render modes apply to selected parts and all parts inside selected files or folders. "
+                "Mixed means these parts differ; click a mixed render mode to enable it for all targets.\n\n"
+                "Opacity stays local. File and part vertex size multipliers combine; folder vertex size edits contained file multipliers. "
+                "Empty containers keep unavailable controls disabled.\n\n"
+                "Visibility includes file and folder contents. Hiding objects keeps them selected; "
+                "click mixed visibility to show all selected objects.")) {
             if (ImGui::BeginTable("appearance", 2)) {
                 scalarField(state, "Opacity (0-100%)", UiObjectProperty::opacity, 100.0f);
-                scalarField(state, "Vertex size (x)", UiObjectProperty::vertexSize);
                 ImGui::EndTable();
             }
-            renderModeField(state, "Solid mesh", UiObjectProperty::solidMesh);
-            renderModeField(state, "Triangle edges", UiObjectProperty::triangles);
-            renderModeField(state, "Vertices", UiObjectProperty::vertices);
+            const auto visibility = selectedObjectVisibility(state);
+            if (visibility.available) {
+                bool visible = visibility.value != 0.0f;
+                if (drawVisibilityIconField("selected objects", visible, visibility.mixed)) {
+                    setSelectedObjectsVisible(state, visible);
+                }
+            }
+            if (visibility.available) { ImGui::SameLine(); }
+            renderModeField(state, "Solid mesh", solidMeshIcon, UiObjectProperty::solidMesh);
+            ImGui::SameLine();
+            renderModeField(state, "Triangle edges", trianglesIcon, UiObjectProperty::triangles);
+            ImGui::SameLine();
+            renderModeField(state, "Vertices", verticesIcon, UiObjectProperty::vertices);
+            const auto vertexSize = selectedObjectProperty(state, UiObjectProperty::vertexSize);
+            {
+                ImGui::SameLine(0.0f, 0.0f);
+                ImGui::BeginDisabled(!vertexSize.available);
+                float value = vertexSize.available ? vertexSize.value : 1.0f;
+                ImGui::SetNextItemWidth(std::min(uiSize(100.0f), ImGui::GetContentRegionAvail().x));
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                    ImVec2(ImGui::GetStyle().FramePadding.x,
+                        std::max(0.0f, (renderModeButtonSize() - ImGui::GetFontSize()) * 0.5f)));
+                if (ImGui::DragFloat("##vertex_size", &value, 0.05f, minVertexSizeScale, maxVertexSizeScale,
+                        vertexSize.mixed ? "Mixed" : "%.2g x", ImGuiSliderFlags_AlwaysClamp)) {
+                    setSelectedObjectProperty(state, UiObjectProperty::vertexSize, value);
+                }
+                ImGui::PopStyleVar();
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Vertex size multiplier on selected files or parts; folders edit contained file multipliers. Ctrl-click to enter a value.");
+                }
+                ImGui::EndDisabled();
+            }
             const auto red = selectedObjectProperty(state, UiObjectProperty::red);
-            if (red.available) {
+            {
+                ImGui::BeginDisabled(!red.available);
                 const auto green = selectedObjectProperty(state, UiObjectProperty::green);
                 const auto blue = selectedObjectProperty(state, UiObjectProperty::blue);
                 std::array<float, 3> color{red.value, green.value, blue.value};
@@ -248,6 +273,7 @@ void drawSceneInspector(UiState& state)
                     ImGui::SameLine();
                     ImGui::TextDisabled("Mixed colors");
                 }
+                ImGui::EndDisabled();
             }
         }
         if (drawInformationHeader("Geometry", "Geometry",

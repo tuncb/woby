@@ -46,13 +46,18 @@ struct UiPropertyValue {
     bool available = false;
     bool mixed = false;
 };
-// Values are local to each selected object. A property is available only when
-// every target supports it. Comparisons use their dedicated inspector.
+// Transforms and opacity are local. Parent color/render modes aggregate contained
+// parts; folder vertex size aggregates contained file multipliers (or direct parts).
+// Comparisons use their dedicated inspector; stale/unsupported selections are rejected.
 [[nodiscard]] UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty property);
-// Edit only this component on explicit targets, including both parent and child
-// when both are selected. Never expand a parent selection to its descendants.
+// Edit only this component on resolved targets, deduplicating overlaps. File/part
+// vertex multipliers remain independent, including when both are selected.
 void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float value);
 void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group);
+// Visibility follows tree controls: files/folders include descendants. Selection
+// and the properties pane stay intact, including when every target is hidden.
+[[nodiscard]] UiPropertyValue selectedObjectVisibility(const UiState& state);
+void setSelectedObjectsVisible(UiState& state, bool visible);
 // Files/folders expand to their current triangular mesh parts. IDs are deduplicated.
 [[nodiscard]] std::vector<SceneObjectId> comparisonObjectParts(
     const UiState& state, const std::vector<SceneObjectId>& objects);

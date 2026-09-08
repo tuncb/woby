@@ -118,7 +118,7 @@ TEST_CASE("inspector edits preserve mixed components and selection is transient"
     CHECK(woby::selectedObjectProperty(state, P::rotationZ).value == woby::minRotationDegrees);
 }
 
-TEST_CASE("inspector resets only the selected property group and explicit targets")
+TEST_CASE("inspector resets only the named group with parent appearance including contained parts")
 {
     using P = woby::UiObjectProperty;
     using G = woby::UiPropertyGroup;
@@ -141,7 +141,7 @@ TEST_CASE("inspector resets only the selected property group and explicit target
     woby::selectSceneObject(state, fileId, true);
     woby::selectSceneObject(state, partId, true);
     CHECK(woby::selectedObjectProperty(state, P::translationX).mixed);
-    CHECK_FALSE(woby::selectedObjectProperty(state, P::red).available);
+    CHECK(woby::selectedObjectProperty(state, P::red).available);
     woby::setSelectedObjectProperty(state, P::translationY, 7.0f);
     woby::setSelectedObjectProperty(state, P::rotationZ, 15.0f);
     woby::setSelectedObjectProperty(state, P::scale, 2.0f);
@@ -176,7 +176,8 @@ TEST_CASE("inspector resets only the selected property group and explicit target
     woby::resetSelectedObjectProperties(state, G::appearance);
     CHECK(file.opacity == 1.0f);
     CHECK(part.opacity == 0.25f);
-    CHECK(part.color[0] == doctest::Approx(0.1f));
+    CHECK(part.color == woby::defaultGroupColor(0));
+    CHECK(part.vertexSizeScale == 1.0f);
     CHECK_FALSE(part.showTriangles);
     woby::selectSceneObject(state, partId);
     woby::resetSelectedObjectProperties(state, G::appearance);
@@ -187,6 +188,135 @@ TEST_CASE("inspector resets only the selected property group and explicit target
     CHECK(part.vertexSizeScale == 1.0f);
     CHECK(part.translation[2] == 5.0f);
     CHECK(folder.opacity == 0.25f);
+}
+
+namespace {
+woby::UiState parentAppearanceScene()
+{
+    woby::UiState state;
+    woby::Mesh mesh;
+    // Parts without triangle data still support appearance controls.
+    mesh.nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
+    for (const char* name : {"a.obj", "b.obj", "outside.obj"}) {
+        state.files.push_back(woby::createUiFileState(std::filesystem::current_path() / name,
+            mesh, state.files.size() * 2u));
+    }
+    woby::appendDefaultSceneNodesForFiles(state, 0u);
+    woby::UiSceneNode nested;
+    nested.kind = woby::UiSceneNodeKind::folder;
+    nested.name = "nested";
+    nested.children = {state.sceneNodes[1], state.sceneNodes[1]};
+    woby::UiSceneNode parent;
+    parent.kind = woby::UiSceneNodeKind::folder;
+    parent.name = "parent";
+    parent.children = {state.sceneNodes[0], nested};
+    state.sceneNodes = {parent, state.sceneNodes[2]};
+    woby::assignSceneObjectIds(state);
+    return state;
+}
+}
+
+TEST_CASE("parent appearance aggregates and edits contained parts including nested and repeated nodes")
+{
+    using P = woby::UiObjectProperty;
+    auto state = parentAppearanceScene();
+    const auto parent = state.sceneNodes[0].objectId;
+    const auto nested = state.sceneNodes[0].children[1].objectId;
+    for (const auto id : {parent, nested, state.files[0].objectId, state.files[0].groupSettings[0].objectId}) {
+        woby::selectSceneObject(state, id);
+        for (const auto property : {P::opacity, P::vertexSize, P::solidMesh, P::triangles, P::vertices, P::red, P::green, P::blue}) {
+            CHECK(woby::selectedObjectProperty(state, property).available);
+        }
+    }
+    state.files[1].groupSettings[0].showTriangles = true;
+    state.files[1].groupSettings[0].color[0] = 0.17f;
+    woby::selectSceneObject(state, parent);
+    woby::selectSceneObject(state, state.files[0].objectId, true);
+    woby::selectSceneObject(state, state.files[1].groupSettings[0].objectId, true);
+    const auto selection = state.selectedSceneObjects;
+    const auto before = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state);
+    CHECK(woby::selectedObjectProperty(state, P::triangles).mixed);
+    CHECK(woby::selectedObjectProperty(state, P::red).mixed);
+    CHECK(woby::createSceneDocument(state) == before);
+    CHECK_FALSE(state.isDirty);
+    woby::setSelectedObjectProperty(state, P::triangles, 1.0f);
+    woby::setSelectedObjectProperty(state, P::solidMesh, 0.0f);
+    woby::setSelectedObjectProperty(state, P::vertices, 1.0f);
+    woby::setSelectedObjectProperty(state, P::red, 2.0f);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::triangles).mixed);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::red).mixed);
+    for (size_t file = 0; file < 2u; ++file) {
+        for (size_t part = 0; part < state.files[file].groupSettings.size(); ++part) {
+            const auto& actual = state.files[file].groupSettings[part];
+            CHECK(actual.showTriangles);
+            CHECK_FALSE(actual.showSolidMesh);
+            CHECK(actual.showVertices);
+            CHECK(actual.color[0] == 1.0f);
+            CHECK(actual.color[1] == before.files[file].groups[part].settings.color[1]);
+            CHECK(actual.color[2] == before.files[file].groups[part].settings.color[2]);
+            CHECK(actual.opacity == 1.0f);
+        }
+    }
+    CHECK(woby::createSceneDocument(state).files[2] == before.files[2]);
+    CHECK(state.selectedSceneObjects == selection);
+    CHECK(state.propertiesPaneVisible);
+    CHECK(state.isDirty);
+    woby::clearSceneDirty(state);
+    woby::setSelectedObjectProperty(state, P::red, 1.0f);
+    CHECK_FALSE(state.isDirty);
+    const auto edited = woby::createSceneDocument(state);
+    for (const auto invalid : {state.nextObjectId + 1u, woby::createComparison(state)}) {
+        state.selectedSceneObjects = {parent, invalid};
+        CHECK_FALSE(woby::selectedObjectProperty(state, P::red).available);
+        woby::setSelectedObjectProperty(state, P::red, 0.0f);
+        CHECK(woby::createSceneDocument(state).files == edited.files);
+    }
+}
+
+TEST_CASE("folder vertex multipliers and appearance resets preserve unrelated properties")
+{
+    using P = woby::UiObjectProperty;
+    auto state = parentAppearanceScene();
+    const auto parent = state.sceneNodes[0].objectId;
+    state.files[0].vertexSizeScale = 2.0f;
+    state.files[1].vertexSizeScale = 3.0f;
+    state.files[0].groupSettings[0].vertexSizeScale = 4.0f;
+    state.files[0].groupSettings[0].opacity = 0.4f;
+    state.files[0].groupSettings[0].translation[0] = 7.0f;
+    woby::selectSceneObject(state, parent);
+    woby::selectSceneObject(state, state.files[0].objectId, true);
+    CHECK(woby::selectedObjectProperty(state, P::vertexSize).mixed);
+    woby::setSelectedObjectProperty(state, P::vertexSize, 5.0f);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::vertexSize).mixed);
+    CHECK(state.files[0].vertexSizeScale == 5.0f);
+    CHECK(state.files[1].vertexSizeScale == 5.0f);
+    CHECK(state.files[2].vertexSizeScale == 1.0f);
+    CHECK(state.files[0].groupSettings[0].vertexSizeScale == 4.0f);
+    woby::setSelectedObjectProperty(state, P::vertexSize, 500.0f);
+    CHECK(state.files[0].vertexSizeScale == woby::maxVertexSizeScale);
+    CHECK(state.files[1].vertexSizeScale == woby::maxVertexSizeScale);
+    woby::setSelectedObjectProperty(state, P::vertices, 1.0f);
+    woby::setSelectedObjectProperty(state, P::red, 0.1f);
+    const auto outside = woby::createSceneDocument(state).files[2];
+    woby::resetSelectedObjectProperties(state, woby::UiPropertyGroup::appearance);
+    for (size_t file = 0; file < 2u; ++file) {
+        CHECK(state.files[file].vertexSizeScale == 1.0f);
+        for (size_t part = 0; part < state.files[file].groupSettings.size(); ++part) {
+            const auto& actual = state.files[file].groupSettings[part];
+            CHECK(actual.color == woby::defaultGroupColor(file * 2u + part));
+            CHECK(actual.vertexSizeScale == 1.0f);
+            CHECK(actual.showSolidMesh);
+            CHECK_FALSE(actual.showTriangles);
+            CHECK_FALSE(actual.showVertices);
+        }
+    }
+    CHECK(state.files[0].groupSettings[0].opacity == doctest::Approx(0.4f));
+    CHECK(state.files[0].groupSettings[0].translation[0] == 7.0f);
+    CHECK(woby::createSceneDocument(state).files[2] == outside);
+    woby::clearSceneDirty(state);
+    woby::resetSelectedObjectProperties(state, woby::UiPropertyGroup::appearance);
+    CHECK_FALSE(state.isDirty);
 }
 
 TEST_CASE("inspector rejects unsupported or stale selections without partial edits")
@@ -216,6 +346,76 @@ TEST_CASE("inspector rejects unsupported or stale selections without partial edi
     CHECK_FALSE(woby::selectedObjectProperty(state, P::opacity).available);
 }
 
+TEST_CASE("inspector visibility includes selected subtrees and preserves selection and properties")
+{
+    woby::UiState state;
+    woby::Mesh mesh;
+    mesh.nodes = {{"first", 0u, 0u}, {"second", 0u, 0u}};
+    state.files.push_back(woby::createUiFileState("selected.obj", mesh, 0u));
+    state.files.push_back(woby::createUiFileState("other.obj", mesh, 2u));
+    woby::appendFolderTreeSceneNode(state, std::filesystem::current_path(), 0u, 1u);
+    woby::appendDefaultSceneNodesForFiles(state, 1u);
+    const auto folderId = state.sceneNodes[0].objectId;
+    const auto fileId = state.files[0].objectId;
+    const auto partId = state.files[0].groupSettings[0].objectId;
+    woby::selectSceneObject(state, folderId);
+    woby::selectSceneObject(state, partId, true);
+    const auto selection = state.selectedSceneObjects;
+    for (const bool visible : {false, true}) {
+        woby::clearSceneDirty(state);
+        woby::setSelectedObjectsVisible(state, visible);
+        CHECK(state.selectedSceneObjects == selection);
+        CHECK(state.propertiesPaneVisible);
+        CHECK(state.sceneNodes[0].settings.visible == visible);
+        CHECK(state.files[0].fileSettings.visible == visible);
+        for (const auto& part : state.files[0].groupSettings) { CHECK(part.visible == visible); }
+        CHECK(state.files[1].fileSettings.visible);
+        for (const auto& part : state.files[1].groupSettings) { CHECK(part.visible); }
+        CHECK(woby::selectedObjectVisibility(state).value == (visible ? 1.0f : 0.0f));
+        CHECK_FALSE(woby::selectedObjectVisibility(state).mixed);
+        CHECK(state.isDirty);
+        woby::clearSceneDirty(state);
+        woby::setSelectedObjectsVisible(state, visible);
+        CHECK_FALSE(state.isDirty);
+    }
+    woby::selectSceneObject(state, partId);
+    woby::setSelectedObjectsVisible(state, false);
+    CHECK(state.files[0].groupSettings[1].visible);
+    woby::selectSceneObject(state, fileId);
+    CHECK(woby::selectedObjectVisibility(state).mixed);
+    woby::selectSceneObject(state, folderId);
+    CHECK(woby::selectedObjectVisibility(state).mixed);
+    woby::setSelectedObjectsVisible(state, true);
+    CHECK_FALSE(woby::selectedObjectVisibility(state).mixed);
+    CHECK(state.files[0].groupSettings[0].visible);
+    CHECK(state.files[0].groupSettings[1].visible);
+}
+
+TEST_CASE("inspector visibility rejects stale unsupported and empty selections without partial edits")
+{
+    woby::UiState state;
+    woby::Mesh mesh;
+    mesh.nodes.push_back({"part", 0u, 0u});
+    state.files.push_back(woby::createUiFileState("a.obj", mesh, 0u));
+    woby::appendDefaultSceneNodesForFiles(state, 0u);
+    const auto comparison = woby::createComparison(state);
+    const auto part = state.files[0].groupSettings[0].objectId;
+    const auto original = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state);
+    for (const auto invalid : {woby::invalidSceneObjectId, state.nextObjectId + 1, comparison}) {
+        state.selectedSceneObjects = {part, invalid};
+        CHECK_FALSE(woby::selectedObjectVisibility(state).available);
+        woby::setSelectedObjectsVisible(state, false);
+        CHECK(woby::createSceneDocument(state) == original);
+        CHECK_FALSE(state.isDirty);
+    }
+    woby::clearSceneSelection(state);
+    CHECK_FALSE(woby::selectedObjectVisibility(state).available);
+    woby::setSelectedObjectsVisible(state, false);
+    CHECK(woby::createSceneDocument(state) == original);
+    CHECK_FALSE(state.isDirty);
+}
+
 TEST_CASE("inspector edits retain the existing scene save load mapping")
 {
     using P = woby::UiObjectProperty;
@@ -237,6 +437,18 @@ TEST_CASE("inspector edits retain the existing scene save load mapping")
     woby::setSelectedObjectProperty(state, P::red, 0.125f);
     woby::setSelectedObjectProperty(state, P::vertexSize, 2.0f);
     woby::setSelectedObjectProperty(state, P::vertices, 0.0f);
+    woby::selectSceneObject(state, state.sceneNodes[0].objectId);
+    woby::setSelectedObjectProperty(state, P::green, 0.75f);
+    woby::setSelectedObjectProperty(state, P::blue, 0.25f);
+    woby::setSelectedObjectProperty(state, P::triangles, 1.0f);
+    woby::setSelectedObjectProperty(state, P::vertexSize, 3.0f);
+    CHECK(state.files[0].groupSettings[0].color[1] == 0.75f);
+    CHECK(state.files[0].groupSettings[0].showTriangles);
+    CHECK(state.files[0].vertexSizeScale == 3.0f);
+    woby::setSelectedObjectsVisible(state, false);
+    CHECK_FALSE(state.sceneNodes[0].settings.visible);
+    CHECK_FALSE(state.files[0].fileSettings.visible);
+    CHECK_FALSE(state.files[0].groupSettings[0].visible);
     const auto expected = woby::createSceneDocument(state);
     const auto path = testDirectory / "woby_inspector_round_trip.woby";
     woby::writeSceneDocument(path, expected);

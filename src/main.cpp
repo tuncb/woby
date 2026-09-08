@@ -131,9 +131,9 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xea80,
     0,
 };
-constexpr const char* solidMeshIcon = "\xef\x86\xb2";
-constexpr const char* trianglesIcon = "\xef\x81\x8b";
-constexpr const char* verticesIcon = "\xef\x86\x92";
+using woby::solidMeshIcon;
+using woby::trianglesIcon;
+using woby::verticesIcon;
 constexpr const char* frameSceneIcon = "\xef\x81\xa5";
 constexpr const char* screenshotIcon = "\xef\x80\xb0";
 constexpr const char* originIcon = "\xf3\xb0\xad\x83";

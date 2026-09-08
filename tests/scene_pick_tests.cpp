@@ -42,6 +42,24 @@ woby::SceneObjectId pick(const woby::UiState& state, woby::PickPoint point = {50
 }
 }
 
+TEST_CASE("hiding an inspected object removes viewport highlighting without clearing selection")
+{
+    auto state = scene();
+    const auto id = state.files[0].groupSettings[0].objectId;
+    woby::selectSceneObject(state, id);
+    REQUIRE(woby::scenePickParts(state).size() == 1u);
+    CHECK(woby::scenePickParts(state)[0].selected);
+    woby::setSelectedObjectsVisible(state, false);
+    CHECK(woby::scenePickParts(state).empty());
+    CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{id});
+    CHECK(state.propertiesPaneVisible);
+    CHECK(woby::selectedObjectProperty(state, woby::UiObjectProperty::opacity).available);
+    woby::setSelectedObjectsVisible(state, true);
+    REQUIRE(woby::scenePickParts(state).size() == 1u);
+    CHECK(woby::scenePickParts(state)[0].selected);
+    CHECK(pick(state) == id);
+}
+
 TEST_CASE("canvas clicks select surfaces and reuse transient multi selection")
 {
     auto state = scene();

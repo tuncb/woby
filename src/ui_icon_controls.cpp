@@ -1,6 +1,7 @@
 #include "ui_icon_controls.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -114,6 +115,42 @@ bool drawRenderModeIconButton(
 }
 
 float informationIconSize() { return uiSize(20.0f); }
+
+void drawObjectIdentityRow(const char* kind, const char* name, const char* fileName, const char* path)
+{
+    std::string text = std::string(kind) + ": " + name;
+    std::string hint = text;
+    if (fileName) {
+        text += std::string(" | In file: ") + fileName;
+        hint += std::string("\nIn file: ") + fileName;
+    }
+    if (path && *path) { hint += std::string("\n") + path; }
+    // Importer-provided names may contain line breaks. Keep the row single-line
+    // while retaining the original text in the hint.
+    for (char& c : text) { if (c == '\n' || c == '\r' || c == '\t') { c = ' '; } }
+    const auto low = ImGui::GetCursorScreenPos();
+    const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+    const ImVec2 high(low.x + width, low.y + ImGui::GetTextLineHeight());
+    const auto textSize = ImGui::CalcTextSize(text.c_str(), text.c_str() + text.size(), false);
+    ImGui::Dummy(ImVec2(width, high.y - low.y));
+    if (ImGui::IsItemVisible()) {
+        auto* draw = ImGui::GetWindowDrawList();
+        draw->PushClipRect(low, high, true);
+        // ImGui's ellipsis renderer preserves UTF-8 boundaries and matches the
+        // current font's ellipsis glyph, including at fractional UI scales.
+        ImGui::RenderTextEllipsis(draw, low, high, high.x, text.c_str(), text.c_str() + text.size(), &textSize);
+        draw->PopClipRect();
+    }
+    if (ImGui::IsItemHovered() && ImGui::BeginTooltip()) {
+        const auto& style = ImGui::GetStyle();
+        const auto* viewport = ImGui::GetMainViewport();
+        ImGui::PushTextWrapPos(std::max(1.0f,
+            std::min(ImGui::GetFontSize() * 32.0f, viewport->WorkSize.x - 24.0f - style.WindowPadding.x * 2.0f)));
+        ImGui::TextUnformatted(hint.c_str());
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
 
 void drawInformationIcon(const char* id, const char* title, const char* text)
 {
@@ -265,23 +302,40 @@ bool drawVisibilityButton(const char* id, bool visible, const char* itemName)
         false);
 }
 
+bool drawVisibilityIconField(const char* label, bool& visible, bool mixed)
+{
+    const std::string tooltip = mixed
+        ? std::string(label) + ": mixed visibility (click to show all)"
+        : std::string(visible ? "Hide " : "Show ") + label;
+    const bool changed = drawVisibilityIconButton(label,
+        mixed ? RenderModeState::mixed : visible ? RenderModeState::on : RenderModeState::off,
+        tooltip.c_str(), false);
+    if (changed) { visible = mixed || !visible; }
+    return changed;
+}
+
 bool drawVisibilityField(const char* label, bool& visible, bool mixed)
 {
     ImGui::PushID(label);
     ImGui::BeginGroup();
-    const std::string tooltip = mixed
-        ? std::string(label) + ": mixed visibility (click to show all)"
-        : std::string(visible ? "Hide " : "Show ") + label;
-    const bool changed = drawVisibilityIconButton("visible",
-        mixed ? RenderModeState::mixed : visible ? RenderModeState::on : RenderModeState::off,
-        tooltip.c_str(), false);
-    if (changed) { visible = mixed || !visible; }
+    const bool changed = drawVisibilityIconField(label, visible, mixed);
     ImGui::SameLine();
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(label);
     if (mixed) { ImGui::SameLine(); ImGui::TextDisabled("Mixed (click to show all)"); }
     ImGui::EndGroup();
     ImGui::PopID();
+    return changed;
+}
+
+bool drawRenderModeField(const char* label, const char* icon, bool& enabled, bool mixed)
+{
+    const std::string tooltip = mixed
+        ? std::string(label) + ": mixed (click to enable for all selected objects and their parts)"
+        : std::string(enabled ? "Disable " : "Enable ") + label + " on selected objects and their parts";
+    const bool changed = drawRenderModeIconButton(label, icon, tooltip.c_str(),
+        mixed ? RenderModeState::mixed : enabled ? RenderModeState::on : RenderModeState::off, false);
+    if (changed) { enabled = mixed || !enabled; }
     return changed;
 }
 
