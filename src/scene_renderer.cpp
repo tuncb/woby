@@ -720,6 +720,16 @@ void submitSceneFiles(
     }
 }
 
+void submitSceneSelection(bgfx::ViewId viewId, std::span<const ScenePickPart> parts,
+    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform)
+{
+    const auto positions = sceneSelectionLines(parts);
+    std::vector<HelperLineVertex> lines;
+    lines.reserve(positions.size());
+    for (const auto& p : positions) { lines.push_back({p}); }
+    submitHelperLines(viewId, lines, layout, program, colorUniform, {1.0f, .78f, .15f, 1.0f});
+}
+
 void submitSceneHelpers(
     bgfx::ViewId viewId,
     const UiState& state,

@@ -101,6 +101,8 @@ add_executable(woby
     src/hash_utils.h
     src/hover_pick.cpp
     src/hover_pick.h
+    src/scene_pick.cpp
+    src/scene_pick.h
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
@@ -301,6 +303,8 @@ if(BUILD_TESTING)
         src/hash_utils.h
         src/hover_pick.cpp
         src/hover_pick.h
+        src/scene_pick.cpp
+        src/scene_pick.h
         src/importer_host.cpp
         src/importer_host.h
         src/model_load.cpp
@@ -337,6 +341,7 @@ if(BUILD_TESTING)
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
         tests/hover_pick_tests.cpp
+        tests/scene_pick_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
         tests/scene_file_edge_tests.cpp

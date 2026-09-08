@@ -395,12 +395,8 @@ CanvasLayout canvasLayout(SDL_Window* window, const woby::UiState& state)
     return layout;
 }
 
-MousePosition mousePositionInPixels(SDL_Window* window)
+MousePosition mousePositionInPixels(SDL_Window* window, float mouseWindowX, float mouseWindowY)
 {
-    float mouseWindowX = 0.0f;
-    float mouseWindowY = 0.0f;
-    SDL_GetMouseState(&mouseWindowX, &mouseWindowY);
-
     int windowWidth = 0;
     int windowHeight = 0;
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
@@ -415,6 +411,13 @@ MousePosition mousePositionInPixels(SDL_Window* window)
         mouseWindowX * widthScale,
         mouseWindowY * heightScale,
     };
+}
+
+MousePosition mousePositionInPixels(SDL_Window* window)
+{
+    float x = 0, y = 0;
+    SDL_GetMouseState(&x, &y);
+    return mousePositionInPixels(window, x, y);
 }
 
 std::string fileDisplayName(const std::filesystem::path& path)
@@ -767,7 +770,8 @@ void drawSceneTreeNode(
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
     woby::UiSceneNode& node,
-    std::optional<size_t>& removeFileIndex)
+    std::optional<size_t>& removeFileIndex,
+    std::span<const woby::SceneObjectId> revealPath)
 {
     if (node.kind == woby::UiSceneNodeKind::folder) {
         const size_t groupCount = woby::countSceneNodeGroups(state, node);
@@ -783,12 +787,13 @@ void drawSceneTreeNode(
         const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
+        if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
         const bool folderOpen = ImGui::TreeNodeEx(node.name.c_str(), flags);
         drawSceneItemInteraction(state, node.objectId, true);
         if (folderOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -830,6 +835,7 @@ void drawSceneTreeNode(
         const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
             | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
+        if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
         const bool fileTreeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
         setLastItemTooltip(tooltipText.c_str());
         drawSceneItemInteraction(state, node.objectId, true);
@@ -841,7 +847,7 @@ void drawSceneTreeNode(
         if (fileTreeOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -865,6 +871,7 @@ void drawSceneTreeNode(
         gpuMesh.nodeRanges[node.groupIndex],
         file,
         node.groupIndex);
+    if (!revealPath.empty() && revealPath.back() == node.objectId) { ImGui::SetScrollHereY(.5f); }
 }
 
 struct SdlDeleter {
@@ -2177,6 +2184,11 @@ int main(int argc, char** argv)
         woby::FrameTimings lastFrameTimings;
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
+        woby::ScenePointerGesture scenePointer;
+        std::optional<woby::ScenePickView> presentedPickView;
+        woby::SceneViewport presentedViewport;
+        bool scenePointerAvailable = false;
+        std::vector<woby::SceneObjectId> canvasSelectionPath;
         bool documentShortcutHeld = false;
         woby::setAutomationReady(*automation);
         while (running) {
@@ -2207,27 +2219,60 @@ int main(int argc, char** argv)
                     finishDropBatch(dragDropState);
                 }
                 if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+                    scenePointer = {};
+                    presentedPickView.reset();
                     getDrawableSize(window.get(), width, height);
                     bgfx::reset(width, height, resetFlags);
                 }
+                if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+                    scenePointer = {};
+                    woby::setCameraOrbiting(ui, false);
+                    woby::setCameraRolling(ui, false);
+                    woby::setCameraPanning(ui, false);
+                }
                 const auto inputLayout = canvasLayout(window.get(), ui);
-                const auto inputMouse = mousePositionInPixels(window.get());
+                const bool buttonEvent = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN || event.type == SDL_EVENT_MOUSE_BUTTON_UP;
+                const auto inputMouse = buttonEvent
+                    ? mousePositionInPixels(window.get(), event.button.x, event.button.y)
+                    : mousePositionInPixels(window.get());
                 const bool canvasInput = woby::contains(inputLayout.viewport, inputMouse.x, inputMouse.y);
-                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && canvasInput && !ImGui::GetIO().WantCaptureMouse) {
+                const bool pointerAllowed = scenePointerAvailable && !backgroundLoad.active && !gpuFinalize.active
+                    && !modelFileDialogIsOpen(modelFileDialogState) && !sceneFileDialogIsOpen(sceneFileDialogState)
+                    && !sceneScreenshotDialogIsOpen(sceneScreenshotDialogState) && !ImGui::GetIO().WantCaptureMouse;
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && canvasInput && pointerAllowed) {
                     if (event.button.button == SDL_BUTTON_LEFT) {
-                        const bool altPressed = (SDL_GetModState() & SDL_KMOD_ALT) != 0u;
-                        if (altPressed) {
-                            woby::setCameraRolling(ui, true);
-                        } else {
-                            woby::setCameraOrbiting(ui, true);
+                        if (!cameraInput.panning) {
+                            const auto modifiers = SDL_GetModState();
+                            woby::beginScenePointer(scenePointer, {event.button.x, event.button.y},
+                                (modifiers & SDL_KMOD_ALT) != 0u, (modifiers & SDL_KMOD_CTRL) != 0u);
                         }
                     }
                     if (event.button.button == SDL_BUTTON_RIGHT || event.button.button == SDL_BUTTON_MIDDLE) {
+                        scenePointer = {};
+                        woby::setCameraOrbiting(ui, false);
+                        woby::setCameraRolling(ui, false);
                         woby::setCameraPanning(ui, true);
                     }
                 }
                 if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
                     if (event.button.button == SDL_BUTTON_LEFT) {
+                        const auto click = woby::endScenePointer(scenePointer, {event.button.x, event.button.y},
+                            pointerAllowed && presentedPickView && woby::contains(presentedViewport, inputMouse.x, inputMouse.y));
+                        if (click) {
+                            // Resolve against the displayed camera/layout before selection opens Properties.
+                            auto parts = woby::scenePickParts(ui);
+                            woby::appendVisibleComparisonPickParts(parts, ui, comparison);
+                            const auto id = woby::pickSceneObject(parts, *presentedPickView,
+                                {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y});
+                            if (id != woby::invalidSceneObjectId) {
+                                woby::selectSceneObject(ui, id, click->toggle);
+                                canvasSelectionPath = woby::sceneObjectSelected(ui, id)
+                                    ? woby::sceneSelectionPath(ui, id) : std::vector<woby::SceneObjectId>{};
+                            } else if (!click->toggle) {
+                                woby::clearSceneSelection(ui);
+                                canvasSelectionPath.clear();
+                            }
+                        }
                         woby::setCameraOrbiting(ui, false);
                         woby::setCameraRolling(ui, false);
                     }
@@ -2236,11 +2281,24 @@ int main(int argc, char** argv)
                     }
                 }
                 if (event.type == SDL_EVENT_MOUSE_MOTION) {
+                    const bool wasDragging = scenePointer.dragging;
+                    if (scenePointer.active && (!scenePointerAvailable || backgroundLoad.active || gpuFinalize.active)) {
+                        scenePointer = {};
+                        woby::setCameraOrbiting(ui, false);
+                        woby::setCameraRolling(ui, false);
+                    }
+                    const bool dragging = woby::moveScenePointer(scenePointer, {event.motion.x, event.motion.y});
+                    if (dragging) {
+                        woby::setCameraOrbiting(ui, !scenePointer.alt);
+                        woby::setCameraRolling(ui, scenePointer.alt);
+                    }
+                    const float dx = dragging && !wasDragging ? event.motion.x - scenePointer.start[0] : event.motion.xrel;
+                    const float dy = dragging && !wasDragging ? event.motion.y - scenePointer.start[1] : event.motion.yrel;
                     if (cameraInput.orbiting) {
-                        woby::orbitUiCamera(ui, event.motion.xrel, event.motion.yrel);
+                        woby::orbitUiCamera(ui, dx, dy);
                     }
                     if (cameraInput.rolling) {
-                        woby::rollUiCamera(ui, event.motion.xrel);
+                        woby::rollUiCamera(ui, dx);
                     }
                     if (cameraInput.panning) {
                         const float aspect = static_cast<float>(inputLayout.viewport.width) / static_cast<float>(inputLayout.viewport.height);
@@ -2788,6 +2846,8 @@ int main(int argc, char** argv)
                 }
 
                 const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
+                if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
+                if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
                 const bool filesPaneOpen = ImGui::CollapsingHeader(
                     filesPaneTitle.c_str(),
                     ImGuiTreeNodeFlags_DefaultOpen);
@@ -2805,10 +2865,11 @@ int main(int argc, char** argv)
                         std::optional<size_t> removeFileIndex;
                         for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                             ImGui::PushID(static_cast<int>(nodeIndex));
-                            drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex);
+                            drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath);
                             ImGui::PopID();
                         }
                         woby::drawComparisonObjects(ui);
+                        canvasSelectionPath.clear();
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
                             const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
                             removeModelFile(ui, runtimes, removeFileIndex.value());
@@ -3105,21 +3166,14 @@ int main(int argc, char** argv)
             bgfx::touch(sceneView);
             bgfx::touch(helperView);
 
-            float view[16];
-            float projection[16];
             const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
-            bx::mtxLookAt(
-                view,
-                woby::cameraEye(camera, ui.upAxis),
-                woby::cameraLookAt(camera),
-                woby::cameraUp(camera, ui.upAxis));
-            bx::mtxProj(
-                projection,
-                woby::cameraViewportFov(camera, static_cast<float>(sceneViewportWidth) / static_cast<float>(height)),
-                static_cast<float>(sceneViewportWidth) / static_cast<float>(height),
-                camera.nearPlane,
-                woby::cameraFarPlane(camera, sceneBounds),
-                homogeneousDepth);
+            const auto currentPickView = woby::scenePickView(camera, ui.upAxis, sceneBounds,
+                sceneViewportWidth, height, homogeneousDepth,
+                static_cast<float>(width) / canvasLayout(window.get(), ui).width);
+            const auto* view = currentPickView.view.data();
+            const auto* projection = currentPickView.projection.data();
+            presentedPickView = currentPickView;
+            presentedViewport = viewport;
             bgfx::setViewTransform(sceneView, view, projection);
             bgfx::setViewTransform(helperView, view, projection);
             recordFrameStage(frameTimings, woby::FrameStage::viewSetup, stageStart);
@@ -3138,6 +3192,14 @@ int main(int argc, char** argv)
                 || nativeFileDialogOpen
                 || backgroundLoad.active
                 || gpuFinalize.active;
+            scenePointerAvailable = !dialogOpen && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)
+                && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0u;
+            if (!scenePointerAvailable) {
+                scenePointer = {};
+                woby::setCameraOrbiting(ui, false);
+                woby::setCameraRolling(ui, false);
+                woby::setCameraPanning(ui, false);
+            }
             const bool hoverPickingEnabled = mouseInsideViewport
                 && !ImGui::GetIO().WantCaptureMouse
                 && !cameraInteractionActive
@@ -3199,6 +3261,11 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
             submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
+            if (!ui.selectedSceneObjects.empty()) {
+                auto selectedParts = woby::scenePickParts(ui);
+                woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
+                woby::submitSceneSelection(helperView, selectedParts, helperLayout, colorProgram, colorUniform);
+            }
             recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
 
             try {

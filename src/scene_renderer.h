@@ -2,6 +2,7 @@
 
 #include "model_mesh.h"
 #include "ui_state.h"
+#include "scene_pick.h"
 
 #include <bgfx/bgfx.h>
 
@@ -68,5 +69,8 @@ void submitSceneHelpers(
     const bgfx::VertexLayout& layout,
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform);
+
+void submitSceneSelection(bgfx::ViewId viewId, std::span<const ScenePickPart> parts,
+    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform);
 
 } // namespace woby

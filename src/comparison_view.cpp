@@ -633,6 +633,18 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
     }
 }
 
+void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
+    const ComparisonRuntimes& runtimes)
+{
+    for (const auto& comparison : state.comparisons) {
+        const auto it = runtimes.objects.find(comparison.objectId);
+        if (it != runtimes.objects.end() && it->second.ready) {
+            appendComparisonPickParts(parts, comparison, effectiveComparisonSettings(state, comparison.objectId),
+                it->second.result, sceneObjectSelected(state, comparison.objectId));
+        }
+    }
+}
+
 void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
     bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform)
 {

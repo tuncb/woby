@@ -115,7 +115,7 @@ struct UiState {
     std::vector<UiComparison> comparisons;
     // Last active comparison, retained for source membership commands and badges.
     SceneObjectId activeComparisonId = invalidSceneObjectId;
-    // Transient tree selection in click order; excluded from scene files and dirty tracking.
+    // Transient tree/canvas selection in click order; excluded from scene files and dirty tracking.
     std::vector<SceneObjectId> selectedSceneObjects;
     bool running = true;
     bool isDirty = false;

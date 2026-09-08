@@ -62,7 +62,16 @@ and fades away after eight seconds. Contextual tooltips explain
 selection, comparison position, input swapping, and units.
 
 Left drag or arrow keys orbit, right/middle drag pans, and the wheel or `+`/`-`
-zooms. `R` frames the scene, `Ctrl+B` toggles the left pane, and the upper-right
+zooms. Alt-left drag rolls. Click a surface, displayed edge, or displayed vertex
+to select its part; click a comparison result to select the comparison. Ctrl-click
+toggles membership in the selection, and a plain click on empty space clears it.
+A small movement threshold separates clicks from drags. Selected geometry has
+yellow bounding boxes, including the visible children of selected files/folders.
+Edges and vertices have a small click tolerance; x-ray edges remain selectable
+through surfaces. Fully transparent and hidden objects are ignored. Partially
+transparent surfaces remain selectable, with overlapping results following draw order.
+Selection does not change the saved scene or its dirty state.
+`R` frames the scene, `Ctrl+B` toggles the left pane, and the upper-right
 Properties/pin button toggles the right-hand Properties pane. Selecting an object
 opens this pane and shows the properties for that selection. `W`/`A`/`S`/`D` move
 the camera, `Q`/`E` move vertically, and Shift speeds movement up. Camera keys are

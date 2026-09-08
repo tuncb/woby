@@ -48,6 +48,8 @@ void drawComparisonObjects(UiState& state);
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
     bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform);
+void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
+    const ComparisonRuntimes& runtimes);
 // False while any visible, valid comparison is queued/computing. Errors are reported to the caller.
 [[nodiscard]] bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntimes& runtimes);
 
