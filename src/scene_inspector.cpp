@@ -229,9 +229,6 @@ void drawSceneInspector(UiState& state)
             if (ImGui::BeginTable("appearance", 2)) {
                 scalarField(state, "Opacity (0-100%)", UiObjectProperty::opacity, 100.0f);
                 scalarField(state, "Vertex size (x)", UiObjectProperty::vertexSize);
-                scalarField(state, "Red (0-1)", UiObjectProperty::red);
-                scalarField(state, "Green (0-1)", UiObjectProperty::green);
-                scalarField(state, "Blue (0-1)", UiObjectProperty::blue);
                 ImGui::EndTable();
             }
             renderModeField(state, "Solid mesh", UiObjectProperty::solidMesh);
