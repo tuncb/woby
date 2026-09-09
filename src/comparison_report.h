@@ -22,7 +22,6 @@ struct ScreenshotSettings {
 };
 
 [[nodiscard]] ScreenshotSettings normalizedScreenshotSettings(ScreenshotSettings settings);
-[[nodiscard]] std::string comparisonUnits(const ComparisonSettings& settings);
 [[nodiscard]] std::string measurementNumber(double value);
 // Unlit palette, shared by numeric legends. Matches comparison.frag.sc.
 [[nodiscard]] std::array<float, 4> comparisonHeatmapColor(double distance, const ComparisonSettings& settings);

@@ -148,7 +148,7 @@ void drawGeometry(const UiState& state)
         }
     }
     if (bounds) {
-        ImGui::TextUnformatted("Local bounds (model units)");
+        ImGui::TextUnformatted("Local bounds");
         for (size_t axis = 0; axis < 3; ++axis) {
             ImGui::Text("%s: %.6g to %.6g", axis == 0 ? "X" : axis == 1 ? "Y" : "Z",
                 static_cast<double>(bounds->min[axis]), static_cast<double>(bounds->max[axis]));
@@ -198,7 +198,7 @@ void drawSceneInspector(UiState& state)
     if (ImGui::BeginChild("property_fields")) {
         if (propertyHeading(state, "Transform",
                 "Reset translation, rotation, and scale on selected objects.", UiPropertyGroup::transform, true)) {
-            axisFields(state, "Translation (model units)", "Reset translation on selected objects to zero.",
+            axisFields(state, "Translation", "Reset translation on selected objects to zero.",
                 UiObjectProperty::translationX, UiPropertyGroup::translation);
             axisFields(state, "Rotation (degrees)", "Reset rotation on selected objects to zero.",
                 UiObjectProperty::rotationX, UiPropertyGroup::rotation);
@@ -278,7 +278,7 @@ void drawSceneInspector(UiState& state)
         }
         if (drawInformationHeader("Geometry", "Geometry",
                 "Select one file or part to inspect its mesh statistics and local bounds. "
-                "For folders, select a child file or part. Bounds use model units.")) {
+                "For folders, select a child file or part.")) {
             drawGeometry(state);
         }
     }

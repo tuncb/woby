@@ -415,7 +415,7 @@ bool drawSceneScreenshotOptions(UiState& state)
         ImGui::Separator();
         ImGui::TextUnformatted("Comparison annotations");
         ImGui::SameLine();
-        drawInformationIcon("annotations_info", "Comparison annotations", "Legends always include tolerance and units.");
+        drawInformationIcon("annotations_info", "Comparison annotations", "Distance legends always include tolerance.");
         drawVisibilityField("Numeric legend and statistics", options.legend);
         drawVisibilityField("Comparison name", options.comparisonName);
         drawVisibilityField("A / B sources", options.sources);

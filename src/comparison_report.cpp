@@ -14,11 +14,6 @@ ScreenshotSettings normalizedScreenshotSettings(ScreenshotSettings settings)
     return settings;
 }
 
-std::string comparisonUnits(const ComparisonSettings& settings)
-{
-    return settings.unitLabel.empty() ? "model units" : settings.unitLabel;
-}
-
 std::string measurementNumber(double value)
 {
     std::ostringstream text;
@@ -51,8 +46,7 @@ std::vector<std::string> comparisonReportLines(
         const auto index = static_cast<size_t>(metric);
         const auto& distribution = result.qualityDistributions[index];
         lines.push_back("Surface mesh quality");
-        lines.push_back(std::string(surfaceQualityMetricName(metric)) + " (" +
-            (index < 2 ? comparisonUnits(settings) : "dimensionless") + ")");
+        lines.push_back(surfaceQualityMetricName(metric));
         if (options.direction) { lines.push_back(settings.quality.onOriginal ? "Heatmap: A" : "Heatmap: B"); }
         if (options.legend) {
             lines.push_back("Shared A/B range: " + measurementNumber(distribution.minimum) + " to " + measurementNumber(distribution.maximum));
@@ -72,19 +66,25 @@ std::vector<std::string> comparisonReportLines(
                     measurementNumber(stats.maximum) : "N/A"));
                 lines.push_back(label + " worst shape: " + (quality->statistics[2].count ? measurementNumber(quality->statistics[2].minimum) : "N/A") +
                     "; max size jump: " + (quality->statistics[3].count ? measurementNumber(quality->statistics[3].maximum) : "N/A"));
-                if (settings.quality.minimumEnabled || settings.quality.maximumEnabled) {
-                    const auto limits = surfaceQualitySizeLimits(*quality, settings.quality);
-                    lines.push_back(label + " below / above limits: " + std::to_string(limits.below) + " / " + std::to_string(limits.above));
-                    lines.push_back(label + " outside limits: " + (limits.validTriangles ? measurementNumber(limits.trianglePercent) +
-                        "% of faces; " + measurementNumber(limits.areaPercent) + "% of area" : "N/A"));
-                }
+
             }
             lines.push_back("Statistics exclude degenerate faces; unavailable neighbor ratios are omitted.");
         }
         if ((options.tolerance || options.legend) && (settings.quality.minimumEnabled || settings.quality.maximumEnabled)) {
             lines.push_back("Longest-edge limits (inclusive): " +
                 (settings.quality.minimumEnabled ? measurementNumber(settings.quality.minimumSize) : "no minimum") + " to " +
-                (settings.quality.maximumEnabled ? measurementNumber(settings.quality.maximumSize) : "no maximum") + " " + comparisonUnits(settings));
+                (settings.quality.maximumEnabled ? measurementNumber(settings.quality.maximumSize) : "no maximum"));
+            if (options.legend) {
+                size_t side = 0;
+                for (const auto* quality : {&result.original.quality, &result.repaired.quality}) {
+                    const std::string label = side++ == 0 ? "A" : "B";
+                    if (quality->triangles.empty()) { continue; }
+                    const auto limits = surfaceQualitySizeLimits(*quality, settings.quality);
+                    lines.push_back(label + " below / above limits: " + std::to_string(limits.below) + " / " + std::to_string(limits.above));
+                    lines.push_back(label + " outside limits: " + (limits.validTriangles ? measurementNumber(limits.trianglePercent) +
+                        "% of faces; " + measurementNumber(limits.areaPercent) + "% of area" : "N/A"));
+                }
+            }
         }
         if (settings.showBoundaries) { lines.push_back("Green edges: boundary"); }
         if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
@@ -98,24 +98,23 @@ std::vector<std::string> comparisonReportLines(
         return lines;
     }
     const auto& surface = settings.distanceOnOriginal ? result.original : result.repaired;
-    const auto units = comparisonUnits(settings);
-    lines.push_back("Approximate unsigned surface distance (" + units + ")");
+    lines.push_back("Approximate unsigned surface distance");
     lines.push_back("Four samples per triangle; not an exact maximum.");
     if (options.direction) {
         lines.push_back(settings.distanceOnOriginal ? "A -> B: measured A; reference B" : "B -> A: measured B; reference A");
     }
     if (options.tolerance || options.legend) {
-        lines.push_back("Tolerance: " + measurementNumber(settings.tolerance) + " " + units + " (gray at or below)");
+        lines.push_back("Tolerance: " + measurementNumber(settings.tolerance) + " (gray at or below)");
     }
     if (options.legend) {
-        lines.push_back("Color maximum: " + measurementNumber(settings.colorRange) + " " + units +
+        lines.push_back("Color maximum: " + measurementNumber(settings.colorRange) +
             (settings.colorRange == settings.tolerance ? " (above tolerance saturates)" : " (>= saturates)"));
         if (surface.maximum > settings.colorRange) {
             lines.push_back("SATURATED: sampled values exceed the color maximum.");
         }
-        lines.push_back("Sample max: " + measurementNumber(surface.maximum) + " " + units);
-        lines.push_back("Area-weighted mean: " + measurementNumber(surface.mean) + " " + units);
-        lines.push_back("Area-weighted P95: " + measurementNumber(surface.percentile95) + " " + units);
+        lines.push_back("Sample max: " + measurementNumber(surface.maximum));
+        lines.push_back("Area-weighted mean: " + measurementNumber(surface.mean));
+        lines.push_back("Area-weighted P95: " + measurementNumber(surface.percentile95));
         lines.push_back("Area above tolerance: " + measurementNumber(surfacePercentAboveTolerance(surface, settings.tolerance)) + "%");
         lines.push_back("Surface shading affects brightness; legend shows unlit colors.");
     }

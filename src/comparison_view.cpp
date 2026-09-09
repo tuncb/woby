@@ -459,12 +459,62 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
 }
 
 namespace {
+void drawSurfaceQualitySizeLimits(UiState& state, SceneObjectId id, const MeshComparison* result, bool hasA, bool hasB)
+{
+    ImGui::Separator();
+    ImGui::TextUnformatted("Size limits (longest edge)");
+    ImGui::SameLine();
+    drawInformationIcon("size_limits_info", "Size limits",
+        "Limits use each triangle's longest edge, with inclusive endpoints. "
+        "Counts and percentages exclude degenerate faces. Limits do not change heatmap colors.");
+    auto settings = comparisonSettings(state, id);
+    const auto initial = settings;
+    ImGui::Checkbox("Minimum##quality", &settings.quality.minimumEnabled);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!settings.quality.minimumEnabled);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputFloat("##quality_minimum", &settings.quality.minimumSize, 0, 0, "%.5g");
+    ImGui::EndDisabled();
+    ImGui::Checkbox("Maximum##quality", &settings.quality.maximumEnabled);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!settings.quality.maximumEnabled);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputFloat("##quality_maximum", &settings.quality.maximumSize, 0, 0, "%.5g");
+    ImGui::EndDisabled();
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
+    const auto& quality = comparisonSettings(state, id).quality;
+    if (!quality.minimumEnabled && !quality.maximumEnabled) {
+        ImGui::TextDisabled("Enable a limit to see outside-limit statistics.");
+    } else if (result && ImGui::BeginTable("quality_size_limits", 3,
+                   ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Statistic", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+        ImGui::TableSetupColumn("A"); ImGui::TableSetupColumn("B"); ImGui::TableHeadersRow();
+        const std::array<QualitySizeLimits, 2> limits = {
+            surfaceQualitySizeLimits(result->original.quality, quality),
+            surfaceQualitySizeLimits(result->repaired.quality, quality)};
+        const std::array<bool, 2> present = {hasA, hasB};
+        const auto row = [&](const char* label, const auto& value) {
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label);
+            for (size_t side = 0; side < limits.size(); ++side) {
+                ImGui::TableNextColumn();
+                const auto text = present[side] ? value(limits[side]) : "-";
+                ImGui::TextUnformatted(text.c_str());
+            }
+        };
+        if (quality.minimumEnabled) { row("Below minimum", [](const auto& l) { return std::to_string(l.below); }); }
+        if (quality.maximumEnabled) { row("Above maximum", [](const auto& l) { return std::to_string(l.above); }); }
+        row("Outside: faces", [](const auto& l) { return l.validTriangles ? measurementNumber(l.trianglePercent) + "%" : "N/A"; });
+        row("Outside: area", [](const auto& l) { return l.validTriangles ? measurementNumber(l.areaPercent) + "%" : "N/A"; });
+        ImGui::EndTable();
+    }
+    ImGui::Separator();
+}
+
 void drawSurfaceQualityStatistics(const MeshComparison& result, const ComparisonSettings& settings, bool hasA, bool hasB)
 {
     const auto metric = settings.quality.metric;
     const auto index = static_cast<size_t>(metric);
     const auto& distribution = result.qualityDistributions[index];
-    const bool dimensional = index < 2;
     ImGui::Separator();
     ImGui::TextUnformatted("Surface mesh quality");
     ImGui::SameLine();
@@ -475,7 +525,7 @@ void drawSurfaceQualityStatistics(const MeshComparison& result, const Comparison
         "edges are excluded; no neighbor = unavailable. Coincident positions are matched.\n\n"
         "Statistics count valid source triangles equally; percentiles use linear interpolation. "
         "Degenerate faces are excluded and reported separately. Size colors describe size, not FEM accuracy.");
-    ImGui::TextWrapped("%s (%s)", surfaceQualityMetricName(metric), dimensional ? comparisonUnits(settings).c_str() : "dimensionless");
+    ImGui::TextUnformatted(surfaceQualityMetricName(metric));
     const float legend = drawSurfaceQualityLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
         ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), metric, distribution);
     ImGui::Dummy({0, legend});
@@ -506,18 +556,7 @@ void drawSurfaceQualityStatistics(const MeshComparison& result, const Comparison
         statisticRow("Maximum", &QualityStatistics::maximum);
         row("Worst shape", [](const auto& q) { return q.statistics[2].count ? measurementNumber(q.statistics[2].minimum) : "N/A"; });
         row("Max size jump", [](const auto& q) { return q.statistics[3].count ? measurementNumber(q.statistics[3].maximum) : "N/A"; });
-        if (settings.quality.minimumEnabled || settings.quality.maximumEnabled) {
-            row("Below min", [&](const auto& q) { return std::to_string(surfaceQualitySizeLimits(q, settings.quality).below); });
-            row("Above max", [&](const auto& q) { return std::to_string(surfaceQualitySizeLimits(q, settings.quality).above); });
-            row("Outside: faces", [&](const auto& q) { const auto l = surfaceQualitySizeLimits(q, settings.quality);
-                return l.validTriangles ? measurementNumber(l.trianglePercent) + "%" : "N/A"; });
-            row("Outside: area", [&](const auto& q) { const auto l = surfaceQualitySizeLimits(q, settings.quality);
-                return l.validTriangles ? measurementNumber(l.areaPercent) + "%" : "N/A"; });
-        }
         ImGui::EndTable();
-    }
-    if (settings.quality.minimumEnabled || settings.quality.maximumEnabled) {
-        ImGui::TextWrapped("Limits use longest edge, inclusive endpoints. Percentages exclude degenerate faces.");
     }
     ImGui::TextUnformatted("Distribution (% of measured faces)");
     ImGui::TextColored(ImVec4(.3f, .65f, 1, 1), "A"); ImGui::SameLine();
@@ -573,7 +612,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
     ImGui::SameLine();
     drawInformationIcon("comparison_info", "Comparison inputs",
-        "Combined surfaces at scene positions, in model units. Hidden members are included. "
+        "Combined surfaces at scene positions. Hidden members are included. "
         "Other scene objects retain their own appearance.\n\n"
         "Use Comparison membership in the scene tree context menu, or drag sources onto group A or B. "
         "Right-click a group to clear it, or a source below to remove it.\n\n"
@@ -586,7 +625,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     auto translation = comparison->translation;
     ImGui::TextUnformatted("Result position");
     ImGui::SameLine();
-    drawInformationIcon("position_info", "Result position", "Display offset only, in model units.");
+    drawInformationIcon("position_info", "Result position", "Display offset only.");
     ImGui::SetNextItemWidth(-1.0f);
     if (ImGui::DragFloat3("##result_position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
     ImGui::Separator();
@@ -659,29 +698,6 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
                 ImGui::SameLine();
                 if (ImGui::RadioButton("B##quality", !settings.quality.onOriginal)) { settings.quality.onOriginal = false; }
             }
-            ImGui::TextUnformatted("Size limits (longest edge)");
-            ImGui::Checkbox("Minimum##quality", &settings.quality.minimumEnabled);
-            ImGui::SameLine();
-            ImGui::BeginDisabled(!settings.quality.minimumEnabled);
-            ImGui::SetNextItemWidth(-1);
-            ImGui::InputFloat("##quality_minimum", &settings.quality.minimumSize, 0, 0, "%.5g");
-            ImGui::EndDisabled();
-            ImGui::Checkbox("Maximum##quality", &settings.quality.maximumEnabled);
-            ImGui::SameLine();
-            ImGui::BeginDisabled(!settings.quality.maximumEnabled);
-            ImGui::SetNextItemWidth(-1);
-            ImGui::InputFloat("##quality_maximum", &settings.quality.maximumSize, 0, 0, "%.5g");
-            ImGui::EndDisabled();
-        }
-        if ((both && settings.mode == ComparisonMode::distance) || settings.mode == ComparisonMode::surfaceQuality) {
-            std::array<char, 256> units{};
-            std::copy_n(settings.unitLabel.data(), std::min(settings.unitLabel.size(), units.size() - 1), units.data());
-            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
-            if (ImGui::InputTextWithHint("Unit label", "model units", units.data(), units.size())) {
-                settings.unitLabel = units.data();
-            }
-            ImGui::SameLine();
-            drawInformationIcon("units_info", "Unit label", "Label only; does not convert coordinates. Blank = model units.");
         }
         if (both && settings.mode == ComparisonMode::overlay)
         {
@@ -699,7 +715,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     if (both && comparisonSettings(state, id).mode == ComparisonMode::distance) {
         const auto currentSettings = comparisonSettings(state, id);
-        ImGui::Text("Distance (%s)", comparisonUnits(currentSettings).c_str());
+        ImGui::TextUnformatted("Distance");
         ImGui::SameLine();
         drawInformationIcon("distance_info", "Distance colors and statistics",
             currentSettings.colorRange == currentSettings.tolerance ?
@@ -710,6 +726,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         const float legendHeight = drawComparisonLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
             ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), currentSettings);
         ImGui::Dummy({0, legendHeight});
+    }
+    if (settings.mode == ComparisonMode::surfaceQuality && (!resultReady || !valid || !settings.enabled)) {
+        drawSurfaceQualitySizeLimits(state, id, nullptr, hasA, hasB);
     }
     if (!valid || !comparisonSettings(state, id).enabled)
     {
@@ -734,6 +753,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     if (settings.mode == ComparisonMode::surfaceQuality) {
         drawSurfaceQualityStatistics(runtime.result, comparisonSettings(state, id), hasA, hasB);
+        drawSurfaceQualitySizeLimits(state, id, &runtime.result, hasA, hasB);
     }
     const bool useOriginal = originalActive(effectiveComparisonSettings(state, id));
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
@@ -744,10 +764,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "SATURATED: sample max exceeds color maximum");
             ImGui::PopTextWrapPos();
         }
-        const auto units = comparisonUnits(comparisonSettings(state, id));
-        ImGui::TextWrapped("Sample max: %.5g %s", surface.maximum, units.c_str());
-        ImGui::TextWrapped("Area-weighted mean: %.5g %s", surface.mean, units.c_str());
-        ImGui::TextWrapped("Area-weighted P95: %.5g %s", surface.percentile95, units.c_str());
+        ImGui::TextWrapped("Sample max: %.5g", surface.maximum);
+        ImGui::TextWrapped("Area-weighted mean: %.5g", surface.mean);
+        ImGui::TextWrapped("Area-weighted P95: %.5g", surface.percentile95);
         ImGui::TextWrapped("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
     }
     const auto &a = runtime.result.original.diagnostics;

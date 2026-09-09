@@ -286,7 +286,6 @@ TEST_CASE("multiple comparison objects round trip with fresh identities and inde
     auto settings = woby::comparisonSettings(state, second);
     settings.enabled = false;
     settings.tolerance = .15f;
-    settings.unitLabel = "custom \"units\"";
     woby::setComparisonSettings(state, settings, second);
     const auto document = woby::createSceneDocument(state);
     woby::writeSceneDocument(path, document);
@@ -1450,15 +1449,14 @@ TEST_CASE("comparison report identifies source roles and unsigned approximate me
     };
     auto text = report();
     for (const auto* expected : {"Repair check", "A: original.obj", "B: repaired.obj", "B -> A: measured B; reference A",
-             "Approximate unsigned", "Four samples per triangle", "model units", "Tolerance: 0.05", ">= saturates",
+             "Approximate unsigned", "Four samples per triangle", "Tolerance: 0.05", ">= saturates",
              "SATURATED", "Sample max: 0.833", "Area-weighted mean: 0.3", "Area-weighted P95: 0.7",
              "Area above tolerance: 75%"}) { CHECK(text.find(expected) != std::string::npos); }
-    CHECK(text.find("mm") == std::string::npos);
+    CHECK(text.find("model units") == std::string::npos);
     settings.distanceOnOriginal = true;
-    settings.unitLabel = "inches";
     text = report();
     CHECK(text.find("A -> B: measured A; reference B") != std::string::npos);
-    CHECK(text.find("Sample max: 0.25 inches") != std::string::npos);
+    CHECK(text.find("Sample max: 0.25\n") != std::string::npos);
     CHECK(text.find("SATURATED") == std::string::npos);
     result.original.maximum = settings.colorRange;
     CHECK(report().find("SATURATED") == std::string::npos);
@@ -1499,31 +1497,26 @@ TEST_CASE("heatmap legend palette preserves threshold and saturation boundaries"
     CHECK(woby::comparisonHeatmapColor(std::nextafter(settings.tolerance, 1.0f), settings) == maximum);
 }
 
-TEST_CASE("unit labels normalize at operation and load boundaries without changing geometry")
+TEST_CASE("legacy unit labels are ignored on load and omitted on save and reports")
 {
-    auto state = stateWithFiles(2);
-    const auto id = woby::createComparison(state);
-    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
-    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
-    const auto signature = woby::comparisonGeometrySignature(state, id);
-    auto settings = woby::comparisonSettings(state, id);
-    CHECK(woby::comparisonUnits(settings) == "model units");
-    settings.unitLabel = "  mm\n\t  ";
-    state.isDirty = false;
-    woby::setComparisonSettings(state, settings, id);
-    CHECK(state.isDirty);
-    CHECK(woby::comparisonSettings(state, id).unitLabel == "mm");
-    CHECK(woby::comparisonGeometrySignature(state, id) == signature);
-    settings.unitLabel = std::string(63, 'a') + "\xc2\xb5";
-    CHECK(woby::normalizedComparisonSettings(settings).unitLabel == std::string(63, 'a'));
-    settings.unitLabel = "   ";
-    CHECK(woby::comparisonUnits(woby::normalizedComparisonSettings(settings)) == "model units");
     const auto path = std::filesystem::temp_directory_path() / "woby-unit-label-load.woby";
     {
         std::ofstream file(path);
-        file << "version = 5\n[[comparisons]]\nname = \"check\"\ncomparison_unit_label = \"  inches  \"\n";
+        file << "version = 5\n[[comparisons]]\nname = \"check\"\ncomparison_unit_label = \"inches\"\ncomparison_tolerance = 0.125\n";
     }
-    CHECK(woby::readSceneDocument(path).comparisons.at(0).settings.unitLabel == "inches");
+    const auto document = woby::readSceneDocument(path);
+    REQUIRE(document.comparisons.size() == 1);
+    const auto& settings = document.comparisons[0].settings;
+    CHECK(settings.tolerance == doctest::Approx(.125));
+    woby::writeSceneDocument(path, document);
+    std::ifstream saved(path);
+    const std::string text((std::istreambuf_iterator<char>(saved)), std::istreambuf_iterator<char>());
+    CHECK(text.find("comparison_unit_label") == std::string::npos);
+    for (const auto& line : woby::comparisonReportLines("Test", "", "", settings, {}, {})) {
+        CHECK(line.find("inches") == std::string::npos);
+        CHECK(line.find("model units") == std::string::npos);
+    }
+    saved.close();
     std::filesystem::remove(path);
 }
 
@@ -1879,7 +1872,7 @@ TEST_CASE("surface mesh quality settings persist normalize and preserve single i
     CHECK(normalized.quality.maximumSize == 0);
 }
 
-TEST_CASE("surface mesh quality reports identify metric units limits and unavailable neighbors")
+TEST_CASE("surface mesh quality reports group size limits and omit unit labels")
 {
     const auto input = mesh({{0,0,0}, {1,0,0}, {0,1,0}}, {0,1,2});
     const auto result = woby::compareMeshes(input, {});
@@ -1889,15 +1882,18 @@ TEST_CASE("surface mesh quality reports identify metric units limits and unavail
     settings.quality.metric = woby::SurfaceQualityMetric::sizeJump;
     settings.quality.maximumEnabled = true;
     settings.quality.maximumSize = 1;
-    settings.unitLabel = "mm";
     std::string report;
     for (const auto& line : woby::comparisonReportLines("Test", "triangle", "", settings, result, {})) { report += line + "\n"; }
     CHECK(report.find("Surface mesh quality") != std::string::npos);
-    CHECK(report.find("Local size jump (dimensionless)") != std::string::npos);
+    CHECK(report.find("Local size jump\n") != std::string::npos);
     CHECK(report.find("max size jump: N/A") != std::string::npos);
     CHECK(report.find("Heatmap: A") != std::string::npos);
     CHECK(report.find("100% of faces; 100% of area") != std::string::npos);
-    CHECK(report.find("1 mm") != std::string::npos);
+    CHECK(report.find("Longest-edge limits (inclusive): no minimum to 1\n") != std::string::npos);
+    CHECK(report.find("Longest-edge limits") < report.find("A below / above limits"));
+    CHECK(report.find("A below / above limits") < report.find("A outside limits"));
+    CHECK(report.find("model units") == std::string::npos);
+    CHECK(report.find("dimensionless") == std::string::npos);
     CHECK(report.find("B:") == std::string::npos);
     CHECK(report.find("Approximate unsigned") == std::string::npos);
     const auto json = woby::controlComparisonResults(result, .1);
@@ -1943,7 +1939,6 @@ TEST_CASE("surface mesh quality sample projects match analytical expectations")
         for (const auto& comparison : state.comparisons) {
             REQUIRE(woby::canInspectComparison(state, comparison.objectId));
             CHECK(comparison.settings.mode == woby::ComparisonMode::surfaceQuality);
-            CHECK(comparison.settings.unitLabel == "mm");
             const auto a = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, comparison.objectId);
             const auto b = comparison.b.empty() ? woby::Mesh{} :
                 woby::comparisonWorldMesh(state, woby::ComparisonSide::b, comparison.objectId);

@@ -26,7 +26,6 @@ name = "One face outside limits: 50% of faces, 80% of area"
 translation = [0, 0, 0]
 comparison_enabled = true
 comparison_mode = "surface_quality"
-comparison_unit_label = "mm"
 comparison_show_edges = true
 comparison_show_boundaries = false
 comparison_show_non_manifold = false

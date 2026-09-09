@@ -15,11 +15,11 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Adjust global, per-file, and per-group vertex point sizes.
 - Arrange files and groups with translation, rotation, scale, opacity, and reset controls.
 - Assign and reset per-group display colors.
-- Select a folder, file, or part to edit its persistent **Properties** inspector on the right. Transform fields label X/Y/Z in model units and degrees; opacity uses percent and scale uses a uniform multiplier. Type a value and press Enter to apply it, or Escape to cancel.
+- Select a folder, file, or part to edit its persistent **Properties** inspector on the right. Transform fields label X/Y/Z and rotation angles; opacity uses percent and scale uses a uniform multiplier. Type a value and press Enter to apply it, or Escape to cancel.
 - Ctrl-click multiple objects to edit shared properties. **Mixed** fields have differing local values; editing a field sets only that field on every selected object. Parent transforms compose with part transforms and their opacities multiply. Selecting both a parent and its child edits both. Color and render modes are part properties; selecting a comparison shows its controls in the same Properties pane.
 - Reset translation, rotation, scale, all transforms, or appearance independently. Transform resets preserve opacity; appearance resets preserve transforms and unselected child overrides. Geometry shows mesh statistics and local bounds for a single file or part. These edits use the existing `.woby` save/load settings.
 - Remove files from a scene without touching the source model files.
-- Compare surfaces with a numeric heatmap legend, tolerance, saturation warning, and sampled maximum/mean/P95/area statistics. Distances are approximate and unsigned. A comparison's optional unit label is saved with the scene; it labels model coordinates without converting them or inferring units from OBJ/STL.
+- Compare surfaces with a numeric heatmap legend, tolerance, saturation warning, and sampled maximum/mean/P95/area statistics. Distances are approximate and unsigned. Measurements use the mesh coordinates without conversion.
 - Load large model batches and scenes in the background with progress, cancellation, and unsaved-change prompts.
 
 ## Getting started
@@ -176,7 +176,7 @@ the histogram shows percentages with a shared vertical scale. Tables report
 minimum/P5/median/P95/maximum, worst shape, maximum size jump, and face counts.
 Optional inclusive minimum/maximum limits apply to the longest edge and report
 both the percentage of valid triangles and the percentage of their area outside
-the limits. Unit labels do not convert coordinates. Settings persist in `.woby`
+the limits. The size-limit controls and their statistics are grouped together. Settings persist in `.woby`
 and support undo/redo; screenshot annotations include quality measurements.
 
 Metrics use source triangles at their scene transforms. Degenerate triangles

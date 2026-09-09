@@ -42,7 +42,7 @@ def scene(name, files, labels, metric, width, height, minimum=None, maximum=None
         text += '[[files.groups]]\nname = "surface"\nshow_vertices = false\nshow_triangles = false\n'
     for side, label in enumerate(labels):
         text += f'\n[[comparisons]]\nname = "{label}"\ntranslation = [{spacing * side}, 0, 0]\n'
-        text += 'comparison_enabled = true\ncomparison_mode = "surface_quality"\ncomparison_unit_label = "mm"\n'
+        text += 'comparison_enabled = true\ncomparison_mode = "surface_quality"\n'
         text += 'comparison_show_edges = true\n'
         text += f"comparison_show_boundaries = {str(topology).lower()}\ncomparison_show_non_manifold = {str(topology).lower()}\n"
         text += f'quality_metric = "{metric}"\nquality_on_a = {str(side == 0).lower()}\n'
