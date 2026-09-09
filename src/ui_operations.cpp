@@ -233,7 +233,9 @@ void removeComparison(UiState& state, SceneObjectId id)
 void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
 {
     if (auto* comparison = findComparison(state, id)) {
-        comparison->name = name.empty() ? "Comparison" : name;
+        const auto normalized = name.empty() ? "Comparison" : name;
+        if (comparison->name == normalized) { return; }
+        comparison->name = normalized;
         markSceneDirty(state);
     }
 }

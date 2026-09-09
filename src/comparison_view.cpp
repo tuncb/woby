@@ -6,6 +6,7 @@
 #include "utf8_path.h"
 
 #include <imgui.h>
+#include <imgui_stdlib.h>
 #include <bx/math.h>
 
 #include <algorithm>
@@ -657,8 +658,28 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
     }
 }
 
-void drawComparisonObjects(UiState& state)
+void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
 {
+    if (edit.lastFrame != ImGui::GetFrameCount() - 1
+        || (edit.objectId != invalidSceneObjectId && !findComparison(state, edit.objectId))) {
+        edit = {};
+    }
+    edit.lastFrame = ImGui::GetFrameCount();
+    const auto beginRename = [&](SceneObjectId id) {
+        if (const auto* comparison = findComparison(state, id)) {
+            edit.objectId = id;
+            edit.text = comparison->name;
+            edit.focus = true;
+            selectSceneObject(state, id);
+        }
+    };
+    const bool sceneFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    const bool canStartRename = sceneFocused && !ImGui::GetIO().WantTextInput
+        && !ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+    if (canStartRename && edit.objectId == invalidSceneObjectId && state.selectedSceneObjects.size() == 1
+        && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+        beginRename(state.selectedSceneObjects.front());
+    }
     ImGui::Separator();
     ImGui::TextUnformatted("Comparisons");
     if (state.comparisons.empty()) {
@@ -679,21 +700,41 @@ void drawComparisonObjects(UiState& state)
         ImGui::SameLine();
         // Keep long names and their hit targets out of the remove button's column.
         const float nameWidth = std::max(1.0f, removeX - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
-        if (drawSceneItemButton((comparison.name + "###comparison_row").c_str(), nameWidth,
-                sceneObjectSelected(state, id))) {
-            selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
-        }
-        if (sceneObjectSelected(state, id)) {
-            drawSceneItemOutline();
-        }
-        if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectSceneObject(state, id, false, true); }
         bool changed = false;
-        if (ImGui::BeginPopupContextItem("comparison_object")) {
-            if (ImGui::MenuItem("Properties")) { selectSceneObject(state, id); }
-            if (ImGui::MenuItem("Frame result", nullptr, false, canInspectComparison(state, id))) { frameComparison(state, id); }
-            if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
-            if (ImGui::MenuItem("Delete comparison")) { removeComparison(state, id); changed = true; }
-            ImGui::EndPopup();
+        if (edit.objectId == id) {
+            const bool focusing = edit.focus;
+            if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
+            ImGui::SetNextItemWidth(nameWidth);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x,
+                std::max(0.0f, (renderModeButtonSize() - ImGui::GetTextLineHeight()) * 0.5f)));
+            const bool entered = ImGui::InputText("##comparison_name_edit", &edit.text,
+                ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+            ImGui::PopStyleVar();
+            if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+                edit.objectId = invalidSceneObjectId;
+            } else if (entered || (!focusing && ImGui::IsItemDeactivated())) {
+                renameComparison(state, id, edit.text);
+                edit.objectId = invalidSceneObjectId;
+            }
+        } else {
+            const bool selected = sceneObjectSelected(state, id);
+            if (drawSceneItemButton((comparison.name + "###comparison_row").c_str(), nameWidth, selected)) {
+                selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
+            }
+            if (selected) { drawSceneItemOutline(); }
+            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)
+                && !ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) {
+                beginRename(id);
+            }
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectSceneObject(state, id, false, true); }
+            if (ImGui::BeginPopupContextItem("comparison_object")) {
+                if (ImGui::MenuItem("Properties")) { selectSceneObject(state, id); }
+                if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
+                if (ImGui::MenuItem("Frame result", nullptr, false, canInspectComparison(state, id))) { frameComparison(state, id); }
+                if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
+                if (ImGui::MenuItem("Delete comparison")) { removeComparison(state, id); changed = true; }
+                ImGui::EndPopup();
+            }
         }
         if (!changed) {
             ImGui::SameLine(removeX, 0.0f);

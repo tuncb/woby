@@ -59,6 +59,24 @@ struct HistoryFixture {
 
 } // namespace
 
+TEST_CASE("comparison renaming is one undoable scene edit")
+{
+    HistoryFixture f;
+    const auto id = woby::createComparison(f.state);
+    const auto original = woby::findComparison(f.state, id)->name;
+    woby::resetSceneHistory(f.history, f.state);
+    woby::renameComparison(f.state, id, "Inspection result");
+    REQUIRE(woby::recordSceneHistory(f.history, f.state));
+    CHECK(f.history.snapshots.size() == 2);
+    f.step();
+    REQUIRE(woby::findComparison(f.state, id));
+    CHECK(woby::findComparison(f.state, id)->name == original);
+    f.step(true);
+    CHECK(woby::findComparison(f.state, id)->name == "Inspection result");
+    woby::renameComparison(f.state, id, "Inspection result");
+    CHECK_FALSE(woby::recordSceneHistory(f.history, f.state));
+}
+
 TEST_CASE("scene history idle and camera frames consume no edit notifications")
 {
     HistoryFixture f;

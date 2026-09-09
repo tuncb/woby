@@ -293,6 +293,8 @@ if(BUILD_TESTING)
         tests/app_icon_tests.cpp
         tests/update_tests.cpp
         src/comparison_report.cpp
+        src/comparison_view.cpp
+        src/comparison_legend.cpp
         src/mesh_comparison.cpp
         src/comparison_scene.cpp
         tests/mesh_comparison_tests.cpp
@@ -304,6 +306,7 @@ if(BUILD_TESTING)
         src/background_load.h
         src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
+        tests/comparison_name_tests.cpp
         src/settings_dialog.cpp
         src/ui_icon_controls.cpp
         src/camera.cpp

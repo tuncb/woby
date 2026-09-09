@@ -2109,6 +2109,7 @@ int main(int argc, char** argv)
         const auto helperLayout = helperLineVertexLayout();
         woby::UiState ui;
         woby::ComparisonRuntimes comparison;
+        woby::ComparisonNameEdit comparisonNameEdit;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
@@ -2929,7 +2930,7 @@ int main(int argc, char** argv)
                             drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath);
                             ImGui::PopID();
                         }
-                        woby::drawComparisonObjects(ui);
+                        woby::drawComparisonObjects(ui, comparisonNameEdit);
                         canvasSelectionPath.clear();
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
                             const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);

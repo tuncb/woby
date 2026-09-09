@@ -42,9 +42,17 @@ struct ComparisonRuntimes {
     bgfx::UniformHandle parameters = BGFX_INVALID_HANDLE;
 };
 
+// Transient scene-panel editor state; the committed name belongs to UiState.
+struct ComparisonNameEdit {
+    SceneObjectId objectId = invalidSceneObjectId;
+    std::string text;
+    bool focus = false;
+    int lastFrame = -1;
+};
+
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, const UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
-void drawComparisonObjects(UiState& state);
+void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit);
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
     bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform);
