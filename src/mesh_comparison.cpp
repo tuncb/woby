@@ -249,6 +249,7 @@ SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop)
     result.source.indices = copyWithCancellation(mesh.indices, stop);
     result.source.nodes = copyWithCancellation(mesh.nodes, stop);
     result.source.bounds = mesh.bounds;
+    result.quality = inspectSurfaceMeshQuality(mesh, stop);
     return result;
 }
 
@@ -361,11 +362,13 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
 ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
     if (settings.mode != ComparisonMode::distance && settings.mode != ComparisonMode::original &&
-        settings.mode != ComparisonMode::repaired && settings.mode != ComparisonMode::overlay)
+        settings.mode != ComparisonMode::repaired && settings.mode != ComparisonMode::overlay &&
+        settings.mode != ComparisonMode::surfaceQuality)
         settings.mode = ComparisonMode::distance;
     settings.tolerance = std::isfinite(settings.tolerance) ? std::clamp(settings.tolerance, 0.0f, 1e12f) : .05f;
     settings.colorRange = std::isfinite(settings.colorRange) ? std::clamp(settings.colorRange, 1e-6f, 1e12f) : .5f;
     settings.colorRange = std::max(settings.colorRange, settings.tolerance);
+    settings.quality = normalizedSurfaceQualitySettings(settings.quality);
     std::erase_if(settings.unitLabel, [](unsigned char c) { return c < 32 || c == 127; });
     const auto first = settings.unitLabel.find_first_not_of(' ');
     settings.unitLabel = first == std::string::npos ? "" :
@@ -480,16 +483,22 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         MeshComparison result;
         result.repaired = copySurface(repaired, stop);
         result.repaired.diagnostics = inspectMesh(repaired, stop);
+        result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
         return result;
     }
     if (repaired.vertices.empty() && repaired.indices.empty()) {
         MeshComparison result;
         result.original = copySurface(original, stop);
         result.original.diagnostics = inspectMesh(original, stop);
+        result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
         return result;
     }
     const auto originalTree = buildTree(original, stop), repairedTree = buildTree(repaired, stop);
-    return {compareSurface(original, originalTree, repairedTree), compareSurface(repaired, repairedTree, originalTree)};
+    MeshComparison result;
+    result.original = compareSurface(original, originalTree, repairedTree);
+    result.repaired = compareSurface(repaired, repairedTree, originalTree);
+    result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
+    return result;
 }
 
 double surfacePercentAboveTolerance(const SurfaceComparison &surface, double tolerance)

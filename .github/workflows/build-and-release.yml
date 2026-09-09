@@ -135,7 +135,6 @@ jobs:
             nasm \
             ninja-build \
             pkg-config \
-            python3 \
             tar \
             unzip \
             wayland-protocols \
@@ -144,6 +143,14 @@ jobs:
       - name: Install macOS build dependencies
         if: runner.os == 'macOS'
         run: brew install autoconf automake libtool nasm ninja pkg-config
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.28"
+
+      - name: Install pinned Python
+        run: uv python install
 
       - name: Test CI helpers
         shell: pwsh
@@ -371,7 +378,7 @@ jobs:
 
       - name: Generate verified package manifest
         shell: pwsh
-        run: python .github/scripts/package_manifest.py generate "dist/${{ matrix.package_name }}" "${{ runner.os == 'Windows' && 'windows-x64' || runner.os == 'macOS' && 'macos-arm64' || 'linux-x64' }}"
+        run: uv run .github/scripts/package_manifest.py generate "dist/${{ matrix.package_name }}" "${{ runner.os == 'Windows' && 'windows-x64' || runner.os == 'macOS' && 'macos-arm64' || 'linux-x64' }}"
 
       - name: Create package
         id: package

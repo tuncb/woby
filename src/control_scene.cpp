@@ -67,10 +67,13 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
         if (const auto* comparison = findComparison(state, id)) {
             const auto& settings = comparison->settings;
             const char* mode = settings.mode == ComparisonMode::distance ? "distance"
-                : settings.mode == ComparisonMode::original ? "a" : settings.mode == ComparisonMode::repaired ? "b" : "overlay";
+                : settings.mode == ComparisonMode::original ? "a" : settings.mode == ComparisonMode::repaired ? "b" : settings.mode == ComparisonMode::surfaceQuality ? "surface_quality" : "overlay";
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
                 {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
+                {"qualityMetric", surfaceQualityMetricKey(settings.quality.metric)}, {"qualityOnA", settings.quality.onOriginal},
+                {"qualityMinimumEnabled", settings.quality.minimumEnabled}, {"qualityMaximumEnabled", settings.quality.maximumEnabled},
+                {"qualityMinimumSize", settings.quality.minimumSize}, {"qualityMaximumSize", settings.quality.maximumSize},
                 {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}}},
                 {"valid", canInspectComparison(state, id)}, {"missingPartCount", missingComparisonPartCount(state, id)},
                 {"aPartCount", comparison->a.size()}, {"bPartCount", comparison->b.size()}};
@@ -321,8 +324,15 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.visible) { settings.enabled = *command.visible; }
             if (command.mode) {
                 settings.mode = *command.mode == "distance" ? ComparisonMode::distance : *command.mode == "a"
-                    ? ComparisonMode::original : *command.mode == "b" ? ComparisonMode::repaired : ComparisonMode::overlay;
+                    ? ComparisonMode::original : *command.mode == "b" ? ComparisonMode::repaired :
+                    *command.mode == "surface_quality" ? ComparisonMode::surfaceQuality : ComparisonMode::overlay;
             }
+            if (command.qualityMetric) { settings.quality.metric = parseSurfaceQualityMetric(*command.qualityMetric); }
+            if (command.qualityOnA) { settings.quality.onOriginal = *command.qualityOnA; }
+            if (command.qualityMinimumEnabled) { settings.quality.minimumEnabled = *command.qualityMinimumEnabled; }
+            if (command.qualityMaximumEnabled) { settings.quality.maximumEnabled = *command.qualityMaximumEnabled; }
+            if (command.qualityMinimumSize) { settings.quality.minimumSize = *command.qualityMinimumSize; }
+            if (command.qualityMaximumSize) { settings.quality.maximumSize = *command.qualityMaximumSize; }
             if (command.distanceOnA) { settings.distanceOnOriginal = *command.distanceOnA; }
             if (command.tolerance) { settings.tolerance = *command.tolerance; }
             if (command.colorRange) { settings.colorRange = *command.colorRange; }
@@ -440,11 +450,21 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
         const auto& diagnostics = value.diagnostics;
         if (value.source.indices.empty()) { return Json(nullptr); }
         const bool measured = !value.distances.empty();
+        Json quality = {{"degenerateTriangles", value.quality.degenerateTriangles}};
+        for (size_t i = 0; i < surfaceQualityMetricCount; ++i) {
+            const auto& stats = value.quality.statistics[i];
+            quality[surfaceQualityMetricKey(static_cast<SurfaceQualityMetric>(i))] = {
+                {"count", stats.count}, {"minimum", stats.count ? Json(stats.minimum) : Json(nullptr)},
+                {"percentile5", stats.count ? Json(stats.percentile5) : Json(nullptr)},
+                {"median", stats.count ? Json(stats.median) : Json(nullptr)},
+                {"percentile95", stats.count ? Json(stats.percentile95) : Json(nullptr)},
+                {"maximum", stats.count ? Json(stats.maximum) : Json(nullptr)}};
+        }
         return Json{{"maximum", measured ? Json(value.maximum) : Json(nullptr)},
             {"mean", measured ? Json(value.mean) : Json(nullptr)},
             {"percentile95", measured ? Json(value.percentile95) : Json(nullptr)},
             {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
-            {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
+            {"surfaceMeshQuality", quality}, {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
             {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
                 {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},
                 {"inconsistentWindingEdges", diagnostics.inconsistentWindingEdges.size()},

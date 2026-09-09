@@ -1645,6 +1645,7 @@ TEST_CASE("comparison item enablement survives saving loading duplication and sw
     }
     woby::setComparisonObjectsEnabled(state, {state.files[0].objectId}, woby::ComparisonSide::a, false, id);
     const auto path = std::filesystem::temp_directory_path() / "woby-comparison-enabled.woby";
+    for (auto& file : state.files) { file.path = path.parent_path() / file.path; }
     const auto document = woby::createSceneDocument(state);
     woby::writeSceneDocument(path, document);
     const auto read = woby::readSceneDocument(path);
@@ -1713,5 +1714,264 @@ TEST_CASE("comparison file checkbox toggles every included mesh part in implicit
         woby::setComparisonObjectsEnabled(state, {file}, woby::ComparisonSide::b, true, id);
         CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::b, id).indices.size() == 6);
         CHECK(woby::comparisonTree(state, woby::ComparisonSide::b, id)[0].enabledPartCount == 2);
+    }
+}
+
+
+TEST_CASE("surface mesh quality separates size from shape and handles scale extremes")
+{
+    const auto base = mesh({{0,0,0}, {1,0,0}, {.5f, std::sqrt(3.0f)/2, 0}}, {0,1,2});
+    for (const float scale : {1e-20f, 1.0f, 1e20f}) {
+        auto input = base;
+        for (auto& v : input.vertices) { for (auto& x : v.position) { x *= scale; } }
+        const auto q = woby::inspectSurfaceMeshQuality(input);
+        REQUIRE(q.triangles.size() == 1);
+        CHECK(q.degenerateTriangles == 0);
+        CHECK(q.triangles[0].values[0] / scale == doctest::Approx(1));
+        CHECK(q.triangles[0].values[1] / scale == doctest::Approx(1));
+        CHECK(q.triangles[0].values[2] == doctest::Approx(1));
+        CHECK(std::isnan(q.triangles[0].values[3]));
+        CHECK(q.statistics[3].count == 0);
+    }
+    const auto q = woby::inspectSurfaceMeshQuality(square());
+    CHECK(q.triangles[0].values[0] == doctest::Approx(std::sqrt(2.0)));
+    CHECK(q.triangles[0].values[1] == doctest::Approx(std::sqrt(2 / std::sqrt(3.0))));
+    CHECK(q.triangles[0].values[2] == doctest::Approx(std::sqrt(3.0)/2));
+    CHECK(q.triangles[0].values[3] == doctest::Approx(1));
+}
+
+TEST_CASE("surface mesh quality matches geometric seams and measures adjacent equivalent sizes")
+{
+    // Adjacent triangles have areas 1/2 and 2, hence a size jump of two.
+    auto input = mesh({{0,0,0}, {1,0,0}, {0,1,0}, {0,0,0}, {1,0,0}, {0,-4,0}}, {0,1,2,4,3,5});
+    auto q = woby::inspectSurfaceMeshQuality(input);
+    CHECK(q.triangles[0].values[3] == doctest::Approx(2));
+    CHECK(q.triangles[1].values[3] == doctest::Approx(2));
+    // Near but unequal positions are not welded.
+    input.vertices[3].position[2] = 1e-6f;
+    q = woby::inspectSurfaceMeshQuality(input);
+    CHECK(q.statistics[3].count == 0);
+    // Three incident valid faces have no unique neighbor on the shared edge.
+    input.vertices[3].position[2] = 0;
+    input.vertices.push_back({{0,0,1}, {}, {}});
+    input.indices.insert(input.indices.end(), {0,1,6});
+    q = woby::inspectSurfaceMeshQuality(input);
+    CHECK(q.statistics[3].count == 0);
+}
+
+TEST_CASE("surface mesh quality reports degenerate faces separately and validates inputs")
+{
+    auto input = mesh({{0,0,0}, {1,0,0}, {2,0,0}, {0,1,0}}, {0,1,2,0,0,1,0,1,3});
+    const auto q = woby::inspectSurfaceMeshQuality(input);
+    CHECK(q.degenerateTriangles == 2);
+    CHECK(q.statistics[0].count == 1);
+    CHECK(q.statistics[2].minimum == doctest::Approx(std::sqrt(3.0)/2));
+    const auto d = woby::surfaceQualityDistributions(q, {});
+    const auto vertices = woby::surfaceQualityVertices(input, q, woby::SurfaceQualityMetric::shape, d[2]);
+    REQUIRE(vertices.size() == 9);
+    CHECK(vertices[0].texcoord[0] == -1);
+    CHECK(vertices[3].texcoord[0] == -1);
+    const auto jump = woby::surfaceQualityVertices(input, q, woby::SurfaceQualityMetric::sizeJump, d[3]);
+    CHECK(jump[6].texcoord[0] == -2);
+    CHECK(woby::inspectSurfaceMeshQuality({}).statistics[0].count == 0);
+    std::stop_source stop;
+    stop.request_stop();
+    CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input, stop.get_token()));
+    input.indices[0] = 100;
+    CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input));
+    input.indices[0] = 0;
+    input.vertices[0].position[0] = std::numeric_limits<float>::infinity();
+    CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input));
+    input.indices.pop_back();
+    CHECK_THROWS((void)woby::inspectSurfaceMeshQuality(input));
+}
+
+TEST_CASE("surface mesh quality distributions share ranges and retain endpoint counts")
+{
+    auto a = square(), b = square();
+    for (auto& vertex : b.vertices) { for (auto& x : vertex.position) { x *= 4; } }
+    const auto result = woby::compareMeshes(a, b);
+    const auto& d = result.qualityDistributions[0];
+    CHECK(d.minimum == 0);
+    CHECK(d.maximum == doctest::Approx(4 * std::sqrt(2.0)));
+    CHECK(d.bins[0][3] == 2);
+    CHECK(d.bins[1].back() == 2);
+    CHECK(d.counts[0] == 2);
+    CHECK(d.counts[1] == 2);
+    const auto va = woby::surfaceQualityVertices(a, result.original.quality, woby::SurfaceQualityMetric::longestEdge, d);
+    const auto vb = woby::surfaceQualityVertices(b, result.repaired.quality, woby::SurfaceQualityMetric::longestEdge, d);
+    REQUIRE(va.size() == 6);
+    CHECK(va[0].texcoord[0] == doctest::Approx(.25));
+    CHECK(vb[0].texcoord[0] == doctest::Approx(1));
+    for (size_t i = 0; i < va.size(); ++i) { CHECK(va[i].position == a.vertices[a.indices[i]].position); }
+    CHECK(result.original.quality.triangles.size() == 2);
+    CHECK(result.original.distances.size() == 8);
+    CHECK(result.qualityDistributions[2].maximum == 1);
+    const auto json = woby::controlComparisonResults(result, .1);
+    CHECK(json["aToB"]["surfaceMeshQuality"]["longest_edge"]["count"] == 2);
+}
+
+TEST_CASE("surface mesh quality percentiles and size limits distinguish counts from area")
+{
+    auto input = mesh({{0,0,0}, {1,0,0}, {0,1,0}, {3,0,0}, {5,0,0}, {3,2,0}}, {0,1,2,3,4,5});
+    const auto q = woby::inspectSurfaceMeshQuality(input);
+    const auto& s = q.statistics[0];
+    CHECK(s.percentile5 == doctest::Approx(1.05 * std::sqrt(2.0)));
+    CHECK(s.median == doctest::Approx(1.5 * std::sqrt(2.0)));
+    CHECK(s.percentile95 == doctest::Approx(1.95 * std::sqrt(2.0)));
+    woby::SurfaceQualitySettings settings;
+    CHECK(woby::surfaceQualitySizeLimits(q, settings).trianglePercent == 0);
+    settings.maximumEnabled = true;
+    settings.maximumSize = 2;
+    auto limits = woby::surfaceQualitySizeLimits(q, settings);
+    CHECK(limits.above == 1);
+    CHECK(limits.below == 0);
+    CHECK(limits.trianglePercent == doctest::Approx(50));
+    CHECK(limits.areaPercent == doctest::Approx(80));
+    settings.maximumEnabled = false;
+    settings.minimumEnabled = true;
+    settings.minimumSize = 2;
+    limits = woby::surfaceQualitySizeLimits(q, settings);
+    CHECK(limits.below == 1);
+    CHECK(limits.areaPercent == doctest::Approx(20));
+    // Exactly representable longest edges exercise inclusive endpoints.
+    const auto right = mesh({{0,0,0}, {3,0,0}, {0,4,0}}, {0,1,2});
+    settings.minimumSize = settings.maximumSize = 5;
+    settings.maximumEnabled = true;
+    CHECK(woby::surfaceQualitySizeLimits(woby::inspectSurfaceMeshQuality(right), settings).trianglePercent == 0);
+    CHECK(woby::surfaceQualitySizeLimits({}, settings).validTriangles == 0);
+}
+
+TEST_CASE("surface mesh quality settings persist normalize and preserve single input inspection")
+{
+    auto state = stateWithFiles(1);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(state, id);
+    settings.mode = woby::ComparisonMode::surfaceQuality;
+    settings.quality.metric = woby::SurfaceQualityMetric::sizeJump;
+    settings.quality.minimumEnabled = settings.quality.maximumEnabled = true;
+    settings.quality.minimumSize = 3;
+    settings.quality.maximumSize = 2;
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::setComparisonSettings(state, settings, id);
+    CHECK(woby::comparisonSettings(state, id).quality.maximumSize == 3);
+    CHECK(woby::comparisonGeometrySignature(state, id) == signature);
+    CHECK(woby::effectiveComparisonSettings(state, id).mode == woby::ComparisonMode::surfaceQuality);
+    CHECK(woby::effectiveComparisonSettings(state, id).quality.onOriginal);
+    CHECK_FALSE(woby::comparisonSettings(state, id).quality.onOriginal);
+    const auto path = std::filesystem::temp_directory_path() / "woby-surface-quality.woby";
+    state.files[0].path = path.parent_path() / state.files[0].path;
+    const auto document = woby::createSceneDocument(state);
+    woby::writeSceneDocument(path, document);
+    CHECK(woby::readSceneDocument(path).comparisons == document.comparisons);
+    std::filesystem::remove(path);
+    const auto copy = woby::duplicateComparison(state, id);
+    CHECK(woby::comparisonSettings(state, copy) == woby::comparisonSettings(state, id));
+    woby::swapComparisonGroups(state, id);
+    CHECK_FALSE(woby::effectiveComparisonSettings(state, id).quality.onOriginal);
+    settings.quality.metric = static_cast<woby::SurfaceQualityMetric>(99);
+    settings.quality.minimumSize = std::numeric_limits<float>::quiet_NaN();
+    settings.quality.maximumSize = -1;
+    const auto normalized = woby::normalizedComparisonSettings(settings);
+    CHECK(normalized.quality.metric == woby::SurfaceQualityMetric::longestEdge);
+    CHECK(normalized.quality.minimumSize == 0);
+    CHECK(normalized.quality.maximumSize == 0);
+}
+
+TEST_CASE("surface mesh quality reports identify metric units limits and unavailable neighbors")
+{
+    const auto input = mesh({{0,0,0}, {1,0,0}, {0,1,0}}, {0,1,2});
+    const auto result = woby::compareMeshes(input, {});
+    woby::ComparisonSettings settings;
+    settings.mode = woby::ComparisonMode::surfaceQuality;
+    settings.quality.onOriginal = true;
+    settings.quality.metric = woby::SurfaceQualityMetric::sizeJump;
+    settings.quality.maximumEnabled = true;
+    settings.quality.maximumSize = 1;
+    settings.unitLabel = "mm";
+    std::string report;
+    for (const auto& line : woby::comparisonReportLines("Test", "triangle", "", settings, result, {})) { report += line + "\n"; }
+    CHECK(report.find("Surface mesh quality") != std::string::npos);
+    CHECK(report.find("Local size jump (dimensionless)") != std::string::npos);
+    CHECK(report.find("max size jump: N/A") != std::string::npos);
+    CHECK(report.find("Heatmap: A") != std::string::npos);
+    CHECK(report.find("100% of faces; 100% of area") != std::string::npos);
+    CHECK(report.find("1 mm") != std::string::npos);
+    CHECK(report.find("B:") == std::string::npos);
+    CHECK(report.find("Approximate unsigned") == std::string::npos);
+    const auto json = woby::controlComparisonResults(result, .1);
+    CHECK(json["aToB"]["surfaceMeshQuality"]["size_jump"]["minimum"].is_null());
+    CHECK(woby::surfaceQualityColor(1, woby::SurfaceQualityMetric::shape) ==
+        woby::surfaceQualityColor(0, woby::SurfaceQualityMetric::longestEdge));
+}
+
+TEST_CASE("surface mesh quality control options validate and round trip")
+{
+    const auto* method = woby::findControlMethod("comparison.set");
+    REQUIRE(method);
+    const nlohmann::json params = {{"target", "12"}, {"mode", "surface_quality"}, {"qualityMetric", "equivalent_size"},
+        {"qualityOnA", true}, {"qualityMinimumEnabled", true}, {"qualityMaximumEnabled", false},
+        {"qualityMinimumSize", 1.5}, {"qualityMaximumSize", 4}};
+    const auto command = woby::parseControlOperation(*method, params);
+    CHECK(woby::controlOperationParams(command) == params);
+    auto invalid = params;
+    invalid["qualityMetric"] = "unknown";
+    CHECK_THROWS((void)woby::parseControlOperation(*method, invalid));
+    invalid = params; invalid["qualityOnA"] = "true";
+    CHECK_THROWS((void)woby::parseControlOperation(*method, invalid));
+}
+
+TEST_CASE("surface mesh quality sample projects match analytical expectations")
+{
+    const auto root = std::filesystem::path(WOBY_TEST_ASSET_DIRECTORY) / "samples" / "surface-mesh-quality";
+    std::ifstream expectations(root / "expected.json");
+    REQUIRE(expectations);
+    const auto projects = nlohmann::json::parse(expectations);
+    for (const auto& [name, expected] : projects.items()) {
+        INFO(name);
+        const auto path = root / name;
+        const auto document = woby::readSceneDocument(path);
+        std::vector<woby::UiFileState> files;
+        for (const auto& file : document.files) {
+            const auto absolute = woby::sceneAbsolutePath(path, file.path);
+            files.push_back(woby::createUiFileState(absolute, woby::loadObjMesh(absolute), files.size()));
+        }
+        const auto state = woby::prepareSceneReplacement({}, std::move(files), document);
+        REQUIRE(state.comparisons.size() == expected.size());
+        REQUIRE(document.camera);
+        for (const auto& comparison : state.comparisons) {
+            REQUIRE(woby::canInspectComparison(state, comparison.objectId));
+            CHECK(comparison.settings.mode == woby::ComparisonMode::surfaceQuality);
+            CHECK(comparison.settings.unitLabel == "mm");
+            const auto a = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, comparison.objectId);
+            const auto b = comparison.b.empty() ? woby::Mesh{} :
+                woby::comparisonWorldMesh(state, woby::ComparisonSide::b, comparison.objectId);
+            const auto result = woby::compareMeshes(a, b);
+            const auto json = woby::controlComparisonResults(result, .05);
+            for (const auto& [side, checks] : expected.items()) {
+                const auto& surface = side == "a" ? result.original : result.repaired;
+                auto actual = json.at(side == "a" ? "aToB" : "bToA");
+                const auto limits = woby::surfaceQualitySizeLimits(surface.quality, comparison.settings.quality);
+                actual["limits"] = {{"below", limits.below}, {"above", limits.above},
+                    {"trianglePercent", limits.trianglePercent}, {"areaPercent", limits.areaPercent}};
+                for (const auto& [key, wanted] : checks.items()) {
+                    INFO(side, ": ", key);
+                    const auto dot = key.find('.');
+                    nlohmann::json value;
+                    if (dot == std::string::npos) { value = actual.at(key); }
+                    else {
+                        const auto category = key.substr(0, dot), field = key.substr(dot + 1);
+                        value = category == "diagnostics" || category == "limits" ? actual.at(category).at(field) :
+                            actual.at("surfaceMeshQuality").at(category).at(field);
+                    }
+                    if (wanted.is_null()) { CHECK(value.is_null()); }
+                    else {
+                        REQUIRE(value.is_number());
+                        CHECK(value.get<double>() == doctest::Approx(wanted.get<double>()).epsilon(1e-5));
+                    }
+                }
+            }
+        }
     }
 }

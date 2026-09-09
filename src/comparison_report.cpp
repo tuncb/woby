@@ -46,6 +46,50 @@ std::vector<std::string> comparisonReportLines(
         if (!a.empty()) { lines.push_back("A: " + a); }
         if (!b.empty()) { lines.push_back("B: " + b); }
     }
+    if (settings.mode == ComparisonMode::surfaceQuality) {
+        const auto metric = settings.quality.metric;
+        const auto index = static_cast<size_t>(metric);
+        const auto& distribution = result.qualityDistributions[index];
+        lines.push_back("Surface mesh quality");
+        lines.push_back(std::string(surfaceQualityMetricName(metric)) + " (" +
+            (index < 2 ? comparisonUnits(settings) : "dimensionless") + ")");
+        if (options.direction) { lines.push_back(settings.quality.onOriginal ? "Heatmap: A" : "Heatmap: B"); }
+        if (options.legend) {
+            lines.push_back("Shared A/B range: " + measurementNumber(distribution.minimum) + " to " + measurementNumber(distribution.maximum));
+            lines.push_back(metric == SurfaceQualityMetric::shape ? "Blue: equilateral; red: poor shape." :
+                metric == SurfaceQualityMetric::sizeJump ? "Blue: equal neighbor size; red: largest jump." : "Blue: small; red: large. Colors describe size.");
+            lines.push_back("Magenta: degenerate; gray: unavailable. Surface shading affects brightness.");
+            size_t side = 0;
+            for (const auto* quality : {&result.original.quality, &result.repaired.quality}) {
+                const std::string label = side++ == 0 ? "A" : "B";
+                if (quality->triangles.empty()) { continue; }
+                lines.push_back(label + ": " + std::to_string(quality->triangles.size()) + " triangles; " +
+                    std::to_string(quality->degenerateTriangles) + " degenerate");
+                const auto& stats = quality->statistics[index];
+                lines.push_back(label + " min / P5 / median / P95 / max: " + (stats.count ?
+                    measurementNumber(stats.minimum) + " / " + measurementNumber(stats.percentile5) + " / " +
+                    measurementNumber(stats.median) + " / " + measurementNumber(stats.percentile95) + " / " +
+                    measurementNumber(stats.maximum) : "N/A"));
+                lines.push_back(label + " worst shape: " + (quality->statistics[2].count ? measurementNumber(quality->statistics[2].minimum) : "N/A") +
+                    "; max size jump: " + (quality->statistics[3].count ? measurementNumber(quality->statistics[3].maximum) : "N/A"));
+                if (settings.quality.minimumEnabled || settings.quality.maximumEnabled) {
+                    const auto limits = surfaceQualitySizeLimits(*quality, settings.quality);
+                    lines.push_back(label + " below / above limits: " + std::to_string(limits.below) + " / " + std::to_string(limits.above));
+                    lines.push_back(label + " outside limits: " + (limits.validTriangles ? measurementNumber(limits.trianglePercent) +
+                        "% of faces; " + measurementNumber(limits.areaPercent) + "% of area" : "N/A"));
+                }
+            }
+            lines.push_back("Statistics exclude degenerate faces; unavailable neighbor ratios are omitted.");
+        }
+        if ((options.tolerance || options.legend) && (settings.quality.minimumEnabled || settings.quality.maximumEnabled)) {
+            lines.push_back("Longest-edge limits (inclusive): " +
+                (settings.quality.minimumEnabled ? measurementNumber(settings.quality.minimumSize) : "no minimum") + " to " +
+                (settings.quality.maximumEnabled ? measurementNumber(settings.quality.maximumSize) : "no maximum") + " " + comparisonUnits(settings));
+        }
+        if (settings.showBoundaries) { lines.push_back("Green edges: boundary"); }
+        if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
+        return lines;
+    }
     if (settings.mode != ComparisonMode::distance) {
         lines.push_back(settings.mode == ComparisonMode::overlay ? "Overlay: A blue wireframe; B gray surface" :
             settings.mode == ComparisonMode::original ? "Group A surface" : "Group B surface");

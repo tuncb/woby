@@ -18,6 +18,7 @@ struct ComparisonGpuSurface
     bgfx::IndexBufferHandle triangles = BGFX_INVALID_HANDLE;
     bgfx::IndexBufferHandle lines = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle samples = BGFX_INVALID_HANDLE;
+    bgfx::VertexBufferHandle quality = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle boundaries = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle nonManifold = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle winding = BGFX_INVALID_HANDLE;
@@ -34,6 +35,7 @@ struct ComparisonRuntime
     MeshComparison result;
     ComparisonGpuSurface originalGpu, repairedGpu;
     std::string error;
+    SurfaceQualityMetric uploadedQualityMetric = SurfaceQualityMetric::longestEdge;
 };
 
 struct ComparisonRuntimes {

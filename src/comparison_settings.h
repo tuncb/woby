@@ -1,5 +1,7 @@
 #pragma once
 
+#include "surface_mesh_quality.h"
+
 #include <cstddef>
 #include <string>
 
@@ -25,7 +27,8 @@ enum class ComparisonMode
     distance,
     original,
     repaired,
-    overlay
+    overlay,
+    surfaceQuality
 };
 
 struct ComparisonSettings
@@ -40,6 +43,7 @@ struct ComparisonSettings
     bool showEdges = false;
     bool showBoundaries = true;
     bool showNonManifold = true;
+    SurfaceQualitySettings quality;
     friend bool operator==(const ComparisonSettings &, const ComparisonSettings &) = default;
 };
 

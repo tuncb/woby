@@ -1,6 +1,6 @@
 """Exercise every scene-control family through a temporary real viewer.
 
-python tests/ctl_controls_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe \
+uv run tests/ctl_controls_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe \
     build/vs2026-vcpkg/example-plugins/Debug/woby_off_importer.dll
 """
 import json

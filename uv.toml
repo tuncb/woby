@@ -1,0 +1,3 @@
+# Python is tooling for this C++ project; all scripts use the standard library.
+required-version = ">=0.11.28"
+python-preference = "only-managed"

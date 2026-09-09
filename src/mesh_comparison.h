@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model_mesh.h"
+#include "surface_mesh_quality.h"
 
 #include <cstddef>
 #include <stop_token>
@@ -40,12 +41,14 @@ struct SurfaceComparison
     double mean = 0;
     double percentile95 = 0;
     MeshDiagnostics diagnostics;
+    SurfaceMeshQuality quality;
 };
 
 struct MeshComparison
 {
     SurfaceComparison original;
     SurfaceComparison repaired;
+    std::array<QualityDistribution, surfaceQualityMetricCount> qualityDistributions{};
 };
 
 [[nodiscard]] double pointTriangleDistance(const std::array<float, 3> &point, const std::array<float, 3> &a,

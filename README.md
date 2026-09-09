@@ -167,6 +167,31 @@ Version 5 `.woby` scenes save comparison objects and source references. Version
 2Ã¢â‚¬â€œ4 scenes remain readable; existing A/B memberships migrate into one comparison
 at the original source positions. Version 6 adds the optional camera record and
 still reads versions 2–5. Older woby builds cannot read version 6 scenes.
+Select **Surface mesh quality** in a comparison's display selector to inspect either
+A or B, including comparisons with only one input. Choose **Longest edge**,
+**Equivalent size** (edge length of an equilateral triangle with the same area),
+**Shape quality** (1 = equilateral), or **Local size jump** (largest equivalent-size
+ratio across neighboring triangles). A/B share color ranges and histogram bins;
+the histogram shows percentages with a shared vertical scale. Tables report
+minimum/P5/median/P95/maximum, worst shape, maximum size jump, and face counts.
+Optional inclusive minimum/maximum limits apply to the longest edge and report
+both the percentage of valid triangles and the percentage of their area outside
+the limits. Unit labels do not convert coordinates. Settings persist in `.woby`
+and support undo/redo; screenshot annotations include quality measurements.
+
+Metrics use source triangles at their scene transforms. Degenerate triangles
+are reported separately and excluded from statistics. Local size jumps use exact
+position matching across edges with two valid incident faces; boundary and
+non-manifold edges are excluded. Faces without a valid neighbor are unavailable
+(gray); degenerate faces use magenta where drawable. Percentiles give each valid
+face equal weight and interpolate between sorted values. These are geometric
+surface measurements; they do not certify FEM accuracy or volume mesh quality.
+
+Five ready-to-open [surface mesh quality sample projects](assets/samples/surface-mesh-quality/README.md)
+cover coarse/fine density, equal-area shape differences, gradual/abrupt grading,
+size-limit percentages, and topology edge cases. Each includes expected values
+and starts with the relevant heatmap selected.
+
 Open `assets/samples/mesh-comparison/compare.woby` for a before/after repair example.
 
 ```powershell
@@ -367,12 +392,23 @@ signature. This does not provide Developer ID signing or Apple notarization.
 
 ### Windows development
 
-Windows launch tests require Python 3.
+Tests and release packaging require [uv](https://docs.astral.sh/uv/getting-started/installation/)
+on Windows, Linux, and macOS. The supported Python interpreter is pinned exactly
+in `.python-version` (currently 3.13.14); `uv.toml` selects uv-managed Python.
+All Python scripts use the standard library, so no pip packages or virtual
+environment activation are needed.
+
+Run `uv python install` from the repository root before configuring. CMake uses
+uv to locate the pinned interpreter, replaces stale Python selections in existing
+build caches, and reports an error if that version is missing. Configuration
+does not download Python. With `BUILD_TESTING=OFF`, Woby's CMake configuration
+does not require Python or uv; release packaging still does.
 
 Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:
 
 ```powershell
 $env:VCPKG_ROOT="C:\path\to\vcpkg"
+uv python install
 cmake --preset vs2026-vcpkg
 cmake --build --preset vs2026-vcpkg
 ```
@@ -388,8 +424,14 @@ a machine with a desktop. It launches four fresh viewers and saves their PNGs an
 logs in the output directory:
 
 ```powershell
-python tests/ctl_startup_screenshot_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/startup-capture-qa
+uv run tests/ctl_startup_screenshot_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/startup-capture-qa
 ```
+
+Use `uv run path/to/script.py ...` for all standalone Python scripts and
+`uv run python --version` to check the selected interpreter. CI installs uv and
+runs `uv python install` in each build or release job that needs Python, then
+uses the same pin for tests and packaging. Update `.python-version`, rerun
+`uv python install`, and reconfigure CMake when upgrading Python.
 
 The Visual Studio presets build two projects concurrently and use MSBuild's
 shared compiler worker pool across them. To limit compiler workers on a smaller

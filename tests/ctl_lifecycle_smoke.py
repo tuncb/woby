@@ -1,6 +1,6 @@
 """Exercise the real viewer/CLI lifecycle. Requires a desktop and built Debug woby.
 
-Run: python tests/ctl_lifecycle_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
+Run: uv run tests/ctl_lifecycle_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
 """
 
 import json

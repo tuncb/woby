@@ -38,6 +38,9 @@ struct ControlOperation {
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold;
     std::optional<float> tolerance, colorRange;
+    std::optional<std::string> qualityMetric;
+    std::optional<bool> qualityOnA, qualityMinimumEnabled, qualityMaximumEnabled;
+    std::optional<float> qualityMinimumSize, qualityMaximumSize;
 };
 
 struct ControlMethod {
