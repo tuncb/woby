@@ -699,6 +699,7 @@ SceneDocument createSceneDocument(const UiState& state)
             for (const auto& part : members) {
                 SceneComparisonPartRecord reference;
                 reference.name = part.name;
+                reference.enabled = part.enabled;
                 for (size_t f = 0; f < state.files.size(); ++f) {
                     const auto& groups = state.files[f].groupSettings;
                     for (size_t g = 0; g < groups.size() && g < state.files[f].mesh.nodes.size(); ++g) {

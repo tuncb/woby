@@ -95,6 +95,7 @@ struct UiComparisonPart {
     SceneObjectId objectId = invalidSceneObjectId;
     // Retained when a source is removed, so missing inputs remain repairable.
     std::string name;
+    bool enabled = true;
     friend bool operator==(const UiComparisonPart&, const UiComparisonPart&) = default;
 };
 

@@ -290,8 +290,8 @@ void submitSceneScreenshotCapture(
             const auto a = comparisonInputSummary(ui, ComparisonSide::a, item.objectId);
             const auto b = comparisonInputSummary(ui, ComparisonSide::b, item.objectId);
             const auto settings = effectiveComparisonSettings(ui, item.objectId);
-            for (const auto& text : comparisonReportLines(item.name, item.a.empty() ? "" : a.sourceNames,
-                     item.b.empty() ? "" : b.sourceNames, settings,
+            for (const auto& text : comparisonReportLines(item.name, a.enabledPartCount == 0 ? "" : a.sourceNames,
+                     b.enabledPartCount == 0 ? "" : b.sourceNames, settings,
                      comparison->objects.at(item.objectId).result, options)) { line(text); }
             if (options.legend && settings.mode == ComparisonMode::distance) {
                 const float used = drawComparisonLegend(annotationDraw, {x, y}, wrap, fontSize, settings);

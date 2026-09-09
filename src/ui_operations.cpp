@@ -163,6 +163,60 @@ size_t comparisonPartCount(const UiState& state, ComparisonSide side, SceneObjec
     return count;
 }
 
+bool comparisonPartEnabled(const UiState& state, SceneObjectId part, ComparisonSide side, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison || part == invalidSceneObjectId) { return false; }
+    const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    return std::any_of(members.begin(), members.end(), [part](const UiComparisonPart& member) {
+        return member.objectId == part && member.enabled;
+    });
+}
+
+size_t enabledComparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id)
+{
+    size_t count = 0;
+    for (const auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size(); ++i) {
+            if (comparablePart(file, i) && comparisonPartEnabled(state, file.groupSettings[i].objectId, side, id)) { ++count; }
+        }
+    }
+    return count;
+}
+
+void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side,
+    bool enabled, SceneObjectId id)
+{
+    auto* comparison = findComparison(state, id);
+    if (!comparison) { return; }
+    const auto parts = comparisonObjectParts(state, objects);
+    auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    bool changed = false;
+    for (auto& member : members) {
+        if (objects.empty() || std::binary_search(parts.begin(), parts.end(), member.objectId)) {
+            changed = changed || member.enabled != enabled;
+            member.enabled = enabled;
+        }
+    }
+    if (!changed) { return; }
+    recalculateSceneBounds(state);
+    markSceneDirty(state);
+}
+
+namespace {
+bool hasEnabledMissingComparisonParts(const UiState& state, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison) { return false; }
+    for (const auto* members : {&comparison->a, &comparison->b}) {
+        for (const auto& member : *members) {
+            if (member.enabled && comparisonObjectParts(state, {member.objectId}).empty()) { return true; }
+        }
+    }
+    return false;
+}
+} // namespace
+
 size_t missingComparisonPartCount(const UiState& state, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);
@@ -268,8 +322,8 @@ ComparisonMembershipAction comparisonMembershipAction(
 
 bool canCompareGroups(const UiState& state, SceneObjectId id)
 {
-    return comparisonPartCount(state, ComparisonSide::a, id) != 0
-        && comparisonPartCount(state, ComparisonSide::b, id) != 0 && missingComparisonPartCount(state, id) == 0;
+    return enabledComparisonPartCount(state, ComparisonSide::a, id) != 0
+        && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0 && !hasEnabledMissingComparisonParts(state, id);
 }
 
 bool canCompareSceneSelection(const UiState& state)
@@ -283,16 +337,17 @@ bool canCompareSceneSelection(const UiState& state)
 
 bool canInspectComparison(const UiState& state, SceneObjectId id)
 {
-    return (comparisonPartCount(state, ComparisonSide::a, id) != 0
-        || comparisonPartCount(state, ComparisonSide::b, id) != 0) && missingComparisonPartCount(state, id) == 0;
+    return (enabledComparisonPartCount(state, ComparisonSide::a, id) != 0
+        || enabledComparisonPartCount(state, ComparisonSide::b, id) != 0) && !hasEnabledMissingComparisonParts(state, id);
 }
 
 ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id)
 {
     auto settings = comparisonSettings(state, id);
-    const auto* comparison = findComparison(state, id);
-    if (comparison && comparison->b.empty() && !comparison->a.empty()) { settings.mode = ComparisonMode::original; }
-    if (comparison && comparison->a.empty() && !comparison->b.empty()) { settings.mode = ComparisonMode::repaired; }
+    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
+    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
+    if (!hasB && hasA) { settings.mode = ComparisonMode::original; }
+    if (!hasA && hasB) { settings.mode = ComparisonMode::repaired; }
     return settings;
 }
 
@@ -1191,7 +1246,7 @@ UiState prepareSceneReplacement(const UiState& current,
         const auto loadParts = [&](const std::vector<SceneComparisonPartRecord>& references) {
             std::vector<UiComparisonPart> result;
             for (const auto& reference : references) {
-                UiComparisonPart part{invalidSceneObjectId, reference.name};
+                UiComparisonPart part{invalidSceneObjectId, reference.name, reference.enabled};
                 if (reference.fileIndex >= 0 && static_cast<size_t>(reference.fileIndex) < prepared.files.size()
                     && reference.groupIndex >= 0) {
                     const auto f = static_cast<size_t>(reference.fileIndex);

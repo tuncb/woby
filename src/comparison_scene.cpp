@@ -56,7 +56,7 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
         if (fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[fileIndex];
         if (groupIndex >= file.groupSettings.size() || groupIndex >= file.mesh.nodes.size()) { return; }
-        if (!comparisonContains(state, file.groupSettings[groupIndex].objectId, side, id)
+        if (!comparisonPartEnabled(state, file.groupSettings[groupIndex].objectId, side, id)
             || file.mesh.nodes[groupIndex].indexCount == 0
             || !visited.emplace(fileIndex, groupIndex).second) { return; }
         visitor(file, groupIndex, parent);
@@ -116,6 +116,7 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
                 || !visited.emplace(source.fileIndex, source.groupIndex).second) { return result; }
             result.objectId = part.objectId;
             result.partCount = 1;
+            result.enabledPartCount = comparisonPartEnabled(state, part.objectId, side, id) ? 1 : 0;
             result.triangleCount = meshNode.indexCount / 3;
             return result;
         }
@@ -123,6 +124,7 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
             auto branch = self(self, child);
             if (branch.partCount == 0) { return; }
             result.partCount += branch.partCount;
+            result.enabledPartCount += branch.enabledPartCount;
             result.triangleCount += branch.triangleCount;
             result.children.push_back(std::move(branch));
         };
@@ -151,6 +153,7 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
 {
     ComparisonInputSummary result;
     const auto appendNames = [&](auto&& self, const ComparisonTreeNode& node) -> void {
+        if (node.enabledPartCount == 0) { return; }
         if (node.kind == UiSceneNodeKind::folder) {
             for (const auto& child : node.children) { self(self, child); }
         } else {
@@ -160,13 +163,14 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
     };
     for (const auto& root : comparisonTree(state, side, id)) {
         result.partCount += root.partCount;
+        result.enabledPartCount += root.enabledPartCount;
         appendNames(appendNames, root);
     }
     const std::string label = side == ComparisonSide::a ? "A" : "B";
     if (const auto* comparison = findComparison(state, id)) {
         const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
         for (const auto& member : members) {
-            if (!comparisonObjectParts(state, {member.objectId}).empty()) { continue; }
+            if (!member.enabled || !comparisonObjectParts(state, {member.objectId}).empty()) { continue; }
             if (result.issue.empty()) { result.issue = "Input " + label + " has missing or invalid references: "; }
             else { result.issue += ", "; }
             result.issue += member.name.empty() ? "Unnamed part" : member.name;
@@ -175,6 +179,9 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
     if (!result.issue.empty()) { result.issue += ". Restore the source or remove missing references below."; }
     else if (result.partCount == 0) {
         result.issue = "Input " + label + " is empty. Use Comparison membership in the scene tree context menu.";
+    }
+    else if (result.enabledPartCount == 0) {
+        result.issue = "Input " + label + " is turned off. Check an item to include it in the comparison.";
     }
     if (result.sourceNames.empty()) { result.sourceNames = "No available sources"; }
     return result;
@@ -185,8 +192,10 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
     const auto* comparison = findComparison(state, id);
     if (!comparison) { throw std::runtime_error("Comparison no longer exists."); }
     const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
-    if (members.size() != comparisonPartCount(state, side, id)) {
-        throw std::runtime_error("Comparison has missing or invalid source parts.");
+    for (const auto& member : members) {
+        if (member.enabled && comparisonObjectParts(state, {member.objectId}).empty()) {
+            throw std::runtime_error("Comparison has missing or invalid source parts.");
+        }
     }
     Mesh result;
     // Check the whole side before allocating any expanded world geometry.

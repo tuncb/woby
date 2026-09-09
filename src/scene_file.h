@@ -87,6 +87,7 @@ struct SceneComparisonPartRecord {
     int fileIndex = -1;
     int groupIndex = -1;
     std::string name;
+    bool enabled = true;
     friend bool operator==(const SceneComparisonPartRecord&, const SceneComparisonPartRecord&) = default;
 };
 

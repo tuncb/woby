@@ -3081,8 +3081,8 @@ int main(int argc, char** argv)
                                 if (!woby::canInspectComparison(ui, payload.objectId)) {
                                     throw std::invalid_argument("Comparison needs at least one populated input and no missing references.");
                                 }
-                                auto a = source->a.empty() ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::a, payload.objectId);
-                                auto b = source->b.empty() ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::b, payload.objectId);
+                                auto a = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, payload.objectId) == 0 ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::a, payload.objectId);
+                                auto b = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::b, payload.objectId) == 0 ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::b, payload.objectId);
                                 AutomationComparisonRuntime pending;
                                 pending.id = command->id;
                                 pending.target = payload.target;

@@ -62,6 +62,13 @@ void setSelectedObjectsVisible(UiState& state, bool visible);
 [[nodiscard]] std::vector<SceneObjectId> comparisonObjectParts(
     const UiState& state, const std::vector<SceneObjectId>& objects);
 [[nodiscard]] size_t comparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] bool comparisonPartEnabled(const UiState& state, SceneObjectId part, ComparisonSide side,
+    SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] size_t enabledComparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
+// Toggle existing members only. Files and folders include their descendants;
+// an empty object list toggles the entire side, including missing references.
+void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side,
+    bool enabled, SceneObjectId id = invalidSceneObjectId);
 enum class ComparisonMembershipAction { unavailable, add, remove };
 // Mixed selections add missing parts; fully included selections remove their parts.
 [[nodiscard]] ComparisonMembershipAction comparisonMembershipAction(

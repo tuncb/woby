@@ -6,6 +6,7 @@
 #include "utf8_path.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <bx/math.h>
 
@@ -110,12 +111,38 @@ bool originalActive(const ComparisonSettings &settings)
     return settings.mode == ComparisonMode::original ||
            (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal);
 }
+void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectId id,
+    const std::vector<SceneObjectId>& objects)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison) { return; }
+    const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    const auto parts = comparisonObjectParts(state, objects);
+    size_t total = 0, checked = 0;
+    for (const auto& member : members) {
+        if (!objects.empty() && !std::binary_search(parts.begin(), parts.end(), member.objectId)) { continue; }
+        ++total;
+        if (member.enabled) { ++checked; }
+    }
+    bool enabled = total != 0 && checked == total;
+    ImGui::BeginDisabled(total == 0);
+    ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, checked != 0 && checked != total);
+    if (ImGui::Checkbox("##enabled", &enabled)) {
+        setComparisonObjectsEnabled(state, objects, side, enabled, id);
+    }
+    ImGui::PopItemFlag();
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Include in comparison (toggles all children)"); }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+}
+
 void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node, SceneObjectId id)
 {
     const auto nodeId = std::to_string(node.objectId);
     ImGui::PushID(nodeId.c_str());
+    comparisonEnabledCheckbox(state, side, id, {node.objectId});
     const bool leaf = node.children.empty();
-    const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
+    const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding
         | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
         | (leaf ? ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen : ImGuiTreeNodeFlags_DefaultOpen);
     const bool open = ImGui::TreeNodeEx("node", flags, "%s", node.name.c_str());
@@ -143,12 +170,13 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
 {
     const char* label = side == ComparisonSide::a ? "Group A" : "Group B";
     ImGui::PushID(label);
+    comparisonEnabledCheckbox(state, side, id, {});
     const auto summary = comparisonInputSummary(state, side, id);
     const auto roots = comparisonTree(state, side, id);
     size_t triangles = 0;
     for (const auto& root : roots) { triangles += root.triangleCount; }
-    const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_DefaultOpen,
-        "%s (%zu %s) %zu triangles", label, summary.partCount,
+    const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_FramePadding,
+        "%s (%zu/%zu %s on) %zu triangles", label, summary.enabledPartCount, summary.partCount,
         summary.partCount == 1 ? "part" : "parts", triangles);
     if (ImGui::BeginDragDropTarget()) {
         if (const auto* payload = ImGui::AcceptDragDropPayload(comparisonSourcePayload)) {
@@ -322,8 +350,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, const UiState& s
     runtime.error.clear();
     try
     {
-        auto original = comparisonPartCount(state, ComparisonSide::a, id) ? comparisonWorldMesh(state, ComparisonSide::a, id) : Mesh{};
-        auto repaired = comparisonPartCount(state, ComparisonSide::b, id) ? comparisonWorldMesh(state, ComparisonSide::b, id) : Mesh{};
+        auto original = enabledComparisonPartCount(state, ComparisonSide::a, id) ? comparisonWorldMesh(state, ComparisonSide::a, id) : Mesh{};
+        auto repaired = enabledComparisonPartCount(state, ComparisonSide::b, id) ? comparisonWorldMesh(state, ComparisonSide::b, id) : Mesh{};
         runtime.stop = std::stop_source{};
         const auto stop = runtime.stop.get_token();
         runtime.worker = std::async(std::launch::async, [original = std::move(original), repaired = std::move(repaired),
@@ -437,7 +465,8 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool valid = canInspectComparison(state, id);
-    const bool hasA = !comparison->a.empty(), hasB = !comparison->b.empty();
+    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
+    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     const bool both = hasA && hasB;
     {
         const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay"};
@@ -749,7 +778,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
                 if (summary.issue.empty()) { continue; }
                 const auto& members = side == ComparisonSide::a ? comparison.a : comparison.b;
                 ImGui::TextDisabled("    Input %s: %s", side == ComparisonSide::a ? "A" : "B",
-                    members.empty() ? "empty" : "missing / invalid source");
+                    members.empty() ? "empty" : summary.enabledPartCount == 0 ? "off / unavailable" : "missing / invalid source");
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("%s", summary.issue.c_str());
                 }

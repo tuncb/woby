@@ -578,6 +578,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "file_index") { part.fileIndex = parseTomlInteger(value); }
                 else if (key == "group_index") { part.groupIndex = parseTomlInteger(value); }
                 else if (key == "name") { part.name = parseTomlString(value); }
+                else if (key == "enabled") { part.enabled = parseTomlBool(value); }
             } else if (section == Section::file) {
                 assignSceneFileValue(document.files.back(), key, value);
             } else if (section == Section::group) {
@@ -789,6 +790,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
                 stream << "file_index = " << part.fileIndex << "\n";
                 stream << "group_index = " << part.groupIndex << "\n";
                 stream << "name = \"" << escapeTomlString(part.name) << "\"\n";
+                stream << "enabled = " << (part.enabled ? "true" : "false") << "\n";
             }
         }
     }

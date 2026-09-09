@@ -12,6 +12,7 @@ struct ComparisonTreeNode
     UiSceneNodeKind kind = UiSceneNodeKind::folder;
     std::string name;
     size_t partCount = 0;
+    size_t enabledPartCount = 0;
     size_t triangleCount = 0;
     std::vector<ComparisonTreeNode> children;
 };
@@ -19,6 +20,7 @@ struct ComparisonTreeNode
 struct ComparisonInputSummary
 {
     size_t partCount = 0;
+    size_t enabledPartCount = 0;
     std::string sourceNames;
     std::string issue;
 };
