@@ -1,0 +1,83 @@
+{
+  "01-coarse-vs-fine.woby": {
+    "a": {
+      "triangleCount": 18,
+      "longest_edge.minimum": 2.8284271247461903,
+      "longest_edge.maximum": 2.8284271247461903,
+      "equivalent_size.median": 2.149139863647084,
+      "shape.minimum": 0.8660254037844386,
+      "size_jump.maximum": 1,
+      "limits.above": 18,
+      "limits.trianglePercent": 100,
+      "limits.areaPercent": 100
+    },
+    "b": {
+      "triangleCount": 72,
+      "longest_edge.minimum": 1.4142135623730951,
+      "longest_edge.maximum": 1.4142135623730951,
+      "shape.minimum": 0.8660254037844386,
+      "size_jump.maximum": 1,
+      "limits.above": 0,
+      "limits.areaPercent": 0
+    }
+  },
+  "02-equal-area-different-shapes.woby": {
+    "a": {
+      "triangleCount": 4,
+      "equivalent_size.minimum": 2,
+      "equivalent_size.maximum": 2,
+      "shape.minimum": 1,
+      "shape.maximum": 1,
+      "size_jump.count": 0,
+      "size_jump.maximum": null
+    },
+    "b": {
+      "triangleCount": 4,
+      "equivalent_size.minimum": 2,
+      "equivalent_size.maximum": 2,
+      "shape.minimum": 0.031242372467659263,
+      "shape.maximum": 1,
+      "longest_edge.maximum": 16,
+      "size_jump.count": 0
+    }
+  },
+  "03-gradual-vs-abrupt.woby": {
+    "a": {
+      "triangleCount": 40,
+      "size_jump.maximum": 1.4142135623730951,
+      "size_jump.minimum": 1
+    },
+    "b": {
+      "triangleCount": 16,
+      "size_jump.maximum": 5.477225575051661,
+      "size_jump.minimum": 1
+    }
+  },
+  "04-size-limits-and-area.woby": {
+    "a": {
+      "triangleCount": 2,
+      "longest_edge.minimum": 5,
+      "longest_edge.maximum": 10,
+      "longest_edge.median": 7.5,
+      "longest_edge.percentile5": 5.25,
+      "longest_edge.percentile95": 9.75,
+      "limits.below": 0,
+      "limits.above": 1,
+      "limits.trianglePercent": 50,
+      "limits.areaPercent": 80
+    }
+  },
+  "05-topology-and-unavailable.woby": {
+    "a": {
+      "triangleCount": 12,
+      "shape.count": 10,
+      "size_jump.count": 6,
+      "size_jump.maximum": 1,
+      "diagnostics.degenerateTriangles": 2,
+      "diagnostics.duplicateTriangles": 1,
+      "diagnostics.boundaryEdges": 17,
+      "diagnostics.nonManifoldEdges": 1,
+      "diagnostics.inconsistentWindingEdges": 1
+    }
+  }
+}

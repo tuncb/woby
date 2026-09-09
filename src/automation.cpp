@@ -1027,7 +1027,7 @@ void printCommandLineHelp()
         "delete removes only the comparison; source models remain loaded.\n"
         "results waits for a fresh geometry/tolerance snapshot calculation, even when hidden.\n"
         "It returns aToB and bToA: sampled maximum, area-weighted mean/P95, percentage\n"
-        "above tolerance, and mesh diagnostics. Distances use model units.\n"
+        "above tolerance, and mesh diagnostics.\n"
         "Incomplete inputs fail. Reusing a results request key returns the original snapshot.\n"
         "\nSaving and capture:\n"
         "scene open/new and quit default to --on-dirty error. --save-path requires\n"

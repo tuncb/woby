@@ -1,5 +1,7 @@
 #pragma once
 
+#include "surface_mesh_quality.h"
+
 #include <cstddef>
 #include <string>
 
@@ -25,7 +27,8 @@ enum class ComparisonMode
     distance,
     original,
     repaired,
-    overlay
+    overlay,
+    surfaceQuality
 };
 
 struct ComparisonSettings
@@ -35,11 +38,10 @@ struct ComparisonSettings
     bool distanceOnOriginal = false;
     float tolerance = 0.05f;
     float colorRange = 0.5f;
-    // Empty means model units; labels never rescale measurements.
-    std::string unitLabel;
     bool showEdges = false;
     bool showBoundaries = true;
     bool showNonManifold = true;
+    SurfaceQualitySettings quality;
     friend bool operator==(const ComparisonSettings &, const ComparisonSettings &) = default;
 };
 

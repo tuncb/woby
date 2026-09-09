@@ -8,7 +8,17 @@ uniform vec4 u_comparison;
 void main()
 {
     vec3 color = u_color.rgb;
-    if (u_comparison.z > 0.5)
+    if (u_comparison.z > 1.5)
+    {
+        float amount = clamp(v_texcoord0.x, 0.0, 1.0);
+        if (u_comparison.w > 0.5) { amount = 1.0 - amount; }
+        color = amount <= 0.5
+            ? mix(vec3(0.18, 0.48, 0.85), vec3(1.0, 0.82, 0.3), amount * 2.0)
+            : mix(vec3(1.0, 0.82, 0.3), vec3(0.94, 0.22, 0.055), (amount - 0.5) * 2.0);
+        if (v_texcoord0.x < 0.0) { color = vec3(1.0, 0.0, 1.0); }
+        if (v_texcoord0.x < -1.5) { color = vec3(0.56, 0.61, 0.67); }
+    }
+    else if (u_comparison.z > 0.5)
     {
         color = vec3(0.56, 0.61, 0.67);
         if (v_texcoord0.x > u_comparison.x)

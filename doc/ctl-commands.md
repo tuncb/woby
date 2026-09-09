@@ -82,13 +82,25 @@ computations fail capture; hide or repair the affected object before retrying.
 | --- | --- | --- |
 | `comparison create [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `comparison.create` | Create a comparison, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
 | `comparison delete COMPARISON_ID` | `comparison.delete` | Delete the comparison without deleting its source models. Returns `removed` and `dirty`. |
-| `comparison set COMPARISON_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL]` | `comparison.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
+| `comparison set COMPARISON_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL]` | `comparison.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `comparison add COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
 | `comparison enable COMPARISON_ID --side a\|b --enabled BOOL [--object OBJECT_ID]` | `comparison.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. Membership is preserved. |
 | `comparison remove COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.remove` | Remove the input's current triangular parts from the selected side. |
 | `comparison clear COMPARISON_ID --side a\|b` | `comparison.clear` | Clear the entire side, including missing references. |
 | `comparison swap COMPARISON_ID` | `comparison.swap` | Swap the A/B input lists. |
 | `comparison results COMPARISON_ID` | `comparison.results` | Wait for fresh diagnostics and, with two inputs, both directed distance summaries. Works for hidden comparisons and in every display mode. |
+
+Surface quality controls are also available through `comparison set`:
+`--quality-metric longest_edge|equivalent_size|shape|size_jump`, `--quality-on-a BOOL`,
+`--quality-minimum-enabled BOOL`, `--quality-maximum-enabled BOOL`,
+`--quality-minimum-size N`, and `--quality-maximum-size N`. RPC parameter names
+are `qualityMetric`, `qualityOnA`, `qualityMinimumEnabled`, `qualityMaximumEnabled`,
+`qualityMinimumSize`, and `qualityMaximumSize`. Limits apply to longest edge in
+model units; negative sizes clamp to zero and an enabled maximum is raised to an
+enabled minimum when needed. Each populated `comparison results` side includes
+`surfaceMeshQuality` with count/minimum/percentile5/median/percentile95/maximum for
+all four metrics. Undefined metrics use null; degenerate faces are counted
+separately. Surface quality mode works with either one or two inputs.
 
 Use `objects`/`object` to discover comparisons and inspect their settings and inputs.
 One populated side is sufficient for surface and edge inspection. Distance and

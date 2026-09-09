@@ -89,6 +89,21 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
     CHECK(parse({"vertex-size", "set", "object", "--scale", "3"}).operation.scale == 3);
 }
 
+TEST_CASE("ctl surface quality options preserve values through CLI and protocol serialization")
+{
+    const auto parsed = parse({"comparison", "set", "object", "--mode", "surface_quality",
+        "--quality-metric", "equivalent_size", "--quality-on-a", "false",
+        "--quality-minimum-enabled", "true", "--quality-maximum-enabled", "false",
+        "--quality-minimum-size", "1.5", "--quality-maximum-size", "4"});
+    const Json expected = {{"target", "object"}, {"mode", "surface_quality"},
+        {"qualityMetric", "equivalent_size"}, {"qualityOnA", false},
+        {"qualityMinimumEnabled", true}, {"qualityMaximumEnabled", false},
+        {"qualityMinimumSize", 1.5}, {"qualityMaximumSize", 4}};
+    CHECK(woby::controlOperationParams(parsed.operation) == expected);
+    const auto roundtrip = woby::parseControlOperation(woby::controlMethod(parsed.operation.action), expected);
+    CHECK(woby::controlOperationParams(roundtrip) == expected);
+}
+
 TEST_CASE("ctl rejects ambiguous incomplete conflicting and nonfinite edit parameters")
 {
     for (const auto& words : std::vector<std::vector<std::string>>{

@@ -4,6 +4,23 @@
 #include <algorithm>
 
 namespace woby {
+float drawSurfaceQualityLegend(ImDrawList& draw, ImVec2 position, float width, float fontSize,
+    SurfaceQualityMetric metric, const QualityDistribution& distribution)
+{
+    for (int i = 0; i < 64; ++i) {
+        const auto c = surfaceQualityColor(static_cast<double>(i) / 63, metric);
+        draw.AddRectFilled({position.x + width * static_cast<float>(i) / 64, position.y},
+            {position.x + width * static_cast<float>(i + 1) / 64, position.y + fontSize},
+            ImGui::ColorConvertFloat4ToU32({c[0], c[1], c[2], 1}));
+    }
+    const auto left = measurementNumber(distribution.minimum);
+    const auto right = measurementNumber(distribution.maximum);
+    draw.AddText(ImGui::GetFont(), fontSize, {position.x, position.y + fontSize + 4}, IM_COL32_WHITE, left.c_str());
+    const float rightWidth = ImGui::GetFont()->CalcTextSizeA(fontSize, 10000, 0, right.c_str()).x;
+    draw.AddText(ImGui::GetFont(), fontSize, {position.x + std::max(0.0f, width - rightWidth), position.y + fontSize + 4},
+        IM_COL32_WHITE, right.c_str());
+    return 2 * fontSize + 10;
+}
 float drawComparisonLegend(ImDrawList& draw, ImVec2 position, float width, float fontSize,
     const ComparisonSettings& settings)
 {

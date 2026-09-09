@@ -586,13 +586,24 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     else if (mode == "a") { record.settings.mode = ComparisonMode::original; }
                     else if (mode == "b") { record.settings.mode = ComparisonMode::repaired; }
                     else if (mode == "overlay") { record.settings.mode = ComparisonMode::overlay; }
+                    else if (mode == "surface_quality") { record.settings.mode = ComparisonMode::surfaceQuality; }
                     else { throw std::runtime_error("Unknown comparison mode."); }
                 } else if (key == "comparison_distance_on_a") {
                     record.settings.distanceOnOriginal = parseTomlBool(value);
                 } else if (key == "comparison_tolerance") {
                     record.settings.tolerance = parseTomlFloat(value);
-                } else if (key == "comparison_unit_label") {
-                    record.settings.unitLabel = parseTomlString(value);
+                } else if (key == "quality_metric") {
+                    record.settings.quality.metric = parseSurfaceQualityMetric(parseTomlString(value));
+                } else if (key == "quality_on_a") {
+                    record.settings.quality.onOriginal = parseTomlBool(value);
+                } else if (key == "quality_minimum_enabled") {
+                    record.settings.quality.minimumEnabled = parseTomlBool(value);
+                } else if (key == "quality_maximum_enabled") {
+                    record.settings.quality.maximumEnabled = parseTomlBool(value);
+                } else if (key == "quality_minimum_size") {
+                    record.settings.quality.minimumSize = parseTomlFloat(value);
+                } else if (key == "quality_maximum_size") {
+                    record.settings.quality.maximumSize = parseTomlFloat(value);
                 } else if (key == "comparison_color_range") {
                     record.settings.colorRange = parseTomlFloat(value);
                 } else if (key == "comparison_show_edges") {
@@ -824,16 +835,23 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         case ComparisonMode::original: mode = "a"; break;
         case ComparisonMode::repaired: mode = "b"; break;
         case ComparisonMode::overlay: mode = "overlay"; break;
+        case ComparisonMode::surfaceQuality: mode = "surface_quality"; break;
         }
         stream << "comparison_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
         stream << "comparison_mode = \"" << mode << "\"\n";
         stream << "comparison_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
         stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
         stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
-        stream << "comparison_unit_label = \"" << escapeTomlString(comparison.unitLabel) << "\"\n";
         stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
         stream << "comparison_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
         stream << "comparison_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
+
+        stream << "quality_metric = \"" << surfaceQualityMetricKey(comparison.quality.metric) << "\"\n";
+        stream << "quality_on_a = " << (comparison.quality.onOriginal ? "true" : "false") << "\n";
+        stream << "quality_minimum_enabled = " << (comparison.quality.minimumEnabled ? "true" : "false") << "\n";
+        stream << "quality_maximum_enabled = " << (comparison.quality.maximumEnabled ? "true" : "false") << "\n";
+        stream << "quality_minimum_size = "; writeTomlFloat(stream, comparison.quality.minimumSize); stream << "\n";
+        stream << "quality_maximum_size = "; writeTomlFloat(stream, comparison.quality.maximumSize); stream << "\n";
 
         for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
             for (const auto& part : side == ComparisonSide::a ? record.a : record.b) {

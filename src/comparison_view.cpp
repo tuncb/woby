@@ -22,7 +22,7 @@ namespace
 {
 void destroySurface(ComparisonGpuSurface &gpu)
 {
-    for (const auto handle : {gpu.vertices, gpu.samples, gpu.boundaries, gpu.nonManifold, gpu.winding})
+    for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.boundaries, gpu.nonManifold, gpu.winding})
     {
         if (bgfx::isValid(handle))
         {
@@ -109,7 +109,19 @@ void uploadSurface(ComparisonGpuSurface &gpu, const SurfaceComparison &surface)
 bool originalActive(const ComparisonSettings &settings)
 {
     return settings.mode == ComparisonMode::original ||
-           (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal);
+           (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal) ||
+           (settings.mode == ComparisonMode::surfaceQuality && settings.quality.onOriginal);
+}
+void uploadQuality(ComparisonGpuSurface& gpu, const SurfaceComparison& surface,
+    SurfaceQualityMetric metric, const QualityDistribution& distribution)
+{
+    if (surface.source.indices.empty()) { return; }
+    const auto bytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(Vertex));
+    const auto vertices = surfaceQualityVertices(surface.source, surface.quality, metric, distribution);
+    const auto handle = bgfx::createVertexBuffer(bgfx::copy(vertices.data(), bytes), meshVertexLayout());
+    if (!bgfx::isValid(handle)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
+    if (bgfx::isValid(gpu.quality)) { bgfx::destroy(gpu.quality); }
+    gpu.quality = handle;
 }
 void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectId id,
     const std::vector<SceneObjectId>& objects)
@@ -341,6 +353,22 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, const UiState& s
             }
         }
     }
+    const auto settings = comparisonSettings(state, id);
+    if (runtime.ready && settings.mode == ComparisonMode::surfaceQuality &&
+        (runtime.uploadedQualityMetric != settings.quality.metric ||
+         (!runtime.result.original.source.indices.empty() && !bgfx::isValid(runtime.originalGpu.quality)) ||
+         (!runtime.result.repaired.source.indices.empty() && !bgfx::isValid(runtime.repairedGpu.quality)))) {
+        try {
+            const auto& distribution = runtime.result.qualityDistributions.at(static_cast<size_t>(settings.quality.metric));
+            uploadQuality(runtime.originalGpu, runtime.result.original, settings.quality.metric, distribution);
+            uploadQuality(runtime.repairedGpu, runtime.result.repaired, settings.quality.metric, distribution);
+            runtime.uploadedQualityMetric = settings.quality.metric;
+        } catch (const std::exception& error) {
+            runtime.error = error.what();
+            runtime.ready = false;
+            runtime.resultSignature = 0;
+        }
+    }
     if (wanted == 0 || runtime.ready || runtime.worker.valid() || wanted == runtime.attemptedSignature || !allowStart)
     {
         return;
@@ -421,11 +449,156 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
             throw std::runtime_error(comparison.name + ": " + runtime.error);
         }
         ready = ready && runtime.ready && runtime.resultSignature == signature;
+        if (comparison.settings.mode == ComparisonMode::surfaceQuality) {
+            ready = ready && runtime.uploadedQualityMetric == comparison.settings.quality.metric &&
+                (runtime.result.original.source.indices.empty() || bgfx::isValid(runtime.originalGpu.quality)) &&
+                (runtime.result.repaired.source.indices.empty() || bgfx::isValid(runtime.repairedGpu.quality));
+        }
     }
     return ready;
 }
 
 namespace {
+void drawSurfaceQualitySizeLimits(UiState& state, SceneObjectId id, const MeshComparison* result, bool hasA, bool hasB)
+{
+    ImGui::Separator();
+    ImGui::TextUnformatted("Size limits (longest edge)");
+    ImGui::SameLine();
+    drawInformationIcon("size_limits_info", "Size limits",
+        "Limits use each triangle's longest edge, with inclusive endpoints. "
+        "Counts and percentages exclude degenerate faces. Limits do not change heatmap colors.");
+    auto settings = comparisonSettings(state, id);
+    const auto initial = settings;
+    ImGui::Checkbox("Minimum##quality", &settings.quality.minimumEnabled);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!settings.quality.minimumEnabled);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputFloat("##quality_minimum", &settings.quality.minimumSize, 0, 0, "%.5g");
+    ImGui::EndDisabled();
+    ImGui::Checkbox("Maximum##quality", &settings.quality.maximumEnabled);
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!settings.quality.maximumEnabled);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::InputFloat("##quality_maximum", &settings.quality.maximumSize, 0, 0, "%.5g");
+    ImGui::EndDisabled();
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
+    const auto& quality = comparisonSettings(state, id).quality;
+    if (!quality.minimumEnabled && !quality.maximumEnabled) {
+        ImGui::TextDisabled("Enable a limit to see outside-limit statistics.");
+    } else if (result && ImGui::BeginTable("quality_size_limits", 3,
+                   ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Statistic", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+        ImGui::TableSetupColumn("A"); ImGui::TableSetupColumn("B"); ImGui::TableHeadersRow();
+        const std::array<QualitySizeLimits, 2> limits = {
+            surfaceQualitySizeLimits(result->original.quality, quality),
+            surfaceQualitySizeLimits(result->repaired.quality, quality)};
+        const std::array<bool, 2> present = {hasA, hasB};
+        const auto row = [&](const char* label, const auto& value) {
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label);
+            for (size_t side = 0; side < limits.size(); ++side) {
+                ImGui::TableNextColumn();
+                const auto text = present[side] ? value(limits[side]) : "-";
+                ImGui::TextUnformatted(text.c_str());
+            }
+        };
+        if (quality.minimumEnabled) { row("Below minimum", [](const auto& l) { return std::to_string(l.below); }); }
+        if (quality.maximumEnabled) { row("Above maximum", [](const auto& l) { return std::to_string(l.above); }); }
+        row("Outside: faces", [](const auto& l) { return l.validTriangles ? measurementNumber(l.trianglePercent) + "%" : "N/A"; });
+        row("Outside: area", [](const auto& l) { return l.validTriangles ? measurementNumber(l.areaPercent) + "%" : "N/A"; });
+        ImGui::EndTable();
+    }
+    ImGui::Separator();
+}
+
+void drawSurfaceQualityStatistics(const MeshComparison& result, const ComparisonSettings& settings, bool hasA, bool hasB)
+{
+    const auto metric = settings.quality.metric;
+    const auto index = static_cast<size_t>(metric);
+    const auto& distribution = result.qualityDistributions[index];
+    ImGui::Separator();
+    ImGui::TextUnformatted("Surface mesh quality");
+    ImGui::SameLine();
+    drawInformationIcon("quality_info", "Surface mesh quality",
+        "Longest edge: largest triangle span. Equivalent size: edge of an equilateral triangle with the same area.\n\n"
+        "Shape: 4*sqrt(3)*area / sum(squared edges); 1 = equilateral, 0 = collapsed.\n\n"
+        "Local size jump: largest equivalent-size ratio across valid manifold neighbors. Boundary and non-manifold "
+        "edges are excluded; no neighbor = unavailable. Coincident positions are matched.\n\n"
+        "Statistics count valid source triangles equally; percentiles use linear interpolation. "
+        "Degenerate faces are excluded and reported separately. Size colors describe size, not FEM accuracy.");
+    ImGui::TextUnformatted(surfaceQualityMetricName(metric));
+    const float legend = drawSurfaceQualityLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
+        ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), metric, distribution);
+    ImGui::Dummy({0, legend});
+    ImGui::TextWrapped("Shared A/B range. Magenta: degenerate. Gray: unavailable.");
+    const std::array<const SurfaceMeshQuality*, 2> sides = {&result.original.quality, &result.repaired.quality};
+    const std::array<bool, 2> present = {hasA, hasB};
+    if (ImGui::BeginTable("quality_statistics", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Statistic", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+        ImGui::TableSetupColumn("A"); ImGui::TableSetupColumn("B"); ImGui::TableHeadersRow();
+        const auto row = [&](const char* label, const auto& value) {
+            ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label);
+            for (size_t side = 0; side < sides.size(); ++side) {
+                ImGui::TableNextColumn();
+                const auto text = present[side] ? value(*sides[side]) : "-";
+                ImGui::TextUnformatted(text.c_str());
+            }
+        };
+        row("Triangles", [](const auto& q) { return std::to_string(q.triangles.size()); });
+        row("Degenerate", [](const auto& q) { return std::to_string(q.degenerateTriangles); });
+        row("Measured faces", [&](const auto& q) { return std::to_string(q.statistics[index].count); });
+        const auto statisticRow = [&](const char* name, double QualityStatistics::*field) {
+            row(name, [&](const auto& q) { return q.statistics[index].count ? measurementNumber(q.statistics[index].*field) : "N/A"; });
+        };
+        statisticRow("Minimum", &QualityStatistics::minimum);
+        statisticRow("P5", &QualityStatistics::percentile5);
+        statisticRow("Median", &QualityStatistics::median);
+        statisticRow("P95", &QualityStatistics::percentile95);
+        statisticRow("Maximum", &QualityStatistics::maximum);
+        row("Worst shape", [](const auto& q) { return q.statistics[2].count ? measurementNumber(q.statistics[2].minimum) : "N/A"; });
+        row("Max size jump", [](const auto& q) { return q.statistics[3].count ? measurementNumber(q.statistics[3].maximum) : "N/A"; });
+        ImGui::EndTable();
+    }
+    ImGui::TextUnformatted("Distribution (% of measured faces)");
+    ImGui::TextColored(ImVec4(.3f, .65f, 1, 1), "A"); ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "B"); ImGui::SameLine();
+    ImGui::TextUnformatted("Shared bins and vertical scale");
+    const auto position = ImGui::GetCursorScreenPos();
+    const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x), height = ImGui::GetFontSize() * 5;
+    auto& draw = *ImGui::GetWindowDrawList();
+    const auto percent = [&](size_t side, size_t bin) {
+        return distribution.counts[side] ? 100.0 * static_cast<double>(distribution.bins[side][bin]) /
+            static_cast<double>(distribution.counts[side]) : 0;
+    };
+    double peak = 0;
+    for (size_t side = 0; side < 2; ++side) {
+        for (size_t bin = 0; bin < surfaceQualityBinCount; ++bin) { peak = std::max(peak, percent(side, bin)); }
+    }
+    const float binWidth = width / static_cast<float>(surfaceQualityBinCount);
+    draw.AddRectFilled(position, {position.x + width, position.y + height}, IM_COL32(30, 34, 40, 255));
+    for (size_t bin = 0; bin < surfaceQualityBinCount; ++bin) {
+        for (size_t side = 0; side < 2; ++side) {
+            const float barHeight = peak > 0 ? height * static_cast<float>(percent(side, bin) / peak) : 0;
+            const float x = position.x + static_cast<float>(bin) * binWidth + static_cast<float>(side) * binWidth * .5f;
+            draw.AddRectFilled({x, position.y + height - barHeight}, {x + binWidth * .45f, position.y + height},
+                side == 0 ? IM_COL32(77, 166, 255, 255) : IM_COL32(255, 166, 64, 255));
+        }
+    }
+    ImGui::InvisibleButton("quality_histogram", {width, height});
+    if (ImGui::IsItemHovered()) {
+        const auto bin = std::min(static_cast<size_t>(std::max(0.0f, ImGui::GetIO().MousePos.x - position.x) / binWidth),
+            surfaceQualityBinCount - 1);
+        const double step = (distribution.maximum - distribution.minimum) / surfaceQualityBinCount;
+        ImGui::BeginTooltip();
+        ImGui::Text("[%.5g, %.5g%s", distribution.minimum + static_cast<double>(bin) * step,
+            distribution.minimum + static_cast<double>(bin + 1) * step, bin + 1 == surfaceQualityBinCount ? "]" : ")");
+        for (size_t side = 0; side < 2; ++side) {
+            ImGui::Text("%s: %zu faces (%.2f%%)", side == 0 ? "A" : "B", distribution.bins[side][bin], percent(side, bin));
+        }
+        ImGui::EndTooltip();
+    }
+    ImGui::TextWrapped("%.5g to %.5g; vertical maximum %.3g%%", distribution.minimum, distribution.maximum, peak);
+}
+
 void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);
@@ -439,7 +612,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
     ImGui::SameLine();
     drawInformationIcon("comparison_info", "Comparison inputs",
-        "Combined surfaces at scene positions, in model units. Hidden members are included. "
+        "Combined surfaces at scene positions. Hidden members are included. "
         "Other scene objects retain their own appearance.\n\n"
         "Use Comparison membership in the scene tree context menu, or drag sources onto group A or B. "
         "Right-click a group to clear it, or a source below to remove it.\n\n"
@@ -452,7 +625,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     auto translation = comparison->translation;
     ImGui::TextUnformatted("Result position");
     ImGui::SameLine();
-    drawInformationIcon("position_info", "Result position", "Display offset only, in model units.");
+    drawInformationIcon("position_info", "Result position", "Display offset only.");
     ImGui::SetNextItemWidth(-1.0f);
     if (ImGui::DragFloat3("##result_position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
     ImGui::Separator();
@@ -469,15 +642,20 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     const bool both = hasA && hasB;
     {
-        const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay"};
+        const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay", "Surface mesh quality"};
         if (both) {
             int mode = static_cast<int>(settings.mode);
             ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("##comparison_mode", &mode, modes, 4)) {
+            if (ImGui::Combo("##comparison_mode", &mode, modes, 5)) {
                 settings.mode = static_cast<ComparisonMode>(mode);
             }
         } else if (valid) {
-            ImGui::TextUnformatted(hasA ? "Group A surface" : "Group B surface");
+            int mode = settings.mode == ComparisonMode::surfaceQuality ? 1 : 0;
+            const char* singleModes[] = {hasA ? "Group A surface" : "Group B surface", "Surface mesh quality"};
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::Combo("##comparison_mode", &mode, singleModes, 2)) {
+                settings.mode = mode == 1 ? ComparisonMode::surfaceQuality : hasA ? ComparisonMode::original : ComparisonMode::repaired;
+            }
         }
         if (both && settings.mode == ComparisonMode::distance)
         {
@@ -505,14 +683,21 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
                 settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
             }
             ImGui::EndDisabled();
-            std::array<char, 256> units{};
-            std::copy_n(settings.unitLabel.data(), std::min(settings.unitLabel.size(), units.size() - 1), units.data());
-            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
-            if (ImGui::InputTextWithHint("Unit label", "model units", units.data(), units.size())) {
-                settings.unitLabel = units.data();
+
+        }
+        if (settings.mode == ComparisonMode::surfaceQuality) {
+            int metric = static_cast<int>(settings.quality.metric);
+            const char* metrics[] = {"Longest edge", "Equivalent size", "Shape quality", "Local size jump"};
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::Combo("##quality_metric", &metric, metrics, 4)) {
+                settings.quality.metric = static_cast<SurfaceQualityMetric>(metric);
             }
-            ImGui::SameLine();
-            drawInformationIcon("units_info", "Unit label", "Label only; does not convert coordinates. Blank = model units.");
+            if (both) {
+                ImGui::TextUnformatted("Heatmap surface");
+                if (ImGui::RadioButton("A##quality", settings.quality.onOriginal)) { settings.quality.onOriginal = true; }
+                ImGui::SameLine();
+                if (ImGui::RadioButton("B##quality", !settings.quality.onOriginal)) { settings.quality.onOriginal = false; }
+            }
         }
         if (both && settings.mode == ComparisonMode::overlay)
         {
@@ -530,7 +715,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     if (both && comparisonSettings(state, id).mode == ComparisonMode::distance) {
         const auto currentSettings = comparisonSettings(state, id);
-        ImGui::Text("Distance (%s)", comparisonUnits(currentSettings).c_str());
+        ImGui::TextUnformatted("Distance");
         ImGui::SameLine();
         drawInformationIcon("distance_info", "Distance colors and statistics",
             currentSettings.colorRange == currentSettings.tolerance ?
@@ -541,6 +726,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         const float legendHeight = drawComparisonLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
             ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), currentSettings);
         ImGui::Dummy({0, legendHeight});
+    }
+    if (settings.mode == ComparisonMode::surfaceQuality && (!resultReady || !valid || !settings.enabled)) {
+        drawSurfaceQualitySizeLimits(state, id, nullptr, hasA, hasB);
     }
     if (!valid || !comparisonSettings(state, id).enabled)
     {
@@ -563,6 +751,10 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         }
         return;
     }
+    if (settings.mode == ComparisonMode::surfaceQuality) {
+        drawSurfaceQualityStatistics(runtime.result, comparisonSettings(state, id), hasA, hasB);
+        drawSurfaceQualitySizeLimits(state, id, &runtime.result, hasA, hasB);
+    }
     const bool useOriginal = originalActive(effectiveComparisonSettings(state, id));
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
     if (both && comparisonSettings(state, id).mode == ComparisonMode::distance)
@@ -572,10 +764,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "SATURATED: sample max exceeds color maximum");
             ImGui::PopTextWrapPos();
         }
-        const auto units = comparisonUnits(comparisonSettings(state, id));
-        ImGui::TextWrapped("Sample max: %.5g %s", surface.maximum, units.c_str());
-        ImGui::TextWrapped("Area-weighted mean: %.5g %s", surface.mean, units.c_str());
-        ImGui::TextWrapped("Area-weighted P95: %.5g %s", surface.percentile95, units.c_str());
+        ImGui::TextWrapped("Sample max: %.5g", surface.maximum);
+        ImGui::TextWrapped("Area-weighted mean: %.5g", surface.mean);
+        ImGui::TextWrapped("Area-weighted P95: %.5g", surface.percentile95);
         ImGui::TextWrapped("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
     }
     const auto &a = runtime.result.original.diagnostics;
@@ -628,15 +819,18 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
     if (!comparison.settings.enabled || !runtime.ready) { return; }
     const bool useOriginal = originalActive(settings);
     const auto &gpu = useOriginal ? runtime.originalGpu : runtime.repairedGpu;
-    const bool heatmap = settings.mode == ComparisonMode::distance;
+    const bool quality = settings.mode == ComparisonMode::surfaceQuality;
+    const bool heatmap = settings.mode == ComparisonMode::distance || quality;
+    if (quality && (!bgfx::isValid(gpu.quality) || runtime.uploadedQualityMetric != settings.quality.metric)) { return; }
     float identity[16];
     bx::mtxTranslate(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
-    const std::array<float, 4> parameters = {settings.tolerance, settings.colorRange, heatmap ? 1.0f : 0.0f, 0};
+    const std::array<float, 4> parameters = {settings.tolerance, settings.colorRange, quality ? 2.0f : heatmap ? 1.0f : 0.0f,
+        quality && settings.quality.metric == SurfaceQualityMetric::shape ? 1.0f : 0.0f};
     const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
     bgfx::setTransform(identity);
     bgfx::setUniform(runtimes.parameters, parameters.data());
     bgfx::setUniform(colorUniform, gray.data());
-    bgfx::setVertexBuffer(0, heatmap ? gpu.samples : gpu.vertices);
+    bgfx::setVertexBuffer(0, quality ? gpu.quality : heatmap ? gpu.samples : gpu.vertices);
     if (!heatmap)
     {
         bgfx::setIndexBuffer(gpu.triangles);

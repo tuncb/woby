@@ -250,7 +250,8 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
 {
     if (!comparison.settings.enabled) { return; }
     const bool original = settings.mode == ComparisonMode::original ||
-        (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal);
+        (settings.mode == ComparisonMode::distance && settings.distanceOnOriginal) ||
+        (settings.mode == ComparisonMode::surfaceQuality && settings.quality.onOriginal);
     const auto& surface = original ? result.original : result.repaired;
     ScenePickPart part;
     part.objectId = comparison.objectId;

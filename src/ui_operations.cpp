@@ -346,8 +346,13 @@ ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObject
     auto settings = comparisonSettings(state, id);
     const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
     const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
-    if (!hasB && hasA) { settings.mode = ComparisonMode::original; }
-    if (!hasA && hasB) { settings.mode = ComparisonMode::repaired; }
+    if (settings.mode == ComparisonMode::surfaceQuality) {
+        if (!hasB && hasA) { settings.quality.onOriginal = true; }
+        if (!hasA && hasB) { settings.quality.onOriginal = false; }
+    } else {
+        if (!hasB && hasA) { settings.mode = ComparisonMode::original; }
+        if (!hasA && hasB) { settings.mode = ComparisonMode::repaired; }
+    }
     return settings;
 }
 

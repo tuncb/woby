@@ -293,8 +293,11 @@ void submitSceneScreenshotCapture(
             for (const auto& text : comparisonReportLines(item.name, a.enabledPartCount == 0 ? "" : a.sourceNames,
                      b.enabledPartCount == 0 ? "" : b.sourceNames, settings,
                      comparison->objects.at(item.objectId).result, options)) { line(text); }
-            if (options.legend && settings.mode == ComparisonMode::distance) {
-                const float used = drawComparisonLegend(annotationDraw, {x, y}, wrap, fontSize, settings);
+            if (options.legend && (settings.mode == ComparisonMode::distance || settings.mode == ComparisonMode::surfaceQuality)) {
+                const float used = settings.mode == ComparisonMode::surfaceQuality ?
+                    drawSurfaceQualityLegend(annotationDraw, {x, y}, wrap, fontSize, settings.quality.metric,
+                        comparison->objects.at(item.objectId).result.qualityDistributions.at(static_cast<size_t>(settings.quality.metric))) :
+                    drawComparisonLegend(annotationDraw, {x, y}, wrap, fontSize, settings);
                 y += used;
                 if (y > static_cast<float>(screenshot.height) - 24) {
                     throw std::runtime_error("Export legends do not fit. Increase image height or export fewer visible comparisons.");
@@ -412,7 +415,7 @@ bool drawSceneScreenshotOptions(UiState& state)
         ImGui::Separator();
         ImGui::TextUnformatted("Comparison annotations");
         ImGui::SameLine();
-        drawInformationIcon("annotations_info", "Comparison annotations", "Legends always include tolerance and units.");
+        drawInformationIcon("annotations_info", "Comparison annotations", "Distance legends always include tolerance.");
         drawVisibilityField("Numeric legend and statistics", options.legend);
         drawVisibilityField("Comparison name", options.comparisonName);
         drawVisibilityField("A / B sources", options.sources);

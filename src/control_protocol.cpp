@@ -54,7 +54,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "comparison.create", "comparison create", {}, {"name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "comparison.delete", "comparison delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "comparison.set", "comparison set", "target",
-            {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold"}, {}, true, true},
+            {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize"}, {}, true, true},
         {ControlAction::comparisonAdd, "comparison.add", "comparison add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "comparison.remove", "comparison remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "comparison.enable", "comparison enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
@@ -82,11 +82,11 @@ bool booleanOption(const std::string& name)
 {
     return name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
-        || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold";
+        || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
 bool stringOption(const std::string& name)
 {
-    return name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object";
+    return name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "qualityMetric";
 }
 bool vectorOption(const std::string& name)
 {
@@ -103,6 +103,12 @@ std::string cliOption(const std::string& name)
     if (name == "showEdges") { return "--show-edges"; }
     if (name == "showBoundaries") { return "--show-boundaries"; }
     if (name == "showNonManifold") { return "--show-non-manifold"; }
+    if (name == "qualityMetric") { return "--quality-metric"; }
+    if (name == "qualityOnA") { return "--quality-on-a"; }
+    if (name == "qualityMinimumEnabled") { return "--quality-minimum-enabled"; }
+    if (name == "qualityMaximumEnabled") { return "--quality-maximum-enabled"; }
+    if (name == "qualityMinimumSize") { return "--quality-minimum-size"; }
+    if (name == "qualityMaximumSize") { return "--quality-maximum-size"; }
     return "--" + name;
 }
 float number(const Json& value)
@@ -181,22 +187,28 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
+    BOOL_FIELD(qualityOnA) BOOL_FIELD(qualityMinimumEnabled) BOOL_FIELD(qualityMaximumEnabled)
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
     NUMBER_FIELD(yawDegrees) NUMBER_FIELD(pitchDegrees) NUMBER_FIELD(rollDegrees)
     NUMBER_FIELD(right) NUMBER_FIELD(up) NUMBER_FIELD(forward) NUMBER_FIELD(factor)
+    NUMBER_FIELD(qualityMinimumSize) NUMBER_FIELD(qualityMaximumSize)
     NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange)
 #undef NUMBER_FIELD
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
     VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb)
 #undef VECTOR_FIELD
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
-    STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
+    STRING_FIELD(qualityMetric) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
 #undef STRING_FIELD
-    if (command.mode && *command.mode != "distance" && *command.mode != "a" && *command.mode != "b" && *command.mode != "overlay") {
-        throw std::invalid_argument("mode must be distance, a, b, or overlay.");
+    if (command.mode && *command.mode != "distance" && *command.mode != "a" && *command.mode != "b" && *command.mode != "overlay" && *command.mode != "surface_quality") {
+        throw std::invalid_argument("mode must be distance, a, b, overlay, or surface_quality.");
+    }
+    if (command.qualityMetric && *command.qualityMetric != "longest_edge" && *command.qualityMetric != "equivalent_size"
+        && *command.qualityMetric != "shape" && *command.qualityMetric != "size_jump") {
+        throw std::invalid_argument("qualityMetric must be longest_edge, equivalent_size, shape, or size_jump.");
     }
     if (command.side && *command.side != "a" && *command.side != "b") { throw std::invalid_argument("side must be a or b."); }
     if (command.factor && *command.factor <= 0) { throw std::invalid_argument("factor must be positive."); }
@@ -226,7 +238,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? " X Y Z"
-                : name == "mode" ? " distance|a|b|overlay" : name == "side" ? " a|b"
+                : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
         if (!required) { result += "]"; }
@@ -247,6 +259,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
+    FIELD(qualityMetric) FIELD(qualityOnA) FIELD(qualityMinimumEnabled) FIELD(qualityMaximumEnabled) FIELD(qualityMinimumSize) FIELD(qualityMaximumSize)
     FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(tolerance) FIELD(colorRange) FIELD(enabled)
 #undef FIELD
     return result;

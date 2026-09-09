@@ -15,11 +15,11 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Adjust global, per-file, and per-group vertex point sizes.
 - Arrange files and groups with translation, rotation, scale, opacity, and reset controls.
 - Assign and reset per-group display colors.
-- Select a folder, file, or part to edit its persistent **Properties** inspector on the right. Transform fields label X/Y/Z in model units and degrees; opacity uses percent and scale uses a uniform multiplier. Type a value and press Enter to apply it, or Escape to cancel.
+- Select a folder, file, or part to edit its persistent **Properties** inspector on the right. Transform fields label X/Y/Z and rotation angles; opacity uses percent and scale uses a uniform multiplier. Type a value and press Enter to apply it, or Escape to cancel.
 - Ctrl-click multiple objects to edit shared properties. **Mixed** fields have differing local values; editing a field sets only that field on every selected object. Parent transforms compose with part transforms and their opacities multiply. Selecting both a parent and its child edits both. Color and render modes are part properties; selecting a comparison shows its controls in the same Properties pane.
 - Reset translation, rotation, scale, all transforms, or appearance independently. Transform resets preserve opacity; appearance resets preserve transforms and unselected child overrides. Geometry shows mesh statistics and local bounds for a single file or part. These edits use the existing `.woby` save/load settings.
 - Remove files from a scene without touching the source model files.
-- Compare surfaces with a numeric heatmap legend, tolerance, saturation warning, and sampled maximum/mean/P95/area statistics. Distances are approximate and unsigned. A comparison's optional unit label is saved with the scene; it labels model coordinates without converting them or inferring units from OBJ/STL.
+- Compare surfaces with a numeric heatmap legend, tolerance, saturation warning, and sampled maximum/mean/P95/area statistics. Distances are approximate and unsigned. Measurements use the mesh coordinates without conversion.
 - Load large model batches and scenes in the background with progress, cancellation, and unsaved-change prompts.
 
 ## Getting started
@@ -167,6 +167,31 @@ Version 5 `.woby` scenes save comparison objects and source references. Version
 2Ã¢â‚¬â€œ4 scenes remain readable; existing A/B memberships migrate into one comparison
 at the original source positions. Version 6 adds the optional camera record and
 still reads versions 2–5. Older woby builds cannot read version 6 scenes.
+Select **Surface mesh quality** in a comparison's display selector to inspect either
+A or B, including comparisons with only one input. Choose **Longest edge**,
+**Equivalent size** (edge length of an equilateral triangle with the same area),
+**Shape quality** (1 = equilateral), or **Local size jump** (largest equivalent-size
+ratio across neighboring triangles). A/B share color ranges and histogram bins;
+the histogram shows percentages with a shared vertical scale. Tables report
+minimum/P5/median/P95/maximum, worst shape, maximum size jump, and face counts.
+Optional inclusive minimum/maximum limits apply to the longest edge and report
+both the percentage of valid triangles and the percentage of their area outside
+the limits. The size-limit controls and their statistics are grouped together. Settings persist in `.woby`
+and support undo/redo; screenshot annotations include quality measurements.
+
+Metrics use source triangles at their scene transforms. Degenerate triangles
+are reported separately and excluded from statistics. Local size jumps use exact
+position matching across edges with two valid incident faces; boundary and
+non-manifold edges are excluded. Faces without a valid neighbor are unavailable
+(gray); degenerate faces use magenta where drawable. Percentiles give each valid
+face equal weight and interpolate between sorted values. These are geometric
+surface measurements; they do not certify FEM accuracy or volume mesh quality.
+
+Five ready-to-open [surface mesh quality sample projects](assets/samples/surface-mesh-quality/README.md)
+cover coarse/fine density, equal-area shape differences, gradual/abrupt grading,
+size-limit percentages, and topology edge cases. Each includes expected values
+and starts with the relevant heatmap selected.
+
 Open `assets/samples/mesh-comparison/compare.woby` for a before/after repair example.
 
 ```powershell

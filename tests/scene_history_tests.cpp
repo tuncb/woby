@@ -77,6 +77,26 @@ TEST_CASE("comparison renaming is one undoable scene edit")
     CHECK_FALSE(woby::recordSceneHistory(f.history, f.state));
 }
 
+TEST_CASE("surface mesh quality mode metric and limits undo and redo together")
+{
+    HistoryFixture f;
+    const auto id = woby::createComparison(f.state);
+    woby::resetSceneHistory(f.history, f.state);
+    const auto original = woby::comparisonSettings(f.state, id);
+    auto settings = original;
+    settings.mode = woby::ComparisonMode::surfaceQuality;
+    settings.quality.metric = woby::SurfaceQualityMetric::shape;
+    settings.quality.onOriginal = true;
+    settings.quality.maximumEnabled = true;
+    settings.quality.maximumSize = 2;
+    woby::setComparisonSettings(f.state, settings, id);
+    REQUIRE(woby::recordSceneHistory(f.history, f.state));
+    f.step();
+    CHECK(woby::comparisonSettings(f.state, id) == original);
+    f.step(true);
+    CHECK(woby::comparisonSettings(f.state, id) == settings);
+}
+
 TEST_CASE("scene history idle and camera frames consume no edit notifications")
 {
     HistoryFixture f;

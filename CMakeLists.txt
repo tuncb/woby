@@ -78,6 +78,7 @@ add_executable(woby
     src/console.h
     src/comparison_report.cpp
     src/comparison_legend.cpp
+    src/surface_mesh_quality.cpp
     src/mesh_comparison.cpp
     src/comparison_scene.cpp
     src/comparison_view.cpp
@@ -302,6 +303,7 @@ if(BUILD_TESTING)
         src/comparison_report.cpp
         src/comparison_view.cpp
         src/comparison_legend.cpp
+        src/surface_mesh_quality.cpp
         src/mesh_comparison.cpp
         src/comparison_scene.cpp
         tests/mesh_comparison_tests.cpp

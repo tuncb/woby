@@ -100,6 +100,19 @@ def main():
                 assert abs(metrics[direction]["maximum"] - .12) < 1e-5, metrics
                 assert 0 < metrics[direction]["mean"] <= metrics[direction]["maximum"]
                 assert metrics[direction]["diagnostics"]["boundaryEdges"] == 0
+            quality_settings = ctl("comparison", "set", third, "--mode", "surface_quality",
+                                   "--quality-metric", "shape", "--quality-on-a", "true",
+                                   "--quality-minimum-enabled", "true", "--quality-minimum-size", ".5",
+                                   "--quality-maximum-enabled", "true", "--quality-maximum-size", "1.45")
+            assert quality_settings["object"]["settings"]["qualityMetric"] == "shape"
+            assert quality_settings["object"]["settings"]["mode"] == "surface_quality"
+            quality_results = ctl("comparison", "results", third)
+            assert quality_results["aToB"]["surfaceMeshQuality"]["shape"]["count"] == 12
+            assert abs(quality_results["aToB"]["surfaceMeshQuality"]["size_jump"]["maximum"] - 1) < 1e-6
+            ctl("scene", "save-as", root / "quality-settings.woby", "--overwrite")
+            saved_quality = (root / "quality-settings.woby").read_text(encoding="utf-8")
+            assert 'comparison_mode = "surface_quality"' in saved_quality
+            assert 'quality_metric = "shape"' in saved_quality
             # A source change requires fresh results, even while the comparison is hidden.
             ctl("transform", "set", files[1]["id"], "--translation", "0", "0", ".25")
             moved = ctl("comparison", "results", third)
@@ -205,6 +218,16 @@ def main():
             single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "comparison")
             assert ctl("object", single_id)["object"]["valid"]
             ctl("screenshot", root / "single-reopened.png")
+            for metric in ("longest_edge", "equivalent_size", "shape", "size_jump"):
+                ctl("comparison", "set", single_id, "--mode", "surface_quality", "--quality-metric", metric,
+                    "--quality-on-a", "true", "--quality-maximum-enabled", "true", "--quality-maximum-size", "1")
+                ctl("screenshot", root / f"quality-{metric}.png")
+                assert (root / f"quality-{metric}.png").stat().st_size > 10000
+            ctl("scene", "save-as", root / "quality-single.woby", "--overwrite")
+            ctl("scene", "open", root / "quality-single.woby")
+            single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "comparison")
+            assert ctl("object", single_id)["object"]["settings"]["qualityMetric"] == "size_jump"
+            ctl("screenshot", root / "quality-reopened.png")
             ctl("comparison", "clear", single_id, "--side", "b")
             ctl("comparison", "results", single_id, success=False)
             ctl("screenshot", root / "empty.png", success=False)

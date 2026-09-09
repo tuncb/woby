@@ -2,8 +2,7 @@
 
 Open `compare.woby` in woby to load a comparison object. Select **Comparison 1**
 in the scene tree to open its properties. Both files use
-millimeters. The viewer itself reports **model units** because OBJ/STL files do
-not provide a dependable unit declaration.
+millimeters. The viewer displays measurements without a unit suffix.
 
 The original is a small triangulated sheet with a hole, a raised bump, and a
 detached triangle. The repaired sheet fills the hole, reduces the bump, and
