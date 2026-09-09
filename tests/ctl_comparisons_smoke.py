@@ -78,6 +78,19 @@ def main():
             assert ctl(*create_args) == created  # Retries must not create duplicates.
             assert ctl("scene", "info")["comparisonCount"] == 3
             assert created["object"]["valid"]
+            # Checkboxes preserve membership, update measurements, and support Undo/Redo.
+            disabled = ctl("comparison", "enable", third, "--side", "a", "--object", files[0]["id"], "--enabled", "false")
+            assert disabled["object"]["aPartCount"] == 1
+            assert not disabled["object"]["a"][0]["enabled"]
+            assert disabled["object"]["b"][0]["enabled"]
+            assert ctl("object", first)["object"]["a"][0]["enabled"]
+            single = ctl("comparison", "results", third)
+            assert single["aToB"] is None and single["bToA"]["triangleCount"] == 12
+            assert ctl("scene", "undo")["applied"]
+            assert ctl("object", third)["object"]["a"][0]["enabled"]
+            assert ctl("scene", "redo")["applied"]
+            assert not ctl("object", third)["object"]["a"][0]["enabled"]
+            ctl("comparison", "enable", third, "--side", "a", "--enabled", "true")
             configured = ctl("comparison", "set", third, "--visible", "false", "--mode", "distance",
                              "--tolerance", ".01", "--color-range", ".2", "--distance-on-a", "true",
                              "--show-edges", "true", "--show-boundaries", "false", "--show-non-manifold", "false")
@@ -106,6 +119,7 @@ def main():
             ctl("comparison", "add", third, "--side", "a", "--object", files[1]["id"])
             ctl("comparison", "set", third, "--name", "Renamed via CLI", "--mode", "overlay")
             cli_saved = root / "cli-created.woby"
+            ctl("comparison", "enable", third, "--side", "b", "--enabled", "false")
             ctl("scene", "save-as", cli_saved, "--overwrite")
             assert 'name = "Renamed via CLI"' in cli_saved.read_text(encoding="utf-8")
             ctl("comparison", "delete", third)
@@ -159,6 +173,7 @@ def main():
             restored_settings = ctl("object", restored["id"])["object"]["settings"]
             assert restored_settings["mode"] == "overlay" and not restored_settings["visible"]
             assert restored_settings["showEdges"] and not restored_settings["showBoundaries"]
+            assert not ctl("object", restored["id"])["object"]["b"][0]["enabled"]
             ctl("comparison", "results", restored["id"])
             # A single open mesh renders immediately, including boundary diagnostics,
             # even when the saved mode normally requires both inputs.

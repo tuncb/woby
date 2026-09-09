@@ -274,7 +274,7 @@ Json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectId
                 for (const auto& part : members) {
                     const bool missing = comparisonObjectParts(state, {part.objectId}).empty();
                     list.push_back({{"id", missing ? Json(nullptr) : Json(formatId(part.objectId))},
-                        {"name", part.name}, {"missing", missing}});
+                        {"name", part.name}, {"missing", missing}, {"enabled", part.enabled}});
                 }
                 return list;
             };
@@ -294,7 +294,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     if (command.action == A::comparisonCreate || command.action == A::comparisonDelete
         || command.action == A::comparisonSet || command.action == A::comparisonAdd
         || command.action == A::comparisonRemove || command.action == A::comparisonClear
-        || command.action == A::comparisonSwap) {
+        || command.action == A::comparisonSwap || command.action == A::comparisonEnable) {
         // Validate all inputs before any mutation, including creation of an empty object.
         if (command.action != A::comparisonCreate
             && (command.objectId == invalidSceneObjectId || !findComparison(state, command.objectId))) {
@@ -336,6 +336,10 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         } else {
             const auto side = *command.side == "a" ? ComparisonSide::a : ComparisonSide::b;
             if (command.action == A::comparisonClear) { clearComparisonGroup(state, side, id); }
+            else if (command.action == A::comparisonEnable) {
+                setComparisonObjectsEnabled(state, command.object ? std::vector<SceneObjectId>{command.memberId}
+                    : std::vector<SceneObjectId>{}, side, *command.enabled, id);
+            }
             else { setComparisonObjects(state, {command.memberId}, side, command.action == A::comparisonAdd, id); }
         }
         updateSceneDirty(state, cleanDocument);
@@ -419,7 +423,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::comparisonResults: case A::sceneUndo: case A::sceneRedo:
         throw std::invalid_argument("Command requires a runtime adapter.");
     case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:
-    case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap:
+    case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap: case A::comparisonEnable:
         throw std::invalid_argument("Comparison command was not dispatched.");
     }
     // Read-only and session-only operations return above. Struct-level setters

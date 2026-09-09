@@ -57,6 +57,7 @@ const std::vector<ControlMethod>& controlMethods()
             {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold"}, {}, true, true},
         {ControlAction::comparisonAdd, "comparison.add", "comparison add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "comparison.remove", "comparison remove", "target", {"side", "object"}, {"side", "object"}, false, true},
+        {ControlAction::comparisonEnable, "comparison.enable", "comparison enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
         {ControlAction::comparisonClear, "comparison.clear", "comparison clear", "target", {"side"}, {"side"}, false, true},
         {ControlAction::comparisonSwap, "comparison.swap", "comparison swap", "target", {}, {}, false, true},
         {ControlAction::comparisonResults, "comparison.results", "comparison results", "target", {}, {}},
@@ -79,7 +80,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
-    return name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
+    return name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold";
 }
@@ -180,7 +181,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
-    BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold)
+    BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
@@ -246,7 +247,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
-    FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(tolerance) FIELD(colorRange)
+    FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(tolerance) FIELD(colorRange) FIELD(enabled)
 #undef FIELD
     return result;
 }

@@ -84,6 +84,7 @@ computations fail capture; hide or repair the affected object before retrying.
 | `comparison delete COMPARISON_ID` | `comparison.delete` | Delete the comparison without deleting its source models. Returns `removed` and `dirty`. |
 | `comparison set COMPARISON_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL]` | `comparison.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `comparison add COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
+| `comparison enable COMPARISON_ID --side a\|b --enabled BOOL [--object OBJECT_ID]` | `comparison.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. Membership is preserved. |
 | `comparison remove COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.remove` | Remove the input's current triangular parts from the selected side. |
 | `comparison clear COMPARISON_ID --side a\|b` | `comparison.clear` | Clear the entire side, including missing references. |
 | `comparison swap COMPARISON_ID` | `comparison.swap` | Swap the A/B input lists. |
@@ -104,6 +105,20 @@ Setters use the UI's normalization: tolerance is clamped to 0–1e12, color rang
 1e-6–1e12 and at least the tolerance. Nonfinite numbers are rejected. All edits persist
 in `.woby` scenes. Membership/settings setters return `target`, updated `object`,
 `dirty`, and `bounds`. Use a request key when retrying creation or swapping.
+
+`comparison enable` matches the comparison-view checkboxes. It only changes existing
+members on the selected side of the selected comparison; source visibility and other
+comparisons are unaffected. An input with no members on that side is a no-op.
+`object COMPARISON_ID` and comparison edit responses include `enabled` on each
+entry in `a` and `b`. RPC uses `comparison.enable` with `target`, `side`, boolean
+`enabled`, and optional `object`.
+
+```powershell
+woby.exe ctl --instance review comparison enable COMPARISON_ID --side a --object OBJECT_ID --enabled false
+woby.exe ctl --instance review comparison enable COMPARISON_ID --side a --object OBJECT_ID --enabled true
+# Disable every member on side B.
+woby.exe ctl --instance review comparison enable COMPARISON_ID --side b --enabled false
+```
 
 Measurements use an immutable snapshot of the transformed A/B geometry and tolerance
 when the command starts. Ordinary source visibility and the comparison's display

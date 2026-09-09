@@ -1022,6 +1022,8 @@ void printCommandLineHelp()
         "create returns target (the new COMPARISON_ID); omitted A/B inputs leave empty sides.\n"
         "--a, --b, and --object accept file, folder, or triangular mesh group IDs.\n"
         "add/remove edit one side's current parts; clear removes all references on that side.\n"
+        "enable sets --enabled true|false on one side's existing members; omit --object\n"
+        "to set the whole side. object COMPARISON_ID reports each member's enabled state.\n"
         "delete removes only the comparison; source models remain loaded.\n"
         "results waits for a fresh geometry/tolerance snapshot calculation, even when hidden.\n"
         "It returns aToB and bToA: sampled maximum, area-weighted mean/P95, percentage\n"

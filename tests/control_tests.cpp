@@ -70,6 +70,7 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
             "--tolerance", "0.1", "--color-range", "1", "--show-edges", "true", "--show-boundaries", "false", "--show-non-manifold", "true"},
         {"comparison", "add", "object", "--side", "a", "--object", "source"},
         {"comparison", "remove", "object", "--side", "b", "--object", "source"},
+        {"comparison", "enable", "object", "--side", "a", "--object", "source", "--enabled", "false"},
         {"comparison", "clear", "object", "--side", "a"}, {"comparison", "swap", "object"}, {"comparison", "results", "object"},
     };
     CHECK(commands.size() == woby::controlMethods().size());
@@ -106,6 +107,12 @@ TEST_CASE("ctl rejects ambiguous incomplete conflicting and nonfinite edit param
         {"comparison", "set", "object", "--show-edges", "yes"}, {"comparison", "create", "--name", ""},
         {"comparison", "add", "object", "--side", "a"}, {"comparison", "clear", "object", "--side", "c"},
         {"comparison", "delete", "scene"}, {"comparison", "results", "object", "--mode", "a"},
+        {"comparison", "enable", "object", "--enabled", "false"},
+        {"comparison", "enable", "object", "--side", "a"},
+        {"comparison", "enable", "object", "--side", "c", "--enabled", "false"},
+        {"comparison", "enable", "object", "--side", "a", "--enabled", "yes"},
+        {"comparison", "enable", "object", "--side", "a", "--enabled", "false", "--enabled", "true"},
+        {"comparison", "enable", "scene", "--side", "a", "--enabled", "true"},
         {"status", "--remember"}, {"stats", "extra"},
         {"scene", "undo", "extra"}, {"scene", "redo", "--steps", "2"}, {"scene", "undo", "--on-dirty", "discard"}}) {
         CAPTURE(words);
@@ -287,6 +294,75 @@ TEST_CASE("ctl comparison lifecycle expands inputs edits independently and persi
     CHECK(woby::findComparison(state, id) == nullptr);
     CHECK(state.files.size() == 1);
     CHECK(woby::findComparison(state, secondId) != nullptr);
+}
+
+TEST_CASE("ctl comparison enable preserves membership and scopes edits to the requested side and comparison")
+{
+    auto state = scene();
+    const auto file = state.files[0].objectId, group = state.files[0].groupSettings[0].objectId;
+    const auto folder = state.sceneNodes[0].objectId;
+    const auto id = woby::createComparison(state);
+    const auto other = woby::createComparison(state);
+    for (const auto comparison : {id, other}) {
+        woby::setComparisonObjects(state, {file}, woby::ComparisonSide::a, true, comparison);
+        woby::setComparisonObjects(state, {file}, woby::ComparisonSide::b, true, comparison);
+    }
+    const auto clean = woby::createSceneDocument(state);
+    for (const auto input : {group, file, folder}) {
+        CAPTURE(input);
+        const auto changed = run(state, clean, "comparison.enable",
+            {{"side", "a"}, {"object", formatId(input)}, {"enabled", false}}, id);
+        CHECK(changed["dirty"] == true);
+        CHECK(changed["object"]["a"][0]["enabled"] == false);
+        CHECK(changed["object"]["b"][0]["enabled"] == true);
+        CHECK(woby::comparisonContains(state, group, woby::ComparisonSide::a, id));
+        CHECK(woby::comparisonPartEnabled(state, group, woby::ComparisonSide::a, other));
+        CHECK(state.files[0].groupSettings[0].visible);
+        const auto saved = woby::createSceneDocument(state);
+        const auto restored = woby::prepareSceneReplacement(state, state.files, saved);
+        CHECK(woby::createSceneDocument(restored) == saved);
+        run(state, clean, "comparison.enable", {{"side", "a"}, {"object", formatId(input)}, {"enabled", false}}, id);
+        CHECK(woby::createSceneDocument(state) == saved);
+        const auto enabled = run(state, clean, "comparison.enable",
+            {{"side", "a"}, {"object", formatId(input)}, {"enabled", true}}, id);
+        CHECK(enabled["object"]["a"][0]["enabled"] == true);
+        CHECK(enabled["dirty"] == false);
+        CHECK(woby::createSceneDocument(state) == clean);
+    }
+}
+
+TEST_CASE("ctl comparison enable supports whole sides and validates inputs before editing")
+{
+    auto state = scene();
+    const auto group = state.files[0].groupSettings[0].objectId;
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {group}, woby::ComparisonSide::a, true, id);
+    // Whole-side controls include unavailable references, like the UI checkbox.
+    woby::findComparison(state, id)->a.push_back({state.nextObjectId + 100, "Missing part"});
+    const auto clean = woby::createSceneDocument(state);
+    const auto& method = *woby::findControlMethod("comparison.enable");
+    CHECK(method.mutating);
+    CHECK_THROWS(woby::parseControlOperation(method, {{"target", formatId(id)}, {"side", "a"}, {"enabled", "false"}}));
+    CHECK_THROWS(run(state, clean, "comparison.enable", {{"side", "a"}, {"enabled", false}}, group));
+    for (const auto invalid : {id, state.nextObjectId + 200}) {
+        CHECK_THROWS(run(state, clean, "comparison.enable",
+            {{"side", "a"}, {"object", formatId(invalid)}, {"enabled", false}}, id));
+        CHECK(woby::createSceneDocument(state) == clean);
+    }
+    // A valid source absent from the selected side must not be added.
+    run(state, clean, "comparison.enable", {{"side", "b"}, {"object", formatId(group)}, {"enabled", false}}, id);
+    CHECK(woby::createSceneDocument(state) == clean);
+    CHECK(woby::findComparison(state, id)->b.empty());
+    const auto parsed = parse({"comparison", "enable", formatId(id), "--side", "a", "--enabled", "false"});
+    CHECK(parsed.operation.enabled == false);
+    CHECK_FALSE(parsed.operation.object.has_value());
+    const auto disabled = run(state, clean, "comparison.enable", woby::controlOperationParams(parsed.operation), id);
+    CHECK(disabled["object"]["a"].size() == 2);
+    CHECK(disabled["object"]["a"][0]["enabled"] == false);
+    CHECK(disabled["object"]["a"][1]["enabled"] == false);
+    CHECK(disabled["object"]["a"][1]["missing"] == true);
+    run(state, clean, "comparison.enable", {{"side", "a"}, {"enabled", true}}, id);
+    CHECK(woby::createSceneDocument(state) == clean);
 }
 
 TEST_CASE("ctl comparison invalid inputs never partially mutate the scene")

@@ -18,7 +18,7 @@ enum class ControlAction {
     modelAdd, modelRemove, folderAdd, importersList, importersAdd, importersScan,
     importersForget, stats, performance, pane,
     comparisonCreate, comparisonDelete, comparisonSet, comparisonAdd, comparisonRemove,
-    comparisonClear, comparisonSwap, comparisonResults,
+    comparisonClear, comparisonSwap, comparisonResults, comparisonEnable,
 };
 
 // Validated, owned command data. No scene pointers or runtime resources cross threads.
@@ -36,7 +36,7 @@ struct ControlOperation {
     std::optional<float> yawDegrees, pitchDegrees, rollDegrees, right, up, forward, factor;
     std::optional<std::string> name, mode, side, a, b, object;
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
-    std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold;
+    std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, enabled;
     std::optional<float> tolerance, colorRange;
 };
 

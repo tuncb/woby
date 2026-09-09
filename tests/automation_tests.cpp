@@ -237,9 +237,14 @@ TEST_CASE("comparison RPC validates every input ID before admission and resolves
     CHECK(request(fixture.instance, "comparison.add", {{"target", target}, {"side", "a"}, {"object", foreign}})["error"]["code"] == -32005);
     CHECK(request(fixture.instance, "comparison.set", {{"target", target}, {"mode", "invalid"}})["error"]["code"] == -32602);
     CHECK_FALSE(takeCommand(*fixture.server));
-    for (const auto* method : {"comparison.add", "comparison.remove"}) {
+    CHECK(request(fixture.instance, "comparison.enable", {{"target", target}, {"side", "a"}, {"object", foreign}, {"enabled", false}})["error"]["code"] == -32005);
+    CHECK(request(fixture.instance, "comparison.enable", {{"target", target}, {"side", "a"}, {"object", "malformed"}, {"enabled", false}})["error"]["code"] == -32602);
+    CHECK_FALSE(takeCommand(*fixture.server));
+    for (const auto* method : {"comparison.add", "comparison.remove", "comparison.enable"}) {
+        Json params = {{"target", target}, {"side", "b"}, {"object", input}};
+        if (std::string(method) == "comparison.enable") { params["enabled"] = false; }
         auto pending = std::async(std::launch::async, [&] {
-            return request(fixture.instance, method, {{"target", target}, {"side", "b"}, {"object", input}});
+            return request(fixture.instance, method, params);
         });
         const auto command = waitForCommand(*fixture.server);
         REQUIRE(command);
@@ -247,6 +252,7 @@ TEST_CASE("comparison RPC validates every input ID before admission and resolves
         CHECK(operation.objectId == 10);
         CHECK(operation.memberId == 20);
         CHECK(operation.side == "b");
+        if (std::string(method) == "comparison.enable") { CHECK(operation.enabled == false); }
         CHECK(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{Json::object()}));
         CHECK(pending.get().contains("result"));
     }
