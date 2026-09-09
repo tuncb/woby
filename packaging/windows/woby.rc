@@ -1,0 +1,2 @@
+// Keep the main app icon first so Windows uses it for the executable and shortcuts.
+1 ICON "woby.ico"

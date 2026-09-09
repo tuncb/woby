@@ -153,6 +153,9 @@ add_executable(woby
 target_compile_features(woby PRIVATE cxx_std_20)
 if(WIN32)
     set_target_properties(woby PROPERTIES WIN32_EXECUTABLE TRUE)
+    enable_language(RC)
+    target_sources(woby PRIVATE packaging/windows/woby.rc)
+    target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons")
 endif()
 target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
@@ -263,6 +266,9 @@ if(APPLE)
     include(cmake/WobyMacOSBundle.cmake)
     woby_configure_macos_bundle(woby "${WOBY_RUNTIME_DIRECTORY}" woby_resource_directory
         "$<TARGET_FILE_DIR:SDL3::SDL3>")
+    target_sources(woby PRIVATE packaging/icons/woby.icns)
+    set_source_files_properties(packaging/icons/woby.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    set_target_properties(woby PROPERTIES MACOSX_BUNDLE_ICON_FILE woby.icns)
 endif()
 woby_stage_assets(woby "${woby_resource_directory}")
 add_dependencies(woby woby-update-helper)
@@ -284,6 +290,7 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        tests/app_icon_tests.cpp
         tests/update_tests.cpp
         src/comparison_report.cpp
         src/mesh_comparison.cpp
@@ -408,8 +415,11 @@ if(BUILD_TESTING)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example-plugins"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example-plugins")
     woby_enable_project_warnings(woby_off_importer)
-    add_dependencies(woby_tests woby_importer_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
+    add_dependencies(woby_tests woby woby_importer_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
     target_compile_definitions(woby_tests PRIVATE
+        WOBY_TEST_APP="$<TARGET_FILE:woby>"
+        WOBY_TEST_ICON_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons"
+        WOBY_TEST_ASSET_DIRECTORY="${woby_resource_directory}/assets"
         WOBY_TEST_IMPORTER="$<TARGET_FILE:woby_importer_fixture>"
         WOBY_TEST_CONFLICT_IMPORTER="$<TARGET_FILE:woby_importer_conflict>"
         WOBY_TEST_RESERVED_IMPORTER="$<TARGET_FILE:woby_importer_reserved>"

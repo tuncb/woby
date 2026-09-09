@@ -2065,6 +2065,18 @@ int main(int argc, char** argv)
 
         std::unique_ptr<SDL_Window, SdlDeleter> window(rawWindow);
 
+        const auto assets = assetRoot();
+        const auto iconPath = woby::pathToUtf8(assets / "icons" / "woby.bmp");
+        SDL_Surface* icon = SDL_LoadBMP(iconPath.c_str());
+        if (icon != nullptr) {
+            if (!SDL_SetWindowIcon(window.get(), icon)) {
+                spdlog::warn("Could not set window icon: {}", SDL_GetError());
+            }
+            SDL_DestroySurface(icon);
+        } else {
+            spdlog::warn("Could not load window icon: {}", SDL_GetError());
+        }
+
         uint32_t width = 0;
         uint32_t height = 0;
         getDrawableSize(window.get(), width, height);
@@ -2089,7 +2101,6 @@ int main(int argc, char** argv)
         bgfx::setDebug(BGFX_DEBUG_TEXT);
         woby::logDuration("startup_bgfx", elapsedMilliseconds(bgfxStart));
 
-        const auto assets = assetRoot();
         const auto modelPathsStart = woby::PerformanceClock::now();
         const auto modelInputs = resolveModelInputs(commandLine);
         woby::logDuration("startup_resolve_model_paths", elapsedMilliseconds(modelPathsStart));
