@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tarfile
 import zipfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 MANIFEST = "woby-manifest.json"
 PLATFORMS = {"windows-x64": ".zip", "linux-x64": ".tar.gz", "macos-arm64": ".tar.gz"}

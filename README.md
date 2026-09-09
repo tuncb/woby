@@ -365,14 +365,27 @@ after building. Use `--config Release` for a Release build. Installation embeds
 required non-system libraries, repairs their paths, and applies an ad-hoc
 signature. This does not provide Developer ID signing or Apple notarization.
 
-### Windows development
+### Python tooling
 
-Windows launch tests require Python 3.
+Tests and release packaging require [uv](https://docs.astral.sh/uv/getting-started/installation/)
+on Windows, Linux, and macOS. The supported Python interpreter is pinned exactly
+in `.python-version` (currently 3.13.14); `uv.toml` selects uv-managed Python.
+All Python scripts use the standard library, so no pip packages or virtual
+environment activation are needed.
+
+Run `uv python install` from the repository root before configuring. CMake uses
+uv to locate the pinned interpreter, replaces stale Python selections in existing
+build caches, and reports an error if that version is missing. Configuration
+does not download Python. With `BUILD_TESTING=OFF`, Woby's CMake configuration
+does not require Python or uv; release packaging still does.
+
+### Windows development
 
 Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:
 
 ```powershell
 $env:VCPKG_ROOT="C:\path\to\vcpkg"
+uv python install
 cmake --preset vs2026-vcpkg
 cmake --build --preset vs2026-vcpkg
 ```
@@ -388,8 +401,14 @@ a machine with a desktop. It launches four fresh viewers and saves their PNGs an
 logs in the output directory:
 
 ```powershell
-python tests/ctl_startup_screenshot_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/startup-capture-qa
+uv run tests/ctl_startup_screenshot_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/startup-capture-qa
 ```
+
+Use `uv run path/to/script.py ...` for all standalone Python scripts and
+`uv run python --version` to check the selected interpreter. CI installs uv and
+runs `uv python install` in each build or release job that needs Python, then
+uses the same pin for tests and packaging. Update `.python-version`, rerun
+`uv python install`, and reconfigure CMake when upgrading Python.
 
 The Visual Studio presets build two projects concurrently and use MSBuild's
 shared compiler worker pool across them. To limit compiler workers on a smaller

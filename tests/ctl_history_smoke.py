@@ -1,6 +1,6 @@
 """Exercise CLI history against a temporary real viewer (requires a desktop).
 
-python tests/ctl_history_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
+uv run tests/ctl_history_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
 """
 import json
 import os

@@ -277,7 +277,14 @@ set(woby_runtime_targets woby woby-update-helper)
 include(CTest)
 
 if(BUILD_TESTING)
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    include(cmake/WobyPython.cmake)
+    add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
+        "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
+        "-DPYTHON_MODULE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/WobyPython.cmake"
+        "-DPYTHON_PIN=${CMAKE_CURRENT_SOURCE_DIR}/.python-version"
+        "-DUV_EXECUTABLE=${WOBY_UV_EXECUTABLE}"
+        "-DEXPECTED_PYTHON=${Python3_EXECUTABLE}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/python_tests.cmake")
     add_test(NAME woby_update_packaging COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/.github/scripts/package_manifest_tests.py")
     add_test(NAME woby_update_helper_smoke COMMAND "${Python3_EXECUTABLE}"
@@ -466,7 +473,6 @@ if(BUILD_TESTING)
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/macos_bundle_tests.cmake")
     endif()
     if(WIN32)
-        find_package(Python3 COMPONENTS Interpreter REQUIRED)
         add_executable(woby_console_probe WIN32 tests/windows_console_probe.cpp src/console.cpp)
         add_executable(woby_console_parent tests/windows_console_probe.cpp)
         target_compile_definitions(woby_console_parent PRIVATE WOBY_CONSOLE_PARENT)

@@ -1,7 +1,7 @@
 """Capture annotated comparisons as the first command in fresh real viewers.
 
 Requires a desktop. Usage:
-python tests/ctl_startup_screenshot_smoke.py path/to/woby.exe build/startup-capture-qa
+uv run tests/ctl_startup_screenshot_smoke.py path/to/woby.exe build/startup-capture-qa
 """
 
 import json

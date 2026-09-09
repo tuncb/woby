@@ -1,6 +1,6 @@
 """Exercise comparison rendering, persistence, and invalidation in a real viewer.
 
-python tests/ctl_comparisons_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe \
+uv run tests/ctl_comparisons_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe \
     build/comparison-qa
 """
 import json
