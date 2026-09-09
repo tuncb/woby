@@ -80,6 +80,7 @@ def main():
                 # Saving retains history and restores dirty state against the saved version.
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved)
+                saved_camera = ctl("camera", "get")["camera"]
                 assert ctl("scene", "undo")["dirty"]
                 assert not ctl("scene", "redo")["dirty"]
                 ctl("scene", "undo")
@@ -88,8 +89,17 @@ def main():
                 ctl("scene", "new", "--on-dirty", "discard")
                 assert not ctl("scene", "undo")["applied"]
                 ctl("scene", "open", saved)
+                assert ctl("camera", "get")["camera"] == saved_camera
                 assert not ctl("scene", "undo")["applied"]
                 assert not ctl("scene", "redo")["applied"]
+                # Camera-only edits remain clean, but an explicit Save persists them.
+                saved_camera = ctl("camera", "orbit", "--yaw-degrees", "25", "--pitch-degrees", "-10")["camera"]
+                assert not ctl("scene", "info")["dirty"]
+                assert not ctl("scene", "undo")["applied"]
+                ctl("scene", "save")
+                ctl("camera", "frame")
+                ctl("scene", "open", saved)
+                assert ctl("camera", "get")["camera"] == saved_camera
                 ctl("scene", "new", "--on-dirty", "discard")
 
                 # Add/remove history reloads geometry but preserves the object's identity.

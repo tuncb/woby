@@ -440,6 +440,16 @@ std::filesystem::path sceneSavePathWithExtension(std::filesystem::path path)
     return path;
 }
 
+bool sceneContentEqual(const SceneDocument& a, const SceneDocument& b)
+{
+    // Full document equality includes the saved view. Edit equality deliberately
+    // excludes it so navigation cannot dirty the document or create history.
+    return std::tie(a.comparisons, a.comparison, a.masterVertexPointSize, a.showOrigin,
+               a.showGrid, a.upAxis, a.files, a.nodes)
+        == std::tie(b.comparisons, b.comparison, b.masterVertexPointSize, b.showOrigin,
+               b.showGrid, b.upAxis, b.files, b.nodes);
+}
+
 SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 {
     std::ifstream stream(scenePath);
@@ -449,6 +459,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
     enum class Section {
         root,
+        camera,
         file,
         group,
         node,
@@ -470,6 +481,12 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
 
         try {
+            if (text == "[camera]") {
+                if (document.camera) { throw std::runtime_error("Duplicate camera table."); }
+                document.camera.emplace();
+                section = Section::camera;
+                continue;
+            }
             if (text == "[[comparisons]]") {
                 document.comparisons.emplace_back();
                 section = Section::comparison;
@@ -511,7 +528,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 2 && version != 3 && version != 4 && version != 5) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -544,6 +561,19 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 } else if (key == "comparison_show_non_manifold") {
                     document.comparison.showNonManifold = parseTomlBool(value);
                 }
+            } else if (section == Section::camera) {
+                auto& camera = *document.camera;
+                if (key == "target") { camera.target = parseTomlFloat3(value);
+                } else if (key == "yaw_radians") { camera.yawRadians = parseTomlFloat(value);
+                } else if (key == "pitch_radians") { camera.pitchRadians = parseTomlFloat(value);
+                } else if (key == "roll_radians") { camera.rollRadians = parseTomlFloat(value);
+                } else if (key == "distance") { camera.distance = parseTomlFloat(value);
+                } else if (key == "vertical_fov_degrees") { camera.verticalFovDegrees = parseTomlFloat(value);
+                } else if (key == "near_plane") { camera.nearPlane = parseTomlFloat(value);
+                }
+                // Report invalid numbers at their source line; clamp only after
+                // all fields are read so near-plane limits are order-independent.
+                (void)normalizedSceneCamera(camera);
             } else if (section == Section::comparison) {
                 auto& record = document.comparisons.back();
                 if (key == "name") { record.name = parseTomlString(value);
@@ -595,6 +625,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 + exception.what());
         }
     }
+
+    if (document.camera) { document.camera = normalizedSceneCamera(*document.camera); }
 
     for (const auto& file : document.files) {
         if (file.path.empty()) {
@@ -677,13 +709,32 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 5\n";
+    stream << "version = 6\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
     stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
     stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
+
+    if (document.camera) {
+        const auto camera = normalizedSceneCamera(*document.camera);
+        stream << "[camera]\ntarget = ";
+        writeTomlFloat3(stream, camera.target);
+        stream << "\nyaw_radians = ";
+        writeTomlFloat(stream, camera.yawRadians);
+        stream << "\npitch_radians = ";
+        writeTomlFloat(stream, camera.pitchRadians);
+        stream << "\nroll_radians = ";
+        writeTomlFloat(stream, camera.rollRadians);
+        stream << "\ndistance = ";
+        writeTomlFloat(stream, camera.distance);
+        stream << "\nvertical_fov_degrees = ";
+        writeTomlFloat(stream, camera.verticalFovDegrees);
+        stream << "\nnear_plane = ";
+        writeTomlFloat(stream, camera.nearPlane);
+        stream << "\n";
+    }
 
     for (const auto& file : document.files) {
         const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);

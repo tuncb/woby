@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace woby {
 namespace {
@@ -85,6 +86,26 @@ void moveTarget(SceneCamera& camera, const std::array<float, 3>& direction, floa
 }
 
 } // namespace
+
+SceneCamera normalizedSceneCamera(SceneCamera camera)
+{
+    for (const float value : {camera.target[0], camera.target[1], camera.target[2],
+        camera.yawRadians, camera.pitchRadians, camera.rollRadians, camera.distance,
+        camera.verticalFovDegrees, camera.nearPlane}) {
+        if (!std::isfinite(value)) {
+            throw std::runtime_error("Camera values must be finite.");
+        }
+    }
+    // Leave headroom for squared distances and projection math in float precision.
+    constexpr float maxCoordinate = 1.0e15f;
+    for (auto& value : camera.target) { value = std::clamp(value, -maxCoordinate, maxCoordinate); }
+    camera.distance = std::clamp(camera.distance, 0.001f, maxCoordinate);
+    camera.pitchRadians = std::clamp(camera.pitchRadians, -1.45f, 1.45f);
+    camera.verticalFovDegrees = std::clamp(camera.verticalFovDegrees, 1.0f, 179.0f);
+    // cameraFarPlane is at least max(distance, 10); keep a valid depth interval.
+    camera.nearPlane = std::clamp(camera.nearPlane, 0.0001f, std::max(camera.distance, 10.0f) * 0.5f);
+    return camera;
+}
 
 SceneCamera frameCameraBounds(const Bounds& bounds, SceneUpAxis upAxis)
 {

@@ -2,6 +2,7 @@
 #include "ui_operations.h"
 #include "automation_registry.h"
 #include "background_load.h"
+#include "model_load.h"
 
 #include <doctest/doctest.h>
 #include <fstream>
@@ -38,6 +39,83 @@ struct LifecycleFixture {
     }
     void dirty() { woby::setShowGrid(state, false); }
 };
+}
+
+TEST_CASE("save and reopen restore the review camera for both up axes")
+{
+    for (const auto upAxis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        LifecycleFixture f;
+        woby::setSceneUpAxis(f.state, upAxis);
+        woby::frameCameraToScene(f.state);
+        woby::orbitUiCamera(f.state, 40, -15);
+        woby::rollUiCamera(f.state, 25);
+        woby::panUiCamera(f.state, 15, -30, 720);
+        woby::dollyUiCamera(f.state, 0.4f);
+        f.state.camera.verticalFovDegrees = 45.0f;
+        f.state.camera.nearPlane = 0.05f;
+        woby::setCameraOrbiting(f.state, true);
+        woby::setCameraRolling(f.state, true);
+        woby::setCameraPanning(f.state, true);
+        const auto savedView = f.state.camera;
+        REQUIRE_FALSE(woby::saveSceneState(f.state, f.path, f.clean, f.root / "view.woby", false));
+        woby::frameCameraToScene(f.state);
+        const auto document = woby::readSceneDocument(*f.path);
+        const auto restored = woby::prepareSceneReplacement(f.state, {}, document);
+        CHECK(restored.camera == savedView);
+        CHECK(restored.upAxis == upAxis);
+        CHECK_FALSE(restored.cameraInput.orbiting);
+        CHECK_FALSE(restored.cameraInput.rolling);
+        CHECK_FALSE(restored.cameraInput.panning);
+        CHECK_FALSE(restored.isDirty);
+        for (const float aspect : {0.5f, 1.0f, 2.0f}) {
+            CHECK(woby::cameraViewportFov(restored.camera, aspect)
+                == woby::cameraViewportFov(savedView, aspect));
+        }
+        CHECK(restored.camera == savedView);
+    }
+}
+
+TEST_CASE("legacy scenes without camera records frame their loaded bounds")
+{
+    LifecycleFixture f;
+    for (const int version : {2, 3, 4, 5, 6}) {
+        for (const auto upAxis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+            const auto path = f.root / "legacy.woby";
+            {
+                std::ofstream stream(path);
+                stream << "version = " << version << "\nup_axis = \""
+                       << (upAxis == woby::SceneUpAxis::y ? "y" : "z") << "\"\n";
+            }
+            const auto document = woby::readSceneDocument(path);
+            CHECK_FALSE(document.camera);
+            const auto modelPath = f.root / "triangle.obj";
+            {
+                std::ofstream stream(modelPath);
+                stream << "v 10 20 30\nv 20 40 60\nv 10 40 30\nf 1 2 3\n";
+            }
+            const auto file = woby::createUiFileState(modelPath, woby::loadModelMesh(modelPath), 0);
+            const auto restored = woby::prepareSceneReplacement(f.state, {file}, document);
+            CHECK(restored.camera == woby::frameCameraBounds(restored.sceneBounds, upAxis));
+            CHECK(restored.camera.target == file.mesh.bounds.center);
+            CHECK_FALSE(restored.isDirty);
+        }
+    }
+}
+
+TEST_CASE("scene replacement validates camera records before touching live state")
+{
+    LifecycleFixture f;
+    auto document = f.clean;
+    REQUIRE(document.camera);
+    document.camera->distance = -5;
+    document.camera->pitchRadians = 8;
+    auto prepared = woby::prepareSceneReplacement(f.state, {}, document);
+    CHECK(prepared.camera.distance == doctest::Approx(0.001f));
+    CHECK(prepared.camera.pitchRadians == doctest::Approx(1.45f));
+    const auto before = woby::createSceneDocument(f.state);
+    document.camera->target[1] = std::numeric_limits<float>::infinity();
+    CHECK_THROWS_WITH((void)woby::prepareSceneReplacement(f.state, {}, document), "Camera values must be finite.");
+    CHECK(woby::createSceneDocument(f.state) == before);
 }
 
 TEST_CASE("lifecycle dirty policies gate every destructive operation")

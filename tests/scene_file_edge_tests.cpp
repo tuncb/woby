@@ -27,6 +27,57 @@ void checkReadThrowsContaining(const std::filesystem::path& path, const std::str
 
 } // namespace
 
+TEST_CASE("camera records clamp finite ranges and use defaults for missing fields")
+{
+    const auto path = std::filesystem::temp_directory_path() / "woby-camera-ranges.woby";
+    writeText(path, "version = 6\n[camera]\n");
+    REQUIRE(woby::readSceneDocument(path).camera);
+    CHECK(*woby::readSceneDocument(path).camera == woby::SceneCamera{});
+    writeText(path, "version = 6\n[camera]\ntarget = [3e38, -3e38, 2]\n"
+        "pitch_radians = 30\ndistance = -1\nvertical_fov_degrees = 300\nnear_plane = -2\n");
+    const auto camera = *woby::readSceneDocument(path).camera;
+    CHECK(camera.target == std::array<float, 3>{1e15f, -1e15f, 2});
+    CHECK(camera.pitchRadians == doctest::Approx(1.45f));
+    CHECK(camera.distance == doctest::Approx(0.001f));
+    CHECK(camera.verticalFovDegrees == 179);
+    CHECK(camera.nearPlane == doctest::Approx(0.0001f));
+    writeText(path, "version = 6\n[camera]\npitch_radians = -30\n"
+        "distance = 3e38\nvertical_fov_degrees = -10\nnear_plane = 3e38\n");
+    const auto other = *woby::readSceneDocument(path).camera;
+    CHECK(other.pitchRadians == doctest::Approx(-1.45f));
+    CHECK(other.distance == 1e15f);
+    CHECK(other.verticalFovDegrees == 1);
+    CHECK(other.nearPlane == 5e14f);
+    writeText(path, "version = 6\n[camera]\nnear_plane = 100\ndistance = 1000\n");
+    CHECK(woby::readSceneDocument(path).camera->nearPlane == 100);
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("camera records reject nonfinite and malformed values with line context")
+{
+    const auto path = std::filesystem::temp_directory_path() / "woby-camera-errors.woby";
+    for (const auto* key : {"yaw_radians", "pitch_radians", "roll_radians", "distance",
+        "vertical_fov_degrees", "near_plane"}) {
+        for (const auto* value : {"nan", "inf", "-inf"}) {
+            const auto text = std::string("version = 6\n[camera]\n") + key + " = " + value + "\n";
+            writeText(path, text.c_str());
+            checkReadThrowsContaining(path, ":3: Camera values must be finite.");
+        }
+    }
+    for (const auto* value : {"[nan, 1, 2]", "[1, inf, 2]", "[1, 2, -inf]"}) {
+        const auto text = std::string("version = 6\n[camera]\ntarget = ") + value + "\n";
+        writeText(path, text.c_str());
+        checkReadThrowsContaining(path, ":3: Camera values must be finite.");
+    }
+    writeText(path, "version = 6\n[camera]\ntarget = [1, 2]\n");
+    checkReadThrowsContaining(path, ":3: Expected TOML array with 3 floats.");
+    writeText(path, "version = 6\n[camera]\ndistance = 1.0bad\n");
+    checkReadThrowsContaining(path, ":3: Expected TOML float value.");
+    writeText(path, "version = 6\n[camera]\n[camera]\n");
+    checkReadThrowsContaining(path, ":3: Duplicate camera table.");
+    std::filesystem::remove(path);
+}
+
 TEST_CASE("scene path helpers normalize saved and referenced paths")
 {
     CHECK(woby::sceneSavePathWithExtension("scene") == std::filesystem::path("scene.woby"));
@@ -53,7 +104,7 @@ TEST_CASE("scene document reader reports malformed files")
     writeText(
         unsupportedVersion,
         "# comment\n"
-        "version = 6\n");
+        "version = 7\n");
     checkReadThrowsContaining(unsupportedVersion, ":2: Unsupported scene version.");
 
     const std::filesystem::path groupBeforeFile = root / "group_before_file.woby";

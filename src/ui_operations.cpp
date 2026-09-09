@@ -1276,7 +1276,8 @@ UiState prepareSceneReplacement(const UiState& current,
     }
     if (!prepared.comparisons.empty()) { prepared.activeComparisonId = prepared.comparisons.front().objectId; }
     recalculateSceneBounds(prepared);
-    prepared.camera = frameCameraBounds(prepared.sceneBounds, prepared.upAxis);
+    prepared.camera = document.camera ? normalizedSceneCamera(*document.camera)
+        : frameCameraBounds(prepared.sceneBounds, prepared.upAxis);
     clearSceneDirty(prepared);
     return prepared;
 }
@@ -1304,7 +1305,7 @@ void clearSceneDirty(UiState& state)
 
 void updateSceneDirty(UiState& state, const SceneDocument& cleanDocument)
 {
-    setSceneDirty(state, createSceneDocument(state) != cleanDocument);
+    setSceneDirty(state, !sceneContentEqual(createSceneDocument(state), cleanDocument));
 }
 
 void setViewerPaneWidth(UiState& state, float value, float minWidth, float maxWidth)

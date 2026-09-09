@@ -126,8 +126,10 @@ TEST_CASE("scene history records scene operation notifications while already dir
         CHECK_FALSE(woby::recordSceneHistory(f.history, f.state));
         const auto after = woby::createSceneDocument(f.state);
         CHECK(after != before);
+        const auto camera = f.state.camera;
         f.step();
-        CHECK(woby::createSceneDocument(f.state) == before);
+        CHECK(woby::sceneContentEqual(woby::createSceneDocument(f.state), before));
+        CHECK(f.state.camera == camera);
         CHECK_FALSE(woby::recordSceneHistory(f.history, f.state));
         f.step(true);
         CHECK(woby::createSceneDocument(f.state) == after);
@@ -198,8 +200,56 @@ TEST_CASE("scene history records automation struct edits and ignores automation 
             CHECK_FALSE(woby::recordSceneHistory(f.history, f.state));
         }
         f.step();
-        CHECK(woby::createSceneDocument(f.state) == f.clean);
+        CHECK(woby::sceneContentEqual(woby::createSceneDocument(f.state), f.clean));
     }
+}
+
+TEST_CASE("saved camera navigation preserves dirty baseline redo and coalesced scene history")
+{
+    HistoryFixture f;
+    std::optional<std::filesystem::path> path;
+    woby::orbitUiCamera(f.state, 30, -20);
+    woby::rollUiCamera(f.state, 12);
+    woby::panUiCamera(f.state, 8, -5, 800);
+    woby::dollyUiCamera(f.state, 0.3f);
+    woby::updateSceneDirty(f.state, f.clean);
+    CHECK_FALSE(f.state.isDirty);
+    CHECK_FALSE(woby::recordSceneHistory(f.history, f.state));
+    REQUIRE_FALSE(woby::saveSceneState(f.state, path, f.clean, f.root / "view.woby", false));
+    CHECK(woby::readSceneDocument(*path).camera == f.state.camera);
+
+    f.translate(1);
+    f.step();
+    woby::orbitUiCamera(f.state, -20, 10);
+    woby::rollUiCamera(f.state, -7);
+    woby::panUiCamera(f.state, -4, 9, 800);
+    woby::dollyUiCamera(f.state, -0.2f);
+    const auto view = f.state.camera;
+    woby::updateSceneDirty(f.state, f.clean);
+    CHECK_FALSE(f.state.isDirty);
+    CHECK_FALSE(woby::recordSceneHistory(f.history, f.state));
+    // Even a notified scene no-op with a different view must retain redo.
+    woby::notifySceneEdit(f.state);
+    CHECK(woby::recordSceneHistory(f.history, f.state));
+    CHECK(woby::canRedoScene(f.history));
+    REQUIRE_FALSE(woby::saveSceneState(f.state, path, f.clean, *path, true));
+    CHECK(woby::readSceneDocument(*path).camera == view);
+    CHECK(woby::canRedoScene(f.history));
+    f.step(true);
+    CHECK(f.state.camera == view);
+    CHECK(f.state.isDirty);
+    f.step();
+    CHECK(f.state.camera == view);
+    CHECK_FALSE(f.state.isDirty);
+
+    // Returning a scene drag to its start still coalesces away after navigation.
+    f.translate(2, 123);
+    woby::orbitUiCamera(f.state, 10, 2);
+    woby::resetGroupTransform(f.state.files[0].groupSettings[0]);
+    woby::markSceneDirty(f.state);
+    woby::recordSceneHistory(f.history, f.state);
+    CHECK_FALSE(woby::canUndoScene(f.history));
+    for (const auto& snapshot : f.history.snapshots) { CHECK_FALSE(snapshot.document.camera); }
 }
 
 TEST_CASE("scene history restores exact transforms and appearance and branches after undo")
@@ -306,7 +356,7 @@ TEST_CASE("scene history reloads removed geometry and restores folder identity a
     woby::recordSceneHistory(f.history, f.state);
     CHECK(woby::missingComparisonPartCount(f.state, comparisonId) == 1);
     f.step();
-    CHECK(woby::createSceneDocument(f.state) == withComparison);
+    CHECK(woby::sceneContentEqual(woby::createSceneDocument(f.state), withComparison));
     CHECK(f.state.files[0].objectId == fileId);
     CHECK(f.state.files[0].groupSettings[0].objectId == partId);
     CHECK(f.state.sceneNodes[0].objectId == folderId);
@@ -321,7 +371,7 @@ TEST_CASE("scene history reloads removed geometry and restores folder identity a
     woby::removeComparison(f.state, comparisonId);
     woby::recordSceneHistory(f.history, f.state);
     f.step();
-    CHECK(woby::createSceneDocument(f.state) == withComparison);
+    CHECK(woby::sceneContentEqual(woby::createSceneDocument(f.state), withComparison));
 }
 
 TEST_CASE("scene history undoes additions and membership while keeping object IDs monotonic")
@@ -433,7 +483,7 @@ TEST_CASE("scene history reload accepts changed source geometry and refreshes bo
     CHECK(f.state.files[0].fileSettings.center[0] == 4.5f);
     CHECK(f.state.files[0].groupSettings[0].translation[0] == 1.444f);
     CHECK(woby::comparisonContains(f.state, partId, woby::ComparisonSide::a, comparisonId));
-    CHECK(woby::createSceneDocument(f.state) == beforeRemoval);
+    CHECK(woby::sceneContentEqual(woby::createSceneDocument(f.state), beforeRemoval));
     CHECK_FALSE(f.state.isDirty); // Geometry is external to the saved document.
     const auto cursor = f.history.cursor;
     woby::recordSceneHistory(f.history, f.state);

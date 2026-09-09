@@ -23,6 +23,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     std::vector<SceneObjectId> identities)
 {
     SceneSnapshot result;
+    document.camera.reset();
     result.document = std::move(document);
     result.identities = std::move(identities);
     auto& content = result.content;
@@ -78,7 +79,7 @@ bool recordSceneHistory(SceneHistory& history, const UiState& state, uint64_t in
         const auto& previous = history.snapshots[history.cursor];
         auto document = createSceneDocument(state);
         auto identities = sceneIdentities(state);
-        changed = document != previous.document || identities != previous.identities;
+        changed = !sceneContentEqual(document, previous.document) || identities != previous.identities;
         if (changed) {
             auto next = snapshot(state, std::move(document), std::move(identities));
             history.snapshots.erase(history.snapshots.begin() + static_cast<std::ptrdiff_t>(history.cursor + 1),

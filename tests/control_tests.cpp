@@ -199,7 +199,7 @@ TEST_CASE("ctl visibility refreshes ancestors and object queries distinguish rep
     CHECK(woby::controlObjectDetails(state, groupId, formatId)["occurrences"].size() == 1);
 }
 
-TEST_CASE("ctl camera navigation has explicit units finite results and no persisted changes")
+TEST_CASE("ctl camera navigation has explicit units finite results and no scene edits")
 {
     for (auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
         auto state = scene();
@@ -228,7 +228,7 @@ TEST_CASE("ctl camera navigation has explicit units finite results and no persis
         run(state, clean, "pane.set", {{"visible", false}, {"width", 1}});
         CHECK(state.viewerPaneWidth == 200);
         CHECK_FALSE(state.viewerPaneVisible);
-        CHECK(woby::createSceneDocument(state) == clean);
+        CHECK(woby::sceneContentEqual(woby::createSceneDocument(state), clean));
         CHECK_FALSE(state.isDirty);
         run(state, clean, "camera.frame");
         CHECK(woby::controlCameraInfo(state)["target"] == state.sceneBounds.center);

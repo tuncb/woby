@@ -124,6 +124,7 @@ struct UiState {
     bool showGrid = false;
     SceneUpAxis upAxis = SceneUpAxis::z;
     float masterVertexPointSize = defaultMasterVertexPointSize;
+    // Persisted on Save/Open, but navigation never dirties the scene or enters history.
     SceneCamera camera;
     CameraInput cameraInput;
     Bounds sceneBounds;

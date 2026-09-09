@@ -1399,7 +1399,9 @@ void resetSceneToUntitled(
     std::optional<std::filesystem::path>& currentScenePath,
     woby::SceneDocument& cleanSceneDocument)
 {
-    auto prepared = woby::prepareSceneReplacement(state, {}, woby::createSceneDocument(woby::UiState{}));
+    auto document = woby::createSceneDocument(woby::UiState{});
+    document.camera.reset(); // New scenes frame the default display bounds.
+    auto prepared = woby::prepareSceneReplacement(state, {}, document);
     auto clean = woby::createSceneDocument(prepared);
     destroyModelRuntimes(runtimes);
     state = std::move(prepared);
@@ -2129,6 +2131,7 @@ int main(int argc, char** argv)
             ui.files = loadModelFiles(modelInputs.paths, layout, pointLayout, runtimes);
             appendSceneNodesForResolvedInputs(ui, modelInputs, 0u);
             woby::recalculateSceneBounds(ui);
+            woby::frameCameraToScene(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
         }
         woby::logDuration("startup_initial_scene", elapsedMilliseconds(initialLoadStart));
@@ -2162,7 +2165,6 @@ int main(int argc, char** argv)
         woby::imgui_bgfx::init(assets, imguiView);
         woby::logDuration("startup_imgui", elapsedMilliseconds(imguiStart));
 
-        ui.camera = woby::frameCameraBounds(ui.sceneBounds, ui.upAxis);
         ui.viewerPaneWidth = minimumViewerPaneWidth();
         woby::logDuration("startup_total", elapsedMilliseconds(startupStart));
         auto& running = ui.running;

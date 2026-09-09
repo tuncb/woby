@@ -32,6 +32,15 @@ New scene starts an untitled scene and asks before discarding unsaved changes.
 and `Ctrl+Shift+S` opens Save As. Save As switches to the chosen destination only
 after a successful save; canceling keeps the active document unchanged.
 
+Save and Save As also capture the current camera target, orbit, roll, distance,
+field of view, and near plane. Opening the file restores that review view.
+Camera navigation never marks a scene dirty and is excluded from Undo/Redo;
+use Save explicitly to keep a new view, even when no unsaved-change marker appears.
+Older scenes without camera data still frame the scene automatically. Resizing
+the viewport keeps the logical camera and adapts the field of view to its shorter
+axis. Invalid camera numbers are rejected; finite out-of-range values are clamped
+when loading.
+
 `Ctrl+Z` undoes a scene edit; `Ctrl+Y` or `Ctrl+Shift+Z` redoes it. This includes
 transforms, appearance, comparison membership, and object additions/removals.
 A continuous drag is one action. Session history has no action-count limit;
@@ -156,7 +165,8 @@ inputs or computation errors instead of exporting a partial comparison scene.
 
 Version 5 `.woby` scenes save comparison objects and source references. Version
 2Ã¢â‚¬â€œ4 scenes remain readable; existing A/B memberships migrate into one comparison
-at the original source positions. Older woby builds cannot read version 5 scenes.
+at the original source positions. Version 6 adds the optional camera record and
+still reads versions 2–5. Older woby builds cannot read version 6 scenes.
 Open `assets/samples/mesh-comparison/compare.woby` for a before/after repair example.
 
 ```powershell
@@ -371,6 +381,14 @@ Run tests:
 
 ```powershell
 ctest --preset vs2026-vcpkg
+```
+
+To check annotated screenshots immediately after startup, run this regression on
+a machine with a desktop. It launches four fresh viewers and saves their PNGs and
+logs in the output directory:
+
+```powershell
+python tests/ctl_startup_screenshot_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe build/startup-capture-qa
 ```
 
 The Visual Studio presets build two projects concurrently and use MSBuild's

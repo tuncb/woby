@@ -355,12 +355,20 @@ void submitSceneScreenshotCapture(
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
     }
     if (annotations) {
+        // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.
+        // Annotation text can grow the font atlas during this frame, so use the
+        // textures actually referenced by this draw list, including new atlases.
+        ImVector<ImTextureData*> textures;
+        for (const auto& command : annotationDraw.CmdBuffer) {
+            auto* texture = command.TexRef._TexData;
+            if (texture != nullptr && !textures.contains(texture)) { textures.push_back(texture); }
+        }
         ImDrawData drawData;
         drawData.Valid = true;
         drawData.DisplayPos = {0, 0};
         drawData.DisplaySize = {static_cast<float>(screenshot.width), static_cast<float>(screenshot.height)};
         drawData.FramebufferScale = {1, 1};
-        drawData.Textures = &ImGui::GetPlatformIO().Textures;
+        drawData.Textures = &textures;
         drawData.AddDrawList(&annotationDraw);
         bgfx::setViewFrameBuffer(screenshotAnnotationView, screenshot.frameBuffer);
         bgfx::setViewClear(screenshotAnnotationView, BGFX_CLEAR_NONE);

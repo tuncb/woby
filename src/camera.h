@@ -17,6 +17,8 @@ struct SceneCamera {
     float distance = 1.0f;
     float verticalFovDegrees = 60.0f;
     float nearPlane = 0.1f;
+
+    friend bool operator==(const SceneCamera&, const SceneCamera&) = default;
 };
 
 struct CameraInput {
@@ -28,6 +30,8 @@ struct CameraInput {
 [[nodiscard]] SceneCamera frameCameraBounds(
     const Bounds& bounds,
     SceneUpAxis upAxis = SceneUpAxis::z);
+// Validate persisted values before they enter logical state or a scene file.
+[[nodiscard]] SceneCamera normalizedSceneCamera(SceneCamera camera);
 [[nodiscard]] float cameraViewportFov(const SceneCamera& camera, float aspectRatio);
 [[nodiscard]] bx::Vec3 cameraEye(
     const SceneCamera& camera,

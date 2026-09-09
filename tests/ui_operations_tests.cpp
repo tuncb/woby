@@ -1083,7 +1083,7 @@ TEST_CASE("camera panning follows the rolled screen axes")
     CHECK(camera.target[2] > 0.0f);
 }
 
-TEST_CASE("dirty tracking follows persisted scene document only")
+TEST_CASE("dirty tracking follows scene content and excludes the persisted camera")
 {
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
@@ -1215,17 +1215,32 @@ TEST_CASE("scene document mapping preserves nested scene nodes")
     CHECK(restored.sceneNodes[0].children[1].name == "nested");
 }
 
-TEST_CASE("scene document writer omits camera state")
+TEST_CASE("scene document writer round trips the logical camera without input state")
 {
     const std::filesystem::path path = std::filesystem::temp_directory_path()
-        / "woby_scene_document_writer_omits_camera_state.woby";
+        / "woby_scene_document_writer_camera_state.woby";
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
     state.files[0].path = path.parent_path() / state.files[0].path;
     state.camera.distance = 42.0f;
+    state.camera.target = {1.2345678f, -2.5f, 8.75f};
+    state.camera.yawRadians = 1.2345678f;
+    state.camera.pitchRadians = -0.45f;
+    state.camera.rollRadians = 0.35f;
+    state.camera.verticalFovDegrees = 47.0f;
+    state.camera.nearPlane = 0.025f;
+    woby::setCameraOrbiting(state, true);
+    woby::setCameraRolling(state, true);
+    woby::setCameraPanning(state, true);
     const woby::SceneDocument document = woby::createSceneDocument(state);
 
     woby::writeSceneDocument(path, document);
+    const auto restored = woby::readSceneDocument(path);
+    auto expected = document;
+    expected.files[0].path = expected.files[0].path.filename();
+    CHECK(restored == expected);
+    REQUIRE(restored.camera);
+    CHECK(*restored.camera == state.camera);
     std::string text;
     {
         std::ifstream stream(path);
@@ -1235,10 +1250,10 @@ TEST_CASE("scene document writer omits camera state")
     }
     std::filesystem::remove(path);
 
-    CHECK(text.find("[camera]") == std::string::npos);
-    // Comparison has its own distance settings; only the camera key is forbidden.
-    CHECK(text.find("\ndistance =") == std::string::npos);
-    CHECK(text.find("vertical_fov_degrees") == std::string::npos);
+    CHECK(text.find("[camera]") != std::string::npos);
+    CHECK(text.find("orbiting") == std::string::npos);
+    CHECK(text.find("rolling") == std::string::npos);
+    CHECK(text.find("panning") == std::string::npos);
 }
 
 TEST_CASE("scene document persists helper visibility and up axis")

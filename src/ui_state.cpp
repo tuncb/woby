@@ -689,6 +689,7 @@ SceneNodeSettings sceneNodeSettings(const UiSceneNodeSettings& settings)
 SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
+    document.camera = state.camera;
     for (const auto& comparison : state.comparisons) {
         SceneComparisonRecord record;
         record.name = comparison.name;

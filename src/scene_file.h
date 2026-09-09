@@ -2,6 +2,7 @@
 
 #include "scene_up_axis.h"
 #include "comparison_settings.h"
+#include "camera.h"
 
 #include <array>
 #include <filesystem>
@@ -102,6 +103,8 @@ struct SceneComparisonRecord {
 };
 
 struct SceneDocument {
+    // Saved review view; absent in legacy scenes. Excluded from edits/history.
+    std::optional<SceneCamera> camera;
     std::vector<SceneComparisonRecord> comparisons;
     // Legacy v2-v4 input only. New scenes store comparison objects above.
     ComparisonSettings comparison;
@@ -116,6 +119,7 @@ struct SceneDocument {
 };
 
 [[nodiscard]] SceneDocument readSceneDocument(const std::filesystem::path& scenePath);
+[[nodiscard]] bool sceneContentEqual(const SceneDocument& a, const SceneDocument& b);
 void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocument& document, bool overwrite = true);
 
 [[nodiscard]] std::filesystem::path sceneAbsolutePath(
