@@ -1265,11 +1265,26 @@ TEST_CASE("single input report includes only its surface and edge annotations")
     const auto result = woby::compareMeshes({}, square());
     const auto lines = woby::comparisonReportLines("Inspection", "", "Model", woby::effectiveComparisonSettings(state), result, {});
     CHECK(std::find(lines.begin(), lines.end(), "Group B surface") != lines.end());
-    CHECK(std::find(lines.begin(), lines.end(), "Yellow edges: boundary") != lines.end());
+    CHECK(std::find(lines.begin(), lines.end(), "Green edges: boundary") != lines.end());
     for (const auto& line : lines) {
         CHECK_FALSE(line.starts_with("A:"));
         CHECK(line.find("distance") == std::string::npos);
         CHECK(line.find("Sample max") == std::string::npos);
+    }
+}
+
+TEST_CASE("comparison reports describe green boundaries only when visible in every mode")
+{
+    woby::ComparisonSettings settings;
+    for (const auto mode : {woby::ComparisonMode::original, woby::ComparisonMode::repaired,
+             woby::ComparisonMode::overlay, woby::ComparisonMode::distance}) {
+        settings.mode = mode;
+        for (const bool visible : {true, false}) {
+            settings.showBoundaries = visible;
+            const auto lines = woby::comparisonReportLines("Comparison", "A", "B", settings, {}, {});
+            CHECK((std::find(lines.begin(), lines.end(), "Green edges: boundary") != lines.end()) == visible);
+            CHECK(std::find(lines.begin(), lines.end(), "Yellow edges: boundary") == lines.end());
+        }
     }
 }
 

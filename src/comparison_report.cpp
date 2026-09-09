@@ -49,7 +49,7 @@ std::vector<std::string> comparisonReportLines(
     if (settings.mode != ComparisonMode::distance) {
         lines.push_back(settings.mode == ComparisonMode::overlay ? "Overlay: A blue wireframe; B gray surface" :
             settings.mode == ComparisonMode::original ? "Group A surface" : "Group B surface");
-        if (settings.showBoundaries) { lines.push_back("Yellow edges: boundary"); }
+        if (settings.showBoundaries) { lines.push_back("Green edges: boundary"); }
         if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
         return lines;
     }
@@ -75,7 +75,7 @@ std::vector<std::string> comparisonReportLines(
         lines.push_back("Area above tolerance: " + measurementNumber(surfacePercentAboveTolerance(surface, settings.tolerance)) + "%");
         lines.push_back("Surface shading affects brightness; legend shows unlit colors.");
     }
-    if (settings.showBoundaries) { lines.push_back("Yellow edges: boundary"); }
+    if (settings.showBoundaries) { lines.push_back("Green edges: boundary"); }
     if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
     return lines;
 }

@@ -520,7 +520,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
                 "Blue: group A wireframe (X-ray).\n\nSolid gray: group B surface.");
         }
         drawVisibilityField("Triangle edges", settings.showEdges);
-        drawVisibilityField("Boundary edges (yellow)", settings.showBoundaries);
+        drawVisibilityField("Boundary edges (green)", settings.showBoundaries);
         drawVisibilityField("Non-manifold / winding edges", settings.showNonManifold);
     }
     // Merely opening the panel must not change scene settings.
@@ -654,7 +654,7 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
     }
     if (settings.showBoundaries)
     {
-        submitEdges(view, gpu.boundaries, colorProgram, colorUniform, {1, .85f, .15f, 1}, identity);
+        submitEdges(view, gpu.boundaries, colorProgram, colorUniform, {.2f, 1, .6f, 1}, identity);
     }
     if (settings.showNonManifold)
     {
