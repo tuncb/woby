@@ -139,6 +139,7 @@ SceneCamera cameraWithView(SceneCamera camera, CameraView view)
     switch (view) {
     case CameraView::top: camera.pitchRadians = pi * 0.5f; break;
     case CameraView::bottom: camera.pitchRadians = -pi * 0.5f; break;
+    case CameraView::isometric: camera.yawRadians = -pi * 0.25f; camera.pitchRadians = std::asin(1.0f / std::sqrt(3.0f)); break;
     case CameraView::front: break;
     case CameraView::back: camera.yawRadians = pi * 0.5f; break;
     case CameraView::left: camera.yawRadians = pi; break;

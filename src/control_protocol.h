@@ -14,6 +14,7 @@ enum class ControlAction {
     status, capabilities, sceneInfo, sceneTree, sceneBounds, sceneUndo, sceneRedo,
     visibility, render, transformGet, transformSet, transformReset,
     opacity, colorSet, colorReset, vertexSize, grid, dimensions, origin, upAxis,
+    viewList, viewCreate, viewApply, viewUpdate, viewRename, viewDelete, cameraView,
     cameraGet, cameraFrame, cameraOrbit, cameraPan, cameraRoll, cameraDolly, cameraMove,
     modelAdd, modelRemove, folderAdd, importersList, importersAdd, importersScan,
     importersForget, stats, performance, pane,
@@ -27,7 +28,7 @@ struct ControlOperation {
     std::string target;
     SceneObjectId objectId = invalidSceneObjectId;
     std::filesystem::path path;
-    std::string axis;
+    std::string axis, preset, viewId;
     bool tree = false;
     bool remember = false;
     std::optional<bool> visible, solid, triangles, vertices;

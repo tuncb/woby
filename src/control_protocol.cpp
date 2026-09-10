@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <charconv>
 #include <limits>
 #include <stdexcept>
 
@@ -35,6 +36,13 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::dimensions, "dimensions.set", "dimensions set", {}, {"visible"}, {"visible"}, false, true},
         {ControlAction::origin, "origin.set", "origin set", {}, {"visible"}, {"visible"}, false, true},
         {ControlAction::upAxis, "up-axis.set", "up-axis set", "axis", {}, {}, false, true},
+        {ControlAction::viewList, "view.list", "view list", "", {}, {}, false, false},
+        {ControlAction::viewCreate, "view.create", "view create", "", {"name"}, {}, false, true},
+        {ControlAction::viewApply, "view.apply", "view apply", "viewId", {}, {}, false, true},
+        {ControlAction::viewUpdate, "view.update", "view update", "viewId", {}, {}, false, true},
+        {ControlAction::viewRename, "view.rename", "view rename", "viewId", {"name"}, {"name"}, false, true},
+        {ControlAction::viewDelete, "view.delete", "view delete", "viewId", {}, {}, false, true},
+        {ControlAction::cameraView, "camera.view", "camera view", "preset", {}, {}, false, true},
         {ControlAction::cameraGet, "camera.get", "camera get", {}, {}, {}},
         {ControlAction::cameraFrame, "camera.frame", "camera frame", {}, {}, {}, false, true},
         {ControlAction::cameraOrbit, "camera.orbit", "camera orbit", {}, {"yawDegrees", "pitchDegrees"}, {}, true, true},
@@ -168,6 +176,23 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         command.path = pathFromUtf8(value).lexically_normal();
         if (!command.path.is_absolute()) { throw std::invalid_argument("path must be absolute."); }
     }
+    if (params.contains("viewId")) {
+        if (!params["viewId"].is_string()) { throw std::invalid_argument("viewId must be a positive decimal ID string from view list."); }
+        command.viewId = params["viewId"].get<std::string>();
+        uint64_t id = 0;
+        const auto& text = command.viewId;
+        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), id);
+        if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || id == 0) {
+            throw std::invalid_argument("viewId must be a positive decimal ID string from view list.");
+        }
+    }
+    if (params.contains("preset")) {
+        const std::vector<std::string> presets = {"front", "back", "left", "right", "top", "bottom", "isometric"};
+        if (!params["preset"].is_string() || std::find(presets.begin(), presets.end(), params["preset"].get<std::string>()) == presets.end()) {
+            throw std::invalid_argument("preset must be front, back, left, right, top, bottom, or isometric.");
+        }
+        command.preset = params["preset"].get<std::string>();
+    }
     if (params.contains("axis")) {
         if (params["axis"] != "y" && params["axis"] != "z") { throw std::invalid_argument("axis must be y or z."); }
         command.axis = params["axis"].get<std::string>();
@@ -224,6 +249,8 @@ std::string controlMethodUsage(const ControlMethod& method)
 {
     std::string result = method.cli;
     if (method.positional == "path") { result += " PATH"; }
+    else if (method.positional == "viewId") { result += " VIEW_ID"; }
+    else if (method.positional == "preset") { result += " front|back|left|right|top|bottom|isometric"; }
     else if (method.positional == "axis") { result += " y|z"; }
     else if (method.positional == "target") {
         if (method.method.starts_with("comparison.")) { result += " COMPARISON_ID"; }
@@ -252,6 +279,8 @@ Json controlOperationParams(const ControlOperation& command)
     Json result = Json::object();
     if (!command.target.empty()) { result["target"] = command.target; }
     if (!command.path.empty()) { result["path"] = pathToUtf8(command.path); }
+    if (!command.viewId.empty()) { result["viewId"] = command.viewId; }
+    if (!command.preset.empty()) { result["preset"] = command.preset; }
     if (!command.axis.empty()) { result["axis"] = command.axis; }
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }

@@ -420,6 +420,32 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::dimensions: setShowDimensions(state, *command.visible); break;
     case A::origin: setShowOrigin(state, *command.visible); break;
     case A::upAxis: setSceneUpAxis(state, command.axis == "y" ? SceneUpAxis::y : SceneUpAxis::z); break;
+    case A::viewList: case A::viewCreate: case A::viewApply: case A::viewUpdate: case A::viewRename: case A::viewDelete: {
+        ViewId id = command.viewId.empty() ? 0 : std::stoull(command.viewId);
+        if (id && !findView(state, id)) { throw std::invalid_argument("Unknown view ID; use view list to obtain current IDs."); }
+        if (command.action == A::viewCreate) {
+            id = createView(state);
+            if (command.name) { renameView(state, id, *command.name); }
+        } else if (command.action == A::viewApply) { applyView(state, id); }
+        else if (command.action == A::viewUpdate) { updateView(state, id); }
+        else if (command.action == A::viewRename) { renameView(state, id, *command.name); }
+        else if (command.action == A::viewDelete) { removeView(state, id); }
+        if (command.action != A::viewList) { updateSceneDirty(state, cleanDocument); }
+        Json views = Json::array();
+        for (const auto& view : state.views) { views.push_back({{"id", std::to_string(view.id)}, {"name", view.name}}); }
+        Json result = {{"views", views}, {"activeViewId", state.activeViewId ? Json(std::to_string(state.activeViewId)) : Json(nullptr)}, {"dirty", state.isDirty}};
+        if (id) { result["viewId"] = std::to_string(id); }
+        return result;
+    }
+    case A::cameraView: {
+        const std::array<std::pair<const char*, CameraView>, 7> presets = {{{"front", CameraView::front},
+            {"back", CameraView::back}, {"left", CameraView::left}, {"right", CameraView::right},
+            {"top", CameraView::top}, {"bottom", CameraView::bottom}, {"isometric", CameraView::isometric}}};
+        for (const auto& [name, view] : presets) {
+            if (command.preset == name) { setCameraView(state, view); return {{"camera", controlCameraInfo(state)}}; }
+        }
+        throw std::invalid_argument("Unknown camera preset.");
+    }
     case A::cameraFrame: frameCameraToScene(state); return {{"camera", controlCameraInfo(state)}};
     case A::cameraGet: return {{"camera", controlCameraInfo(state)}};
     case A::cameraOrbit: case A::cameraPan: case A::cameraRoll: case A::cameraDolly: case A::cameraMove:

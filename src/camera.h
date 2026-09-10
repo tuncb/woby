@@ -27,7 +27,7 @@ struct CameraInput {
     bool panning = false;
 };
 
-enum class CameraView { top, bottom, front, back, left, right };
+enum class CameraView { top, bottom, front, back, left, right, isometric };
 
 // Presets change orientation only; fitting preserves the viewing direction.
 [[nodiscard]] SceneCamera cameraWithView(SceneCamera camera, CameraView view);

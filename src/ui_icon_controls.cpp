@@ -138,6 +138,7 @@ bool drawCameraViewButton(const char* id, CameraView view, const char* tooltip)
     switch (view) {
     case CameraView::top: face = {4, 5, 7, 6}; break;
     case CameraView::bottom: face = {0, 1, 3, 2}; break;
+    case CameraView::isometric:
     case CameraView::front: face = {0, 4, 5, 1}; break;
     case CameraView::back: face = {2, 6, 7, 3}; break;
     case CameraView::left: face = {0, 2, 6, 4}; break;

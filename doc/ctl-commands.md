@@ -294,7 +294,6 @@ These are separate from simply exposing existing controls. Syntax is proposed.
 | --- | --- |
 | `wait-ready`, `wait-idle` | A readiness wait can poll current metadata. A true idle wait must account for background loads, GPU finalization, captures, and admitted commands; an empty queue is insufficient. |
 | `camera set --target X Y Z --yaw-degrees Y --pitch-degrees P --roll-degrees R --distance D --fov-degrees F` | Validated absolute camera operations for reproducible views; keep session-only unless persistence is explicitly added. |
-| `camera view front|back|left|right|top|bottom|isometric` | Standard presets respecting Y-up/Z-up, including exact pole views beyond the current orbit pitch clamp. |
 | `object bounds OBJECT_ID`, `camera frame --object OBJECT_ID [--visible-only]` | Compute transformed target/subtree bounds, define repeated-reference behavior, and optionally filter visible geometry. |
 | `visibility isolate OBJECT_ID...`, `visibility restore TOKEN` | Composite visibility changes and a retained restore snapshot with stale-object handling. |
 | `screenshot PATH --width W --height H --background ... --grid BOOL --origin BOOL --overwrite` | Configurable render targets and per-capture overrides. Define overwrite/default compatibility with today's unconditional overwrite and fixed size. |
@@ -304,7 +303,6 @@ These are separate from simply exposing existing controls. Syntax is proposed.
 | `events poll --cursor CURSOR` / event subscriptions | Event retention, cursor lifetimes, progress/change notification contracts. |
 | `model reload FILE_ID`, `model watch FILE_ID` | Reload workflow and settings/group-identity preservation across geometry changes. |
 | `folder create`, `object rename/reparent/reorder/duplicate` | New hierarchy operations, fresh IDs for copies, transform preservation rules, and persistence mapping. |
-| `camera bookmark save/list/apply/delete` | Named view storage; persistent bookmarks require new logical state and `.woby` mapping. |
 | `pick`, `vertex get`, `measure distance` | Reuse hover-picking foundations, but define coordinate spaces, stable geometry references, and behavior after reload. |
 | `window focus/resize/minimize/restore` | New SDL runtime adapters and platform behavior. |
 
@@ -312,3 +310,36 @@ Orthographic projection, clipping planes, lighting/material editing, annotations
 mesh export, undo/redo, and headless rendering would be new viewer capabilities,
 with CTL commands added alongside their implementation.
 
+
+## Saved views and camera presets
+
+Prefix these commands with `woby.exe ctl --instance ID`:
+
+| CLI command | RPC method | Behavior |
+| --- | --- | --- |
+| `view list` | `view.list` | Return saved views with string `id` and `name`, plus `activeViewId` (null when none). |
+| `view create [--name TEXT]` | `view.create` | Capture the current scene and camera; return the new `viewId`. |
+| `view apply VIEW_ID` | `view.apply` | Restore a saved view using the same operation as the UI. |
+| `view update VIEW_ID` | `view.update` | Replace the saved view with the current scene and camera. |
+| `view rename VIEW_ID --name TEXT` | `view.rename` | Rename a saved view. |
+| `view delete VIEW_ID` | `view.delete` | Remove a saved view. |
+| `camera view PRESET` | `camera.view` | Set orientation, preserving target, distance and FOV; reset roll. |
+
+Presets: `front`, `back`, `left`, `right`, `top`, `bottom`, `isometric`.
+They respect the scene up-axis; top/bottom use exact pole orientations.
+Isometric uses a -45 degree yaw and approximately 35.264 degree elevation.
+
+RPC parameters are `viewId` (a positive decimal string), optional/required `name`
+as shown above, and `preset` for `camera.view`. Obtain IDs from `view list` or
+`view create`; IDs are local to the running instance and must be refreshed after
+scene loading or restart. Unknown IDs fail without changing the scene. Names need
+not be unique. View commands return `views`, `activeViewId`, and `dirty`; commands
+acting on one view also return `viewId`. Save the scene to persist view changes.
+
+```powershell
+woby.exe ctl --instance main camera view isometric
+$view = woby.exe ctl --instance main view create --name "Overview" --json | ConvertFrom-Json
+woby.exe ctl --instance main camera view top
+woby.exe ctl --instance main view apply $view.viewId
+woby.exe ctl --instance main scene save
+```

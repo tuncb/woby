@@ -59,6 +59,8 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"color", "reset", "object"}, {"vertex-size", "set", "scene", "--pixels", "10"},
         {"grid", "set", "--visible", "false"}, {"origin", "set", "--visible", "true"}, {"up-axis", "set", "y"},
         {"dimensions", "set", "--visible", "true"},
+        {"view", "list"}, {"view", "create"}, {"view", "apply", "1"}, {"view", "update", "1"},
+        {"view", "rename", "1", "--name", "Test"}, {"view", "delete", "1"}, {"camera", "view", "front"},
         {"camera", "get"}, {"camera", "frame"}, {"camera", "orbit", "--yaw-degrees", "30", "--pitch-degrees", "-20"},
         {"camera", "pan", "--right", "2", "--up", "-3"}, {"camera", "roll", "--roll-degrees", "90"},
         {"camera", "dolly", "--factor", "0.5"}, {"camera", "move", "--forward", "1"},
@@ -439,4 +441,74 @@ TEST_CASE("ctl comparison numeric results describe both directions and tolerance
     CHECK(woby::controlComparisonResults(result, 2)["aToB"]["percentAboveTolerance"] == 0);
     CHECK(a.vertices[0].position[2] == 0);
     CHECK(b.vertices[0].position[2] == 2);
+}
+
+TEST_CASE("saved view commands round trip and restore scene state")
+{
+    auto state = scene();
+    const auto clean = woby::createSceneDocument(state);
+    CHECK(run(state, clean, "view.list")["views"].empty());
+    const auto camera = state.camera;
+    const auto created = run(state, clean, "view.create", {{"name", "Original"}});
+    const auto id = created["viewId"].get<std::string>();
+    CHECK(created["dirty"] == true);
+    CHECK(created["views"][0]["name"] == "Original");
+    run(state, clean, "camera.view", {{"preset", "top"}});
+    run(state, clean, "grid.set", {{"visible", !state.showGrid}});
+    run(state, clean, "view.apply", {{"viewId", id}});
+    CHECK(state.camera == camera);
+    CHECK(state.showGrid == clean.showGrid);
+    run(state, clean, "camera.view", {{"preset", "left"}});
+    const auto updatedCamera = state.camera;
+    run(state, clean, "view.update", {{"viewId", id}});
+    run(state, clean, "view.rename", {{"viewId", id}, {"name", "Left"}});
+    CHECK(woby::createSceneDocument(state).views[0].name == "Left");
+    run(state, clean, "camera.view", {{"preset", "right"}});
+    run(state, clean, "view.apply", {{"viewId", id}});
+    CHECK(state.camera == updatedCamera);
+    CHECK(run(state, clean, "view.delete", {{"viewId", id}})["views"].empty());
+    CHECK_THROWS(run(state, clean, "view.apply", {{"viewId", id}}));
+    CHECK(run(state, clean, "view.create")["viewId"] != id);
+}
+
+TEST_CASE("view CLI and RPC validate and preserve arguments")
+{
+    for (const auto& words : std::vector<std::vector<std::string>>{
+        {"view", "list"}, {"view", "create", "--name", "My view"},
+        {"view", "apply", "1"}, {"view", "update", "1"},
+        {"view", "rename", "1", "--name", "Renamed"}, {"view", "delete", "1"},
+        {"camera", "view", "isometric"}}) {
+        const auto command = parse(words).operation;
+        const auto& method = woby::controlMethod(command.action);
+        const auto params = woby::controlOperationParams(command);
+        CHECK(woby::controlOperationParams(woby::parseControlOperation(method, params)) == params);
+    }
+    for (const auto* id : {"0", "-1", "1x", "18446744073709551616", ""}) {
+        CHECK_THROWS(parse({"view", "apply", id}));
+    }
+    CHECK_THROWS(parse({"view", "rename", "1"}));
+    CHECK_THROWS(parse({"camera", "view", "diagonal"}));
+    CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("view.apply"), {{"viewId", 1}}));
+}
+
+TEST_CASE("camera presets preserve framing and support both up axes")
+{
+    for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        auto state = scene();
+        woby::setSceneUpAxis(state, axis);
+        const auto clean = woby::createSceneDocument(state);
+        const auto original = state.camera;
+        for (const auto* preset : {"front", "back", "left", "right", "top", "bottom", "isometric"}) {
+            const auto result = run(state, clean, "camera.view", {{"preset", preset}});
+            CHECK(state.camera.target == original.target);
+            CHECK(state.camera.distance == original.distance);
+            CHECK(state.camera.rollRadians == 0);
+            CHECK(result["camera"]["upAxis"] == (axis == woby::SceneUpAxis::y ? "y" : "z"));
+            if (std::string(preset) == "top") { CHECK(result["camera"]["pitchDegrees"].get<float>() == doctest::Approx(90)); }
+            if (std::string(preset) == "bottom") { CHECK(result["camera"]["pitchDegrees"].get<float>() == doctest::Approx(-90)); }
+            if (std::string(preset) == "isometric") {
+                CHECK(state.camera.pitchRadians == doctest::Approx(std::asin(1.0f / std::sqrt(3.0f))));
+            }
+        }
+    }
 }
