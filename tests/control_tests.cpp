@@ -58,6 +58,7 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"opacity", "set", "object", "--value", "0.3"}, {"color", "set", "object", "--rgb", "0.2", "0.3", "0.4"},
         {"color", "reset", "object"}, {"vertex-size", "set", "scene", "--pixels", "10"},
         {"grid", "set", "--visible", "false"}, {"origin", "set", "--visible", "true"}, {"up-axis", "set", "y"},
+        {"dimensions", "set", "--visible", "true"},
         {"camera", "get"}, {"camera", "frame"}, {"camera", "orbit", "--yaw-degrees", "30", "--pitch-degrees", "-20"},
         {"camera", "pan", "--right", "2", "--up", "-3"}, {"camera", "roll", "--roll-degrees", "90"},
         {"camera", "dolly", "--factor", "0.5"}, {"camera", "move", "--forward", "1"},
@@ -182,6 +183,9 @@ TEST_CASE("ctl scene edits apply clamps refresh bounds and preserve save mapping
     run(state, clean, "vertex-size.set", {{"scale", 3}}, group);
     run(state, clean, "vertex-size.set", {{"target", "scene"}, {"pixels", 10}});
     run(state, clean, "grid.set", {{"visible", false}});
+    run(state, clean, "dimensions.set", {{"visible", true}});
+    CHECK(state.showDimensions);
+    CHECK(run(state, clean, "scene.info", nlohmann::json::object())["showDimensions"] == true);
     run(state, clean, "origin.set", {{"visible", false}});
     run(state, clean, "up-axis.set", {{"axis", "y"}});
     const auto saved = woby::createSceneDocument(state);

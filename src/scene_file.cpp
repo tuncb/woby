@@ -445,9 +445,9 @@ bool sceneContentEqual(const SceneDocument& a, const SceneDocument& b)
     // Full document equality includes the saved view. Edit equality deliberately
     // excludes it so navigation cannot dirty the document or create history.
     return std::tie(a.comparisons, a.comparison, a.masterVertexPointSize, a.showOrigin,
-               a.showGrid, a.upAxis, a.files, a.nodes)
+               a.showGrid, a.showDimensions, a.upAxis, a.files, a.nodes)
         == std::tie(b.comparisons, b.comparison, b.masterVertexPointSize, b.showOrigin,
-               b.showGrid, b.upAxis, b.files, b.nodes);
+               b.showGrid, b.showDimensions, b.upAxis, b.files, b.nodes);
 }
 
 SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
@@ -537,6 +537,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     document.showOrigin = parseTomlBool(value);
                 } else if (key == "show_grid") {
                     document.showGrid = parseTomlBool(value);
+                } else if (key == "show_dimensions") {
+                    document.showDimensions = parseTomlBool(value);
                 } else if (key == "up_axis") {
                     document.upAxis = parseSceneUpAxis(value);
                 } else if (key == "comparison_enabled") {
@@ -726,6 +728,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream << "\n";
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
     stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
+    stream << "show_dimensions = " << (document.showDimensions ? "true" : "false") << "\n";
     stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
 
     if (document.camera) {

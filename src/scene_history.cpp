@@ -30,6 +30,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.sceneGeneration = state.sceneGeneration;
     content.showOrigin = state.showOrigin;
     content.showGrid = state.showGrid;
+    content.showDimensions = state.showDimensions;
     content.upAxis = state.upAxis;
     content.masterVertexPointSize = state.masterVertexPointSize;
     content.comparisons = state.comparisons;

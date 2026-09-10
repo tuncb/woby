@@ -104,6 +104,10 @@ add_executable(woby
     src/hover_pick.h
     src/scene_pick.cpp
     src/scene_pick.h
+    src/scene_dimensions.cpp
+    src/scene_dimensions.h
+    src/scene_scale_overlay.cpp
+    src/scene_scale_overlay.h
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
@@ -329,6 +333,11 @@ if(BUILD_TESTING)
         src/hover_pick.h
         src/scene_pick.cpp
         src/scene_pick.h
+        src/scene_dimensions.cpp
+        src/scene_dimensions.h
+        src/scene_scale_overlay.cpp
+        src/scene_scale_overlay.h
+        tests/scene_dimensions_tests.cpp
         src/importer_host.cpp
         src/importer_host.h
         src/model_load.cpp

@@ -2,5 +2,6 @@
 
 namespace woby {
 struct UiState;
-void drawSceneInspector(UiState& state);
+struct SceneDimensionsCache;
+void drawSceneInspector(UiState& state, SceneDimensionsCache& dimensionsCache);
 } // namespace woby

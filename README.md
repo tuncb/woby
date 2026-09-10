@@ -10,6 +10,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
 - View renderer, FPS, vertex, and triangle counts while working.
 - Toggle the origin axes, adaptive ground grid, and Y-up or Z-up scene orientation.
+- Show selected mesh dimensions in the scene and inspect their size in Properties. The grid displays its current spacing.
 - Control visibility at the scene, folder, file, and mesh-group levels with tri-state master controls.
 - Render each group as solid mesh, triangle edges, vertices, or any combination of those modes.
 - Adjust global, per-file, and per-group vertex point sizes.
@@ -84,6 +85,17 @@ including the defaults of older scene files. **Display > Inspection presets** of
 each hides the helpers while preserving visibility, transforms, colors, and opacity.
 The individual display controls remain available. Enabled icon toggles have an
 outline, mixed toggles have a minus, and selected objects have an outline, so these states are distinguishable without color.
+
+**Display > Show dimensions** adds labeled dimension lines beside the visible selected
+geometry. One visible part is measured along its own directions, including all parent
+scaling and rotation; multiple parts are measured together along the scene's fixed
+directions. X/Y/Z sizes also appear at the bottom of the viewport, including zero dimensions
+and edges that are too small or off-screen to label. **Properties > Geometry** shows
+the same sizes, followed by original local bounds for a single file or part.
+Enabling the grid displays **Grid spacing** using the same spacing as the drawn lines.
+All values are raw coordinates, without unit conversion. Dimension visibility is
+saved in `.woby` files and supports Undo/Redo; selection remains transient. Scene
+PNG exports include these overlays when enabled (results-only exports omit them).
 
 **Interface > UI scale** adjusts text and controls from 100% to 200%, in addition to
 automatic monitor scaling. This preference is saved for the current user and survives

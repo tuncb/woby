@@ -1,4 +1,5 @@
 #include "scene_inspector.h"
+#include "scene_dimensions.h"
 #include "ui_icon_controls.h"
 #include "ui_operations.h"
 #include "utf8_path.h"
@@ -124,10 +125,19 @@ void renderModeField(UiState& state, const char* label, const char* icon, UiObje
     ImGui::EndDisabled();
 }
 
-void drawGeometry(const UiState& state)
+void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
 {
+    const auto parts = scenePickParts(state);
+    const auto& dimensions = updateSceneDimensions(dimensionsCache, parts, state.sceneGeneration, state.sceneEditRevision);
+    if (dimensions) {
+        ImGui::TextUnformatted("Size");
+        for (size_t axis = 0; axis < 3; ++axis) {
+            ImGui::Text("%c: %.6g", static_cast<int>('X' + axis), dimensions->lengths[axis]);
+        }
+        ImGui::Spacing();
+    }
     if (state.selectedSceneObjects.size() != 1) {
-        ImGui::TextDisabled("No geometry selected");
+        if (!dimensions) { ImGui::TextDisabled("No visible geometry selected"); }
         return;
     }
     const auto id = state.selectedSceneObjects.front();
@@ -153,14 +163,14 @@ void drawGeometry(const UiState& state)
             ImGui::Text("%s: %.6g to %.6g", axis == 0 ? "X" : axis == 1 ? "Y" : "Z",
                 static_cast<double>(bounds->min[axis]), static_cast<double>(bounds->max[axis]));
         }
-    } else {
+    } else if (!dimensions) {
         ImGui::TextDisabled("No geometry selected");
     }
 }
 
 } // namespace
 
-void drawSceneInspector(UiState& state)
+void drawSceneInspector(UiState& state, SceneDimensionsCache& dimensionsCache)
 {
     if (state.selectedSceneObjects.empty()) {
         ImGui::TextDisabled("No selection");
@@ -277,9 +287,9 @@ void drawSceneInspector(UiState& state)
             }
         }
         if (drawInformationHeader("Geometry", "Geometry",
-                "Select one file or part to inspect its mesh statistics and local bounds. "
-                "For folders, select a child file or part.")) {
-            drawGeometry(state);
+                "Size includes transforms and visible selected parts.\n\n"
+                "Select one file or part to inspect its mesh statistics and original local bounds.")) {
+            drawGeometry(state, dimensionsCache);
         }
     }
     ImGui::EndChild();
