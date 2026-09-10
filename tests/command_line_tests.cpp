@@ -571,3 +571,24 @@ TEST_CASE("ctl rejects incomplete or conflicting lifecycle options")
     CHECK_THROWS(parse({"woby", "ctl", "scene", "new"}));
     CHECK_THROWS(parse({"woby", "ctl", "quit"}));
 }
+
+TEST_CASE("help commands show help without launching a viewer or requiring an instance")
+{
+    for (const auto& words : std::vector<std::vector<std::string>>{
+        {"woby", "help"}, {"woby", "ctl", "help"},
+        {"woby", "--help"}, {"woby", "-h"},
+        {"woby", "ctl", "--help"}, {"woby", "ctl", "-h"}}) {
+        const auto arguments = parse(words);
+        CHECK(arguments.showHelp);
+        CHECK(arguments.control.command == woby::ControlCommand::none);
+        CHECK(arguments.update.command == woby::UpdateCommand::none);
+        CHECK_FALSE(arguments.instanceId.has_value());
+    }
+    const auto file = parse({"woby", "--file", "help"});
+    CHECK_FALSE(file.showHelp);
+    REQUIRE(file.inputPaths.size() == 1);
+    CHECK(file.inputPaths[0].path == "help");
+    const auto view = parse({"woby", "ctl", "--instance", "main", "view", "create", "--name", "help"});
+    CHECK_FALSE(view.showHelp);
+    CHECK(view.control.operation.name == "help");
+}

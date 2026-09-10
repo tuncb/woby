@@ -372,7 +372,8 @@ See [the local HTTP API](doc/automation.md) for direct scripting and discovery d
 CTL also supports scene inspection, visibility/render modes, transforms, appearance,
 camera navigation, model and importer management, diagnostics, and pane controls.
 See the [complete command reference](doc/ctl-commands.md), or run `woby ctl --help`.
-Run `woby.exe --help` for command syntax.
+Run `woby.exe help` (or `woby.exe --help`) for command syntax.
+`woby.exe ctl help` also prints the complete help without a running instance.
 
 Discover loaded folders, files, and mesh groups, then resolve an object by its ID:
 

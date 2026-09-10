@@ -101,6 +101,10 @@ std::string parseInstanceId(int argc, char** argv, int& index)
 AppArguments parseControlArguments(int argc, char** argv)
 {
     AppArguments arguments;
+    if (argc > 2 && std::string(argv[2]) == "help") {
+        arguments.showHelp = true;
+        return arguments;
+    }
     for (int index = 2; index < argc; ++index) {
         if (std::string(argv[index]) == "--help" || std::string(argv[index]) == "-h") {
             arguments.showHelp = true;
@@ -276,6 +280,11 @@ bool validInstanceId(const std::string& value)
 
 AppArguments parseCommandLine(int argc, char** argv)
 {
+    if (argc > 1 && std::string(argv[1]) == "help") {
+        AppArguments arguments;
+        arguments.showHelp = true;
+        return arguments;
+    }
     if (argc > 1 && std::string(argv[1]) == "update") {
         AppArguments arguments;
         arguments.update.command = UpdateCommand::install;
