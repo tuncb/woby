@@ -1,5 +1,6 @@
 #include "ui_operations.h"
 #include "scene_history.h"
+#include "automation_registry.h"
 
 #include <doctest/doctest.h>
 #include <algorithm>
@@ -7,22 +8,34 @@
 #include <limits>
 
 namespace {
-woby::UiFileState viewFile()
+struct ViewDirectory {
+    std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+        / ("woby-views-" + woby::automationRandomHex(8));
+
+    ViewDirectory() { std::filesystem::create_directory(root); }
+    ~ViewDirectory()
+    {
+        std::error_code ignored;
+        std::filesystem::remove_all(root, ignored);
+    }
+};
+
+woby::UiFileState viewFile(const std::filesystem::path& root = ".")
 {
     woby::Mesh mesh;
     mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
     mesh.indices = {0, 1, 2};
     mesh.nodes.push_back({"part", 0, 3});
     mesh.bounds = woby::calculateBounds(mesh.vertices);
-    return woby::createUiFileState("same.obj", std::move(mesh), 0);
+    return woby::createUiFileState(root / "same.obj", std::move(mesh), 0);
 }
 
-woby::UiState viewState()
+woby::UiState viewState(const std::filesystem::path& root = ".")
 {
     woby::UiState state;
-    state.files.push_back(viewFile());
-    state.files.push_back(viewFile());
-    woby::appendFolderTreeSceneNode(state, ".", 0, 2);
+    state.files.push_back(viewFile(root));
+    state.files.push_back(viewFile(root));
+    woby::appendFolderTreeSceneNode(state, root, 0, 2);
     const auto comparison = woby::createComparison(state);
     woby::setComparisonObjects(state, {state.files[0].groupSettings[0].objectId}, woby::ComparisonSide::a, true, comparison);
     woby::setComparisonObjects(state, {state.files[1].groupSettings[0].objectId}, woby::ComparisonSide::b, true, comparison);
@@ -130,7 +143,8 @@ TEST_CASE("view names updates deletion and no-op operations are independent scen
 
 TEST_CASE("views persist with document references across fresh IDs and duplicate object names")
 {
-    auto state = viewState();
+    const ViewDirectory directory;
+    auto state = viewState(directory.root);
     state.files[0].groupSettings[0].color = {.2f, .4f, .6f, 1};
     state.files[1].groupSettings[0].color = {.8f, .6f, .4f, 1};
     state.selectedSceneObjects = {state.files[1].groupSettings[0].objectId, state.files[0].objectId};
@@ -139,11 +153,10 @@ TEST_CASE("views persist with document references across fresh IDs and duplicate
     state.camera.distance = 73;
     woby::createView(state);
     const auto document = woby::createSceneDocument(state);
-    const auto path = std::filesystem::temp_directory_path() / "woby-views-roundtrip.woby";
+    const auto path = directory.root / "roundtrip.woby";
     woby::writeSceneDocument(path, document);
     const auto read = woby::readSceneDocument(path);
     CHECK(read.views == document.views);
-    std::filesystem::remove(path);
     auto loaded = woby::prepareSceneReplacement(state, state.files, read);
     REQUIRE(loaded.views.size() == 2);
     CHECK(loaded.views[0].id != state.views[0].id);
@@ -283,14 +296,14 @@ TEST_CASE("view CRUD and reference pruning are undoable with scene content")
 
 TEST_CASE("legacy scenes have no views and malformed view camera or child tables are rejected")
 {
-    const auto path = std::filesystem::temp_directory_path() / "woby-views-malformed.woby";
+    const ViewDirectory directory;
+    const auto path = directory.root / "malformed.woby";
     { std::ofstream out(path); out << "version = 6\n"; }
     CHECK(woby::readSceneDocument(path).views.empty());
     { std::ofstream out(path); out << "version = 7\n[[views.objects]]\nindex = 0\n"; }
     CHECK_THROWS((void)woby::readSceneDocument(path));
     { std::ofstream out(path); out << "version = 7\n[[views]]\n[views.camera]\ndistance = nan\n"; }
     CHECK_THROWS((void)woby::readSceneDocument(path));
-    std::filesystem::remove(path);
 }
 
 TEST_CASE("view application undoes appearance and navigation together without merging adjacent edits")

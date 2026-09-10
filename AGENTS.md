@@ -6,6 +6,12 @@
 
 - Run unit tests and make sure they compile without warnings and all tests pass.
 
+## Filesystem test rules
+
+- Assume the repository/build directory and the system temporary directory are on different Windows drives. Never rely on them sharing a drive or on the test's current working directory.
+- For save/load and relative-path tests, derive all related paths (scene files, model files, and folder roots, including synthetic fixture paths) from one unique temporary directory per test. Pass absolute paths unless relative input is specifically under test; in that case, establish an explicit base directory on the same drive.
+- Clean up temporary fixtures after each test, including on failure. Test cross-drive rejection separately when intentional; do not weaken production path validation to accommodate a fixture.
+
 ## Code changes
 - Build woby project in debug mode, the build should succeed without any warnings.
 - If there is already a woby instance open, terminate the process and re-try.
