@@ -224,7 +224,8 @@ Json controlSceneInfo(const UiState& state)
     modes["vertices"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::vertices), groups);
     return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"comparisonCount", state.comparisons.size()}, {"groupCount", groups},
         {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles},
-        {"showGrid", state.showGrid}, {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
+        {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
+        {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
         {"masterVertexPointSize", state.masterVertexPointSize}, {"renderModes", modes}, {"bounds", boundsInfo(state.sceneBounds)}};
 }
 
@@ -416,6 +417,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         else { throw std::invalid_argument("Vertex size supports scene, file, or group."); }
         break;
     case A::grid: setShowGrid(state, *command.visible); break;
+    case A::dimensions: setShowDimensions(state, *command.visible); break;
     case A::origin: setShowOrigin(state, *command.visible); break;
     case A::upAxis: setSceneUpAxis(state, command.axis == "y" ? SceneUpAxis::y : SceneUpAxis::z); break;
     case A::cameraFrame: frameCameraToScene(state); return {{"camera", controlCameraInfo(state)}};

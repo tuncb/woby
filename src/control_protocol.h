@@ -13,7 +13,7 @@ namespace woby {
 enum class ControlAction {
     status, capabilities, sceneInfo, sceneTree, sceneBounds, sceneUndo, sceneRedo,
     visibility, render, transformGet, transformSet, transformReset,
-    opacity, colorSet, colorReset, vertexSize, grid, origin, upAxis,
+    opacity, colorSet, colorReset, vertexSize, grid, dimensions, origin, upAxis,
     cameraGet, cameraFrame, cameraOrbit, cameraPan, cameraRoll, cameraDolly, cameraMove,
     modelAdd, modelRemove, folderAdd, importersList, importersAdd, importersScan,
     importersForget, stats, performance, pane,

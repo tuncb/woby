@@ -136,6 +136,7 @@ void setShowOrigin(UiState& state, bool visible);
 void toggleShowOrigin(UiState& state);
 void setShowGrid(UiState& state, bool visible);
 void toggleShowGrid(UiState& state);
+void setShowDimensions(UiState& state, bool visible);
 void setSceneUpAxis(UiState& state, SceneUpAxis upAxis);
 void toggleSceneUpAxis(UiState& state);
 

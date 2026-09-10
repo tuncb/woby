@@ -1,4 +1,5 @@
 #include "scene_renderer.h"
+#include "scene_dimensions.h"
 
 #include <bx/math.h>
 
@@ -220,39 +221,6 @@ void submitPointSpriteRange(
     bgfx::setIndexBuffer(mesh.pointSpriteIndexBuffer, indexOffset, indexCount);
     bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, 0u));
     bgfx::submit(viewId, program);
-}
-
-float helperGridExtent(const Bounds& bounds, SceneUpAxis upAxis)
-{
-    const float secondMin = upAxis == SceneUpAxis::y ? bounds.min[2] : bounds.min[1];
-    const float secondMax = upAxis == SceneUpAxis::y ? bounds.max[2] : bounds.max[1];
-    const float extent = std::max({
-        std::abs(bounds.min[0]),
-        std::abs(bounds.max[0]),
-        std::abs(secondMin),
-        std::abs(secondMax),
-        defaultDisplayBoundsMax,
-    });
-    return std::max(extent, 0.001f);
-}
-
-float helperGridSpacing(float extent)
-{
-    constexpr float targetIntervals = 20.0f;
-    const float rawSpacing = std::max((extent * 2.0f) / targetIntervals, 0.001f);
-    const float magnitude = std::pow(10.0f, std::floor(std::log10(rawSpacing)));
-    const float normalized = rawSpacing / magnitude;
-    if (normalized <= 1.0f) {
-        return magnitude;
-    }
-    if (normalized <= 2.0f) {
-        return 2.0f * magnitude;
-    }
-    if (normalized <= 5.0f) {
-        return 5.0f * magnitude;
-    }
-
-    return 10.0f * magnitude;
 }
 
 void appendHelperLine(
@@ -737,10 +705,10 @@ void submitSceneHelpers(
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform)
 {
-    const float extent = helperGridExtent(state.sceneBounds, state.upAxis);
-    const float spacing = helperGridSpacing(extent);
-    const int lineRadius = std::max(1, static_cast<int>(std::ceil(extent / spacing)));
-    const float snappedExtent = static_cast<float>(lineRadius) * spacing;
+    const auto grid = sceneGrid(state.sceneBounds, state.upAxis);
+    const float spacing = grid.spacing;
+    const int lineRadius = grid.radius;
+    const float snappedExtent = grid.extent;
 
     if (state.showGrid) {
         std::vector<HelperLineVertex> gridLines;

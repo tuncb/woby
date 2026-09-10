@@ -187,6 +187,7 @@ and `showNonManifold`. All commands use the existing authenticated `/rpc` endpoi
 | `vertex-size set scene --pixels N` | `vertex-size.set` | Global base point size, clamped to 1–40 pixels. |
 | `vertex-size set OBJECT_ID --scale S` | `vertex-size.set` | File/group multiplier, clamped to 0.1–10. No folder multiplier. |
 | `grid set --visible BOOL` | `grid.set` | Ground-grid visibility. |
+| `dimensions set --visible BOOL` | `dimensions.set` | Selected-geometry dimension visibility; saved and undoable. Values use raw coordinates. |
 | `origin set --visible BOOL` | `origin.set` | Origin-axis visibility. |
 | `up-axis set y|z` | `up-axis.set` | Scene up-axis; also reframes the camera. |
 

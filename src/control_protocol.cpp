@@ -32,6 +32,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::colorReset, "color.reset", "color reset", "target", {}, {}, false, true},
         {ControlAction::vertexSize, "vertex-size.set", "vertex-size set", "target", {"pixels", "scale"}, {}, true, true},
         {ControlAction::grid, "grid.set", "grid set", {}, {"visible"}, {"visible"}, false, true},
+        {ControlAction::dimensions, "dimensions.set", "dimensions set", {}, {"visible"}, {"visible"}, false, true},
         {ControlAction::origin, "origin.set", "origin set", {}, {"visible"}, {"visible"}, false, true},
         {ControlAction::upAxis, "up-axis.set", "up-axis set", "axis", {}, {}, false, true},
         {ControlAction::cameraGet, "camera.get", "camera get", {}, {}, {}},

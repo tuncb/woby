@@ -111,6 +111,7 @@ struct SceneDocument {
     float masterVertexPointSize = 4.0f;
     bool showOrigin = true;
     bool showGrid = true;
+    bool showDimensions = false;
     SceneUpAxis upAxis = SceneUpAxis::z;
     std::vector<SceneFileRecord> files;
     std::vector<SceneNodeRecord> nodes;

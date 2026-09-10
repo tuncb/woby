@@ -122,6 +122,7 @@ struct UiState {
     bool isDirty = false;
     bool showOrigin = false;
     bool showGrid = false;
+    bool showDimensions = false;
     SceneUpAxis upAxis = SceneUpAxis::z;
     float masterVertexPointSize = defaultMasterVertexPointSize;
     // Persisted on Save/Open, but navigation never dirties the scene or enters history.

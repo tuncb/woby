@@ -961,6 +961,14 @@ void toggleShowGrid(UiState& state)
     setShowGrid(state, !state.showGrid);
 }
 
+void setShowDimensions(UiState& state, bool visible)
+{
+    if (state.showDimensions != visible) {
+        state.showDimensions = visible;
+        markSceneDirty(state);
+    }
+}
+
 void setSceneUpAxis(UiState& state, SceneUpAxis upAxis)
 {
     if (state.upAxis != upAxis) {
@@ -1241,6 +1249,7 @@ UiState prepareSceneReplacement(const UiState& current,
     setSceneUpAxis(prepared, document.upAxis);
     setShowOrigin(prepared, document.showOrigin);
     setShowGrid(prepared, document.showGrid);
+    setShowDimensions(prepared, document.showDimensions);
     setMasterVertexPointSize(prepared, document.masterVertexPointSize);
     for (const auto& record : document.comparisons) {
         UiComparison comparison;

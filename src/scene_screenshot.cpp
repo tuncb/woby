@@ -1,4 +1,5 @@
 #include "scene_screenshot.h"
+#include "scene_scale_overlay.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
 #include "comparison_legend.h"
@@ -261,6 +262,7 @@ void submitSceneScreenshotCapture(
         || options.direction || options.tolerance);
     const auto panelWidth = annotations ? static_cast<uint16_t>(screenshot.width * .43f) : uint16_t{0};
     const auto sceneWidth = static_cast<uint16_t>(screenshot.width - panelWidth);
+    const bool scaleOverlay = !options.resultsOnly && (ui.showGrid || ui.showDimensions);
     // Build and validate all annotations before submitting a readback. Never clip metadata silently.
     ImDrawList annotationDraw(ImGui::GetDrawListSharedData());
     annotationDraw._ResetForNewFrame();
@@ -304,6 +306,14 @@ void submitSceneScreenshotCapture(
                 }
             }
         }
+    }
+    if (scaleOverlay) {
+        auto parts = scenePickParts(ui);
+        if (comparison) { appendVisibleComparisonPickParts(parts, ui, *comparison); }
+        const auto dimensions = ui.showDimensions ? sceneDimensions(parts) : std::nullopt;
+        const auto pickView = scenePickView(camera, ui.upAxis, sceneBounds,
+            sceneWidth, screenshot.height, homogeneousDepth, 1);
+        drawSceneScaleOverlay(annotationDraw, ui, dimensions, pickView, {0, 0}, 1, 20);
     }
     annotationDraw.PopTexture();
     annotationDraw.PopClipRect();
@@ -357,7 +367,7 @@ void submitSceneScreenshotCapture(
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
     }
-    if (annotations) {
+    if (annotations || scaleOverlay) {
         // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.
         // Annotation text can grow the font atlas during this frame, so use the
         // textures actually referenced by this draw list, including new atlases.

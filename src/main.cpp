@@ -14,6 +14,7 @@
 #include "performance_log.h"
 #include "scene_file.h"
 #include "scene_inspector.h"
+#include "scene_scale_overlay.h"
 #include "scene_lifecycle.h"
 #include "scene_history.h"
 #include "scene_history_load.h"
@@ -605,7 +606,8 @@ void drawPropertiesPaneToggleButton(woby::UiState& state)
     }
 }
 
-void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes, const CanvasLayout& layout)
+void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes,
+    const CanvasLayout& layout, woby::SceneDimensionsCache& dimensionsCache)
 {
     if (!state.propertiesPaneVisible) { return; }
     ImGui::SetNextWindowBgAlpha(1.0f);
@@ -620,7 +622,7 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         if (woby::selectedComparison(state)) {
             woby::drawComparisonPanelContents(state, runtimes);
         } else {
-            woby::drawSceneInspector(state);
+            woby::drawSceneInspector(state, dimensionsCache);
         }
     }
     ImGui::End();
@@ -2238,6 +2240,7 @@ int main(int argc, char** argv)
         woby::FrameTimings lastFrameTimings;
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
+        woby::SceneDimensionsCache dimensionsCache;
         woby::ScenePointerGesture scenePointer;
         std::optional<woby::ScenePickView> presentedPickView;
         woby::SceneViewport presentedViewport;
@@ -2909,6 +2912,19 @@ int main(int argc, char** argv)
                     ImGui::EndChild();
                 }
 
+                if (scenePaneOpen) {
+                    bool showDimensions = ui.showDimensions;
+                    if (ImGui::Checkbox("Show dimensions", &showDimensions)) {
+                        woby::setShowDimensions(ui, showDimensions);
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Size of visible selected geometry, including parent transforms.");
+                    }
+                    if (showDimensions && ui.selectedSceneObjects.empty()) {
+                        ImGui::TextDisabled("Select a mesh to see its dimensions.");
+                    }
+                }
+
                 const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
                 if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
                 if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
@@ -2988,7 +3004,7 @@ int main(int argc, char** argv)
                 }
                 ImGui::End();
             }
-            drawPropertiesPane(ui, comparison, panelLayout);
+            drawPropertiesPane(ui, comparison, panelLayout, dimensionsCache);
             const auto settings = woby::drawSettingsDialog(ui, requestSettings);
             modalDialogOpen = modalDialogOpen || settings.open;
             if (settings.scaleChanged && !preferencePath.empty()) {
@@ -3378,6 +3394,15 @@ int main(int argc, char** argv)
                 auto selectedParts = woby::scenePickParts(ui);
                 woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
                 woby::submitSceneSelection(helperView, selectedParts, helperLayout, colorProgram, colorUniform);
+                if (ui.showDimensions) {
+                    woby::updateSceneDimensions(dimensionsCache, selectedParts, ui.sceneGeneration, ui.sceneEditRevision);
+                }
+            }
+            if (ui.showGrid || ui.showDimensions) {
+                const float pixelScale = 1.0f / currentPickView.pixelScale;
+                woby::drawSceneScaleOverlay(*ImGui::GetBackgroundDrawList(), ui,
+                    ui.selectedSceneObjects.empty() ? std::nullopt : dimensionsCache.dimensions,
+                    currentPickView, {static_cast<float>(viewport.x) * pixelScale, 0}, pixelScale, ImGui::GetFontSize());
             }
             recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
 
