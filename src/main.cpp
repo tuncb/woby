@@ -2746,20 +2746,20 @@ int main(int argc, char** argv)
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Open...##open_scene", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Open scene...##open_scene", ImVec2(actionWidth, 0.0f))) {
                         documentCommand(woby::SceneAction::open);
                     }
                     setLastItemTooltip("Open scene (Ctrl+O)");
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Save##save_scene", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Save scene##save_scene", ImVec2(actionWidth, 0.0f))) {
                         documentCommand(woby::SceneAction::save);
                     }
                     setLastItemTooltip("Save scene (Ctrl+S)");
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Save as...##save_scene_as", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Save scene as...##save_scene_as", ImVec2(actionWidth, 0.0f))) {
                         documentCommand(woby::SceneAction::saveAs);
                     }
                     setLastItemTooltip("Save scene as (Ctrl+Shift+S)");
@@ -2771,7 +2771,7 @@ int main(int argc, char** argv)
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Add folder...##add_model_folder_tree", ImVec2(actionWidth, 0.0f))) {
+                    if (ImGui::Button("Add model folder...##add_model_folder_tree", ImVec2(actionWidth, 0.0f))) {
                         showModelFolderTreeDialog(window.get(), modelFileDialogState);
                     }
                     ImGui::EndDisabled();

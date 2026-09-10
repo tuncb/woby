@@ -25,8 +25,8 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ## Getting started
 
 Undo and Redo arrow buttons sit beside Settings in the top toolbar.
-The file actions are arranged in three rows of two: **New scene** / **Open**,
-**Save** / **Save As**, and **Add models...** / **Add folder...**.
+The file actions are arranged in three rows of two: **New scene** / **Open scene...**,
+**Save scene** / **Save scene as...**, and **Add models...** / **Add model folder...**.
 New scene starts an untitled scene and asks before discarding unsaved changes.
 `Ctrl+O` opens a scene, `Ctrl+S` saves it (asking for a path for an untitled scene),
 and `Ctrl+Shift+S` opens Save As. Save As switches to the chosen destination only
