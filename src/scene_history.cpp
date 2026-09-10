@@ -157,6 +157,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
     prepared.viewerPaneVisible = current.viewerPaneVisible;
     prepared.viewerPaneWidth = current.viewerPaneWidth;
     prepared.propertiesPaneVisible = current.propertiesPaneVisible;
+    prepared.propertiesPaneWidth = current.propertiesPaneWidth;
     prepared.camera = current.camera;
     prepared.cameraInput = current.cameraInput;
     prepared.selectedSceneObjects = current.selectedSceneObjects;

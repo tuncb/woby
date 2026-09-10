@@ -28,6 +28,7 @@ void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObje
 void frameComparison(UiState& state, SceneObjectId id);
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id = invalidSceneObjectId);
 void setPropertiesPaneVisible(UiState& state, bool visible);
+void setPropertiesPaneWidth(UiState& state, float value, float minWidth, float maxWidth);
 void setScreenshotSettings(UiState& state, ScreenshotSettings settings);
 void frameComparisonBounds(UiState& state, const Bounds& bounds);
 [[nodiscard]] bool sceneObjectSelected(const UiState& state, SceneObjectId id);

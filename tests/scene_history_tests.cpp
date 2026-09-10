@@ -324,6 +324,7 @@ TEST_CASE("scene history ignores transient changes and drags that return to thei
     f.state.uiScale = 1.5f;
     f.state.viewerPaneVisible = false;
     f.state.propertiesPaneVisible = true;
+    woby::setPropertiesPaneWidth(f.state, 560.0f, 300.0f, 900.0f);
     f.state.camera.distance = 42;
     woby::selectSceneObject(f.state, f.state.files[0].objectId);
     woby::recordSceneHistory(f.history, f.state);
@@ -338,6 +339,7 @@ TEST_CASE("scene history ignores transient changes and drags that return to thei
     CHECK(f.state.uiScale == 1.5f);
     CHECK_FALSE(f.state.viewerPaneVisible);
     CHECK(f.state.propertiesPaneVisible);
+    CHECK(f.state.propertiesPaneWidth == 560.0f);
     CHECK(f.state.camera.distance == 42);
     CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.state.files[0].objectId});
 }

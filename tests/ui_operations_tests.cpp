@@ -14,6 +14,32 @@
 #include <string>
 #include <set>
 
+TEST_CASE("properties pane width is bounded and remains a session preference")
+{
+    woby::UiState state;
+    const auto document = woby::createSceneDocument(state);
+    const auto revision = state.sceneEditRevision;
+    woby::setPropertiesPaneWidth(state, 560.0f, 300.0f, 900.0f);
+    CHECK(state.propertiesPaneWidth == 560.0f);
+    woby::setPropertiesPaneVisible(state, false);
+    woby::setPropertiesPaneVisible(state, true);
+    CHECK(state.propertiesPaneWidth == 560.0f);
+    CHECK(woby::createSceneDocument(state) == document);
+    CHECK(state.sceneEditRevision == revision);
+    CHECK_FALSE(state.isDirty);
+
+    woby::setPropertiesPaneWidth(state, 100.0f, 300.0f, 900.0f);
+    CHECK(state.propertiesPaneWidth == 300.0f);
+    woby::setPropertiesPaneWidth(state, 1000.0f, 300.0f, 900.0f);
+    CHECK(state.propertiesPaneWidth == 900.0f);
+    woby::setPropertiesPaneWidth(state, std::numeric_limits<float>::quiet_NaN(), 300.0f, 900.0f);
+    CHECK(state.propertiesPaneWidth == 300.0f);
+    woby::setPropertiesPaneWidth(state, std::numeric_limits<float>::infinity(), 300.0f, 900.0f);
+    CHECK(state.propertiesPaneWidth == 300.0f);
+    woby::setPropertiesPaneWidth(state, 560.0f, 300.0f, 200.0f);
+    CHECK(state.propertiesPaneWidth == 300.0f);
+}
+
 TEST_CASE("shared properties pane follows selection without changing scene content")
 {
     woby::UiState state;

@@ -374,6 +374,7 @@ struct CanvasLayout {
     float leftWidth = 0.0f;
     float maxLeftWidth = 0.0f;
     float rightWidth = 0.0f;
+    float maxRightWidth = 0.0f;
     float rightEdge = 1.0f;
     woby::SceneViewport viewport;
 };
@@ -387,7 +388,12 @@ CanvasLayout canvasLayout(SDL_Window* window, const woby::UiState& state)
     layout.width = static_cast<float>(std::max(windowWidth, 1));
     layout.height = static_cast<float>(std::max(windowHeight, 1));
     layout.rightEdge = layout.width;
-    layout.rightWidth = std::min(uiSize(420.0f), layout.width * 0.42f);
+    const float reservedScene = std::min(minSceneViewportWidth, layout.width * 0.2f);
+    const float reservedLeft = state.viewerPaneVisible
+        ? std::min(state.viewerPaneWidth, std::max(layout.width - reservedScene - uiSize(300.0f), 0.0f))
+        : 0.0f;
+    layout.maxRightWidth = std::max(layout.width - reservedLeft - reservedScene, 0.0f);
+    layout.rightWidth = std::clamp(state.propertiesPaneWidth, 0.0f, layout.maxRightWidth);
     const float reservedRight = state.propertiesPaneVisible ? layout.width - layout.rightEdge + layout.rightWidth : 0.0f;
     layout.maxLeftWidth = std::max(layout.width - reservedRight
         - std::min(minSceneViewportWidth, layout.width * 0.2f), 0.0f);
@@ -567,6 +573,7 @@ void updateUiScale(SDL_Window* window, woby::UiState& state, const ImGuiStyle& b
     if (style.FontScaleMain == scale) { return; }
     const float ratio = scale / style.FontScaleMain;
     woby::setViewerPaneWidth(state, state.viewerPaneWidth * ratio, 380.0f * scale, 10000.0f);
+    woby::setPropertiesPaneWidth(state, state.propertiesPaneWidth * ratio, 300.0f * scale, 10000.0f);
     style = woby::scaledUiStyle(baseStyle, scale);
 }
 
@@ -609,10 +616,14 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
 {
     if (!state.propertiesPaneVisible) { return; }
     ImGui::SetNextWindowBgAlpha(1.0f);
-    ImGui::SetNextWindowPos(ImVec2(layout.rightEdge - layout.rightWidth, 0.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(layout.rightEdge, 0.0f), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
     ImGui::SetNextWindowSize(ImVec2(layout.rightWidth, layout.height), ImGuiCond_Always);
+    ImGui::SetNextWindowSizeConstraints(
+        ImVec2(std::min(uiSize(300.0f), layout.rightWidth), layout.height),
+        ImVec2(layout.maxRightWidth, layout.height));
     if (ImGui::Begin("##PropertiesPane", nullptr, ImGuiWindowFlags_NoTitleBar
-        | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings)) {
+        | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+        woby::setPropertiesPaneWidth(state, ImGui::GetWindowSize().x, uiSize(300.0f), layout.maxRightWidth);
         drawPropertiesPaneToggleButton(state);
         ImGui::SameLine();
         ImGui::TextUnformatted("Properties");

@@ -1227,6 +1227,7 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.viewerPaneWidth = current.viewerPaneWidth;
     prepared.viewerPaneVisible = current.viewerPaneVisible;
     prepared.propertiesPaneVisible = current.propertiesPaneVisible;
+    prepared.propertiesPaneWidth = current.propertiesPaneWidth;
     prepared.nextObjectId = current.nextObjectId;
     prepared.sceneGeneration = current.sceneGeneration + 1;
     prepared.files = std::move(files);
@@ -1319,6 +1320,12 @@ void setViewerPaneWidth(UiState& state, float value, float minWidth, float maxWi
         finiteOr(value, minWidth),
         minWidth,
         std::max(minWidth, maxWidth));
+}
+
+void setPropertiesPaneWidth(UiState& state, float value, float minWidth, float maxWidth)
+{
+    state.propertiesPaneWidth = std::clamp(
+        finiteOr(value, minWidth), minWidth, std::max(minWidth, maxWidth));
 }
 
 void setViewerPaneVisible(UiState& state, bool visible)

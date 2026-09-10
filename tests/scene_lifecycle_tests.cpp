@@ -359,12 +359,14 @@ TEST_CASE("replacement assigns fresh IDs while preserving session preferences")
     const auto oldId = fixture.state.files[0].objectId;
     fixture.state.viewerPaneVisible = false;
     fixture.state.viewerPaneWidth = 333.0f;
+    woby::setPropertiesPaneWidth(fixture.state, 560.0f, 300.0f, 900.0f);
     const auto document = woby::createSceneDocument(fixture.state);
     auto replacement = woby::prepareSceneReplacement(fixture.state, fixture.state.files, document);
     CHECK_FALSE(woby::findSceneObject(replacement, oldId));
     CHECK(replacement.files[0].objectId > oldId);
     CHECK_FALSE(replacement.viewerPaneVisible);
     CHECK(replacement.viewerPaneWidth == 333.0f);
+    CHECK(replacement.propertiesPaneWidth == 560.0f);
     CHECK_FALSE(replacement.isDirty);
     const auto freshId = replacement.files[0].objectId;
     const auto allocator = replacement.nextObjectId;
