@@ -291,7 +291,13 @@ woby update
 woby update --status
 ```
 
-Close viewers using that installation before updating. The updater downloads the
+Settings also provides **Check for updates** and, for portable releases,
+**Install update and close**. Save scene changes and close other viewers using
+the same installation first. Woby downloads and verifies the update in the
+background, then closes so the helper can install it. Reopen Woby after the
+installation finishes. Development builds can check but cannot install updates.
+
+For command-line installation, close viewers using that installation first. The updater downloads the
 latest stable package for the executable's platform, verifies SHA-256 and the
 package manifest, and replaces package-owned files while preserving unrelated
 scenes and plugins. An external helper finishes installation after the CLI exits;

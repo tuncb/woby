@@ -34,6 +34,22 @@ libraries on Windows. The helper runs without opening an extra console window.
 
 ## Installation requirements
 
+### Updating from Settings
+
+Open **Settings**, then choose **Check for updates**. The dialog shows the installed
+version, latest release, and any connection or validation error. Checks run in the
+background and can also be used from development builds.
+
+For a managed portable release with a newer version available, choose **Install
+update and close**. Save scene changes first; the button is disabled while the
+scene is dirty. Close other viewers using the same deployment. The dialog stays
+open while Woby downloads and verifies the package. Errors leave the app open;
+check again to retry. Once the helper is ready, Woby closes and installation
+finishes in the background. Reopen Woby afterward; `woby update --status` reports
+the final result. There is no automatic restart or automatic update check.
+
+### Deployment requirements
+
 Install the first updater-enabled release manually, including its executable,
 helper, libraries, assets, and `woby-manifest.json`. Build outputs intentionally
 have no manifest and refuse installation, although `--check` works there.

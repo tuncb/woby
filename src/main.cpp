@@ -2061,7 +2061,11 @@ int main(int argc, char** argv)
             return 0;
         }
 
-        const auto deploymentGuard = woby::guardViewerDeployment();
+        auto deploymentGuard = woby::guardViewerDeployment();
+        woby::UpdateUiRuntime updateRuntime;
+        updateRuntime.state.currentVersion = WOBY_VERSION;
+        updateRuntime.state.managedDeployment = std::filesystem::is_regular_file(
+            woby::updateExecutablePath().parent_path() / woby::packageManifestName);
         automation = woby::startAutomation(commandLine.instanceId);
         const std::string instanceId = woby::automationInstanceId(*automation);
 
@@ -2291,6 +2295,11 @@ int main(int argc, char** argv)
         bool documentShortcutHeld = false;
         woby::setAutomationReady(*automation);
         while (running) {
+            woby::pollUiUpdate(updateRuntime);
+            if (updateRuntime.state.closeRequested) {
+                woby::requestQuit(ui);
+                break;
+            }
             woby::FrameTimings frameTimings;
             frameTimings.frameIndex = ++frameIndex;
             const auto frameStart = woby::PerformanceClock::now();
@@ -3041,8 +3050,11 @@ int main(int argc, char** argv)
                 ImGui::End();
             }
             drawPropertiesPane(ui, comparison, panelLayout, dimensionsCache);
-            const auto settings = woby::drawSettingsDialog(ui, requestSettings);
+            const auto settings = woby::drawSettingsDialog(ui, requestSettings, updateRuntime.state);
             modalDialogOpen = modalDialogOpen || settings.open;
+            if (settings.updateCommand != woby::UpdateCommand::none) {
+                woby::startUiUpdate(updateRuntime, settings.updateCommand, ui.isDirty, deploymentGuard);
+            }
             if (settings.scaleChanged && !preferencePath.empty()) {
                 std::ofstream preference(preferencePath);
                 if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
@@ -3513,6 +3525,8 @@ int main(int argc, char** argv)
             }
         }
 
+        updateRuntime.worker.request_stop();
+        if (updateRuntime.worker.joinable()) { updateRuntime.worker.join(); }
         automation.reset();
         automationComparison.reset();
         backgroundLoad.cancelRequested.store(true);

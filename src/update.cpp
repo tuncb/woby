@@ -30,7 +30,12 @@ size_t writeDownload(char* data, size_t size, size_t count, void* user) noexcept
     return bytes;
 }
 
-void download(const std::string& url, std::ostream& output, uint64_t limit)
+int cancelDownload(void* user, curl_off_t, curl_off_t, curl_off_t, curl_off_t) noexcept
+{
+    return static_cast<std::stop_token*>(user)->stop_requested() ? 1 : 0;
+}
+
+void download(const std::string& url, std::ostream& output, uint64_t limit, std::stop_token cancellation)
 {
     if (curl_global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK) { throw std::runtime_error("Cannot initialize HTTPS."); }
     const auto cleanup = [](void*) { curl_global_cleanup(); };
@@ -63,6 +68,9 @@ void download(const std::string& url, std::ostream& output, uint64_t limit)
     option(CURLOPT_NOSIGNAL, 1L);
     option(CURLOPT_WRITEFUNCTION, &writeDownload);
     option(CURLOPT_WRITEDATA, &sink);
+    option(CURLOPT_NOPROGRESS, 0L);
+    option(CURLOPT_XFERINFOFUNCTION, &cancelDownload);
+    option(CURLOPT_XFERINFODATA, &cancellation);
     std::unique_ptr<curl_slist, decltype(&curl_slist_free_all)> headers(
         curl_slist_append(nullptr, "Accept: application/vnd.github+json"), curl_slist_free_all);
     if (!headers) { throw std::runtime_error("Cannot configure GitHub headers."); }
@@ -115,15 +123,16 @@ void copyHelper(const std::filesystem::path& root, const std::filesystem::path& 
 }
 } // namespace
 
-int runUpdateCommand(const UpdateArguments& arguments, const std::string& currentVersion)
+UpdateResult executeUpdate(const UpdateArguments& arguments, const std::string& currentVersion,
+    DeploymentOwner* installationLock, std::stop_token cancellation)
 {
     try {
+        if (arguments.command == UpdateCommand::none) { throw std::runtime_error("No update action selected."); }
         const auto root = updateExecutablePath().parent_path();
         requireUpdatePath(root, ".woby-update/status.json");
         if (arguments.command == UpdateCommand::status) {
             if (!std::filesystem::exists(root / ".woby-update/status.json")) {
-                printResult({{"state", "none"}, {"message", "No update has been started for this deployment."}}, arguments.json);
-                return 0;
+                return {0, {{"state", "none"}, {"message", "No update has been started for this deployment."}}};
             }
             auto status = readUpdateJson(root / ".woby-update/status.json");
             const auto state = status.at("state").get<std::string>();
@@ -136,8 +145,7 @@ int runUpdateCommand(const UpdateArguments& arguments, const std::string& curren
                     + " If interrupted, run: \"" + pathToUtf8(job / "helper" / updateExecutableName(true))
                     + "\" --recover \"" + pathToUtf8(root) + "\" \"" + pathToUtf8(job) + "\"";
             }
-            printResult(status, arguments.json);
-            return state == "completed" || state == "none" ? 0 : state == "failed" || state == "recovery-required" ? 1 : 2;
+            return {state == "completed" || state == "none" ? 0 : state == "failed" || state == "recovery-required" ? 1 : 2, std::move(status)};
         }
         DeploymentOwner lock(nullptr, releaseDeploymentLock);
         PackageManifest installed;
@@ -145,7 +153,11 @@ int runUpdateCommand(const UpdateArguments& arguments, const std::string& curren
             if (!std::filesystem::exists(root / packageManifestName)) {
                 throw std::runtime_error("This is not a managed portable deployment. Manually install a release containing woby-manifest.json before using update. Build directories cannot update themselves.");
             }
-            lock = lockDeployment(root, true);
+            if (installationLock) {
+                if (!*installationLock || !(*installationLock)->exclusive) {
+                    throw std::runtime_error("Installation requires an exclusive deployment lock.");
+                }
+            } else { lock = lockDeployment(root, true); }
             std::filesystem::create_directories(root / ".woby-update");
             if (std::filesystem::exists(root / ".woby-update/status.json")) {
                 const auto previous = readUpdateJson(root / ".woby-update/status.json");
@@ -159,19 +171,18 @@ int runUpdateCommand(const UpdateArguments& arguments, const std::string& curren
             validateUpdatePackage(root, installed);
         }
         std::ostringstream metadata;
-        download("https://api.github.com/repos/tuncb/woby/releases/latest", metadata, 4 * 1024 * 1024);
+        download("https://api.github.com/repos/tuncb/woby/releases/latest", metadata, 4 * 1024 * 1024, cancellation);
         const auto release = parseUpdateRelease(metadata.str(), updatePlatform());
         const bool newer = parseUpdateVersion(release.version) > parseUpdateVersion(currentVersion);
         nlohmann::json result = {{"current", currentVersion}, {"latest", release.version}, {"deployment", pathToUtf8(root)},
             {"updateAvailable", newer}, {"state", newer ? "available" : "current"},
             {"message", newer ? "Woby " + release.version + " is available (installed " + currentVersion + ")." : "Woby " + currentVersion + " is up to date; no downgrade will be installed."}};
-        if (!newer || arguments.command == UpdateCommand::check) { printResult(result, arguments.json); return 0; }
+        if (!newer || arguments.command == UpdateCommand::check) { return {0, std::move(result)}; }
         const auto job = createJob(root);
         try {
-            if (!arguments.json) { std::fprintf(stderr, "Downloading Woby %s...\n", release.version.c_str()); }
             const auto archive = job / "download";
             std::ofstream output(archive, std::ios::binary);
-            download(release.url, output, release.size);
+            download(release.url, output, release.size, cancellation);
             output.close();
             if (!output || std::filesystem::file_size(archive) != release.size || updateSha256(archive) != release.sha256) {
                 throw std::runtime_error("Downloaded release failed size or SHA-256 verification.");
@@ -179,6 +190,7 @@ int runUpdateCommand(const UpdateArguments& arguments, const std::string& curren
             extractUpdateArchive(archive, job / "package", updatePlatform());
             if (readPackageManifest(job / "package").version != release.version) { throw std::runtime_error("Package version does not match GitHub release tag."); }
             copyHelper(root, job, installed);
+            if (cancellation.stop_requested()) { throw std::runtime_error("Update canceled."); }
             writeUpdateStatus(root, "pending", "Installing Woby " + release.version + ".", job);
             launchUpdateHelper(root, job);
         } catch (const std::exception& error) {
@@ -187,12 +199,17 @@ int runUpdateCommand(const UpdateArguments& arguments, const std::string& curren
         }
         result["state"] = "pending";
         result["message"] = "Update handed to helper. Run 'woby update --status' to confirm completion.";
-        printResult(result, arguments.json);
-        return 2;
+        return {2, std::move(result)};
     } catch (const std::exception& error) {
-        if (arguments.json) { printResult({{"state", "failed"}, {"message", error.what()}, {"error", error.what()}}, true); }
-        else { std::fprintf(stderr, "%s\n", error.what()); }
-        return 1;
+        return {1, {{"state", "failed"}, {"message", error.what()}, {"error", error.what()}}};
     }
+}
+int runUpdateCommand(const UpdateArguments& arguments, const std::string& currentVersion)
+{
+    const auto result = executeUpdate(arguments, currentVersion);
+    if (result.exitCode == 1 && !arguments.json) {
+        std::fprintf(stderr, "%s\n", result.data.at("message").get<std::string>().c_str());
+    } else { printResult(result.data, arguments.json); }
+    return result.exitCode;
 }
 } // namespace woby

@@ -425,6 +425,65 @@ TEST_CASE("Settings toolbar opens a dialog that closes and reopens without chang
     CHECK(fixture.state.uiScale == 1.5f);
 }
 
+TEST_CASE("Settings update controls emit actions and guard dirty and busy installations")
+{
+    KeyboardFixture fixture;
+    woby::UpdateUiState update;
+    update.currentVersion = "1.0.0";
+    update.managedDeployment = true;
+    update.available = true;
+    bool requestOpen = true;
+    woby::SettingsDialogResult result;
+    const auto frame = [&]() {
+        ImGui::NewFrame();
+        result = woby::drawSettingsDialog(fixture.state, requestOpen, update);
+        requestOpen = false;
+        ImGui::EndFrame();
+    };
+    frame();
+    frame();
+    auto* dialog = ImGui::FindWindowByName("Settings");
+    REQUIRE(dialog != nullptr);
+    const auto activate = [&](const char* label) {
+        ImGui::ActivateItemByID(dialog->GetID(label));
+        frame();
+    };
+    activate("Check for updates");
+    CHECK(result.updateCommand == woby::UpdateCommand::check);
+    frame();
+    CHECK(result.updateCommand == woby::UpdateCommand::none);
+    fixture.state.isDirty = true;
+    activate("Install update and close");
+    CHECK(result.updateCommand == woby::UpdateCommand::none);
+    fixture.state.isDirty = false;
+    activate("Install update and close");
+    CHECK(result.updateCommand == woby::UpdateCommand::install);
+    CHECK(result.open);
+    update.managedDeployment = false;
+    activate("Install update and close");
+    CHECK(result.updateCommand == woby::UpdateCommand::none);
+    update.managedDeployment = true;
+    update.activeCommand = woby::UpdateCommand::install;
+    activate("Check for updates");
+    CHECK(result.updateCommand == woby::UpdateCommand::none);
+    activate("Install update and close");
+    CHECK(result.updateCommand == woby::UpdateCommand::none);
+    activate("Close");
+    frame();
+    CHECK(result.open);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+    frame();
+    frame();
+    CHECK(result.open);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, false);
+    frame();
+    update.activeCommand = woby::UpdateCommand::none;
+    activate("Close");
+    frame();
+    CHECK_FALSE(result.open);
+    CHECK_FALSE(fixture.state.isDirty);
+}
+
 TEST_CASE("Settings scale dropdown applies every option and Escape dismisses the dropdown first")
 {
     for (int option = 0; option < 5; ++option) {

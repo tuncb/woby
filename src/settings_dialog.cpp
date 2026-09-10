@@ -15,15 +15,16 @@ bool drawSettingsButton(bool disabled)
         RenderModeState::off, disabled);
 }
 
-SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen)
+SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen, const UpdateUiState& update)
 {
     if (requestOpen) { ImGui::OpenPopup("Settings"); }
     const auto* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(ImVec2(uiSize(320.0f), 0.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(uiSize(400.0f), 0.0f), ImGuiCond_Always);
+    const bool installing = update.activeCommand == UpdateCommand::install || update.closeRequested;
     bool open = true;
     SettingsDialogResult result;
-    if (ImGui::BeginPopupModal("Settings", &open,
+    if (ImGui::BeginPopupModal("Settings", installing ? nullptr : &open,
             ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
                 | ImGuiWindowFlags_NoMove)) {
         result.open = true;
@@ -41,14 +42,34 @@ SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen)
         drawInformationIcon("interface_info", "Interface scale",
             "Text and control size, in addition to Windows display scaling. Saved for this user.");
         ImGui::Spacing();
+        ImGui::SeparatorText("Updates");
+        ImGui::Text("Installed version: %s", update.currentVersion.c_str());
+        if (!update.latestVersion.empty()) { ImGui::Text("Latest release: %s", update.latestVersion.c_str()); }
+        if (!update.message.empty()) { ImGui::TextWrapped("%s", update.message.c_str()); }
+        ImGui::BeginDisabled(updateBusy(update) || update.closeRequested);
+        if (ImGui::Button("Check for updates")) { result.updateCommand = UpdateCommand::check; }
+        ImGui::EndDisabled();
+        if (!update.managedDeployment) {
+            ImGui::TextWrapped("This build cannot install updates. Install a portable release to enable updating.");
+        } else if (update.available || installing) {
+            ImGui::TextWrapped("Save your scene and close other Woby windows using this installation. "
+                "Woby will close to install the update; reopen it after installation finishes.");
+            if (state.isDirty) { ImGui::TextWrapped("Save your scene changes before installing."); }
+            ImGui::BeginDisabled(!canInstallUpdate(update, state.isDirty));
+            if (ImGui::Button("Install update and close")) { result.updateCommand = UpdateCommand::install; }
+            ImGui::EndDisabled();
+        }
+        ImGui::Spacing();
         ImGui::Separator();
-        const bool escape = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)
+        const bool escape = !installing && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)
             && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)
             && !ImGui::IsAnyItemActive()
             && ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+        ImGui::BeginDisabled(installing);
         if (ImGui::Button("Close", ImVec2(uiSize(80.0f), 0.0f)) || escape) {
             ImGui::CloseCurrentPopup();
         }
+        ImGui::EndDisabled();
         ImGui::EndPopup();
     }
     return result;

@@ -219,6 +219,7 @@ DeploymentOwner lockDeployment(const std::filesystem::path& root, bool exclusive
 #endif
     requireUpdatePath(directory, identity + ".lock");
     DeploymentOwner lock(new DeploymentLock, releaseDeploymentLock);
+    lock->exclusive = exclusive;
     const auto file = directory / (identity + ".lock");
 #ifdef _WIN32
     const auto handle = CreateFileW(file.c_str(), exclusive ? GENERIC_READ | GENERIC_WRITE : GENERIC_READ,
@@ -236,6 +237,17 @@ DeploymentOwner lockDeployment(const std::filesystem::path& root, bool exclusive
             : "This deployment is being updated or its update lock is not writable. Try again after the update completes.");
     }
     return lock;
+}
+
+void acquireViewerUpdateLock(const std::filesystem::path& root, DeploymentOwner& guard)
+{
+    if (guard && guard->exclusive) { return; }
+    guard.reset();
+    try { guard = lockDeployment(root, true); }
+    catch (...) {
+        guard = lockDeployment(root, false);
+        throw;
+    }
 }
 
 DeploymentOwner guardViewerDeployment()

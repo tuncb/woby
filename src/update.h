@@ -5,7 +5,9 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <stop_token>
 #include <vector>
+#include <nlohmann/json.hpp>
 
 namespace woby {
 
@@ -31,7 +33,7 @@ struct PackageManifest {
     std::string platform;
     std::vector<PackageFile> files;
 };
-struct DeploymentLock { intptr_t handle = -1; };
+struct DeploymentLock { intptr_t handle = -1; bool exclusive = false; };
 void releaseDeploymentLock(DeploymentLock* lock);
 using DeploymentOwner = std::unique_ptr<DeploymentLock, decltype(&releaseDeploymentLock)>;
 
@@ -49,12 +51,22 @@ void extractUpdateArchive(const std::filesystem::path& archive, const std::files
 [[nodiscard]] std::filesystem::path updateExecutablePath();
 [[nodiscard]] DeploymentOwner lockDeployment(const std::filesystem::path& root, bool exclusive);
 [[nodiscard]] DeploymentOwner guardViewerDeployment();
+// On failure, restores a viewer lock. If restoration also fails, the caller must exit.
+void acquireViewerUpdateLock(const std::filesystem::path& root, DeploymentOwner& guard);
 void requireUpdatePath(const std::filesystem::path& root, const std::string& relative);
 void writeUpdateStatus(const std::filesystem::path& root, const std::string& state,
     const std::string& message, const std::filesystem::path& job = {});
 void applyUpdateTransaction(const std::filesystem::path& root, const std::filesystem::path& job);
 void recoverUpdateTransaction(const std::filesystem::path& root, const std::filesystem::path& job);
 [[nodiscard]] int runUpdateCommand(const UpdateArguments& arguments, const std::string& currentVersion);
+struct UpdateResult {
+    int exitCode = 0;
+    nlohmann::json data;
+};
+// A supplied installation lock must be exclusive and remain alive until process exit
+// after a pending result. This lets a GUI keep its deployment guarded during shutdown.
+[[nodiscard]] UpdateResult executeUpdate(const UpdateArguments& arguments, const std::string& currentVersion,
+    DeploymentOwner* installationLock = nullptr, std::stop_token cancellation = {});
 [[nodiscard]] int runUpdateHelper(int argc, char** argv);
 
 } // namespace woby

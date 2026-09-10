@@ -1,4 +1,5 @@
 #include "update_internal.h"
+#include "update_ui.h"
 #include "utf8_path.h"
 #include <doctest/doctest.h>
 #include <archive.h>
@@ -231,6 +232,129 @@ TEST_CASE("updater deployment locks permit viewers together and exclude updates"
     auto update = woby::lockDeployment(*root, true);
     CHECK_THROWS((void)woby::lockDeployment(*root, false));
     CHECK_THROWS((void)woby::lockDeployment(*root, true));
+}
+
+TEST_CASE("UI updater upgrades its viewer guard and restores it when another viewer blocks installation")
+{
+    const auto root = temporaryDirectory();
+    auto viewer = woby::lockDeployment(*root, false);
+    auto otherViewer = woby::lockDeployment(*root, false);
+    CHECK_THROWS(woby::acquireViewerUpdateLock(*root, viewer));
+    REQUIRE(viewer);
+    CHECK_FALSE(viewer->exclusive);
+    otherViewer.reset();
+    woby::acquireViewerUpdateLock(*root, viewer);
+    REQUIRE(viewer->exclusive);
+    CHECK_THROWS((void)woby::lockDeployment(*root, false));
+    CHECK_THROWS((void)woby::lockDeployment(*root, true));
+    CHECK_NOTHROW(woby::acquireViewerUpdateLock(*root, viewer));
+}
+
+TEST_CASE("UI updater permits installation only for a clean managed scene with an available update")
+{
+    woby::UpdateUiRuntime runtime;
+    auto& state = runtime.state;
+    state.currentVersion = "1.0.0";
+    woby::DeploymentOwner guard(nullptr, woby::releaseDeploymentLock);
+    CHECK_FALSE(woby::canInstallUpdate(state, false));
+    state.available = true;
+    CHECK_FALSE(woby::canInstallUpdate(state, false));
+    woby::startUiUpdate(runtime, woby::UpdateCommand::install, false, guard);
+    CHECK_FALSE(runtime.result.valid());
+    state.managedDeployment = true;
+    CHECK(woby::canInstallUpdate(state, false));
+    CHECK_FALSE(woby::canInstallUpdate(state, true));
+    woby::startUiUpdate(runtime, woby::UpdateCommand::install, true, guard);
+    CHECK_FALSE(runtime.result.valid());
+    for (const auto command : {woby::UpdateCommand::check, woby::UpdateCommand::install}) {
+        state.activeCommand = command;
+        CHECK_FALSE(woby::canInstallUpdate(state, false));
+        woby::startUiUpdate(runtime, woby::UpdateCommand::check, false, guard);
+        CHECK_FALSE(runtime.result.valid());
+    }
+    state.activeCommand = woby::UpdateCommand::none;
+    state.closeRequested = true;
+    CHECK_FALSE(woby::canInstallUpdate(state, false));
+}
+
+TEST_CASE("UI updater consumes asynchronous results without closing on checks or failures")
+{
+    woby::UpdateUiRuntime runtime;
+    runtime.state.activeCommand = woby::UpdateCommand::check;
+    std::promise<woby::UpdateResult> promise;
+    runtime.result = promise.get_future();
+    woby::pollUiUpdate(runtime);
+    CHECK(woby::updateBusy(runtime.state));
+    promise.set_value({0, {{"state", "available"}, {"latest", "1.2.0"},
+        {"updateAvailable", true}, {"message", "Available"}}});
+    woby::pollUiUpdate(runtime);
+    CHECK_FALSE(woby::updateBusy(runtime.state));
+    CHECK(runtime.state.available);
+    CHECK(runtime.state.latestVersion == "1.2.0");
+    CHECK_FALSE(runtime.state.closeRequested);
+    woby::pollUiUpdate(runtime); // A completed future is consumed only once.
+    runtime.state.activeCommand = woby::UpdateCommand::install;
+    woby::applyUpdateResult(runtime.state, {1, {{"state", "failed"}, {"message", "Download failed"}}});
+    CHECK_FALSE(runtime.state.available);
+    CHECK_FALSE(runtime.state.closeRequested);
+    CHECK(runtime.state.message == "Download failed");
+    runtime.state.activeCommand = woby::UpdateCommand::install;
+    woby::applyUpdateResult(runtime.state, {0, {{"state", "current"}, {"message", "Up to date"}}});
+    CHECK_FALSE(runtime.state.closeRequested);
+    runtime.state.activeCommand = woby::UpdateCommand::install;
+    woby::applyUpdateResult(runtime.state, {2, {{"state", "pending"}, {"message", "Ready"}}});
+    CHECK(runtime.state.closeRequested);
+}
+
+TEST_CASE("UI updater omits idle and successful check messages but preserves errors")
+{
+    woby::UpdateUiState state;
+    CHECK(state.message.empty());
+    state.currentVersion = "1.0.0";
+    state.activeCommand = woby::UpdateCommand::check;
+    state.message = "Checking for updates...";
+
+    SUBCASE("current release") {
+        woby::applyUpdateResult(state, {0, {{"latest", "1.0.0"}, {"updateAvailable", false},
+            {"message", "Woby 1.0.0 is up to date; no downgrade will be installed."}}});
+        CHECK(state.message.empty());
+        CHECK(state.latestVersion == "1.0.0");
+        CHECK_FALSE(state.available);
+    }
+    SUBCASE("newer release") {
+        woby::applyUpdateResult(state, {0, {{"latest", "1.1.0"}, {"updateAvailable", true},
+            {"message", "Woby 1.1.0 is available (installed 1.0.0)."}}});
+        CHECK(state.message.empty());
+        CHECK(state.latestVersion == "1.1.0");
+        CHECK(state.available);
+    }
+    SUBCASE("failed check") {
+        woby::applyUpdateResult(state, {1, {{"message", "Network unavailable"}}});
+        CHECK(state.message == "Network unavailable");
+        CHECK_FALSE(state.available);
+    }
+    CHECK_FALSE(woby::updateBusy(state));
+}
+
+TEST_CASE("UI updater displays unexpected worker failures and clears busy state")
+{
+    woby::UpdateUiRuntime runtime;
+    runtime.state.activeCommand = woby::UpdateCommand::check;
+    std::promise<woby::UpdateResult> promise;
+    runtime.result = promise.get_future();
+    promise.set_exception(std::make_exception_ptr(std::runtime_error("Worker failed")));
+    woby::pollUiUpdate(runtime);
+    CHECK_FALSE(woby::updateBusy(runtime.state));
+    CHECK_FALSE(runtime.state.closeRequested);
+    CHECK(runtime.state.message == "Worker failed");
+}
+
+TEST_CASE("structured updater reports invalid commands without starting a download")
+{
+    const auto result = woby::executeUpdate({}, "1.0.0");
+    CHECK(result.exitCode == 1);
+    CHECK(result.data.at("state") == "failed");
+    CHECK(result.data.contains("error"));
 }
 
 TEST_CASE("updater extracts verified zip and tar gzip packages")
