@@ -231,7 +231,7 @@ TEST_CASE("ctl camera navigation has explicit units finite results and no scene 
         const auto camera = state.camera;
         run(state, clean, "camera.orbit", {{"yawDegrees", 30}, {"pitchDegrees", 200}});
         CHECK(state.camera.yawRadians - camera.yawRadians == doctest::Approx(0.5235988));
-        CHECK(state.camera.pitchRadians == doctest::Approx(1.45));
+        CHECK(state.camera.pitchRadians == doctest::Approx(1.57079633));
         run(state, clean, "camera.roll", {{"rollDegrees", 90}});
         CHECK(state.camera.rollRadians == doctest::Approx(1.5707963));
         const auto oldTarget = state.camera.target;

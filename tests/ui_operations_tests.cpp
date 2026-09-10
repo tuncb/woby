@@ -1623,8 +1623,8 @@ TEST_CASE("generated camera operations keep finite clamped view state")
                 break;
             }
 
-            CHECK(camera.pitchRadians >= -1.45f);
-            CHECK(camera.pitchRadians <= 1.45f);
+            CHECK(camera.pitchRadians >= -1.57079633f);
+            CHECK(camera.pitchRadians <= 1.57079633f);
             CHECK(camera.distance >= 0.001f);
             CHECK(std::isfinite(camera.distance));
             CHECK(finiteVec3(camera.target));
@@ -1634,6 +1634,187 @@ TEST_CASE("generated camera operations keep finite clamped view state")
             CHECK(std::isfinite(woby::cameraFarPlane(camera, makeBounds(-1.0f, 1.0f))));
         }
     }
+}
+
+TEST_CASE("Camera presets align with each scene axis and retain target and distance")
+{
+    using V = woby::CameraView;
+    const std::array<V, 6> views = {V::top, V::bottom, V::front, V::back, V::left, V::right};
+    const std::array<std::array<float, 3>, 6> zDirections = {{
+        {0, 0, 1}, {0, 0, -1}, {0, -1, 0}, {0, 1, 0}, {-1, 0, 0}, {1, 0, 0}}};
+    const std::array<std::array<float, 3>, 6> yDirections = {{
+        {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}, {-1, 0, 0}, {1, 0, 0}}};
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        for (size_t i = 0; i < views.size(); ++i) {
+            woby::UiState state;
+            state.upAxis = up;
+            state.camera.target = {4, -3, 2};
+            state.camera.distance = 12;
+            state.camera.rollRadians = 0.7f;
+            woby::setCameraView(state, views[i]);
+            CHECK(state.camera.target == std::array<float, 3>{4, -3, 2});
+            CHECK(state.camera.distance == 12);
+            CHECK(state.camera.rollRadians == 0);
+            CHECK_FALSE(state.isDirty);
+            CHECK(state.sceneEditRevision == 0);
+            const auto eye = woby::cameraEye(state.camera, up);
+            const auto& direction = (up == woby::SceneUpAxis::y ? yDirections : zDirections)[i];
+            CHECK(eye.x == doctest::Approx(4 + 12 * direction[0]));
+            CHECK(eye.y == doctest::Approx(-3 + 12 * direction[1]));
+            CHECK(eye.z == doctest::Approx(2 + 12 * direction[2]));
+            const auto cameraUp = woby::cameraUp(state.camera, up);
+            CHECK(cameraUp.x * direction[0] + cameraUp.y * direction[1] + cameraUp.z * direction[2]
+                == doctest::Approx(0).epsilon(0.00001));
+            CHECK(cameraUp.x * cameraUp.x + cameraUp.y * cameraUp.y + cameraUp.z * cameraUp.z
+                == doctest::Approx(1));
+            float matrix[16];
+            bx::mtxLookAt(matrix, eye, woby::cameraLookAt(state.camera), cameraUp);
+            for (const float value : matrix) { CHECK(std::isfinite(value)); }
+            const auto before = state.camera;
+            woby::orbitUiCamera(state, 0, 0);
+            CHECK(state.camera == before);
+            const float delta = views[i] == V::top ? -1.0f : 1.0f;
+            woby::orbitUiCamera(state, 0, delta);
+            CHECK(state.camera.pitchRadians != before.pitchRadians);
+        }
+    }
+}
+
+TEST_CASE("Fit selection respects hierarchy transforms visibility and multiple selection")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0, 2, 0));
+    state.files.push_back(makeFile("b.obj", "b", 10, 12, 1));
+    state.files.push_back(makeFile("outside.obj", "outside", 100, 102, 2));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::UiSceneNode folder;
+    folder.children = {state.sceneNodes[0], state.sceneNodes[1]};
+    folder.settings.translation = {4, 5, 6};
+    state.sceneNodes = {folder, state.sceneNodes[2]};
+    woby::assignSceneObjectIds(state);
+    state.files[0].fileSettings.translation = {2, 0, 0};
+    state.files[0].groupSettings[0].translation = {3, 0, 0};
+    woby::selectSceneObject(state, state.files[0].groupSettings[0].objectId);
+    auto bounds = woby::selectedSceneBounds(state);
+    REQUIRE(bounds);
+    CHECK(bounds->center[0] == doctest::Approx(10));
+    CHECK(bounds->center[1] == doctest::Approx(5.5f));
+    CHECK(bounds->center[2] == doctest::Approx(6));
+    CHECK(bounds->max[0] - bounds->min[0] == doctest::Approx(2));
+    state.files[0].groupSettings[0].scale = 2;
+    auto scaledBounds = woby::selectedSceneBounds(state);
+    REQUIRE(scaledBounds);
+    CHECK(scaledBounds->max[0] - scaledBounds->min[0] == doctest::Approx(4));
+    state.files[0].groupSettings[0].rotationDegrees[2] = 90;
+    auto rotatedBounds = woby::selectedSceneBounds(state);
+    REQUIRE(rotatedBounds);
+    CHECK(rotatedBounds->max[1] - rotatedBounds->min[1] == doctest::Approx(4));
+    state.files[0].groupSettings[0].scale = 1;
+    state.files[0].groupSettings[0].rotationDegrees = {};
+    woby::setCameraView(state, woby::CameraView::top);
+    woby::clearSceneDirty(state);
+    const auto camera = state.camera;
+    const auto revision = state.sceneEditRevision;
+    woby::fitCameraToSelection(state);
+    CHECK(state.camera.target == bounds->center);
+    CHECK(state.camera.pitchRadians == camera.pitchRadians);
+    CHECK(state.camera.yawRadians == camera.yawRadians);
+    CHECK_FALSE(state.isDirty);
+    CHECK(state.sceneEditRevision == revision);
+    woby::selectSceneObject(state, state.sceneNodes[0].objectId);
+    bounds = woby::selectedSceneBounds(state);
+    REQUIRE(bounds);
+    CHECK(bounds->max[0] == doctest::Approx(16));
+    // Selecting an ancestor and a child has the same extent as the ancestor alone.
+    woby::selectSceneObject(state, state.files[0].objectId, true);
+    CHECK(woby::selectedSceneBounds(state)->center == bounds->center);
+    woby::selectSceneObject(state, state.files[2].objectId, true);
+    CHECK(woby::selectedSceneBounds(state)->max[0] == doctest::Approx(102));
+    state.files[2].fileSettings.visible = false;
+    CHECK(woby::selectedSceneBounds(state)->max[0] == doctest::Approx(16));
+    state.sceneNodes[0].settings.visible = false;
+    CHECK_FALSE(woby::selectedSceneBounds(state));
+    const auto beforeEmpty = state.camera;
+    woby::fitCameraToSelection(state);
+    CHECK(state.camera == beforeEmpty);
+    woby::clearSceneSelection(state);
+    CHECK_FALSE(woby::selectedSceneBounds(state));
+    state.selectedSceneObjects = {state.nextObjectId + 1};
+    CHECK_FALSE(woby::selectedSceneBounds(state));
+}
+
+TEST_CASE("Fit selection supports implicit trees empty objects and comparison display offsets")
+{
+    woby::UiState state;
+    state.files.push_back(makeFile("a.obj", "a", 0, 2, 0));
+    state.files.push_back(makeFile("b.obj", "b", 10, 12, 1));
+    woby::assignSceneObjectIds(state);
+    woby::selectSceneObject(state, state.files[0].objectId);
+    REQUIRE(woby::selectedSceneBounds(state));
+    CHECK(woby::selectedSceneBounds(state)->center[0] == doctest::Approx(1));
+    woby::selectSceneObject(state, state.files[1].groupSettings[0].objectId);
+    REQUIRE(woby::selectedSceneBounds(state));
+    CHECK(woby::selectedSceneBounds(state)->center[0] == doctest::Approx(11));
+    const auto comparison = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, comparison);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, comparison);
+    woby::findComparison(state, comparison)->translation = {30, 20, 10};
+    woby::selectSceneObject(state, comparison);
+    const auto bounds = woby::selectedSceneBounds(state);
+    REQUIRE(bounds);
+    CHECK(bounds->min[0] == doctest::Approx(30));
+    CHECK(bounds->max[0] == doctest::Approx(42));
+    CHECK(bounds->center[1] == doctest::Approx(20.5f));
+    CHECK(bounds->center[2] == doctest::Approx(10));
+    woby::fitCameraToSelection(state);
+    CHECK(state.camera.target == bounds->center);
+    woby::findComparison(state, comparison)->settings.enabled = false;
+    CHECK_FALSE(woby::selectedSceneBounds(state));
+    woby::selectSceneObject(state, state.files[0].objectId);
+    state.files[0].mesh.vertices.clear();
+    CHECK_FALSE(woby::selectedSceneBounds(state));
+}
+
+TEST_CASE("Fit all preserves orientation FOV and fits narrow views and near clipping")
+{
+    woby::UiState state;
+    state.sceneBounds = makeBounds(10, 14);
+    state.camera.verticalFovDegrees = 35;
+    state.camera.nearPlane = 8;
+    state.camera.distance = 30;
+    woby::setCameraView(state, woby::CameraView::left);
+    const auto before = state.camera;
+    woby::fitCameraToScene(state);
+    CHECK(state.camera.target == state.sceneBounds.center);
+    CHECK(state.camera.yawRadians == before.yawRadians);
+    CHECK(state.camera.pitchRadians == before.pitchRadians);
+    CHECK(state.camera.verticalFovDegrees == before.verticalFovDegrees);
+    CHECK(state.camera.distance - state.sceneBounds.radius > state.camera.nearPlane);
+    CHECK_FALSE(state.isDirty);
+    for (const float aspect : {0.1f, 1.0f, 3.0f}) {
+        const float halfVertical = woby::cameraViewportFov(state.camera, aspect) * 3.14159265f / 360;
+        const float halfHorizontal = std::atan(std::tan(halfVertical) * aspect);
+        CHECK(state.camera.distance * std::sin(halfVertical) > state.sceneBounds.radius);
+        CHECK(state.camera.distance * std::sin(halfHorizontal) > state.sceneBounds.radius);
+    }
+}
+
+TEST_CASE("Top and bottom camera presets survive scene save and load")
+{
+    const auto path = std::filesystem::temp_directory_path() / "woby-camera-presets.woby";
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        for (const auto view : {woby::CameraView::top, woby::CameraView::bottom}) {
+            woby::UiState state;
+            state.upAxis = up;
+            woby::setCameraView(state, view);
+            woby::writeSceneDocument(path, woby::createSceneDocument(state));
+            const auto document = woby::readSceneDocument(path);
+            const auto restored = woby::prepareSceneReplacement(state, {}, document);
+            CHECK(restored.camera == state.camera);
+            CHECK(restored.upAxis == up);
+        }
+    }
+    std::filesystem::remove(path);
 }
 
 TEST_CASE("Scene viewport reserves panels in drawable coordinates")

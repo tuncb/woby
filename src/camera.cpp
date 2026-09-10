@@ -100,7 +100,7 @@ SceneCamera normalizedSceneCamera(SceneCamera camera)
     constexpr float maxCoordinate = 1.0e15f;
     for (auto& value : camera.target) { value = std::clamp(value, -maxCoordinate, maxCoordinate); }
     camera.distance = std::clamp(camera.distance, 0.001f, maxCoordinate);
-    camera.pitchRadians = std::clamp(camera.pitchRadians, -1.45f, 1.45f);
+    camera.pitchRadians = std::clamp(camera.pitchRadians, -pi * 0.5f, pi * 0.5f);
     camera.verticalFovDegrees = std::clamp(camera.verticalFovDegrees, 1.0f, 179.0f);
     // cameraFarPlane is at least max(distance, 10); keep a valid depth interval.
     camera.nearPlane = std::clamp(camera.nearPlane, 0.0001f, std::max(camera.distance, 10.0f) * 0.5f);
@@ -110,18 +110,41 @@ SceneCamera normalizedSceneCamera(SceneCamera camera)
 SceneCamera frameCameraBounds(const Bounds& bounds, SceneUpAxis upAxis)
 {
     SceneCamera camera;
-    camera.target = bounds.center;
-
-    const float radius = std::max(bounds.radius, 0.001f);
-    const float halfFovRadians = (camera.verticalFovDegrees * 0.5f) * pi / 180.0f;
-    camera.distance = (radius / std::sin(halfFovRadians)) * 1.35f;
     camera.yawRadians = 0.48f;
     camera.pitchRadians = 0.28f;
     if (upAxis == SceneUpAxis::y) {
         camera.yawRadians = -0.48f;
     }
 
-    return camera;
+    return fitCameraBounds(camera, bounds);
+}
+
+SceneCamera fitCameraBounds(SceneCamera camera, const Bounds& bounds)
+{
+    camera = normalizedSceneCamera(camera);
+    camera.target = bounds.center;
+    const float radius = std::max(bounds.radius, 0.001f);
+    const float halfFovRadians = camera.verticalFovDegrees * pi / 360.0f;
+    camera.distance = std::max((radius / std::sin(halfFovRadians)) * 1.35f,
+        radius + camera.nearPlane * 1.35f);
+    return normalizedSceneCamera(camera);
+}
+
+SceneCamera cameraWithView(SceneCamera camera, CameraView view)
+{
+    // Z-up: front looks from -Y. Y-up: front looks from +Z.
+    camera.yawRadians = -pi * 0.5f;
+    camera.pitchRadians = 0.0f;
+    camera.rollRadians = 0.0f;
+    switch (view) {
+    case CameraView::top: camera.pitchRadians = pi * 0.5f; break;
+    case CameraView::bottom: camera.pitchRadians = -pi * 0.5f; break;
+    case CameraView::front: break;
+    case CameraView::back: camera.yawRadians = pi * 0.5f; break;
+    case CameraView::left: camera.yawRadians = pi; break;
+    case CameraView::right: camera.yawRadians = 0.0f; break;
+    }
+    return normalizedSceneCamera(camera);
 }
 
 float cameraViewportFov(const SceneCamera& camera, float aspectRatio)
@@ -161,7 +184,7 @@ void orbitCamera(SceneCamera& camera, float deltaX, float deltaY, SceneUpAxis up
     constexpr float sensitivity = 0.006f;
     const float yawSign = upAxis == SceneUpAxis::y ? -1.0f : 1.0f;
     camera.yawRadians += deltaX * sensitivity * yawSign;
-    camera.pitchRadians = std::clamp(camera.pitchRadians + deltaY * sensitivity, -1.45f, 1.45f);
+    camera.pitchRadians = std::clamp(camera.pitchRadians + deltaY * sensitivity, -pi * 0.5f, pi * 0.5f);
 }
 
 void rollCamera(SceneCamera& camera, float deltaX)

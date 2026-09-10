@@ -612,6 +612,37 @@ void drawPropertiesPaneToggleButton(woby::UiState& state)
     }
 }
 
+void drawCameraToolbar(woby::UiState& state)
+{
+    const std::array<std::pair<const char*, woby::CameraView>, 6> views = {{
+        {"Top", woby::CameraView::top}, {"Bottom", woby::CameraView::bottom},
+        {"Front", woby::CameraView::front}, {"Back", woby::CameraView::back},
+        {"Left", woby::CameraView::left}, {"Right", woby::CameraView::right},
+    }};
+    for (const auto& [label, view] : views) {
+        if (woby::drawCameraViewButton(label, view, label)) { woby::setCameraView(state, view); }
+        ImGui::SameLine();
+    }
+    if (drawRenderModeIconButton("fit_all", frameSceneIcon,
+            "Fit all - frame the scene (R)", RenderModeState::off,
+            state.files.empty() && state.comparisons.empty())) {
+        woby::fitCameraToScene(state);
+    }
+    ImGui::SameLine();
+    const bool selectionAvailable = woby::selectedSceneBounds(state).has_value();
+    if (drawRenderModeIconButton("fit_selection", frameSceneIcon,
+            "Fit selection", RenderModeState::off, !selectionAvailable)) {
+        woby::fitCameraToSelection(state);
+    }
+    const auto low = ImGui::GetItemRectMin();
+    const float centerX = low.x + renderModeButtonSize() * 0.5f;
+    const float centerY = low.y + renderModeButtonSize() * 0.5f;
+    const float radius = uiSize(3.0f);
+    ImGui::GetWindowDrawList()->AddRect(ImVec2(centerX - radius, centerY - radius),
+        ImVec2(centerX + radius, centerY + radius),
+        ImGui::GetColorU32(ImGuiCol_TextDisabled, selectionAvailable ? 1.0f : ImGui::GetStyle().DisabledAlpha));
+}
+
 void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes, const CanvasLayout& layout)
 {
     if (!state.propertiesPaneVisible) { return; }
@@ -2798,11 +2829,12 @@ int main(int argc, char** argv)
                         if (ImGui::Selectable("Solid + edges + vertices")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::vertices); }
                         ImGui::EndCombo();
                     }
-                    const float sceneContentHeight = renderModeButtonSize() * 2.0f + ImGui::GetStyle().ItemSpacing.y;
+                    const float sceneContentHeight = renderModeButtonSize() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
                     if (ImGui::BeginChild(
                             "SceneContent",
                             ImVec2(0.0f, sceneContentHeight),
                             ImGuiChildFlags_None)) {
+                        drawCameraToolbar(ui);
                         if (drawRenderModeIconButton(
                                 "origin",
                                 originIcon,
@@ -2830,13 +2862,6 @@ int main(int argc, char** argv)
                                 false)) {
                             woby::toggleSceneUpAxis(ui);
                         }
-                        ImGui::SameLine();
-                        ImGui::BeginDisabled(files.empty() && ui.comparisons.empty());
-                        if (drawRenderModeIconButton("frame_scene", frameSceneIcon,
-                                "Frame scene (R)", RenderModeState::off, false)) {
-                            woby::frameCameraToScene(ui);
-                        }
-                        ImGui::EndDisabled();
                         ImGui::SameLine();
                         ImGui::BeginDisabled(fileActionsDisabled()
                             || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
@@ -3260,7 +3285,7 @@ int main(int argc, char** argv)
                         woby::clearSceneSelection(ui);
                     }
                     if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
-                        woby::frameCameraToScene(ui);
+                        woby::fitCameraToScene(ui);
                     }
                 }
                 if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_B)) {

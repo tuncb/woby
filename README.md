@@ -59,8 +59,7 @@ saved `.woby` scenes. The empty viewport offers both actions and accepts dropped
 model files, folders, and scenes. Add model folder imports models recursively.
 
 The **Objects** tree lists scene content, and **Display** contains global viewing
-controls. The Frame icon beside the Y/Z up-axis button fits the scene in view;
-the camera icon immediately after it opens PNG export options. Choose resolution,
+controls. The camera icon beside the Y/Z up-axis button opens PNG export options. Choose resolution,
 the scene or visible comparison results, and legend/name/source/direction/threshold
 annotations. Comparison exports wait for complete visible results and report an
 error if annotations cannot fit; increase the image height or reduce visible results.
@@ -68,6 +67,15 @@ Geometry counts and
 renderer/FPS details sit at the bottom of the left pane. File actions are disabled
 while a dialog or file-processing operation is active; New scene and Screenshot
 also wait for outstanding image captures.
+
+The separate camera row in **Display** has icons for **Top**, **Bottom**, **Front**, **Back**,
+**Left**, **Right**, **Fit All**, and **Fit Selection**, with tooltips identifying each button.
+The frame icon is **Fit All** (also available with **R**); the frame with a small
+square inside is **Fit Selection**. Views follow the
+scene's Y/Z up axis and preserve the current target and distance. Both Fit buttons
+keep the viewing direction; Fit Selection includes visible selected descendants
+and comparison results at their display positions. It is disabled when there is
+no visible selection to frame.
 
 New scenes and newly added models start with solid surfaces, with edges, vertices,
 grid, and origin helpers off. Existing `.woby` scenes retain their saved appearance,

@@ -37,14 +37,14 @@ TEST_CASE("camera records clamp finite ranges and use defaults for missing field
         "pitch_radians = 30\ndistance = -1\nvertical_fov_degrees = 300\nnear_plane = -2\n");
     const auto camera = *woby::readSceneDocument(path).camera;
     CHECK(camera.target == std::array<float, 3>{1e15f, -1e15f, 2});
-    CHECK(camera.pitchRadians == doctest::Approx(1.45f));
+    CHECK(camera.pitchRadians == doctest::Approx(1.57079633f));
     CHECK(camera.distance == doctest::Approx(0.001f));
     CHECK(camera.verticalFovDegrees == 179);
     CHECK(camera.nearPlane == doctest::Approx(0.0001f));
     writeText(path, "version = 6\n[camera]\npitch_radians = -30\n"
         "distance = 3e38\nvertical_fov_degrees = -10\nnear_plane = 3e38\n");
     const auto other = *woby::readSceneDocument(path).camera;
-    CHECK(other.pitchRadians == doctest::Approx(-1.45f));
+    CHECK(other.pitchRadians == doctest::Approx(-1.57079633f));
     CHECK(other.distance == 1e15f);
     CHECK(other.verticalFovDegrees == 1);
     CHECK(other.nearPlane == 5e14f);

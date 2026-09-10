@@ -27,6 +27,12 @@ struct CameraInput {
     bool panning = false;
 };
 
+enum class CameraView { top, bottom, front, back, left, right };
+
+// Presets change orientation only; fitting preserves the viewing direction.
+[[nodiscard]] SceneCamera cameraWithView(SceneCamera camera, CameraView view);
+[[nodiscard]] SceneCamera fitCameraBounds(SceneCamera camera, const Bounds& bounds);
+
 [[nodiscard]] SceneCamera frameCameraBounds(
     const Bounds& bounds,
     SceneUpAxis upAxis = SceneUpAxis::z);

@@ -5,6 +5,7 @@
 namespace woby {
 
 enum class RenderModeState { off, mixed, on };
+enum class CameraView;
 inline constexpr const char* solidMeshIcon = "\xef\x86\xb2";
 inline constexpr const char* trianglesIcon = "\xef\x81\x8b";
 inline constexpr const char* verticesIcon = "\xef\x86\x92";
@@ -17,6 +18,7 @@ void drawInformationIcon(const char* id, const char* title, const char* text);
 bool drawInformationHeader(const char* label, const char* title, const char* text);
 bool drawRenderModeIconButton(const char* id, const char* icon, const char* tooltip,
     RenderModeState state, bool disabled);
+bool drawCameraViewButton(const char* id, CameraView view, const char* tooltip);
 bool drawTriStateMasterIconButton(const char* id, const char* icon, const char* label,
     size_t enabledCount, size_t totalCount);
 bool drawTriStateVisibilityButton(const char* id, const char* label,

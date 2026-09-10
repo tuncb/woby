@@ -156,6 +156,8 @@ void groupTransformMatrix(const UiGroupState& settings, float* model);
 void fileTransformMatrix(const UiFileSettings& settings, float* model);
 void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model);
 [[nodiscard]] Bounds defaultDisplayBounds();
+// Visible selected objects, including descendants and comparison display offsets.
+[[nodiscard]] std::optional<Bounds> selectedSceneBounds(const UiState& state);
 [[nodiscard]] Bounds combineBounds(const std::vector<UiFileState>& files);
 [[nodiscard]] Bounds combineBounds(
     const std::vector<UiFileState>& files,

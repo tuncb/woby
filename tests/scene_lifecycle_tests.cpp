@@ -111,7 +111,7 @@ TEST_CASE("scene replacement validates camera records before touching live state
     document.camera->pitchRadians = 8;
     auto prepared = woby::prepareSceneReplacement(f.state, {}, document);
     CHECK(prepared.camera.distance == doctest::Approx(0.001f));
-    CHECK(prepared.camera.pitchRadians == doctest::Approx(1.45f));
+    CHECK(prepared.camera.pitchRadians == doctest::Approx(1.57079633f));
     const auto before = woby::createSceneDocument(f.state);
     document.camera->target[1] = std::numeric_limits<float>::infinity();
     CHECK_THROWS_WITH((void)woby::prepareSceneReplacement(f.state, {}, document), "Camera values must be finite.");

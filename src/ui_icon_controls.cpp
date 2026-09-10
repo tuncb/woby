@@ -1,4 +1,5 @@
 #include "ui_icon_controls.h"
+#include "camera.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -115,6 +116,47 @@ bool drawRenderModeIconButton(
 }
 
 float informationIconSize() { return uiSize(20.0f); }
+
+bool drawCameraViewButton(const char* id, CameraView view, const char* tooltip)
+{
+    const bool clicked = drawRenderModeIconButton(id, "", tooltip, RenderModeState::off, false);
+    const auto low = ImGui::GetItemRectMin();
+    const float size = renderModeButtonSize();
+    const ImVec2 center(low.x + size * 0.5f, low.y + size * 0.5f);
+    const float iconScale = uiSize(20.0f) / 0.90f;
+    std::array<ImVec2, 8> corners;
+    for (size_t i = 0; i < corners.size(); ++i) {
+        const float x = (i & 1u) ? 1.0f : -1.0f;
+        const float y = (i & 2u) ? 1.0f : -1.0f;
+        const float z = (i & 4u) ? 1.0f : -1.0f;
+        corners[i] = ImVec2(center.x + (x - y) * iconScale * 0.20f,
+            center.y + (x + y) * iconScale * 0.11f - z * iconScale * 0.23f);
+    }
+    // One cube with the requested face filled; opposite faces remain distinct
+    // in projection, so the six presets do not need text inside the buttons.
+    std::array<size_t, 4> face{};
+    switch (view) {
+    case CameraView::top: face = {4, 5, 7, 6}; break;
+    case CameraView::bottom: face = {0, 1, 3, 2}; break;
+    case CameraView::front: face = {0, 4, 5, 1}; break;
+    case CameraView::back: face = {2, 6, 7, 3}; break;
+    case CameraView::left: face = {0, 2, 6, 4}; break;
+    case CameraView::right: face = {1, 3, 7, 5}; break;
+    }
+    auto* draw = ImGui::GetWindowDrawList();
+    const auto outline = ImGui::GetColorU32(ImGuiCol_TextDisabled, 0.55f);
+    const auto highlight = ImGui::GetColorU32(ImGuiCol_Text);
+    draw->AddQuadFilled(corners[face[0]], corners[face[1]], corners[face[2]], corners[face[3]],
+        ImGui::GetColorU32(ImGuiCol_Text, 0.40f));
+    for (size_t i = 0; i < corners.size(); ++i) {
+        for (const size_t bit : {size_t{1}, size_t{2}, size_t{4}}) {
+            if ((i & bit) == 0) { draw->AddLine(corners[i], corners[i | bit], outline, uiSize(1.0f)); }
+        }
+    }
+    draw->AddQuad(corners[face[0]], corners[face[1]], corners[face[2]], corners[face[3]],
+        highlight, uiSize(1.2f));
+    return clicked;
+}
 
 void drawObjectIdentityRow(const char* kind, const char* name, const char* fileName, const char* path)
 {

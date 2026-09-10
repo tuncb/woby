@@ -1,5 +1,6 @@
 #include "ui_state.h"
 #include "ui_operations.h"
+#include "comparison_scene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -289,8 +290,15 @@ void expandSceneNodeBounds(
     Bounds& bounds,
     const std::vector<UiFileState>& files,
     const UiSceneNode& node,
-    const float* parentModel)
+    const float* parentModel,
+    const std::vector<SceneObjectId>* selection = nullptr,
+    bool included = false)
 {
+    const auto selected = [selection](SceneObjectId id) {
+        return selection && id != invalidSceneObjectId
+            && std::find(selection->begin(), selection->end(), id) != selection->end();
+    };
+    included = included || !selection || selected(node.objectId);
     if (node.kind == UiSceneNodeKind::folder) {
         if (!node.settings.visible) {
             return;
@@ -301,7 +309,7 @@ void expandSceneNodeBounds(
         sceneNodeTransformMatrix(node.settings, nodeModel);
         bx::mtxMul(model, parentModel, nodeModel);
         for (const auto& child : node.children) {
-            expandSceneNodeBounds(bounds, files, child, model);
+            expandSceneNodeBounds(bounds, files, child, model, selection, included);
         }
         return;
     }
@@ -312,7 +320,7 @@ void expandSceneNodeBounds(
         }
 
         const auto& file = files[node.fileIndex];
-        if (!file.fileSettings.visible) {
+        if (!file.fileSettings.visible || (selection && file.mesh.vertices.empty())) {
             return;
         }
 
@@ -323,7 +331,8 @@ void expandSceneNodeBounds(
         if (node.children.empty()) {
             const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
             for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
-                if (!file.groupSettings[groupIndex].visible) {
+                if (!file.groupSettings[groupIndex].visible
+                    || (!included && !selected(file.groupSettings[groupIndex].objectId))) {
                     continue;
                 }
                 float groupModel[16];
@@ -339,12 +348,12 @@ void expandSceneNodeBounds(
         }
 
         for (const auto& child : node.children) {
-            expandSceneNodeBounds(bounds, files, child, model);
+            expandSceneNodeBounds(bounds, files, child, model, selection, included);
         }
         return;
     }
 
-    if (!validGroupIndex(files, node.fileIndex, node.groupIndex)) {
+    if (!included || !validGroupIndex(files, node.fileIndex, node.groupIndex)) {
         return;
     }
 
@@ -632,6 +641,34 @@ void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
     }
     assignSceneObjectIds(state);
     notifySceneEdit(state);
+}
+
+std::optional<Bounds> selectedSceneBounds(const UiState& state)
+{
+    if (state.selectedSceneObjects.empty()) { return std::nullopt; }
+    Bounds bounds = emptyAccumulatedBounds();
+    float identity[16];
+    bx::mtxIdentity(identity);
+    if (state.sceneNodes.empty()) {
+        for (size_t index = 0; index < state.files.size(); ++index) {
+            expandSceneNodeBounds(bounds, state.files, createFileSceneNode(state.files[index], index),
+                identity, &state.selectedSceneObjects);
+        }
+    } else {
+        for (const auto& node : state.sceneNodes) {
+            expandSceneNodeBounds(bounds, state.files, node, identity, &state.selectedSceneObjects);
+        }
+    }
+    for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled || !sceneObjectSelected(state, comparison.objectId)) { continue; }
+        if (const auto display = comparisonDisplayBounds(state, comparison.objectId)) {
+            expandBounds(bounds, display->min);
+            expandBounds(bounds, display->max);
+        }
+    }
+    if (!boundsContainFinitePoints(bounds)) { return std::nullopt; }
+    finalizeBounds(bounds);
+    return bounds;
 }
 
 void refreshSceneTreeFolderVisibility(UiState& state)

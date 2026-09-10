@@ -167,6 +167,9 @@ void resetSceneNodeTransform(UiSceneNodeSettings& settings);
 
 void recalculateSceneBounds(UiState& state);
 void frameCameraToScene(UiState& state);
+void setCameraView(UiState& state, CameraView view);
+void fitCameraToScene(UiState& state);
+void fitCameraToSelection(UiState& state);
 void appendFolderTreeSceneNode(
     UiState& state,
     const std::filesystem::path& root,

@@ -1152,6 +1152,23 @@ void frameCameraToScene(UiState& state)
     state.camera = frameCameraBounds(state.sceneBounds, state.upAxis);
 }
 
+void setCameraView(UiState& state, CameraView view)
+{
+    state.camera = cameraWithView(state.camera, view);
+}
+
+void fitCameraToScene(UiState& state)
+{
+    state.camera = fitCameraBounds(state.camera, state.sceneBounds);
+}
+
+void fitCameraToSelection(UiState& state)
+{
+    if (const auto bounds = selectedSceneBounds(state)) {
+        state.camera = fitCameraBounds(state.camera, *bounds);
+    }
+}
+
 void appendFolderTreeSceneNode(
     UiState& state,
     const std::filesystem::path& root,
