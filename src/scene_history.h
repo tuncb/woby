@@ -12,6 +12,8 @@ struct SceneSnapshot {
     UiState content; // File meshes are empty; geometry belongs only to the live scene.
     SceneDocument document;
     std::vector<SceneObjectId> identities;
+    // Navigation is restored only across an explicit Apply View action.
+    std::optional<ViewApplication> viewApplication;
 };
 
 struct SceneHistory {

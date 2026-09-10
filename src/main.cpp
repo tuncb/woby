@@ -23,6 +23,7 @@
 #include "scene_screenshot.h"
 #include "ui_operations.h"
 #include "ui_state.h"
+#include "ui_views.h"
 #include "ui_layout.h"
 #include "ui_icon_controls.h"
 #include "ui_popup_controls.h"
@@ -2160,6 +2161,7 @@ int main(int argc, char** argv)
         woby::UiState ui;
         woby::ComparisonRuntimes comparison;
         woby::ComparisonNameEdit comparisonNameEdit;
+        woby::ViewNameEdit viewNameEdit;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
@@ -2969,6 +2971,11 @@ int main(int argc, char** argv)
                         ImGui::TextDisabled("Select a mesh to see its dimensions.");
                     }
                 }
+
+                ImGui::BeginDisabled(fileActionsDisabled()
+                    || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
+                woby::drawViews(ui, viewNameEdit);
+                ImGui::EndDisabled();
 
                 const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
                 if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }

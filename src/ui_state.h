@@ -108,7 +108,45 @@ struct UiComparison {
     std::vector<UiComparisonPart> a, b;
 };
 
+using ViewId = uint64_t;
+
+struct UiViewObject {
+    SceneObjectId objectId = invalidSceneObjectId;
+    ViewObjectSettings settings;
+    friend bool operator==(const UiViewObject&, const UiViewObject&) = default;
+};
+
+struct UiViewPart {
+    SceneObjectId comparisonId = invalidSceneObjectId, partId = invalidSceneObjectId;
+    ComparisonSide side = ComparisonSide::a;
+    bool enabled = true;
+    friend bool operator==(const UiViewPart&, const UiViewPart&) = default;
+};
+
+struct UiView {
+    ViewId id = 0;
+    std::string name;
+    ViewSceneSettings scene;
+    std::vector<UiViewObject> objects;
+    std::vector<UiViewPart> parts;
+};
+
+struct ViewNavigation {
+    SceneCamera camera;
+    std::vector<SceneObjectId> selection;
+    friend bool operator==(const ViewNavigation&, const ViewNavigation&) = default;
+};
+
+struct ViewApplication {
+    ViewNavigation before, after;
+    uint64_t revision = 0;
+};
+
 struct UiState {
+    std::vector<UiView> views;
+    // Session identities and history notification; never serialized.
+    ViewId nextViewId = 1, activeViewId = 0;
+    std::optional<ViewApplication> viewApplication;
     // Application preference, excluded from scene persistence and dirty tracking.
     float uiScale = 1.0f;
     // Export preferences are session-only, not scene content or dirty state.

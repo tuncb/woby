@@ -102,7 +102,49 @@ struct SceneComparisonRecord {
     friend bool operator==(const SceneComparisonRecord&, const SceneComparisonRecord&) = default;
 };
 
+enum class ViewObjectKind { folder, file, group, comparison };
+
+// Display values only. Geometry, names and hierarchy are never restored by a view.
+struct ViewObjectSettings {
+    SceneGroupSettings appearance;
+    ComparisonSettings comparison;
+    int selectionOrder = -1;
+    friend bool operator==(const ViewObjectSettings&, const ViewObjectSettings&) = default;
+};
+
+struct SceneViewObjectRecord {
+    ViewObjectKind kind = ViewObjectKind::group;
+    int index = -1; // File, flattened folder node, or comparison index.
+    int groupIndex = -1;
+    ViewObjectSettings settings;
+    friend bool operator==(const SceneViewObjectRecord&, const SceneViewObjectRecord&) = default;
+};
+
+struct ViewSceneSettings {
+    SceneCamera camera;
+    bool showOrigin = false, showGrid = false, showDimensions = false;
+    SceneUpAxis upAxis = SceneUpAxis::z;
+    float masterVertexPointSize = 4.0f;
+    friend bool operator==(const ViewSceneSettings&, const ViewSceneSettings&) = default;
+};
+
+struct SceneViewPartRecord {
+    int comparisonIndex = -1, fileIndex = -1, groupIndex = -1;
+    ComparisonSide side = ComparisonSide::a;
+    bool enabled = true;
+    friend bool operator==(const SceneViewPartRecord&, const SceneViewPartRecord&) = default;
+};
+
+struct SceneViewRecord {
+    std::string name;
+    ViewSceneSettings scene;
+    std::vector<SceneViewObjectRecord> objects;
+    std::vector<SceneViewPartRecord> parts;
+    friend bool operator==(const SceneViewRecord&, const SceneViewRecord&) = default;
+};
+
 struct SceneDocument {
+    std::vector<SceneViewRecord> views;
     // Saved review view; absent in legacy scenes. Excluded from edits/history.
     std::optional<SceneCamera> camera;
     std::vector<SceneComparisonRecord> comparisons;

@@ -33,6 +33,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.showDimensions = state.showDimensions;
     content.upAxis = state.upAxis;
     content.masterVertexPointSize = state.masterVertexPointSize;
+    content.views = state.views;
     content.comparisons = state.comparisons;
     content.sceneNodes = state.sceneNodes;
     for (const auto& file : state.files) {
@@ -72,7 +73,10 @@ bool recordSceneHistory(SceneHistory& history, const UiState& state, uint64_t in
         resetSceneHistory(history, state);
         return true;
     }
-    const bool merge = history.coalescing && history.interaction != 0
+    const bool appliedView = state.viewApplication
+        && state.viewApplication->revision > history.recordedRevision;
+    const bool merge = !appliedView && !history.snapshots[history.cursor].viewApplication
+        && history.coalescing && history.interaction != 0
         && (interaction == history.interaction || interaction == 0);
     const bool notified = history.recordedRevision != state.sceneEditRevision;
     bool changed = false;
@@ -80,9 +84,10 @@ bool recordSceneHistory(SceneHistory& history, const UiState& state, uint64_t in
         const auto& previous = history.snapshots[history.cursor];
         auto document = createSceneDocument(state);
         auto identities = sceneIdentities(state);
-        changed = !sceneContentEqual(document, previous.document) || identities != previous.identities;
+        changed = appliedView || !sceneContentEqual(document, previous.document) || identities != previous.identities;
         if (changed) {
             auto next = snapshot(state, std::move(document), std::move(identities));
+            if (appliedView) { next.viewApplication = state.viewApplication; }
             history.snapshots.erase(history.snapshots.begin() + static_cast<std::ptrdiff_t>(history.cursor + 1),
                 history.snapshots.end());
             if (merge) {
@@ -153,6 +158,8 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
     prepared.running = current.running;
     prepared.sceneEditRevision = current.sceneEditRevision + 1;
     prepared.nextObjectId = current.nextObjectId;
+    prepared.nextViewId = current.nextViewId;
+    prepared.activeViewId = findView(prepared, current.activeViewId) ? current.activeViewId : 0;
     prepared.uiScale = current.uiScale;
     prepared.screenshotSettings = current.screenshotSettings;
     prepared.viewerPaneVisible = current.viewerPaneVisible;
@@ -162,6 +169,13 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
     prepared.camera = current.camera;
     prepared.cameraInput = current.cameraInput;
     prepared.selectedSceneObjects = current.selectedSceneObjects;
+    const auto& application = redo ? target.viewApplication : history.snapshots[history.cursor].viewApplication;
+    if (application) {
+        const auto& navigation = redo ? application->after : application->before;
+        prepared.camera = navigation.camera;
+        prepared.selectedSceneObjects = navigation.selection;
+        prepared.cameraInput = {};
+    }
     std::erase_if(prepared.selectedSceneObjects, [&](SceneObjectId id) { return !findSceneObject(prepared, id); });
     prepared.activeComparisonId = findComparison(prepared, current.activeComparisonId)
         ? current.activeComparisonId

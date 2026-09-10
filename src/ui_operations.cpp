@@ -277,6 +277,7 @@ void removeComparison(UiState& state, SceneObjectId id)
     if (id == invalidSceneObjectId || !findComparison(state, id)) { return; }
     std::erase_if(state.comparisons, [id](const UiComparison& comparison) { return comparison.objectId == id; });
     std::erase(state.selectedSceneObjects, id);
+    pruneMissingViewReferences(state);
     if (state.activeComparisonId == id) {
         state.activeComparisonId = state.comparisons.empty() ? invalidSceneObjectId : state.comparisons.front().objectId;
     }
@@ -1237,6 +1238,7 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
     std::erase_if(state.selectedSceneObjects, [&state](SceneObjectId id) {
         return !findSceneObject(state, id).has_value();
     });
+    pruneMissingViewReferences(state);
     recalculateSceneBounds(state);
     frameCameraToScene(state);
     markSceneDirty(state);
@@ -1254,6 +1256,7 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.propertiesPaneVisible = current.propertiesPaneVisible;
     prepared.propertiesPaneWidth = current.propertiesPaneWidth;
     prepared.nextObjectId = current.nextObjectId;
+    prepared.nextViewId = current.nextViewId;
     prepared.sceneGeneration = current.sceneGeneration + 1;
     prepared.files = std::move(files);
     // Every replacement receives fresh IDs, even when reopening the same file.
@@ -1306,6 +1309,7 @@ UiState prepareSceneReplacement(const UiState& current,
             comparison.translation = initialComparisonTranslation(prepared, comparison.objectId);
         }
     }
+    loadSceneViews(prepared, document);
     if (!prepared.comparisons.empty()) { prepared.activeComparisonId = prepared.comparisons.front().objectId; }
     recalculateSceneBounds(prepared);
     prepared.camera = document.camera ? normalizedSceneCamera(*document.camera)

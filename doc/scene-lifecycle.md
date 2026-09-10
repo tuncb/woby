@@ -1,8 +1,8 @@
 # Scene lifecycle contract
 
 CTL scene commands run through the existing main-thread FIFO and request-key ledger.
-They never open native dialogs or confirmation popups. Camera and pane state remain
-session-only; camera navigation does not make the scene dirty.
+They never open native dialogs or confirmation popups. The current camera is persisted on Save/Open, while pane state remains
+session-only; ordinary camera navigation does not make the scene dirty.
 
 ## Commands
 
@@ -92,7 +92,10 @@ triangle indices or other mesh buffers. Removing a model releases its geometry.
 No history is written to `.woby` files. New/Open clears history only after successful replacement;
 a failed or canceled replacement leaves it intact. A new edit after undo discards
 the redo branch. Camera, selection, pane/export preferences, and the monotonic object
-ID allocator are not rewound. Restored objects keep their original IDs, including
+ID allocator are not rewound by ordinary edits. Explicit Apply View actions restore
+their before/after camera and selection; saved view contents participate in scene
+history and dirty tracking. See [Saved views](views.md).
+Restored objects keep their original IDs, including
 comparison references and folder hierarchy.
 
 Restoration reuses live geometry by object ID. Absent models are reloaded from their

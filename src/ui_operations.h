@@ -10,6 +10,16 @@
 
 namespace woby {
 
+[[nodiscard]] const UiView* findView(const UiState& state, ViewId id);
+ViewId createView(UiState& state);
+void applyView(UiState& state, ViewId id);
+void updateView(UiState& state, ViewId id);
+void renameView(UiState& state, ViewId id, const std::string& name);
+void removeView(UiState& state, ViewId id);
+void pruneMissingViewReferences(UiState& state);
+[[nodiscard]] std::vector<SceneViewRecord> sceneViewRecords(const UiState& state);
+void loadSceneViews(UiState& state, const SceneDocument& document);
+
 // An omitted ID targets the last active comparison (also retained while inspecting sources).
 [[nodiscard]] const UiComparison* findComparison(const UiState& state, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] UiComparison* findComparison(UiState& state, SceneObjectId id = invalidSceneObjectId);

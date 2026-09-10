@@ -81,6 +81,7 @@ add_executable(woby
     src/surface_mesh_quality.cpp
     src/mesh_comparison.cpp
     src/comparison_scene.cpp
+    src/ui_views.cpp
     src/comparison_view.cpp
     src/control_importers.cpp
     src/control_importers.h
@@ -148,6 +149,7 @@ add_executable(woby
     src/stl_mesh.cpp
     src/stl_mesh.h
     src/ui_operations.cpp
+    src/ui_view_operations.cpp
     src/ui_property_operations.cpp
     src/ui_operations.h
     src/ui_state.cpp
@@ -305,6 +307,7 @@ if(BUILD_TESTING)
         tests/app_icon_tests.cpp
         tests/update_tests.cpp
         src/comparison_report.cpp
+        src/ui_views.cpp
         src/comparison_view.cpp
         src/comparison_legend.cpp
         src/surface_mesh_quality.cpp
@@ -365,6 +368,7 @@ if(BUILD_TESTING)
         src/stl_mesh.cpp
         src/stl_mesh.h
         src/ui_operations.cpp
+        src/ui_view_operations.cpp
         src/ui_property_operations.cpp
         src/ui_operations.h
         src/ui_state.cpp
@@ -386,6 +390,7 @@ if(BUILD_TESTING)
         tests/scene_file_edge_tests.cpp
         tests/stl_mesh_tests.cpp
         tests/ui_operations_tests.cpp
+        tests/ui_view_tests.cpp
     )
 
     target_compile_features(woby_tests PRIVATE cxx_std_20)

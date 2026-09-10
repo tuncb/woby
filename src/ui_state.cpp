@@ -727,6 +727,7 @@ SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
     document.camera = state.camera;
+    document.views = sceneViewRecords(state);
     for (const auto& comparison : state.comparisons) {
         SceneComparisonRecord record;
         record.name = comparison.name;
