@@ -662,10 +662,6 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         "Right-click a group to clear it, or a source below to remove it.\n\n"
         "One input enables surface inspection. Add a second input for surface distance and overlay.");
     const bool resultReady = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state, id);
-    if (resultReady) { ImGui::TextUnformatted("Result ready"); }
-    ImGui::BeginDisabled(!resultReady);
-    if (ImGui::Button("Frame result", ImVec2(-1.0f, 0.0f))) { frameComparison(state, id); }
-    ImGui::EndDisabled();
     auto translation = comparison->translation;
     ImGui::TextUnformatted("Result position");
     ImGui::SameLine();

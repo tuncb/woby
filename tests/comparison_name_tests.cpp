@@ -1,4 +1,5 @@
 #include "comparison_view.h"
+#include "comparison_scene.h"
 #include "scene_file.h"
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
@@ -84,6 +85,51 @@ struct ComparisonNameFixture {
     }
 };
 } // namespace
+
+TEST_CASE("analysis properties show computing only while the result is pending")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
+        woby::ComparisonSide::a, true, f.id);
+    woby::selectSceneObject(f.state, f.id);
+    REQUIRE(woby::canInspectComparison(f.state, f.id));
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    bool computing = true;
+    SUBCASE("pending") {}
+    SUBCASE("ready") {
+        runtime.ready = true;
+        runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        computing = false;
+    }
+    SUBCASE("outdated result") {
+        runtime.ready = true;
+        runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
+    }
+    std::string contents;
+    for (int frame = 0; frame < 2; ++frame) {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize(ImVec2(700, 1200));
+        ImGui::Begin("Analysis properties");
+        ImGui::LogToBuffer();
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = ImGui::GetCurrentContext()->LogBuffer.c_str();
+        ImGui::LogFinish();
+        ImGui::End();
+        ImGui::EndFrame();
+    }
+    CHECK(contents.find("Result position") != std::string::npos);
+    CHECK(contents.find("Frame result") == std::string::npos);
+    CHECK(contents.find("Result ready") == std::string::npos);
+    CHECK((contents.find("Computing analysis...") != std::string::npos) == computing);
+}
 
 TEST_CASE("new analyses use unique numbered names and preserve existing names")
 {
