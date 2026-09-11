@@ -9,6 +9,7 @@ namespace woby
 {
 
 enum class ComparisonSide { a, b };
+enum class DiagnosticCategory { boundary, nonManifold, winding };
 
 struct ComparisonMembership
 {
@@ -41,6 +42,8 @@ struct ComparisonSettings
     bool showEdges = false;
     bool showBoundaries = true;
     bool showNonManifold = true;
+    ComparisonSide diagnosticSide = ComparisonSide::a;
+    DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;
     SurfaceQualitySettings quality;
     friend bool operator==(const ComparisonSettings &, const ComparisonSettings &) = default;
 };

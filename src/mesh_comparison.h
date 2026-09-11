@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model_mesh.h"
+#include "comparison_settings.h"
 #include "surface_mesh_quality.h"
 
 #include <cstddef>
@@ -50,6 +51,9 @@ struct MeshComparison
     SurfaceComparison repaired;
     std::array<QualityDistribution, surfaceQualityMetricCount> qualityDistributions{};
 };
+
+[[nodiscard]] const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
+    const MeshComparison& result, ComparisonSide side, DiagnosticCategory category);
 
 [[nodiscard]] double pointTriangleDistance(const std::array<float, 3> &point, const std::array<float, 3> &a,
                                            const std::array<float, 3> &b, const std::array<float, 3> &c);

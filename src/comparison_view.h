@@ -52,7 +52,7 @@ struct ComparisonNameEdit {
     int lastFrame = -1;
 };
 
-void updateComparisonRuntimes(ComparisonRuntimes& runtimes, const UiState& state);
+void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit);
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);

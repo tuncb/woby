@@ -9,6 +9,8 @@
 #include <vector>
 
 namespace woby {
+struct DiagnosticEdge;
+struct MeshComparison;
 
 [[nodiscard]] const UiView* findView(const UiState& state, ViewId id);
 ViewId createView(UiState& state);
@@ -36,6 +38,14 @@ void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
 void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array<float, 3>& translation);
 void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 void frameComparison(UiState& state, SceneObjectId id);
+// A zero/stale result signature is unavailable. Navigation wraps within one side/category.
+[[nodiscard]] const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
+    const MeshComparison& result, uint64_t resultSignature, SceneObjectId id);
+void resetComparisonDiagnosticFocus(UiState& state, SceneObjectId id);
+void validateComparisonDiagnosticFocus(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, SceneObjectId id);
+void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, int step, SceneObjectId id);
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id = invalidSceneObjectId);
 void setPropertiesPaneVisible(UiState& state, bool visible);
 void setPropertiesPaneWidth(UiState& state, float value, float minWidth, float maxWidth);

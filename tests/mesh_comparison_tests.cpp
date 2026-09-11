@@ -3,6 +3,8 @@
 #include "ui_operations.h"
 #include "obj_mesh.h"
 #include "control_scene.h"
+#include "scene_history.h"
+#include "scene_viewport.h"
 
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
@@ -89,6 +91,180 @@ woby::UiState stateWithFiles(size_t count)
     return state;
 }
 } // namespace
+
+TEST_CASE("diagnostic navigation visits every edge on each side and category and wraps")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, id);
+    auto result = woby::compareMeshes(square(), square(2));
+    // Distinct counts/positions catch accidentally navigating another category or side.
+    result.original.diagnostics.nonManifoldEdges = {{{3, 0, 0}, {4, 0, 0}}, {{5, 0, 0}, {6, 0, 0}}};
+    result.original.diagnostics.inconsistentWindingEdges = {{{7, 0, 0}, {8, 0, 0}}};
+    result.repaired.diagnostics.nonManifoldEdges = {{{3, 0, 2}, {4, 0, 2}}};
+    result.repaired.diagnostics.inconsistentWindingEdges = {{{5, 0, 2}, {6, 0, 2}}, {{7, 0, 2}, {8, 0, 2}}};
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+        for (const auto category : {woby::DiagnosticCategory::boundary, woby::DiagnosticCategory::nonManifold,
+                woby::DiagnosticCategory::winding}) {
+            auto settings = woby::comparisonSettings(state, id);
+            settings.diagnosticSide = side;
+            settings.diagnosticCategory = category;
+            settings.mode = woby::ComparisonMode::overlay;
+            woby::setComparisonSettings(state, settings, id);
+            woby::clearSceneDirty(state);
+            const auto revision = state.sceneEditRevision;
+            const auto& edges = woby::comparisonDiagnosticEdges(result, side, category);
+            REQUIRE_FALSE(edges.empty());
+            for (size_t i = 0; i < edges.size(); ++i) {
+                woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+                REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+                CHECK(woby::findComparison(state, id)->diagnosticFocus->index == i);
+                CHECK(woby::focusedComparisonDiagnostic(state, result, signature, id) == &edges[i]);
+                CHECK(woby::effectiveComparisonSettings(state, id).mode == (side == woby::ComparisonSide::a
+                    ? woby::ComparisonMode::original : woby::ComparisonMode::repaired));
+            }
+            woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+            CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 0);
+            for (size_t i = edges.size(); i > 0; --i) {
+                woby::navigateComparisonDiagnostic(state, result, signature, -1, id);
+                CHECK(woby::focusedComparisonDiagnostic(state, result, signature, id) == &edges[i - 1]);
+            }
+            woby::frameComparison(state, id);
+            CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+            CHECK(woby::effectiveComparisonSettings(state, id).mode == woby::ComparisonMode::overlay);
+            CHECK(woby::comparisonSettings(state, id) == settings);
+            CHECK_FALSE(state.isDirty);
+            CHECK(state.sceneEditRevision == revision);
+        }
+    }
+}
+
+TEST_CASE("diagnostic navigation rejects empty stale disabled and replaced results")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto result = woby::compareMeshes(square(), {});
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::navigateComparisonDiagnostic(state, result, signature, -1, id);
+    REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+    CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 3);
+    SUBCASE("out of range after result replacement") {
+        result.original.diagnostics.boundaryEdges.resize(1);
+        woby::validateComparisonDiagnosticFocus(state, result, signature, id);
+        CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+        woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+        REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+        CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 0);
+        return;
+    }
+    SUBCASE("computing result") { woby::validateComparisonDiagnosticFocus(state, result, 0, id); }
+    SUBCASE("stale result") { woby::navigateComparisonDiagnostic(state, result, signature + 1, 1, id); }
+    SUBCASE("empty category") {
+        auto settings = woby::comparisonSettings(state, id);
+        settings.diagnosticCategory = woby::DiagnosticCategory::nonManifold;
+        woby::setComparisonSettings(state, settings, id);
+        woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+    }
+    SUBCASE("unavailable side") {
+        auto settings = woby::comparisonSettings(state, id);
+        settings.diagnosticSide = woby::ComparisonSide::b;
+        woby::setComparisonSettings(state, settings, id);
+        woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+    }
+    SUBCASE("disabled comparison") {
+        auto settings = woby::comparisonSettings(state, id);
+        settings.enabled = false;
+        woby::setComparisonSettings(state, settings, id);
+        woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+    }
+    SUBCASE("membership added") {
+        woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::a, true, id);
+        woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+    }
+    SUBCASE("membership disabled") {
+        woby::setComparisonObjectsEnabled(state, {state.files[0].objectId}, woby::ComparisonSide::a, false, id);
+    }
+    SUBCASE("source removed") { REQUIRE(woby::removeFileFromState(state, 0)); }
+    SUBCASE("groups swapped") { woby::swapComparisonGroups(state, id); }
+    CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+    CHECK(woby::focusedComparisonDiagnostic(state, result, signature, id) == nullptr);
+}
+
+TEST_CASE("focused diagnostic framing includes presentation translation and fits usable viewport")
+{
+    auto state = stateWithFiles(1);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    const std::array<float, 3> translation = {30, -40, 50};
+    woby::setComparisonTranslation(state, id, translation);
+    const auto result = woby::compareMeshes(square(), {});
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        state.upAxis = up;
+        woby::navigateComparisonDiagnostic(state, result, signature, 0, id);
+        const auto* edge = woby::focusedComparisonDiagnostic(state, result, signature, id);
+        REQUIRE(edge);
+        float squaredLength = 0;
+        for (size_t k = 0; k < 3; ++k) {
+            CHECK(state.camera.target[k] == doctest::Approx((edge->a[k] + edge->b[k]) * .5f + translation[k]));
+            squaredLength += (edge->a[k] - edge->b[k]) * (edge->a[k] - edge->b[k]);
+        }
+        const float radius = std::sqrt(squaredLength) * .5f;
+        for (const float scale : {1.0f, 2.0f}) {
+            const auto viewport = woby::sceneViewport(static_cast<uint32_t>(1200 * scale),
+                static_cast<uint32_t>(900 * scale), 1200, 380, 420);
+            const float aspect = static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
+            const float vertical = woby::cameraViewportFov(state.camera, aspect) * 3.14159265f / 360.0f;
+            const float horizontal = std::atan(std::tan(vertical) * aspect);
+            CHECK(state.camera.distance * std::sin(std::min(vertical, horizontal)) > radius);
+        }
+    }
+    woby::SceneHistory history;
+    woby::resetSceneHistory(history, state);
+    CHECK_FALSE(history.snapshots.front().content.comparisons.front().diagnosticFocus);
+    const auto copyId = woby::duplicateComparison(state, id);
+    CHECK_FALSE(woby::findComparison(state, copyId)->diagnosticFocus);
+}
+
+TEST_CASE("diagnostic target and category persist while result focus is session only")
+{
+    struct Fixture {
+        std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+            / ("woby-diagnostics-" + std::to_string(std::random_device{}()) + "-" + std::to_string(std::random_device{}()));
+        Fixture() { std::filesystem::create_directory(root); }
+        ~Fixture() { std::error_code ignored; std::filesystem::remove_all(root, ignored); }
+    } fixture;
+    auto state = stateWithFiles(1);
+    state.files[0].path = fixture.root / "model.obj";
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::b, true, id);
+    auto settings = woby::comparisonSettings(state, id);
+    settings.diagnosticSide = woby::ComparisonSide::b;
+    settings.diagnosticCategory = woby::DiagnosticCategory::winding;
+    woby::setComparisonSettings(state, settings, id);
+    auto result = woby::compareMeshes({}, square());
+    result.repaired.diagnostics.inconsistentWindingEdges = {{{0, 0, 0}, {1, 0, 0}}};
+    woby::navigateComparisonDiagnostic(state, result, woby::comparisonGeometrySignature(state, id), 1, id);
+    REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+    const auto path = fixture.root / "scene.woby";
+    const auto document = woby::createSceneDocument(state);
+    woby::writeSceneDocument(path, document);
+    const auto loaded = woby::readSceneDocument(path);
+    REQUIRE(loaded.comparisons.size() == 1);
+    CHECK(loaded.comparisons[0].settings == settings);
+    const auto restored = woby::prepareSceneReplacement(state, state.files, loaded);
+    REQUIRE(restored.comparisons.size() == 1);
+    CHECK(restored.comparisons[0].settings == settings);
+    CHECK_FALSE(restored.comparisons[0].diagnosticFocus);
+    settings.diagnosticSide = static_cast<woby::ComparisonSide>(-1);
+    settings.diagnosticCategory = static_cast<woby::DiagnosticCategory>(100);
+    woby::setComparisonSettings(state, settings, id);
+    CHECK(woby::comparisonSettings(state, id).diagnosticSide == woby::ComparisonSide::a);
+    CHECK(woby::comparisonSettings(state, id).diagnosticCategory == woby::DiagnosticCategory::boundary);
+}
 
 TEST_CASE("comparison input summaries identify sides sources and invalid references")
 {

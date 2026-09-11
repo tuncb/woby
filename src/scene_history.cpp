@@ -35,6 +35,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.masterVertexPointSize = state.masterVertexPointSize;
     content.views = state.views;
     content.comparisons = state.comparisons;
+    for (auto& comparison : content.comparisons) { comparison.diagnosticFocus.reset(); }
     content.sceneNodes = state.sceneNodes;
     for (const auto& file : state.files) {
         UiFileState metadata;

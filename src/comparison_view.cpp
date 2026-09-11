@@ -226,56 +226,97 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     ImGui::TreePop();
     ImGui::PopID();
 }
-void frameEdges(UiState &state, const std::vector<DiagnosticEdge> &edges, SceneObjectId id)
+void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool current,
+    const char* name, DiagnosticCategory category, bool hasA, bool hasB, SceneObjectId id)
 {
-    if (edges.empty())
-    {
-        return;
-    }
-    const auto &edge = edges.front();
-    std::vector<Vertex> points(2);
-    points[0].position = edge.a;
-    points[1].position = edge.b;
-    auto bounds = calculateBounds(points);
-    bounds.radius = std::max(bounds.radius * 3, state.sceneBounds.radius * .06f);
-    if (const auto* comparison = findComparison(state, id)) {
-        for (size_t k = 0; k < 3; ++k) {
-            bounds.min[k] += comparison->translation[k];
-            bounds.max[k] += comparison->translation[k];
-            bounds.center[k] += comparison->translation[k];
-        }
-    }
-    frameComparisonBounds(state, bounds);
-}
-void diagnosticRow(UiState &state, const char *name, const std::vector<DiagnosticEdge> &original,
-                   const std::vector<DiagnosticEdge> &repaired, bool useOriginal, bool hasA, bool hasB, SceneObjectId id)
-{
+    ImGui::PushID(name);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
+    ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(name);
-    if (hasA) { ImGui::TableNextColumn(); ImGui::Text("%zu", original.size()); }
-    if (hasB) { ImGui::TableNextColumn(); ImGui::Text("%zu", repaired.size()); }
+    for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+        if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }
+        ImGui::TableNextColumn();
+        ImGui::AlignTextToFramePadding();
+        if (current) { ImGui::Text("%zu", comparisonDiagnosticEdges(runtime.result, side, category).size()); }
+        else { ImGui::TextDisabled("--"); }
+    }
     ImGui::TableNextColumn();
-    const auto &active = useOriginal ? original : repaired;
-    ImGui::PushID(name);
-    ImGui::BeginDisabled(active.empty());
-    if (ImGui::SmallButton("First"))
-    {
-        auto settings = comparisonSettings(state, id);
-        if (std::string(name) == "Boundary")
-        {
-            settings.showBoundaries = true;
-        }
-        else
-        {
-            settings.showNonManifold = true;
-        }
-        setComparisonSettings(state, settings, id);
-        frameEdges(state, active, id);
+    auto settings = comparisonSettings(state, id);
+    const auto& edges = comparisonDiagnosticEdges(runtime.result, settings.diagnosticSide, category);
+    ImGui::BeginDisabled(!current || edges.empty());
+    int step = 0;
+    if (ImGui::ArrowButton("previous", ImGuiDir_Left)) { step = -1; }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Previous %s edge on %s", name, settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
+    }
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    if (ImGui::ArrowButton("next", ImGuiDir_Right)) { step = 1; }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Next %s edge on %s", name, settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
     }
     ImGui::EndDisabled();
+    if (step != 0) {
+        if (settings.diagnosticCategory != category) {
+            settings.diagnosticCategory = category;
+            setComparisonSettings(state, settings, id);
+        }
+        navigateComparisonDiagnostic(state, runtime.result, runtime.resultSignature, step, id);
+    }
     ImGui::PopID();
 }
+
+void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, bool current,
+    bool hasA, bool hasB, SceneObjectId id)
+{
+    ImGui::TextUnformatted("Diagnostics");
+    ImGui::SameLine();
+    drawInformationIcon("diagnostics_info", "Surface diagnostics",
+        "Diagnostics describe combined surfaces; coincident edges across parts are matched. "
+        "Open boundaries may be intentional. Self-intersections are not checked.\n\n"
+        "Use each row's arrows to inspect edges on the chosen target. Navigation wraps; "
+        "right starts at the first edge and left at the last.");
+    auto settings = comparisonSettings(state, id);
+    const auto initial = settings;
+    ImGui::TextUnformatted("Target");
+    ImGui::SameLine();
+    if (ImGui::RadioButton("A##diagnostics", settings.diagnosticSide == ComparisonSide::a)) {
+        settings.diagnosticSide = ComparisonSide::a;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("B##diagnostics", settings.diagnosticSide == ComparisonSide::b)) {
+        settings.diagnosticSide = ComparisonSide::b;
+    }
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
+    validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
+    if (ImGui::BeginTable("Comparison diagnostics", 2 + static_cast<int>(hasA) + static_cast<int>(hasB),
+            ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Edges", ImGuiTableColumnFlags_WidthStretch);
+        if (hasA) { ImGui::TableSetupColumn("A", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 3); }
+        if (hasB) { ImGui::TableSetupColumn("B", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 3); }
+        ImGui::TableSetupColumn("##navigation", ImGuiTableColumnFlags_WidthFixed,
+            2 * ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::TableHeadersRow();
+        diagnosticRow(state, runtime, current, "Boundary", DiagnosticCategory::boundary, hasA, hasB, id);
+        diagnosticRow(state, runtime, current, "Non-manifold", DiagnosticCategory::nonManifold, hasA, hasB, id);
+        diagnosticRow(state, runtime, current, "Winding", DiagnosticCategory::winding, hasA, hasB, id);
+        ImGui::EndTable();
+    }
+    const auto* comparison = findComparison(state, id);
+    if (!current) { ImGui::TextWrapped("Diagnostics unavailable until results are ready"); }
+    else if (comparison->diagnosticFocus) {
+        const auto& focus = *comparison->diagnosticFocus;
+        const char* name = focus.category == DiagnosticCategory::boundary ? "Boundary"
+            : focus.category == DiagnosticCategory::nonManifold ? "Non-manifold" : "Winding";
+        const auto count = comparisonDiagnosticEdges(runtime.result, focus.side, focus.category).size();
+        ImGui::TextColored(ImVec4(1, 1, .1f, 1), "%s: %zu of %zu", name, focus.index + 1, count);
+        ImGui::TextWrapped("Focused edge: yellow line and endpoint crosses");
+    }
+    ImGui::BeginDisabled(!current);
+    if (ImGui::Button("Full result")) { frameComparison(state, id); }
+    ImGui::EndDisabled();
+}
+
 void submitEdges(bgfx::ViewId view, bgfx::VertexBufferHandle vertices, bgfx::ProgramHandle program,
                  bgfx::UniformHandle uniform, const std::array<float, 4> &color, const float* transform)
 {
@@ -303,7 +344,7 @@ void submitWire(bgfx::ViewId view, const ComparisonGpuSurface &gpu, bgfx::Progra
 }
 } // namespace
 
-static void updateComparisonRuntime(ComparisonRuntime& runtime, const UiState& state, SceneObjectId id, bool allowStart)
+static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, SceneObjectId id, bool allowStart)
 {
     const uint64_t wanted = comparisonSettings(state, id).enabled ? comparisonGeometrySignature(state, id) : 0;
     if (runtime.worker.valid() && wanted != runtime.workerSignature)
@@ -321,6 +362,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, const UiState& s
                 destroySurface(runtime.originalGpu);
                 destroySurface(runtime.repairedGpu);
                 runtime.resultSignature = 0;
+                resetComparisonDiagnosticFocus(state, id);
                 runtime.result = std::move(result);
                 uploadSurface(runtime.originalGpu, runtime.result.original);
                 uploadSurface(runtime.repairedGpu, runtime.result.repaired);
@@ -402,7 +444,7 @@ static void destroyComparisonRuntime(ComparisonRuntime &runtime)
     destroySurface(runtime.repairedGpu);
 }
 
-void updateComparisonRuntimes(ComparisonRuntimes& runtimes, const UiState& state)
+void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
 {
     for (auto it = runtimes.objects.begin(); it != runtimes.objects.end();) {
         if (!findComparison(state, it->first)) {
@@ -416,6 +458,8 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, const UiState& state
             return item.second.worker.valid();
         });
         updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
+        validateComparisonDiagnosticFocus(state, runtime.result,
+            runtime.ready ? runtime.resultSignature : 0, comparison.objectId);
     }
 }
 
@@ -730,6 +774,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (settings.mode == ComparisonMode::surfaceQuality && (!resultReady || !valid || !settings.enabled)) {
         drawSurfaceQualitySizeLimits(state, id, nullptr, hasA, hasB);
     }
+    const bool diagnosticsCurrent = valid && comparisonSettings(state, id).enabled && runtime.ready
+        && runtime.resultSignature == comparisonGeometrySignature(state, id);
+    if (!diagnosticsCurrent) { drawDiagnosticNavigation(state, runtime, false, hasA, hasB, id); }
     if (!valid || !comparisonSettings(state, id).enabled)
     {
         return;
@@ -755,7 +802,8 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         drawSurfaceQualityStatistics(runtime.result, comparisonSettings(state, id), hasA, hasB);
         drawSurfaceQualitySizeLimits(state, id, &runtime.result, hasA, hasB);
     }
-    const bool useOriginal = originalActive(effectiveComparisonSettings(state, id));
+    // Diagnostic focus temporarily changes the drawn surface, not the measured direction.
+    const bool useOriginal = !hasB || (hasA && originalActive(comparisonSettings(state, id)));
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
     if (both && comparisonSettings(state, id).mode == ComparisonMode::distance)
     {
@@ -771,23 +819,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     const auto &a = runtime.result.original.diagnostics;
     const auto &b = runtime.result.repaired.diagnostics;
-    ImGui::TextUnformatted("Diagnostics");
-    ImGui::SameLine();
-    drawInformationIcon("diagnostics_info", "Surface diagnostics",
-        "Diagnostics describe combined surfaces; coincident edges across parts are matched. "
-        "Open boundaries may be intentional. Self-intersections are not checked.");
-    if (ImGui::BeginTable("Comparison diagnostics", both ? 4 : 3, ImGuiTableFlags_SizingStretchProp))
-    {
-        ImGui::TableSetupColumn("Edges");
-        if (hasA) { ImGui::TableSetupColumn("A"); }
-        if (hasB) { ImGui::TableSetupColumn("B"); }
-        ImGui::TableSetupColumn("Focus");
-        ImGui::TableHeadersRow();
-        diagnosticRow(state, "Boundary", a.boundaryEdges, b.boundaryEdges, useOriginal, hasA, hasB, id);
-        diagnosticRow(state, "Non-manifold", a.nonManifoldEdges, b.nonManifoldEdges, useOriginal, hasA, hasB, id);
-        diagnosticRow(state, "Winding", a.inconsistentWindingEdges, b.inconsistentWindingEdges, useOriginal, hasA, hasB, id);
-        ImGui::EndTable();
-    }
+    drawDiagnosticNavigation(state, runtime, true, hasA, hasB, id);
     if (both) {
         ImGui::TextWrapped("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
         ImGui::TextWrapped("Duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
@@ -878,6 +910,63 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
             submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform,
                 effectiveComparisonSettings(state, comparison.objectId));
         }
+    }
+    // Submit focus last so surfaces and other diagnostic edges cannot obscure it.
+    for (const auto& comparison : state.comparisons) {
+        const auto it = runtimes.objects.find(comparison.objectId);
+        if (it == runtimes.objects.end() || !it->second.ready) { continue; }
+        const auto* edge = focusedComparisonDiagnostic(state, it->second.result,
+            it->second.resultSignature, comparison.objectId);
+        if (!edge) { continue; }
+        std::array<std::array<float, 3>, 14> points;
+        points[0] = edge->a;
+        points[1] = edge->b;
+        size_t index = 2;
+        const float radius = state.camera.distance * .015f;
+        for (const auto& endpoint : {edge->a, edge->b}) {
+            for (size_t axis = 0; axis < 3; ++axis) {
+                auto start = endpoint, end = endpoint;
+                start[axis] -= radius;
+                end[axis] += radius;
+                points[index++] = start;
+                points[index++] = end;
+            }
+        }
+        // Portable thick lines: bgfx line primitives are only one pixel wide on
+        // some backends and would merge into the yellow object-selection outline.
+        std::vector<std::array<float, 3>> triangles;
+        triangles.reserve(42);
+        const auto direction = bx::sub(cameraEye(state.camera, state.upAxis), cameraLookAt(state.camera));
+        const float halfWidth = state.camera.distance * .0025f;
+        for (size_t i = 0; i < points.size(); i += 2) {
+            const auto& a = points[i];
+            const auto& b = points[i + 1];
+            const auto normal = bx::cross(bx::Vec3{b[0] - a[0], b[1] - a[1], b[2] - a[2]}, direction);
+            const float length = bx::length(normal);
+            if (length <= 0.0f) { continue; }
+            const auto offset = bx::mul(normal, halfWidth / length);
+            const std::array<float, 3> a0 = {a[0] - offset.x, a[1] - offset.y, a[2] - offset.z};
+            const std::array<float, 3> a1 = {a[0] + offset.x, a[1] + offset.y, a[2] + offset.z};
+            const std::array<float, 3> b0 = {b[0] - offset.x, b[1] - offset.y, b[2] - offset.z};
+            const std::array<float, 3> b1 = {b[0] + offset.x, b[1] + offset.y, b[2] + offset.z};
+            triangles.insert(triangles.end(), {a0, a1, b0, a1, b1, b0});
+        }
+        const auto layout = helperLineVertexLayout();
+        const auto vertexCount = static_cast<uint32_t>(triangles.size());
+        if (vertexCount == 0) { continue; }
+        if (bgfx::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) { continue; }
+        bgfx::TransientVertexBuffer buffer;
+        bgfx::allocTransientVertexBuffer(&buffer, vertexCount, layout);
+        std::memcpy(buffer.data, triangles.data(), triangles.size() * sizeof(triangles[0]));
+        float transform[16];
+        bx::mtxTranslate(transform, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+        const std::array<float, 4> yellow = {1, 1, .1f, 1};
+        bgfx::setTransform(transform);
+        bgfx::setUniform(colorUniform, yellow.data());
+        bgfx::setVertexBuffer(0, &buffer);
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
+            BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_MSAA);
+        bgfx::submit(view, colorProgram);
     }
 }
 
