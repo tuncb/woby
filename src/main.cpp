@@ -757,17 +757,17 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         if (!parts.empty()) {
             ImGui::SetDragDropPayload(woby::comparisonSourcePayload, parts.data(),
                 parts.size() * sizeof(woby::SceneObjectId));
-            ImGui::Text("Add %zu parts to comparison input A or B", parts.size());
+            ImGui::Text("Add %zu parts to analysis input A or B", parts.size());
         } else {
             ImGui::TextUnformatted("This source has no triangular mesh parts.");
         }
         ImGui::EndDragDropSource();
     }
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
-        if (ImGui::MenuItem("Create comparison", nullptr, false, woby::canCompareSceneSelection(state))) {
+        if (ImGui::MenuItem("Create analysis", nullptr, false, woby::canCompareSceneSelection(state))) {
             woby::compareSceneSelection(state);
         }
-        if (ImGui::BeginMenu("Comparison membership", !state.comparisons.empty())) {
+        if (ImGui::BeginMenu("Analysis membership", !state.comparisons.empty())) {
             for (const auto& comparisonObject : state.comparisons) {
                 ImGui::PushID(std::to_string(comparisonObject.objectId).c_str());
                 if (ImGui::BeginMenu(comparisonObject.name.c_str())) {
@@ -3150,9 +3150,9 @@ int main(int argc, char** argv)
                                 result = {{"action", redo ? "redo" : "undo"}, {"applied", applied}, {"dirty", ui.isDirty}};
                             } else if (payload.action == A::comparisonResults) {
                                 const auto* source = woby::findComparison(ui, payload.objectId);
-                                if (!source) { throw std::invalid_argument("comparison.results requires a comparison ID."); }
+                                if (!source) { throw std::invalid_argument("analysis.results requires an analysis ID."); }
                                 if (!woby::canInspectComparison(ui, payload.objectId)) {
-                                    throw std::invalid_argument("Comparison needs at least one populated input and no missing references.");
+                                    throw std::invalid_argument("Analysis needs at least one populated input and no missing references.");
                                 }
                                 auto a = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, payload.objectId) == 0 ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::a, payload.objectId);
                                 auto b = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::b, payload.objectId) == 0 ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::b, payload.objectId);

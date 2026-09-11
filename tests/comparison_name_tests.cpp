@@ -7,6 +7,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <chrono>
+
 namespace {
 struct ComparisonNameFixture {
     ImGuiContext* previous = ImGui::GetCurrentContext();
@@ -83,7 +85,50 @@ struct ComparisonNameFixture {
 };
 } // namespace
 
-TEST_CASE("comparison scene F2 edits locally and commits on Enter or focus loss")
+TEST_CASE("new analyses use unique numbered names and preserve existing names")
+{
+    woby::UiState state;
+    const auto named = woby::createComparison(state);
+    CHECK(woby::findComparison(state, named)->name == "Analysis 1");
+    woby::renameComparison(state, named, "Surface inspection");
+    const auto first = woby::createComparison(state);
+    const auto second = woby::createComparison(state);
+    CHECK(woby::findComparison(state, first)->name == "Analysis 1");
+    CHECK(woby::findComparison(state, second)->name == "Analysis 2");
+    const auto copy = woby::duplicateComparison(state, first);
+    CHECK(woby::findComparison(state, copy)->name == "Analysis 1 copy");
+    CHECK(woby::findComparison(state, named)->name == "Surface inspection");
+}
+
+TEST_CASE("analysis names round trip and empty saved names use the analysis fallback")
+{
+    struct Fixture {
+        std::filesystem::path root = std::filesystem::temp_directory_path()
+            / ("woby-analysis-names-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        Fixture() { std::filesystem::create_directories(root); }
+        ~Fixture() { std::error_code error; std::filesystem::remove_all(root, error); }
+    } fixture;
+    woby::UiState state;
+    const auto id = woby::createComparison(state);
+    std::string expected = "Analysis 1";
+    SUBCASE("generated name") {}
+    SUBCASE("custom name") {
+        expected = "Surface quality";
+        woby::renameComparison(state, id, expected);
+    }
+    SUBCASE("empty saved name") { expected = "Analysis"; }
+    auto document = woby::createSceneDocument(state);
+    if (expected == "Analysis") { document.comparisons[0].name.clear(); }
+    const auto restored = woby::prepareSceneReplacement(state, {}, document);
+    CHECK(restored.comparisons[0].name == expected);
+    const auto path = fixture.root / "names.woby";
+    woby::writeSceneDocument(path, document);
+    const auto loaded = woby::readSceneDocument(path);
+    REQUIRE(loaded.comparisons.size() == 1);
+    CHECK(loaded.comparisons[0].name == expected);
+}
+
+TEST_CASE("analysis scene F2 edits locally and commits on Enter or focus loss")
 {
     ComparisonNameFixture f;
     const auto original = woby::findComparison(f.state, f.id)->name;
@@ -101,7 +146,7 @@ TEST_CASE("comparison scene F2 edits locally and commits on Enter or focus loss"
     CHECK(woby::createSceneDocument(f.state).comparisons[0].name == "Inspection result");
 }
 
-TEST_CASE("comparison scene Escape and unchanged names do not create edits")
+TEST_CASE("analysis scene Escape and unchanged names do not create edits")
 {
     ComparisonNameFixture f;
     const auto original = woby::findComparison(f.state, f.id)->name;
@@ -117,7 +162,7 @@ TEST_CASE("comparison scene Escape and unchanged names do not create edits")
     CHECK(f.state.sceneEditRevision == revision);
 }
 
-TEST_CASE("comparison scene inline names support long text and empty input")
+TEST_CASE("analysis scene inline names support long text and empty input")
 {
     ComparisonNameFixture f;
     const std::string longName(600, 'x');
@@ -133,11 +178,11 @@ TEST_CASE("comparison scene inline names support long text and empty input")
     SUBCASE("cleared name") {
         f.key(ImGuiKey_Backspace);
         f.key(ImGuiKey_Enter);
-        CHECK(woby::findComparison(f.state, f.id)->name == "Comparison");
+        CHECK(woby::findComparison(f.state, f.id)->name == "Analysis");
     }
 }
 
-TEST_CASE("comparison scene single clicks only select and double click renames")
+TEST_CASE("analysis scene single clicks only select and double click renames")
 {
     ComparisonNameFixture f;
     f.state.selectedSceneObjects.clear();
@@ -157,7 +202,7 @@ TEST_CASE("comparison scene single clicks only select and double click renames")
     CHECK(woby::findComparison(f.state, f.id)->name == "From the label");
 }
 
-TEST_CASE("comparison scene F2 needs one target and deleting the target cancels renaming")
+TEST_CASE("analysis scene F2 needs one target and deleting the target cancels renaming")
 {
     ComparisonNameFixture f;
     const auto other = woby::createComparison(f.state);
@@ -170,10 +215,10 @@ TEST_CASE("comparison scene F2 needs one target and deleting the target cancels 
     woby::removeComparison(f.state, f.id);
     f.frame();
     CHECK(f.edit.objectId == woby::invalidSceneObjectId);
-    CHECK(woby::findComparison(f.state, other)->name == "Comparison 2");
+    CHECK(woby::findComparison(f.state, other)->name == "Analysis 2");
 }
 
-TEST_CASE("comparison scene context menu Rename starts the inline editor")
+TEST_CASE("analysis scene context menu Rename starts the inline editor")
 {
     ComparisonNameFixture f;
     f.click(f.row, ImGuiMouseButton_Right);
@@ -193,12 +238,12 @@ TEST_CASE("comparison scene context menu Rename starts the inline editor")
     CHECK(woby::findComparison(f.state, f.id)->name == "Menu rename");
 }
 
-TEST_CASE("comparison rename normalizes empty input and ignores missing objects")
+TEST_CASE("analysis rename normalizes empty input and ignores missing objects")
 {
     woby::UiState state;
     const auto id = woby::createComparison(state);
     woby::renameComparison(state, id, "");
-    CHECK(woby::findComparison(state, id)->name == "Comparison");
+    CHECK(woby::findComparison(state, id)->name == "Analysis");
     const auto revision = state.sceneEditRevision;
     woby::renameComparison(state, id, "");
     woby::renameComparison(state, id + 1, "Missing");

@@ -56,7 +56,7 @@ bgfx::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
         bgfx::copy(points.data(), bytes), helperLineVertexLayout());
     if (!bgfx::isValid(handle))
     {
-        throw std::runtime_error("Cannot allocate comparison edge buffer.");
+        throw std::runtime_error("Cannot allocate analysis edge buffer.");
     }
     return handle;
 }
@@ -100,7 +100,7 @@ void uploadSurface(ComparisonGpuSurface &gpu, const SurfaceComparison &surface)
     if (!bgfx::isValid(gpu.vertices) || !bgfx::isValid(gpu.triangles) || !bgfx::isValid(gpu.lines) ||
         (!samples.empty() && !bgfx::isValid(gpu.samples)))
     {
-        throw std::runtime_error("Cannot allocate comparison surface buffers.");
+        throw std::runtime_error("Cannot allocate analysis surface buffers.");
     }
     gpu.boundaries = uploadEdges(surface.diagnostics.boundaryEdges);
     gpu.nonManifold = uploadEdges(surface.diagnostics.nonManifoldEdges);
@@ -143,7 +143,7 @@ void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectI
         setComparisonObjectsEnabled(state, objects, side, enabled, id);
     }
     ImGui::PopItemFlag();
-    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Include in comparison (toggles all children)"); }
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Include in analysis (toggles all children)"); }
     ImGui::EndDisabled();
     ImGui::SameLine();
 }
@@ -289,7 +289,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     }
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
-    if (ImGui::BeginTable("Comparison diagnostics", 2 + static_cast<int>(hasA) + static_cast<int>(hasB),
+    if (ImGui::BeginTable("Analysis diagnostics", 2 + static_cast<int>(hasA) + static_cast<int>(hasB),
             ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Edges", ImGuiTableColumnFlags_WidthStretch);
         if (hasA) { ImGui::TableSetupColumn("A", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 3); }
@@ -648,17 +648,17 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
     ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Comparison");
+    ImGui::TextUnformatted("Analysis");
     ImGui::SameLine();
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
     ImGui::SetNextItemWidth(-informationIconSize() - ImGui::GetStyle().ItemSpacing.x);
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
     ImGui::SameLine();
-    drawInformationIcon("comparison_info", "Comparison inputs",
+    drawInformationIcon("comparison_info", "Analysis inputs",
         "Combined surfaces at scene positions. Hidden members are included. "
         "Other scene objects retain their own appearance.\n\n"
-        "Use Comparison membership in the scene tree context menu, or drag sources onto group A or B. "
+        "Use Analysis membership in the scene tree context menu, or drag sources onto group A or B. "
         "Right-click a group to clear it, or a source below to remove it.\n\n"
         "One input enables surface inspection. Add a second input for surface distance and overlay.");
     const bool resultReady = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state, id);
@@ -787,14 +787,14 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         if (!runtime.error.empty() && runtime.attemptedSignature == comparisonGeometrySignature(state, id))
         {
             ImGui::TextWrapped("%s", runtime.error.c_str());
-            if (ImGui::Button("Retry comparison"))
+            if (ImGui::Button("Retry analysis"))
             {
                 runtime.attemptedSignature = 0;
             }
         }
         else
         {
-            ImGui::TextUnformatted("Computing comparison...");
+            ImGui::TextUnformatted("Computing analysis...");
         }
         return;
     }
@@ -993,10 +993,10 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
         beginRename(state.selectedSceneObjects.front());
     }
     ImGui::Separator();
-    ImGui::TextUnformatted("Comparisons");
+    ImGui::TextUnformatted("Analyses");
     if (state.comparisons.empty()) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        ImGui::TextWrapped("Right-click an object and choose Create comparison to add a comparison.");
+        ImGui::TextWrapped("Right-click an object and choose Create analysis to add an analysis.");
         ImGui::PopStyleColor();
     }
     for (const auto& comparison : state.comparisons) {
@@ -1005,7 +1005,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
         ImGui::PushID(label.c_str());
         const float removeX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         auto settings = comparison.settings;
-        if (drawVisibilityButton("visible", settings.enabled, "comparison")) {
+        if (drawVisibilityButton("visible", settings.enabled, "analysis")) {
             settings.enabled = !settings.enabled;
             setComparisonSettings(state, settings, id);
         }
@@ -1044,13 +1044,13 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
                 if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
                 if (ImGui::MenuItem("Frame result", nullptr, false, canInspectComparison(state, id))) { frameComparison(state, id); }
                 if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
-                if (ImGui::MenuItem("Delete comparison")) { removeComparison(state, id); changed = true; }
+                if (ImGui::MenuItem("Delete analysis")) { removeComparison(state, id); changed = true; }
                 ImGui::EndPopup();
             }
         }
         if (!changed) {
             ImGui::SameLine(removeX, 0.0f);
-            if (drawRemoveButton("remove", "Remove comparison from scene")) {
+            if (drawRemoveButton("remove", "Remove analysis from scene")) {
                 removeComparison(state, id);
                 changed = true;
             }

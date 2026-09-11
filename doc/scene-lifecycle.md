@@ -96,7 +96,7 @@ ID allocator are not rewound by ordinary edits. Explicit Apply View actions rest
 their before/after camera and selection; saved view contents participate in scene
 history and dirty tracking. See [Saved views](views.md).
 Restored objects keep their original IDs, including
-comparison references and folder hierarchy.
+analysis references and folder hierarchy.
 
 Restoration reuses live geometry by object ID. Absent models are reloaded from their
 source paths with their original importers. Changed geometry is accepted if the

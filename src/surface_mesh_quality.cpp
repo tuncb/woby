@@ -10,7 +10,7 @@ namespace {
 using Point = std::array<double, 3>;
 void canceled(std::stop_token stop)
 {
-    if (stop.stop_requested()) { throw std::runtime_error("Comparison canceled."); }
+    if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
 }
 Point difference(const Point& a, const Point& b)
 {

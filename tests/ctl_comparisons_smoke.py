@@ -1,7 +1,7 @@
-"""Exercise comparison rendering, persistence, and invalidation in a real viewer.
+"""Exercise analysis rendering, persistence, and invalidation in a real viewer.
 
 uv run tests/ctl_comparisons_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe \
-    build/comparison-qa
+    build/analysis-qa
 """
 import json
 import os
@@ -16,7 +16,7 @@ def main():
     executable = Path(sys.argv[1]).resolve()
     root = Path(sys.argv[2]).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    instance = "comparisons-" + uuid.uuid4().hex[:12]
+    instance = "analyses-" + uuid.uuid4().hex[:12]
     for index, height in enumerate((1, 1.12)):
         vertices = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0),
                     (0, 0, height), (1, 0, height), (1, 1, height), (0, 1, height)]
@@ -31,10 +31,10 @@ def main():
                   '[[files.groups]]\nname = "cube"\nshow_vertices = false\nshow_triangles = false\n'
                   'color = [0.4, 0.6, 0.8, 1]\n')
     for name, mode, offset in (("Distance check", "distance", 2.5), ("Overlay check", "overlay", 5)):
-        scene += (f'[[comparisons]]\nname = "{name}"\ntranslation = [{offset}, 0, 0]\n'
-                  f'comparison_enabled = true\ncomparison_mode = "{mode}"\n')
+        scene += (f'[[analyses]]\nname = "{name}"\ntranslation = [{offset}, 0, 0]\n'
+                  f'analysis_enabled = true\nanalysis_mode = "{mode}"\n')
         for side, index in (("a", 0), ("b", 1)):
-            scene += (f'[[comparisons.{side}]]\nfile_index = {index}\ngroup_index = 0\n'
+            scene += (f'[[analyses.{side}]]\nfile_index = {index}\ngroup_index = 0\n'
                       f'name = "cube-{index}.obj / cube"\n')
     scene_path = root / "multiple.woby"
     scene_path.write_text(scene, encoding="utf-8")
@@ -65,81 +65,81 @@ def main():
                 assert time.monotonic() < deadline, "viewer did not become ready"
                 time.sleep(.05)
             objects = ctl("objects")["objects"]
-            comparisons = [item for item in objects if item["kind"] == "comparison"]
+            analyses = [item for item in objects if item["kind"] == "analysis"]
             files = [item for item in objects if item["kind"] == "file"]
-            assert len(comparisons) == 2 and len(files) == 2
-            assert ctl("scene", "info")["comparisonCount"] == 2
-            first, second = [item["id"] for item in comparisons]
-            # Build and measure a comparison entirely through the CLI/server.
-            create_args = ("comparison", "create", "--name", "CLI comparison",
+            assert len(analyses) == 2 and len(files) == 2
+            assert ctl("scene", "info")["analysisCount"] == 2
+            first, second = [item["id"] for item in analyses]
+            # Build and measure a analysis entirely through the CLI/server.
+            create_args = ("analysis", "create", "--name", "CLI analysis",
                            "--a", files[0]["id"], "--b", files[1]["id"], "--request-key", "create-cli")
             created = ctl(*create_args)
             third = created["target"]
             assert ctl(*create_args) == created  # Retries must not create duplicates.
-            assert ctl("scene", "info")["comparisonCount"] == 3
+            assert ctl("scene", "info")["analysisCount"] == 3
             assert created["object"]["valid"]
             # Checkboxes preserve membership, update measurements, and support Undo/Redo.
-            disabled = ctl("comparison", "enable", third, "--side", "a", "--object", files[0]["id"], "--enabled", "false")
+            disabled = ctl("analysis", "enable", third, "--side", "a", "--object", files[0]["id"], "--enabled", "false")
             assert disabled["object"]["aPartCount"] == 1
             assert not disabled["object"]["a"][0]["enabled"]
             assert disabled["object"]["b"][0]["enabled"]
             assert ctl("object", first)["object"]["a"][0]["enabled"]
-            single = ctl("comparison", "results", third)
+            single = ctl("analysis", "results", third)
             assert single["aToB"] is None and single["bToA"]["triangleCount"] == 12
             assert ctl("scene", "undo")["applied"]
             assert ctl("object", third)["object"]["a"][0]["enabled"]
             assert ctl("scene", "redo")["applied"]
             assert not ctl("object", third)["object"]["a"][0]["enabled"]
-            ctl("comparison", "enable", third, "--side", "a", "--enabled", "true")
-            configured = ctl("comparison", "set", third, "--visible", "false", "--mode", "distance",
+            ctl("analysis", "enable", third, "--side", "a", "--enabled", "true")
+            configured = ctl("analysis", "set", third, "--visible", "false", "--mode", "distance",
                              "--tolerance", ".01", "--color-range", ".2", "--distance-on-a", "true",
                              "--show-edges", "true", "--show-boundaries", "false", "--show-non-manifold", "false")
             assert configured["object"]["settings"]["distanceOnA"]
-            metrics = ctl("comparison", "results", third, "--request-key", "metrics-before")
+            metrics = ctl("analysis", "results", third, "--request-key", "metrics-before")
             for direction in ("aToB", "bToA"):
                 assert abs(metrics[direction]["maximum"] - .12) < 1e-5, metrics
                 assert 0 < metrics[direction]["mean"] <= metrics[direction]["maximum"]
                 assert metrics[direction]["diagnostics"]["boundaryEdges"] == 0
-            quality_settings = ctl("comparison", "set", third, "--mode", "surface_quality",
+            quality_settings = ctl("analysis", "set", third, "--mode", "surface_quality",
                                    "--quality-metric", "shape", "--quality-on-a", "true",
                                    "--quality-minimum-enabled", "true", "--quality-minimum-size", ".5",
                                    "--quality-maximum-enabled", "true", "--quality-maximum-size", "1.45")
             assert quality_settings["object"]["settings"]["qualityMetric"] == "shape"
             assert quality_settings["object"]["settings"]["mode"] == "surface_quality"
-            quality_results = ctl("comparison", "results", third)
+            quality_results = ctl("analysis", "results", third)
             assert quality_results["aToB"]["surfaceMeshQuality"]["shape"]["count"] == 12
             assert abs(quality_results["aToB"]["surfaceMeshQuality"]["size_jump"]["maximum"] - 1) < 1e-6
             ctl("scene", "save-as", root / "quality-settings.woby", "--overwrite")
             saved_quality = (root / "quality-settings.woby").read_text(encoding="utf-8")
-            assert 'comparison_mode = "surface_quality"' in saved_quality
+            assert 'analysis_mode = "surface_quality"' in saved_quality
             assert 'quality_metric = "shape"' in saved_quality
-            # A source change requires fresh results, even while the comparison is hidden.
+            # A source change requires fresh results, even while the analysis is hidden.
             ctl("transform", "set", files[1]["id"], "--translation", "0", "0", ".25")
-            moved = ctl("comparison", "results", third)
+            moved = ctl("analysis", "results", third)
             assert moved["bToA"]["maximum"] > metrics["bToA"]["maximum"] + .2
-            assert ctl("comparison", "results", third, "--request-key", "metrics-before") == metrics
+            assert ctl("analysis", "results", third, "--request-key", "metrics-before") == metrics
             ctl("transform", "reset", files[1]["id"])
-            ctl("comparison", "remove", third, "--side", "a", "--object", files[0]["id"])
-            single = ctl("comparison", "results", third)
+            ctl("analysis", "remove", third, "--side", "a", "--object", files[0]["id"])
+            single = ctl("analysis", "results", third)
             assert single["aToB"] is None and single["bToA"]["maximum"] is None
             assert single["bToA"]["triangleCount"] == 12
-            ctl("comparison", "swap", third)
+            ctl("analysis", "swap", third)
             assert ctl("object", third)["object"]["bPartCount"] == 0
-            ctl("comparison", "add", third, "--side", "b", "--object", files[0]["id"])
-            ctl("comparison", "add", third, "--side", "b", "--object", files[0]["id"])
+            ctl("analysis", "add", third, "--side", "b", "--object", files[0]["id"])
+            ctl("analysis", "add", third, "--side", "b", "--object", files[0]["id"])
             assert ctl("object", third)["object"]["bPartCount"] == 1
-            ctl("comparison", "clear", third, "--side", "a")
-            ctl("comparison", "add", third, "--side", "a", "--object", files[1]["id"])
-            ctl("comparison", "set", third, "--name", "Renamed via CLI", "--mode", "overlay")
+            ctl("analysis", "clear", third, "--side", "a")
+            ctl("analysis", "add", third, "--side", "a", "--object", files[1]["id"])
+            ctl("analysis", "set", third, "--name", "Renamed via CLI", "--mode", "overlay")
             cli_saved = root / "cli-created.woby"
-            ctl("comparison", "enable", third, "--side", "b", "--enabled", "false")
+            ctl("analysis", "enable", third, "--side", "b", "--enabled", "false")
             ctl("scene", "save-as", cli_saved, "--overwrite")
             assert 'name = "Renamed via CLI"' in cli_saved.read_text(encoding="utf-8")
-            ctl("comparison", "delete", third)
-            ctl("comparison", "results", third, success=False)
-            ctl("comparison", "create", "--a", third, "--b", files[0]["id"], success=False)
-            ctl("comparison", "delete", files[0]["id"], success=False)
-            assert ctl("scene", "info")["comparisonCount"] == 2
+            ctl("analysis", "delete", third)
+            ctl("analysis", "results", third, success=False)
+            ctl("analysis", "create", "--a", third, "--b", files[0]["id"], success=False)
+            ctl("analysis", "delete", files[0]["id"], success=False)
+            assert ctl("scene", "info")["analysisCount"] == 2
             ctl("camera", "frame")
             ctl("screenshot", root / "both.png")
             ctl("visibility", "set", first, "--visible", "false")
@@ -166,7 +166,7 @@ def main():
             saved = root / "saved.woby"
             ctl("scene", "save-as", saved, "--overwrite")
             ctl("scene", "open", saved)
-            reopened = [item for item in ctl("objects")["objects"] if item["kind"] == "comparison"]
+            reopened = [item for item in ctl("objects")["objects"] if item["kind"] == "analysis"]
             assert len(reopened) == 2
             assert {item["id"] for item in reopened}.isdisjoint({first, second})
             assert ctl("object", reopened[1]["id"])["object"]["settings"]["translation"] == [5, 0, 1]
@@ -179,7 +179,7 @@ def main():
             ctl("scene", "save-as", root / "missing.woby", "--overwrite")
             ctl("scene", "open", root / "missing.woby")
             for item in ctl("objects")["objects"]:
-                if item["kind"] == "comparison":
+                if item["kind"] == "analysis":
                     assert ctl("object", item["id"])["object"]["missingPartCount"] == 1
             ctl("scene", "open", cli_saved)
             restored = next(item for item in ctl("objects")["objects"] if item["name"] == "Renamed via CLI")
@@ -187,7 +187,7 @@ def main():
             assert restored_settings["mode"] == "overlay" and not restored_settings["visible"]
             assert restored_settings["showEdges"] and not restored_settings["showBoundaries"]
             assert not ctl("object", restored["id"])["object"]["b"][0]["enabled"]
-            ctl("comparison", "results", restored["id"])
+            ctl("analysis", "results", restored["id"])
             # A single open mesh renders immediately, including boundary diagnostics,
             # even when the saved mode normally requires both inputs.
             open_mesh = (root / "cube-0.obj").read_text(encoding="utf-8").splitlines()
@@ -197,41 +197,41 @@ def main():
                                     '[[files]]\npath = "open.obj"\n', encoding="utf-8")
             ctl("scene", "open", single_scene)
             single_source = next(item for item in ctl("objects")["objects"] if item["kind"] == "file")
-            inspected = ctl("comparison", "create", "--name", "Single mesh", "--a", single_source["id"])
+            inspected = ctl("analysis", "create", "--name", "Single mesh", "--a", single_source["id"])
             single_id = inspected["target"]
             assert inspected["object"]["valid"] and inspected["object"]["bPartCount"] == 0
             ctl("visibility", "set", single_source["id"], "--visible", "false")
-            ctl("comparison", "set", single_id, "--show-edges", "true")
+            ctl("analysis", "set", single_id, "--show-edges", "true")
             ctl("camera", "frame")
             ctl("screenshot", root / "single-a.png")
-            metrics = ctl("comparison", "results", single_id)
+            metrics = ctl("analysis", "results", single_id)
             assert metrics["aToB"]["diagnostics"]["boundaryEdges"] == 4
             assert metrics["aToB"]["sampleCount"] == 0 and metrics["aToB"]["maximum"] is None
             assert metrics["bToA"] is None
-            ctl("comparison", "swap", single_id)
-            ctl("comparison", "set", single_id, "--mode", "overlay")
+            ctl("analysis", "swap", single_id)
+            ctl("analysis", "set", single_id, "--mode", "overlay")
             ctl("screenshot", root / "single-b.png")
-            metrics = ctl("comparison", "results", single_id)
+            metrics = ctl("analysis", "results", single_id)
             assert metrics["aToB"] is None and metrics["bToA"]["diagnostics"]["boundaryEdges"] == 4
             ctl("scene", "save-as", root / "single-saved.woby", "--overwrite")
             ctl("scene", "open", root / "single-saved.woby")
-            single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "comparison")
+            single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "analysis")
             assert ctl("object", single_id)["object"]["valid"]
             ctl("screenshot", root / "single-reopened.png")
             for metric in ("longest_edge", "equivalent_size", "shape", "size_jump"):
-                ctl("comparison", "set", single_id, "--mode", "surface_quality", "--quality-metric", metric,
+                ctl("analysis", "set", single_id, "--mode", "surface_quality", "--quality-metric", metric,
                     "--quality-on-a", "true", "--quality-maximum-enabled", "true", "--quality-maximum-size", "1")
                 ctl("screenshot", root / f"quality-{metric}.png")
                 assert (root / f"quality-{metric}.png").stat().st_size > 10000
             ctl("scene", "save-as", root / "quality-single.woby", "--overwrite")
             ctl("scene", "open", root / "quality-single.woby")
-            single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "comparison")
+            single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "analysis")
             assert ctl("object", single_id)["object"]["settings"]["qualityMetric"] == "size_jump"
             ctl("screenshot", root / "quality-reopened.png")
-            ctl("comparison", "clear", single_id, "--side", "b")
-            ctl("comparison", "results", single_id, success=False)
+            ctl("analysis", "clear", single_id, "--side", "b")
+            ctl("analysis", "results", single_id, success=False)
             ctl("screenshot", root / "empty.png", success=False)
-            print("Comparison viewer smoke test passed: single-input inspection, CLI creation, settings, membership, metrics, retries, deletion, rendering, persistence, and invalidation.")
+            print("Analysis viewer smoke test passed: single-input inspection, CLI creation, settings, membership, metrics, retries, deletion, rendering, persistence, and invalidation.")
         finally:
             if viewer.poll() is None:
                 try:

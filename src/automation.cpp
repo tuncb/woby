@@ -125,7 +125,7 @@ Json objectInfo(const AutomationRuntime& runtime, const SceneObjectInfo& object)
     case SceneObjectKind::folder: break;
     case SceneObjectKind::file: kind = "file"; break;
     case SceneObjectKind::group: kind = "group"; break;
-    case SceneObjectKind::comparison: kind = "comparison"; break;
+    case SceneObjectKind::comparison: kind = "analysis"; break;
     }
     Json result = {{"id", publicObjectId(runtime, object.id)}, {"kind", kind}, {"name", object.name}};
     if (object.kind == SceneObjectKind::file) {
@@ -1011,20 +1011,20 @@ void printCommandLineHelp()
         "Every viewer starts a local HTTP API and displays its instance ID in the title.\n"
         "ctl connects to a running viewer; it never starts one. Discover it with ctl instances.\n"
         "Instance IDs: 1-64 lowercase letters, digits, '-' or '_'; start with a letter or digit.\n"
-        "OBJECT_ID, FILE_ID, GROUP_ID, and COMPARISON_ID come from objects, not names or paths.\n"
+        "OBJECT_ID, FILE_ID, GROUP_ID, and ANALYSIS_ID come from objects, not names or paths.\n"
         "Object IDs expire on removal, scene replacement, or viewer restart.\n"
         "TARGET is scene or a supported object ID. Use capabilities for target scopes.\n"
         "Booleans require true|false. --tree, --remember, and --overwrite are flags.\n"
         "Omitted setter values are preserved; setters require at least one value.\n"
         "Vectors contain three finite numbers. Quote names and paths containing spaces.\n"
-        "Comparison transforms support display translation only.\n"
-        "\nComparisons:\n"
-        "create returns target (the new COMPARISON_ID); omitted A/B inputs leave empty sides.\n"
+        "Analysis transforms support display translation only.\n"
+        "\nAnalyses:\n"
+        "create returns target (the new ANALYSIS_ID); omitted A/B inputs leave empty sides.\n"
         "--a, --b, and --object accept file, folder, or triangular mesh group IDs.\n"
         "add/remove edit one side's current parts; clear removes all references on that side.\n"
         "enable sets --enabled true|false on one side's existing members; omit --object\n"
-        "to set the whole side. object COMPARISON_ID reports each member's enabled state.\n"
-        "delete removes only the comparison; source models remain loaded.\n"
+        "to set the whole side. object ANALYSIS_ID reports each member's enabled state.\n"
+        "delete removes only the analysis; source models remain loaded.\n"
         "results waits for a fresh geometry/tolerance snapshot calculation, even when hidden.\n"
         "It returns aToB and bToA: sampled maximum, area-weighted mean/P95, percentage\n"
         "above tolerance, and mesh diagnostics.\n"
@@ -1032,8 +1032,8 @@ void printCommandLineHelp()
         "\nSaving and capture:\n"
         "scene open/new and quit default to --on-dirty error. --save-path requires\n"
         "--on-dirty save; --overwrite requires an explicit save destination.\n"
-        "Screenshot waits for visible comparisons and PNG writing; incomplete/failed\n"
-        "comparisons fail capture. Existing PNGs are overwritten. CLI paths may be relative.\n"
+        "Screenshot waits for visible analyses and PNG writing; incomplete/failed\n"
+        "analyses fail capture. Existing PNGs are overwritten. CLI paths may be relative.\n"
         "\nSee README.md, doc/ctl-commands.md, and doc/automation.md for examples and details.\n");
 }
 

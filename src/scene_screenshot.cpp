@@ -251,10 +251,10 @@ void submitSceneScreenshotCapture(
     const bool visibleResults = std::any_of(ui.comparisons.begin(), ui.comparisons.end(),
         [](const auto& item) { return item.settings.enabled; });
     if (screenshot.options.resultsOnly && !visibleResults) {
-        throw std::runtime_error("No visible comparison results to export.");
+        throw std::runtime_error("No visible analysis results to export.");
     }
     if (visibleResults && comparison == nullptr) {
-        throw std::runtime_error("Comparison results are unavailable for export.");
+        throw std::runtime_error("Analysis results are unavailable for export.");
     }
     ensureSceneScreenshotFramebuffer(screenshot);
     const auto& options = screenshot.options;
@@ -278,14 +278,14 @@ void submitSceneScreenshotCapture(
         const auto line = [&](const std::string& text) {
             const auto size = ImGui::GetFont()->CalcTextSizeA(fontSize, 100000, wrap, text.c_str());
             if (y + size.y > static_cast<float>(screenshot.height) - 24) {
-                throw std::runtime_error("Export annotations do not fit. Increase image height or export fewer visible comparisons.");
+                throw std::runtime_error("Export annotations do not fit. Increase image height or export fewer visible analyses.");
             }
             const auto color = text.starts_with("SATURATED:") ? IM_COL32(255, 170, 65, 255) : IM_COL32(235, 239, 245, 255);
             annotationDraw.AddText(ImGui::GetFont(), fontSize, {x, y}, color,
                 text.c_str(), nullptr, wrap);
             y += size.y + 8;
         };
-        line(options.resultsOnly ? "Woby | Visible comparison results" : "Woby | Scene and visible results");
+        line(options.resultsOnly ? "Woby | Visible analysis results" : "Woby | Scene and visible results");
         for (const auto& item : ui.comparisons) {
             if (!item.settings.enabled) { continue; }
             y += 12;
@@ -302,7 +302,7 @@ void submitSceneScreenshotCapture(
                     drawComparisonLegend(annotationDraw, {x, y}, wrap, fontSize, settings);
                 y += used;
                 if (y > static_cast<float>(screenshot.height) - 24) {
-                    throw std::runtime_error("Export legends do not fit. Increase image height or export fewer visible comparisons.");
+                    throw std::runtime_error("Export legends do not fit. Increase image height or export fewer visible analyses.");
                 }
             }
         }
@@ -414,7 +414,7 @@ bool drawSceneScreenshotOptions(UiState& state)
         ImGui::SameLine();
         drawInformationIcon("export_info", "Export PNG",
             "Choose a width from 960 to 7680 pixels and a height from 720 to 4320 pixels.\n\n"
-            "Visible results only exports comparison results. Otherwise the image includes the scene, helpers and visible results. "
+            "Visible results only exports analysis results. Otherwise the image includes the scene, helpers and visible results. "
             "Uses the current camera.\n\nExport waits for complete visible results.");
         ImGui::Separator();
         ImGui::SetNextItemWidth(140);
@@ -423,11 +423,11 @@ bool drawSceneScreenshotOptions(UiState& state)
         ImGui::InputInt("Height (px)", &options.height, 0);
         ImGui::Checkbox("Visible results only", &options.resultsOnly);
         ImGui::Separator();
-        ImGui::TextUnformatted("Comparison annotations");
+        ImGui::TextUnformatted("Analysis annotations");
         ImGui::SameLine();
-        drawInformationIcon("annotations_info", "Comparison annotations", "Distance legends always include tolerance.");
+        drawInformationIcon("annotations_info", "Analysis annotations", "Distance legends always include tolerance.");
         drawVisibilityField("Numeric legend and statistics", options.legend);
-        drawVisibilityField("Comparison name", options.comparisonName);
+        drawVisibilityField("Analysis name", options.comparisonName);
         drawVisibilityField("A / B sources", options.sources);
         drawVisibilityField("Measurement direction", options.direction);
         ImGui::BeginDisabled(options.legend);

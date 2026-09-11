@@ -60,16 +60,16 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::stats, "stats", "stats", {}, {}, {}},
         {ControlAction::performance, "performance.get", "performance get", {}, {}, {}},
         {ControlAction::pane, "pane.set", "pane set", {}, {"visible", "width"}, {}, true, true},
-        {ControlAction::comparisonCreate, "comparison.create", "comparison create", {}, {"name", "a", "b"}, {}, false, true},
-        {ControlAction::comparisonDelete, "comparison.delete", "comparison delete", "target", {}, {}, false, true},
-        {ControlAction::comparisonSet, "comparison.set", "comparison set", "target",
+        {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"name", "a", "b"}, {}, false, true},
+        {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
+        {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
             {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize"}, {}, true, true},
-        {ControlAction::comparisonAdd, "comparison.add", "comparison add", "target", {"side", "object"}, {"side", "object"}, false, true},
-        {ControlAction::comparisonRemove, "comparison.remove", "comparison remove", "target", {"side", "object"}, {"side", "object"}, false, true},
-        {ControlAction::comparisonEnable, "comparison.enable", "comparison enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
-        {ControlAction::comparisonClear, "comparison.clear", "comparison clear", "target", {"side"}, {"side"}, false, true},
-        {ControlAction::comparisonSwap, "comparison.swap", "comparison swap", "target", {}, {}, false, true},
-        {ControlAction::comparisonResults, "comparison.results", "comparison results", "target", {}, {}},
+        {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
+        {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
+        {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
+        {ControlAction::comparisonClear, "analysis.clear", "analysis clear", "target", {"side"}, {"side"}, false, true},
+        {ControlAction::comparisonSwap, "analysis.swap", "analysis swap", "target", {}, {}, false, true},
+        {ControlAction::comparisonResults, "analysis.results", "analysis results", "target", {}, {}},
     };
     return methods;
 }
@@ -253,7 +253,7 @@ std::string controlMethodUsage(const ControlMethod& method)
     else if (method.positional == "preset") { result += " front|back|left|right|top|bottom|isometric"; }
     else if (method.positional == "axis") { result += " y|z"; }
     else if (method.positional == "target") {
-        if (method.method.starts_with("comparison.")) { result += " COMPARISON_ID"; }
+        if (method.method.starts_with("analysis.")) { result += " ANALYSIS_ID"; }
         else if (method.action == ControlAction::visibility || method.action == ControlAction::render
             || method.action == ControlAction::vertexSize) { result += " TARGET"; }
         else if (method.action == ControlAction::modelRemove) { result += " FILE_ID"; }
@@ -312,11 +312,11 @@ Json controlCapabilities()
             {"positional", method.positional}, {"parameters", parameters}, {"options", method.options},
             {"requiredOptions", method.required}, {"requiresValues", method.requiresValues}, {"mutating", method.mutating}});
     }
-    return {{"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "comparison"}},
-        {"comparisonTransformFields", {"translation"}},
+    return {{"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis"}},
+        {"analysisTransformFields", {"translation"}},
         {"cameraPersistent", false}, {"screenshot", {{"width", 1920}, {"height", 1800}, {"overwrite", true}}},
-        {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "comparison"}},
-            {"render.set", {"scene", "folder", "file", "group"}}, {"transform", {"folder", "file", "group", "comparison"}},
+        {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "analysis"}},
+            {"render.set", {"scene", "folder", "file", "group"}}, {"transform", {"folder", "file", "group", "analysis"}},
             {"opacity.set", {"folder", "file", "group"}}, {"color", {"group"}},
             {"vertex-size.set", {"scene", "file", "group"}}, {"model.remove", {"file"}}}}};
 }

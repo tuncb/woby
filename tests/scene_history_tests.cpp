@@ -59,7 +59,7 @@ struct HistoryFixture {
 
 } // namespace
 
-TEST_CASE("comparison renaming is one undoable scene edit")
+TEST_CASE("analysis renaming is one undoable scene edit")
 {
     HistoryFixture f;
     const auto id = woby::createComparison(f.state);
@@ -364,7 +364,7 @@ TEST_CASE("scene history explicit save boundary splits a continuing interaction 
     CHECK_FALSE(f.state.isDirty);
 }
 
-TEST_CASE("scene history reloads removed geometry and restores folder identity and comparison references")
+TEST_CASE("scene history reloads removed geometry and restores folder identity and analysis references")
 {
     HistoryFixture f;
     const auto fileId = f.state.files[0].objectId;

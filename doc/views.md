@@ -7,10 +7,10 @@ on the row to replace its checkpoint, and use Delete to remove the view. Row Sav
 updates the document in memory; Save scene / Save scene as writes the views to disk.
 
 A view stores camera, up axis, grid/origin/dimensions toggles, vertex sizes, object
-visibility, colors, opacity, render modes, local transforms, comparison display
-settings/result positions, existing comparison input enable flags, and selection
+visibility, colors, opacity, render modes, local transforms, analysis display
+settings/result positions, existing analysis input enable flags, and selection
 in click order. Selection is captured because dimension annotations depend on it.
-Geometry, source paths, object names, hierarchy, comparison membership, pane/layout
+Geometry, source paths, object names, hierarchy, analysis membership, pane/layout
 preferences, dialogs, and renderer caches are not captured. New objects absent
 from a checkpoint retain their settings; parent transforms still affect descendants.
 
@@ -19,10 +19,10 @@ ui_operations.h; capture/application/persistence mapping live in
 ui_view_operations.cpp. View identities and active-row state are session-only.
 .woby version 7 stores [[views]], [views.camera], [[views.objects]], and
 [[views.parts]]. Older scene versions load with no views. References use the
-current document's file/group, flattened node, and comparison indices; Open maps
+current document's file/group, flattened node, and analysis indices; Open maps
 these to newly allocated runtime IDs. Object names are never used as unique keys.
 Missing or duplicate checkpoint references are dropped at load. Removing files,
-pruned folders, or comparisons removes their references from every view. Applying
+pruned folders, or analyses removes their references from every view. Applying
 a view also prunes stale references. Views themselves remain, even when empty.
 Open still fails for missing model files required by the scene itself.
 
@@ -33,7 +33,7 @@ stored on that history transition. Undo/Redo restores navigation only when cross
 an Apply View action. Ordinary camera navigation remains outside history and dirty
 tracking. Applying a camera/selection-only view creates an undo action without
 making the document dirty. Appearance changes use the normal saved-document dirty
-comparison. Undoing deletion restores the views and their object references together.
+analysis. Undoing deletion restores the views and their object references together.
 
 Unit coverage lives in tests/ui_view_tests.cpp. Validate with a Debug build using
 `cmake --build --preset vs2026-vcpkg` and `ctest --preset vs2026-vcpkg`.

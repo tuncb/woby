@@ -231,7 +231,7 @@ SceneObjectId createComparison(UiState& state)
     UiComparison comparison;
     size_t number = 1;
     do {
-        comparison.name = "Comparison " + std::to_string(number++);
+        comparison.name = "Analysis " + std::to_string(number++);
     } while (std::any_of(state.comparisons.begin(), state.comparisons.end(), [&](const UiComparison& other) {
         return other.name == comparison.name;
     }));
@@ -290,7 +290,7 @@ void removeComparison(UiState& state, SceneObjectId id)
 void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
 {
     if (auto* comparison = findComparison(state, id)) {
-        const auto normalized = name.empty() ? "Comparison" : name;
+        const auto normalized = name.empty() ? "Analysis" : name;
         if (comparison->name == normalized) { return; }
         comparison->name = normalized;
         markSceneDirty(state);
@@ -1352,7 +1352,7 @@ UiState prepareSceneReplacement(const UiState& current,
     setMasterVertexPointSize(prepared, document.masterVertexPointSize);
     for (const auto& record : document.comparisons) {
         UiComparison comparison;
-        comparison.name = record.name.empty() ? "Comparison" : record.name;
+        comparison.name = record.name.empty() ? "Analysis" : record.name;
         comparison.settings = normalizedComparisonSettings(record.settings);
         comparison.translation = record.translation && finitePosition(*record.translation)
             ? *record.translation : std::array<float, 3>{};

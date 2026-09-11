@@ -174,7 +174,7 @@ TEST_CASE("diagnostic navigation rejects empty stale disabled and replaced resul
         woby::setComparisonSettings(state, settings, id);
         woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
     }
-    SUBCASE("disabled comparison") {
+    SUBCASE("disabled analysis") {
         auto settings = woby::comparisonSettings(state, id);
         settings.enabled = false;
         woby::setComparisonSettings(state, settings, id);
@@ -266,7 +266,7 @@ TEST_CASE("diagnostic target and category persist while result focus is session 
     CHECK(woby::comparisonSettings(state, id).diagnosticCategory == woby::DiagnosticCategory::boundary);
 }
 
-TEST_CASE("comparison input summaries identify sides sources and invalid references")
+TEST_CASE("analysis input summaries identify sides sources and invalid references")
 {
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);
@@ -295,7 +295,7 @@ TEST_CASE("comparison input summaries identify sides sources and invalid referen
     CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::a, id).issue.find("0.obj / surface") != std::string::npos);
 }
 
-TEST_CASE("direct comparison input edits and direction survive scene round trip")
+TEST_CASE("direct analysis input edits and direction survive scene round trip")
 {
     auto state = stateWithFiles(3);
     const auto id = woby::createComparison(state);
@@ -324,7 +324,7 @@ TEST_CASE("direct comparison input edits and direction survive scene round trip"
     CHECK(woby::comparisonInputSummary(loaded, woby::ComparisonSide::b, loaded.comparisons[0].objectId).sourceNames == "0.obj");
 }
 
-TEST_CASE("comparison objects share inputs and keep independent settings and geometry signatures")
+TEST_CASE("analysis objects share inputs and keep independent settings and geometry signatures")
 {
     auto state = stateWithFiles(3);
     const auto first = woby::createComparison(state);
@@ -362,7 +362,7 @@ TEST_CASE("comparison objects share inputs and keep independent settings and geo
     CHECK(woby::comparisonObjectParts(state, {first, second}).empty());
 }
 
-TEST_CASE("comparison duplication deletion and selection preserve source ownership")
+TEST_CASE("analysis duplication deletion and selection preserve source ownership")
 {
     auto state = stateWithFiles(2);
     const auto sourceIds = woby::sceneObjects(state);
@@ -391,7 +391,7 @@ TEST_CASE("comparison duplication deletion and selection preserve source ownersh
     CHECK(woby::createComparison(state) > copy);
 }
 
-TEST_CASE("missing comparison inputs block partial results and survive save and reopen")
+TEST_CASE("missing analysis inputs block partial results and survive save and reopen")
 {
     auto state = stateWithFiles(3);
     const auto id = woby::createComparison(state);
@@ -418,7 +418,7 @@ TEST_CASE("missing comparison inputs block partial results and survive save and 
     CHECK(woby::comparisonWorldMesh(restored, woby::ComparisonSide::a).indices.size() == 6);
 }
 
-TEST_CASE("comparison offsets affect framing but never measured source coordinates")
+TEST_CASE("analysis offsets affect framing but never measured source coordinates")
 {
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);
@@ -448,10 +448,10 @@ TEST_CASE("comparison offsets affect framing but never measured source coordinat
     CHECK(state.sceneBounds.max == std::array<float, 3>{1, 1, 0});
 }
 
-TEST_CASE("multiple comparison objects round trip with fresh identities and independent dirty tracking")
+TEST_CASE("multiple analysis objects round trip with fresh identities and independent dirty tracking")
 {
     auto state = stateWithFiles(3);
-    const auto path = std::filesystem::temp_directory_path() / "woby-multiple-comparisons.woby";
+    const auto path = std::filesystem::temp_directory_path() / "woby-multiple-analyses.woby";
     for (auto& file : state.files) { file.path = path.parent_path() / file.path; }
     const auto first = woby::createComparison(state);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, first);
@@ -484,10 +484,10 @@ TEST_CASE("multiple comparison objects round trip with fresh identities and inde
     std::filesystem::remove(path);
 }
 
-TEST_CASE("comparison control inspection visibility and translation use object identities")
+TEST_CASE("analysis control inspection visibility and translation use object identities")
 {
-    CHECK(woby::controlCapabilities()["objectKinds"].back() == "comparison");
-    CHECK(woby::controlCapabilities()["comparisonTransformFields"] == nlohmann::json::array({"translation"}));
+    CHECK(woby::controlCapabilities()["objectKinds"].back() == "analysis");
+    CHECK(woby::controlCapabilities()["analysisTransformFields"] == nlohmann::json::array({"translation"}));
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
@@ -498,7 +498,7 @@ TEST_CASE("comparison control inspection visibility and translation use object i
     CHECK(details["valid"] == true);
     CHECK(details["a"][0]["id"] == format(state.files[0].groupSettings[0].objectId));
     CHECK(details["occurrences"].size() == 1);
-    CHECK(woby::controlSceneTree(state, format).back()["kind"] == "comparison");
+    CHECK(woby::controlSceneTree(state, format).back()["kind"] == "analysis");
     woby::ControlOperation command;
     command.objectId = id;
     command.target = format(id);
@@ -518,7 +518,7 @@ TEST_CASE("comparison control inspection visibility and translation use object i
     CHECK(state.files[0].groupSettings[0].visible);
 }
 
-TEST_CASE("new and duplicated comparisons are placed beyond existing result bounds")
+TEST_CASE("new and duplicated analyses are placed beyond existing result bounds")
 {
     auto state = stateWithFiles(2);
     const auto first = woby::createComparison(state);
@@ -535,10 +535,10 @@ TEST_CASE("new and duplicated comparisons are placed beyond existing result boun
     CHECK(woby::comparisonDisplayBounds(state, created)->min[0] > woby::comparisonDisplayBounds(state, copy)->max[0]);
 }
 
-TEST_CASE("comparison load auto places omitted positions once and preserves explicit positions")
+TEST_CASE("analysis load auto places omitted positions once and preserves explicit positions")
 {
     auto source = stateWithFiles(2);
-    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-initial-placement.woby";
+    const auto path = std::filesystem::temp_directory_path() / "woby-analysis-initial-placement.woby";
     for (auto& file : source.files) {
         file.path = path.parent_path() / file.path;
         woby::setFileTranslation(file.fileSettings, {10, 2, 0});
@@ -549,7 +549,7 @@ TEST_CASE("comparison load auto places omitted positions once and preserves expl
     const auto automatic = woby::findComparison(source, id)->translation;
     auto document = woby::createSceneDocument(source);
     std::array<float, 3> expected{};
-    SUBCASE("omitted position gets the same offset as a new comparison") {
+    SUBCASE("omitted position gets the same offset as a new analysis") {
         document.comparisons[0].translation.reset();
         expected = automatic;
     }
@@ -584,10 +584,10 @@ TEST_CASE("comparison load auto places omitted positions once and preserves expl
     std::filesystem::remove(path);
 }
 
-TEST_CASE("comparison load rejects malformed references and retains changed source layouts as missing")
+TEST_CASE("analysis load rejects malformed references and retains changed source layouts as missing")
 {
     auto state = stateWithFiles(2);
-    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-malformed.woby";
+    const auto path = std::filesystem::temp_directory_path() / "woby-analysis-malformed.woby";
     for (auto& file : state.files) { file.path = path.parent_path() / file.path; }
     const auto id = woby::createComparison(state);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
@@ -595,7 +595,7 @@ TEST_CASE("comparison load rejects malformed references and retains changed sour
     auto document = woby::createSceneDocument(state);
     document.comparisons[0].a[0].groupIndex = 99;
     woby::writeSceneDocument(path, document);
-    CHECK_THROWS_WITH((void)woby::readSceneDocument(path), "Comparison references an invalid source part.");
+    CHECK_THROWS_WITH((void)woby::readSceneDocument(path), "Analysis references an invalid source part.");
     document = woby::createSceneDocument(state);
     document.comparisons[0].translation = std::array<float, 3>{NAN, 2, 3};
     document.comparisons[0].a.push_back(document.comparisons[0].a[0]);
@@ -622,7 +622,7 @@ TEST_CASE("point triangle distances cover face edge vertex and degenerate region
     CHECK_THROWS((void)woby::pointTriangleDistance({NAN, 0, 0}, a, b, c));
 }
 
-TEST_CASE("comparison handles identical translated and retessellated surfaces")
+TEST_CASE("analysis handles identical translated and retessellated surfaces")
 {
     auto a = square();
     const auto same = woby::compareMeshes(a, a);
@@ -644,7 +644,7 @@ TEST_CASE("comparison handles identical translated and retessellated surfaces")
     CHECK(a.indices == std::vector<uint32_t>{0, 1, 2, 0, 2, 3});
 }
 
-TEST_CASE("interior sampling detects a filled hole and reverse comparison detects removal")
+TEST_CASE("interior sampling detects a filled hole and reverse analysis detects removal")
 {
     const auto result = woby::compareMeshes(grid(true), grid(false));
     CHECK(result.original.maximum < 1e-12);
@@ -699,7 +699,7 @@ TEST_CASE("diagnostics weld identical seam positions and distinguish edge defect
     CHECK(woby::inspectMesh(duplicate).degenerateTriangles == 1);
 }
 
-TEST_CASE("comparison validates empty and invalid input")
+TEST_CASE("analysis validates empty and invalid input")
 {
     auto a = square();
     CHECK_THROWS((void)woby::compareMeshes({}, {}));
@@ -715,7 +715,7 @@ TEST_CASE("comparison validates empty and invalid input")
     CHECK_THROWS((void)woby::surfacePercentAboveTolerance({}, -1));
 }
 
-TEST_CASE("comparison area statistics do not count tessellation density")
+TEST_CASE("analysis area statistics do not count tessellation density")
 {
     woby::SurfaceComparison surface;
     surface.distances = {0, 1, 1, 1};
@@ -723,12 +723,12 @@ TEST_CASE("comparison area statistics do not count tessellation density")
     CHECK(woby::surfacePercentAboveTolerance(surface, .5) == doctest::Approx(3));
 }
 
-TEST_CASE("comparison accepts cancellation without modifying the meshes")
+TEST_CASE("analysis accepts cancellation without modifying the meshes")
 {
     const auto a = square();
     std::stop_source stop;
     stop.request_stop();
-    CHECK_THROWS_WITH((void)woby::compareMeshes(a, a, stop.get_token()), "Comparison canceled.");
+    CHECK_THROWS_WITH((void)woby::compareMeshes(a, a, stop.get_token()), "Analysis canceled.");
     CHECK(a.indices.size() == 6);
 }
 
@@ -768,7 +768,7 @@ TEST_CASE("tree selection replaces toggles and preserves a pair on context click
     CHECK(woby::createSceneDocument(state) == clean);
 }
 
-TEST_CASE("context selection keeps folders parts and comparisons and assigns all selected sources")
+TEST_CASE("context selection keeps folders parts and analyses and assigns all selected sources")
 {
     auto state = stateWithFiles(3);
     woby::UiSceneNode folder;
@@ -801,7 +801,7 @@ TEST_CASE("context selection keeps folders parts and comparisons and assigns all
     CHECK(woby::selectedComparison(state)->objectId == id);
 }
 
-TEST_CASE("comparison groups assemble parts across files and compare combined surfaces")
+TEST_CASE("analysis groups assemble parts across files and compare combined surfaces")
 {
     woby::UiState state;
     auto first = square(), second = square();
@@ -824,7 +824,7 @@ TEST_CASE("comparison groups assemble parts across files and compare combined su
     CHECK(result.repaired.maximum < 1e-12);
 }
 
-TEST_CASE("folder and file comparison actions expand current parts without duplicate membership")
+TEST_CASE("folder and file analysis actions expand current parts without duplicate membership")
 {
     auto state = stateWithFiles(2);
     woby::UiSceneNode folder;
@@ -851,7 +851,7 @@ TEST_CASE("folder and file comparison actions expand current parts without dupli
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 0);
 }
 
-TEST_CASE("parts in one file can belong to either or both comparison groups")
+TEST_CASE("parts in one file can belong to either or both analysis groups")
 {
     woby::UiState state;
     auto model = square();
@@ -883,7 +883,7 @@ TEST_CASE("parts in one file can belong to either or both comparison groups")
     CHECK_THROWS((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::b));
 }
 
-TEST_CASE("comparison selection ignores stale IDs empty folders and objects without triangles")
+TEST_CASE("analysis selection ignores stale IDs empty folders and objects without triangles")
 {
     auto state = stateWithFiles(2);
     state.files[1].mesh.indices.clear();
@@ -905,7 +905,7 @@ TEST_CASE("comparison selection ignores stale IDs empty folders and objects with
     CHECK(woby::comparisonGeometrySignature(state) == 0);
 }
 
-TEST_CASE("comparison snapshots follow hierarchy transforms and ignore ordinary visibility")
+TEST_CASE("analysis snapshots follow hierarchy transforms and ignore ordinary visibility")
 {
     auto state = stateWithFiles(3);
     woby::setFileTranslation(state.files[0].fileSettings, {2, 0, 0});
@@ -943,7 +943,7 @@ TEST_CASE("comparison snapshots follow hierarchy transforms and ignore ordinary 
     CHECK(added != woby::comparisonGeometrySignature(state));
 }
 
-TEST_CASE("comparison supports implicit scene trees and deduplicates repeated part references")
+TEST_CASE("analysis supports implicit scene trees and deduplicates repeated part references")
 {
     auto state = stateWithFiles(1);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true);
@@ -956,7 +956,7 @@ TEST_CASE("comparison supports implicit scene trees and deduplicates repeated pa
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
 }
 
-TEST_CASE("comparison accepts more than 50000 selected triangles across the whole side")
+TEST_CASE("analysis accepts more than 50000 selected triangles across the whole side")
 {
     auto state = stateWithFiles(2);
     for (auto& file : state.files) {
@@ -976,7 +976,7 @@ TEST_CASE("comparison accepts more than 50000 selected triangles across the whol
     CHECK_THROWS((void)woby::comparisonWorldMesh(state, woby::ComparisonSide::a));
 }
 
-TEST_CASE("comparison measures both surfaces above the former triangle cap")
+TEST_CASE("analysis measures both surfaces above the former triangle cap")
 {
     const auto a = largeGrid(160);
     const auto b = largeGrid(160, .25f);
@@ -1003,7 +1003,7 @@ TEST_CASE("comparison measures both surfaces above the former triangle cap")
     CHECK(b.vertices.front().position[2] == .25f);
 }
 
-TEST_CASE("comparison rejects unrepresentable buffers without allocating geometry")
+TEST_CASE("analysis rejects unrepresentable buffers without allocating geometry")
 {
     const size_t maxBytes = std::numeric_limits<uint32_t>::max();
     CHECK(woby::comparisonBufferBytes(0, sizeof(woby::Vertex)) == 0);
@@ -1024,10 +1024,10 @@ TEST_CASE("mesh diagnostics honor cancellation")
 {
     std::stop_source stop;
     stop.request_stop();
-    CHECK_THROWS_WITH((void)woby::inspectMesh(square(), stop.get_token()), "Comparison canceled.");
+    CHECK_THROWS_WITH((void)woby::inspectMesh(square(), stop.get_token()), "Analysis canceled.");
 }
 
-TEST_CASE("large comparison and diagnostics stop during background processing")
+TEST_CASE("large analysis and diagnostics stop during background processing")
 {
     const auto input = largeGrid(500);
     for (const bool diagnosticsOnly : {true, false})
@@ -1048,13 +1048,13 @@ TEST_CASE("large comparison and diagnostics stop during background processing")
         (void)worker.wait_for(std::chrono::milliseconds(20));
         stop.request_stop();
         CHECK(worker.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
-        CHECK(worker.get() == "Comparison canceled.");
+        CHECK(worker.get() == "Analysis canceled.");
     }
     CHECK(input.indices.size() == 500 * 500 * 6);
     CHECK(input.vertices.front().position == std::array<float, 3>{0, 0, 0});
 }
 
-TEST_CASE("comparison settings clamp and memberships survive unrelated file removal")
+TEST_CASE("analysis settings clamp and memberships survive unrelated file removal")
 {
     auto state = stateWithFiles(3);
     const auto first = state.files[1].objectId, second = state.files[2].objectId;
@@ -1083,9 +1083,9 @@ TEST_CASE("comparison settings clamp and memberships survive unrelated file remo
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{second});
 }
 
-TEST_CASE("comparison memberships and settings round trip with fresh IDs and dirty tracking")
+TEST_CASE("analysis memberships and settings round trip with fresh IDs and dirty tracking")
 {
-    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-roundtrip.woby";
+    const auto path = std::filesystem::temp_directory_path() / "woby-analysis-roundtrip.woby";
     auto state = stateWithFiles(3);
     for (auto& file : state.files) { file.path = path.parent_path() / file.path; }
     const auto clean = woby::createSceneDocument(state);
@@ -1139,7 +1139,7 @@ TEST_CASE("comparison memberships and settings round trip with fresh IDs and dir
     std::filesystem::remove(path);
 }
 
-TEST_CASE("sample loads with repairs and A B comparison membership")
+TEST_CASE("sample loads with repairs and A B analysis membership")
 {
     const auto root = std::filesystem::path(__FILE__).parent_path().parent_path() / "assets/samples/mesh-comparison";
     const auto original = woby::loadObjMesh(root / "original.obj");
@@ -1160,19 +1160,20 @@ TEST_CASE("sample loads with repairs and A B comparison membership")
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == original.nodes.size());
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::b) == repaired.nodes.size());
     REQUIRE(scene.comparisons.size() == 1);
+    CHECK(scene.comparisons[0].name == "Analysis 1");
     CHECK_FALSE(scene.comparisons[0].translation.has_value());
     const auto display = woby::comparisonDisplayBounds(state, state.activeComparisonId);
     REQUIRE(display);
     CHECK(display->min[0] > woby::combineBounds(state.files, state.sceneNodes).max[0]);
 }
 
-TEST_CASE("comparison load normalizes settings and preserves incomplete objects")
+TEST_CASE("analysis load normalizes settings and preserves incomplete objects")
 {
-    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-invalid.woby";
+    const auto path = std::filesystem::temp_directory_path() / "woby-analysis-invalid.woby";
     {
         std::ofstream out(path);
-        out << "version = 4\ncomparison_enabled = true\n"
-               "comparison_tolerance = nan\ncomparison_color_range = -10\n[[files]]\npath = \"mesh.obj\"\n";
+        out << "version = 4\nanalysis_enabled = true\n"
+               "analysis_tolerance = nan\nanalysis_color_range = -10\n[[files]]\npath = \"mesh.obj\"\n";
     }
     const auto document = woby::readSceneDocument(path);
     REQUIRE(document.comparisons.size() == 1);
@@ -1184,7 +1185,7 @@ TEST_CASE("comparison load normalizes settings and preserves incomplete objects"
     std::filesystem::remove(path);
 }
 
-TEST_CASE("comparison tree preserves folders files and parts and prunes removed children")
+TEST_CASE("analysis tree preserves folders files and parts and prunes removed children")
 {
     auto state = stateWithFiles(3);
     woby::UiSceneNode assembly;
@@ -1233,7 +1234,7 @@ TEST_CASE("comparison tree preserves folders files and parts and prunes removed 
     CHECK(woby::comparisonTree(state, woby::ComparisonSide::a).empty());
 }
 
-TEST_CASE("comparison trees show only included parts and retain hierarchy after scene reload")
+TEST_CASE("analysis trees show only included parts and retain hierarchy after scene reload")
 {
     woby::UiState state;
     auto model = square();
@@ -1263,7 +1264,7 @@ TEST_CASE("comparison trees show only included parts and retain hierarchy after 
     CHECK(woby::comparisonTree(loaded, woby::ComparisonSide::b).empty());
 }
 
-TEST_CASE("comparison tree handles implicit hierarchy duplicate references and removed files")
+TEST_CASE("analysis tree handles implicit hierarchy duplicate references and removed files")
 {
     auto state = stateWithFiles(2);
     woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, woby::ComparisonSide::a, true);
@@ -1285,7 +1286,7 @@ TEST_CASE("comparison tree handles implicit hierarchy duplicate references and r
     CHECK(tree[0].objectId == state.files[0].objectId);
 }
 
-TEST_CASE("comparison panel opens on adding objects and starting comparison but can stay hidden")
+TEST_CASE("analysis panel opens on adding objects and starting analysis but can stay hidden")
 {
     auto state = stateWithFiles(2);
     CHECK_FALSE(state.propertiesPaneVisible);
@@ -1324,10 +1325,10 @@ TEST_CASE("comparison panel opens on adding objects and starting comparison but 
     CHECK(woby::comparisonSettings(restored).enabled);
 }
 
-TEST_CASE("single object comparison is ready for inspection and survives save load")
+TEST_CASE("single object analysis is ready for inspection and survives save load")
 {
     auto state = stateWithFiles(1);
-    const auto path = std::filesystem::temp_directory_path() / "woby-single-comparison.woby";
+    const auto path = std::filesystem::temp_directory_path() / "woby-single-analysis.woby";
     // Keep the model and scene on the same volume even when the checkout is
     // on D: and the user's temporary directory is on C:.
     state.files[0].path = path.parent_path() / state.files[0].path;
@@ -1354,7 +1355,7 @@ TEST_CASE("single object comparison is ready for inspection and survives save lo
     CHECK(woby::createSceneDocument(state) == document);
 }
 
-TEST_CASE("single input comparison follows membership changes and preserves the requested mode")
+TEST_CASE("single input analysis follows membership changes and preserves the requested mode")
 {
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);
@@ -1426,8 +1427,8 @@ TEST_CASE("single input analysis provides topology without distance samples or m
     }
     std::stop_source stop;
     stop.request_stop();
-    CHECK_THROWS_WITH((void)woby::compareMeshes(input, {}, stop.get_token()), "Comparison canceled.");
-    CHECK_THROWS_WITH((void)woby::compareMeshes({}, input, stop.get_token()), "Comparison canceled.");
+    CHECK_THROWS_WITH((void)woby::compareMeshes(input, {}, stop.get_token()), "Analysis canceled.");
+    CHECK_THROWS_WITH((void)woby::compareMeshes({}, input, stop.get_token()), "Analysis canceled.");
     input.indices[0] = 999;
     CHECK_THROWS((void)woby::compareMeshes(input, {}));
     CHECK_THROWS((void)woby::compareMeshes({}, input));
@@ -1448,7 +1449,7 @@ TEST_CASE("single input report includes only its surface and edge annotations")
     }
 }
 
-TEST_CASE("comparison reports describe green boundaries only when visible in every mode")
+TEST_CASE("analysis reports describe green boundaries only when visible in every mode")
 {
     woby::ComparisonSettings settings;
     for (const auto mode : {woby::ComparisonMode::original, woby::ComparisonMode::repaired,
@@ -1456,14 +1457,14 @@ TEST_CASE("comparison reports describe green boundaries only when visible in eve
         settings.mode = mode;
         for (const bool visible : {true, false}) {
             settings.showBoundaries = visible;
-            const auto lines = woby::comparisonReportLines("Comparison", "A", "B", settings, {}, {});
+            const auto lines = woby::comparisonReportLines("Analysis", "A", "B", settings, {}, {});
             CHECK((std::find(lines.begin(), lines.end(), "Green edges: boundary") != lines.end()) == visible);
             CHECK(std::find(lines.begin(), lines.end(), "Yellow edges: boundary") == lines.end());
         }
     }
 }
 
-TEST_CASE("quick comparison assigns selected objects in click order and opens the panel")
+TEST_CASE("quick analysis assigns selected objects in click order and opens the panel")
 {
     auto state = stateWithFiles(2);
     const auto clean = woby::createSceneDocument(state);
@@ -1491,7 +1492,7 @@ TEST_CASE("quick comparison assigns selected objects in click order and opens th
     CHECK(woby::comparisonContains(restored, restored.files[0].groupSettings[0].objectId, woby::ComparisonSide::b));
 }
 
-TEST_CASE("quick comparison supports folders and mesh parts including shared descendants")
+TEST_CASE("quick analysis supports folders and mesh parts including shared descendants")
 {
     auto state = stateWithFiles(2);
     woby::UiSceneNode folder;
@@ -1510,7 +1511,7 @@ TEST_CASE("quick comparison supports folders and mesh parts including shared des
     CHECK(tree[0].children.size() == 2);
 }
 
-TEST_CASE("quick comparison leaves existing memberships and invalid selections untouched")
+TEST_CASE("quick analysis leaves existing memberships and invalid selections untouched")
 {
     auto state = stateWithFiles(3);
     const auto unchanged = [&] {
@@ -1550,7 +1551,7 @@ TEST_CASE("quick comparison leaves existing memberships and invalid selections u
     unchanged();
 }
 
-TEST_CASE("comparison membership menu chooses add or remove independently for each side")
+TEST_CASE("analysis membership menu chooses add or remove independently for each side")
 {
     auto state = stateWithFiles(2);
     const auto object = state.files[0].objectId;
@@ -1569,7 +1570,7 @@ TEST_CASE("comparison membership menu chooses add or remove independently for ea
     CHECK(woby::comparisonMembershipAction(state, {state.files[1].objectId}, woby::ComparisonSide::b) == Action::add);
 }
 
-TEST_CASE("mixed comparison selections add missing parts before offering removal")
+TEST_CASE("mixed analysis selections add missing parts before offering removal")
 {
     auto state = stateWithFiles(3);
     woby::UiSceneNode folder;
@@ -1594,7 +1595,7 @@ TEST_CASE("mixed comparison selections add missing parts before offering removal
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a) == 0);
 }
 
-TEST_CASE("comparison membership menu is unavailable without any comparable parts")
+TEST_CASE("analysis membership menu is unavailable without any comparable parts")
 {
     auto state = stateWithFiles(1);
     using Action = woby::ComparisonMembershipAction;
@@ -1605,7 +1606,7 @@ TEST_CASE("comparison membership menu is unavailable without any comparable part
 }
 
 
-TEST_CASE("comparison report identifies source roles and unsigned approximate measurements")
+TEST_CASE("analysis report identifies source roles and unsigned approximate measurements")
 {
     woby::MeshComparison result;
     result.original.maximum = .25;
@@ -1678,7 +1679,7 @@ TEST_CASE("legacy unit labels are ignored on load and omitted on save and report
     const auto path = std::filesystem::temp_directory_path() / "woby-unit-label-load.woby";
     {
         std::ofstream file(path);
-        file << "version = 5\n[[comparisons]]\nname = \"check\"\ncomparison_unit_label = \"inches\"\ncomparison_tolerance = 0.125\n";
+        file << "version = 5\n[[analyses]]\nname = \"check\"\nanalysis_unit_label = \"inches\"\nanalysis_tolerance = 0.125\n";
     }
     const auto document = woby::readSceneDocument(path);
     REQUIRE(document.comparisons.size() == 1);
@@ -1687,7 +1688,7 @@ TEST_CASE("legacy unit labels are ignored on load and omitted on save and report
     woby::writeSceneDocument(path, document);
     std::ifstream saved(path);
     const std::string text((std::istreambuf_iterator<char>(saved)), std::istreambuf_iterator<char>());
-    CHECK(text.find("comparison_unit_label") == std::string::npos);
+    CHECK(text.find("analysis_unit_label") == std::string::npos);
     for (const auto& line : woby::comparisonReportLines("Test", "", "", settings, {}, {})) {
         CHECK(line.find("inches") == std::string::npos);
         CHECK(line.find("model units") == std::string::npos);
@@ -1718,7 +1719,7 @@ TEST_CASE("screenshot preferences validate resolution and remain outside scene d
     CHECK(state.screenshotSettings == options);
 }
 
-TEST_CASE("comparison checkboxes cascade through parents without changing membership or other sides")
+TEST_CASE("analysis checkboxes cascade through parents without changing membership or other sides")
 {
     auto state = stateWithFiles(3);
     woby::UiSceneNode nested;
@@ -1771,7 +1772,7 @@ TEST_CASE("comparison checkboxes cascade through parents without changing member
     CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a, id) == 2);
 }
 
-TEST_CASE("disabled comparison items change geometry signatures bounds and effective inspection mode")
+TEST_CASE("disabled analysis items change geometry signatures bounds and effective inspection mode")
 {
     auto state = stateWithFiles(2);
     state.files[1].fileSettings.translation = {10, 0, 0};
@@ -1805,7 +1806,7 @@ TEST_CASE("disabled comparison items change geometry signatures bounds and effec
     CHECK(woby::effectiveComparisonSettings(state, id).mode == woby::comparisonSettings(state, id).mode);
 }
 
-TEST_CASE("comparison item enablement survives saving loading duplication and swapping")
+TEST_CASE("analysis item enablement survives saving loading duplication and swapping")
 {
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);
@@ -1813,7 +1814,7 @@ TEST_CASE("comparison item enablement survives saving loading duplication and sw
         woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, side, true, id);
     }
     woby::setComparisonObjectsEnabled(state, {state.files[0].objectId}, woby::ComparisonSide::a, false, id);
-    const auto path = std::filesystem::temp_directory_path() / "woby-comparison-enabled.woby";
+    const auto path = std::filesystem::temp_directory_path() / "woby-analysis-enabled.woby";
     for (auto& file : state.files) { file.path = path.parent_path() / file.path; }
     const auto document = woby::createSceneDocument(state);
     woby::writeSceneDocument(path, document);
@@ -1841,7 +1842,7 @@ TEST_CASE("comparison item enablement survives saving loading duplication and sw
     std::filesystem::remove(path);
 }
 
-TEST_CASE("disabled missing comparison references do not block enabled geometry")
+TEST_CASE("disabled missing analysis references do not block enabled geometry")
 {
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);
@@ -1859,7 +1860,7 @@ TEST_CASE("disabled missing comparison references do not block enabled geometry"
     CHECK(woby::canInspectComparison(state, id));
 }
 
-TEST_CASE("comparison file checkbox toggles every included mesh part in implicit and explicit trees")
+TEST_CASE("analysis file checkbox toggles every included mesh part in implicit and explicit trees")
 {
     for (const bool explicitTree : {false, true}) {
         woby::UiState state;
@@ -2080,7 +2081,7 @@ TEST_CASE("surface mesh quality reports group size limits and omit unit labels")
 
 TEST_CASE("surface mesh quality control options validate and round trip")
 {
-    const auto* method = woby::findControlMethod("comparison.set");
+    const auto* method = woby::findControlMethod("analysis.set");
     REQUIRE(method);
     const nlohmann::json params = {{"target", "12"}, {"mode", "surface_quality"}, {"qualityMetric", "equivalent_size"},
         {"qualityOnA", true}, {"qualityMinimumEnabled", true}, {"qualityMaximumEnabled", false},

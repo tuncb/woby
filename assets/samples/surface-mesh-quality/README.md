@@ -5,12 +5,12 @@ paths, so the whole folder can be copied elsewhere. Coordinates are in millimete
 No generator, plugin, or download is needed to open them.
 
 The projects open in **Surface mesh quality** mode with a saved camera. Paired
-examples display A on the left and B on the right as two named comparisons that
-share the same inputs. Select either comparison in the scene tree to inspect
+examples display A on the left and B on the right as two named analyses that
+share the same inputs. Select either analysis in the scene tree to inspect
 the A/B statistics, histogram, metric selector, and size limits in Properties.
-Source meshes are hidden to avoid covering the heatmaps, but remain comparison inputs.
-Changing one comparison's metric does not change the other; select the same metric
-on both when comparing their colors. Each comparison computes its range from both inputs.
+Source meshes are hidden to avoid covering the heatmaps, but remain analysis inputs.
+Changing one analysis's metric does not change the other; select the same metric
+on both when comparing their colors. Each analysis computes its range from both inputs.
 
 | Project | Starts with | What to verify |
 | --- | --- | --- |
@@ -26,7 +26,7 @@ on both when comparing their colors. Each comparison computes its range from bot
 - B: 72 triangles, longest edge `sqrt(2) = 1.414214` mm.
 - Both: every shape value is `sqrt(3)/2 = 0.866025`; local size jump is 1.
 - Maximum size is 1.5 mm: A has 100% of faces and area above the limit; B has 0%.
-- Switch both comparisons to **Equivalent size**. A is `2.149140` mm and B is
+- Switch both analyses to **Equivalent size**. A is `2.149140` mm and B is
   `1.074570` mm. The factor of two remains, while both shape histograms coincide.
 
 Size colors use the common A/B range; they are not an automatic FEM pass/fail score.

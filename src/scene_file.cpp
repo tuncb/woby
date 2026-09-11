@@ -368,9 +368,9 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
         record.name = parseTomlString(value);
     } else if (key == "visible") {
         record.settings.visible = parseTomlBool(value);
-    } else if (key == "comparison_a") {
+    } else if (key == "analysis_a") {
         record.settings.comparison.a = parseTomlBool(value);
-    } else if (key == "comparison_b") {
+    } else if (key == "analysis_b") {
         record.settings.comparison.b = parseTomlBool(value);
     } else if (key == "show_solid_mesh") {
         record.settings.showSolidMesh = parseTomlBool(value);
@@ -437,17 +437,17 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
 {
     if (key == "name") { record.name = parseTomlString(value);
     } else if (key == "translation") { record.translation = parseTomlFloat3(value);
-    } else if (key == "comparison_enabled") {
+    } else if (key == "analysis_enabled") {
         record.settings.enabled = parseTomlBool(value);
-    } else if (key == "comparison_mode") {
+    } else if (key == "analysis_mode") {
         const auto mode = parseTomlString(value);
         if (mode == "distance") { record.settings.mode = ComparisonMode::distance; }
         else if (mode == "a") { record.settings.mode = ComparisonMode::original; }
         else if (mode == "b") { record.settings.mode = ComparisonMode::repaired; }
         else if (mode == "overlay") { record.settings.mode = ComparisonMode::overlay; }
         else if (mode == "surface_quality") { record.settings.mode = ComparisonMode::surfaceQuality; }
-        else { throw std::runtime_error("Unknown comparison mode."); }
-    } else if (key == "comparison_distance_on_a") {
+        else { throw std::runtime_error("Unknown analysis mode."); }
+    } else if (key == "analysis_distance_on_a") {
         record.settings.distanceOnOriginal = parseTomlBool(value);
     } else if (key == "diagnostic_side") {
         const auto side = parseTomlString(value);
@@ -460,7 +460,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else if (category == "non_manifold") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifold; }
         else if (category == "winding") { record.settings.diagnosticCategory = DiagnosticCategory::winding; }
         else { throw std::runtime_error("Unknown diagnostic category."); }
-    } else if (key == "comparison_tolerance") {
+    } else if (key == "analysis_tolerance") {
         record.settings.tolerance = parseTomlFloat(value);
     } else if (key == "quality_metric") {
         record.settings.quality.metric = parseSurfaceQualityMetric(parseTomlString(value));
@@ -474,13 +474,13 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         record.settings.quality.minimumSize = parseTomlFloat(value);
     } else if (key == "quality_maximum_size") {
         record.settings.quality.maximumSize = parseTomlFloat(value);
-    } else if (key == "comparison_color_range") {
+    } else if (key == "analysis_color_range") {
         record.settings.colorRange = parseTomlFloat(value);
-    } else if (key == "comparison_show_edges") {
+    } else if (key == "analysis_show_edges") {
         record.settings.showEdges = parseTomlBool(value);
-    } else if (key == "comparison_show_boundaries") {
+    } else if (key == "analysis_show_boundaries") {
         record.settings.showBoundaries = parseTomlBool(value);
-    } else if (key == "comparison_show_non_manifold") {
+    } else if (key == "analysis_show_non_manifold") {
         record.settings.showNonManifold = parseTomlBool(value);
     }
 }
@@ -496,18 +496,18 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     case ComparisonMode::overlay: mode = "overlay"; break;
     case ComparisonMode::surfaceQuality: mode = "surface_quality"; break;
     }
-    stream << "comparison_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
-    stream << "comparison_mode = \"" << mode << "\"\n";
-    stream << "comparison_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
+    stream << "analysis_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
+    stream << "analysis_mode = \"" << mode << "\"\n";
+    stream << "analysis_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
     stream << "diagnostic_side = \"" << (comparison.diagnosticSide == ComparisonSide::a ? "a" : "b") << "\"\n";
     const char* category = comparison.diagnosticCategory == DiagnosticCategory::boundary ? "boundary"
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold" : "winding";
     stream << "diagnostic_category = \"" << category << "\"\n";
-    stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
-    stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
-    stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
-    stream << "comparison_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
-    stream << "comparison_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
+    stream << "analysis_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
+    stream << "analysis_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
+    stream << "analysis_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
+    stream << "analysis_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
+    stream << "analysis_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
 
     stream << "quality_metric = \"" << surfaceQualityMetricKey(comparison.quality.metric) << "\"\n";
     stream << "quality_on_a = " << (comparison.quality.onOriginal ? "true" : "false") << "\n";
@@ -660,14 +660,14 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 section = Section::camera;
                 continue;
             }
-            if (text == "[[comparisons]]") {
+            if (text == "[[analyses]]") {
                 document.comparisons.emplace_back();
                 section = Section::comparison;
                 continue;
             }
-            if (text == "[[comparisons.a]]" || text == "[[comparisons.b]]") {
-                if (document.comparisons.empty()) { throw std::runtime_error("Comparison input appeared before comparison."); }
-                const bool a = text == "[[comparisons.a]]";
+            if (text == "[[analyses.a]]" || text == "[[analyses.b]]") {
+                if (document.comparisons.empty()) { throw std::runtime_error("Analysis input appeared before analysis."); }
+                const bool a = text == "[[analyses.a]]";
                 (a ? document.comparisons.back().a : document.comparisons.back().b).emplace_back();
                 section = a ? Section::comparisonA : Section::comparisonB;
                 continue;
@@ -714,26 +714,26 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     document.showDimensions = parseTomlBool(value);
                 } else if (key == "up_axis") {
                     document.upAxis = parseSceneUpAxis(value);
-                } else if (key == "comparison_enabled") {
+                } else if (key == "analysis_enabled") {
                     document.comparison.enabled = parseTomlBool(value);
-                } else if (key == "comparison_mode") {
+                } else if (key == "analysis_mode") {
                     const auto mode = parseTomlString(value);
                     if (mode == "distance") { document.comparison.mode = ComparisonMode::distance; }
                     else if (mode == "a") { document.comparison.mode = ComparisonMode::original; }
                     else if (mode == "b") { document.comparison.mode = ComparisonMode::repaired; }
                     else if (mode == "overlay") { document.comparison.mode = ComparisonMode::overlay; }
-                    else { throw std::runtime_error("Unknown comparison mode."); }
-                } else if (key == "comparison_distance_on_a") {
+                    else { throw std::runtime_error("Unknown analysis mode."); }
+                } else if (key == "analysis_distance_on_a") {
                     document.comparison.distanceOnOriginal = parseTomlBool(value);
-                } else if (key == "comparison_tolerance") {
+                } else if (key == "analysis_tolerance") {
                     document.comparison.tolerance = parseTomlFloat(value);
-                } else if (key == "comparison_color_range") {
+                } else if (key == "analysis_color_range") {
                     document.comparison.colorRange = parseTomlFloat(value);
-                } else if (key == "comparison_show_edges") {
+                } else if (key == "analysis_show_edges") {
                     document.comparison.showEdges = parseTomlBool(value);
-                } else if (key == "comparison_show_boundaries") {
+                } else if (key == "analysis_show_boundaries") {
                     document.comparison.showBoundaries = parseTomlBool(value);
-                } else if (key == "comparison_show_non_manifold") {
+                } else if (key == "analysis_show_non_manifold") {
                     document.comparison.showNonManifold = parseTomlBool(value);
                 }
             } else if (section == Section::view) {
@@ -748,7 +748,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 assignCameraValue(document.views.back().scene.camera, key, value);
             } else if (section == Section::viewPart) {
                 auto& part = document.views.back().parts.back();
-                if (key == "comparison_index") { part.comparisonIndex = parseTomlInteger(value); }
+                if (key == "analysis_index") { part.comparisonIndex = parseTomlInteger(value); }
                 else if (key == "file_index") { part.fileIndex = parseTomlInteger(value); }
                 else if (key == "group_index") { part.groupIndex = parseTomlInteger(value); }
                 else if (key == "enabled") { part.enabled = parseTomlBool(value); }
@@ -756,7 +756,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     const auto side = parseTomlString(value);
                     if (side == "a") { part.side = ComparisonSide::a; }
                     else if (side == "b") { part.side = ComparisonSide::b; }
-                    else { throw std::runtime_error("Unknown view comparison side."); }
+                    else { throw std::runtime_error("Unknown view analysis side."); }
                 }
             } else if (section == Section::viewObject) {
                 auto& object = document.views.back().objects.back();
@@ -765,12 +765,12 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     if (kind == "folder") { object.kind = ViewObjectKind::folder; }
                     else if (kind == "file") { object.kind = ViewObjectKind::file; }
                     else if (kind == "group") { object.kind = ViewObjectKind::group; }
-                    else if (kind == "comparison") { object.kind = ViewObjectKind::comparison; }
+                    else if (kind == "analysis") { object.kind = ViewObjectKind::comparison; }
                     else { throw std::runtime_error("Unknown view object kind."); }
                 } else if (key == "index") { object.index = parseTomlInteger(value); }
                 else if (key == "group_index") { object.groupIndex = parseTomlInteger(value); }
                 else if (key == "selection_order") { object.settings.selectionOrder = parseTomlInteger(value); }
-                else if (key.starts_with("comparison_") || key.starts_with("quality_")) {
+                else if (key.starts_with("analysis_") || key.starts_with("quality_")) {
                     SceneComparisonRecord comparison;
                     comparison.settings = object.settings.comparison;
                     assignComparisonValue(comparison, key, value);
@@ -841,7 +841,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
     // Migrate v2-v4 membership into one object, then discard legacy input fields.
     SceneComparisonRecord legacy;
-    legacy.name = "Comparison 1";
+    legacy.name = "Analysis 1";
     legacy.settings = normalizedComparisonSettings(document.comparison);
     for (size_t f = 0; f < document.files.size(); ++f) {
         auto& file = document.files[f];
@@ -860,7 +860,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
     }
     document.comparison = {};
     for (auto& comparison : document.comparisons) {
-        if (comparison.name.empty()) { comparison.name = "Comparison"; }
+        if (comparison.name.empty()) { comparison.name = "Analysis"; }
         comparison.settings = normalizedComparisonSettings(comparison.settings);
         if (comparison.translation && !std::all_of(comparison.translation->begin(), comparison.translation->end(), [](float v) { return std::isfinite(v); })) {
             comparison.translation = std::array<float, 3>{};
@@ -871,7 +871,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (part.fileIndex < 0 || static_cast<size_t>(part.fileIndex) >= document.files.size()
                     || part.groupIndex < 0 || static_cast<size_t>(part.groupIndex)
                         >= document.files[static_cast<size_t>(part.fileIndex)].groups.size()) {
-                    throw std::runtime_error("Comparison references an invalid source part.");
+                    throw std::runtime_error("Analysis references an invalid source part.");
                 }
             }
             std::sort(members->begin(), members->end(), [](const auto& a, const auto& b) {
@@ -962,7 +962,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "\n";
     }
     for (const auto& record : document.comparisons) {
-        stream << "\n[[comparisons]]\n";
+        stream << "\n[[analyses]]\n";
         stream << "name = \"" << escapeTomlString(record.name) << "\"\n";
         if (record.translation) {
             stream << "translation = "; writeTomlFloat3(stream, *record.translation); stream << "\n";
@@ -971,7 +971,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
 
         for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
             for (const auto& part : side == ComparisonSide::a ? record.a : record.b) {
-                stream << (side == ComparisonSide::a ? "\n[[comparisons.a]]\n" : "\n[[comparisons.b]]\n");
+                stream << (side == ComparisonSide::a ? "\n[[analyses.a]]\n" : "\n[[analyses.b]]\n");
                 stream << "file_index = " << part.fileIndex << "\n";
                 stream << "group_index = " << part.groupIndex << "\n";
                 stream << "name = \"" << escapeTomlString(part.name) << "\"\n";
@@ -994,7 +994,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             case ViewObjectKind::folder: kind = "folder"; break;
             case ViewObjectKind::file: kind = "file"; break;
             case ViewObjectKind::group: break;
-            case ViewObjectKind::comparison: kind = "comparison"; break;
+            case ViewObjectKind::comparison: kind = "analysis"; break;
             }
             stream << "\n[[views.objects]]\nkind = \"" << kind << "\"\n";
             stream << "index = " << object.index << "\ngroup_index = " << object.groupIndex << "\n";
@@ -1005,7 +1005,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             }
         }
         for (const auto& part : view.parts) {
-            stream << "\n[[views.parts]]\ncomparison_index = " << part.comparisonIndex << "\n";
+            stream << "\n[[views.parts]]\nanalysis_index = " << part.comparisonIndex << "\n";
             stream << "file_index = " << part.fileIndex << "\ngroup_index = " << part.groupIndex << "\n";
             stream << "side = \"" << (part.side == ComparisonSide::a ? "a" : "b") << "\"\n";
             stream << "enabled = " << (part.enabled ? "true" : "false") << "\n";

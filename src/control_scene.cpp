@@ -222,7 +222,7 @@ Json controlSceneInfo(const UiState& state)
     modes["solid"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::solidMesh), groups);
     modes["triangles"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::triangles), groups);
     modes["vertices"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::vertices), groups);
-    return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"comparisonCount", state.comparisons.size()}, {"groupCount", groups},
+    return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"analysisCount", state.comparisons.size()}, {"groupCount", groups},
         {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles},
         {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
         {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
@@ -259,7 +259,7 @@ Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
     for (const auto& comparison : state.comparisons) {
         std::array<float, 16> world{};
         bx::mtxTranslate(world.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
-        result.push_back({{"id", formatId(comparison.objectId)}, {"name", comparison.name}, {"kind", "comparison"},
+        result.push_back({{"id", formatId(comparison.objectId)}, {"name", comparison.name}, {"kind", "analysis"},
             {"occurrence", {result.size()}}, {"implicit", false}, {"children", Json::array()},
             {"settings", localObjectDetails(state, comparison.objectId)["settings"]},
             {"effective", {{"visible", comparison.settings.enabled && canInspectComparison(state, comparison.objectId)},
@@ -302,12 +302,12 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         // Validate all inputs before any mutation, including creation of an empty object.
         if (command.action != A::comparisonCreate
             && (command.objectId == invalidSceneObjectId || !findComparison(state, command.objectId))) {
-            throw std::invalid_argument("This command requires a comparison ID.");
+            throw std::invalid_argument("This command requires an analysis ID.");
         }
         for (const auto& [supplied, id] : {std::pair{command.a.has_value(), command.aId},
             std::pair{command.b.has_value(), command.bId}, std::pair{command.object.has_value(), command.memberId}}) {
             if (supplied && comparisonObjectParts(state, {id}).empty()) {
-                throw std::invalid_argument("Comparison inputs require a file, folder, or group containing triangles.");
+                throw std::invalid_argument("Analysis inputs require a file, folder, or group containing triangles.");
             }
         }
         auto id = command.objectId;
@@ -355,7 +355,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         }
         updateSceneDirty(state, cleanDocument);
         auto object = controlObjectDetails(state, id, formatId);
-        object.update({{"id", formatId(id)}, {"name", findComparison(state, id)->name}, {"kind", "comparison"}});
+        object.update({{"id", formatId(id)}, {"name", findComparison(state, id)->name}, {"kind", "analysis"}});
         return {{"target", formatId(id)}, {"object", std::move(object)}, {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
     }
     if (command.objectId != invalidSceneObjectId && findComparison(state, command.objectId)) {
@@ -368,13 +368,13 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             setComparisonSettings(state, settings, command.objectId);
         } else if (command.action == A::transformSet || command.action == A::transformReset) {
             if (command.rotationDegrees || command.scale || command.value) {
-                throw std::invalid_argument("Comparison transforms support display translation only.");
+                throw std::invalid_argument("Analysis transforms support display translation only.");
             }
             if (command.action == A::transformReset || command.translation) {
                 setComparisonTranslation(state, command.objectId, command.translation.value_or(std::array<float, 3>{}));
             }
         } else {
-            throw std::invalid_argument("This command does not apply to comparison objects.");
+            throw std::invalid_argument("This command does not apply to analysis objects.");
         }
         updateSceneDirty(state, cleanDocument);
         return {{"target", command.target}, {"applied", localObjectDetails(state, command.objectId)["settings"]},
@@ -462,7 +462,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         throw std::invalid_argument("Command requires a runtime adapter.");
     case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:
     case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap: case A::comparisonEnable:
-        throw std::invalid_argument("Comparison command was not dispatched.");
+        throw std::invalid_argument("Analysis command was not dispatched.");
     }
     // Read-only and session-only operations return above. Struct-level setters
     // in this batch need one scene-edit notification for history recording.

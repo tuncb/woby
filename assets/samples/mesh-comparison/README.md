@@ -1,6 +1,6 @@
-# Mesh comparison sample
+# Mesh analysis sample
 
-Open `compare.woby` in woby to load a comparison object. Select **Comparison 1**
+Open `compare.woby` in woby to load an analysis object. Select **Analysis 1**
 in the scene tree to open its properties. Both files use
 millimeters. The viewer displays measurements without a unit suffix.
 
@@ -10,17 +10,17 @@ removes the detached triangle. The outer edge of the sheet intentionally stays
 open; these sample meshes are surfaces, not closed solids.
 
 The original surface belongs to **A** and the repaired surface belongs to **B**.
-Right-click any scene-tree file, folder, or mesh part and use **Comparison
-membership → Comparison 1** to add/remove its current parts from either side. Ctrl-click selects multiple objects. Adding a
+Right-click any scene-tree file, folder, or mesh part and use **Analysis
+membership → Analysis 1** to add/remove its current parts from either side. Ctrl-click selects multiple objects. Adding a
 parent includes each part once; removing a child removes just that part. New
 children are not automatically added. A part may belong to both sides.
 
-The **Comparison** panel opens on the right when you select a comparison object
+The **Analysis** panel opens on the right when you select an analysis object
 or add inputs.
 Use the upper-right **A/B** button to hide/show it. Its trees show each side using
 the scene hierarchy; right-click a branch or part to remove it from that side.
 
-Try these controls in **Comparison**:
+Try these controls in **Analysis**:
 
 1. **Surface distance** shows the repaired surface's unsigned distance from the
    original. The filled patch and flattened bump should stand out.
@@ -31,7 +31,7 @@ Try these controls in **Comparison**:
    original has 47 boundary edges; the repaired surface has 36. **First** focuses
    the first edge of that category on the displayed mesh.
 6. Move **Result position** to separate the result from the source models, then
-   duplicate the comparison from its scene-tree context menu. Each result has
+   duplicate the analysis from its scene-tree context menu. Each result has
    independent visibility and settings and references the same source geometry.
 7. Change the tolerance and color maximum, then save/reopen the `.woby` file.
 
@@ -39,7 +39,7 @@ The example contains 153 original triangles and 160 repaired triangles.
 
 Prototype limits:
 
-- There is no fixed triangle-count cap. Comparisons are bounded by available memory
+- There is no fixed triangle-count cap. Analyses are bounded by available memory
   and the renderer's 32-bit buffer sizes; oversized buffers are rejected before
   allocating expanded geometry. Each input triangle generates four samples and
   twelve display vertices, so large selections can require substantial memory.
@@ -47,14 +47,14 @@ Prototype limits:
   result and cancels obsolete work, including validation, diagnostics, tree building,
   sampling, and statistics, before recomputing it. Scene snapshots and GPU uploads
   still run on the main thread and can briefly pause interaction for large inputs.
-- Comparison uses combined member surfaces and their source scene hierarchy
-  transforms. Results render alongside normal scene objects. Membership changes also recompute the result. Ordinary group visibility and appearance do not limit comparison.
+- Analysis uses combined member surfaces and their source scene hierarchy
+  transforms. Results render alongside normal scene objects. Membership changes also recompute the result. Ordinary group visibility and appearance do not limit analysis.
 - Distances use four triangle-interior samples per source face and closest points
   on the other mesh's triangles, accelerated with a bounding-volume tree. This
   is an approximation, not an exact Hausdorff bound. Small features can fall
   between samples. Mean, P95, and area percentages use sample surface area.
 - Distances are unsigned and no automatic alignment or Boolean union is performed.
-  Overlapping and internal surfaces remain part of the comparison.
+  Overlapping and internal surfaces remain part of the analysis.
 - Edge diagnostics merge exactly equal positions to handle split OBJ/STL
   vertices, including coincident edges across different parts; they do not merge
   nearby unequal positions. Degenerate faces are
@@ -62,4 +62,4 @@ Prototype limits:
 - Counts and edge overlays cover boundaries, non-manifold edges, inconsistent
   winding, duplicate triangles, and degenerate triangles. Self-intersections
   and operation-history-based added/removed classifications are not implemented.
-- Screenshot export includes normal meshes and all visible comparisons, but not the UI legend.
+- Screenshot export includes normal meshes and all visible analyses, but not the UI legend.

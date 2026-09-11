@@ -1,7 +1,7 @@
 # CTL command reference
 
 Updated 2026-09-08. All commands in the current-command tables below are implemented
-in the CLI and local JSON-RPC API. Comparison controls and measurements are available
+in the CLI and local JSON-RPC API. Analysis controls and measurements are available
 alongside the existing scene controls, lifecycle, capture, and recovery
 commands. See [automation.md](automation.md) for transport, ordering, retries, and
 errors, and [ctl-roadmap.md](ctl-roadmap.md) for historical decisions.
@@ -64,53 +64,53 @@ queries. `ready` means startup completed, not idle; a scene query does not wait 
 unrelated manual background loading. `status.busy` describes loading, capture, and
 dialog activity, not an idle barrier or the automation queue itself.
 
-Comparison objects appear in `objects` and `scene tree` with kind `comparison`.
+Analysis objects appear in `objects` and `scene tree` with kind `analysis`.
 `object` includes their input references, missing-input status, and display
-settings; `scene info` includes `comparisonCount`. Comparison IDs support
+settings; `scene info` includes `analysisCount`. Analysis IDs support
 `visibility set`, `transform get`, translation-only `transform set`, and
 `transform reset` (resetting their display offset). Rotation, scale, opacity,
-and mesh render-mode commands do not apply to comparison results. The commands
-below create comparisons and edit their inputs and measurement settings.
+and mesh render-mode commands do not apply to analysis results. The commands
+below create analyses and edit their inputs and measurement settings.
 
-Screenshot capture waits for every visible comparison to finish, including
-single-input inspections. Empty comparisons, missing references, or failed
+Screenshot capture waits for every visible analysis to finish, including
+single-input inspections. Empty analyses, missing references, or failed
 computations fail capture; hide or repair the affected object before retrying.
 
-## Comparisons
+## Analyses
 
 | CLI | RPC method | Behavior |
 | --- | --- | --- |
-| `comparison create [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `comparison.create` | Create a comparison, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
-| `comparison delete COMPARISON_ID` | `comparison.delete` | Delete the comparison without deleting its source models. Returns `removed` and `dirty`. |
-| `comparison set COMPARISON_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL]` | `comparison.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
-| `comparison add COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
-| `comparison enable COMPARISON_ID --side a\|b --enabled BOOL [--object OBJECT_ID]` | `comparison.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. Membership is preserved. |
-| `comparison remove COMPARISON_ID --side a\|b --object OBJECT_ID` | `comparison.remove` | Remove the input's current triangular parts from the selected side. |
-| `comparison clear COMPARISON_ID --side a\|b` | `comparison.clear` | Clear the entire side, including missing references. |
-| `comparison swap COMPARISON_ID` | `comparison.swap` | Swap the A/B input lists. |
-| `comparison results COMPARISON_ID` | `comparison.results` | Wait for fresh diagnostics and, with two inputs, both directed distance summaries. Works for hidden comparisons and in every display mode. |
+| `analysis create [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
+| `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
+| `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
+| `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
+| `analysis enable ANALYSIS_ID --side a\|b --enabled BOOL [--object OBJECT_ID]` | `analysis.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. Membership is preserved. |
+| `analysis remove ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.remove` | Remove the input's current triangular parts from the selected side. |
+| `analysis clear ANALYSIS_ID --side a\|b` | `analysis.clear` | Clear the entire side, including missing references. |
+| `analysis swap ANALYSIS_ID` | `analysis.swap` | Swap the A/B input lists. |
+| `analysis results ANALYSIS_ID` | `analysis.results` | Wait for fresh diagnostics and, with two inputs, both directed distance summaries. Works for hidden analyses and in every display mode. |
 
-Surface quality controls are also available through `comparison set`:
+Surface quality controls are also available through `analysis set`:
 `--quality-metric longest_edge|equivalent_size|shape|size_jump`, `--quality-on-a BOOL`,
 `--quality-minimum-enabled BOOL`, `--quality-maximum-enabled BOOL`,
 `--quality-minimum-size N`, and `--quality-maximum-size N`. RPC parameter names
 are `qualityMetric`, `qualityOnA`, `qualityMinimumEnabled`, `qualityMaximumEnabled`,
 `qualityMinimumSize`, and `qualityMaximumSize`. Limits apply to longest edge in
 model units; negative sizes clamp to zero and an enabled maximum is raised to an
-enabled minimum when needed. Each populated `comparison results` side includes
+enabled minimum when needed. Each populated `analysis results` side includes
 `surfaceMeshQuality` with count/minimum/percentile5/median/percentile95/maximum for
 all four metrics. Undefined metrics use null; degenerate faces are counted
 separately. Surface quality mode works with either one or two inputs.
 
-Use `objects`/`object` to discover comparisons and inspect their settings and inputs.
+Use `objects`/`object` to discover analyses and inspect their settings and inputs.
 One populated side is sufficient for surface and edge inspection. Distance and
 overlay modes require both sides; with one side the viewer displays that surface
 and preserves the requested mode for when the second input is added.
 Inputs are file, folder, or mesh group IDs; files/folders expand to current triangular
-parts, just as in the UI. Add multiple inputs by repeating `comparison add` calls.
-An input may belong to both sides or multiple comparisons. Empty/nontriangular inputs
-and comparison IDs are rejected as inputs. All IDs are validated before edits, so a
-bad B input does not leave a partially created comparison. Stale/foreign IDs fail with
+parts, just as in the UI. Add multiple inputs by repeating `analysis add` calls.
+An input may belong to both sides or multiple analyses. Empty/nontriangular inputs
+and analysis IDs are rejected as inputs. All IDs are validated before edits, so a
+bad B input does not leave a partially created analysis. Stale/foreign IDs fail with
 `-32005`; malformed parameters or unsupported kinds use `-32602`.
 
 Setters use the UI's normalization: tolerance is clamped to 0–1e12, color range to
@@ -118,25 +118,25 @@ Setters use the UI's normalization: tolerance is clamped to 0–1e12, color rang
 in `.woby` scenes. Membership/settings setters return `target`, updated `object`,
 `dirty`, and `bounds`. Use a request key when retrying creation or swapping.
 
-`comparison enable` matches the comparison-view checkboxes. It only changes existing
-members on the selected side of the selected comparison; source visibility and other
-comparisons are unaffected. An input with no members on that side is a no-op.
-`object COMPARISON_ID` and comparison edit responses include `enabled` on each
-entry in `a` and `b`. RPC uses `comparison.enable` with `target`, `side`, boolean
+`analysis enable` matches the analysis-view checkboxes. It only changes existing
+members on the selected side of the selected analysis; source visibility and other
+analyses are unaffected. An input with no members on that side is a no-op.
+`object ANALYSIS_ID` and analysis edit responses include `enabled` on each
+entry in `a` and `b`. RPC uses `analysis.enable` with `target`, `side`, boolean
 `enabled`, and optional `object`.
 
 ```powershell
-woby.exe ctl --instance review comparison enable COMPARISON_ID --side a --object OBJECT_ID --enabled false
-woby.exe ctl --instance review comparison enable COMPARISON_ID --side a --object OBJECT_ID --enabled true
+woby.exe ctl --instance review analysis enable ANALYSIS_ID --side a --object OBJECT_ID --enabled false
+woby.exe ctl --instance review analysis enable ANALYSIS_ID --side a --object OBJECT_ID --enabled true
 # Disable every member on side B.
-woby.exe ctl --instance review comparison enable COMPARISON_ID --side b --enabled false
+woby.exe ctl --instance review analysis enable ANALYSIS_ID --side b --enabled false
 ```
 
 Measurements use an immutable snapshot of the transformed A/B geometry and tolerance
-when the command starts. Ordinary source visibility and the comparison's display
+when the command starts. Ordinary source visibility and the analysis's display
 offset do not affect distances. A background CPU calculation keeps the viewer responsive;
 the command retains its FIFO slot until it finishes. Later CLI edits execute afterward.
-Manual UI edits during computation do not change the snapshot. Empty comparisons
+Manual UI edits during computation do not change the snapshot. Empty analyses
 or missing references fail with `-32602`; loading/capture/dialog activity rejects
 measurement with `-32014`.
 Computation failures return a command error, never partial metrics.
@@ -162,13 +162,13 @@ returns its original snapshot; use a new key (or omit it) for fresh results.
 For a running instance named `review`, with input IDs from `objects`:
 
 ```powershell
-$comparison = woby.exe ctl --instance review comparison create --name "Repair check" --a A_ID --b B_ID --json | ConvertFrom-Json
-woby.exe ctl --instance review comparison set $comparison.target --tolerance 0.01 --mode distance
-woby.exe ctl --instance review comparison results $comparison.target --json
-woby.exe ctl --instance review scene save-as C:\output\comparison.woby
+$analysis = woby.exe ctl --instance review analysis create --name "Repair check" --a A_ID --b B_ID --json | ConvertFrom-Json
+woby.exe ctl --instance review analysis set $analysis.target --tolerance 0.01 --mode distance
+woby.exe ctl --instance review analysis results $analysis.target --json
+woby.exe ctl --instance review scene save-as C:\output\analysis.woby
 ```
 
-Direct RPC uses `target` for the comparison ID, `a`/`b` for creation inputs, `object`
+Direct RPC uses `target` for the analysis ID, `a`/`b` for creation inputs, `object`
 for an added/removed input, and camelCase settings such as `distanceOnA`, `colorRange`,
 and `showNonManifold`. All commands use the existing authenticated `/rpc` endpoint.
 

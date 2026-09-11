@@ -21,7 +21,7 @@ const char* objectType(SceneObjectKind kind)
     case SceneObjectKind::folder: return "Folder";
     case SceneObjectKind::file: return "File";
     case SceneObjectKind::group: return "Part";
-    case SceneObjectKind::comparison: return "Comparison";
+    case SceneObjectKind::comparison: return "Analysis";
     }
     return "Object";
 }

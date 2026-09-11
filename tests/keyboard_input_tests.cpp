@@ -853,11 +853,11 @@ TEST_CASE("information icons stay compact and right aligned beside stretch contr
             const float size = woby::informationIconSize();
             const float spacing = ImGui::GetStyle().ItemSpacing.x;
             ImGui::SetNextItemWidth(-size - spacing);
-            char name[32] = "Comparison";
+            char name[32] = "Analysis";
             ImGui::InputText("##name", name, sizeof(name));
             const float fieldRight = ImGui::GetItemRectMax().x;
             ImGui::SameLine();
-            woby::drawInformationIcon("info", "Comparison", "Combined surfaces at scene positions.");
+            woby::drawInformationIcon("info", "Analysis", "Combined surfaces at scene positions.");
             CHECK(ImGui::GetItemRectMax().x == doctest::Approx(right));
             CHECK(ImGui::GetItemRectMin().x >= fieldRight + spacing - 1.0f);
             CHECK(ImGui::GetItemRectSize().x == doctest::Approx(20.0f * scale));
@@ -931,7 +931,7 @@ TEST_CASE("hover hints inside export popups show complete wrapped text without o
     ImGui::GetStyle() = woby::scaledUiStyle(ImGui::GetStyle(), 2.0f);
     const char* explanation =
         "Choose a width from 960 to 7680 pixels and a height from 720 to 4320 pixels.\n\n"
-        "Visible results only exports comparison results. Otherwise the image includes the scene, helpers and visible results. "
+        "Visible results only exports analysis results. Otherwise the image includes the scene, helpers and visible results. "
         "Uses the current camera.\n\nExport waits for complete visible results.";
     ImVec2 icon;
     const auto frame = [&](bool open) {
@@ -1129,15 +1129,15 @@ TEST_CASE("scene name rows align with visibility and remove controls at every UI
         ImGui::NewFrame();
         ImGui::SetNextWindowSize(ImVec2(700.0f, 400.0f));
         ImGui::Begin("Scene rows");
-        woby::drawVisibilityButton("visible", true, "comparison");
+        woby::drawVisibilityButton("visible", true, "analysis");
         const auto eyeMin = ImGui::GetItemRectMin();
         const auto eyeMax = ImGui::GetItemRectMax();
         ImGui::SameLine();
-        woby::drawSceneItemButton("A comparison with a long name###name", 200.0f, true);
+        woby::drawSceneItemButton("A analysis with a long name###name", 200.0f, true);
         const auto nameMin = ImGui::GetItemRectMin();
         const auto nameMax = ImGui::GetItemRectMax();
         ImGui::SameLine();
-        woby::drawRemoveButton("remove", "Remove comparison");
+        woby::drawRemoveButton("remove", "Remove analysis");
         CHECK(nameMin.y == eyeMin.y);
         CHECK(nameMax.y == eyeMax.y);
         CHECK(nameMin.y == ImGui::GetItemRectMin().y);
@@ -1257,7 +1257,7 @@ TEST_CASE("fractional UI scales keep separators drawable across scale changes")
         const bool visible = ImGui::Begin("Scaled separator regression");
         CHECK(visible);
         if (visible) {
-            ImGui::TextUnformatted("Comparison");
+            ImGui::TextUnformatted("Analysis");
             ImGui::Separator();
             ImGui::TextUnformatted("Properties");
         }

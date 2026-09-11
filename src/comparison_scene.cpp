@@ -17,7 +17,7 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
 {
     if (groupIndex >= file.mesh.nodes.size() || groupIndex >= file.groupSettings.size())
     {
-        throw std::runtime_error("Comparison encountered an invalid mesh group.");
+        throw std::runtime_error("Analysis encountered an invalid mesh group.");
     }
     float local[16], model[16];
     groupTransformMatrix(file.groupSettings[groupIndex], local);
@@ -26,7 +26,7 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
     const size_t end = static_cast<size_t>(group.indexOffset) + group.indexCount;
     if (end > file.mesh.indices.size() || group.indexCount % 3 != 0)
     {
-        throw std::runtime_error("Comparison encountered an invalid triangle range.");
+        throw std::runtime_error("Analysis encountered an invalid triangle range.");
     }
     validateComparisonMeshSize(result.vertices.size() + group.indexCount,
         (result.indices.size() + group.indexCount) / 3);
@@ -40,7 +40,7 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
         }
         if (!finitePosition(vertex.position))
         {
-            throw std::runtime_error("Comparison requires finite transformed coordinates.");
+            throw std::runtime_error("Analysis requires finite transformed coordinates.");
         }
         result.indices.push_back(static_cast<uint32_t>(result.vertices.size()));
         result.vertices.push_back(vertex);
@@ -178,10 +178,10 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
     }
     if (!result.issue.empty()) { result.issue += ". Restore the source or remove missing references below."; }
     else if (result.partCount == 0) {
-        result.issue = "Input " + label + " is empty. Use Comparison membership in the scene tree context menu.";
+        result.issue = "Input " + label + " is empty. Use Analysis membership in the scene tree context menu.";
     }
     else if (result.enabledPartCount == 0) {
-        result.issue = "Input " + label + " is turned off. Check an item to include it in the comparison.";
+        result.issue = "Input " + label + " is turned off. Check an item to include it in the analysis.";
     }
     if (result.sourceNames.empty()) { result.sourceNames = "No available sources"; }
     return result;
@@ -190,11 +190,11 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
 Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);
-    if (!comparison) { throw std::runtime_error("Comparison no longer exists."); }
+    if (!comparison) { throw std::runtime_error("Analysis no longer exists."); }
     const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
     for (const auto& member : members) {
         if (member.enabled && comparisonObjectParts(state, {member.objectId}).empty()) {
-            throw std::runtime_error("Comparison has missing or invalid source parts.");
+            throw std::runtime_error("Analysis has missing or invalid source parts.");
         }
     }
     Mesh result;
@@ -210,10 +210,10 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         appendGroup(result, file, index, parent);
     });
     if (result.indices.empty()) {
-        throw std::runtime_error("Each comparison group needs at least one mesh part with triangles.");
+        throw std::runtime_error("Each analysis group needs at least one mesh part with triangles.");
     }
     result.bounds = calculateBounds(result.vertices);
-    result.nodes.push_back({"Comparison", 0, static_cast<uint32_t>(result.indices.size())});
+    result.nodes.push_back({"Analysis", 0, static_cast<uint32_t>(result.indices.size())});
     return result;
 }
 

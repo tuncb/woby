@@ -17,7 +17,7 @@ using Triangle = std::array<Point, 3>;
 void checkCanceled(std::stop_token stop)
 {
     if (stop.stop_requested())
-        throw std::runtime_error("Comparison canceled.");
+        throw std::runtime_error("Analysis canceled.");
 }
 
 template <typename T>
@@ -116,7 +116,7 @@ std::vector<Triangle> meshTriangles(const Mesh &mesh, std::stop_token stop)
 {
     checkCanceled(stop);
     if (mesh.indices.empty() || mesh.indices.size() % 3 != 0)
-        throw std::runtime_error("Comparison needs nonempty triangular meshes.");
+        throw std::runtime_error("Analysis needs nonempty triangular meshes.");
     std::vector<Triangle> triangles;
     triangles.reserve(mesh.indices.size() / 3);
     for (size_t i = 0; i < mesh.indices.size(); i += 3)
@@ -276,7 +276,7 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
             nearest(target, 0, center, squared);
             const double distance = std::sqrt(squared), weight = area(part);
             if (distance > std::numeric_limits<float>::max())
-                throw std::runtime_error("Comparison distance exceeds the supported display range.");
+                throw std::runtime_error("Analysis distance exceeds the supported display range.");
             result.distances.push_back(distance);
             result.sampleAreas.push_back(weight);
             result.maximum = std::max(result.maximum, distance);
@@ -325,7 +325,7 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
         radiusSquared = std::max(radiusSquared, squared);
     }
     bounds.radius = std::max(std::sqrt(radiusSquared), .001f);
-    result.sampled.nodes.push_back({"Comparison", 0, static_cast<uint32_t>(result.sampled.indices.size())});
+    result.sampled.nodes.push_back({"Analysis", 0, static_cast<uint32_t>(result.sampled.indices.size())});
     if (totalArea > 0)
     {
         result.mean = weightedDistance / totalArea;
@@ -469,7 +469,7 @@ MeshDiagnostics inspectTriangles(const std::vector<Triangle>& triangles, std::st
 uint32_t comparisonBufferBytes(size_t count, size_t elementBytes)
 {
     if (elementBytes == 0 || count > std::numeric_limits<uint32_t>::max() / elementBytes)
-        throw std::runtime_error("Comparison exceeds the supported 32-bit buffer size. Reduce the selected geometry.");
+        throw std::runtime_error("Analysis exceeds the supported 32-bit buffer size. Reduce the selected geometry.");
     return static_cast<uint32_t>(count * elementBytes);
 }
 

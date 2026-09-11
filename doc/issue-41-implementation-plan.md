@@ -9,7 +9,7 @@ Baseline inspected: `9463124`, 2026-09-08. Recheck the baseline before implement
 
 Provide explicit, selectable mesh findings with documented definitions, per-detector
 settings, source element references, and consistent UI, CLI, and screenshot output.
-Inspection works with either comparison side populated; distance measurements still
+Inspection works with either analysis side populated; distance measurements still
 require both sides. Inspection does not repair or otherwise change input geometry.
 
 Deliver all ten requested detector categories in stages. Fins are candidate
@@ -39,14 +39,14 @@ components, and inverted shells are follow-up scope, not requirements for #41.
    original file identities: label this provenance accurately without changing
    the ABI in this issue.
 4. Source identity checks use source coordinates/indices. Geometric checks on a
-   comparison use source world transforms, excluding the comparison display offset.
+   analysis use source world transforms, excluding the analysis display offset.
    Partition shared source points by transformed part instance where needed so
    independently transformed parts never accidentally share one analysis position.
 5. Implement topology and quality checks with structs and deterministic free
    functions. Use a narrow free-function adapter for an intersection backend.
    Prototype CGAL's triangle-soup intersection checker first; select the production
    backend after correctness, cancellation, build-cost, and license review.
-6. Keep detector settings owned by `UiState` through comparison settings; modify
+6. Keep detector settings owned by `UiState` through analysis settings; modify
    them via `ui_operations`, validate at operation/load boundaries, and persist
    them in `.woby`. Workers, timings, spatial indexes, and GPU resources remain in
    runtime/adaptor code. Rendering only consumes prepared state/results.
@@ -102,7 +102,7 @@ Touchpoints: `src/model_mesh.h`, `src/model_mesh.cpp`, `src/obj_mesh.cpp`,
 - For STL, preserve facet/corner references and explicitly describe derived topology.
   For plugins, capture the returned vertex/index table before optimization and before
   plugin memory is released. Keep ABI v1 working.
-- Build analysis snapshots alongside comparison world geometry, with stable local
+- Build analysis snapshots alongside analysis world geometry, with stable local
   triangle ordering and references scoped by source object and part instance.
 - Track input capability/provenance so unsupported source-index checks report
   `unavailable`, rather than zero findings. Define whole-file versus selected-part
@@ -110,7 +110,7 @@ Touchpoints: `src/model_mesh.h`, `src/model_mesh.cpp`, `src/obj_mesh.cpp`,
 
 Acceptance: fixtures cover OBJ UV/normal seams, distinct coincident source points,
 triangulated polygons, STL facets, plugin buffers, independent part transforms,
-and comparison offsets. Render optimization must not change analysis identities;
+and analysis offsets. Render optimization must not change analysis identities;
 rendered geometry and current distance results must remain unchanged.
 
 ## PR 2: Shared topology and inexpensive detectors
@@ -145,7 +145,7 @@ Touchpoints: `src/comparison_settings.h`, `src/ui_state.h`, `src/ui_operations.*
 `src/control_scene.*`, `src/command_line.*`, `src/main.cpp`, `src/scene_pick.*`,
 `src/comparison_report.*`, `src/scene_screenshot.cpp`, and `doc/ctl-commands.md`.
 
-- Store per-comparison enabled detectors, thresholds, topology/scope, and independent
+- Store per-analysis enabled detectors, thresholds, topology/scope, and independent
   overlay visibility. Validate finite values and sensible domains centrally:
   needle ratio >= 1, cap angle in [90, 180], nonnegative finite ratios. Ratios need
   not be capped at 1. Keep disabled distinct from completed-with-zero-findings.
@@ -156,16 +156,16 @@ Touchpoints: `src/comparison_settings.h`, `src/ui_state.h`, `src/ui_operations.*
   analysis scope/mode, enabled detectors, thresholds, and algorithm revision. Keep
   analysis invalidation separate from overlay/color/display-offset changes and from
   distance-result invalidation. Reuse unchanged topology when only filters change.
-- Update both interactive comparison workers and CLI-requested jobs in `main.cpp`
-  to call the same analysis functions. Preserve the existing two-comparison limit.
+- Update both interactive analysis workers and CLI-requested jobs in `main.cpp`
+  to call the same analysis functions. Preserve the existing two-analysis limit.
   Bound snapshot/copy work and keep large preprocessing off the UI thread.
 - Track queued/running/complete/disabled/unavailable/canceled/failed states. Show
   previous results as stale when appropriate; never publish stale findings as current.
 - Add a detector list with counts, explanations, parameters, visibility, and a
   paged findings list. Selecting a finding highlights and frames its points, edges,
   faces, loop, or patch. Finding selection is transient. GPU overlays and bounds are
-  built in runtime update code and honor comparison display offsets.
-- Extend `comparison set` and `comparison results --json` with detector settings,
+  built in runtime update code and honor analysis display offsets.
+- Extend `analysis set` and `analysis results --json` with detector settings,
   schema version, status, topology/provenance, counts, and bounded/paginated element
   results. Keep existing fields and their meanings. Never emit an unbounded JSON
   payload for millions of findings.

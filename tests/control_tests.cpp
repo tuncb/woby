@@ -67,14 +67,14 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"model", "add", path}, {"model", "remove", "object"}, {"folder", "add", path, "--tree"},
         {"importers", "list"}, {"importers", "add", path, "--remember"}, {"importers", "scan", path},
         {"importers", "forget", path}, {"stats"}, {"performance", "get"}, {"pane", "set", "--visible", "false", "--width", "450"},
-        {"comparison", "create", "--name", "Repair check", "--a", "source-a", "--b", "source-b"},
-        {"comparison", "delete", "object"},
-        {"comparison", "set", "object", "--name", "Renamed", "--mode", "overlay", "--visible", "false", "--distance-on-a", "true",
+        {"analysis", "create", "--name", "Repair check", "--a", "source-a", "--b", "source-b"},
+        {"analysis", "delete", "object"},
+        {"analysis", "set", "object", "--name", "Renamed", "--mode", "overlay", "--visible", "false", "--distance-on-a", "true",
             "--tolerance", "0.1", "--color-range", "1", "--show-edges", "true", "--show-boundaries", "false", "--show-non-manifold", "true"},
-        {"comparison", "add", "object", "--side", "a", "--object", "source"},
-        {"comparison", "remove", "object", "--side", "b", "--object", "source"},
-        {"comparison", "enable", "object", "--side", "a", "--object", "source", "--enabled", "false"},
-        {"comparison", "clear", "object", "--side", "a"}, {"comparison", "swap", "object"}, {"comparison", "results", "object"},
+        {"analysis", "add", "object", "--side", "a", "--object", "source"},
+        {"analysis", "remove", "object", "--side", "b", "--object", "source"},
+        {"analysis", "enable", "object", "--side", "a", "--object", "source", "--enabled", "false"},
+        {"analysis", "clear", "object", "--side", "a"}, {"analysis", "swap", "object"}, {"analysis", "results", "object"},
     };
     CHECK(commands.size() == woby::controlMethods().size());
     for (auto words : commands) {
@@ -94,7 +94,7 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
 
 TEST_CASE("ctl surface quality options preserve values through CLI and protocol serialization")
 {
-    const auto parsed = parse({"comparison", "set", "object", "--mode", "surface_quality",
+    const auto parsed = parse({"analysis", "set", "object", "--mode", "surface_quality",
         "--quality-metric", "equivalent_size", "--quality-on-a", "false",
         "--quality-minimum-enabled", "true", "--quality-maximum-enabled", "false",
         "--quality-minimum-size", "1.5", "--quality-maximum-size", "4"});
@@ -120,17 +120,17 @@ TEST_CASE("ctl rejects ambiguous incomplete conflicting and nonfinite edit param
         {"vertex-size", "set", "scene", "--scale", "2"}, {"vertex-size", "set", "object", "--pixels", "4"},
         {"vertex-size", "set", "scene", "--pixels", "4", "--scale", "2"},
         {"transform", "get", "scene"}, {"status", "--timeout", "2.0"}, {"status", "--timeout", "3601"},
-        {"comparison", "set", "object"}, {"comparison", "set", "object", "--mode", "unknown"},
-        {"comparison", "set", "object", "--tolerance", "nan"}, {"comparison", "set", "object", "--color-range", "1e100"},
-        {"comparison", "set", "object", "--show-edges", "yes"}, {"comparison", "create", "--name", ""},
-        {"comparison", "add", "object", "--side", "a"}, {"comparison", "clear", "object", "--side", "c"},
-        {"comparison", "delete", "scene"}, {"comparison", "results", "object", "--mode", "a"},
-        {"comparison", "enable", "object", "--enabled", "false"},
-        {"comparison", "enable", "object", "--side", "a"},
-        {"comparison", "enable", "object", "--side", "c", "--enabled", "false"},
-        {"comparison", "enable", "object", "--side", "a", "--enabled", "yes"},
-        {"comparison", "enable", "object", "--side", "a", "--enabled", "false", "--enabled", "true"},
-        {"comparison", "enable", "scene", "--side", "a", "--enabled", "true"},
+        {"analysis", "set", "object"}, {"analysis", "set", "object", "--mode", "unknown"},
+        {"analysis", "set", "object", "--tolerance", "nan"}, {"analysis", "set", "object", "--color-range", "1e100"},
+        {"analysis", "set", "object", "--show-edges", "yes"}, {"analysis", "create", "--name", ""},
+        {"analysis", "add", "object", "--side", "a"}, {"analysis", "clear", "object", "--side", "c"},
+        {"analysis", "delete", "scene"}, {"analysis", "results", "object", "--mode", "a"},
+        {"analysis", "enable", "object", "--enabled", "false"},
+        {"analysis", "enable", "object", "--side", "a"},
+        {"analysis", "enable", "object", "--side", "c", "--enabled", "false"},
+        {"analysis", "enable", "object", "--side", "a", "--enabled", "yes"},
+        {"analysis", "enable", "object", "--side", "a", "--enabled", "false", "--enabled", "true"},
+        {"analysis", "enable", "scene", "--side", "a", "--enabled", "true"},
         {"status", "--remember"}, {"stats", "extra"},
         {"scene", "undo", "extra"}, {"scene", "redo", "--steps", "2"}, {"scene", "undo", "--on-dirty", "discard"}}) {
         CAPTURE(words);
@@ -263,31 +263,31 @@ TEST_CASE("ctl camera navigation has explicit units finite results and no scene 
     }
 }
 
-TEST_CASE("ctl comparison lifecycle expands inputs edits independently and persists all settings")
+TEST_CASE("ctl analysis lifecycle expands inputs edits independently and persists all settings")
 {
     auto state = scene();
     const auto clean = woby::createSceneDocument(state);
     const auto file = state.files[0].objectId, group = state.files[0].groupSettings[0].objectId, folder = state.sceneNodes[0].objectId;
-    const auto created = run(state, clean, "comparison.create", {{"name", "First"}, {"a", formatId(folder)}, {"b", formatId(group)}});
+    const auto created = run(state, clean, "analysis.create", {{"name", "First"}, {"a", formatId(folder)}, {"b", formatId(group)}});
     const auto id = std::stoull(created["target"].get<std::string>());
     CHECK(created["object"]["valid"] == true);
     CHECK(created["object"]["aPartCount"] == 1);
     CHECK(created["object"]["bPartCount"] == 1);
     CHECK(created["object"]["name"] == "First");
     CHECK(state.isDirty);
-    const auto second = run(state, clean, "comparison.create");
+    const auto second = run(state, clean, "analysis.create");
     const auto secondId = std::stoull(second["target"].get<std::string>());
     CHECK(secondId != id);
     CHECK(second["object"]["valid"] == false);
-    run(state, clean, "comparison.add", {{"side", "a"}, {"object", formatId(file)}}, id);
+    run(state, clean, "analysis.add", {{"side", "a"}, {"object", formatId(file)}}, id);
     CHECK(woby::findComparison(state, id)->a.size() == 1); // File/group references deduplicate.
-    run(state, clean, "comparison.remove", {{"side", "a"}, {"object", formatId(folder)}}, id);
+    run(state, clean, "analysis.remove", {{"side", "a"}, {"object", formatId(folder)}}, id);
     CHECK(woby::findComparison(state, id)->a.empty());
-    run(state, clean, "comparison.swap", {}, id);
+    run(state, clean, "analysis.swap", {}, id);
     CHECK(woby::findComparison(state, id)->a.size() == 1);
     CHECK(woby::findComparison(state, id)->b.empty());
-    run(state, clean, "comparison.add", {{"side", "b"}, {"object", formatId(group)}}, id);
-    const auto edited = run(state, clean, "comparison.set", {{"name", "Measured"}, {"visible", false}, {"mode", "overlay"},
+    run(state, clean, "analysis.add", {{"side", "b"}, {"object", formatId(group)}}, id);
+    const auto edited = run(state, clean, "analysis.set", {{"name", "Measured"}, {"visible", false}, {"mode", "overlay"},
         {"distanceOnA", true}, {"tolerance", 2}, {"colorRange", -1}, {"showEdges", true},
         {"showBoundaries", false}, {"showNonManifold", false}}, id);
     const auto settings = edited["object"]["settings"];
@@ -300,24 +300,24 @@ TEST_CASE("ctl comparison lifecycle expands inputs edits independently and persi
     CHECK(settings["showNonManifold"] == false);
     CHECK(settings["visible"] == false);
     CHECK(woby::findComparison(state, secondId)->name != "Measured");
-    run(state, clean, "comparison.set", {{"mode", "a"}}, id);
+    run(state, clean, "analysis.set", {{"mode", "a"}}, id);
     CHECK(woby::comparisonSettings(state, id).mode == woby::ComparisonMode::original);
-    run(state, clean, "comparison.set", {{"mode", "b"}}, id);
+    run(state, clean, "analysis.set", {{"mode", "b"}}, id);
     CHECK(woby::comparisonSettings(state, id).mode == woby::ComparisonMode::repaired);
-    run(state, clean, "comparison.set", {{"mode", "distance"}}, id);
+    run(state, clean, "analysis.set", {{"mode", "distance"}}, id);
     CHECK(woby::comparisonSettings(state, id).tolerance == 2); // Omitted settings survive.
     const auto saved = woby::createSceneDocument(state);
     const auto restored = woby::prepareSceneReplacement(state, state.files, saved);
     CHECK(woby::createSceneDocument(restored) == saved);
-    run(state, clean, "comparison.clear", {{"side", "b"}}, id);
+    run(state, clean, "analysis.clear", {{"side", "b"}}, id);
     CHECK(woby::findComparison(state, id)->b.empty());
-    CHECK(run(state, clean, "comparison.delete", {}, id)["removed"] == formatId(id));
+    CHECK(run(state, clean, "analysis.delete", {}, id)["removed"] == formatId(id));
     CHECK(woby::findComparison(state, id) == nullptr);
     CHECK(state.files.size() == 1);
     CHECK(woby::findComparison(state, secondId) != nullptr);
 }
 
-TEST_CASE("ctl comparison enable preserves membership and scopes edits to the requested side and comparison")
+TEST_CASE("ctl analysis enable preserves membership and scopes edits to the requested side and analysis")
 {
     auto state = scene();
     const auto file = state.files[0].objectId, group = state.files[0].groupSettings[0].objectId;
@@ -331,7 +331,7 @@ TEST_CASE("ctl comparison enable preserves membership and scopes edits to the re
     const auto clean = woby::createSceneDocument(state);
     for (const auto input : {group, file, folder}) {
         CAPTURE(input);
-        const auto changed = run(state, clean, "comparison.enable",
+        const auto changed = run(state, clean, "analysis.enable",
             {{"side", "a"}, {"object", formatId(input)}, {"enabled", false}}, id);
         CHECK(changed["dirty"] == true);
         CHECK(changed["object"]["a"][0]["enabled"] == false);
@@ -342,9 +342,9 @@ TEST_CASE("ctl comparison enable preserves membership and scopes edits to the re
         const auto saved = woby::createSceneDocument(state);
         const auto restored = woby::prepareSceneReplacement(state, state.files, saved);
         CHECK(woby::createSceneDocument(restored) == saved);
-        run(state, clean, "comparison.enable", {{"side", "a"}, {"object", formatId(input)}, {"enabled", false}}, id);
+        run(state, clean, "analysis.enable", {{"side", "a"}, {"object", formatId(input)}, {"enabled", false}}, id);
         CHECK(woby::createSceneDocument(state) == saved);
-        const auto enabled = run(state, clean, "comparison.enable",
+        const auto enabled = run(state, clean, "analysis.enable",
             {{"side", "a"}, {"object", formatId(input)}, {"enabled", true}}, id);
         CHECK(enabled["object"]["a"][0]["enabled"] == true);
         CHECK(enabled["dirty"] == false);
@@ -352,7 +352,7 @@ TEST_CASE("ctl comparison enable preserves membership and scopes edits to the re
     }
 }
 
-TEST_CASE("ctl comparison enable supports whole sides and validates inputs before editing")
+TEST_CASE("ctl analysis enable supports whole sides and validates inputs before editing")
 {
     auto state = scene();
     const auto group = state.files[0].groupSettings[0].objectId;
@@ -361,63 +361,63 @@ TEST_CASE("ctl comparison enable supports whole sides and validates inputs befor
     // Whole-side controls include unavailable references, like the UI checkbox.
     woby::findComparison(state, id)->a.push_back({state.nextObjectId + 100, "Missing part"});
     const auto clean = woby::createSceneDocument(state);
-    const auto& method = *woby::findControlMethod("comparison.enable");
+    const auto& method = *woby::findControlMethod("analysis.enable");
     CHECK(method.mutating);
     CHECK_THROWS(woby::parseControlOperation(method, {{"target", formatId(id)}, {"side", "a"}, {"enabled", "false"}}));
-    CHECK_THROWS(run(state, clean, "comparison.enable", {{"side", "a"}, {"enabled", false}}, group));
+    CHECK_THROWS(run(state, clean, "analysis.enable", {{"side", "a"}, {"enabled", false}}, group));
     for (const auto invalid : {id, state.nextObjectId + 200}) {
-        CHECK_THROWS(run(state, clean, "comparison.enable",
+        CHECK_THROWS(run(state, clean, "analysis.enable",
             {{"side", "a"}, {"object", formatId(invalid)}, {"enabled", false}}, id));
         CHECK(woby::createSceneDocument(state) == clean);
     }
     // A valid source absent from the selected side must not be added.
-    run(state, clean, "comparison.enable", {{"side", "b"}, {"object", formatId(group)}, {"enabled", false}}, id);
+    run(state, clean, "analysis.enable", {{"side", "b"}, {"object", formatId(group)}, {"enabled", false}}, id);
     CHECK(woby::createSceneDocument(state) == clean);
     CHECK(woby::findComparison(state, id)->b.empty());
-    const auto parsed = parse({"comparison", "enable", formatId(id), "--side", "a", "--enabled", "false"});
+    const auto parsed = parse({"analysis", "enable", formatId(id), "--side", "a", "--enabled", "false"});
     CHECK(parsed.operation.enabled == false);
     CHECK_FALSE(parsed.operation.object.has_value());
-    const auto disabled = run(state, clean, "comparison.enable", woby::controlOperationParams(parsed.operation), id);
+    const auto disabled = run(state, clean, "analysis.enable", woby::controlOperationParams(parsed.operation), id);
     CHECK(disabled["object"]["a"].size() == 2);
     CHECK(disabled["object"]["a"][0]["enabled"] == false);
     CHECK(disabled["object"]["a"][1]["enabled"] == false);
     CHECK(disabled["object"]["a"][1]["missing"] == true);
-    run(state, clean, "comparison.enable", {{"side", "a"}, {"enabled", true}}, id);
+    run(state, clean, "analysis.enable", {{"side", "a"}, {"enabled", true}}, id);
     CHECK(woby::createSceneDocument(state) == clean);
 }
 
-TEST_CASE("ctl comparison invalid inputs never partially mutate the scene")
+TEST_CASE("ctl analysis invalid inputs never partially mutate the scene")
 {
     auto state = scene();
     const auto clean = woby::createSceneDocument(state);
     const auto file = state.files[0].objectId;
-    CHECK_THROWS(run(state, clean, "comparison.create", {{"a", formatId(file)}, {"b", "99999"}}));
+    CHECK_THROWS(run(state, clean, "analysis.create", {{"a", formatId(file)}, {"b", "99999"}}));
     CHECK(woby::createSceneDocument(state) == clean);
     CHECK_FALSE(state.isDirty);
-    CHECK_THROWS(run(state, clean, "comparison.set", {{"tolerance", 1}}, file));
-    const auto created = run(state, clean, "comparison.create");
+    CHECK_THROWS(run(state, clean, "analysis.set", {{"tolerance", 1}}, file));
+    const auto created = run(state, clean, "analysis.create");
     const auto id = std::stoull(created["target"].get<std::string>());
     const auto snapshot = woby::createSceneDocument(state);
-    CHECK_THROWS(run(state, clean, "comparison.add", {{"side", "a"}, {"object", formatId(id)}}, id));
-    CHECK_THROWS(run(state, clean, "comparison.delete", {}, file));
+    CHECK_THROWS(run(state, clean, "analysis.add", {{"side", "a"}, {"object", formatId(id)}}, id));
+    CHECK_THROWS(run(state, clean, "analysis.delete", {}, file));
     CHECK(woby::createSceneDocument(state) == snapshot);
-    run(state, clean, "comparison.set", {{"tolerance", -1}, {"colorRange", -1}}, id);
+    run(state, clean, "analysis.set", {{"tolerance", -1}, {"colorRange", -1}}, id);
     CHECK(woby::comparisonSettings(state, id).tolerance == 0);
     CHECK(woby::comparisonSettings(state, id).colorRange == doctest::Approx(1e-6));
     for (const Json& value : {Json(42), Json(""), Json(std::string(512, 'x')), Json(std::string("bad\0name", 8))}) {
-        CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("comparison.create"), {{"name", value}}));
+        CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("analysis.create"), {{"name", value}}));
     }
-    CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("comparison.set"), {{"target", "id"}, {"showEdges", 1}}));
+    CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("analysis.set"), {{"target", "id"}, {"showEdges", 1}}));
     const auto capabilities = woby::controlCapabilities();
     for (const auto& method : capabilities["methods"]) {
-        if (method["method"] == "comparison.set") {
+        if (method["method"] == "analysis.set") {
             CHECK(method["parameters"]["mode"]["type"] == "string");
             CHECK(method["parameters"]["distanceOnA"]["type"] == "boolean");
         }
     }
 }
 
-TEST_CASE("ctl comparison numeric results describe both directions and tolerance without changing geometry")
+TEST_CASE("ctl analysis numeric results describe both directions and tolerance without changing geometry")
 {
     auto state = scene();
     const auto file = state.files[0].objectId;

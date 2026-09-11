@@ -308,7 +308,7 @@ TEST_CASE("perspective picking works with roll up axis depth conventions and DPI
     }
 }
 
-TEST_CASE("comparison picks select result identity and honor mode translation and diagnostic edges")
+TEST_CASE("analysis picks select result identity and honor mode translation and diagnostic edges")
 {
     woby::UiComparison comparison;
     comparison.objectId = 42;

@@ -83,7 +83,7 @@ TEST_CASE("shared properties pane follows selection without changing scene conte
     CHECK_FALSE(state.isDirty);
 }
 
-TEST_CASE("properties pane does not inspect a stale comparison after removal or scene replacement")
+TEST_CASE("properties pane does not inspect a stale analysis after removal or scene replacement")
 {
     woby::UiState state;
     const auto first = woby::createComparison(state);
@@ -1743,7 +1743,7 @@ TEST_CASE("Fit selection respects hierarchy transforms visibility and multiple s
     CHECK_FALSE(woby::selectedSceneBounds(state));
 }
 
-TEST_CASE("Fit selection supports implicit trees empty objects and comparison display offsets")
+TEST_CASE("Fit selection supports implicit trees empty objects and analysis display offsets")
 {
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0, 2, 0));

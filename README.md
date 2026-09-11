@@ -17,7 +17,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Arrange files and groups with translation, rotation, scale, opacity, and reset controls.
 - Assign and reset per-group display colors.
 - Select a folder, file, or part to edit its persistent **Properties** inspector on the right. Transform fields label X/Y/Z and rotation angles; opacity uses percent and scale uses a uniform multiplier. Type a value and press Enter to apply it, or Escape to cancel.
-- Ctrl-click multiple objects to edit shared properties. **Mixed** fields have differing local values; editing a field sets only that field on every selected object. Parent transforms compose with part transforms and their opacities multiply. Selecting both a parent and its child edits both. Color and render modes are part properties; selecting a comparison shows its controls in the same Properties pane.
+- Ctrl-click multiple objects to edit shared properties. **Mixed** fields have differing local values; editing a field sets only that field on every selected object. Parent transforms compose with part transforms and their opacities multiply. Selecting both a parent and its child edits both. Color and render modes are part properties; selecting an analysis shows its controls in the same Properties pane.
 - Reset translation, rotation, scale, all transforms, or appearance independently. Transform resets preserve opacity; appearance resets preserve transforms and unselected child overrides. Geometry shows mesh statistics and local bounds for a single file or part. These edits use the existing `.woby` save/load settings.
 - Remove files from a scene without touching the source model files.
 - Compare surfaces with a numeric heatmap legend, tolerance, saturation warning, and sampled maximum/mean/P95/area statistics. Distances are approximate and unsigned. Measurements use the mesh coordinates without conversion.
@@ -43,7 +43,7 @@ axis. Invalid camera numbers are rejected; finite out-of-range values are clampe
 when loading.
 
 `Ctrl+Z` undoes a scene edit; `Ctrl+Y` or `Ctrl+Shift+Z` redoes it. This includes
-transforms, appearance, comparison membership, and object additions/removals.
+transforms, appearance, analysis membership, and object additions/removals.
 A continuous drag is one action. Session history has no action-count limit;
 New/Open starts fresh history, while Save keeps history and updates the clean-state
 baseline. History stores model paths and settings, not mesh buffers. Restoring a
@@ -61,8 +61,8 @@ model files, folders, and scenes. Add model folder imports models recursively.
 
 The **Objects** tree lists scene content, and **Display** contains global viewing
 controls. The camera icon beside the Y/Z up-axis button opens PNG export options. Choose resolution,
-the scene or visible comparison results, and legend/name/source/direction/threshold
-annotations. Comparison exports wait for complete visible results and report an
+the scene or visible analysis results, and legend/name/source/direction/threshold
+annotations. Analysis exports wait for complete visible results and report an
 error if annotations cannot fit; increase the image height or reduce visible results.
 Geometry counts and
 renderer/FPS details sit at the bottom of the left pane. File actions are disabled
@@ -75,7 +75,7 @@ The frame icon is **Fit All** (also available with **R**); the frame with a smal
 square inside is **Fit Selection**. Views follow the
 scene's Y/Z up axis and preserve the current target and distance. Both Fit buttons
 keep the viewing direction; Fit Selection includes visible selected descendants
-and comparison results at their display positions. It is disabled when there is
+and analysis results at their display positions. It is disabled when there is
 no visible selection to frame.
 
 New scenes and newly added models start with solid surfaces, with edges, vertices,
@@ -102,11 +102,11 @@ automatic monitor scaling. This preference is saved for the current user and sur
 scene changes without dirtying the scene. Panes scroll when needed at larger sizes.
 Save/load/export feedback appears in floating toasts at the top of the viewport
 and fades away after eight seconds. Contextual tooltips explain
-selection, comparison position, input swapping, and units.
+selection, analysis position, input swapping, and units.
 
 Left drag or arrow keys orbit, right/middle drag pans, and the wheel or `+`/`-`
 zooms. Alt-left drag rolls. Click a surface, displayed edge, or displayed vertex
-to select its part; click a comparison result to select the comparison. Ctrl-click
+to select its part; click an analysis result to select the analysis. Ctrl-click
 toggles membership in the selection, and a plain click on empty space clears it.
 A small movement threshold separates clicks from drags. Selected geometry has
 yellow bounding boxes, including the visible children of selected files/folders.
@@ -132,39 +132,39 @@ before Woby exits. In Command Prompt, use `start /wait "" woby.exe ctl instances
 when you need to wait; in PowerShell, capturing or piping output waits for it,
 for example `$instances = .\woby.exe ctl instances --json`.
 
-### Comparison objects
+### Analysis objects
 
-Scenes can contain multiple named comparisons alongside the original models.
-Select one file, folder, or mesh part, then right-click and choose **Create comparison**
+Scenes can contain multiple named analyses alongside the original models.
+Select one file, folder, or mesh part, then right-click and choose **Create analysis**
 to inspect its surface, triangle edges, boundaries, and non-manifold/winding edges.
 Inspection starts with either group populated. Distance measurements and overlay
 become available when both groups have inputs. To compare two objects, Ctrl-click
-them before creating the comparison: the first supplies **A**, the second **B**.
+them before creating the analysis: the first supplies **A**, the second **B**.
 Clearing one group returns to single-input inspection; adding it back restores
 the saved two-input display mode.
-Use the scene tree's **Comparison membership** context menu to assign sources
-to a named comparison. Group A/B headings show part and triangle counts.
+Use the scene tree's **Analysis membership** context menu to assign sources
+to a named analysis. Group A/B headings show part and triangle counts.
 Right-click preserves the existing selection and includes the clicked object;
 context-menu membership actions apply to all selected sources.
 
-Each comparison has independent visibility, tolerance, color range, A/B display
+Each analysis has independent visibility, tolerance, color range, A/B display
 mode, edge diagnostics, and **Result position**. Select its tree row to edit its
-properties. The **x** at the end of its row deletes the comparison without removing
+properties. The **x** at the end of its row deletes the analysis without removing
 its source objects. Right-click the row to duplicate, frame, or delete it. New results
 are placed beside existing results. Result position is a display offset: moving
 it never changes measured distances or source transforms. Normal scene meshes
 continue to render with their own settings.
 
-Scenes without a saved comparison position, including older `.woby` files, receive
+Scenes without a saved analysis position, including older `.woby` files, receive
 automatic spacing when opened. Saved positions, including an intentional zero
 offset, are preserved when reopening.
 
 Files and folders contribute their current triangular parts, deduplicated per
-side. Parts can belong to both sides and to multiple comparisons. Future children
+side. Parts can belong to both sides and to multiple analyses. Future children
 are not automatically included. Source visibility and appearance do not affect
 measurements. Deleting a source leaves a named missing reference; repair the
 inputs or explicitly remove missing references before computing again. Deleting
-a comparison never deletes its sources.
+an analysis never deletes its sources.
 
 The upper-right Properties button toggles the inspector. Its A/B trees show source
 names and part counts and retain the source hierarchy. Collapse or expand a group,
@@ -174,29 +174,28 @@ messages identify the side and any unavailable references. **Swap inputs A / B**
 exchanges assignments and keeps the chosen measurement direction. **A -> B** colors
 A by its nearest distance to B; **B -> A** colors B by its nearest distance to A.
 The direction controls name the measured (heatmap) and reference surfaces. These
-controls affect only the inspected comparison. Part badges in the scene tree
-show membership for the last active comparison.
+controls affect only the inspected analysis. Part badges in the scene tree
+show membership for the last active analysis.
 
-Comparison uses combined surfaces at their source scene positions, with
+Analysis uses combined surfaces at their source scene positions, with
 bidirectional unsigned distance heatmaps, A/B views, a wireframe overlay, and edge
-diagnostics. It does not perform a Boolean union. Up to two comparisons compute
+diagnostics. It does not perform a Boolean union. Up to two analyses compute
 concurrently; screenshots wait for all visible results and report incomplete
-inputs or computation errors instead of exporting a partial comparison scene.
+inputs or computation errors instead of exporting a partial analysis scene.
 
 Choose a diagnostic **Target** (A or B), then use the left/right arrows on the
 right of each **Boundary**, **Non-manifold**, or **Winding** table row to visit its edges.
 Navigation wraps and shows the current index and total. The target surface is
 shown while inspecting an edge, with a yellow highlight and endpoint crosses.
 **Full result** clears focus, restores the chosen display mode, and frames the
-whole comparison. Empty or computing results disable navigation. Target and
+whole analysis. Empty or computing results disable navigation. Target and
 category are saved in `.woby`; edge focus resets when results or inputs change.
 
-Version 5 `.woby` scenes save comparison objects and source references. Version
-2Ã¢â‚¬â€œ4 scenes remain readable; existing A/B memberships migrate into one comparison
-at the original source positions. Version 6 adds the optional camera record and
-still reads versions 2–5. Older woby builds cannot read version 6 scenes.
-Select **Surface mesh quality** in a comparison's display selector to inspect either
-A or B, including comparisons with only one input. Choose **Longest edge**,
+`.woby` scenes save analysis objects and source references in `[[analyses]]`
+records with `analysis_*` settings. The repository samples use these names.
+
+Select **Surface mesh quality** in an analysis's display selector to inspect either
+A or B, including analyses with only one input. Choose **Longest edge**,
 **Equivalent size** (edge length of an equilateral triangle with the same area),
 **Shape quality** (1 = equilateral), or **Local size jump** (largest equivalent-size
 ratio across neighboring triangles). A/B share color ranges and histogram bins;
@@ -228,13 +227,13 @@ Open `assets/samples/mesh-comparison/compare.woby` for a before/after repair exa
 
 See the [sample walkthrough and prototype limits](assets/samples/mesh-comparison/README.md).
 
-Comparisons can also be created and edited through the running viewer's local server
-with `woby.exe ctl --instance ID comparison create|set|add|remove|clear|swap|delete`.
-`comparison results COMPARISON_ID --json` waits for mesh diagnostics and, when both
+Analyses can also be created and edited through the running viewer's local server
+with `woby.exe ctl --instance ID analysis create|set|add|remove|clear|swap|delete`.
+`analysis results ANALYSIS_ID --json` waits for mesh diagnostics and, when both
 inputs are populated, measurements in both directions including maximum/mean/P95
 distance and area above tolerance. With one input, unavailable distance metrics
 and the absent side are `null`.
-See the [comparison CLI reference](doc/ctl-commands.md#comparisons) for a complete example.
+See the [analysis CLI reference](doc/ctl-commands.md#analyses) for a complete example.
 
 Run the app:
 
