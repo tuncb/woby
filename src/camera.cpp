@@ -107,6 +107,53 @@ SceneCamera normalizedSceneCamera(SceneCamera camera)
     return camera;
 }
 
+SceneCamera cameraWithPlacement(SceneCamera camera, const CameraPlacement& placement)
+{
+    const auto angle = [](float degrees) {
+        if (!std::isfinite(degrees)) { throw std::invalid_argument("Camera angles must be finite."); }
+        return std::fmod(degrees, 360.0f) * pi / 180.0f;
+    };
+    if (placement.target) { camera.target = *placement.target; }
+    if (placement.yawDegrees) { camera.yawRadians = angle(*placement.yawDegrees); }
+    if (placement.rollDegrees) { camera.rollRadians = angle(*placement.rollDegrees); }
+    if (placement.pitchDegrees) {
+        (void)angle(*placement.pitchDegrees);
+        camera.pitchRadians = std::clamp(*placement.pitchDegrees, -90.0f, 90.0f) * pi / 180.0f;
+    }
+    if (placement.distance) {
+        if (*placement.distance <= 0) { throw std::invalid_argument("Camera distance must be positive."); }
+        camera.distance = *placement.distance;
+    }
+    if (placement.fovDegrees) { camera.verticalFovDegrees = *placement.fovDegrees; }
+    if (placement.nearPlane) { camera.nearPlane = *placement.nearPlane; }
+    return normalizedSceneCamera(camera);
+}
+
+SceneCamera cameraLookingAt(SceneCamera camera, const std::array<float, 3>& eye,
+    const std::array<float, 3>& target, SceneUpAxis upAxis)
+{
+    std::array<double, 3> offset{};
+    for (size_t axis = 0; axis < offset.size(); ++axis) {
+        if (!std::isfinite(eye[axis]) || !std::isfinite(target[axis])
+            || std::abs(eye[axis]) > 1.0e15f || std::abs(target[axis]) > 1.0e15f) {
+            throw std::invalid_argument("Eye and target must be finite world coordinates within +/-1e15.");
+        }
+        offset[axis] = static_cast<double>(eye[axis]) - target[axis];
+    }
+    const double distance = std::hypot(offset[0], offset[1], offset[2]);
+    if (distance < 0.001 || distance > 1.0e15) {
+        throw std::invalid_argument("Eye-to-target distance must be between 0.001 and 1e15.");
+    }
+    const double horizontal = upAxis == SceneUpAxis::y ? -offset[2] : offset[1];
+    const double vertical = upAxis == SceneUpAxis::y ? offset[1] : offset[2];
+    const double planar = std::hypot(offset[0], horizontal);
+    if (planar > 0) { camera.yawRadians = static_cast<float>(std::atan2(horizontal, offset[0])); }
+    camera.pitchRadians = static_cast<float>(std::atan2(vertical, planar));
+    camera.target = target;
+    camera.distance = static_cast<float>(distance);
+    return normalizedSceneCamera(camera);
+}
+
 SceneCamera frameCameraBounds(const Bounds& bounds, SceneUpAxis upAxis)
 {
     SceneCamera camera;

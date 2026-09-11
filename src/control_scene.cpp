@@ -446,7 +446,19 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         }
         throw std::invalid_argument("Unknown camera preset.");
     }
-    case A::cameraFrame: frameCameraToScene(state); return {{"camera", controlCameraInfo(state)}};
+    case A::cameraFrame:
+        if (command.object) {
+            (void)localObjectDetails(state, command.memberId);
+            frameCameraToObject(state, command.memberId);
+        } else { frameCameraToScene(state); }
+        return {{"camera", controlCameraInfo(state)}};
+    case A::cameraSet:
+        setUiCamera(state, {command.cameraTarget, command.yawDegrees, command.pitchDegrees,
+            command.rollDegrees, command.distance, command.fovDegrees, command.nearPlane});
+        return {{"camera", controlCameraInfo(state)}};
+    case A::cameraLookAt:
+        lookAtUiCamera(state, *command.eye, *command.cameraTarget);
+        return {{"camera", controlCameraInfo(state)}};
     case A::cameraGet: return {{"camera", controlCameraInfo(state)}};
     case A::cameraOrbit: case A::cameraPan: case A::cameraRoll: case A::cameraDolly: case A::cameraMove:
         navigateUiCamera(state, {command.yawDegrees.value_or(0), command.pitchDegrees.value_or(0), command.rollDegrees.value_or(0),

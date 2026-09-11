@@ -1491,6 +1491,23 @@ void dollyUiCamera(UiState& state, float amount)
     dollyCamera(state.camera, amount);
 }
 
+void setUiCamera(UiState& state, const CameraPlacement& placement)
+{
+    state.camera = cameraWithPlacement(state.camera, placement);
+}
+
+void lookAtUiCamera(UiState& state, const std::array<float, 3>& eye, const std::array<float, 3>& target)
+{
+    state.camera = cameraLookingAt(state.camera, eye, target, state.upAxis);
+}
+
+void frameCameraToObject(UiState& state, SceneObjectId object)
+{
+    const auto bounds = sceneObjectBounds(state, {object});
+    if (!bounds) { throw std::invalid_argument("Object has no visible geometry to frame."); }
+    state.camera = fitCameraBounds(state.camera, *bounds);
+}
+
 void navigateUiCamera(UiState& state, const CameraNavigation& navigation)
 {
     for (float value : {navigation.yawDegrees, navigation.pitchDegrees, navigation.rollDegrees,

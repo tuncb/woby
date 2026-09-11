@@ -15,7 +15,7 @@ enum class ControlAction {
     visibility, render, transformGet, transformSet, transformReset,
     opacity, colorSet, colorReset, vertexSize, grid, dimensions, origin, upAxis,
     viewList, viewCreate, viewApply, viewUpdate, viewRename, viewDelete, cameraView,
-    cameraGet, cameraFrame, cameraOrbit, cameraPan, cameraRoll, cameraDolly, cameraMove,
+    cameraGet, cameraFrame, cameraSet, cameraLookAt, cameraOrbit, cameraPan, cameraRoll, cameraDolly, cameraMove,
     modelAdd, modelRemove, folderAdd, importersList, importersAdd, importersScan,
     importersForget, stats, performance, pane,
     comparisonCreate, comparisonDelete, comparisonSet, comparisonAdd, comparisonRemove,
@@ -35,6 +35,8 @@ struct ControlOperation {
     std::optional<std::array<float, 3>> translation, rotationDegrees, rgb;
     std::optional<float> scale, value, pixels, width;
     std::optional<float> yawDegrees, pitchDegrees, rollDegrees, right, up, forward, factor;
+    std::optional<std::array<float, 3>> cameraTarget, eye;
+    std::optional<float> distance, fovDegrees, nearPlane;
     std::optional<std::string> name, mode, side, a, b, object;
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, enabled;

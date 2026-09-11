@@ -4,6 +4,7 @@
 #include "scene_up_axis.h"
 
 #include <array>
+#include <optional>
 
 #include <bx/math.h>
 
@@ -28,6 +29,16 @@ struct CameraInput {
 };
 
 enum class CameraView { top, bottom, front, back, left, right, isometric };
+
+struct CameraPlacement {
+    std::optional<std::array<float, 3>> target;
+    std::optional<float> yawDegrees, pitchDegrees, rollDegrees, distance, fovDegrees, nearPlane;
+};
+
+[[nodiscard]] SceneCamera cameraWithPlacement(SceneCamera camera, const CameraPlacement& placement);
+// Eye and target are world coordinates. At a pole, preserve yaw to define roll.
+[[nodiscard]] SceneCamera cameraLookingAt(SceneCamera camera, const std::array<float, 3>& eye,
+    const std::array<float, 3>& target, SceneUpAxis upAxis);
 
 // Presets change orientation only; fitting preserves the viewing direction.
 [[nodiscard]] SceneCamera cameraWithView(SceneCamera camera, CameraView view);

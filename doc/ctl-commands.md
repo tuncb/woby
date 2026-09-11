@@ -216,8 +216,10 @@ File/folder render modes report enabled/total counts and on/off/mixed state.
 | CLI | RPC method | Units / behavior |
 | --- | --- | --- |
 | `camera get` | `camera.get` | Target, eye, up vector, yaw/pitch/roll degrees, distance, vertical FOV, near/far planes, scene up-axis. |
-| `camera frame` | `camera.frame` | Frame the whole scene using current bounds. |
-| `camera orbit [--yaw-degrees Y] [--pitch-degrees P]` | `camera.orbit` | Relative changes to the stored camera angles, for either Y-up or Z-up. Pitch uses the existing ±1.45-radian limit. |
+| `camera set [--target X Y Z] [--yaw-degrees Y] [--pitch-degrees P] [--roll-degrees R] [--distance D] [--fov-degrees F] [--near-plane N]` | `camera.set` | Absolute camera values; at least one required. Omitted fields are preserved, subject to normalization below. |
+| `camera look-at --eye X Y Z --target X Y Z` | `camera.look-at` | World-space eye and target. Derives yaw, pitch, and distance; preserves roll and FOV. |
+| `camera frame [--object OBJECT_ID]` | `camera.frame` | Fit the whole scene, or the union of visible, transformed occurrences/descendants of a file, folder, group, or analysis. Preserve orientation and FOV. Empty/hidden targets fail without moving the camera. Does not change selection. |
+| `camera orbit [--yaw-degrees Y] [--pitch-degrees P]` | `camera.orbit` | Relative changes to the stored camera angles, for either Y-up or Z-up. Pitch is limited to ±90 degrees, including exact poles. |
 | `camera pan [--right R] [--up U]` | `camera.pan` | Move the target in rolled camera-local model units. |
 | `camera roll --roll-degrees R` | `camera.roll` | Relative roll in degrees. |
 | `camera dolly --factor F` | `camera.dolly` | Positive distance multiplier: 0.5 halves distance, 2 doubles it; minimum distance 0.001. |
@@ -226,8 +228,34 @@ File/folder render modes report enabled/total counts and on/off/mixed state.
 
 Yaw and roll deltas are reduced modulo 360 degrees before application; the returned
 angles show the applied values. Camera commands return `camera`; pane commands return `pane`. Camera
-and pane state remain session-only and do not dirty the saved scene. Use request
+navigation and pane edits do not dirty the scene. Explicit scene saves include the
+current camera; saved views also capture it. Use request
 keys for relative camera commands so a retry does not move the camera twice.
+
+`camera.set` and `camera.look-at` use the existing logical camera and `.woby` mapping.
+RPC parameters use `target`/`eye` arrays and camelCase names (`yawDegrees`,
+`pitchDegrees`, `rollDegrees`, `distance`, `fovDegrees`, `nearPlane`). Both up axes are
+supported. Set angles are absolute; yaw/roll wrap modulo 360 and pitch clamps to ±90.
+Set distance must be positive and clamps to [0.001, 1e15]; target coordinates clamp
+to ±1e15, FOV to [1, 179], and near plane to [0.0001, max(distance, 10)/2].
+Non-finite values are rejected. Look-at rejects eye/target coordinates outside ±1e15
+and separation outside [0.001, 1e15], including coincident points. At a pole it retains
+the previous yaw to define roll. Near-plane normalization also applies to look-at.
+Every command returns the applied camera so clients can observe normalization.
+
+For a reproducible capture, use an instance ID from `woby ctl instances --json`:
+
+```powershell
+woby ctl --instance main camera look-at --eye 10 20 30 --target 0 0 0 --json
+woby ctl --instance main camera set --roll-degrees 0 --fov-degrees 45 --json
+woby ctl --instance main screenshot C:\output\camera.png --json
+```
+
+The screenshot uses the current scene, camera, and export settings. Commands execute
+in order, and capture waits for GPU readback and PNG writing. Capture does not reframe
+or reset the camera. The exported canvas can have a different aspect ratio from the
+window. Run `uv run tests/ctl_camera_smoke.py PATH_TO_WOBY_EXE` to verify actual rendered
+pixels, camera restoration, object framing, and save/load with a temporary viewer.
 
 ## Models, importers, and diagnostics
 
@@ -293,8 +321,7 @@ These are separate from simply exposing existing controls. Syntax is proposed.
 | Proposed commands / extensions | Required addition |
 | --- | --- |
 | `wait-ready`, `wait-idle` | A readiness wait can poll current metadata. A true idle wait must account for background loads, GPU finalization, captures, and admitted commands; an empty queue is insufficient. |
-| `camera set --target X Y Z --yaw-degrees Y --pitch-degrees P --roll-degrees R --distance D --fov-degrees F` | Validated absolute camera operations for reproducible views; keep session-only unless persistence is explicitly added. |
-| `object bounds OBJECT_ID`, `camera frame --object OBJECT_ID [--visible-only]` | Compute transformed target/subtree bounds, define repeated-reference behavior, and optionally filter visible geometry. |
+| `object bounds OBJECT_ID`, `camera frame --object OBJECT_ID --include-hidden` | Expose object bounds directly or optionally include hidden geometry when framing. |
 | `visibility isolate OBJECT_ID...`, `visibility restore TOKEN` | Composite visibility changes and a retained restore snapshot with stale-object handling. |
 | `screenshot PATH --width W --height H --background ... --grid BOOL --origin BOOL --overwrite` | Configurable render targets and per-capture overrides. Define overwrite/default compatibility with today's unconditional overwrite and fixed size. |
 | `capture views`, `capture turntable` | Sequence camera changes and screenshots, report outputs, and define whether/how to restore camera state. Video encoding is separate. |

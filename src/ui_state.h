@@ -207,6 +207,8 @@ void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model)
 [[nodiscard]] Bounds defaultDisplayBounds();
 // Visible selected objects, including descendants and comparison display offsets.
 [[nodiscard]] std::optional<Bounds> selectedSceneBounds(const UiState& state);
+// Union of visible, transformed occurrences and descendants of these IDs.
+[[nodiscard]] std::optional<Bounds> sceneObjectBounds(const UiState& state, const std::vector<SceneObjectId>& objects);
 [[nodiscard]] Bounds combineBounds(const std::vector<UiFileState>& files);
 [[nodiscard]] Bounds combineBounds(
     const std::vector<UiFileState>& files,

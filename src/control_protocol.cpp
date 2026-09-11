@@ -44,7 +44,10 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::viewDelete, "view.delete", "view delete", "viewId", {}, {}, false, true},
         {ControlAction::cameraView, "camera.view", "camera view", "preset", {}, {}, false, true},
         {ControlAction::cameraGet, "camera.get", "camera get", {}, {}, {}},
-        {ControlAction::cameraFrame, "camera.frame", "camera frame", {}, {}, {}, false, true},
+        {ControlAction::cameraFrame, "camera.frame", "camera frame", {}, {"object"}, {}, false, true},
+        {ControlAction::cameraSet, "camera.set", "camera set", {},
+            {"target", "yawDegrees", "pitchDegrees", "rollDegrees", "distance", "fovDegrees", "nearPlane"}, {}, true, true},
+        {ControlAction::cameraLookAt, "camera.look-at", "camera look-at", {}, {"eye", "target"}, {"eye", "target"}, false, true},
         {ControlAction::cameraOrbit, "camera.orbit", "camera orbit", {}, {"yawDegrees", "pitchDegrees"}, {}, true, true},
         {ControlAction::cameraPan, "camera.pan", "camera pan", {}, {"right", "up"}, {}, true, true},
         {ControlAction::cameraRoll, "camera.roll", "camera roll", {}, {"rollDegrees"}, {"rollDegrees"}, false, true},
@@ -99,7 +102,7 @@ bool stringOption(const std::string& name)
 }
 bool vectorOption(const std::string& name)
 {
-    return name == "translation" || name == "rotationDegrees" || name == "rgb";
+    return name == "translation" || name == "rotationDegrees" || name == "rgb" || name == "eye" || name == "target";
 }
 std::string cliOption(const std::string& name)
 {
@@ -107,6 +110,8 @@ std::string cliOption(const std::string& name)
     if (name == "yawDegrees") { return "--yaw-degrees"; }
     if (name == "pitchDegrees") { return "--pitch-degrees"; }
     if (name == "rollDegrees") { return "--roll-degrees"; }
+    if (name == "fovDegrees") { return "--fov-degrees"; }
+    if (name == "nearPlane") { return "--near-plane"; }
     if (name == "distanceOnA") { return "--distance-on-a"; }
     if (name == "colorRange") { return "--color-range"; }
     if (name == "showEdges") { return "--show-edges"; }
@@ -158,7 +163,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
     ControlOperation command;
     command.action = method.action;
-    if (params.contains("target")) {
+    if (params.contains("target") && method.positional == "target") {
         if (!params["target"].is_string() || params["target"].get<std::string>().empty()) {
             throw std::invalid_argument("target must be scene or an object ID.");
         }
@@ -220,12 +225,16 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
     NUMBER_FIELD(yawDegrees) NUMBER_FIELD(pitchDegrees) NUMBER_FIELD(rollDegrees)
     NUMBER_FIELD(right) NUMBER_FIELD(up) NUMBER_FIELD(forward) NUMBER_FIELD(factor)
+    NUMBER_FIELD(distance) NUMBER_FIELD(fovDegrees) NUMBER_FIELD(nearPlane)
     NUMBER_FIELD(qualityMinimumSize) NUMBER_FIELD(qualityMaximumSize)
     NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange)
 #undef NUMBER_FIELD
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
-    VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb)
+    VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb) VECTOR_FIELD(eye)
 #undef VECTOR_FIELD
+    if (params.contains("target") && method.positional != "target") {
+        command.cameraTarget = params["target"].get<std::array<float, 3>>();
+    }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
     STRING_FIELD(qualityMetric) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
 #undef STRING_FIELD
@@ -238,6 +247,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
     if (command.side && *command.side != "a" && *command.side != "b") { throw std::invalid_argument("side must be a or b."); }
     if (command.factor && *command.factor <= 0) { throw std::invalid_argument("factor must be positive."); }
+    if (command.distance && *command.distance <= 0) { throw std::invalid_argument("distance must be positive."); }
     if (command.action == ControlAction::vertexSize
         && (command.target == "scene" ? (!command.pixels || command.scale.has_value()) : (!command.scale || command.pixels.has_value()))) {
         throw std::invalid_argument("Use pixels for scene, or scale for a file/group.");
@@ -278,6 +288,7 @@ Json controlOperationParams(const ControlOperation& command)
 {
     Json result = Json::object();
     if (!command.target.empty()) { result["target"] = command.target; }
+    if (command.cameraTarget) { result["target"] = *command.cameraTarget; }
     if (!command.path.empty()) { result["path"] = pathToUtf8(command.path); }
     if (!command.viewId.empty()) { result["viewId"] = command.viewId; }
     if (!command.preset.empty()) { result["preset"] = command.preset; }
@@ -288,6 +299,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(visible) FIELD(solid) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
+    FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
     FIELD(qualityMetric) FIELD(qualityOnA) FIELD(qualityMinimumEnabled) FIELD(qualityMaximumEnabled) FIELD(qualityMinimumSize) FIELD(qualityMaximumSize)
     FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(tolerance) FIELD(colorRange) FIELD(enabled)

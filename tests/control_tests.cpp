@@ -62,6 +62,9 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"view", "list"}, {"view", "create"}, {"view", "apply", "1"}, {"view", "update", "1"},
         {"view", "rename", "1", "--name", "Test"}, {"view", "delete", "1"}, {"camera", "view", "front"},
         {"camera", "get"}, {"camera", "frame"}, {"camera", "orbit", "--yaw-degrees", "30", "--pitch-degrees", "-20"},
+        {"camera", "set", "--target", "1", "2", "3", "--yaw-degrees", "45", "--pitch-degrees", "20",
+            "--roll-degrees", "10", "--distance", "12", "--fov-degrees", "40", "--near-plane", "0.01"},
+        {"camera", "look-at", "--eye", "10", "20", "30", "--target", "1", "2", "3"},
         {"camera", "pan", "--right", "2", "--up", "-3"}, {"camera", "roll", "--roll-degrees", "90"},
         {"camera", "dolly", "--factor", "0.5"}, {"camera", "move", "--forward", "1"},
         {"model", "add", path}, {"model", "remove", "object"}, {"folder", "add", path, "--tree"},
@@ -261,6 +264,146 @@ TEST_CASE("ctl camera navigation has explicit units finite results and no scene 
         run(state, clean, "camera.frame");
         CHECK(woby::controlCameraInfo(state)["target"] == state.sceneBounds.center);
     }
+}
+
+TEST_CASE("absolute camera CLI preserves vectors and rejects invalid inputs")
+{
+    const auto set = parse({"camera", "set", "--target", "-1", "2", "3", "--distance", "4",
+        "--fov-degrees", "35", "--near-plane", "0.02"});
+    CHECK(woby::controlOperationParams(set.operation) == Json({{"target", {-1, 2, 3}},
+        {"distance", 4}, {"fovDegrees", 35}, {"nearPlane", 0.02f}}));
+    CHECK(parse({"camera", "frame", "--object", "object"}).operation.object == "object");
+    for (const auto& words : std::vector<std::vector<std::string>>{
+        {"camera", "set"}, {"camera", "set", "--target", "1", "2"},
+        {"camera", "set", "--distance", "0"}, {"camera", "set", "--distance", "-2"},
+        {"camera", "set", "--fov-degrees", "nan"}, {"camera", "set", "--target", "1e100", "0", "0"},
+        {"camera", "look-at", "--eye", "1", "2", "3"},
+        {"camera", "look-at", "--target", "0", "0", "0"},
+        {"camera", "look-at", "--eye", "inf", "0", "1", "--target", "0", "0", "0"},
+        {"camera", "frame", "--object", ""}}) {
+        CAPTURE(words);
+        CHECK_THROWS(parse(words));
+    }
+    CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("camera.set"), {{"target", "object"}}));
+}
+
+TEST_CASE("absolute camera positioning is repeatable normalized and transient for both up axes")
+{
+    for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        auto state = scene();
+        woby::setSceneUpAxis(state, axis);
+        woby::clearSceneDirty(state);
+        const auto clean = woby::createSceneDocument(state);
+        const auto revision = state.sceneEditRevision;
+        const Json placement = {{"target", {3, -2, 1}}, {"yawDegrees", 30}, {"pitchDegrees", -20},
+            {"rollDegrees", 15}, {"distance", 12}, {"fovDegrees", 40}, {"nearPlane", 0.02}};
+        run(state, clean, "camera.set", placement);
+        const auto placed = state.camera;
+        CHECK(placed.target == std::array<float, 3>{3, -2, 1});
+        CHECK(placed.distance == 12);
+        CHECK(placed.verticalFovDegrees == 40);
+        CHECK(placed.nearPlane == doctest::Approx(0.02));
+        CHECK(placed.yawRadians == doctest::Approx(0.5235988));
+        CHECK(placed.pitchRadians == doctest::Approx(-0.34906585));
+        CHECK(placed.rollRadians == doctest::Approx(0.2617994));
+        run(state, clean, "camera.set", placement);
+        CHECK(state.camera == placed);
+        run(state, clean, "camera.set", {{"distance", 6}});
+        CHECK(state.camera.target == placed.target);
+        CHECK(state.camera.yawRadians == placed.yawRadians);
+        CHECK(state.camera.verticalFovDegrees == placed.verticalFovDegrees);
+        run(state, clean, "camera.set", {{"pitchDegrees", 200}, {"yawDegrees", 720}, {"rollDegrees", -450},
+            {"distance", 0.00001}, {"fovDegrees", 200}, {"nearPlane", -1}});
+        CHECK(state.camera.pitchRadians == doctest::Approx(1.57079633));
+        CHECK(state.camera.yawRadians == 0);
+        CHECK(state.camera.rollRadians == doctest::Approx(-1.57079633));
+        CHECK(state.camera.distance == doctest::Approx(0.001));
+        CHECK(state.camera.verticalFovDegrees == 179);
+        CHECK(state.camera.nearPlane == doctest::Approx(0.0001));
+        CHECK(woby::createSceneDocument(state).camera == state.camera);
+        CHECK(woby::sceneContentEqual(woby::createSceneDocument(state), clean));
+        CHECK(state.sceneEditRevision == revision);
+        CHECK_FALSE(state.isDirty);
+        const auto beforeInvalid = state.camera;
+        woby::CameraPlacement invalid;
+        invalid.target = {1, 2, 3};
+        invalid.fovDegrees = std::numeric_limits<float>::infinity();
+        CHECK_THROWS(woby::setUiCamera(state, invalid));
+        CHECK(state.camera == beforeInvalid);
+    }
+}
+
+TEST_CASE("look at reconstructs world eye and target including poles and rejects degenerate poses atomically")
+{
+    for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        auto state = scene();
+        woby::setSceneUpAxis(state, axis);
+        const auto clean = woby::createSceneDocument(state);
+        run(state, clean, "camera.set", {{"rollDegrees", 27}, {"fovDegrees", 35}, {"nearPlane", 0.01}});
+        const auto original = state.camera;
+        const std::array<float, 3> target = {2, -3, 4};
+        for (const auto eye : std::vector<std::array<float, 3>>{
+            {10, 20, 30}, {-9, -6, -5}, {2, 7, 4}, {2, -13, 4}, {2, -3, 14}, {2, -3, -6}}) {
+            const auto result = run(state, clean, "camera.look-at", {{"eye", eye}, {"target", target}});
+            for (size_t i = 0; i < 3; ++i) {
+                CHECK(result["camera"]["eye"][i].get<float>() == doctest::Approx(eye[i]).epsilon(0.00001));
+            }
+            CHECK(state.camera.target == target);
+            CHECK(state.camera.rollRadians == original.rollRadians);
+            CHECK(state.camera.verticalFovDegrees == original.verticalFovDegrees);
+            CHECK(state.camera.nearPlane == original.nearPlane);
+            const auto up = woby::cameraUp(state.camera, axis);
+            CHECK(up.x * up.x + up.y * up.y + up.z * up.z == doctest::Approx(1));
+            const auto before = state.camera;
+            run(state, clean, "camera.look-at", {{"eye", eye}, {"target", target}});
+            CHECK(state.camera == before);
+        }
+        const auto before = state.camera;
+        for (const auto eye : std::vector<std::array<float, 3>>{target, {2, -3, 4.0001f}, {1e20f, 0, 0}}) {
+            CHECK_THROWS(run(state, clean, "camera.look-at", {{"eye", eye}, {"target", target}}));
+            CHECK(state.camera == before);
+        }
+        CHECK(woby::sceneContentEqual(woby::createSceneDocument(state), clean));
+    }
+}
+
+TEST_CASE("object camera framing includes transformed occurrences without changing selection")
+{
+    auto state = scene();
+    const auto clean = woby::createSceneDocument(state);
+    const auto file = state.files[0].objectId;
+    const auto group = state.files[0].groupSettings[0].objectId;
+    state.sceneNodes[0].settings.translation = {10, 20, 30};
+    state.files[0].fileSettings.translation = {2, 0, 0};
+    state.files[0].groupSettings[0].translation = {0, 3, 0};
+    const auto folder = state.sceneNodes[0].objectId;
+    state.selectedSceneObjects = {folder};
+    const auto selected = state.selectedSceneObjects;
+    const auto camera = state.camera;
+    for (const auto id : {file, group, folder}) {
+        run(state, clean, "camera.frame", {{"object", formatId(id)}});
+        CHECK(state.camera.target == std::array<float, 3>{12.5f, 23.5f, 30});
+        CHECK(state.camera.yawRadians == camera.yawRadians);
+        CHECK(state.camera.pitchRadians == camera.pitchRadians);
+        CHECK(state.camera.verticalFovDegrees == camera.verticalFovDegrees);
+        CHECK(state.selectedSceneObjects == selected);
+    }
+    auto occurrence = state.sceneNodes[0];
+    occurrence.objectId = state.nextObjectId++;
+    occurrence.settings.translation[0] += 10;
+    state.sceneNodes.push_back(occurrence);
+    run(state, clean, "camera.frame", {{"object", formatId(file)}});
+    CHECK(state.camera.target[0] == doctest::Approx(17.5));
+    state.sceneNodes[1].settings.visible = false;
+    run(state, clean, "camera.frame", {{"object", formatId(file)}});
+    CHECK(state.camera.target[0] == doctest::Approx(12.5));
+    const auto before = state.camera;
+    state.sceneNodes[0].settings.visible = false;
+    CHECK_THROWS(run(state, clean, "camera.frame", {{"object", formatId(file)}}));
+    CHECK_THROWS(run(state, clean, "camera.frame", {{"object", formatId(state.nextObjectId + 100)}}));
+    CHECK(state.camera == before);
+    CHECK(state.selectedSceneObjects == selected);
+    CHECK_FALSE(state.isDirty);
 }
 
 TEST_CASE("ctl analysis lifecycle expands inputs edits independently and persists all settings")

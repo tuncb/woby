@@ -645,22 +645,28 @@ void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
 
 std::optional<Bounds> selectedSceneBounds(const UiState& state)
 {
-    if (state.selectedSceneObjects.empty()) { return std::nullopt; }
+    return sceneObjectBounds(state, state.selectedSceneObjects);
+}
+
+std::optional<Bounds> sceneObjectBounds(const UiState& state, const std::vector<SceneObjectId>& objects)
+{
+    if (objects.empty()) { return std::nullopt; }
     Bounds bounds = emptyAccumulatedBounds();
     float identity[16];
     bx::mtxIdentity(identity);
     if (state.sceneNodes.empty()) {
         for (size_t index = 0; index < state.files.size(); ++index) {
             expandSceneNodeBounds(bounds, state.files, createFileSceneNode(state.files[index], index),
-                identity, &state.selectedSceneObjects);
+                identity, &objects);
         }
     } else {
         for (const auto& node : state.sceneNodes) {
-            expandSceneNodeBounds(bounds, state.files, node, identity, &state.selectedSceneObjects);
+            expandSceneNodeBounds(bounds, state.files, node, identity, &objects);
         }
     }
     for (const auto& comparison : state.comparisons) {
-        if (!comparison.settings.enabled || !sceneObjectSelected(state, comparison.objectId)) { continue; }
+        if (!comparison.settings.enabled
+            || std::find(objects.begin(), objects.end(), comparison.objectId) == objects.end()) { continue; }
         if (const auto display = comparisonDisplayBounds(state, comparison.objectId)) {
             expandBounds(bounds, display->min);
             expandBounds(bounds, display->max);

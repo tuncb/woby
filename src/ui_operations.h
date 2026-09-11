@@ -188,6 +188,9 @@ void resetSceneNodeTransform(UiSceneNodeSettings& settings);
 
 void recalculateSceneBounds(UiState& state);
 void frameCameraToScene(UiState& state);
+void frameCameraToObject(UiState& state, SceneObjectId object);
+void setUiCamera(UiState& state, const CameraPlacement& placement);
+void lookAtUiCamera(UiState& state, const std::array<float, 3>& eye, const std::array<float, 3>& target);
 void setCameraView(UiState& state, CameraView view);
 void fitCameraToScene(UiState& state);
 void fitCameraToSelection(UiState& state);
