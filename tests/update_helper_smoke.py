@@ -68,12 +68,20 @@ for _ in range(200):
 raise RuntimeError('helper handshake timed out')
 """
     subprocess.run([sys.executable, "-c", script, str(helper), str(root), str(job)], check=True, timeout=20)
+    last_read_error = None
     for _ in range(600):
-        status = json.loads((root / ".woby-update/status.json").read_text(encoding="utf-8"))
-        if status["state"] not in ("pending", "applying"):
-            return status
+        try:
+            status = json.loads((root / ".woby-update/status.json").read_text(encoding="utf-8"))
+        except PermissionError as error:
+            # Windows can briefly deny reads while the helper replaces status.json.
+            # Count these retries against the same limit as an unfinished update.
+            last_read_error = error
+        else:
+            last_read_error = None
+            if status["state"] not in ("pending", "applying"):
+                return status
         time.sleep(.05)
-    raise RuntimeError("helper did not finish")
+    raise RuntimeError("helper did not finish") from last_read_error
 
 
 def main():
