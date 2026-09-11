@@ -7,7 +7,9 @@
 #include <imgui.h>
 #include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <string>
 
 namespace woby {
@@ -130,9 +132,11 @@ void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
     const auto parts = scenePickParts(state);
     const auto& dimensions = updateSceneDimensions(dimensionsCache, parts, state.sceneGeneration, state.sceneEditRevision);
     if (dimensions) {
-        ImGui::TextUnformatted("Size");
-        for (size_t axis = 0; axis < 3; ++axis) {
-            ImGui::Text("%c: %.6g", static_cast<int>('X' + axis), dimensions->lengths[axis]);
+        ImGui::Text("Size  X:%.3g  Y:%.3g  Z:%.3g",
+            dimensions->lengths[0], dimensions->lengths[1], dimensions->lengths[2]);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Size\nX: %.9g\nY: %.9g\nZ: %.9g",
+                dimensions->lengths[0], dimensions->lengths[1], dimensions->lengths[2]);
         }
         ImGui::Spacing();
     }
@@ -158,10 +162,24 @@ void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
         }
     }
     if (bounds) {
-        ImGui::TextUnformatted("Local bounds");
+        std::array<double, 3> minimum{}, maximum{};
         for (size_t axis = 0; axis < 3; ++axis) {
-            ImGui::Text("%s: %.6g to %.6g", axis == 0 ? "X" : axis == 1 ? "Y" : "Z",
-                static_cast<double>(bounds->min[axis]), static_cast<double>(bounds->max[axis]));
+            minimum[axis] = bounds->min[axis];
+            maximum[axis] = bounds->max[axis];
+            // Hide double-precision roundoff relative to this axis's extent,
+            // without erasing legitimately tiny models or changing their bounds.
+            const double tolerance = std::abs(maximum[axis] - minimum[axis])
+                * 16.0 * std::numeric_limits<double>::epsilon();
+            if (std::abs(minimum[axis]) <= tolerance) { minimum[axis] = 0.0; }
+            if (std::abs(maximum[axis]) <= tolerance) { maximum[axis] = 0.0; }
+        }
+        ImGui::Text("Local bounds  X:%.3g to %.3g  Y:%.3g to %.3g  Z:%.3g to %.3g",
+            minimum[0], maximum[0], minimum[1], maximum[1], minimum[2], maximum[2]);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Local bounds\nX: %.9g to %.9g\nY: %.9g to %.9g\nZ: %.9g to %.9g",
+                static_cast<double>(bounds->min[0]), static_cast<double>(bounds->max[0]),
+                static_cast<double>(bounds->min[1]), static_cast<double>(bounds->max[1]),
+                static_cast<double>(bounds->min[2]), static_cast<double>(bounds->max[2]));
         }
     } else if (!dimensions) {
         ImGui::TextDisabled("No geometry selected");

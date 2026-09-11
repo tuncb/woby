@@ -322,6 +322,7 @@ if(BUILD_TESTING)
         src/background_load.h
         src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
+        src/scene_inspector.cpp
         tests/comparison_name_tests.cpp
         src/settings_dialog.cpp
         src/ui_icon_controls.cpp

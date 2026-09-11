@@ -6,6 +6,8 @@
 #include "ui_popup_controls.h"
 #include "settings_dialog.h"
 #include "scene_history.h"
+#include "scene_inspector.h"
+#include "scene_dimensions.h"
 #include "ui_history_controls.h"
 
 #include <doctest/doctest.h>
@@ -53,6 +55,61 @@ struct KeyboardFixture {
 };
 
 } // namespace
+
+TEST_CASE("geometry inspector uses compact single rows and preserves tiny and large geometry")
+{
+    float scale = 1.0f;
+    std::string expectedSize = "Size  X:2.4  Y:1.4  Z:0.4";
+    std::string expectedBounds = "Local bounds  X:0 to 2.4  Y:0 to 1.4  Z:0 to 0.4";
+    SUBCASE("ordinary model with roundoff and negative zero") {}
+    SUBCASE("tiny model") {
+        scale = 1e-12f;
+        expectedSize = "Size  X:2.4e-12  Y:1.4e-12  Z:4e-13";
+        expectedBounds = "Local bounds  X:0 to 2.4e-12  Y:0 to 1.4e-12  Z:0 to 4e-13";
+    }
+    SUBCASE("large model") {
+        scale = 1e12f;
+        expectedSize = "Size  X:2.4e+12  Y:1.4e+12  Z:4e+11";
+        expectedBounds = "Local bounds  X:0 to 2.4e+12  Y:0 to 1.4e+12  Z:0 to 4e+11";
+    }
+    KeyboardFixture fixture;
+    woby::Mesh mesh;
+    for (const auto& point : {std::array<float, 3>{-2.22045e-16f, -0.0f, 0.0f},
+            {2.4f, 0.0f, 0.4f}, {0.0f, 1.4f, 0.0f}}) {
+        woby::Vertex vertex;
+        for (size_t axis = 0; axis < 3; ++axis) { vertex.position[axis] = point[axis] * scale; }
+        mesh.vertices.push_back(vertex);
+    }
+    mesh.indices = {0, 1, 2};
+    mesh.nodes = {{"triangle", 0, 3}};
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    auto& state = fixture.state;
+    state.files.push_back(woby::createUiFileState("triangle.obj", mesh, 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::assignSceneObjectIds(state);
+    woby::SceneDimensionsCache cache;
+    for (const auto id : {state.files[0].objectId, state.files[0].groupSettings[0].objectId}) {
+        woby::selectSceneObject(state, id);
+        std::string logged;
+        for (int frame = 0; frame < 2; ++frame) {
+            ImGui::GetIO().DisplaySize = ImVec2(800, 1600);
+            ImGui::NewFrame();
+            ImGui::SetNextWindowSize(ImVec2(700, 1500));
+            ImGui::Begin("Geometry inspector");
+            ImGui::LogToBuffer();
+            woby::drawSceneInspector(state, cache);
+            logged = ImGui::GetCurrentContext()->LogBuffer.c_str();
+            ImGui::LogFinish();
+            ImGui::End();
+            ImGui::EndFrame();
+        }
+        CAPTURE(logged);
+        CHECK(logged.find(expectedSize) != std::string::npos);
+        CHECK(logged.find(expectedBounds) != std::string::npos);
+        CHECK(state.files[0].mesh.bounds.min == mesh.bounds.min);
+        CHECK(state.files[0].mesh.bounds.max == mesh.bounds.max);
+    }
+}
 
 TEST_CASE("scene history shortcuts allow property popups but respect active text and busy state")
 {
