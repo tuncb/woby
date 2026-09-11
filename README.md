@@ -183,6 +183,14 @@ diagnostics. It does not perform a Boolean union. Up to two comparisons compute
 concurrently; screenshots wait for all visible results and report incomplete
 inputs or computation errors instead of exporting a partial comparison scene.
 
+Choose a diagnostic **Target** (A or B), then use the left/right arrows on the
+right of each **Boundary**, **Non-manifold**, or **Winding** table row to visit its edges.
+Navigation wraps and shows the current index and total. The target surface is
+shown while inspecting an edge, with a yellow highlight and endpoint crosses.
+**Full result** clears focus, restores the chosen display mode, and frames the
+whole comparison. Empty or computing results disable navigation. Target and
+category are saved in `.woby`; edge focus resets when results or inputs change.
+
 Version 5 `.woby` scenes save comparison objects and source references. Version
 2Ã¢â‚¬â€œ4 scenes remain readable; existing A/B memberships migrate into one comparison
 at the original source positions. Version 6 adds the optional camera record and

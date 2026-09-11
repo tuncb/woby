@@ -361,6 +361,14 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
 
 ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
+    if (settings.diagnosticSide != ComparisonSide::a && settings.diagnosticSide != ComparisonSide::b) {
+        settings.diagnosticSide = ComparisonSide::a;
+    }
+    if (settings.diagnosticCategory != DiagnosticCategory::boundary &&
+        settings.diagnosticCategory != DiagnosticCategory::nonManifold &&
+        settings.diagnosticCategory != DiagnosticCategory::winding) {
+        settings.diagnosticCategory = DiagnosticCategory::boundary;
+    }
     if (settings.mode != ComparisonMode::distance && settings.mode != ComparisonMode::original &&
         settings.mode != ComparisonMode::repaired && settings.mode != ComparisonMode::overlay &&
         settings.mode != ComparisonMode::surfaceQuality)
@@ -370,6 +378,19 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.colorRange = std::max(settings.colorRange, settings.tolerance);
     settings.quality = normalizedSurfaceQualitySettings(settings.quality);
     return settings;
+}
+
+const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
+    const MeshComparison& result, ComparisonSide side, DiagnosticCategory category)
+{
+    const auto& diagnostics = side == ComparisonSide::a ? result.original.diagnostics : result.repaired.diagnostics;
+    switch (category) {
+    case DiagnosticCategory::boundary: return diagnostics.boundaryEdges;
+    case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
+    case DiagnosticCategory::winding: return diagnostics.inconsistentWindingEdges;
+    }
+    static const std::vector<DiagnosticEdge> empty;
+    return empty;
 }
 
 double pointTriangleDistance(const std::array<float, 3> &p, const std::array<float, 3> &a,

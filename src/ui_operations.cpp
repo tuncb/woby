@@ -1,5 +1,6 @@
 #include "ui_operations.h"
 #include "comparison_scene.h"
+#include "mesh_comparison.h"
 
 #include <algorithm>
 #include <cmath>
@@ -249,6 +250,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     const auto* source = findComparison(state, id);
     if (!source) { return invalidSceneObjectId; }
     auto copy = *source;
+    copy.diagnosticFocus.reset();
     copy.objectId = invalidSceneObjectId;
     copy.name += " copy";
     const auto sourceBounds = comparisonDisplayBounds(state, id);
@@ -307,7 +309,78 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
 
 void frameComparison(UiState& state, SceneObjectId id)
 {
+    resetComparisonDiagnosticFocus(state, id);
     if (const auto bounds = comparisonDisplayBounds(state, id)) { frameComparisonBounds(state, *bounds); }
+}
+
+namespace {
+bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison)
+{
+    const auto& focus = comparison.diagnosticFocus;
+    return focus && comparison.settings.enabled && focus->signature != 0
+        && focus->side == comparison.settings.diagnosticSide
+        && focus->category == comparison.settings.diagnosticCategory
+        && focus->signature == comparisonGeometrySignature(state, comparison.objectId);
+}
+}
+
+const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
+    const MeshComparison& result, uint64_t resultSignature, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison || !diagnosticFocusCurrent(state, *comparison)
+        || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
+    const auto& focus = *comparison->diagnosticFocus;
+    const auto& edges = comparisonDiagnosticEdges(result, focus.side, focus.category);
+    return focus.index < edges.size() ? &edges[focus.index] : nullptr;
+}
+
+void resetComparisonDiagnosticFocus(UiState& state, SceneObjectId id)
+{
+    if (auto* comparison = findComparison(state, id)) { comparison->diagnosticFocus.reset(); }
+}
+
+void validateComparisonDiagnosticFocus(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, SceneObjectId id)
+{
+    if (!focusedComparisonDiagnostic(state, result, resultSignature, id)) {
+        resetComparisonDiagnosticFocus(state, id);
+    }
+}
+
+void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, int step, SceneObjectId id)
+{
+    validateComparisonDiagnosticFocus(state, result, resultSignature, id);
+    auto* comparison = findComparison(state, id);
+    if (!comparison || !comparison->settings.enabled || resultSignature == 0
+        || resultSignature != comparisonGeometrySignature(state, id)) { return; }
+    const auto& settings = comparison->settings;
+    const auto& edges = comparisonDiagnosticEdges(result, settings.diagnosticSide, settings.diagnosticCategory);
+    if (edges.empty()) { return; }
+    size_t index = 0;
+    if (comparison->diagnosticFocus && step != 0) {
+        index = comparison->diagnosticFocus->index;
+        if (step < 0) { index = index == 0 ? edges.size() - 1 : index - 1; }
+        else { index = index + 1 == edges.size() ? 0 : index + 1; }
+    } else if (step < 0) { index = edges.size() - 1; }
+    const auto& edge = edges[index];
+    if (!finitePosition(edge.a) || !finitePosition(edge.b)) { return; }
+    std::vector<Vertex> points(2);
+    points[0].position = edge.a;
+    points[1].position = edge.b;
+    auto bounds = calculateBounds(points);
+    // Keep enough surrounding surface to understand the defect without allowing
+    // distant, unrelated scene objects to overwhelm a small edge's framing.
+    const auto resultBounds = comparisonDisplayBounds(state, id);
+    bounds.radius = std::max(bounds.radius * 3.0f, resultBounds ? resultBounds->radius * .06f : .001f);
+    for (size_t k = 0; k < 3; ++k) {
+        bounds.min[k] += comparison->translation[k];
+        bounds.max[k] += comparison->translation[k];
+        bounds.center[k] += comparison->translation[k];
+    }
+    comparison->diagnosticFocus = DiagnosticFocus{resultSignature, index, settings.diagnosticSide, settings.diagnosticCategory};
+    frameComparisonBounds(state, bounds);
 }
 
 ComparisonMembershipAction comparisonMembershipAction(
@@ -344,6 +417,11 @@ bool canInspectComparison(const UiState& state, SceneObjectId id)
 
 ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id)
 {
+    if (const auto* comparison = findComparison(state, id); comparison && diagnosticFocusCurrent(state, *comparison)) {
+        auto settings = comparison->settings;
+        settings.mode = settings.diagnosticSide == ComparisonSide::a ? ComparisonMode::original : ComparisonMode::repaired;
+        return settings;
+    }
     auto settings = comparisonSettings(state, id);
     const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
     const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
@@ -1330,6 +1408,11 @@ void notifySceneEdit(UiState& state)
 
 void markSceneDirty(UiState& state)
 {
+    for (auto& comparison : state.comparisons) {
+        if (comparison.diagnosticFocus && !diagnosticFocusCurrent(state, comparison)) {
+            comparison.diagnosticFocus.reset();
+        }
+    }
     notifySceneEdit(state);
     setSceneDirty(state, true);
 }

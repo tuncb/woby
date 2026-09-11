@@ -449,6 +449,17 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else { throw std::runtime_error("Unknown comparison mode."); }
     } else if (key == "comparison_distance_on_a") {
         record.settings.distanceOnOriginal = parseTomlBool(value);
+    } else if (key == "diagnostic_side") {
+        const auto side = parseTomlString(value);
+        if (side == "a") { record.settings.diagnosticSide = ComparisonSide::a; }
+        else if (side == "b") { record.settings.diagnosticSide = ComparisonSide::b; }
+        else { throw std::runtime_error("Unknown diagnostic side."); }
+    } else if (key == "diagnostic_category") {
+        const auto category = parseTomlString(value);
+        if (category == "boundary") { record.settings.diagnosticCategory = DiagnosticCategory::boundary; }
+        else if (category == "non_manifold") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifold; }
+        else if (category == "winding") { record.settings.diagnosticCategory = DiagnosticCategory::winding; }
+        else { throw std::runtime_error("Unknown diagnostic category."); }
     } else if (key == "comparison_tolerance") {
         record.settings.tolerance = parseTomlFloat(value);
     } else if (key == "quality_metric") {
@@ -488,6 +499,10 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "comparison_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
     stream << "comparison_mode = \"" << mode << "\"\n";
     stream << "comparison_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
+    stream << "diagnostic_side = \"" << (comparison.diagnosticSide == ComparisonSide::a ? "a" : "b") << "\"\n";
+    const char* category = comparison.diagnosticCategory == DiagnosticCategory::boundary ? "boundary"
+        : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold" : "winding";
+    stream << "diagnostic_category = \"" << category << "\"\n";
     stream << "comparison_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
     stream << "comparison_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
     stream << "comparison_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";

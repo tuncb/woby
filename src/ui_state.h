@@ -99,6 +99,15 @@ struct UiComparisonPart {
     friend bool operator==(const UiComparisonPart&, const UiComparisonPart&) = default;
 };
 
+// Navigation refers only to the computed result with this geometry signature.
+// Like selection, it is session-only and excluded from scene files and history.
+struct DiagnosticFocus {
+    uint64_t signature = 0;
+    size_t index = 0;
+    ComparisonSide side = ComparisonSide::a;
+    DiagnosticCategory category = DiagnosticCategory::boundary;
+};
+
 struct UiComparison {
     SceneObjectId objectId = invalidSceneObjectId;
     std::string name;
@@ -106,6 +115,7 @@ struct UiComparison {
     // Presentation only: source measurements always use source world transforms.
     std::array<float, 3> translation{};
     std::vector<UiComparisonPart> a, b;
+    std::optional<DiagnosticFocus> diagnosticFocus;
 };
 
 using ViewId = uint64_t;
