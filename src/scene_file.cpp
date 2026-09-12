@@ -784,7 +784,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 } else if (key == "start" || key == "end") {
                     const auto values = parseTomlFloatArray(value);
                     if (values.size() != 2) { throw std::runtime_error("Expected 2 annotation control coordinates."); }
-                    (key == "start" ? item.geometry.start : item.geometry.end) = {values[0], values[1]};
+                    auto& control = key == "start" ? item.geometry.start : item.geometry.end;
+                    control = {values[0], values[1]};
                 }
             } else if (section == Section::annotationSegment) {
                 auto& segment = document.annotations.back().geometry.segments.back();

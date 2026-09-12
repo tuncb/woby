@@ -439,7 +439,8 @@ std::vector<DiagnosticEdge> annotationWorldLines(const UiAnnotation& item, std::
         for (const auto& bary : {segment.a, segment.b}) {
             const auto local = annotationPosition(*target->mesh, target->indexOffset, segment.triangle, bary);
             const auto world = annotationTransform(target->model, {local[0], local[1], local[2], 1});
-            (k++ == 0 ? edge.a : edge.b) = {world[0] / world[3], world[1] / world[3], world[2] / world[3]};
+            auto& endpoint = k++ == 0 ? edge.a : edge.b;
+            endpoint = {world[0] / world[3], world[1] / world[3], world[2] / world[3]};
         }
         lines.push_back(edge);
     }

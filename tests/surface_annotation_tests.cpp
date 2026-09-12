@@ -665,7 +665,11 @@ TEST_CASE("surface annotation follows composed transforms and does not reproject
     setGroupTranslation(fixture.state.files[0].groupSettings[0], {1,2,3});
     const auto moved = annotationWorldLines(*findAnnotation(fixture.state, id), scenePickParts(fixture.state));
     REQUIRE(moved.size() == original.size());
-    nearPoint(moved.front().a, {original.front().a[0]+4, original.front().a[1]+6, original.front().a[2]+8});
+    REQUIRE_FALSE(original.empty());
+    for (size_t i = 0; i < original.size(); ++i) {
+        nearPoint(moved[i].a, {original[i].a[0]+4, original[i].a[1]+6, original[i].a[2]+8});
+        nearPoint(moved[i].b, {original[i].b[0]+4, original[i].b[1]+6, original[i].b[2]+8});
+    }
     const auto document = createSceneDocument(fixture.state);
     clearSceneDirty(fixture.state); orbitUiCamera(fixture.state, 25, 30);
     CHECK(sceneContentEqual(createSceneDocument(fixture.state), document));
