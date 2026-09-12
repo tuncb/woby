@@ -152,7 +152,17 @@ struct ViewApplication {
     uint64_t revision = 0;
 };
 
+struct UiAnnotation {
+    SceneObjectId objectId = 0, targetId = 0;
+    std::string targetName;
+    AnnotationSettings settings;
+    AnnotationGeometry geometry;
+    // Derived at load/geometry replacement boundaries, never serialized.
+    bool targetValid = false;
+};
+
 struct UiState {
+    std::vector<UiAnnotation> annotations;
     std::vector<UiView> views;
     // Session identities and history notification; never serialized.
     ViewId nextViewId = 1, activeViewId = 0;

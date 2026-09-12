@@ -16,6 +16,15 @@ using Json = nlohmann::json;
 const std::vector<ControlMethod>& controlMethods()
 {
     static const std::vector<ControlMethod> methods = {
+        {ControlAction::annotationList, "annotation.list", "annotation list", {}, {}, {}},
+        {ControlAction::annotationGet, "annotation.get", "annotation get", "target", {}, {}},
+        {ControlAction::annotationCreate, "annotation.create", "annotation create", "target",
+            {"shape", "start", "end", "aspect", "name", "comments", "visible", "locked", "rgb", "opacity", "width"}, {"shape", "start", "end"}, false, true},
+        {ControlAction::annotationSet, "annotation.set", "annotation set", "target",
+            {"name", "comments", "visible", "locked", "rgb", "opacity", "width"}, {}, true, true},
+        {ControlAction::annotationReshape, "annotation.reshape", "annotation reshape", "target", {"start", "end"}, {}, true, true},
+        {ControlAction::annotationMove, "annotation.move", "annotation move", "target", {"delta"}, {"delta"}, false, true},
+        {ControlAction::annotationDelete, "annotation.delete", "annotation delete", "target", {}, {}, false, true},
         {ControlAction::status, "status", "status", {}, {}, {}},
         {ControlAction::capabilities, "capabilities", "capabilities", {}, {}, {}},
         {ControlAction::sceneInfo, "scene.info", "scene info", {}, {}, {}},
@@ -92,17 +101,18 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
-    return name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
+    return name == "locked" || name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
 bool stringOption(const std::string& name)
 {
-    return name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "qualityMetric";
+    return name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "qualityMetric";
 }
+size_t vectorSize(const std::string& name) { return name == "start" || name == "end" || name == "delta" ? 2u : 3u; }
 bool vectorOption(const std::string& name)
 {
-    return name == "translation" || name == "rotationDegrees" || name == "rgb" || name == "eye" || name == "target";
+    return name == "start" || name == "end" || name == "delta" || name == "translation" || name == "rotationDegrees" || name == "rgb" || name == "eye" || name == "target";
 }
 std::string cliOption(const std::string& name)
 {
@@ -206,23 +216,26 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         if (!params.contains(name)) { continue; }
         const auto& value = params[name];
         if (booleanOption(name) && !value.is_boolean()) { throw std::invalid_argument(name + " must be a boolean."); }
-        if (stringOption(name) && (!value.is_string() || value.get_ref<const std::string&>().empty()
-            || value.get_ref<const std::string&>().size() > 511
+        if (stringOption(name) && (!value.is_string() || (name != "comments" && value.get_ref<const std::string&>().empty())
+            || value.get_ref<const std::string&>().size() > (name == "comments" ? 8192u : 511u)
             || value.get_ref<const std::string&>().find('\0') != std::string::npos)) {
-            throw std::invalid_argument(name + " must be a nonempty string of at most 511 bytes without NUL characters.");
+            throw std::invalid_argument(name + (name == "comments" ? " must be a string of at most 8192 bytes without NUL characters."
+                : " must be a nonempty string of at most 511 bytes without NUL characters."));
         }
         if (vectorOption(name)) {
-            if (!value.is_array() || value.size() != 3) { throw std::invalid_argument(name + " must contain three numbers."); }
+            if (!value.is_array() || value.size() != vectorSize(name)) { throw std::invalid_argument(name + " has the wrong number of coordinates."); }
             for (const auto& component : value) { (void)number(component); }
         }
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
+    BOOL_FIELD(locked)
     BOOL_FIELD(qualityOnA) BOOL_FIELD(qualityMinimumEnabled) BOOL_FIELD(qualityMaximumEnabled)
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
+    NUMBER_FIELD(aspect) NUMBER_FIELD(opacity)
     NUMBER_FIELD(yawDegrees) NUMBER_FIELD(pitchDegrees) NUMBER_FIELD(rollDegrees)
     NUMBER_FIELD(right) NUMBER_FIELD(up) NUMBER_FIELD(forward) NUMBER_FIELD(factor)
     NUMBER_FIELD(distance) NUMBER_FIELD(fovDegrees) NUMBER_FIELD(nearPlane)
@@ -232,12 +245,21 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
 #define VECTOR_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::array<float, 3>>(); }
     VECTOR_FIELD(translation) VECTOR_FIELD(rotationDegrees) VECTOR_FIELD(rgb) VECTOR_FIELD(eye)
 #undef VECTOR_FIELD
+    if (params.contains("start")) { command.start = params["start"].get<std::array<float, 2>>(); }
+    if (params.contains("end")) { command.end = params["end"].get<std::array<float, 2>>(); }
+    if (params.contains("delta")) { command.delta = params["delta"].get<std::array<float, 2>>(); }
     if (params.contains("target") && method.positional != "target") {
         command.cameraTarget = params["target"].get<std::array<float, 3>>();
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
     STRING_FIELD(qualityMetric) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
+    STRING_FIELD(shape) STRING_FIELD(comments)
 #undef STRING_FIELD
+    if (command.shape && *command.shape != "line" && *command.shape != "rectangle") { throw std::invalid_argument("shape must be line or rectangle."); }
+    if (command.aspect && (*command.aspect < .1f || *command.aspect > 10)) { throw std::invalid_argument("aspect must be between 0.1 and 10."); }
+    for (const auto& point : {command.start, command.end}) {
+        if (point && (std::abs((*point)[0]) > 1 || std::abs((*point)[1]) > 1)) { throw std::invalid_argument("Drawing coordinates must be between -1 and 1."); }
+    }
     if (command.mode && *command.mode != "distance" && *command.mode != "a" && *command.mode != "b" && *command.mode != "overlay" && *command.mode != "surface_quality") {
         throw std::invalid_argument("mode must be distance, a, b, overlay, or surface_quality.");
     }
@@ -263,11 +285,12 @@ std::string controlMethodUsage(const ControlMethod& method)
     else if (method.positional == "preset") { result += " front|back|left|right|top|bottom|isometric"; }
     else if (method.positional == "axis") { result += " y|z"; }
     else if (method.positional == "target") {
-        if (method.method.starts_with("analysis.")) { result += " ANALYSIS_ID"; }
+        if (method.action == ControlAction::annotationCreate) { result += " GROUP_ID"; }
+        else if (method.method.starts_with("annotation.")) { result += " ANNOTATION_ID"; }
+        else if (method.method.starts_with("analysis.")) { result += " ANALYSIS_ID"; }
         else if (method.action == ControlAction::visibility || method.action == ControlAction::render
             || method.action == ControlAction::vertexSize) { result += " TARGET"; }
         else if (method.action == ControlAction::modelRemove) { result += " FILE_ID"; }
-        else if (method.action == ControlAction::colorSet || method.action == ControlAction::colorReset) { result += " GROUP_ID"; }
         else { result += " OBJECT_ID"; }
     }
     for (const auto& name : method.options) {
@@ -275,8 +298,8 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += required ? " " : " [";
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
-            result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? " X Y Z"
-                : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
+            result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
+                : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
         if (!required) { result += "]"; }
@@ -301,6 +324,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
+    FIELD(shape) FIELD(comments) FIELD(locked) FIELD(start) FIELD(end) FIELD(delta) FIELD(aspect) FIELD(opacity)
     FIELD(qualityMetric) FIELD(qualityOnA) FIELD(qualityMinimumEnabled) FIELD(qualityMaximumEnabled) FIELD(qualityMinimumSize) FIELD(qualityMaximumSize)
     FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(tolerance) FIELD(colorRange) FIELD(enabled)
 #undef FIELD
@@ -316,7 +340,7 @@ Json controlCapabilities()
         Json parameters = Json::object();
         if (!method.positional.empty()) { parameters[method.positional] = {{"type", "string"}, {"required", true}}; }
         for (const auto& name : method.options) {
-            parameters[name] = {{"type", booleanOption(name) ? "boolean" : vectorOption(name) ? "number[3]" : stringOption(name) ? "string" : "number"},
+            parameters[name] = {{"type", booleanOption(name) ? "boolean" : vectorOption(name) ? (vectorSize(name) == 2 ? "number[2]" : "number[3]") : stringOption(name) ? "string" : "number"},
                 {"required", std::find(method.required.begin(), method.required.end(), name) != method.required.end()},
                 {"cliOption", cliOption(name)}};
         }
@@ -324,12 +348,12 @@ Json controlCapabilities()
             {"positional", method.positional}, {"parameters", parameters}, {"options", method.options},
             {"requiredOptions", method.required}, {"requiresValues", method.requiresValues}, {"mutating", method.mutating}});
     }
-    return {{"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis"}},
+    return {{"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis", "annotation"}},
         {"analysisTransformFields", {"translation"}},
         {"cameraPersistent", false}, {"screenshot", {{"width", 1920}, {"height", 1800}, {"overwrite", true}}},
-        {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "analysis"}},
+        {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "analysis", "annotation"}},
             {"render.set", {"scene", "folder", "file", "group"}}, {"transform", {"folder", "file", "group", "analysis"}},
-            {"opacity.set", {"folder", "file", "group"}}, {"color", {"group"}},
+            {"opacity.set", {"folder", "file", "group", "annotation"}}, {"color", {"group", "annotation"}},
             {"vertex-size.set", {"scene", "file", "group"}}, {"model.remove", {"file"}}}}};
 }
 
@@ -383,15 +407,15 @@ bool parseExtendedControlArguments(int argc, char** argv, ControlArguments& argu
         if (option == selected->options.end() || params.contains(*option)) { throw std::runtime_error("Unexpected or repeated option: " + word); }
         const auto& name = *option;
         if (name == "tree" || name == "remember") { params[name] = true; continue; }
-        const size_t count = vectorOption(name) ? 3u : 1u;
+        const size_t count = vectorOption(name) ? vectorSize(name) : 1u;
         if (words.size() - index - 1 < count) { throw std::runtime_error("Missing value for " + word); }
         if (booleanOption(name)) {
             const auto value = words[++index];
             if (value != "true" && value != "false") { throw std::runtime_error(word + " expects true or false."); }
             params[name] = value == "true";
-        } else if (count == 3) {
+        } else if (count > 1) {
             params[name] = Json::array();
-            for (size_t component = 0; component < 3; ++component) { params[name].push_back(cliNumber(words[++index])); }
+            for (size_t component = 0; component < count; ++component) { params[name].push_back(cliNumber(words[++index])); }
         } else if (stringOption(name)) { params[name] = words[++index]; }
         else { params[name] = cliNumber(words[++index]); }
     }

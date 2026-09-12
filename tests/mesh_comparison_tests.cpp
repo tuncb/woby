@@ -486,7 +486,8 @@ TEST_CASE("multiple analysis objects round trip with fresh identities and indepe
 
 TEST_CASE("analysis control inspection visibility and translation use object identities")
 {
-    CHECK(woby::controlCapabilities()["objectKinds"].back() == "analysis");
+    const auto kinds = woby::controlCapabilities()["objectKinds"].get<std::vector<std::string>>();
+    CHECK(std::find(kinds.begin(), kinds.end(), "analysis") != kinds.end());
     CHECK(woby::controlCapabilities()["analysisTransformFields"] == nlohmann::json::array({"translation"}));
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);

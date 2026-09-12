@@ -16,6 +16,7 @@ enum class SceneObjectKind {
     file,
     group,
     comparison,
+    annotation,
 };
 
 struct SceneObjectInfo {

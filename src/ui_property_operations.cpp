@@ -108,7 +108,7 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     const bool parts = isPartAppearanceProperty(property);
     for (const auto id : state.selectedSceneObjects) {
         const auto object = findSceneObject(state, id);
-        if (!object || object->kind == SceneObjectKind::comparison) { return {}; }
+        if (!object || object->kind == SceneObjectKind::comparison || object->kind == SceneObjectKind::annotation) { return {}; }
         if (object->kind == SceneObjectKind::folder && (parts || property == UiObjectProperty::vertexSize)) {
             if (const auto* folder = findFolderNode(state.sceneNodes, id)) {
                 appendAppearanceTargets(state, *folder, parts, targets);
@@ -218,7 +218,7 @@ UiPropertyValue selectedObjectVisibility(const UiState& state)
     };
     for (const auto id : state.selectedSceneObjects) {
         const auto object = findSceneObject(state, id);
-        if (!object || object->kind == SceneObjectKind::comparison) { return {}; }
+        if (!object || object->kind == SceneObjectKind::comparison || object->kind == SceneObjectKind::annotation) { return {}; }
         if (const auto* folder = findFolderNode(state.sceneNodes, id)) {
             include(countVisibleSceneNodeGroups(state, *folder), countSceneNodeGroups(state, *folder));
             continue;

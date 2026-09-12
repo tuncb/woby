@@ -63,6 +63,7 @@ Json fileInfo(const UiFileState& file)
 }
 Json localObjectDetails(const UiState& state, SceneObjectId id)
 {
+    if (const auto* item = findAnnotation(state, id)) { return controlAnnotationDetails(state, *item); }
     if (id != invalidSceneObjectId) {
         if (const auto* comparison = findComparison(state, id)) {
             const auto& settings = comparison->settings;
@@ -222,7 +223,7 @@ Json controlSceneInfo(const UiState& state)
     modes["solid"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::solidMesh), groups);
     modes["triangles"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::triangles), groups);
     modes["vertices"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::vertices), groups);
-    return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"analysisCount", state.comparisons.size()}, {"groupCount", groups},
+    return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"analysisCount", state.comparisons.size()}, {"annotationCount", state.annotations.size()}, {"groupCount", groups},
         {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles},
         {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
         {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
@@ -265,12 +266,21 @@ Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
             {"effective", {{"visible", comparison.settings.enabled && canInspectComparison(state, comparison.objectId)},
                 {"opacity", 1}, {"worldMatrix", world}}}});
     }
+    for (const auto& item : state.annotations) {
+        const auto details = controlAnnotationDetails(state, item);
+        result.push_back({{"id", formatId(item.objectId)}, {"name", item.settings.name}, {"kind", "annotation"},
+            {"occurrence", {result.size()}}, {"implicit", false}, {"children", Json::array()},
+            {"settings", details["settings"]}, {"effective", {{"visible", details["effectiveVisible"]}}}});
+    }
     return result;
 }
 
 Json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectIdFormatter& formatId)
 {
     auto result = localObjectDetails(state, id);
+    if (const auto* item = findAnnotation(state, id)) {
+        result["sourceId"] = findSceneObject(state, item->targetId) ? Json(formatId(item->targetId)) : Json(nullptr);
+    }
     if (id != invalidSceneObjectId) {
         if (const auto* comparison = findComparison(state, id)) {
             const auto inputs = [&](const std::vector<UiComparisonPart>& members) {
@@ -295,6 +305,12 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     const ControlOperation& command, const ObjectIdFormatter& formatId, float minPaneWidth, float maxPaneWidth)
 {
     using A = ControlAction;
+    if (command.action == A::annotationList || command.action == A::annotationGet
+        || command.action == A::annotationCreate || command.action == A::annotationSet
+        || command.action == A::annotationMove || command.action == A::annotationReshape || command.action == A::annotationDelete
+        || findAnnotation(state, command.objectId)) {
+        return applyControlAnnotationOperation(state, cleanDocument, command, formatId);
+    }
     if (command.action == A::comparisonCreate || command.action == A::comparisonDelete
         || command.action == A::comparisonSet || command.action == A::comparisonAdd
         || command.action == A::comparisonRemove || command.action == A::comparisonClear
@@ -470,6 +486,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         return {{"pane", {{"visible", state.viewerPaneVisible}, {"width", state.viewerPaneWidth}}}};
     case A::status: case A::capabilities: case A::modelAdd: case A::modelRemove: case A::folderAdd:
     case A::importersList: case A::importersAdd: case A::importersScan: case A::importersForget: case A::performance:
+    case A::annotationList: case A::annotationGet: case A::annotationCreate: case A::annotationSet:
+    case A::annotationReshape: case A::annotationMove: case A::annotationDelete:
     case A::comparisonResults: case A::sceneUndo: case A::sceneRedo:
         throw std::invalid_argument("Command requires a runtime adapter.");
     case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:

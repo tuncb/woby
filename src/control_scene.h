@@ -11,6 +11,9 @@ nlohmann::json controlSceneInfo(const UiState& state);
 nlohmann::json controlCameraInfo(const UiState& state);
 nlohmann::json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId);
 nlohmann::json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectIdFormatter& formatId);
+nlohmann::json controlAnnotationDetails(const UiState& state, const UiAnnotation& item);
+nlohmann::json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanDocument,
+    const ControlOperation& command, const ObjectIdFormatter& formatId);
 // Summarizes an immutable measurement snapshot; no renderer or timing dependencies.
 nlohmann::json controlComparisonResults(const MeshComparison& result, double tolerance);
 // Main-thread adapter for logical operations; runtime/file operations are dispatched elsewhere.

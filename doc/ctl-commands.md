@@ -1,6 +1,6 @@
 # CTL command reference
 
-Updated 2026-09-08. All commands in the current-command tables below are implemented
+Updated 2026-09-12. All commands in the current-command tables below are implemented
 in the CLI and local JSON-RPC API. Analysis controls and measurements are available
 alongside the existing scene controls, lifecycle, capture, and recovery
 commands. See [automation.md](automation.md) for transport, ordering, retries, and
@@ -16,8 +16,70 @@ Use `woby ctl --help` or `capabilities` for discovery.
 `TARGET` is `scene` where supported, or an opaque ID returned by `objects`.
 `BOOL` means the literal `true` or `false`. `--tree` and `--remember` are flags.
 Optional setter parameters preserve omitted values; setters with several optional
-values require at least one. Vectors contain three finite numbers. CLI paths can
+values require at least one. Vectors contain three finite numbers, except annotation
+`start`, `end`, and `delta`, which contain two. CLI paths can
 be relative; RPC paths must be absolute.
+
+## Surface annotations
+
+These commands use runtime IDs from `objects` or `annotation list`. Creation takes
+a **model group ID**; other annotation commands take an **annotation ID**. Explicit
+IDs let scripts edit annotations without changing the current UI selection.
+
+| CLI | RPC method | Behavior |
+| --- | --- | --- |
+| `annotation list` | `annotation.list` | Return `annotations`, including properties, source IDs/status, and vertex coordinates. |
+| `annotation get ANNOTATION_ID` | `annotation.get` | Return one annotation under `object`. |
+| `annotation create GROUP_ID --shape line\|rectangle --start U V --end U V [--aspect N]` | `annotation.create` | Project the outline onto the visible source part using the current camera. Returns its ID as `target` and its details as `object`. Accepts the same optional style fields as `annotation set`. |
+| `annotation set ANNOTATION_ID [--name TEXT] [--comments TEXT] [--visible BOOL] [--locked BOOL] [--rgb R G B] [--opacity N] [--width N]` | `annotation.set` | Update only supplied properties. Empty comments clear the text. |
+| `annotation reshape ANNOTATION_ID [--start U V] [--end U V]` | `annotation.reshape` | Change endpoints or opposite rectangle corners in the original drawing projection. At least one is required. |
+| `annotation move ANNOTATION_ID --delta U V` | `annotation.move` | Translate both controls in the original drawing projection, preserving their separation. |
+| `annotation delete ANNOTATION_ID` | `annotation.delete` | Remove the annotation; undo can restore it. |
+
+**Drawing coordinates:** U and V range from -1 to +1. The drawing area's center is
+`0 0`, U increases rightward, and V increases upward. Creation uses the current
+camera pose and FOV with a **square authoring area by default**, independent of the
+window and panels. `--aspect` specifies width/height (0.1–10) when a rectangular
+authoring area is wanted. The chosen projection is frozen in the annotation.
+Move and reshape always use that original projection, even after camera changes.
+These values are not model-space distances or screen pixels.
+
+`vertices` contains two line endpoints or four rectangle corners, in model-local
+coordinates and model units. The response also contains `start`, `end`, `projector`
+(column-major model-to-clip matrix), `controlSpace`, `vertexSpace`, `sourceId`,
+`sourceName`, `targetValid`, `effectiveVisible`, and `settings`. `settings.color`
+is RGBA. `sourceId` is null when the source is missing; unresolved annotations
+return an empty vertex array while retaining their comments and settings.
+
+Creation rejects gaps, disconnected surface layers, and opaque occlusion. Move
+and reshape require an unlocked annotation and a visible, unchanged source;
+their complete outline must fit on the surface in its original projection.
+Invalid edits leave the annotation unchanged. Names/comments/styles and deletion
+remain available for locked or unresolved annotations. Width is clamped to 1–12
+pixels, and RGB/opacity to 0–1. CLI comments accept up to 8192 UTF-8 bytes without
+NUL characters, including newlines; names accept up to 511 bytes.
+
+`object ANNOTATION_ID`, `scene tree`, `visibility set`, `color set/reset`,
+`opacity set`, and `camera frame --object ANNOTATION_ID` also support annotations.
+Generic transform/render-mode commands do not apply; use `annotation move` and
+`annotation reshape`. Annotation edits use normal scene undo/redo and `.woby`
+save/load. `scene info` includes `annotationCount`. Use a unique `--request-key`
+for creation and relative moves when retries are possible.
+
+```powershell
+# Set $groupId to a visible model group ID from objects --json.
+$created = woby.exe ctl --instance review annotation create $groupId --shape rectangle --start -0.1 -0.1 --end 0.1 0.1 --name "Inspect range" --request-key range-create-1 --json | ConvertFrom-Json
+$annotationId = $created.target
+woby.exe ctl --instance review annotation set $annotationId --comments "Check this surface" --rgb 1 0.5 0 --width 4
+woby.exe ctl --instance review annotation move $annotationId --delta 0.05 0 --request-key range-move-1
+woby.exe ctl --instance review annotation get $annotationId --json
+woby.exe ctl --instance review scene save
+```
+
+For RPC, the positional ID is `target`, vectors are JSON arrays, and option names
+match the table without `--` (for example `comments`, `locked`, `start`, `delta`).
+The camera and model must be positioned so the requested drawing area hits the
+intended surface before creation.
 
 ## Discovery, inspection, capture, and lifecycle
 
@@ -176,14 +238,14 @@ and `showNonManifold`. All commands use the existing authenticated `/rpc` endpoi
 
 | CLI | RPC method | Scope / behavior |
 | --- | --- | --- |
-| `visibility set TARGET --visible BOOL` | `visibility.set` | Scene, folder subtree, file, group. File changes update all its groups; group changes refresh ancestor visibility. |
+| `visibility set TARGET --visible BOOL` | `visibility.set` | Scene, folder subtree, file, group, analysis, or annotation. File changes update all its groups; group changes refresh ancestor visibility. |
 | `render set TARGET [--solid BOOL] [--triangles BOOL] [--vertices BOOL]` | `render.set` | Scene, folder subtree, file, group. Independent modes; file/folder controls apply to descendant groups. |
 | `transform get OBJECT_ID` | `transform.get` | Local folder/file/group settings. |
 | `transform set OBJECT_ID [--translation X Y Z] [--rotation-degrees X Y Z] [--scale S]` | `transform.set` | Local translation, Euler rotation, uniform scale; existing center/pivot and transform conventions. |
 | `transform reset OBJECT_ID` | `transform.reset` | Resets translation, rotation, scale **and opacity** to their defaults, matching the UI. |
-| `opacity set OBJECT_ID --value A` | `opacity.set` | Local folder/file/group opacity, clamped to 0–1. |
-| `color set GROUP_ID --rgb R G B` | `color.set` | Group RGB, clamped to 0–1; preserves the existing color alpha. |
-| `color reset GROUP_ID` | `color.reset` | Current default group palette color, matching UI reset. |
+| `opacity set OBJECT_ID --value A` | `opacity.set` | Local folder/file/group or annotation opacity, clamped to 0–1. |
+| `color set OBJECT_ID --rgb R G B` | `color.set` | Group or annotation RGB, clamped to 0–1; preserves the existing color alpha. |
+| `color reset OBJECT_ID` | `color.reset` | Current default group palette color or default annotation color; preserves alpha. |
 | `vertex-size set scene --pixels N` | `vertex-size.set` | Global base point size, clamped to 1–40 pixels. |
 | `vertex-size set OBJECT_ID --scale S` | `vertex-size.set` | File/group multiplier, clamped to 0.1–10. No folder multiplier. |
 | `grid set --visible BOOL` | `grid.set` | Ground-grid visibility. |
@@ -218,7 +280,7 @@ File/folder render modes report enabled/total counts and on/off/mixed state.
 | `camera get` | `camera.get` | Target, eye, up vector, yaw/pitch/roll degrees, distance, vertical FOV, near/far planes, scene up-axis. |
 | `camera set [--target X Y Z] [--yaw-degrees Y] [--pitch-degrees P] [--roll-degrees R] [--distance D] [--fov-degrees F] [--near-plane N]` | `camera.set` | Absolute camera values; at least one required. Omitted fields are preserved, subject to normalization below. |
 | `camera look-at --eye X Y Z --target X Y Z` | `camera.look-at` | World-space eye and target. Derives yaw, pitch, and distance; preserves roll and FOV. |
-| `camera frame [--object OBJECT_ID]` | `camera.frame` | Fit the whole scene, or the union of visible, transformed occurrences/descendants of a file, folder, group, or analysis. Preserve orientation and FOV. Empty/hidden targets fail without moving the camera. Does not change selection. |
+| `camera frame [--object OBJECT_ID]` | `camera.frame` | Fit the whole scene, or the union of visible, transformed occurrences/descendants of a file, folder, group, analysis, or annotation. Preserve orientation and FOV. Empty/hidden targets fail without moving the camera. Does not change selection. |
 | `camera orbit [--yaw-degrees Y] [--pitch-degrees P]` | `camera.orbit` | Relative changes to the stored camera angles, for either Y-up or Z-up. Pitch is limited to ±90 degrees, including exact poles. |
 | `camera pan [--right R] [--up U]` | `camera.pan` | Move the target in rolled camera-local model units. |
 | `camera roll --roll-degrees R` | `camera.roll` | Relative roll in degrees. |
@@ -333,8 +395,8 @@ These are separate from simply exposing existing controls. Syntax is proposed.
 | `pick`, `vertex get`, `measure distance` | Reuse hover-picking foundations, but define coordinate spaces, stable geometry references, and behavior after reload. |
 | `window focus/resize/minimize/restore` | New SDL runtime adapters and platform behavior. |
 
-Orthographic projection, clipping planes, lighting/material editing, annotations,
-mesh export, undo/redo, and headless rendering would be new viewer capabilities,
+Orthographic projection, clipping planes, lighting/material editing,
+mesh export, and headless rendering would be new viewer capabilities,
 with CTL commands added alongside their implementation.
 
 

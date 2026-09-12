@@ -49,6 +49,11 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
 {
     const auto path = std::filesystem::current_path().string();
     const std::vector<std::vector<std::string>> commands = {
+        {"annotation", "list"}, {"annotation", "get", "object"},
+        {"annotation", "create", "object", "--shape", "rectangle", "--start", "-.2", "-.2", "--end", ".2", ".2", "--aspect", "1.5"},
+        {"annotation", "set", "object", "--comments", "Review\nthis", "--locked", "false", "--opacity", ".5", "--width", "4"},
+        {"annotation", "reshape", "object", "--start", "-.1", "-.1"},
+        {"annotation", "move", "object", "--delta", ".1", "-.1"}, {"annotation", "delete", "object"},
         {"status"}, {"capabilities"}, {"scene", "info"}, {"scene", "tree"}, {"scene", "bounds"},
         {"scene", "undo"}, {"scene", "redo"},
         {"visibility", "set", "scene", "--visible", "false"},
@@ -93,6 +98,27 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         CHECK(woby::controlOperationParams(roundtrip) == params);
     }
     CHECK(parse({"vertex-size", "set", "object", "--scale", "3"}).operation.scale == 3);
+}
+TEST_CASE("annotation CLI and RPC validate drawing coordinates and preserve empty multiline comments")
+{
+    const auto comments = parse({"annotation", "set", "object", "--comments", ""});
+    CHECK(comments.operation.comments == "");
+    const auto coordinates = parse({"annotation", "move", "object", "--delta", "-.25", ".5"});
+    REQUIRE(coordinates.operation.delta);
+    CHECK((*coordinates.operation.delta)[0] == -.25f);
+    const auto* create = woby::findControlMethod("annotation.create");
+    REQUIRE(create);
+    const Json valid = {{"target", "object"}, {"shape", "rectangle"}, {"start", {-.2,-.2}}, {"end", {.2,.2}}};
+    for (const auto& bad : {Json{{"shape", "ellipse"}}, Json{{"start", {0,0,0}}}, Json{{"end", {2,0}}},
+        Json{{"end", {nullptr,0}}}, Json{{"aspect", 0}}, Json{{"aspect", 100}}, Json{{"locked", "true"}},
+        Json{{"comments", std::string(8193, 'x')}}, Json{{"comments", std::string("a\0b", 3)}}}) {
+        auto params = valid; params.update(bad);
+        CHECK_THROWS(woby::parseControlOperation(*create, params));
+    }
+    CHECK_THROWS(parse({"annotation", "move", "object", "--delta", "1"}));
+    CHECK_THROWS(parse({"annotation", "set", "object"}));
+    CHECK_THROWS(parse({"annotation", "create", "scene", "--shape", "line", "--start", "0", "0", "--end", ".2", ".2"}));
+    CHECK_THROWS(parse({"annotation", "reshape", "object", "--start", "nan", "0"}));
 }
 
 TEST_CASE("ctl surface quality options preserve values through CLI and protocol serialization")

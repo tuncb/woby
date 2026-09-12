@@ -126,6 +126,7 @@ Json objectInfo(const AutomationRuntime& runtime, const SceneObjectInfo& object)
     case SceneObjectKind::file: kind = "file"; break;
     case SceneObjectKind::group: kind = "group"; break;
     case SceneObjectKind::comparison: kind = "analysis"; break;
+    case SceneObjectKind::annotation: kind = "annotation"; break;
     }
     Json result = {{"id", publicObjectId(runtime, object.id)}, {"kind", kind}, {"name", object.name}};
     if (object.kind == SceneObjectKind::file) {
@@ -1029,6 +1030,12 @@ void printCommandLineHelp()
         "It returns aToB and bToA: sampled maximum, area-weighted mean/P95, percentage\n"
         "above tolerance, and mesh diagnostics.\n"
         "Incomplete inputs fail. Reusing a results request key returns the original snapshot.\n"
+        "\nSurface annotations:\n"
+        "annotation create takes a model GROUP_ID; get/set/reshape/move/delete take an ANNOTATION_ID.\n"
+        "Start/end are drawing coordinates U V in [-1,1], right/up positive, center 0 0.\n"
+        "Creation uses the current camera with aspect 1 by default; --aspect sets width/height.\n"
+        "Move/reshape use the original projection. --delta is relative; use --request-key for retries.\n"
+        "Comments support newlines; an empty string clears them. Width is 1-12 px; RGB/opacity are 0-1.\n"
         "\nSaving and capture:\n"
         "scene open/new and quit default to --on-dirty error. --save-path requires\n"
         "--on-dirty save; --overwrite requires an explicit save destination.\n"

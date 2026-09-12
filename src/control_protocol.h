@@ -20,6 +20,7 @@ enum class ControlAction {
     importersForget, stats, performance, pane,
     comparisonCreate, comparisonDelete, comparisonSet, comparisonAdd, comparisonRemove,
     comparisonClear, comparisonSwap, comparisonResults, comparisonEnable,
+    annotationList, annotationGet, annotationCreate, annotationSet, annotationReshape, annotationMove, annotationDelete,
 };
 
 // Validated, owned command data. No scene pointers or runtime resources cross threads.
@@ -44,6 +45,10 @@ struct ControlOperation {
     std::optional<std::string> qualityMetric;
     std::optional<bool> qualityOnA, qualityMinimumEnabled, qualityMaximumEnabled;
     std::optional<float> qualityMinimumSize, qualityMaximumSize;
+    std::optional<std::string> shape, comments;
+    std::optional<bool> locked;
+    std::optional<std::array<float, 2>> start, end, delta;
+    std::optional<float> aspect, opacity;
 };
 
 struct ControlMethod {

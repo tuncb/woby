@@ -1,4 +1,5 @@
 #include "scene_screenshot.h"
+#include "annotation_ui.h"
 #include "scene_scale_overlay.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
@@ -366,6 +367,8 @@ void submitSceneScreenshotCapture(
     if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform); }
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
+        submitSceneAnnotations(screenshotHelperView, ui, scenePickView(camera, ui.upAxis, sceneBounds,
+            sceneWidth, screenshot.height, homogeneousDepth, 1), helperLayout, colorProgram, colorUniform);
     }
     if (annotations || scaleOverlay) {
         // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.
