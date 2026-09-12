@@ -11,6 +11,7 @@ std::vector<SceneObjectId> sceneIdentities(const UiState& state)
 {
     std::vector<SceneObjectId> result;
     for (const auto& object : sceneObjects(state)) { result.push_back(object.id); }
+    for (const auto& item : state.annotations) { result.push_back(item.targetId); }
     // Missing comparison references must also retain their original identities.
     for (const auto& comparison : state.comparisons) {
         for (const auto& part : comparison.a) { result.push_back(part.objectId); }
@@ -34,6 +35,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.upAxis = state.upAxis;
     content.masterVertexPointSize = state.masterVertexPointSize;
     content.views = state.views;
+    content.annotations = state.annotations;
     content.comparisons = state.comparisons;
     for (auto& comparison : content.comparisons) { comparison.diagnosticFocus.reset(); }
     content.sceneNodes = state.sceneNodes;
@@ -156,6 +158,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
         if (live != current.files.end()) { file.mesh = live->mesh; }
         else { file.mesh = std::move(loaded->mesh); }
     }
+    validateAnnotationTargets(prepared);
     prepared.running = current.running;
     prepared.sceneEditRevision = current.sceneEditRevision + 1;
     prepared.nextObjectId = current.nextObjectId;

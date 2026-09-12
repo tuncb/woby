@@ -90,6 +90,7 @@ add_executable(woby
     src/control_importers.cpp
     src/control_importers.h
     src/control_scene.cpp
+    src/control_annotation.cpp
     src/control_scene.h
     src/background_load.cpp
     src/background_load.h
@@ -107,6 +108,9 @@ add_executable(woby
     src/hash_utils.h
     src/hover_pick.cpp
     src/hover_pick.h
+    src/surface_annotation.cpp
+    src/ui_annotation_operations.cpp
+    src/annotation_ui.cpp
     src/scene_pick.cpp
     src/scene_pick.h
     src/scene_dimensions.cpp
@@ -328,6 +332,7 @@ if(BUILD_TESTING)
         src/control_importers.cpp
         src/control_importers.h
         src/control_scene.cpp
+        src/control_annotation.cpp
         src/control_scene.h
         src/background_load.cpp
         src/background_load.h
@@ -346,6 +351,9 @@ if(BUILD_TESTING)
         src/hash_utils.h
         src/hover_pick.cpp
         src/hover_pick.h
+        src/surface_annotation.cpp
+        src/ui_annotation_operations.cpp
+        src/annotation_ui.cpp
         src/scene_pick.cpp
         src/scene_pick.h
         src/scene_dimensions.cpp
@@ -396,6 +404,7 @@ if(BUILD_TESTING)
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
         tests/hover_pick_tests.cpp
+        tests/surface_annotation_tests.cpp
         tests/scene_pick_tests.cpp
         tests/scene_renderer_tests.cpp
         tests/model_mesh_tests.cpp

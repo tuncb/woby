@@ -602,9 +602,9 @@ bool sceneContentEqual(const SceneDocument& a, const SceneDocument& b)
 {
     // The live camera is excluded so ordinary navigation stays transient.
     // Named checkpoints, including their cameras, are editable document content.
-    return std::tie(a.views, a.comparisons, a.comparison, a.masterVertexPointSize, a.showOrigin,
+    return std::tie(a.annotations, a.views, a.comparisons, a.comparison, a.masterVertexPointSize, a.showOrigin,
                a.showGrid, a.showDimensions, a.upAxis, a.files, a.nodes)
-        == std::tie(b.views, b.comparisons, b.comparison, b.masterVertexPointSize, b.showOrigin,
+        == std::tie(b.annotations, b.views, b.comparisons, b.comparison, b.masterVertexPointSize, b.showOrigin,
                b.showGrid, b.showDimensions, b.upAxis, b.files, b.nodes);
 }
 
@@ -617,6 +617,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
 
     enum class Section {
         root,
+        annotation,
+        annotationSegment,
         view,
         viewCamera,
         viewObject,
@@ -644,6 +646,14 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
 
         try {
+            if (text == "[[annotations]]") {
+                document.annotations.emplace_back(); section = Section::annotation; continue;
+            }
+            if (text == "[[annotations.segments]]") {
+                if (document.annotations.empty()) { throw std::runtime_error("Annotation segment appeared before annotation."); }
+                if (document.annotations.back().geometry.segments.size() >= 1000000) { throw std::runtime_error("Too many annotation segments."); }
+                document.annotations.back().geometry.segments.emplace_back(); section = Section::annotationSegment; continue;
+            }
             if (text == "[[views]]") {
                 document.views.emplace_back();
                 viewCameraSeen = false;
@@ -749,6 +759,41 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 } else if (key == "analysis_show_non_manifold") {
                     document.comparison.showNonManifold = parseTomlBool(value);
                 }
+            } else if (section == Section::annotation) {
+                auto& item = document.annotations.back();
+                if (key == "name") { item.settings.name = parseTomlString(value); }
+                else if (key == "note") { item.settings.note = parseTomlString(value); }
+                else if (key == "target_name") { item.targetName = parseTomlString(value); }
+                else if (key == "file_index") { item.fileIndex = parseTomlInteger(value); }
+                else if (key == "group_index") { item.groupIndex = parseTomlInteger(value); }
+                else if (key == "visible") { item.settings.visible = parseTomlBool(value); }
+                else if (key == "locked") { item.settings.locked = parseTomlBool(value); }
+                else if (key == "width") { item.settings.width = parseTomlFloat(value); }
+                else if (key == "color") { item.settings.color = parseTomlFloat4(value); }
+                else if (key == "fingerprint") { item.geometry.fingerprint = parseTomlString(value); }
+                else if (key == "homogeneous_depth") { item.geometry.homogeneousDepth = parseTomlBool(value); }
+                else if (key == "shape") {
+                    const auto shape = parseTomlString(value);
+                    if (shape == "line") { item.geometry.shape = AnnotationShape::line; }
+                    else if (shape == "rectangle") { item.geometry.shape = AnnotationShape::rectangle; }
+                    else { throw std::runtime_error("Unknown annotation shape."); }
+                } else if (key == "projector") {
+                    const auto values = parseTomlFloatArray(value);
+                    if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation projector values."); }
+                    std::copy(values.begin(), values.end(), item.geometry.projector.begin());
+                } else if (key == "start" || key == "end") {
+                    const auto values = parseTomlFloatArray(value);
+                    if (values.size() != 2) { throw std::runtime_error("Expected 2 annotation control coordinates."); }
+                    (key == "start" ? item.geometry.start : item.geometry.end) = {values[0], values[1]};
+                }
+            } else if (section == Section::annotationSegment) {
+                auto& segment = document.annotations.back().geometry.segments.back();
+                if (key == "triangle") {
+                    const int triangle = parseTomlInteger(value);
+                    if (triangle < 0) { throw std::runtime_error("Invalid annotation triangle."); }
+                    segment.triangle = static_cast<uint32_t>(triangle);
+                } else if (key == "a") { segment.a = parseTomlFloat3(value); }
+                else if (key == "b") { segment.b = parseTomlFloat3(value); }
             } else if (section == Section::view) {
                 auto& view = document.views.back();
                 if (key == "name") { view.name = parseTomlString(value); }
@@ -779,6 +824,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     else if (kind == "file") { object.kind = ViewObjectKind::file; }
                     else if (kind == "group") { object.kind = ViewObjectKind::group; }
                     else if (kind == "analysis") { object.kind = ViewObjectKind::comparison; }
+                    else if (kind == "annotation") { object.kind = ViewObjectKind::annotation; }
                     else { throw std::runtime_error("Unknown view object kind."); }
                 } else if (key == "index") { object.index = parseTomlInteger(value); }
                 else if (key == "group_index") { object.groupIndex = parseTomlInteger(value); }
@@ -852,6 +898,15 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         }
     }
 
+    for (auto& item : document.annotations) {
+        validateAnnotationGeometry(item.geometry);
+        item.settings = normalizedAnnotationSettings(std::move(item.settings));
+        if (item.fileIndex == -1 && item.groupIndex == -1) { continue; }
+        if (item.fileIndex < 0 || static_cast<size_t>(item.fileIndex) >= document.files.size()
+            || item.groupIndex < 0 || static_cast<size_t>(item.groupIndex) >= document.files[static_cast<size_t>(item.fileIndex)].groups.size()) {
+            throw std::runtime_error("Annotation references an invalid source part.");
+        }
+    }
     // Migrate v2-v4 membership into one object, then discard legacy input fields.
     SceneComparisonRecord legacy;
     legacy.name = "Analysis 1";
@@ -974,6 +1029,31 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         writeTomlFloat3(stream, node.settings.rotationDegrees);
         stream << "\n";
     }
+    for (const auto& item : document.annotations) {
+        validateAnnotationGeometry(item.geometry);
+        stream << "\n[[annotations]]\n";
+        stream << "name = \"" << escapeTomlString(item.settings.name) << "\"\n";
+        stream << "note = \"" << escapeTomlString(item.settings.note) << "\"\n";
+        stream << "target_name = \"" << escapeTomlString(item.targetName) << "\"\n";
+        stream << "file_index = " << item.fileIndex << "\ngroup_index = " << item.groupIndex << "\n";
+        stream << "visible = " << (item.settings.visible ? "true" : "false") << "\n";
+        stream << "locked = " << (item.settings.locked ? "true" : "false") << "\n";
+        stream << "width = "; writeTomlFloat(stream, item.settings.width); stream << "\n";
+        stream << "color = "; writeTomlFloat4(stream, item.settings.color); stream << "\n";
+        stream << "shape = \"" << (item.geometry.shape == AnnotationShape::line ? "line" : "rectangle") << "\"\n";
+        stream << "fingerprint = \"" << escapeTomlString(item.geometry.fingerprint) << "\"\n";
+        stream << "homogeneous_depth = " << (item.geometry.homogeneousDepth ? "true" : "false") << "\n";
+        const auto array = [&](const char* key, const auto& values) {
+            stream << key << " = [";
+            for (size_t i = 0; i < values.size(); ++i) { if (i) { stream << ", "; } writeTomlFloat(stream, values[i]); }
+            stream << "]\n";
+        };
+        array("projector", item.geometry.projector); array("start", item.geometry.start); array("end", item.geometry.end);
+        for (const auto& segment : item.geometry.segments) {
+            stream << "\n[[annotations.segments]]\ntriangle = " << segment.triangle << "\n";
+            array("a", segment.a); array("b", segment.b);
+        }
+    }
     for (const auto& record : document.comparisons) {
         stream << "\n[[analyses]]\n";
         stream << "name = \"" << escapeTomlString(record.name) << "\"\n";
@@ -1008,6 +1088,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             case ViewObjectKind::file: kind = "file"; break;
             case ViewObjectKind::group: break;
             case ViewObjectKind::comparison: kind = "analysis"; break;
+            case ViewObjectKind::annotation: kind = "annotation"; break;
             }
             stream << "\n[[views.objects]]\nkind = \"" << kind << "\"\n";
             stream << "index = " << object.index << "\ngroup_index = " << object.groupIndex << "\n";

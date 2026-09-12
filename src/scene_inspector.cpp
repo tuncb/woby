@@ -22,6 +22,7 @@ const char* objectType(SceneObjectKind kind)
     case SceneObjectKind::file: return "File";
     case SceneObjectKind::group: return "Part";
     case SceneObjectKind::comparison: return "Analysis";
+    case SceneObjectKind::annotation: return "Annotation";
     }
     return "Object";
 }

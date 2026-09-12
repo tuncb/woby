@@ -1,4 +1,5 @@
 #include "ui_state.h"
+#include "surface_annotation.h"
 #include "ui_operations.h"
 #include "comparison_scene.h"
 
@@ -672,6 +673,11 @@ std::optional<Bounds> sceneObjectBounds(const UiState& state, const std::vector<
             expandBounds(bounds, display->max);
         }
     }
+    const auto parts = state.annotations.empty() ? std::vector<ScenePickPart>{} : scenePickParts(state);
+    for (const auto& item : state.annotations) {
+        if (std::find(objects.begin(), objects.end(), item.objectId) == objects.end()) { continue; }
+        for (const auto& line : annotationWorldLines(item, parts)) { expandBounds(bounds, line.a); expandBounds(bounds, line.b); }
+    }
     if (!boundsContainFinitePoints(bounds)) { return std::nullopt; }
     finalizeBounds(bounds);
     return bounds;
@@ -734,6 +740,7 @@ SceneDocument createSceneDocument(const UiState& state)
     SceneDocument document;
     document.camera = state.camera;
     document.views = sceneViewRecords(state);
+    document.annotations = sceneAnnotationRecords(state);
     for (const auto& comparison : state.comparisons) {
         SceneComparisonRecord record;
         record.name = comparison.name;

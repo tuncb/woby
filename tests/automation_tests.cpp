@@ -292,6 +292,42 @@ TEST_CASE("analysis creation retries reuse the created object and recover its re
     CHECK(request(fixture.instance, "analysis.create", conflicting)["error"]["code"] == -32006);
     CHECK_FALSE(takeCommand(*fixture.server));
 }
+TEST_CASE("annotation RPC validates IDs and replays creation without duplicate annotations")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    woby::UiState state;
+    woby::Mesh mesh;
+    mesh.vertices = {{{-1,-1,0}, {}, {}}, {{1,-1,0}, {}, {}}, {{0,1,0}, {}, {}}};
+    mesh.indices = {0,1,2}; mesh.nodes = {{"triangle",0,3}};
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    state.files.push_back(woby::createUiFileState(fixture.directory / "triangle.obj", mesh, 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0); woby::recalculateSceneBounds(state);
+    woby::setSceneUpAxis(state, woby::SceneUpAxis::y);
+    const auto clean = woby::createSceneDocument(state);
+    const auto format = [&](woby::SceneObjectId id) { return woby::automationObjectId(*fixture.server, id); };
+    const auto camera = woby::parseControlOperation(*woby::findControlMethod("camera.look-at"), {{"eye", {0,0,3}}, {"target", {0,0,0}}});
+    woby::applyControlSceneOperation(state, clean, camera, format, 200, 800);
+    Json params = {{"target", format(state.files[0].groupSettings[0].objectId)}, {"shape", "line"},
+        {"start", {-.1,0}}, {"end", {.1,0}}, {"comments", "RPC comment\nsecond line"}, {"requestKey", "annotation-once"}};
+    auto invalid = params; invalid["target"] = "malformed";
+    CHECK(request(fixture.instance, "annotation.create", invalid)["error"]["code"] == -32602);
+    invalid["target"] = "obj-" + std::string(32,'f') + "-0000000000000001";
+    CHECK(request(fixture.instance, "annotation.create", invalid)["error"]["code"] == -32005);
+    auto pending = std::async(std::launch::async, [&] { return request(fixture.instance, "annotation.create", params); });
+    const auto command = waitForCommand(*fixture.server); REQUIRE(command);
+    const auto& operation = std::get<woby::ControlOperation>(command->payload);
+    CHECK(operation.objectId == state.files[0].groupSettings[0].objectId);
+    const auto result = woby::applyControlSceneOperation(state, clean, operation, format, 200, 800);
+    CHECK(completeCommand(*fixture.server, command->id, woby::AutomationControlResult{result}));
+    const auto original = pending.get();
+    CHECK(original["result"]["object"]["targetValid"] == true);
+    CHECK(request(fixture.instance, "annotation.create", params)["result"] == original["result"]);
+    CHECK(state.annotations.size() == 1);
+    params["comments"] = "different";
+    CHECK(request(fixture.instance, "annotation.create", params)["error"]["code"] == -32006);
+    CHECK_FALSE(takeCommand(*fixture.server));
+}
 
 TEST_CASE("automation rejects unauthenticated and browser requests")
 {

@@ -1411,6 +1411,7 @@ UiState prepareSceneReplacement(const UiState& current,
             comparison.translation = initialComparisonTranslation(prepared, comparison.objectId);
         }
     }
+    loadSceneAnnotations(prepared, document);
     loadSceneViews(prepared, document);
     if (!prepared.comparisons.empty()) { prepared.activeComparisonId = prepared.comparisons.front().objectId; }
     recalculateSceneBounds(prepared);

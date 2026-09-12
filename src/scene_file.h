@@ -3,6 +3,7 @@
 #include "scene_up_axis.h"
 #include "comparison_settings.h"
 #include "camera.h"
+#include "annotation_types.h"
 
 #include <array>
 #include <filesystem>
@@ -102,7 +103,7 @@ struct SceneComparisonRecord {
     friend bool operator==(const SceneComparisonRecord&, const SceneComparisonRecord&) = default;
 };
 
-enum class ViewObjectKind { folder, file, group, comparison };
+enum class ViewObjectKind { folder, file, group, comparison, annotation };
 
 // Display values only. Geometry, names and hierarchy are never restored by a view.
 struct ViewObjectSettings {
@@ -144,6 +145,7 @@ struct SceneViewRecord {
 };
 
 struct SceneDocument {
+    std::vector<SceneAnnotationRecord> annotations;
     std::vector<SceneViewRecord> views;
     // Saved review view; absent in legacy scenes. Excluded from edits/history.
     std::optional<SceneCamera> camera;

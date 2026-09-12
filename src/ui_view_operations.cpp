@@ -93,6 +93,12 @@ UiView captureView(const UiState& state)
             }
         }
     }
+    for (const auto& item : state.annotations) {
+        SceneGroupSettings settings;
+        settings.visible = item.settings.visible; settings.color = item.settings.color;
+        settings.vertexSizeScale = item.settings.width;
+        add(item.objectId, settings);
+    }
     return view;
 }
 
@@ -136,6 +142,9 @@ std::vector<ObjectReference> objectReferences(const UiState& state)
     for (size_t c = 0; c < state.comparisons.size(); ++c) {
         result.push_back({state.comparisons[c].objectId,
             {ViewObjectKind::comparison, static_cast<int>(c), -1, {}}});
+    }
+    for (size_t a = 0; a < state.annotations.size(); ++a) {
+        result.push_back({state.annotations[a].objectId, {ViewObjectKind::annotation, static_cast<int>(a), -1, {}}});
     }
     return result;
 }
@@ -247,6 +256,14 @@ void applyView(UiState& state, ViewId id)
                 applyAppearance(node.settings, settings);
             }
         });
+        for (auto& item : state.annotations) {
+            if (item.objectId != object.objectId) { continue; }
+            auto style = item.settings;
+            style.visible = object.settings.appearance.visible;
+            style.color = object.settings.appearance.color;
+            style.width = object.settings.appearance.vertexSizeScale;
+            item.settings = normalizedAnnotationSettings(std::move(style));
+        }
         if (auto* comparison = findComparison(state, object.objectId)) {
             comparison->settings = normalizedComparisonSettings(object.settings.comparison);
             comparison->translation = settings.translation;
@@ -340,6 +357,11 @@ void loadSceneViews(UiState& state, const SceneDocument& document)
                 [&](const auto& object) { return object.objectId == found->id; })) { continue; }
             auto settings = item.settings;
             settings.appearance = normalizedAppearance(settings.appearance);
+            if (item.kind == ViewObjectKind::annotation) {
+                AnnotationSettings style;
+                style.width = item.settings.appearance.vertexSizeScale;
+                settings.appearance.vertexSizeScale = normalizedAnnotationSettings(style).width;
+            }
             settings.comparison = normalizedComparisonSettings(settings.comparison);
             view.objects.push_back({found->id, settings});
         }

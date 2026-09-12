@@ -20,6 +20,7 @@
 #include "scene_history_load.h"
 #include "ui_history_controls.h"
 #include "scene_renderer.h"
+#include "annotation_ui.h"
 #include "scene_screenshot.h"
 #include "ui_operations.h"
 #include "ui_state.h"
@@ -662,7 +663,9 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         ImGui::SameLine();
         ImGui::TextUnformatted("Properties");
         ImGui::Separator();
-        if (woby::selectedComparison(state)) {
+        if (woby::selectedAnnotation(state)) {
+            woby::drawAnnotationInspector(state);
+        } else if (woby::selectedComparison(state)) {
             woby::drawComparisonPanelContents(state, runtimes);
         } else {
             woby::drawSceneInspector(state, dimensionsCache);
@@ -2290,6 +2293,7 @@ int main(int argc, char** argv)
         HoverPickCache hoverPickCache;
         woby::SceneDimensionsCache dimensionsCache;
         woby::ScenePointerGesture scenePointer;
+        woby::AnnotationInteraction annotationInteraction;
         std::optional<woby::ScenePickView> presentedPickView;
         woby::SceneViewport presentedViewport;
         bool scenePointerAvailable = false;
@@ -2307,6 +2311,8 @@ int main(int argc, char** argv)
             const auto frameStart = woby::PerformanceClock::now();
             auto stageStart = frameStart;
 
+            bool annotationEscapeConsumed = false;
+            std::optional<woby::PickPoint> annotationMotion;
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 ImGui_ImplSDL3_ProcessEvent(&event);
@@ -2329,12 +2335,14 @@ int main(int argc, char** argv)
                     finishDropBatch(dragDropState);
                 }
                 if (event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+                    woby::cancelAnnotationPointer(annotationInteraction);
                     scenePointer = {};
                     presentedPickView.reset();
                     getDrawableSize(window.get(), width, height);
                     bgfx::reset(width, height, resetFlags);
                 }
                 if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+                    woby::cancelAnnotationPointer(annotationInteraction);
                     scenePointer = {};
                     woby::setCameraOrbiting(ui, false);
                     woby::setCameraRolling(ui, false);
@@ -2349,6 +2357,35 @@ int main(int argc, char** argv)
                 const bool pointerAllowed = scenePointerAvailable && !backgroundLoad.active && !gpuFinalize.active
                     && !modelFileDialogIsOpen(modelFileDialogState) && !sceneFileDialogIsOpen(sceneFileDialogState)
                     && !sceneScreenshotDialogIsOpen(sceneScreenshotDialogState) && !ImGui::GetIO().WantCaptureMouse;
+                if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE
+                    && (annotationInteraction.tool || annotationInteraction.dragging)) {
+                    woby::cancelAnnotationPointer(annotationInteraction);
+                    annotationEscapeConsumed = true;
+                    scenePointer = {};
+                    continue;
+                }
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT
+                    && canvasInput && pointerAllowed && presentedPickView) {
+                    if (woby::beginAnnotationPointer(ui, annotationInteraction, *presentedPickView,
+                            {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y})) {
+                        scenePointer = {};
+                        woby::setCameraOrbiting(ui, false); woby::setCameraRolling(ui, false); woby::setCameraPanning(ui, false);
+                        continue;
+                    }
+                }
+                if (annotationInteraction.dragging) {
+                    if (event.type == SDL_EVENT_MOUSE_MOTION) {
+                        const auto p = mousePositionInPixels(window.get(), event.motion.x, event.motion.y);
+                        annotationMotion = woby::PickPoint{p.x - static_cast<float>(presentedViewport.x), p.y};
+                        continue;
+                    }
+                    if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT) {
+                        woby::moveAnnotationPointer(ui, annotationInteraction, {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y});
+                        woby::endAnnotationPointer(ui, annotationInteraction, pointerAllowed && canvasInput);
+                        continue;
+                    }
+                    if (event.type == SDL_EVENT_MOUSE_WHEEL || buttonEvent) { continue; }
+                }
                 if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && canvasInput && pointerAllowed) {
                     if (event.button.button == SDL_BUTTON_LEFT) {
                         if (!cameraInput.panning) {
@@ -2372,6 +2409,8 @@ int main(int argc, char** argv)
                             // Resolve against the displayed camera/layout before selection opens Properties.
                             auto parts = woby::scenePickParts(ui);
                             woby::appendVisibleComparisonPickParts(parts, ui, comparison);
+                            std::vector<std::vector<woby::DiagnosticEdge>> annotationPickStorage;
+                            woby::appendAnnotationPickParts(parts, ui, annotationPickStorage);
                             const auto id = woby::pickSceneObject(parts, *presentedPickView,
                                 {inputMouse.x - static_cast<float>(presentedViewport.x), inputMouse.y});
                             if (id != woby::invalidSceneObjectId) {
@@ -2423,6 +2462,7 @@ int main(int argc, char** argv)
                     woby::dollyUiCamera(ui, -wheelY * 0.12f);
                 }
             }
+            if (annotationMotion && annotationInteraction.dragging) { woby::moveAnnotationPointer(ui, annotationInteraction, *annotationMotion); }
             recordFrameStage(frameTimings, woby::FrameStage::events, stageStart);
 
             getDrawableSize(window.get(), width, height);
@@ -2960,6 +3000,8 @@ int main(int argc, char** argv)
                 }
 
                 if (scenePaneOpen) {
+                    woby::drawAnnotationTools(ui, annotationInteraction, fileActionsDisabled());
+                    ImGui::SameLine();
                     bool showDimensions = ui.showDimensions;
                     if (ImGui::Checkbox("Show dimensions", &showDimensions)) {
                         woby::setShowDimensions(ui, showDimensions);
@@ -3001,6 +3043,7 @@ int main(int argc, char** argv)
                             ImGui::PopID();
                         }
                         woby::drawComparisonObjects(ui, comparisonNameEdit);
+                        woby::drawAnnotationObjects(ui);
                         canvasSelectionPath.clear();
                         if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
                             const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
@@ -3331,7 +3374,7 @@ int main(int argc, char** argv)
                 && !keyboardIo.WantCaptureKeyboard && !keyboardIo.WantTextInput
                 && !ImGui::IsAnyItemActive()
                 && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-            if (sceneKeyboardAvailable) {
+            if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool) {
                 if (!keyboardIo.KeyCtrl && !keyboardIo.KeyAlt && !keyboardIo.KeySuper) {
                     if (!popupWasOpen && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                         woby::clearSceneSelection(ui);
@@ -3462,6 +3505,10 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
             submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
+            woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, colorProgram, colorUniform, &annotationInteraction);
+            woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
+                static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
+                scenePointerAvailable && !cameraInteractionActive);
             if (!ui.selectedSceneObjects.empty()) {
                 auto selectedParts = woby::scenePickParts(ui);
                 woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
