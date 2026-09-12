@@ -489,14 +489,11 @@ for queue, timeout, and concurrency semantics.
 
 ## Build
 
-OBJ loading uses RapidOBJ, pinned to commit
-`fe4c779314b0daed19530c8b5aa323c789d08f81` in
-`cmake/vcpkg-ports/rapidobj`. CMake automatically adds this vcpkg overlay for
-local and CI builds. It replaces the registry's older port, which excludes Linux.
-When installing dependencies manually with vcpkg, pass
-`--overlay-ports=cmake/vcpkg-ports`. Builds using preinstalled packages need the
-same RapidOBJ revision, the overlay's Unicode-path and polygon-winding fixes,
-and its `RapidObj` CMake package.
+OBJ loading uses the RapidOBJ header vendored in `third_party/rapidobj`, based on
+commit `fe4c779314b0daed19530c8b5aa323c789d08f81` with Woby's Unicode-path and
+polygon-winding fixes applied. All builds use this copy directly; no RapidOBJ
+package installation is required. See [the vendored dependency notes](third_party/rapidobj/README.md)
+for provenance and licensing.
 
 ### macOS application bundle
 
