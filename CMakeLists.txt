@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 # Use the benchmarked RapidOBJ revision on every platform, including Linux.
 list(APPEND VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/vcpkg-ports")
 
-project(woby_obj_viewer VERSION 0.15.1 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.16.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
