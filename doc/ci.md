@@ -88,3 +88,25 @@ Run `actionlint` to check workflow syntax and expressions. Continue using
 `cmake --build --preset vs2026-vcpkg` and `ctest --preset vs2026-vcpkg` for local
 Debug validation. Runner-specific dependency builds and cross-run artifact
 downloads are validated by GitHub Actions.
+
+Both local test presets (`vs2026-vcpkg` and `ninja-vcpkg`) exclude CTest's
+`slow` label. CI runs the development suite with `-LE '^slow$'` and then runs
+the slow suite separately with `-L '^slow$'`. Both steps must pass before
+packaging; an empty selection is an error. CI continues to use Ninja and vcpkg.
+
+The slow suite contains four expensive integration or scale regressions:
+
+- `woby_update_helper_smoke`: real updater process handoff, rollback and restart.
+- `woby_runtime_build_graph`: fixture builds that verify runtime staging dependencies.
+- `analysis measures both surfaces above the former triangle cap`: end-to-end large mesh analysis.
+- `command history evicts results without ever reusing admitted retry keys`: production-capacity retry history.
+
+Standalone CTest entries declare `LABELS slow`; discovered C++ cases are listed
+under `woby_discover_tests(... SLOW_TESTS ...)` in `CMakeLists.txt`. Keep that list
+in sync when renaming a slow case; a missing name fails discovery. This labels
+cases without adding a discovery process launch for every test.
+
+Use the presets for local development. An unfiltered `ctest --test-dir ...`
+still selects all tests, and directly invoking `woby_tests` bypasses preset
+filtering. For explicit investigation of a CI slow-test failure, use
+`ctest --test-dir build/vs2026-vcpkg -C Debug -L '^slow$' --output-on-failure`.

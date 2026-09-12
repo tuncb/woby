@@ -124,9 +124,10 @@ cmake --build --preset vs2026-vcpkg
 ctest --preset vs2026-vcpkg
 ```
 
-CTest includes package-policy unit tests, ZIP/tar.gz validation, lock and rollback
-tests, packaging-script tests, and an offline integration test using the built
-helper. The integration test covers parent handoff, installation, a failed binary
+The local CTest preset includes package-policy unit tests, ZIP/tar.gz validation,
+lock and rollback tests, and packaging-script tests. CI's separate `slow` suite
+also runs the offline integration test using the built helper. That integration
+test covers parent handoff, installation, a failed binary
 version check, interrupted-update recovery, and paths with spaces and Unicode.
 Headless viewer fixtures verify that UI installs restart only after completion,
 with the deployment lock available, while CLI installs and failed updates stay closed.

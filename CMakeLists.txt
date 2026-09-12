@@ -310,7 +310,7 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_smoke.py" "$<TARGET_FILE:woby>"
         "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets"
         "$<TARGET_FILE:woby_update_viewer_fixture>")
-    set_tests_properties(woby_update_helper_smoke PROPERTIES TIMEOUT 180)
+    set_tests_properties(woby_update_helper_smoke PROPERTIES TIMEOUT 180 LABELS slow)
     add_test(NAME woby_update_helper_fixtures COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
@@ -477,7 +477,9 @@ if(BUILD_TESTING)
     )
 
     include(cmake/WobyTestDiscovery.cmake)
-    woby_discover_tests(woby_tests)
+    woby_discover_tests(woby_tests SLOW_TESTS
+        "analysis measures both surfaces above the former triangle cap"
+        "command history evicts results without ever reusing admitted retry keys")
     list(APPEND woby_runtime_targets woby_tests)
 
     add_test(NAME woby_runtime_staging COMMAND "${CMAKE_COMMAND}"
@@ -496,6 +498,11 @@ if(BUILD_TESTING)
         "-DTEST_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
         "-DTEST_CONFIG=$<CONFIG>"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/runtime_build_tests.cmake")
+    set_tests_properties(woby_runtime_build_graph PROPERTIES LABELS slow)
+    add_test(NAME woby_test_suite_selection COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_suite_selection_tests.py"
+        "${CMAKE_COMMAND}" "${CMAKE_CTEST_COMMAND}" "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${_DOCTEST_DISCOVER_TESTS_SCRIPT}" "${CMAKE_GENERATOR}" "${CMAKE_GENERATOR_PLATFORM}")
 
     add_test(NAME woby_version COMMAND woby --version)
     set_tests_properties(woby_version PROPERTIES

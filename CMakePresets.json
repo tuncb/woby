@@ -76,6 +76,11 @@
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
+      },
+      "filter": {
+        "exclude": {
+          "label": "^slow$"
+        }
       }
     },
     {
@@ -83,6 +88,11 @@
       "configurePreset": "ninja-vcpkg",
       "output": {
         "outputOnFailure": true
+      },
+      "filter": {
+        "exclude": {
+          "label": "^slow$"
+        }
       }
     }
   ]
