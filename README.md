@@ -259,6 +259,19 @@ with `woby.exe ctl --instance ID analysis create|set|add|remove|clear|swap|delet
 inputs are populated, measurements in both directions including maximum/mean/P95
 distance and area above tolerance. With one input, unavailable distance metrics
 and the absent side are `null`.
+
+Analysis retains separate caches for topology, duplicate points, duplicate triangles,
+surface quality, and distances. Run enables a duplicate detector; disabling it hides
+its results but retains them for reuse. Show only changes the overlay. Group A/B and
+Overlay views do not request distance or quality calculations; those run when their
+view is selected or a CLI results request needs them. CLI queries reuse the same
+cache and compute only missing stages. Camera, result position, tolerance, colors,
+and quality limits do not rerun detectors. Input membership or source transforms
+invalidate the analysis caches. Work runs in the background, with at most two
+analyses computing at once; GPU buffers are updated only for newly completed stages.
+The **Full result** button clears diagnostic focus and frames the analysis; it does
+not request additional computation.
+
 See the [analysis CLI reference](doc/ctl-commands.md#analyses) for a complete example.
 
 Run the app:

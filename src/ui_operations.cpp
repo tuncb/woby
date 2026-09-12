@@ -314,10 +314,15 @@ void frameComparison(UiState& state, SceneObjectId id)
 }
 
 namespace {
+bool diagnosticDetectorEnabled(const ComparisonSettings& settings)
+{
+    return (settings.diagnosticCategory != DiagnosticCategory::duplicatePoints || settings.duplicates.points)
+        && (settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles || settings.duplicates.triangles);
+}
 bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison)
 {
     const auto& focus = comparison.diagnosticFocus;
-    return focus && comparison.settings.enabled && focus->signature != 0
+    return focus && comparison.settings.enabled && diagnosticDetectorEnabled(comparison.settings) && focus->signature != 0
         && focus->side == comparison.settings.diagnosticSide
         && focus->category == comparison.settings.diagnosticCategory
         && focus->signature == comparisonGeometrySignature(state, comparison.objectId);
@@ -356,6 +361,7 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
     if (!comparison || !comparison->settings.enabled || resultSignature == 0
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
+    if (!diagnosticDetectorEnabled(settings)) { return; }
     const auto& edges = comparisonDiagnosticEdges(result, settings.diagnosticSide, settings.diagnosticCategory);
     if (edges.empty()) { return; }
     size_t index = 0;
@@ -374,6 +380,7 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
     if (!comparison || !comparison->settings.enabled || resultSignature == 0
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
+    if (!diagnosticDetectorEnabled(settings)) { return; }
     const auto& edges = comparisonDiagnosticEdges(result, settings.diagnosticSide, settings.diagnosticCategory);
     if (index >= edges.size()) { return; }
     const auto& edge = edges[index];

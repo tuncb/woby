@@ -496,6 +496,10 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
 namespace {
 Json duplicateResultJson(const DuplicateResult& result)
 {
+    if (!result.enabled) {
+        return {{"status", "disabled"}, {"count", nullptr}, {"knownDuplicateCount", 0}, {"informationalCount", 0},
+            {"unavailableSources", 0}, {"groupCount", 0}, {"findings", Json::array()}, {"findingsTruncated", false}};
+    }
     constexpr size_t limit = 100;
     Json findings = Json::array();
     for (size_t i = 0; i < std::min(limit, result.findings.size()); ++i) {

@@ -246,9 +246,6 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
 {
     if (!canInspectComparison(state, id)) { return 0; }
     uint64_t seed = 17;
-    const auto settings = comparisonSettings(state, id);
-    hashCombine(seed, settings.duplicates.points);
-    hashCombine(seed, settings.duplicates.triangles);
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
         size_t count = 0;

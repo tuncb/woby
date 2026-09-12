@@ -76,69 +76,64 @@ void appendCross(std::vector<std::array<float, 3>>& lines, const std::array<floa
         lines.push_back(a); lines.push_back(b);
     }
 }
-void uploadDuplicateOverlays(ComparisonGpuSurface& gpu, const SurfaceComparison& surface)
+void uploadDuplicateOverlays(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, uint32_t stages)
 {
-    std::vector<std::array<float, 3>> points, edges, fill;
-    for (const auto& finding : surface.duplicates.points.findings) {
-        for (const auto& point : finding.geometry) { appendCross(points, point, surface.source.bounds.radius*.008f); }
-    }
-    for (const auto& finding : surface.duplicates.triangles.findings) {
-        fill.insert(fill.end(), finding.geometry.begin(), finding.geometry.end());
-        for (size_t i = 0; i < finding.geometry.size(); i += 3) {
-            for (size_t k = 0; k < 3; ++k) { edges.push_back(finding.geometry[i+k]); edges.push_back(finding.geometry[i+(k+1)%3]); }
+    if (stages & comparisonDuplicatePoints) {
+        std::vector<std::array<float, 3>> points;
+        for (const auto& finding : surface.duplicates.points.findings) {
+            for (const auto& point : finding.geometry) { appendCross(points, point, surface.source.bounds.radius*.008f); }
         }
+        gpu.duplicatePoints = uploadPositions(points);
     }
-    gpu.duplicatePoints = uploadPositions(points);
-    gpu.duplicateTriangleEdges = uploadPositions(edges);
-    gpu.duplicateTriangleFill = uploadPositions(fill);
+    if (stages & comparisonDuplicateTriangles) {
+        std::vector<std::array<float, 3>> edges, fill;
+        for (const auto& finding : surface.duplicates.triangles.findings) {
+            fill.insert(fill.end(), finding.geometry.begin(), finding.geometry.end());
+            for (size_t i = 0; i < finding.geometry.size(); i += 3) {
+                for (size_t k = 0; k < 3; ++k) { edges.push_back(finding.geometry[i+k]); edges.push_back(finding.geometry[i+(k+1)%3]); }
+            }
+        }
+        gpu.duplicateTriangleEdges = uploadPositions(edges);
+        gpu.duplicateTriangleFill = uploadPositions(fill);
+    }
 }
 
-void uploadSurface(ComparisonGpuSurface &gpu, const SurfaceComparison &surface)
+void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, uint32_t stages)
 {
     if (surface.source.indices.empty()) { return; }
-    // Validate every upload before allocating CPU staging memory or GPU handles.
-    const auto vertexBytes = comparisonBufferBytes(surface.source.vertices.size(), sizeof(Vertex));
-    const auto indexBytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(uint32_t));
-    const auto lineBytes = comparisonBufferBytes(surface.source.indices.size(), 2 * sizeof(uint32_t));
-    const auto sampleBytes = comparisonBufferBytes(surface.sampled.vertices.size(), sizeof(Vertex));
-    for (const auto* edges : {&surface.diagnostics.boundaryEdges, &surface.diagnostics.nonManifoldEdges,
-                             &surface.diagnostics.inconsistentWindingEdges})
-    {
-        (void)comparisonBufferBytes(edges->size(), 2 * sizeof(std::array<float, 3>));
-    }
-    auto vertices = surface.source.vertices;
-    generateSmoothNormals(vertices, surface.source.indices);
-    gpu.vertices = bgfx::createVertexBuffer(
-        bgfx::copy(vertices.data(), vertexBytes), meshVertexLayout());
-    const auto &indices = surface.source.indices;
-    gpu.triangles = bgfx::createIndexBuffer(
-        bgfx::copy(indices.data(), indexBytes), BGFX_BUFFER_INDEX32);
-    std::vector<uint32_t> lines;
-    lines.reserve(indices.size() * 2);
-    for (size_t i = 0; i < indices.size(); i += 3)
-    {
-        for (size_t k = 0; k < 3; ++k)
-        {
-            lines.push_back(indices[i + k]);
-            lines.push_back(indices[i + (k + 1) % 3]);
+    if (stages & comparisonSource) {
+        const auto vertexBytes = comparisonBufferBytes(surface.source.vertices.size(), sizeof(Vertex));
+        const auto indexBytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(uint32_t));
+        const auto lineBytes = comparisonBufferBytes(surface.source.indices.size(), 2 * sizeof(uint32_t));
+        auto vertices = surface.source.vertices;
+        generateSmoothNormals(vertices, surface.source.indices);
+        gpu.vertices = bgfx::createVertexBuffer(bgfx::copy(vertices.data(), vertexBytes), meshVertexLayout());
+        const auto& indices = surface.source.indices;
+        gpu.triangles = bgfx::createIndexBuffer(bgfx::copy(indices.data(), indexBytes), BGFX_BUFFER_INDEX32);
+        std::vector<uint32_t> lines;
+        lines.reserve(indices.size() * 2);
+        for (size_t i = 0; i < indices.size(); i += 3) {
+            for (size_t k = 0; k < 3; ++k) {
+                lines.push_back(indices[i + k]);
+                lines.push_back(indices[i + (k + 1) % 3]);
+            }
+        }
+        gpu.lines = bgfx::createIndexBuffer(bgfx::copy(lines.data(), lineBytes), BGFX_BUFFER_INDEX32);
+        if (!bgfx::isValid(gpu.vertices) || !bgfx::isValid(gpu.triangles) || !bgfx::isValid(gpu.lines)) {
+            throw std::runtime_error("Cannot allocate analysis surface buffers.");
         }
     }
-    gpu.lines = bgfx::createIndexBuffer(
-        bgfx::copy(lines.data(), lineBytes), BGFX_BUFFER_INDEX32);
-    const auto &samples = surface.sampled.vertices;
-    if (!samples.empty()) {
-        gpu.samples = bgfx::createVertexBuffer(
-            bgfx::copy(samples.data(), sampleBytes), meshVertexLayout());
+    if ((stages & comparisonDistance) && !surface.sampled.vertices.empty()) {
+        const auto& samples = surface.sampled.vertices;
+        gpu.samples = bgfx::createVertexBuffer(bgfx::copy(samples.data(), comparisonBufferBytes(samples.size(), sizeof(Vertex))), meshVertexLayout());
+        if (!bgfx::isValid(gpu.samples)) { throw std::runtime_error("Cannot allocate analysis distance buffer."); }
     }
-    if (!bgfx::isValid(gpu.vertices) || !bgfx::isValid(gpu.triangles) || !bgfx::isValid(gpu.lines) ||
-        (!samples.empty() && !bgfx::isValid(gpu.samples)))
-    {
-        throw std::runtime_error("Cannot allocate analysis surface buffers.");
+    if (stages & comparisonTopology) {
+        gpu.boundaries = uploadEdges(surface.diagnostics.boundaryEdges);
+        gpu.nonManifold = uploadEdges(surface.diagnostics.nonManifoldEdges);
+        gpu.winding = uploadEdges(surface.diagnostics.inconsistentWindingEdges);
     }
-    gpu.boundaries = uploadEdges(surface.diagnostics.boundaryEdges);
-    gpu.nonManifold = uploadEdges(surface.diagnostics.nonManifoldEdges);
-    gpu.winding = uploadEdges(surface.diagnostics.inconsistentWindingEdges);
-    uploadDuplicateOverlays(gpu, surface);
+    uploadDuplicateOverlays(gpu, surface, stages);
 }
 bool originalActive(const ComparisonSettings &settings)
 {
@@ -352,7 +347,7 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
     const bool points = settings.diagnosticCategory == DiagnosticCategory::duplicatePoints;
     if (!points && settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles) { return; }
     const auto& result = comparisonDuplicates(runtime.result, settings.diagnosticSide, settings.diagnosticCategory);
-    if (!current || !hasTarget || !result.enabled) { return; }
+    if (!current || !hasTarget || !(points ? settings.duplicates.points : settings.duplicates.triangles)) { return; }
     if (result.unavailableSources) {
         ImGui::TextWrapped("%zu source(s) unavailable: %s", result.unavailableSources,
             points ? "original source records were not retained." : "STL has no shared point IDs, or source records were not retained.");
@@ -495,93 +490,97 @@ void submitWire(bgfx::ViewId view, const ComparisonGpuSurface &gpu, bgfx::Progra
 }
 } // namespace
 
+bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id, bool fullResults)
+{
+    const auto signature = comparisonGeometrySignature(state, id);
+    const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0
+        && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
+    const auto required = requestedComparisonStages(comparisonSettings(state, id), both, fullResults);
+    return signature != 0 && runtime.resultSignature == signature && runtime.cache.signature == signature
+        && (runtime.cache.completed & required) == required && (fullResults || runtime.ready);
+}
+
 static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, SceneObjectId id, bool allowStart)
 {
-    const uint64_t wanted = comparisonSettings(state, id).enabled ? comparisonGeometrySignature(state, id) : 0;
-    if (runtime.worker.valid() && wanted != runtime.workerSignature)
-    {
+    const auto settings = comparisonSettings(state, id);
+    const uint64_t wanted = comparisonGeometrySignature(state, id);
+    const bool active = settings.enabled || runtime.fullResultsRequested;
+    const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0
+        && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
+    const auto required = requestedComparisonStages(settings, both);
+    const auto requested = requestedComparisonStages(settings, both, runtime.fullResultsRequested);
+    if (resetComparisonCache(runtime.cache, wanted)) {
         runtime.stop.request_stop();
+        destroySurface(runtime.originalGpu);
+        destroySurface(runtime.repairedGpu);
+        runtime.result = {};
+        runtime.inputs.reset();
+        runtime.uploadedStages = 0;
+        runtime.resultSignature = runtime.attemptedSignature = 0;
+        runtime.error.clear();
+        resetComparisonDiagnosticFocus(state, id);
     }
-    runtime.ready = wanted != 0 && runtime.resultSignature == wanted;
-    if (runtime.worker.valid() && runtime.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-    {
-        try
-        {
-            auto result = runtime.worker.get();
-            if (wanted != 0 && wanted == runtime.workerSignature)
-            {
-                destroySurface(runtime.originalGpu);
-                destroySurface(runtime.repairedGpu);
-                runtime.resultSignature = 0;
-                resetComparisonDiagnosticFocus(state, id);
-                runtime.result = std::move(result);
-                uploadSurface(runtime.originalGpu, runtime.result.original);
-                uploadSurface(runtime.repairedGpu, runtime.result.repaired);
+    if (runtime.worker.valid() && runtime.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        try {
+            auto update = runtime.worker.get();
+            if (applyComparisonStages(runtime.result, runtime.cache, std::move(update), runtime.workerSignature, runtime.workerStages)) {
                 runtime.resultSignature = wanted;
-                runtime.ready = true;
                 runtime.error.clear();
             }
-            else
-            {
-                runtime.attemptedSignature = 0;
-            }
-        }
-        catch (const std::exception &error)
-        {
-            if (runtime.stop.stop_requested())
-            {
-                runtime.attemptedSignature = 0;
-            }
-            else if (wanted == runtime.workerSignature)
-            {
-                destroySurface(runtime.originalGpu);
-                destroySurface(runtime.repairedGpu);
-                runtime.resultSignature = 0;
-                runtime.ready = false;
-                runtime.error = error.what();
-            }
-            else
-            {
-                runtime.attemptedSignature = 0;
-            }
-        }
-    }
-    const auto settings = comparisonSettings(state, id);
-    if (runtime.ready && settings.mode == ComparisonMode::surfaceQuality &&
-        (runtime.uploadedQualityMetric != settings.quality.metric ||
-         (!runtime.result.original.source.indices.empty() && !bgfx::isValid(runtime.originalGpu.quality)) ||
-         (!runtime.result.repaired.source.indices.empty() && !bgfx::isValid(runtime.repairedGpu.quality)))) {
-        try {
-            const auto& distribution = runtime.result.qualityDistributions.at(static_cast<size_t>(settings.quality.metric));
-            uploadQuality(runtime.originalGpu, runtime.result.original, settings.quality.metric, distribution);
-            uploadQuality(runtime.repairedGpu, runtime.result.repaired, settings.quality.metric, distribution);
-            runtime.uploadedQualityMetric = settings.quality.metric;
         } catch (const std::exception& error) {
-            runtime.error = error.what();
-            runtime.ready = false;
-            runtime.resultSignature = 0;
+            if (!runtime.stop.stop_requested() && wanted == runtime.workerSignature) { runtime.error = error.what(); }
+            else { runtime.attemptedSignature = 0; }
         }
     }
-    if (wanted == 0 || runtime.ready || runtime.worker.valid() || wanted == runtime.attemptedSignature || !allowStart)
-    {
-        return;
+    setComparisonDuplicateEnabled(runtime.result, settings.duplicates);
+    // CPU stages and their GPU uploads are retained independently. Retry an upload
+    // without rerunning successful detectors, including after partial GPU failure.
+    if (wanted && active && (runtime.error.empty() || runtime.attemptedSignature == 0)) {
+        try {
+            const auto pending = runtime.cache.completed & ~runtime.uploadedStages;
+            if (pending) {
+                uploadSurface(runtime.originalGpu, runtime.result.original, pending);
+                uploadSurface(runtime.repairedGpu, runtime.result.repaired, pending);
+                runtime.uploadedStages |= pending;
+            }
+            if ((runtime.cache.completed & comparisonQuality) && settings.mode == ComparisonMode::surfaceQuality &&
+                (runtime.uploadedQualityMetric != settings.quality.metric ||
+                 (!runtime.result.original.source.indices.empty() && !bgfx::isValid(runtime.originalGpu.quality)) ||
+                 (!runtime.result.repaired.source.indices.empty() && !bgfx::isValid(runtime.repairedGpu.quality)))) {
+                const auto& distribution = runtime.result.qualityDistributions.at(static_cast<size_t>(settings.quality.metric));
+                uploadQuality(runtime.originalGpu, runtime.result.original, settings.quality.metric, distribution);
+                uploadQuality(runtime.repairedGpu, runtime.result.repaired, settings.quality.metric, distribution);
+                runtime.uploadedQualityMetric = settings.quality.metric;
+            }
+            runtime.error.clear();
+        } catch (const std::exception& error) {
+            destroySurface(runtime.originalGpu);
+            destroySurface(runtime.repairedGpu);
+            runtime.uploadedStages = 0;
+            runtime.attemptedSignature = wanted;
+            runtime.error = error.what();
+        }
     }
-    runtime.attemptedSignature = wanted;
-    runtime.workerSignature = wanted;
+    runtime.ready = wanted && settings.enabled && (runtime.cache.completed & required) == required
+        && (runtime.uploadedStages & required) == required;
+    const auto missing = requested & ~runtime.cache.completed;
+    if (!wanted || !active || !missing || runtime.worker.valid() || !allowStart ||
+        (runtime.attemptedSignature == wanted && runtime.attemptedStages == missing && !runtime.error.empty())) { return; }
+    runtime.attemptedSignature = runtime.workerSignature = wanted;
+    runtime.attemptedStages = runtime.workerStages = missing;
     runtime.error.clear();
-    try
-    {
-        auto original = enabledComparisonPartCount(state, ComparisonSide::a, id) ? comparisonWorldMesh(state, ComparisonSide::a, id) : Mesh{};
-        auto repaired = enabledComparisonPartCount(state, ComparisonSide::b, id) ? comparisonWorldMesh(state, ComparisonSide::b, id) : Mesh{};
+    try {
+        if (!runtime.inputs) {
+            auto inputs = std::make_shared<std::array<Mesh, 2>>();
+            if (enabledComparisonPartCount(state, ComparisonSide::a, id)) { (*inputs)[0] = comparisonWorldMesh(state, ComparisonSide::a, id); }
+            if (enabledComparisonPartCount(state, ComparisonSide::b, id)) { (*inputs)[1] = comparisonWorldMesh(state, ComparisonSide::b, id); }
+            runtime.inputs = std::move(inputs);
+        }
         runtime.stop = std::stop_source{};
-        const auto stop = runtime.stop.get_token();
-        runtime.worker = std::async(std::launch::async, [original = std::move(original), repaired = std::move(repaired),
-                                                         stop] { return compareMeshes(original, repaired, stop); });
-    }
-    catch (const std::exception &error)
-    {
-        runtime.error = error.what();
-    }
+        runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, missing, stop = runtime.stop.get_token()] {
+            return computeComparisonStages((*inputs)[0], (*inputs)[1], missing, stop);
+        });
+    } catch (const std::exception& error) { runtime.error = error.what(); }
 }
 
 static void destroyComparisonRuntime(ComparisonRuntime &runtime)
@@ -640,10 +639,11 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it == runtimes.objects.end()) { ready = false; continue; }
         const auto& runtime = it->second;
-        if (!runtime.error.empty() && runtime.attemptedSignature == signature) {
+        if (!runtime.error.empty() && runtime.attemptedSignature == signature
+            && !comparisonResultsReady(runtime, state, comparison.objectId)) {
             throw std::runtime_error(comparison.name + ": " + runtime.error);
         }
-        ready = ready && runtime.ready && runtime.resultSignature == signature;
+        ready = ready && comparisonResultsReady(runtime, state, comparison.objectId);
         if (comparison.settings.mode == ComparisonMode::surfaceQuality) {
             ready = ready && runtime.uploadedQualityMetric == comparison.settings.quality.metric &&
                 (runtime.result.original.source.indices.empty() || bgfx::isValid(runtime.originalGpu.quality)) &&
@@ -812,7 +812,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         "Use Analysis membership in the scene tree context menu, or drag sources onto group A or B. "
         "Right-click a group to clear it, or a source below to remove it.\n\n"
         "One input enables surface inspection. Add a second input for surface distance and overlay.");
-    const bool resultReady = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state, id);
+    const bool resultReady = comparisonResultsReady(runtime, state, id);
     auto translation = comparison->translation;
     ImGui::TextUnformatted("Result position");
     ImGui::SameLine();
@@ -868,7 +868,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
             ImGui::InputFloat("Color maximum", &settings.colorRange, 0, 0, "%.5g");
-            ImGui::BeginDisabled(!resultReady);
+            ImGui::BeginDisabled(!resultReady || !(runtime.cache.completed & comparisonDistance));
             if (ImGui::Button("Fit color range")) {
                 const auto& surface = settings.distanceOnOriginal ? runtime.result.original : runtime.result.repaired;
                 settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
@@ -916,17 +916,16 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), currentSettings);
         ImGui::Dummy({0, legendHeight});
     }
-    if (settings.mode == ComparisonMode::surfaceQuality && (!resultReady || !valid || !settings.enabled)) {
+    if (settings.mode == ComparisonMode::surfaceQuality && (!comparisonResultsReady(runtime, state, id) || !valid || !settings.enabled)) {
         drawSurfaceQualitySizeLimits(state, id, nullptr, hasA, hasB);
     }
-    const bool diagnosticsCurrent = valid && comparisonSettings(state, id).enabled && runtime.ready
-        && runtime.resultSignature == comparisonGeometrySignature(state, id);
+    const bool diagnosticsCurrent = valid && comparisonSettings(state, id).enabled && comparisonResultsReady(runtime, state, id);
     if (!diagnosticsCurrent) { drawDiagnosticNavigation(state, runtime, false, hasA, hasB, id); }
     if (!valid || !comparisonSettings(state, id).enabled)
     {
         return;
     }
-    const bool current = runtime.ready && runtime.resultSignature == comparisonGeometrySignature(state, id);
+    const bool current = comparisonResultsReady(runtime, state, id);
     if (!current)
     {
         if (!runtime.error.empty() && runtime.attemptedSignature == comparisonGeometrySignature(state, id))
@@ -1052,7 +1051,7 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
 {
     for (const auto& comparison : state.comparisons) {
         const auto it = runtimes.objects.find(comparison.objectId);
-        if (it != runtimes.objects.end() && it->second.ready) {
+        if (it != runtimes.objects.end() && comparisonResultsReady(it->second, state, comparison.objectId)) {
             appendComparisonPickParts(parts, comparison, effectiveComparisonSettings(state, comparison.objectId),
                 it->second.result, sceneObjectSelected(state, comparison.objectId));
         }
@@ -1064,7 +1063,7 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
 {
     for (const auto& comparison : state.comparisons) {
         const auto it = runtimes.objects.find(comparison.objectId);
-        if (it != runtimes.objects.end()) {
+        if (it != runtimes.objects.end() && comparisonResultsReady(it->second, state, comparison.objectId)) {
             auto settings = effectiveComparisonSettings(state, comparison.objectId);
             if (it->second.resultSignature != comparisonGeometrySignature(state, comparison.objectId)) {
                 settings.duplicates.showPoints = false; settings.duplicates.showTriangles = false;

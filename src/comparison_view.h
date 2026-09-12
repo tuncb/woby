@@ -32,6 +32,10 @@ struct ComparisonRuntime
     std::stop_source stop;
     std::future<MeshComparison> worker;
     uint64_t workerSignature = 0;
+    uint32_t workerStages = 0, attemptedStages = 0, uploadedStages = 0;
+    ComparisonCacheStatus cache;
+    std::shared_ptr<const std::array<Mesh, 2>> inputs;
+    bool fullResultsRequested = false;
     uint64_t attemptedSignature = 0;
     uint64_t resultSignature = 0;
     bool ready = false;
@@ -55,6 +59,8 @@ struct ComparisonNameEdit {
     int lastFrame = -1;
 };
 
+[[nodiscard]] bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& state,
+    SceneObjectId id, bool fullResults = false);
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit);

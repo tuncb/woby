@@ -242,7 +242,7 @@ TEST_CASE("duplicate analysis navigation persistence signatures and CLI agree")
     auto command = operation; command.objectId = id;
     (void)woby::applyControlSceneOperation(state, document, command, [](auto value) { return std::to_string(value); }, 200, 800);
     CHECK_FALSE(woby::comparisonSettings(state, id).duplicates.points);
-    CHECK(woby::comparisonGeometrySignature(state, id) != signature);
+    CHECK(woby::comparisonGeometrySignature(state, id) == signature);
     CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
     const auto disabled = woby::compareMeshes(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id), {});
     CHECK(std::string(woby::duplicateStatus(disabled.original.duplicates.points)) == "disabled");
@@ -331,4 +331,53 @@ TEST_CASE("unified diagnostic rows navigate duplicate groups on either side and 
             CHECK(woby::effectiveComparisonSettings(state, id).mode == woby::ComparisonMode::overlay);
         }
     }
+}
+
+TEST_CASE("duplicate Run toggles retain cached findings but hide disabled JSON results")
+{
+    using namespace woby;
+    auto data = triangle();
+    data->points.push_back(data->points[0]);
+    data->indices.insert(data->indices.end(), {2,1,0});
+    Mesh source;
+    for (const auto& point : data->points) {
+        Vertex vertex;
+        for (size_t k = 0; k < 3; ++k) { vertex.position[k] = static_cast<float>(point[k]); }
+        source.vertices.push_back(vertex);
+    }
+    source.indices = data->indices;
+    source.duplicateInput = std::make_shared<DuplicateInput>(inputFor(data));
+    ComparisonSettings settings;
+    settings.mode = ComparisonMode::original;
+    settings.duplicates.points = false;
+    settings.duplicates.triangles = false;
+    ComparisonCacheStatus cache{42, 0};
+    MeshComparison result;
+    const auto run = [&] {
+        const auto missing = requestedComparisonStages(settings, false) & ~cache.completed;
+        REQUIRE(applyComparisonStages(result, cache, computeComparisonStages(source, {}, missing), 42, missing));
+        setComparisonDuplicateEnabled(result, settings.duplicates);
+        return missing;
+    };
+    run();
+    settings.duplicates.points = true;
+    CHECK(run() == comparisonDuplicatePoints);
+    REQUIRE(result.original.duplicates.points.duplicateCount == 1);
+    const auto* points = result.original.duplicates.points.findings.data();
+    settings.duplicates.triangles = true;
+    CHECK(run() == comparisonDuplicateTriangles);
+    REQUIRE(result.original.duplicates.triangles.duplicateCount == 1);
+    CHECK(result.original.duplicates.points.findings.data() == points);
+    settings.duplicates.points = false;
+    CHECK(run() == 0);
+    const auto disabled = controlComparisonResults(result, .05)["aToB"]["detectors"]["duplicate_points"];
+    CHECK(disabled["status"] == "disabled");
+    CHECK(disabled["count"].is_null());
+    CHECK(disabled["findings"].empty());
+    CHECK(disabled["knownDuplicateCount"] == 0);
+    CHECK(result.original.duplicates.points.findings.data() == points);
+    settings.duplicates.points = true;
+    CHECK(run() == 0);
+    CHECK(result.original.duplicates.points.findings.data() == points);
+    CHECK(controlComparisonResults(result, .05)["aToB"]["detectors"]["duplicate_points"]["count"] == 1);
 }

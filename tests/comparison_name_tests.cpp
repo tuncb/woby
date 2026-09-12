@@ -107,7 +107,18 @@ TEST_CASE("analysis properties show computing only while the result is pending")
     SUBCASE("ready") {
         runtime.ready = true;
         runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
         computing = false;
+    }
+    SUBCASE("new quality view waits for its missing stage") {
+        runtime.ready = true;
+        runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+        auto settings = woby::comparisonSettings(f.state, f.id);
+        settings.mode = woby::ComparisonMode::surfaceQuality;
+        woby::setComparisonSettings(f.state, settings, f.id);
+        CHECK_FALSE(woby::comparisonResultsReady(runtime, f.state, f.id));
+        CHECK_FALSE(woby::comparisonsReadyForScreenshot(f.state, runtimes));
     }
     SUBCASE("outdated result") {
         runtime.ready = true;
