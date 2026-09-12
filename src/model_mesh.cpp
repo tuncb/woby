@@ -188,6 +188,18 @@ void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
     vertices = std::move(fetchedVertices);
 }
 
+void captureSourceMesh(Mesh& mesh, SourceProvenance provenance)
+{
+    auto data = std::make_shared<SourceMeshData>();
+    data->provenance = provenance;
+    data->points.reserve(mesh.vertices.size());
+    for (const auto& vertex : mesh.vertices) {
+        data->points.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
+    }
+    data->indices = mesh.indices;
+    mesh.sourceData = std::move(data);
+}
+
 void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals)
 {
     if (empty(mesh)) {

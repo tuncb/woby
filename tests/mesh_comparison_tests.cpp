@@ -2147,3 +2147,99 @@ TEST_CASE("surface mesh quality sample projects match analytical expectations")
         }
     }
 }
+
+TEST_CASE("analysis requests only missing mode dependencies and enabled detectors")
+{
+    using namespace woby;
+    ComparisonSettings settings;
+    settings.mode = ComparisonMode::original;
+    settings.duplicates.points = false;
+    settings.duplicates.triangles = false;
+    const auto base = requestedComparisonStages(settings, true);
+    CHECK(base == (comparisonSource | comparisonTopology));
+    settings.showEdges = true;
+    settings.duplicates.showPoints = false;
+    settings.tolerance = 10;
+    settings.colorRange = 20;
+    settings.quality.maximumSize = 30;
+    CHECK(requestedComparisonStages(settings, true) == base);
+    settings.duplicates.points = true;
+    CHECK((requestedComparisonStages(settings, true) & ~base) == comparisonDuplicatePoints);
+    settings.duplicates.triangles = true;
+    const auto detectors = requestedComparisonStages(settings, true);
+    settings.mode = ComparisonMode::surfaceQuality;
+    CHECK((requestedComparisonStages(settings, true) & ~detectors) == comparisonQuality);
+    settings.mode = ComparisonMode::distance;
+    CHECK((requestedComparisonStages(settings, true) & ~detectors) == comparisonDistance);
+    CHECK(requestedComparisonStages(settings, false) == detectors);
+    CHECK(requestedComparisonStages(settings, true, true) == (detectors | comparisonDistance | comparisonQuality));
+}
+
+TEST_CASE("topology analysis does not compute distance or quality")
+{
+    const auto result = woby::computeComparisonStages(square(), square(2), woby::comparisonSource | woby::comparisonTopology);
+    CHECK(result.original.diagnostics.boundaryEdges.size() == 4);
+    CHECK(result.repaired.diagnostics.boundaryEdges.size() == 4);
+    CHECK(result.original.source.indices.size() == 6);
+    CHECK(result.original.distances.empty());
+    CHECK(result.repaired.sampled.vertices.empty());
+    CHECK(result.original.quality.triangles.empty());
+    CHECK(result.repaired.quality.triangles.empty());
+    CHECK(result.original.duplicates.points.unavailableSources == 0);
+}
+
+TEST_CASE("analysis stages retain unrelated allocations and match the full result")
+{
+    using namespace woby;
+    const auto a = square(), b = square(2);
+    MeshComparison result;
+    ComparisonCacheStatus cache;
+    REQUIRE(resetComparisonCache(cache, 17));
+    const uint32_t base = comparisonSource | comparisonTopology;
+    REQUIRE(applyComparisonStages(result, cache, computeComparisonStages(a, b, base), 17, base));
+    const auto* vertices = result.original.source.vertices.data();
+    const auto* boundaries = result.original.diagnostics.boundaryEdges.data();
+    for (const auto stage : {comparisonDuplicatePoints, comparisonDuplicateTriangles, comparisonQuality, comparisonDistance}) {
+        auto update = computeComparisonStages(a, b, stage);
+        CHECK(update.original.source.vertices.empty());
+        CHECK(update.original.diagnostics.boundaryEdges.empty());
+        REQUIRE(applyComparisonStages(result, cache, std::move(update), 17, stage));
+        CHECK(result.original.source.vertices.data() == vertices);
+        CHECK(result.original.diagnostics.boundaryEdges.data() == boundaries);
+    }
+    CHECK(controlComparisonResults(result, .05) == controlComparisonResults(compareMeshes(a, b), .05));
+    const auto all = requestedComparisonStages(ComparisonSettings{}, true, true);
+    CHECK((all & ~cache.completed) == 0); // Repeated CLI reads need no work.
+    CHECK_FALSE(resetComparisonCache(cache, 17));
+    CHECK(cache.completed == all);
+}
+
+TEST_CASE("geometry invalidation rejects late analysis stage results")
+{
+    using namespace woby;
+    ComparisonCacheStatus cache{17, comparisonSource | comparisonTopology};
+    MeshComparison result;
+    auto stale = computeComparisonStages(square(), {}, comparisonTopology);
+    REQUIRE(resetComparisonCache(cache, 18));
+    CHECK(cache.completed == 0);
+    CHECK_FALSE(applyComparisonStages(result, cache, std::move(stale), 17, comparisonTopology));
+    CHECK(cache.completed == 0);
+    CHECK(result.original.diagnostics.boundaryEdges.empty());
+    REQUIRE(resetComparisonCache(cache, 0));
+    CHECK_FALSE(applyComparisonStages(result, cache, {}, 0, comparisonQuality));
+}
+
+TEST_CASE("lazy analysis stages honor cancellation and single input distance requests")
+{
+    using namespace woby;
+    std::stop_source stop;
+    stop.request_stop();
+    for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints,
+        comparisonDuplicateTriangles, comparisonQuality, comparisonDistance}) {
+        CHECK_THROWS((void)computeComparisonStages(square(), square(2), stage, stop.get_token()));
+    }
+    const auto result = computeComparisonStages(square(), {}, comparisonDistance | comparisonQuality);
+    CHECK(result.original.distances.empty());
+    CHECK(result.original.quality.triangles.size() == 2);
+    CHECK(result.repaired.quality.triangles.empty());
+}

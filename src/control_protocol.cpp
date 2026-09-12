@@ -66,7 +66,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize"}, {}, true, true},
+            {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
@@ -92,7 +92,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
-    return name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
+    return name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles" || name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
@@ -117,6 +117,10 @@ std::string cliOption(const std::string& name)
     if (name == "showEdges") { return "--show-edges"; }
     if (name == "showBoundaries") { return "--show-boundaries"; }
     if (name == "showNonManifold") { return "--show-non-manifold"; }
+    if (name == "duplicatePoints") { return "--duplicate-points"; }
+    if (name == "duplicateTriangles") { return "--duplicate-triangles"; }
+    if (name == "showDuplicatePoints") { return "--show-duplicate-points"; }
+    if (name == "showDuplicateTriangles") { return "--show-duplicate-triangles"; }
     if (name == "qualityMetric") { return "--quality-metric"; }
     if (name == "qualityOnA") { return "--quality-on-a"; }
     if (name == "qualityMinimumEnabled") { return "--quality-minimum-enabled"; }
@@ -218,6 +222,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
+    BOOL_FIELD(duplicatePoints) BOOL_FIELD(duplicateTriangles) BOOL_FIELD(showDuplicatePoints) BOOL_FIELD(showDuplicateTriangles)
     BOOL_FIELD(qualityOnA) BOOL_FIELD(qualityMinimumEnabled) BOOL_FIELD(qualityMaximumEnabled)
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
@@ -301,6 +306,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
+    FIELD(duplicatePoints) FIELD(duplicateTriangles) FIELD(showDuplicatePoints) FIELD(showDuplicateTriangles)
     FIELD(qualityMetric) FIELD(qualityOnA) FIELD(qualityMinimumEnabled) FIELD(qualityMaximumEnabled) FIELD(qualityMinimumSize) FIELD(qualityMaximumSize)
     FIELD(distanceOnA) FIELD(showEdges) FIELD(showBoundaries) FIELD(showNonManifold) FIELD(tolerance) FIELD(colorRange) FIELD(enabled)
 #undef FIELD

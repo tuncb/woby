@@ -71,6 +71,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
                 {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
+                {"duplicatePoints", settings.duplicates.points}, {"duplicateTriangles", settings.duplicates.triangles}, {"showDuplicatePoints", settings.duplicates.showPoints}, {"showDuplicateTriangles", settings.duplicates.showTriangles},
                 {"qualityMetric", surfaceQualityMetricKey(settings.quality.metric)}, {"qualityOnA", settings.quality.onOriginal},
                 {"qualityMinimumEnabled", settings.quality.minimumEnabled}, {"qualityMaximumEnabled", settings.quality.maximumEnabled},
                 {"qualityMinimumSize", settings.quality.minimumSize}, {"qualityMaximumSize", settings.quality.maximumSize},
@@ -328,6 +329,10 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
                     ? ComparisonMode::original : *command.mode == "b" ? ComparisonMode::repaired :
                     *command.mode == "surface_quality" ? ComparisonMode::surfaceQuality : ComparisonMode::overlay;
             }
+            if (command.duplicatePoints) { settings.duplicates.points = *command.duplicatePoints; }
+            if (command.duplicateTriangles) { settings.duplicates.triangles = *command.duplicateTriangles; }
+            if (command.showDuplicatePoints) { settings.duplicates.showPoints = *command.showDuplicatePoints; }
+            if (command.showDuplicateTriangles) { settings.duplicates.showTriangles = *command.showDuplicateTriangles; }
             if (command.qualityMetric) { settings.quality.metric = parseSurfaceQualityMetric(*command.qualityMetric); }
             if (command.qualityOnA) { settings.quality.onOriginal = *command.qualityOnA; }
             if (command.qualityMinimumEnabled) { settings.quality.minimumEnabled = *command.qualityMinimumEnabled; }
@@ -488,6 +493,33 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     return controlSceneInfo(state);
 }
 
+namespace {
+Json duplicateResultJson(const DuplicateResult& result)
+{
+    if (!result.enabled) {
+        return {{"status", "disabled"}, {"count", nullptr}, {"knownDuplicateCount", 0}, {"informationalCount", 0},
+            {"unavailableSources", 0}, {"groupCount", 0}, {"findings", Json::array()}, {"findingsTruncated", false}};
+    }
+    constexpr size_t limit = 100;
+    Json findings = Json::array();
+    for (size_t i = 0; i < std::min(limit, result.findings.size()); ++i) {
+        const auto& finding = result.findings[i];
+        Json members = Json::array();
+        for (size_t k = 0; k < std::min(limit, finding.members.size()); ++k) {
+            members.push_back({{"id", finding.members[k].id+1}, {"reversed", finding.members[k].reversed}});
+        }
+        findings.push_back({{"sourceId", std::to_string(finding.fileId)}, {"source", finding.source},
+            {"provenance", sourceProvenanceName(finding.provenance)}, {"representativeId", finding.members.front().id+1},
+            {"memberCount", finding.members.size()}, {"members", members}, {"membersTruncated", finding.members.size() > limit}});
+    }
+    const bool complete = result.enabled && result.unavailableSources == 0;
+    return {{"status", duplicateStatus(result)}, {"count", complete ? Json(result.duplicateCount) : Json(nullptr)},
+        {"knownDuplicateCount", result.duplicateCount}, {"informationalCount", result.informationalCount},
+        {"unavailableSources", result.unavailableSources}, {"groupCount", result.findings.size()},
+        {"findings", findings}, {"findingsTruncated", result.findings.size() > limit}};
+}
+}
+
 Json controlComparisonResults(const MeshComparison& result, double tolerance)
 {
     const auto surface = [tolerance](const SurfaceComparison& value) {
@@ -508,6 +540,8 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
             {"mean", measured ? Json(value.mean) : Json(nullptr)},
             {"percentile95", measured ? Json(value.percentile95) : Json(nullptr)},
             {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
+            {"detectors", {{"schemaVersion", 1}, {"idBase", 1}, {"scope", "per-source; selected parts, including unused points when whole file selected"},
+                {"duplicate_points", duplicateResultJson(value.duplicates.points)}, {"duplicate_tris", duplicateResultJson(value.duplicates.triangles)}}},
             {"surfaceMeshQuality", quality}, {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
             {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
                 {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},

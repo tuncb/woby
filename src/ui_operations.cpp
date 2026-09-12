@@ -314,10 +314,15 @@ void frameComparison(UiState& state, SceneObjectId id)
 }
 
 namespace {
+bool diagnosticDetectorEnabled(const ComparisonSettings& settings)
+{
+    return (settings.diagnosticCategory != DiagnosticCategory::duplicatePoints || settings.duplicates.points)
+        && (settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles || settings.duplicates.triangles);
+}
 bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison)
 {
     const auto& focus = comparison.diagnosticFocus;
-    return focus && comparison.settings.enabled && focus->signature != 0
+    return focus && comparison.settings.enabled && diagnosticDetectorEnabled(comparison.settings) && focus->signature != 0
         && focus->side == comparison.settings.diagnosticSide
         && focus->category == comparison.settings.diagnosticCategory
         && focus->signature == comparisonGeometrySignature(state, comparison.objectId);
@@ -356,6 +361,7 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
     if (!comparison || !comparison->settings.enabled || resultSignature == 0
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
+    if (!diagnosticDetectorEnabled(settings)) { return; }
     const auto& edges = comparisonDiagnosticEdges(result, settings.diagnosticSide, settings.diagnosticCategory);
     if (edges.empty()) { return; }
     size_t index = 0;
@@ -364,6 +370,19 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
         if (step < 0) { index = index == 0 ? edges.size() - 1 : index - 1; }
         else { index = index + 1 == edges.size() ? 0 : index + 1; }
     } else if (step < 0) { index = edges.size() - 1; }
+    selectComparisonDiagnostic(state, result, resultSignature, index, id);
+}
+
+void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, size_t index, SceneObjectId id)
+{
+    auto* comparison = findComparison(state, id);
+    if (!comparison || !comparison->settings.enabled || resultSignature == 0
+        || resultSignature != comparisonGeometrySignature(state, id)) { return; }
+    const auto& settings = comparison->settings;
+    if (!diagnosticDetectorEnabled(settings)) { return; }
+    const auto& edges = comparisonDiagnosticEdges(result, settings.diagnosticSide, settings.diagnosticCategory);
+    if (index >= edges.size()) { return; }
     const auto& edge = edges[index];
     if (!finitePosition(edge.a) || !finitePosition(edge.b)) { return; }
     std::vector<Vertex> points(2);
@@ -373,7 +392,8 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
     // Keep enough surrounding surface to understand the defect without allowing
     // distant, unrelated scene objects to overwhelm a small edge's framing.
     const auto resultBounds = comparisonDisplayBounds(state, id);
-    bounds.radius = std::max(bounds.radius * 3.0f, resultBounds ? resultBounds->radius * .06f : .001f);
+    const float padding = settings.diagnosticCategory == DiagnosticCategory::duplicateTriangles ? 1.2f : 3.0f;
+    bounds.radius = std::max(bounds.radius * padding, resultBounds ? resultBounds->radius * .06f : .001f);
     for (size_t k = 0; k < 3; ++k) {
         bounds.min[k] += comparison->translation[k];
         bounds.max[k] += comparison->translation[k];
@@ -450,6 +470,10 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
 {
     if (auto* comparison = findComparison(state, id)) {
         const bool wasEnabled = comparison->settings.enabled;
+        if (settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
+            || settings.duplicates.points != comparison->settings.duplicates.points || settings.duplicates.triangles != comparison->settings.duplicates.triangles) {
+            comparison->diagnosticFocus.reset();
+        }
         comparison->settings = normalizedComparisonSettings(settings);
         if (comparison->settings.enabled && !wasEnabled) { setPropertiesPaneVisible(state, true); }
         recalculateSceneBounds(state);

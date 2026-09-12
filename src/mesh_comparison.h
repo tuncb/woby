@@ -43,6 +43,9 @@ struct SurfaceComparison
     double percentile95 = 0;
     MeshDiagnostics diagnostics;
     SurfaceMeshQuality quality;
+    MeshDuplicates duplicates;
+    // Bounds diagonals used by shared finding navigation; not rendered as edges.
+    std::vector<DiagnosticEdge> duplicatePointBounds, duplicateTriangleBounds;
 };
 
 struct MeshComparison
@@ -52,7 +55,34 @@ struct MeshComparison
     std::array<QualityDistribution, surfaceQualityMetricCount> qualityDistributions{};
 };
 
+// Independent, retained CPU results for one immutable geometry revision.
+enum ComparisonStage : uint32_t {
+    comparisonSource = 1u << 0,
+    comparisonTopology = 1u << 1,
+    comparisonDuplicatePoints = 1u << 2,
+    comparisonDuplicateTriangles = 1u << 3,
+    comparisonQuality = 1u << 4,
+    comparisonDistance = 1u << 5
+};
+struct ComparisonCacheStatus {
+    uint64_t signature = 0;
+    uint32_t completed = 0;
+};
+[[nodiscard]] uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs,
+    bool fullResults = false);
+// Returns true when a geometry change invalidates the retained stages.
+bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature);
+[[nodiscard]] MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired,
+    uint32_t stages, std::stop_token stop = {});
+// Rejects stale worker results; moves only the stages produced by that worker.
+bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache, MeshComparison update,
+    uint64_t signature, uint32_t stages);
+void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettings& settings);
+
 [[nodiscard]] const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
+    const MeshComparison& result, ComparisonSide side, DiagnosticCategory category);
+
+[[nodiscard]] const DuplicateResult& comparisonDuplicates(
     const MeshComparison& result, ComparisonSide side, DiagnosticCategory category);
 
 [[nodiscard]] double pointTriangleDistance(const std::array<float, 3> &point, const std::array<float, 3> &a,

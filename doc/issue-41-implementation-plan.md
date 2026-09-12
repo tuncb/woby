@@ -1,6 +1,20 @@
 # Issue #41 implementation plan
 
-Status: proposed; implementation has not started.
+Status: duplicate-point and source-ID duplicate-triangle implementation added on
+2026-09-12. Remaining detectors and the complete shared-topology milestone are open.
+
+The first slice preserves OBJ position records, STL corners, and importer vertex
+buffers; adds per-analysis exact source checks, grouped navigation/highlighting,
+Run/Show controls, scene version 8, and bounded CLI findings. Triangle IDs identify
+generated triangles; original polygon provenance remains follow-up work. Detection
+is per source file over selected parts, including unused points for whole-file
+inspection. STL corner repetitions are informational and its source-ID triangle
+check is unavailable. Legacy geometric counts retain their meanings.
+
+Run changes currently invalidate the shared analysis job; Show changes do not.
+Separating distance/topology/detector job caches remains part of later scheduling
+work. JSON findings are bounded to 100 groups and 100 members per group; full
+navigation is available in the UI. Performance budgets remain to be established.
 
 Issue: [More explicit detectors](https://github.com/tuncb/woby/issues/41).
 Baseline inspected: `9463124`, 2026-09-08. Recheck the baseline before implementation.

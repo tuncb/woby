@@ -307,6 +307,7 @@ Mesh copyImportedMesh(const WobyImportResult& result)
     } else if (nextIndex != result.index_count) {
         throw std::runtime_error("Importer groups do not cover all triangles.");
     }
+    captureSourceMesh(mesh, SourceProvenance::importerVertices);
     // Remove unused vertices before the existing optimizer (which allocates its
     // remap table using index count). Keep triangle and group order unchanged.
     std::vector<uint32_t> remap(mesh.vertices.size(), std::numeric_limits<uint32_t>::max());

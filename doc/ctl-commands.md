@@ -90,6 +90,24 @@ computations fail capture; hide or repair the affected object before retrying.
 | `analysis swap ANALYSIS_ID` | `analysis.swap` | Swap the A/B input lists. |
 | `analysis results ANALYSIS_ID` | `analysis.results` | Wait for fresh diagnostics and, with two inputs, both directed distance summaries. Works for hidden analyses and in every display mode. |
 
+Exact source-duplicate controls are available through `analysis set`:
+`--duplicate-points BOOL`, `--duplicate-triangles BOOL`,
+`--show-duplicate-points BOOL`, and `--show-duplicate-triangles BOOL`.
+The RPC names are `duplicatePoints`, `duplicateTriangles`, `showDuplicatePoints`,
+and `showDuplicateTriangles`. The first two enable computation; Show changes only
+presentation. These checks have no tolerance parameter.
+
+Each populated side of `analysis results --json` includes `detectors` schema version
+1, with `duplicate_points` and `duplicate_tris`. `count` counts extra source records
+and is null for disabled, unavailable, or partial results; `knownDuplicateCount`
+reports findings from supported sources, and `informationalCount` separately counts
+STL corner repetitions. `status` is `complete`, `disabled`, `unavailable`, or `partial`.
+Failed computations fail the request. Source and generated triangle IDs are 1-based.
+The response includes up to 100 groups per detector and 100 members per group, with
+explicit `findingsTruncated` and `membersTruncated` flags; totals remain exact for
+completed checks. The UI offers the complete paged group list and scrollable members.
+Legacy `diagnostics.duplicateTriangles` remains the geometric-duplicate count.
+
 Surface quality controls are also available through `analysis set`:
 `--quality-metric longest_edge|equivalent_size|shape|size_jump`, `--quality-on-a BOOL`,
 `--quality-minimum-enabled BOOL`, `--quality-maximum-enabled BOOL`,
@@ -132,11 +150,15 @@ woby.exe ctl --instance review analysis enable ANALYSIS_ID --side a --object OBJ
 woby.exe ctl --instance review analysis enable ANALYSIS_ID --side b --enabled false
 ```
 
-Measurements use an immutable snapshot of the transformed A/B geometry and tolerance
-when the command starts. Ordinary source visibility and the analysis's display
-offset do not affect distances. A background CPU calculation keeps the viewer responsive;
-the command retains its FIFO slot until it finishes. Later CLI edits execute afterward.
-Manual UI edits during computation do not change the snapshot. Empty analyses
+Measurements reuse the viewer's caches for the current transformed A/B geometry and
+capture tolerance when the command starts. Missing topology, enabled duplicate,
+quality, and distance stages run in the shared background queue (at most two analyses
+at once). Repeated queries reuse completed stages. Ordinary source visibility,
+Show toggles, and the analysis's display offset do not invalidate these results.
+The command retains its FIFO slot until it finishes; later CLI edits execute afterward.
+If a manual UI edit changes inputs, transforms, Run toggles, or the scene while the
+request is pending, it returns an error asking for a retry rather than mixing revisions.
+Empty analyses
 or missing references fail with `-32602`; loading/capture/dialog activity rejects
 measurement with `-32014`.
 Computation failures return a command error, never partial metrics.

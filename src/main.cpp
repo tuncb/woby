@@ -320,9 +320,9 @@ struct AutomationComparisonRuntime {
     woby::AutomationCommandId id = 0;
     std::string target;
     double tolerance = 0;
-    std::future<woby::MeshComparison> result;
-    // Destroyed first: requests cancellation and joins before releasing the future.
-    std::jthread worker;
+    woby::SceneObjectId objectId = woby::invalidSceneObjectId;
+    uint64_t signature = 0, sceneGeneration = 0;
+    uint32_t stages = 0;
 };
 
 struct ResolvedModelInputGroup {
@@ -3092,16 +3092,33 @@ int main(int argc, char** argv)
             };
             // UI and loading commits have finished. No logical edits occur between
             // executing commands here and submitting their screenshots below.
-            if (automationComparison && automationComparison->result.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-                try {
-                    auto result = woby::controlComparisonResults(automationComparison->result.get(), automationComparison->tolerance);
-                    result["target"] = automationComparison->target;
-                    woby::completeAutomationCommand(*automation, automationComparison->id,
-                        woby::AutomationControlResult{std::move(result)});
-                } catch (const std::exception& error) {
-                    woby::completeAutomationCommand(*automation, automationComparison->id, woby::AutomationCommandError{error.what()});
+            if (automationComparison) {
+                const auto& pending = *automationComparison;
+                const auto it = comparison.objects.find(pending.objectId);
+                const bool both = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, pending.objectId) != 0
+                    && woby::enabledComparisonPartCount(ui, woby::ComparisonSide::b, pending.objectId) != 0;
+                const bool changed = pending.sceneGeneration != ui.sceneGeneration
+                    || !woby::findComparison(ui, pending.objectId)
+                    || pending.signature != woby::comparisonGeometrySignature(ui, pending.objectId)
+                    || pending.stages != woby::requestedComparisonStages(woby::comparisonSettings(ui, pending.objectId), both, true);
+                const bool ready = !changed && it != comparison.objects.end()
+                    && woby::comparisonResultsReady(it->second, ui, pending.objectId, true);
+                const bool failed = it != comparison.objects.end() && !it->second.error.empty()
+                    && it->second.attemptedSignature == pending.signature;
+                if (changed || ready || failed) {
+                    try {
+                        if (changed) { throw std::runtime_error("Analysis inputs or detectors changed while results were being requested; retry analysis.results."); }
+                        if (!ready) { throw std::runtime_error(it->second.error); }
+                        woby::setComparisonDuplicateEnabled(it->second.result, woby::comparisonSettings(ui, pending.objectId).duplicates);
+                        auto result = woby::controlComparisonResults(it->second.result, pending.tolerance);
+                        result["target"] = pending.target;
+                        woby::completeAutomationCommand(*automation, pending.id, woby::AutomationControlResult{std::move(result)});
+                    } catch (const std::exception& error) {
+                        woby::completeAutomationCommand(*automation, pending.id, woby::AutomationCommandError{error.what()});
+                    }
+                    if (it != comparison.objects.end()) { it->second.fullResultsRequested = false; }
+                    automationComparison.reset();
                 }
-                automationComparison.reset();
             }
             for (size_t executed = 0; executed < woby::maxAutomationCommands; ++executed) {
                 const auto command = woby::takeAutomationCommand(*automation);
@@ -3154,18 +3171,18 @@ int main(int argc, char** argv)
                                 if (!woby::canInspectComparison(ui, payload.objectId)) {
                                     throw std::invalid_argument("Analysis needs at least one populated input and no missing references.");
                                 }
-                                auto a = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, payload.objectId) == 0 ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::a, payload.objectId);
-                                auto b = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::b, payload.objectId) == 0 ? woby::Mesh{} : woby::comparisonWorldMesh(ui, woby::ComparisonSide::b, payload.objectId);
+                                if (automationComparison) { throw std::runtime_error("Another analysis.results request is still computing."); }
                                 AutomationComparisonRuntime pending;
                                 pending.id = command->id;
                                 pending.target = payload.target;
+                                pending.objectId = payload.objectId;
                                 pending.tolerance = source->settings.tolerance;
-                                std::promise<woby::MeshComparison> promise;
-                                pending.result = promise.get_future();
-                                pending.worker = std::jthread([a = std::move(a), b = std::move(b), promise = std::move(promise)](std::stop_token stop) mutable {
-                                    try { promise.set_value(woby::compareMeshes(a, b, stop)); }
-                                    catch (...) { promise.set_exception(std::current_exception()); }
-                                });
+                                pending.signature = woby::comparisonGeometrySignature(ui, payload.objectId);
+                                pending.sceneGeneration = ui.sceneGeneration;
+                                const bool both = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, payload.objectId) != 0
+                                    && woby::enabledComparisonPartCount(ui, woby::ComparisonSide::b, payload.objectId) != 0;
+                                pending.stages = woby::requestedComparisonStages(source->settings, both, true);
+                                comparison.objects[payload.objectId].fullResultsRequested = true;
                                 automationComparison.emplace(std::move(pending));
                                 return;
                             } else if (payload.action == A::status) {
