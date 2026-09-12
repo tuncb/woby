@@ -1,0 +1,33 @@
+version = 8
+show_origin = false
+show_grid = false
+up_axis = "z"
+
+[[files]]
+path = "duplicates.obj"
+visible = false
+
+[[files.groups]]
+name = "surface"
+show_vertices = false
+
+[[analyses]]
+name = "Inspect duplicates"
+translation = [0, 0, 0]
+analysis_enabled = true
+analysis_mode = "a"
+analysis_show_edges = true
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+diagnostic_side = "a"
+diagnostic_category = "duplicate_points"
+duplicate_points_enabled = true
+duplicate_triangles_enabled = true
+show_duplicate_points = true
+show_duplicate_triangles = true
+
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "surface"
+enabled = true

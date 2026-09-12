@@ -41,6 +41,20 @@ std::vector<std::string> comparisonReportLines(
         if (!a.empty()) { lines.push_back("A: " + a); }
         if (!b.empty()) { lines.push_back("B: " + b); }
     }
+    if (options.legend) {
+        size_t side = 0;
+        for (const auto* surface : {&result.original, &result.repaired}) {
+            const std::string label = side++ == 0 ? "A" : "B";
+            if (surface->source.indices.empty()) { continue; }
+            const auto append = [&](const char* name, const DuplicateResult& duplicates) {
+                if (!duplicates.enabled) { return; }
+                lines.push_back(label + " " + name + ": " + std::to_string(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")"
+                    + (duplicates.informationalCount ? "; " + std::to_string(duplicates.informationalCount) + " informational STL corners" : ""));
+            };
+            append("duplicate points", surface->duplicates.points);
+            append("source-ID duplicate triangles", surface->duplicates.triangles);
+        }
+    }
     if (settings.mode == ComparisonMode::surfaceQuality) {
         const auto metric = settings.quality.metric;
         const auto index = static_cast<size_t>(metric);

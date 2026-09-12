@@ -43,6 +43,9 @@ struct SurfaceComparison
     double percentile95 = 0;
     MeshDiagnostics diagnostics;
     SurfaceMeshQuality quality;
+    MeshDuplicates duplicates;
+    // Bounds diagonals used by shared finding navigation; not rendered as edges.
+    std::vector<DiagnosticEdge> duplicatePointBounds, duplicateTriangleBounds;
 };
 
 struct MeshComparison
@@ -53,6 +56,9 @@ struct MeshComparison
 };
 
 [[nodiscard]] const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
+    const MeshComparison& result, ComparisonSide side, DiagnosticCategory category);
+
+[[nodiscard]] const DuplicateResult& comparisonDuplicates(
     const MeshComparison& result, ComparisonSide side, DiagnosticCategory category);
 
 [[nodiscard]] double pointTriangleDistance(const std::array<float, 3> &point, const std::array<float, 3> &a,

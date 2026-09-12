@@ -58,6 +58,13 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     const auto& shapes = reader.GetShapes();
 
     Mesh mesh;
+    auto source = std::make_shared<SourceMeshData>();
+    source->provenance = SourceProvenance::objPositions;
+    for (size_t i = 0; i < attrib.vertices.size(); i += 3) {
+        const std::array<float, 3> point = {attrib.vertices[i], attrib.vertices[i+1], attrib.vertices[i+2]};
+        if (!finitePosition(point)) { throw std::runtime_error("OBJ contains a non-finite source coordinate."); }
+        source->points.push_back({point[0], point[1], point[2]});
+    }
     std::unordered_map<IndexKey, uint32_t, IndexKeyHash> vertexMap;
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
@@ -65,6 +72,10 @@ Mesh loadObjMesh(const std::filesystem::path& path)
         const uint32_t nodeIndexOffset = static_cast<uint32_t>(mesh.indices.size());
 
         for (const auto& index : shape.mesh.indices) {
+            if (index.vertex_index < 0 || static_cast<size_t>(index.vertex_index) >= source->points.size()) {
+                throw std::runtime_error("OBJ contains an invalid source position index.");
+            }
+            source->indices.push_back(static_cast<uint32_t>(index.vertex_index));
             const IndexKey key{index.vertex_index, index.normal_index, index.texcoord_index};
             const auto found = vertexMap.find(key);
             if (found != vertexMap.end()) {
@@ -121,6 +132,7 @@ Mesh loadObjMesh(const std::filesystem::path& path)
         throw std::runtime_error("OBJ did not contain renderable triangles: " + path.string());
     }
 
+    mesh.sourceData = std::move(source);
     finalizeMesh(mesh, true);
     return mesh;
 }

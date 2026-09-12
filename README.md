@@ -184,12 +184,38 @@ concurrently; screenshots wait for all visible results and report incomplete
 inputs or computation errors instead of exporting a partial analysis scene.
 
 Choose a diagnostic **Target** (A or B), then use the left/right arrows on the
-right of each **Boundary**, **Non-manifold**, or **Winding** table row to visit its edges.
+right of each **Boundary edges**, **Non-manifold edges**, **Winding edges**,
+**Duplicate points**, or **Duplicate triangles** row in the unified Diagnostics table.
+Arrows visit edges or duplicate groups on the chosen target.
 Navigation wraps and shows the current index and total. The target surface is
 shown while inspecting an edge, with a yellow highlight and endpoint crosses.
 **Full result** clears focus, restores the chosen display mode, and frames the
 whole analysis. Empty or computing results disable navigation. Target and
 category are saved in `.woby`; edge focus resets when results or inputs change.
+
+The same Diagnostics table includes two exact source checks on the chosen A/B target. **Duplicate
+points** groups equal imported coordinates within each source file. **Duplicate
+triangles** groups the same three source point IDs regardless of winding, including
+collapsed triangles. Three identical records count as two duplicates. Select a row
+or use the arrows to frame a group; the scrollable details retain every source ID.
+The table keeps per-side counts and per-row Show controls; duplicate rows also have
+Run controls. Edge checks always run, and non-manifold/winding visibility remains
+shared. Cyan crosses mark duplicate points, orange fill/outlines mark duplicate triangles,
+and yellow marks the focused group. Run controls computation; Show controls only
+the overlay. Settings support undo/redo and scene save/load; focus is temporary.
+
+Whole-file inspection includes unused source points; selected parts inspect their
+referenced points. Source checks use imported coordinates and IDs before rendering
+optimization. Highlights follow all selected part transforms and the result position.
+OBJ IDs use position records (before UV/normal splits); triangle IDs refer to
+triangulated output, not original polygons. Importer IDs refer to its returned vertex
+table, which may differ from original file IDs. Import precision is unchanged.
+STL repeated corners are informational; its source-ID triangle check is unavailable.
+Unavailable/partial/disabled results are explicitly labeled. The existing
+**Geometric duplicate triangles** count keeps its coordinate-based definition.
+
+Open the [duplicate inspection sample](assets/samples/duplicates/README.md) for a
+small mesh demonstrating the difference between source-ID and geometric duplicates.
 
 `.woby` scenes save analysis objects and source references in `[[analyses]]`
 records with `analysis_*` settings. The repository samples use these names.

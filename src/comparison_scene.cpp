@@ -1,10 +1,12 @@
 #include "comparison_scene.h"
 #include "mesh_comparison.h"
 #include "hash_utils.h"
+#include "utf8_path.h"
 #include "ui_operations.h"
 
 #include <bx/math.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <set>
 #include <utility>
@@ -206,9 +208,32 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
     });
     result.vertices.reserve(triangleCount * 3);
     result.indices.reserve(triangleCount * 3);
+    auto duplicateInput = std::make_shared<DuplicateInput>();
+    duplicateInput->settings = comparison->settings.duplicates;
     visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
         appendGroup(result, file, index, parent);
+        auto found = std::find_if(duplicateInput->sources.begin(), duplicateInput->sources.end(),
+            [&](const auto& source) { return source.fileId == file.objectId; });
+        if (found == duplicateInput->sources.end()) {
+            DuplicateSource source;
+            source.fileId = file.objectId;
+            source.name = pathToUtf8(file.path.filename());
+            source.data = file.mesh.sourceData;
+            std::copy_n(parent, 16, source.unusedPointTransform.begin());
+            duplicateInput->sources.push_back(std::move(source));
+            found = std::prev(duplicateInput->sources.end());
+        }
+        SourcePartInstance part;
+        part.partId = file.groupSettings[index].objectId;
+        part.firstIndex = file.mesh.nodes[index].indexOffset;
+        part.indexCount = file.mesh.nodes[index].indexCount;
+        float local[16];
+        groupTransformMatrix(file.groupSettings[index], local);
+        bx::mtxMul(part.transform.data(), parent, local);
+        found->parts.push_back(part);
+        found->wholeFile = found->parts.size() == file.mesh.nodes.size();
     });
+    result.duplicateInput = std::move(duplicateInput);
     if (result.indices.empty()) {
         throw std::runtime_error("Each analysis group needs at least one mesh part with triangles.");
     }
@@ -221,6 +246,9 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
 {
     if (!canInspectComparison(state, id)) { return 0; }
     uint64_t seed = 17;
+    const auto settings = comparisonSettings(state, id);
+    hashCombine(seed, settings.duplicates.points);
+    hashCombine(seed, settings.duplicates.triangles);
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
         size_t count = 0;
@@ -230,6 +258,7 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
             hashCombine(seed, file.groupSettings[index].objectId);
             hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.vertices.data()));
             hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.indices.data()));
+            hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.sourceData.get()));
             hashCombine(seed, file.mesh.vertices.size());
             hashCombine(seed, file.mesh.indices.size());
             hashCombine(seed, file.mesh.nodes[index].indexOffset);

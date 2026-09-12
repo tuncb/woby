@@ -1,6 +1,7 @@
 #pragma once
 
 #include "surface_mesh_quality.h"
+#include "mesh_duplicates.h"
 
 #include <cstddef>
 #include <string>
@@ -9,7 +10,7 @@ namespace woby
 {
 
 enum class ComparisonSide { a, b };
-enum class DiagnosticCategory { boundary, nonManifold, winding };
+enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles };
 
 struct ComparisonMembership
 {
@@ -45,6 +46,7 @@ struct ComparisonSettings
     ComparisonSide diagnosticSide = ComparisonSide::a;
     DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;
     SurfaceQualitySettings quality;
+    DuplicateSettings duplicates;
     friend bool operator==(const ComparisonSettings &, const ComparisonSettings &) = default;
 };
 

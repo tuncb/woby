@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mesh_duplicates.h"
+
 #include <array>
 #include <cstdint>
 #include <string>
@@ -31,6 +33,8 @@ struct Mesh {
     std::vector<uint32_t> indices;
     std::vector<MeshNode> nodes;
     Bounds bounds;
+    std::shared_ptr<const SourceMeshData> sourceData;
+    std::shared_ptr<const DuplicateInput> duplicateInput;
 };
 
 [[nodiscard]] bool empty(const Mesh& mesh) noexcept;
@@ -43,6 +47,7 @@ struct Mesh {
 void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 [[nodiscard]] Bounds calculateBounds(const std::vector<Vertex>& vertices);
 void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices);
+void captureSourceMesh(Mesh& mesh, SourceProvenance provenance);
 void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals);
 
 } // namespace woby

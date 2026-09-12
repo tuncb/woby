@@ -1,0 +1,15 @@
+# Point 5 duplicates point 1. Point 6 duplicates point 3 and is unused.
+# Triangles 2 and 3 duplicate triangle 1 by source IDs (triangle 3 reversed).
+# Triangle 4 overlaps triangle 1 geometrically but uses a different point ID.
+o surface
+v 0 0 0
+v 4 0 0
+v 4 3 0
+v 0 3 0
+v 0 0 0
+v 4 3 0
+f 1 2 3
+f 2 3 1
+f 3 2 1
+f 5 2 3
+f 1 3 4

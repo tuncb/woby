@@ -167,6 +167,7 @@ Mesh loadBinaryStlMesh(const std::filesystem::path& path, const std::vector<unsi
     node.indexOffset = 0u;
     node.indexCount = static_cast<uint32_t>(mesh.indices.size());
     mesh.nodes.push_back(std::move(node));
+    captureSourceMesh(mesh, SourceProvenance::stlCorners);
     finalizeMesh(mesh, false);
     return mesh;
 }
@@ -250,6 +251,7 @@ Mesh loadAsciiStlMesh(const std::filesystem::path& path, const std::vector<unsig
     node.indexOffset = 0u;
     node.indexCount = static_cast<uint32_t>(mesh.indices.size());
     mesh.nodes.push_back(std::move(node));
+    captureSourceMesh(mesh, SourceProvenance::stlCorners);
     finalizeMesh(mesh, false);
     return mesh;
 }

@@ -241,10 +241,32 @@ void nearest(const DistanceTree &tree, size_t index, const Point &p, double &bes
     }
 }
 
+std::vector<DiagnosticEdge> duplicateBounds(const DuplicateResult& result, std::stop_token stop)
+{
+    std::vector<DiagnosticEdge> bounds;
+    for (const auto& finding : result.findings) {
+        checkCanceled(stop);
+        DiagnosticEdge edge{finding.geometry.front(), finding.geometry.front()};
+        for (const auto& point : finding.geometry) {
+            checkCanceled(stop);
+            for (size_t k = 0; k < 3; ++k) { edge.a[k] = std::min(edge.a[k], point[k]); edge.b[k] = std::max(edge.b[k], point[k]); }
+        }
+        bounds.push_back(edge);
+    }
+    return bounds;
+}
+
 SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop)
 {
     checkCanceled(stop);
     SurfaceComparison result;
+    if (mesh.duplicateInput) { result.duplicates = inspectDuplicates(*mesh.duplicateInput, stop); }
+    else {
+        result.duplicates.points.unavailableSources = 1;
+        result.duplicates.triangles.unavailableSources = 1;
+    }
+    result.duplicatePointBounds = duplicateBounds(result.duplicates.points, stop);
+    result.duplicateTriangleBounds = duplicateBounds(result.duplicates.triangles, stop);
     result.source.vertices = copyWithCancellation(mesh.vertices, stop);
     result.source.indices = copyWithCancellation(mesh.indices, stop);
     result.source.nodes = copyWithCancellation(mesh.nodes, stop);
@@ -366,7 +388,9 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     }
     if (settings.diagnosticCategory != DiagnosticCategory::boundary &&
         settings.diagnosticCategory != DiagnosticCategory::nonManifold &&
-        settings.diagnosticCategory != DiagnosticCategory::winding) {
+        settings.diagnosticCategory != DiagnosticCategory::winding &&
+        settings.diagnosticCategory != DiagnosticCategory::duplicatePoints &&
+        settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles) {
         settings.diagnosticCategory = DiagnosticCategory::boundary;
     }
     if (settings.mode != ComparisonMode::distance && settings.mode != ComparisonMode::original &&
@@ -388,9 +412,17 @@ const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
     case DiagnosticCategory::boundary: return diagnostics.boundaryEdges;
     case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
     case DiagnosticCategory::winding: return diagnostics.inconsistentWindingEdges;
+    case DiagnosticCategory::duplicatePoints: return side == ComparisonSide::a ? result.original.duplicatePointBounds : result.repaired.duplicatePointBounds;
+    case DiagnosticCategory::duplicateTriangles: return side == ComparisonSide::a ? result.original.duplicateTriangleBounds : result.repaired.duplicateTriangleBounds;
     }
     static const std::vector<DiagnosticEdge> empty;
     return empty;
+}
+
+const DuplicateResult& comparisonDuplicates(const MeshComparison& result, ComparisonSide side, DiagnosticCategory category)
+{
+    const auto& duplicates = side == ComparisonSide::a ? result.original.duplicates : result.repaired.duplicates;
+    return category == DiagnosticCategory::duplicatePoints ? duplicates.points : duplicates.triangles;
 }
 
 double pointTriangleDistance(const std::array<float, 3> &p, const std::array<float, 3> &a,

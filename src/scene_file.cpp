@@ -459,7 +459,13 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         if (category == "boundary") { record.settings.diagnosticCategory = DiagnosticCategory::boundary; }
         else if (category == "non_manifold") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifold; }
         else if (category == "winding") { record.settings.diagnosticCategory = DiagnosticCategory::winding; }
+        else if (category == "duplicate_points") { record.settings.diagnosticCategory = DiagnosticCategory::duplicatePoints; }
+        else if (category == "duplicate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::duplicateTriangles; }
         else { throw std::runtime_error("Unknown diagnostic category."); }
+    } else if (key == "duplicate_points_enabled") { record.settings.duplicates.points = parseTomlBool(value);
+    } else if (key == "duplicate_triangles_enabled") { record.settings.duplicates.triangles = parseTomlBool(value);
+    } else if (key == "show_duplicate_points") { record.settings.duplicates.showPoints = parseTomlBool(value);
+    } else if (key == "show_duplicate_triangles") { record.settings.duplicates.showTriangles = parseTomlBool(value);
     } else if (key == "analysis_tolerance") {
         record.settings.tolerance = parseTomlFloat(value);
     } else if (key == "quality_metric") {
@@ -501,13 +507,20 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
     stream << "diagnostic_side = \"" << (comparison.diagnosticSide == ComparisonSide::a ? "a" : "b") << "\"\n";
     const char* category = comparison.diagnosticCategory == DiagnosticCategory::boundary ? "boundary"
-        : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold" : "winding";
+        : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold"
+        : comparison.diagnosticCategory == DiagnosticCategory::duplicatePoints ? "duplicate_points"
+        : comparison.diagnosticCategory == DiagnosticCategory::duplicateTriangles ? "duplicate_triangles" : "winding";
     stream << "diagnostic_category = \"" << category << "\"\n";
     stream << "analysis_tolerance = "; writeTomlFloat(stream, comparison.tolerance); stream << "\n";
     stream << "analysis_color_range = "; writeTomlFloat(stream, comparison.colorRange); stream << "\n";
     stream << "analysis_show_edges = " << (comparison.showEdges ? "true" : "false") << "\n";
     stream << "analysis_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
     stream << "analysis_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
+
+    stream << "duplicate_points_enabled = " << (comparison.duplicates.points ? "true" : "false") << "\n";
+    stream << "duplicate_triangles_enabled = " << (comparison.duplicates.triangles ? "true" : "false") << "\n";
+    stream << "show_duplicate_points = " << (comparison.duplicates.showPoints ? "true" : "false") << "\n";
+    stream << "show_duplicate_triangles = " << (comparison.duplicates.showTriangles ? "true" : "false") << "\n";
 
     stream << "quality_metric = \"" << surfaceQualityMetricKey(comparison.quality.metric) << "\"\n";
     stream << "quality_on_a = " << (comparison.quality.onOriginal ? "true" : "false") << "\n";
@@ -701,7 +714,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -893,7 +906,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 7\n";
+    stream << "version = 8\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";

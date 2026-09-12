@@ -44,6 +44,8 @@ void frameComparison(UiState& state, SceneObjectId id);
 void resetComparisonDiagnosticFocus(UiState& state, SceneObjectId id);
 void validateComparisonDiagnosticFocus(UiState& state, const MeshComparison& result,
     uint64_t resultSignature, SceneObjectId id);
+void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, size_t index, SceneObjectId id);
 void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
     uint64_t resultSignature, int step, SceneObjectId id);
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id = invalidSceneObjectId);
