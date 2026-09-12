@@ -2,6 +2,7 @@
 
 #include <tiny_obj_loader.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -59,6 +60,16 @@ Mesh loadObjMesh(const std::filesystem::path& path)
 
     Mesh mesh;
     std::unordered_map<IndexKey, uint32_t, IndexKeyHash> vertexMap;
+    size_t indexCount = 0;
+    for (const auto& shape : shapes) {
+        indexCount += shape.mesh.indices.size();
+    }
+    // Position count is only an estimate: normal/UV seams can split vertices.
+    const size_t vertexCapacity = std::min(attrib.vertices.size() / 3u, indexCount);
+    mesh.indices.reserve(indexCount);
+    mesh.vertices.reserve(vertexCapacity);
+    mesh.nodes.reserve(shapes.size());
+    vertexMap.reserve(vertexCapacity);
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
         const auto& shape = shapes[shapeIndex];

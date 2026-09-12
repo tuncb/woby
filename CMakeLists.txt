@@ -386,6 +386,7 @@ if(BUILD_TESTING)
         tests/file_discovery_tests.cpp
         tests/hover_pick_tests.cpp
         tests/scene_pick_tests.cpp
+        tests/scene_renderer_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
         tests/scene_file_edge_tests.cpp

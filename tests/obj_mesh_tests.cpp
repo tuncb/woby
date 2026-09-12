@@ -4,11 +4,32 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 
 namespace {
+
+struct ObjTestDirectory {
+    std::filesystem::path path;
+
+    ObjTestDirectory()
+    {
+        const auto prefix = "woby_obj_loader_"
+            + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        for (size_t attempt = 0;; ++attempt) {
+            path = std::filesystem::temp_directory_path() / (prefix + "_" + std::to_string(attempt));
+            if (std::filesystem::create_directory(path)) { break; }
+        }
+    }
+
+    ~ObjTestDirectory()
+    {
+        std::error_code ignored;
+        std::filesystem::remove_all(path, ignored);
+    }
+};
 
 void writeText(const std::filesystem::path& path, const char* text)
 {
@@ -33,10 +54,8 @@ void loadObjAndDiscard(const std::filesystem::path& path)
 
 TEST_CASE("OBJ loader creates one mesh node per shape")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_obj_loader_shapes";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const ObjTestDirectory fixture;
+    const auto& root = fixture.path;
     const std::filesystem::path path = root / "parts.obj";
     writeText(
         path,
@@ -67,15 +86,12 @@ TEST_CASE("OBJ loader creates one mesh node per shape")
         CHECK(woby::validNormal(vertex.normal));
     }
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("OBJ loader preserves texcoords with flipped V")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_obj_loader_texcoords";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const ObjTestDirectory fixture;
+    const auto& root = fixture.path;
     const std::filesystem::path path = root / "textured.OBJ";
     writeText(
         path,
@@ -99,15 +115,12 @@ TEST_CASE("OBJ loader preserves texcoords with flipped V")
         CHECK(vertex.normal[2] == doctest::Approx(1.0f));
     }
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("OBJ loader rejects files without renderable triangles")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_obj_loader_empty";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const ObjTestDirectory fixture;
+    const auto& root = fixture.path;
     const std::filesystem::path path = root / "empty.obj";
     writeText(
         path,
@@ -118,5 +131,38 @@ TEST_CASE("OBJ loader rejects files without renderable triangles")
 
     CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
 
-    std::filesystem::remove_all(root);
+}
+
+TEST_CASE("OBJ capacity estimates preserve seam vertices and reuse references across shapes")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "seams.obj";
+    writeText(path,
+        "v 0 0 0\nv 1 0 0\nv 0 1 0\n"
+        "vt 0 0\nvt 1 0\nvt 0 1\n"
+        "vt 0.25 0.25\nvt 0.75 0.25\nvt 0.25 0.75\n"
+        "vn 0 0 1\nvn 0 0 -1\n"
+        "o front\nf 1/1/1 2/2/1 3/3/1\n"
+        "o back\nf 1/4/2 3/6/2 2/5/2\n"
+        "o repeated\nf 1/1/1 2/2/1 3/3/1\n");
+
+    const auto mesh = woby::loadObjMesh(path);
+    REQUIRE(mesh.vertices.size() == 6u);
+    REQUIRE(mesh.indices.size() == 9u);
+    REQUIRE(mesh.nodes.size() == 3u);
+    CHECK(mesh.nodes[0].name == "front");
+    CHECK(mesh.nodes[1].name == "back");
+    CHECK(mesh.nodes[2].name == "repeated");
+    for (size_t i = 0; i < 3u; ++i) {
+        CHECK(mesh.nodes[i].indexOffset == i * 3u);
+        CHECK(mesh.nodes[i].indexCount == 3u);
+        CHECK(mesh.indices[i] == mesh.indices[i + 6u]);
+        CHECK(mesh.vertices[mesh.indices[i]].normal[2] == 1.0f);
+        CHECK(mesh.vertices[mesh.indices[i + 3u]].normal[2] == -1.0f);
+    }
+    const auto& front = mesh.vertices[mesh.indices[0]];
+    const auto& back = mesh.vertices[mesh.indices[3]];
+    CHECK(front.position == back.position);
+    CHECK(front.texcoord == std::array<float, 2>{0.0f, 1.0f});
+    CHECK(back.texcoord == std::array<float, 2>{0.25f, 0.75f});
 }

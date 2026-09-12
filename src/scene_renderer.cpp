@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <unordered_set>
 #include <stdexcept>
 
 namespace woby {
@@ -65,16 +64,17 @@ uint32_t appendPointIndicesForRange(
     const std::vector<uint32_t>& triangleIndices,
     uint32_t triangleIndexOffset,
     uint32_t triangleIndexCount,
+    std::vector<size_t>& vertexGroups,
+    size_t groupIndex,
     std::vector<uint32_t>& pointIndices)
 {
     const uint32_t pointOffset = static_cast<uint32_t>(pointIndices.size());
-    std::unordered_set<uint32_t> seen;
-    seen.reserve(triangleIndexCount);
 
     const uint32_t endIndex = triangleIndexOffset + triangleIndexCount;
     for (uint32_t index = triangleIndexOffset; index < endIndex; ++index) {
         const uint32_t vertexIndex = triangleIndices[index];
-        if (seen.insert(vertexIndex).second) {
+        if (vertexGroups[vertexIndex] != groupIndex) {
+            vertexGroups[vertexIndex] = groupIndex;
             pointIndices.push_back(vertexIndex);
         }
     }
@@ -320,9 +320,14 @@ GpuMesh createGpuMesh(
             BGFX_BUFFER_INDEX32);
 
         std::vector<uint32_t> pointIndices;
+        pointIndices.reserve(mesh.vertices.size());
         const auto& nodes = mesh.nodes;
+        // The sentinel is outside the node-index range, so stamps cannot wrap.
+        // Reusing this array keeps shared vertices in each group's point list.
+        std::vector<size_t> vertexGroups(mesh.vertices.size(), nodes.size());
         gpuMesh.nodeRanges.reserve(nodes.size());
-        for (const auto& node : nodes) {
+        for (size_t nodeIndex = 0; nodeIndex < nodes.size(); ++nodeIndex) {
+            const auto& node = nodes[nodeIndex];
             GpuNodeRange range;
             range.triangleIndexOffset = node.indexOffset;
             range.triangleIndexCount = node.indexCount;
@@ -333,6 +338,8 @@ GpuMesh createGpuMesh(
                 mesh.indices,
                 node.indexOffset,
                 node.indexCount,
+                vertexGroups,
+                nodeIndex,
                 pointIndices);
             range.pointSpriteIndexOffset = range.pointIndexOffset * 6u;
             range.pointSpriteIndexCount = range.pointIndexCount * 6u;
