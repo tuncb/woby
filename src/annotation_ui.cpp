@@ -330,7 +330,7 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
         cancelAnnotationPointer(interaction);
     } catch (const std::exception& error) { interaction.error = error.what(); }
 }
-void drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
+float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
     const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed)
 {
     auto* draw = ImGui::GetForegroundDrawList();
@@ -373,9 +373,18 @@ void drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interact
             draw->AddCircle(screenPoint(p), 5, IM_COL32(35,35,35,255), 0, 1.5f);
         }
     }
+    float messageBottom = 0;
     if (interaction.tool || interaction.dragging || !interaction.error.empty()) {
         const char* text = !interaction.error.empty() ? interaction.error.c_str() : "Drag on the surface. Escape cancels.";
-        draw->AddText({low.x + 16, high.y - 42}, IM_COL32(255,230,170,255), text);
+        const float margin = uiSize(12), paddingX = uiSize(12), paddingY = uiSize(8);
+        const float wrapWidth = std::max(1.0f, high.x - low.x - 2 * (margin + paddingX));
+        const auto size = ImGui::CalcTextSize(text, nullptr, false, wrapWidth);
+        const ImVec2 messageLow{low.x + (high.x - low.x - size.x) * .5f - paddingX, margin};
+        const ImVec2 messageHigh{messageLow.x + size.x + paddingX * 2, messageLow.y + size.y + paddingY * 2};
+        draw->AddRectFilled(messageLow, messageHigh, IM_COL32(24,28,34,235), uiSize(4));
+        draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
+            {messageLow.x + paddingX, messageLow.y + paddingY}, IM_COL32(255,230,170,255), text, nullptr, wrapWidth);
+        messageBottom = messageHigh.y;
     }
     const auto mouse = ImGui::GetIO().MousePos;
     if (pointerAllowed && !ImGui::GetIO().WantCaptureMouse
@@ -405,6 +414,7 @@ void drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interact
         }
     }
     draw->PopClipRect();
+    return messageBottom;
 }
 void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const ScenePickView& view,
     const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,

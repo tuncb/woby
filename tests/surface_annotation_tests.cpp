@@ -1,5 +1,6 @@
 #include "surface_annotation.h"
 #include "annotation_ui.h"
+#include "scene_scale_overlay.h"
 #include "ui_operations.h"
 #include "scene_history.h"
 #include "automation_registry.h"
@@ -67,6 +68,8 @@ struct AnnotationUiFixture {
     ImVec2 lineButton{}, rectangleButton{}, dimensions{};
     bool pointerAllowed = true, captureMouse = false, disabled = false;
     bool showObjects = false, showInspector = false;
+    bool showScaleOverlay = false;
+    float messageBottom = 0;
     ImVec2 removeButton{}, visibilityButton{};
     std::string inspectorContents, objectContents;
     AnnotationUiFixture()
@@ -112,7 +115,11 @@ struct AnnotationUiFixture {
             ImGui::End();
         }
         ImGui::GetIO().WantCaptureMouse = captureMouse;
-        drawAnnotationOverlay(scene.state, interaction, pickView, 300, 1 / pickView.pixelScale, pointerAllowed);
+        messageBottom = drawAnnotationOverlay(scene.state, interaction, pickView, 300, 1 / pickView.pixelScale, pointerAllowed);
+        if (showScaleOverlay) {
+            drawSceneScaleOverlay(*ImGui::GetBackgroundDrawList(), scene.state, std::nullopt,
+                pickView, {300, 0}, 1 / pickView.pixelScale, ImGui::GetFontSize());
+        }
         ImGui::EndFrame();
     }
     void click(ImVec2 p, ImGuiMouseButton button = ImGuiMouseButton_Left)
@@ -300,6 +307,52 @@ TEST_CASE("annotation context menu omits Properties and Frame annotation")
     CHECK(fixture.objectContents.find("Properties") == std::string::npos);
     CHECK(fixture.objectContents.find("Frame annotation") == std::string::npos);
 }
+TEST_CASE("annotation messages wrap at the top without overlapping the grid readout")
+{
+    bool errorMessage = true;
+    SUBCASE("placement error") {}
+    SUBCASE("drawing hint") { errorMessage = false; }
+    for (float scale : {1.0f, 2.0f}) {
+        for (float density : {1.0f, 2.0f}) {
+            for (uint32_t width : {260u, 900u}) {
+                AnnotationUiFixture fixture;
+                ImGui::GetStyle().FontScaleMain = scale;
+                ImGui::GetIO().DisplaySize = {1400, 600};
+                fixture.pickView.pixelScale = density;
+                fixture.pickView.width = static_cast<uint32_t>(static_cast<float>(width) * density);
+                fixture.pickView.height = static_cast<uint32_t>(600 * density);
+                fixture.showScaleOverlay = true;
+                fixture.scene.state.showGrid = true;
+                if (errorMessage) {
+                    fixture.interaction.error = "Start on a visible surface of the selected model.";
+                }
+                else { fixture.interaction.tool = AnnotationShape::line; }
+                fixture.frame(); fixture.frame();
+                REQUIRE(fixture.messageBottom > 0);
+                CHECK(fixture.messageBottom < 300);
+                ImVec2 minimum{10000, 10000}, maximum{-10000, -10000};
+                for (const auto& vertex : ImGui::GetForegroundDrawList()->VtxBuffer) {
+                    if (vertex.col != IM_COL32(255,230,170,255)) { continue; }
+                    minimum.x = std::min(minimum.x, vertex.pos.x); minimum.y = std::min(minimum.y, vertex.pos.y);
+                    maximum.x = std::max(maximum.x, vertex.pos.x); maximum.y = std::max(maximum.y, vertex.pos.y);
+                }
+                CHECK(minimum.x < maximum.x);
+                CHECK(minimum.x >= 300);
+                CHECK(maximum.x <= 300 + static_cast<float>(width));
+                CHECK(minimum.y >= 0);
+                CHECK(maximum.y <= fixture.messageBottom);
+                const auto* grid = ImGui::GetBackgroundDrawList();
+                REQUIRE_FALSE(grid->VtxBuffer.empty());
+                for (const auto& vertex : grid->VtxBuffer) { CHECK(vertex.pos.y > fixture.messageBottom); }
+                cancelAnnotationPointer(fixture.interaction);
+                fixture.frame();
+                CHECK(fixture.messageBottom == 0);
+                CHECK(ImGui::GetForegroundDrawList()->VtxBuffer.empty());
+            }
+        }
+    }
+}
+
 TEST_CASE("annotation drawing crosshair stays in available canvas and clears on cancellation")
 {
     AnnotationUiFixture fixture;

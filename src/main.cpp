@@ -1897,7 +1897,8 @@ void processDroppedPaths(
         elapsedMilliseconds(start));
 }
 
-void drawToastMessage(const ToastMessage& toast, const woby::SceneViewport& viewport, uint32_t drawableWidth)
+void drawToastMessage(const ToastMessage& toast, const woby::SceneViewport& viewport, uint32_t drawableWidth,
+    float messageOffset)
 {
     const float elapsed = std::chrono::duration<float>(std::chrono::steady_clock::now() - toast.startedAt).count();
     if (toast.text.empty() || elapsed >= toastDurationSeconds) {
@@ -1910,7 +1911,7 @@ void drawToastMessage(const ToastMessage& toast, const woby::SceneViewport& view
     const float textWidth = std::max(1.0f, static_cast<float>(viewport.width) * windowScale
         - uiSize(toastMargin * 2.0f + 24.0f));
     ImGui::SetNextWindowBgAlpha(0.86f * alpha);
-    ImGui::SetNextWindowPos(ImVec2(centerX, uiSize(toastMargin)), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+    ImGui::SetNextWindowPos(ImVec2(centerX, messageOffset + uiSize(toastMargin)), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(uiSize(12.0f), uiSize(8.0f)));
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, alpha));
     if (ImGui::Begin("##ToastMessage", nullptr, ImGuiWindowFlags_NoDecoration
@@ -3506,7 +3507,7 @@ int main(int argc, char** argv)
 
             submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
             woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, colorProgram, colorUniform, &annotationInteraction);
-            woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
+            const float annotationMessageBottom = woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
                 static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
                 scenePointerAvailable && !cameraInteractionActive);
             if (!ui.selectedSceneObjects.empty()) {
@@ -3552,7 +3553,7 @@ int main(int argc, char** argv)
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
             }
 
-            drawToastMessage(toast, viewport, width);
+            drawToastMessage(toast, viewport, width, annotationMessageBottom);
             drawHoveredVertexOverlay(hoveredVertex, viewport, width);
             ImGui::Render();
             woby::imgui_bgfx::render(ImGui::GetDrawData());
