@@ -431,23 +431,6 @@ TEST_CASE("automation propagates capture failures and releases timed out queued 
     CHECK(failure.at("error").at("message") == "Cannot write PNG.");
 }
 
-TEST_CASE("timed out GPU captures retain their slot until completion")
-{
-    AutomationFixture fixture;
-    woby::setAutomationReady(*fixture.server);
-    const auto path = fixture.directory / "capture.png";
-    auto response = std::async(std::launch::async, [&] {
-        return request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(path)}, {"timeoutSeconds", 1}});
-    });
-    const auto command = waitForCommand(*fixture.server);
-    REQUIRE(command.has_value());
-    CHECK(response.get().at("error").at("code") == -32003);
-    CHECK(request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(path)}, {"timeoutSeconds", 1}})
-              .at("error").at("code") == -32003);
-    CHECK(completeCommand(*fixture.server, command->id, woby::AutomationScreenshotResult{path}));
-    CHECK_FALSE(takeCommand(*fixture.server).has_value());
-}
-
 TEST_CASE("automation command IDs prevent unknown and duplicate completions from finishing other requests")
 {
     AutomationFixture fixture;
@@ -742,8 +725,9 @@ TEST_CASE("queue timeouts preserve later command order and late capture completi
     const auto active = waitForCommand(*fixture.server);
     REQUIRE(active);
     CHECK(capture.get().at("error").at("code") == -32003);
+    // A second unkeyed capture expires while the first still owns the GPU slot.
     auto expired = std::async(std::launch::async, [&] {
-        return request(fixture.instance, "objects.list", {{"timeoutSeconds", 1}});
+        return request(fixture.instance, "screenshot.capture", {{"path", woby::pathToUtf8(path)}, {"timeoutSeconds", 1}});
     });
     REQUIRE(waitForQueued(fixture, 1));
     auto later = std::async(std::launch::async, [&] {
@@ -761,6 +745,7 @@ TEST_CASE("queue timeouts preserve later command order and late capture completi
     CHECK_FALSE(completeCommand(*fixture.server, active->id, woby::AutomationScreenshotResult{path}));
     CHECK(completeCommand(*fixture.server, next->id, woby::AutomationObjectsResult{}));
     CHECK(later.get().contains("result"));
+    CHECK_FALSE(takeCommand(*fixture.server));
 }
 
 TEST_CASE("automation shutdown wakes waiting clients and removes discovery records")
