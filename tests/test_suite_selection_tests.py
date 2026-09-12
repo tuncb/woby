@@ -80,6 +80,7 @@ def listing(fixture, *arguments):
         capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+    assert "CMake Warning" not in result.stderr, result.stderr
     return {test["name"]: test for test in json.loads(result.stdout)["tests"]}
 
 
@@ -106,6 +107,23 @@ def test_local_and_ci_suites_partition_discovered_tests_with_cached_labels():
         assert set(listing(fixture, "--preset", fixture.local_presets[0])) == {"slow case"}
 
 
+def test_discovery_include_works_without_project_policy_settings():
+    with tempfile.TemporaryDirectory(prefix="woby suite selection ") as temporary:
+        fixture = make_fixture(Path(temporary))
+        configure(fixture)
+        standalone = fixture.root / "standalone"
+        standalone.mkdir()
+        # CTest evaluates includes independently of the project's CMake policy scope.
+        # A bare test file exercises that contract, including on CMake 3.x runners.
+        discovery = fixture.build / "test-discovery/fake_tests/include.cmake"
+        (standalone / "CTestTestfile.cmake").write_text(
+            f"include({bracket(discovery.as_posix())})\n", encoding="utf-8"
+        )
+        arguments = ["--test-dir", str(standalone), "-C", "Debug"]
+        assert set(listing(fixture, *arguments, "-LE", "^slow$")) == {"ordinary case"}
+        assert set(listing(fixture, *arguments, "-L", "^slow$")) == {"slow case"}
+
+
 def test_renamed_or_missing_slow_case_fails_discovery():
     with tempfile.TemporaryDirectory(prefix="woby suite selection ") as temporary:
         fixture = make_fixture(Path(temporary))
@@ -120,6 +138,7 @@ def test_renamed_or_missing_slow_case_fails_discovery():
 
 if __name__ == "__main__":
     for test in (test_local_and_ci_suites_partition_discovered_tests_with_cached_labels,
+                 test_discovery_include_works_without_project_policy_settings,
                  test_renamed_or_missing_slow_case_fails_discovery):
         test()
         print(test.__name__ + ": passed")

@@ -544,7 +544,8 @@ TEST_CASE("multiline annotation comments preserve long UTF-8 text and coalesce u
     settings.note = "Inspect this range\nSecond line";
     setAnnotationSettings(fixture.state, id, settings);
     REQUIRE(recordSceneHistory(history, fixture.state, 123));
-    settings.note += "\nQuoted \"comment\" \\ path\nUTF-8: \xc3\xa9 \xe2\x9c\x93\n" + std::string(6000, 'x');
+    settings.note += "\nQuoted \"comment\" \\ path\nUTF-8: \xc3\xa9 \xe2\x9c\x93\n";
+    settings.note.append(6000, 'x');
     setAnnotationSettings(fixture.state, id, settings);
     REQUIRE(recordSceneHistory(history, fixture.state, 123));
     finishSceneHistoryInteraction(history);
