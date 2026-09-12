@@ -1160,11 +1160,6 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
     }
     ImGui::Separator();
     ImGui::TextUnformatted("Analyses");
-    if (state.comparisons.empty()) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        ImGui::TextWrapped("Right-click an object and choose Create analysis to add an analysis.");
-        ImGui::PopStyleColor();
-    }
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;
         const auto label = std::to_string(id);

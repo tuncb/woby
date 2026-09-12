@@ -115,6 +115,8 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf068,
     0xf06e,
     0xf070,
+    0xf080,
+    0xf080,
     0xf0b2,
     0xf0b2,
     0xf0e2,
@@ -863,6 +865,7 @@ void drawSceneTreeNode(
         const ImGuiStyle& style = ImGui::GetStyle();
         const float rowStartX = ImGui::GetCursorPosX();
         const float removeControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
+        const float analysisControlStartX = removeControlStartX - renderModeButtonSize() - style.ItemSpacing.x;
         const std::string label = node.name + "##file_" + std::to_string(node.fileIndex);
         const size_t fileGroupCount = woby::countSceneNodeGroups(state, node);
         const size_t fileVisibleCount = woby::countVisibleSceneNodeGroups(state, node);
@@ -879,10 +882,10 @@ void drawSceneTreeNode(
             + meshCountLine(
                 file.mesh.vertices.size(),
                 file.mesh.indices.size() / 3u);
-        // Reserve the remove button's column for both drawing and hit testing.
+        // Reserve both action buttons' columns for drawing and hit testing.
         const ImVec2 labelClipMin = ImGui::GetWindowDrawList()->GetClipRectMin();
         ImVec2 labelClipMax = ImGui::GetWindowDrawList()->GetClipRectMax();
-        labelClipMax.x = ImGui::GetCursorScreenPos().x + removeControlStartX
+        labelClipMax.x = ImGui::GetCursorScreenPos().x + analysisControlStartX
             - ImGui::GetCursorPosX() - style.ItemSpacing.x;
         ImGui::PushClipRect(labelClipMin, labelClipMax, true);
         const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth
@@ -893,6 +896,13 @@ void drawSceneTreeNode(
         setLastItemTooltip(tooltipText.c_str());
         drawSceneItemInteraction(state, node.objectId, true);
         ImGui::PopClipRect();
+        ImGui::SameLine(analysisControlStartX, 0.0f);
+        const bool canAnalyze = !woby::comparisonObjectParts(state, {node.objectId}).empty();
+        if (woby::drawRenderModeIconButton("analysis", "\xef\x82\x80", "Create analysis for this file",
+                woby::RenderModeState::off, !canAnalyze)) {
+            woby::selectSceneObject(state, node.objectId);
+            woby::compareSceneSelection(state);
+        }
         ImGui::SameLine(removeControlStartX, 0.0f);
         if (drawRemoveButton("remove", "Remove file from scene")) {
             removeFileIndex = node.fileIndex;
