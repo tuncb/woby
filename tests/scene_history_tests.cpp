@@ -121,7 +121,7 @@ TEST_CASE("scene history idle and camera frames consume no edit notifications")
 TEST_CASE("scene history records scene operation notifications while already dirty")
 {
     const std::vector<std::function<void(woby::UiState&)>> edits{
-        [](auto& state) { woby::setShowGrid(state, true); },
+        [](auto& state) { woby::setShowGrid(state, false); },
         [](auto& state) { woby::setShowOrigin(state, true); },
         [](auto& state) { woby::setSceneUpAxis(state, woby::SceneUpAxis::y); },
         [](auto& state) { woby::setMasterVertexPointSize(state, 12); },
@@ -567,7 +567,7 @@ TEST_CASE("scene history consumes failed reloads without changing the scene or c
             if (redo) { CHECK_FALSE(woby::canRedoScene(f.history)); }
             else { CHECK(woby::canRedoScene(f.history)); }
             // New edits still branch from the actual unchanged scene.
-            woby::setShowGrid(f.state, true);
+            woby::toggleShowGrid(f.state);
             woby::recordSceneHistory(f.history, f.state);
             CHECK_FALSE(woby::canRedoScene(f.history));
             f.step();

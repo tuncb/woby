@@ -1131,7 +1131,7 @@ TEST_CASE("dirty tracking follows scene content and excludes the persisted camer
     CHECK(state.isDirty);
 
     woby::setMasterVertexPointSize(state, woby::defaultMasterVertexPointSize);
-    woby::setShowGrid(state, true);
+    woby::setShowGrid(state, false);
     woby::updateSceneDirty(state, cleanDocument);
     CHECK(state.isDirty);
 
@@ -1860,12 +1860,29 @@ TEST_CASE("Framed bounds fit both canvas axes without changing logical camera")
     }
 }
 
-TEST_CASE("new scenes are quiet and legacy scene display defaults are retained")
+TEST_CASE("grid starts enabled and explicit visibility survives scene replacement")
+{
+    woby::UiState state;
+    CHECK(state.showGrid);
+    CHECK_FALSE(state.isDirty);
+    CHECK(woby::createSceneDocument(state).showGrid);
+
+    for (const bool visible : {false, true}) {
+        woby::setShowGrid(state, visible);
+        const auto document = woby::createSceneDocument(state);
+        CHECK(document.showGrid == visible);
+        const auto restored = woby::prepareSceneReplacement(woby::UiState{}, {}, document);
+        CHECK(restored.showGrid == visible);
+        CHECK_FALSE(restored.isDirty);
+    }
+}
+
+TEST_CASE("new scenes show the grid and legacy scene display defaults are retained")
 {
     woby::UiState state;
     state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
     CHECK_FALSE(state.showOrigin);
-    CHECK_FALSE(state.showGrid);
+    CHECK(state.showGrid);
     const auto& group = state.files.front().groupSettings.front();
     CHECK(group.showSolidMesh);
     CHECK_FALSE(group.showTriangles);
@@ -1888,7 +1905,7 @@ TEST_CASE("new scenes are quiet and legacy scene display defaults are retained")
 
     auto fresh = woby::prepareSceneReplacement(restored, {}, woby::createSceneDocument(woby::UiState{}));
     CHECK_FALSE(fresh.showOrigin);
-    CHECK_FALSE(fresh.showGrid);
+    CHECK(fresh.showGrid);
     CHECK(fresh.files.empty());
     CHECK_FALSE(fresh.isDirty);
 }
@@ -1930,7 +1947,8 @@ TEST_CASE("inspection presets edit persisted display flags without changing othe
     }
     woby::UiState empty;
     woby::applyInspectionPreset(empty, Preset::solid);
-    CHECK_FALSE(empty.isDirty);
+    CHECK(empty.isDirty);
+    CHECK_FALSE(empty.showGrid);
     const auto before = woby::createSceneDocument(empty);
     woby::applyInspectionPreset(empty, static_cast<Preset>(99));
     CHECK(woby::createSceneDocument(empty) == before);

@@ -251,7 +251,7 @@ TEST_CASE("applying views restores camera and selection through undo redo withou
     CHECK(state.camera.distance == 12);
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{state.files[0].objectId});
     state.camera.distance = 36;
-    woby::setShowGrid(state, true);
+    woby::setShowGrid(state, false);
     woby::recordSceneHistory(history, state);
     step(history, state, clean);
     CHECK(state.camera.distance == 36); // Ordinary edit undo preserves navigation.
@@ -314,18 +314,18 @@ TEST_CASE("view application undoes appearance and navigation together without me
     const auto clean = woby::createSceneDocument(state);
     woby::SceneHistory history;
     woby::resetSceneHistory(history, state);
-    woby::setShowGrid(state, true);
+    woby::setShowGrid(state, false);
     state.camera.distance = 20;
     woby::recordSceneHistory(history, state, 123);
     woby::applyView(state, id);
     woby::recordSceneHistory(history, state, 123);
     REQUIRE(history.snapshots.size() == 3);
-    CHECK_FALSE(state.showGrid);
-    step(history, state, clean);
     CHECK(state.showGrid);
+    step(history, state, clean);
+    CHECK_FALSE(state.showGrid);
     CHECK(state.camera.distance == 20);
     step(history, state, clean, true);
-    CHECK_FALSE(state.showGrid);
+    CHECK(state.showGrid);
     CHECK(state.camera.distance == 10);
 }
 

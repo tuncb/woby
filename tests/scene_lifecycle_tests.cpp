@@ -374,7 +374,7 @@ TEST_CASE("replacement assigns fresh IDs while preserving session preferences")
     CHECK(empty.files.empty());
     CHECK(empty.sceneNodes.empty());
     CHECK(empty.nextObjectId == allocator);
-    CHECK_FALSE(empty.showGrid);
+    CHECK(empty.showGrid);
     CHECK_FALSE(empty.showOrigin);
     CHECK_FALSE(empty.isDirty);
     auto reopened = woby::prepareSceneReplacement(empty, fixture.state.files, document);

@@ -56,17 +56,17 @@ def main():
 
                 assert not ctl("scene", "undo")["applied"]
                 assert not ctl("scene", "redo")["applied"]
-                ctl("grid", "set", "--visible", "true")
+                ctl("grid", "set", "--visible", "false")
                 ctl("origin", "set", "--visible", "true")
                 camera = ctl("camera", "move", "--forward", "1")["camera"]
                 undone = ctl("scene", "undo", "--request-key", "undo-once")
                 assert undone["applied"] and undone["action"] == "undo"
                 assert ctl("scene", "undo", "--request-key", "undo-once") == undone
                 info = ctl("scene", "info")
-                assert info["showGrid"] and not info["showOrigin"]
+                assert not info["showGrid"] and not info["showOrigin"]
                 assert ctl("camera", "get")["camera"] == camera
                 assert ctl("scene", "undo")["applied"]
-                assert not ctl("scene", "info")["showGrid"]
+                assert ctl("scene", "info")["showGrid"]
                 assert not ctl("scene", "undo")["applied"]
                 redone = ctl("scene", "redo", "--request-key", "redo-once")
                 assert redone["applied"] and redone["action"] == "redo"

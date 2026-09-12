@@ -179,7 +179,7 @@ struct UiState {
     bool running = true;
     bool isDirty = false;
     bool showOrigin = false;
-    bool showGrid = false;
+    bool showGrid = true;
     bool showDimensions = false;
     SceneUpAxis upAxis = SceneUpAxis::z;
     float masterVertexPointSize = defaultMasterVertexPointSize;
