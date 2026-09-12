@@ -46,6 +46,15 @@ std::array<float, 3> anchor(const AnnotationProjectedTriangle& triangle, P2 p)
     return result;
 }
 struct ClipVertex { P4 clip; P3 bary; };
+// Call-local cache: adjacent triangles and groups often share mesh vertices and
+// the same transform. No borrowed mesh pointer survives projection creation.
+struct ProjectionVertexCache {
+    const Mesh* mesh = nullptr;
+    PickMatrix transform{};
+    bool homogeneous = false;
+    std::vector<P4> clip;
+    std::vector<uint8_t> masks;
+};
 double plane(const P4& p, size_t axis, bool homogeneous)
 {
     switch (axis) {
@@ -58,24 +67,44 @@ double plane(const P4& p, size_t axis, bool homogeneous)
     }
 }
 void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
-    const PickMatrix& transform, bool homogeneous)
+    const PickMatrix& transform, bool homogeneous, ProjectionVertexCache& cache)
 {
     if (!part.mesh || part.opacity <= 0) { return; }
     const auto& mesh = *part.mesh;
+    if (cache.mesh != &mesh || cache.transform != transform || cache.homogeneous != homogeneous) {
+        cache.mesh = &mesh; cache.transform = transform; cache.homogeneous = homogeneous;
+        cache.clip.resize(mesh.vertices.size());
+        cache.masks.assign(mesh.vertices.size(), 0xff);
+    }
     const size_t finish = std::min(mesh.indices.size(), part.indexOffset + part.indexCount);
     for (size_t i = part.indexOffset; i + 2 < finish; i += 3) {
-        std::array<ClipVertex, 12> polygon{}, clipped{};
+        std::array<ClipVertex, 12> polygon, clipped;
         size_t count = 3;
+        uint8_t outside = 0, common = 0x3f;
         for (size_t k = 0; k < 3; ++k) {
-            if (mesh.indices[i + k] >= mesh.vertices.size()) { count = 0; break; }
-            const auto& p = mesh.vertices[mesh.indices[i + k]].position;
-            if (!finitePosition(p)) { count = 0; break; }
-            const auto q = annotationTransform(transform, {p[0], p[1], p[2], 1});
-            if (!std::all_of(q.begin(), q.end(), [](float v) { return std::isfinite(v); })) { count = 0; break; }
-            polygon[k].clip = {q[0], q[1], q[2], q[3]};
+            const auto index = mesh.indices[i + k];
+            if (index >= mesh.vertices.size()) { count = 0; break; }
+            auto& mask = cache.masks[index];
+            if (mask == 0xff) {
+                const auto& p = mesh.vertices[index].position;
+                const auto q = annotationTransform(transform, {p[0], p[1], p[2], 1});
+                mask = 0x80;
+                if (finitePosition(p) && std::all_of(q.begin(), q.end(), [](float v) { return std::isfinite(v); })) {
+                    cache.clip[index] = {q[0], q[1], q[2], q[3]};
+                    mask = 0;
+                    for (size_t axis = 0; axis < 6; ++axis) {
+                        if (plane(cache.clip[index], axis, homogeneous) < 0) { mask |= static_cast<uint8_t>(1u << axis); }
+                    }
+                }
+            }
+            if (mask == 0x80) { count = 0; break; }
+            polygon[k] = {cache.clip[index], {0, 0, 0}};
             polygon[k].bary[k] = 1;
+            outside |= mask; common &= mask;
         }
+        if (common) { continue; }
         for (size_t axis = 0; axis < 6 && count; ++axis) {
+            if (!(outside & (1u << axis))) { continue; }
             bool inside = true;
             for (size_t j = 0; j < count; ++j) { inside &= plane(polygon[j].clip, axis, homogeneous) >= 0; }
             if (inside) { continue; }
@@ -122,33 +151,50 @@ size_t buildProjectionNode(AnnotationProjection& projection, size_t begin, size_
     node.begin = begin; node.end = end;
     node.minimum.fill(std::numeric_limits<double>::infinity());
     node.maximum.fill(-std::numeric_limits<double>::infinity());
-    for (size_t i = begin; i < end; ++i) {
-        const auto& triangle = projection.triangles[projection.order[i]];
-        for (size_t axis = 0; axis < 2; ++axis) {
-            node.minimum[axis] = std::min(node.minimum[axis], triangle.minimum[axis]);
-            node.maximum[axis] = std::max(node.maximum[axis], triangle.maximum[axis]);
-        }
-    }
     const size_t index = projection.nodes.size(); projection.nodes.push_back(node);
     if (end - begin > 8) {
-        const size_t axis = node.maximum[0] - node.minimum[0] > node.maximum[1] - node.minimum[1] ? 0u : 1u;
         const size_t middle = begin + (end - begin) / 2;
-        std::nth_element(projection.order.begin() + static_cast<std::ptrdiff_t>(begin),
-            projection.order.begin() + static_cast<std::ptrdiff_t>(middle), projection.order.begin() + static_cast<std::ptrdiff_t>(end),
-            [&](size_t a, size_t b) {
-                const auto& ta = projection.triangles[a]; const auto& tb = projection.triangles[b];
-                const double ca = ta.minimum[axis] + ta.maximum[axis], cb = tb.minimum[axis] + tb.maximum[axis];
-                return ca == cb ? a < b : ca < cb;
-            });
         const size_t left = buildProjectionNode(projection, begin, middle), right = buildProjectionNode(projection, middle, end);
-        projection.nodes[index].left = left; projection.nodes[index].right = right;
+        node.left = left; node.right = right;
+        for (size_t axis = 0; axis < 2; ++axis) {
+            node.minimum[axis] = std::min(projection.nodes[left].minimum[axis], projection.nodes[right].minimum[axis]);
+            node.maximum[axis] = std::max(projection.nodes[left].maximum[axis], projection.nodes[right].maximum[axis]);
+        }
+    } else {
+        for (size_t i = begin; i < end; ++i) {
+            const auto& triangle = projection.triangles[projection.order[i]];
+            for (size_t axis = 0; axis < 2; ++axis) {
+                node.minimum[axis] = std::min(node.minimum[axis], triangle.minimum[axis]);
+                node.maximum[axis] = std::max(node.maximum[axis], triangle.maximum[axis]);
+            }
+        }
     }
+    projection.nodes[index] = node;
     return index;
+}
+uint32_t projectionMortonCoordinate(double center)
+{
+    // Interleave 16-bit screen coordinates so adjacent leaves stay spatially close.
+    uint32_t value = static_cast<uint32_t>(std::clamp((center + 1) * .5, 0.0, 1.0) * 65535);
+    value = (value | (value << 8)) & 0x00ff00ffu;
+    value = (value | (value << 4)) & 0x0f0f0f0fu;
+    value = (value | (value << 2)) & 0x33333333u;
+    return (value | (value << 1)) & 0x55555555u;
 }
 void finishProjection(AnnotationProjection& projection)
 {
+    // Sort compact keys once, then combine bounds bottom-up. Repeated median
+    // partitions used to rescan the large triangle records at every tree level.
+    std::vector<std::pair<uint32_t, size_t>> keys;
+    keys.reserve(projection.triangles.size());
+    for (size_t i = 0; i < projection.triangles.size(); ++i) {
+        const auto& triangle = projection.triangles[i];
+        keys.emplace_back(projectionMortonCoordinate((triangle.minimum[0] + triangle.maximum[0]) * .5)
+            | (projectionMortonCoordinate((triangle.minimum[1] + triangle.maximum[1]) * .5) << 1), i);
+    }
+    std::sort(keys.begin(), keys.end());
     projection.order.resize(projection.triangles.size());
-    for (size_t i = 0; i < projection.order.size(); ++i) { projection.order[i] = i; }
+    for (size_t i = 0; i < projection.order.size(); ++i) { projection.order[i] = keys[i].second; }
     projection.nodes.reserve(projection.order.size() / 2 + 1);
     if (!projection.order.empty()) { buildProjectionNode(projection, 0, projection.order.size()); }
 }
@@ -178,11 +224,62 @@ std::vector<size_t> projectionCandidates(const AnnotationProjection& projection,
     return result;
 }
 struct Interval { size_t index; double begin, end, z0, z1; };
+struct VisibleInterval { const Interval* surface; double begin, end; };
+void appendVisibleInterval(std::vector<VisibleInterval>& result, const Interval* surface, double begin, double end)
+{
+    if (end <= begin) { return; }
+    if (!result.empty() && result.back().surface == surface) { result.back().end = end; }
+    else { result.push_back({surface, begin, end}); }
+}
+std::vector<VisibleInterval> visibleIntervals(std::span<const Interval> intervals)
+{
+    if (intervals.empty()) { return {{nullptr, 0, 1}}; }
+    if (intervals.size() == 1) {
+        const auto& interval = intervals.front();
+        std::vector<VisibleInterval> result;
+        appendVisibleInterval(result, nullptr, 0, interval.begin);
+        appendVisibleInterval(result, &interval, interval.begin, interval.end);
+        appendVisibleInterval(result, nullptr, interval.end, 1);
+        return result;
+    }
+    // Merge the frontmost depth envelopes, discarding hidden intersections at
+    // every level. Enumerating every overlapping pair is quadratic even for
+    // coincident faces and used to hit an arbitrary two-million-pair limit.
+    const size_t middle = intervals.size() / 2;
+    const auto left = visibleIntervals(intervals.first(middle));
+    const auto right = visibleIntervals(intervals.subspan(middle));
+    std::vector<VisibleInterval> result;
+    result.reserve(left.size() + right.size());
+    size_t i = 0, j = 0;
+    while (i < left.size() && j < right.size()) {
+        const auto& a = left[i]; const auto& b = right[j];
+        const double low = std::max(a.begin, b.begin), high = std::min(a.end, b.end);
+        if (!a.surface || !b.surface) {
+            appendVisibleInterval(result, a.surface ? a.surface : b.surface, low, high);
+        } else {
+            const auto* first = a.surface; const auto* second = b.surface;
+            const double slope = (first->z1 - first->z0) - (second->z1 - second->z0);
+            const auto appendNearest = [&](double begin, double end) {
+                const double mid = (begin + end) * .5;
+                const double za = first->z0 + mid * (first->z1 - first->z0);
+                const double zb = second->z0 + mid * (second->z1 - second->z0);
+                const bool chooseFirst = za < zb || (za == zb && first->index < second->index);
+                appendVisibleInterval(result, chooseFirst ? first : second, begin, end);
+            };
+            const double crossing = std::abs(slope) < 1e-15 ? high : (second->z0 - first->z0) / slope;
+            if (crossing > low && crossing < high) {
+                appendNearest(low, crossing); appendNearest(crossing, high);
+            } else { appendNearest(low, high); }
+        }
+        if (a.end <= b.end) { ++i; }
+        if (b.end <= a.end) { ++j; }
+    }
+    return result;
+}
 void projectEdge(AnnotationGeometry& result, const AnnotationProjection& projection, P2 start, P2 end)
 {
     const auto at = [&](double t) -> P2 { return {start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])}; };
     std::vector<Interval> intervals;
-    std::vector<double> cuts{0, 1};
     for (const size_t i : projectionCandidates(projection, start, end)) {
         const auto& triangle = projection.triangles[i];
         const auto a = weights(triangle, start), b = weights(triangle, end);
@@ -195,41 +292,14 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
         }
         if (high - low <= 1e-10) { continue; }
         intervals.push_back({i, low, high, depth(triangle, start), depth(triangle, end)});
-        cuts.push_back(low); cuts.push_back(high);
     }
-    // Intersecting projected depth functions can change which surface is visible.
-    // Sweep overlapping intervals, rather than comparing every mesh triangle pair.
-    std::sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) { return a.begin < b.begin; });
-    size_t overlapChecks = 0;
-    for (size_t i = 0; i < intervals.size(); ++i) {
-        const auto& a = intervals[i];
-        for (size_t j = i + 1; j < intervals.size() && intervals[j].begin < a.end; ++j) {
-            if (++overlapChecks > 2000000) { throw std::runtime_error("Too many overlapping surfaces. Draw a smaller range."); }
-            const auto& b = intervals[j];
-            const double denominator = (a.z1 - a.z0) - (b.z1 - b.z0);
-            if (std::abs(denominator) < 1e-15) { continue; }
-            const double t = (b.z0 - a.z0) / denominator;
-            if (t > std::max(a.begin, b.begin) && t < std::min(a.end, b.end)) { cuts.push_back(t); }
-        }
-    }
-    std::sort(cuts.begin(), cuts.end());
-    cuts.erase(std::unique(cuts.begin(), cuts.end(), [](double a, double b) { return std::abs(a - b) < 1e-10; }), cuts.end());
     const AnnotationProjectedTriangle* previousTriangle = nullptr;
     std::array<float, 3> previousPoint{};
     bool previous = false;
-    std::vector<const Interval*> active;
-    size_t next = 0;
-    for (size_t i = 1; i < cuts.size(); ++i) {
-        const double low = cuts[i - 1], high = cuts[i], mid = (low + high) * .5;
+    for (const auto& visible : visibleIntervals(intervals)) {
+        const double low = visible.begin, high = visible.end;
         if (high - low < 1e-10) { continue; }
-        while (next < intervals.size() && intervals[next].begin <= mid) { active.push_back(&intervals[next++]); }
-        std::erase_if(active, [&](const auto* interval) { return interval->end < mid; });
-        const Interval* best = nullptr;
-        double closest = std::numeric_limits<double>::infinity();
-        for (const auto* interval : active) {
-            const double z = interval->z0 + mid * (interval->z1 - interval->z0);
-            if (z < closest) { closest = z; best = interval; }
-        }
+        const auto* best = visible.surface;
         if (!best || projection.triangles[best->index].objectId != projection.targetId) {
             throw std::runtime_error("Keep the entire outline on the target surface, clear of holes and other objects.");
         }
@@ -300,6 +370,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
     result.targetId = target;
     result.definition.homogeneousDepth = view.homogeneousDepth;
     const auto vp = annotationCompose(view.view, view.projection);
+    ProjectionVertexCache cache;
     for (const auto& part : parts) {
         if (!part.mesh || (!part.solid && part.objectId != target) || (part.opacity < .999f && part.objectId != target)) { continue; }
         const auto transform = annotationCompose(part.model, vp);
@@ -307,7 +378,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
             result.definition.projector = transform;
             result.definition.fingerprint = annotationFingerprint(*part.mesh, part.indexOffset, part.indexCount);
         }
-        appendProjection(result, part, transform, view.homogeneousDepth);
+        appendProjection(result, part, transform, view.homogeneousDepth, cache);
     }
     finishProjection(result);
     return result;
@@ -318,7 +389,8 @@ AnnotationProjection annotationEditProjection(const ScenePickPart& target, const
     result.targetId = target.objectId;
     result.definition = geometry;
     result.definition.segments.clear();
-    appendProjection(result, target, geometry.projector, geometry.homogeneousDepth);
+    ProjectionVertexCache cache;
+    appendProjection(result, target, geometry.projector, geometry.homogeneousDepth, cache);
     finishProjection(result);
     return result;
 }

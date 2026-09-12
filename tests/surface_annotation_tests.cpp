@@ -893,3 +893,90 @@ TEST_CASE("surface annotation previews on a tessellated model")
         << std::chrono::duration<double,std::milli>(ready-begin).count() << " ms; rectangle "
         << std::chrono::duration<double,std::milli>(done-ready).count() << " ms\n";
 }
+
+TEST_CASE("surface annotations handle thousands of coincident faces without an overlap limit")
+{
+    Fixture fixture;
+    const auto originalProjection = fixture.projection();
+    const auto original = fixture.state.files[0].mesh.indices;
+    auto& mesh = fixture.state.files[0].mesh;
+    for (size_t i = 1; i < 2500; ++i) {
+        mesh.indices.insert(mesh.indices.end(), original.begin(), original.end());
+    }
+    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    const auto projection = fixture.projection();
+    for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
+        const auto geometry = projectAnnotation(projection, shape, {-.8f,-.4f}, {.8f,.4f});
+        REQUIRE_FALSE(geometry.segments.empty());
+        for (const auto& segment : geometry.segments) {
+            CHECK(segment.triangle < 4);
+        }
+        CHECK(geometry.segments == projectAnnotation(originalProjection, shape, {-.8f,-.4f}, {.8f,.4f}).segments);
+        CHECK(geometry == projectAnnotation(projection, shape, {-.8f,-.4f}, {.8f,.4f}));
+    }
+}
+
+TEST_CASE("surface annotation visibility ignores hidden crossings and detects narrow occluders")
+{
+    Fixture fixture;
+    auto& mesh = fixture.state.files[0].mesh;
+    for (auto& vertex : mesh.vertices) { vertex.position[2] = .1f; }
+    const auto originalProjection = fixture.projection();
+    for (size_t layer = 0; layer < 80; ++layer) {
+        auto rear = surface();
+        const float slope = static_cast<float>(layer) / 100;
+        const auto offset = static_cast<uint32_t>(mesh.vertices.size());
+        for (auto& vertex : rear.vertices) {
+            vertex.position[2] = .55f + slope * .4f * vertex.position[0];
+            mesh.vertices.push_back(vertex);
+        }
+        for (auto index : rear.indices) { mesh.indices.push_back(offset + index); }
+    }
+    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    SUBCASE("hidden surface intersections do not split the frontmost outline") {
+        const auto geometry = fixture.geometry();
+        const auto expected = projectAnnotation(originalProjection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f});
+        REQUIRE(geometry.segments.size() == expected.segments.size());
+        for (size_t i = 0; i < geometry.segments.size(); ++i) {
+            CHECK(geometry.segments[i].triangle == expected.segments[i].triangle);
+            nearPoint(geometry.segments[i].a, expected.segments[i].a);
+            nearPoint(geometry.segments[i].b, expected.segments[i].b);
+        }
+    }
+    SUBCASE("a narrow foreground interval still rejects the complete outline") {
+        auto front = surface();
+        for (auto& vertex : front.vertices) { vertex.position[0] = .123f + vertex.position[0] * .00001f; vertex.position[2] = .01f; }
+        front.bounds = calculateBounds(front.vertices);
+        fixture.state.files.push_back(createUiFileState(fixture.root / "occluder.obj", std::move(front), 1));
+        appendDefaultSceneNodesForFiles(fixture.state, 1);
+        CHECK_THROWS_WITH(fixture.geometry(), "Keep the entire outline on the target surface, clear of holes and other objects.");
+    }
+    SUBCASE("a depth crossing can make a different object become frontmost") {
+        auto crossing = surface();
+        for (auto& vertex : crossing.vertices) { vertex.position[2] = .12f - vertex.position[0] * .1f; }
+        crossing.bounds = calculateBounds(crossing.vertices);
+        fixture.state.files.push_back(createUiFileState(fixture.root / "crossing.obj", std::move(crossing), 1));
+        appendDefaultSceneNodesForFiles(fixture.state, 1);
+        CHECK_THROWS_WITH(fixture.geometry(), "Keep the entire outline on the target surface, clear of holes and other objects.");
+    }
+}
+
+TEST_CASE("annotation projection keeps shared mesh groups in their own transforms")
+{
+    const auto mesh = surface();
+    ScenePickPart first;
+    first.mesh = &mesh; first.objectId = 1; first.indexCount = mesh.indices.size(); first.solid = true;
+    bx::mtxIdentity(first.model.data());
+    auto second = first;
+    second.objectId = 2;
+    bx::mtxTranslate(second.model.data(), 1.5f, 0, -.1f);
+    std::array<ScenePickPart, 2> parts{first, second};
+    for (int order = 0; order < 2; ++order) {
+        const auto projection = annotationProjection(parts, view(), first.objectId);
+        CHECK(pickAnnotationSurface(projection, {-.8f, 0}) == first.objectId);
+        CHECK(pickAnnotationSurface(projection, {.8f, 0}) == second.objectId);
+        CHECK_NOTHROW((void)projectAnnotation(projection, AnnotationShape::line, {-.8f,0}, {.2f,0}));
+        CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::line, {-.8f,0}, {.8f,0}));
+        std::swap(parts[0], parts[1]);
+    }
+}
