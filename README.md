@@ -404,6 +404,15 @@ for queue, timeout, and concurrency semantics.
 
 ## Build
 
+OBJ loading uses RapidOBJ, pinned to commit
+`fe4c779314b0daed19530c8b5aa323c789d08f81` in
+`cmake/vcpkg-ports/rapidobj`. CMake automatically adds this vcpkg overlay for
+local and CI builds. It replaces the registry's older port, which excludes Linux.
+When installing dependencies manually with vcpkg, pass
+`--overlay-ports=cmake/vcpkg-ports`. Builds using preinstalled packages need the
+same RapidOBJ revision, the overlay's Unicode-path and polygon-winding fixes,
+and its `RapidObj` CMake package.
+
 ### macOS application bundle
 
 macOS builds produce `woby.app`. Double-click the app in Finder to launch the

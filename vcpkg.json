@@ -9,7 +9,7 @@
         "tools"
       ]
     },
-    "tinyobjloader",
+    "rapidobj",
     "meshoptimizer",
     {
       "name": "imgui",

@@ -1,6 +1,7 @@
 #include "obj_mesh.h"
+#include "utf8_path.h"
 
-#include <tiny_obj_loader.h>
+#include <rapidobj/rapidobj.hpp>
 
 #include <algorithm>
 #include <stdexcept>
@@ -39,24 +40,27 @@ struct IndexKeyHash {
 
 Mesh loadObjMesh(const std::filesystem::path& path)
 {
-    tinyobj::ObjReaderConfig config;
-    config.triangulate = true;
-
-    if (path.has_parent_path()) {
-        config.mtl_search_path = path.parent_path().string();
-    }
-
-    tinyobj::ObjReader reader;
-    if (!reader.ParseFromFile(path.string(), config)) {
-        std::string message = "Failed to load OBJ: " + path.string();
-        if (!reader.Error().empty()) {
-            message += "\n" + reader.Error();
+    // Missing material libraries must not prevent importing the geometry.
+    auto result = rapidobj::ParseFile(path, rapidobj::MaterialLibrary::Default(rapidobj::Load::Optional));
+    const auto throwLoadError = [&](const char* operation) {
+        std::string message = std::string(operation) + ": " + pathToUtf8(path);
+        if (result.error) {
+            message += "\n" + result.error.code.message();
+            if (result.error.line_num != 0) {
+                message += " (line " + std::to_string(result.error.line_num) + ")";
+            }
         }
         throw std::runtime_error(message);
+    };
+    if (result.error) {
+        throwLoadError("Failed to load OBJ");
+    }
+    if (!rapidobj::Triangulate(result)) {
+        throwLoadError("Failed to triangulate OBJ");
     }
 
-    const auto& attrib = reader.GetAttrib();
-    const auto& shapes = reader.GetShapes();
+    const auto& attrib = result.attributes;
+    const auto& shapes = result.shapes;
 
     Mesh mesh;
     std::unordered_map<IndexKey, uint32_t, IndexKeyHash> vertexMap;
@@ -65,7 +69,7 @@ Mesh loadObjMesh(const std::filesystem::path& path)
         indexCount += shape.mesh.indices.size();
     }
     // Position count is only an estimate: normal/UV seams can split vertices.
-    const size_t vertexCapacity = std::min(attrib.vertices.size() / 3u, indexCount);
+    const size_t vertexCapacity = std::min(attrib.positions.size() / 3u, indexCount);
     mesh.indices.reserve(indexCount);
     mesh.vertices.reserve(vertexCapacity);
     mesh.nodes.reserve(shapes.size());
@@ -76,23 +80,23 @@ Mesh loadObjMesh(const std::filesystem::path& path)
         const uint32_t nodeIndexOffset = static_cast<uint32_t>(mesh.indices.size());
 
         for (const auto& index : shape.mesh.indices) {
-            const IndexKey key{index.vertex_index, index.normal_index, index.texcoord_index};
+            const IndexKey key{index.position_index, index.normal_index, index.texcoord_index};
             const auto found = vertexMap.find(key);
             if (found != vertexMap.end()) {
                 mesh.indices.push_back(found->second);
                 continue;
             }
 
-            if (index.vertex_index < 0) {
+            if (index.position_index < 0) {
                 throw std::runtime_error("OBJ contains a face vertex without a position index.");
             }
 
             Vertex vertex{};
-            const auto vertexIndex = static_cast<size_t>(index.vertex_index) * 3u;
+            const auto vertexIndex = static_cast<size_t>(index.position_index) * 3u;
             vertex.position = {
-                attrib.vertices[vertexIndex + 0u],
-                attrib.vertices[vertexIndex + 1u],
-                attrib.vertices[vertexIndex + 2u],
+                attrib.positions[vertexIndex + 0u],
+                attrib.positions[vertexIndex + 1u],
+                attrib.positions[vertexIndex + 2u],
             };
 
             if (index.normal_index >= 0) {
@@ -129,7 +133,7 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     }
 
     if (empty(mesh)) {
-        throw std::runtime_error("OBJ did not contain renderable triangles: " + path.string());
+        throw std::runtime_error("OBJ did not contain renderable triangles: " + pathToUtf8(path));
     }
 
     finalizeMesh(mesh, true);

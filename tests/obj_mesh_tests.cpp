@@ -1,5 +1,6 @@
 #include "model_load.h"
 #include "obj_mesh.h"
+#include "utf8_path.h"
 
 #include <doctest/doctest.h>
 
@@ -165,4 +166,153 @@ TEST_CASE("OBJ capacity estimates preserve seam vertices and reuse references ac
     CHECK(front.position == back.position);
     CHECK(front.texcoord == std::array<float, 2>{0.0f, 1.0f});
     CHECK(back.texcoord == std::array<float, 2>{0.25f, 0.75f});
+}
+
+TEST_CASE("OBJ loader triangulates polygons while preserving area and winding")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "polygon.obj";
+    const char* face = "f 1 2 3 4 5\n";
+    const char* positions = "v 0 0 0\nv 3 0 0\nv 3 3 0\nv 2 1 0\nv 0 3 0\n";
+    size_t u = 0u;
+    size_t v = 1u;
+    float winding = 1.0f;
+    SUBCASE("XY plane") {
+        SUBCASE("counterclockwise") {}
+        SUBCASE("clockwise") { winding = -1.0f; }
+    }
+    SUBCASE("YZ plane") {
+        positions = "v 0 0 0\nv 0 3 0\nv 0 3 3\nv 0 2 1\nv 0 0 3\n";
+        u = 1u;
+        v = 2u;
+        SUBCASE("counterclockwise") {}
+        SUBCASE("clockwise") { winding = -1.0f; }
+    }
+    SUBCASE("ZX plane") {
+        positions = "v 0 0 0\nv 0 0 3\nv 3 0 3\nv 1 0 2\nv 3 0 0\n";
+        u = 2u;
+        v = 0u;
+        SUBCASE("counterclockwise") {}
+        SUBCASE("clockwise") { winding = -1.0f; }
+    }
+    if (winding < 0.0f) { face = "f 5 4 3 2 1\n"; }
+    const std::string text = std::string("o concave\n") + positions + face;
+    writeText(path, text.c_str());
+
+    const auto mesh = woby::loadObjMesh(path);
+    REQUIRE(mesh.indices.size() == 9u);
+    REQUIRE(mesh.nodes.size() == 1u);
+    CHECK(mesh.nodes[0].name == "concave");
+    CHECK(mesh.nodes[0].indexCount == 9u);
+    float area = 0.0f;
+    for (size_t i = 0; i < mesh.indices.size(); i += 3u) {
+        const auto& a = mesh.vertices.at(mesh.indices[i]).position;
+        const auto& b = mesh.vertices.at(mesh.indices[i + 1u]).position;
+        const auto& c = mesh.vertices.at(mesh.indices[i + 2u]).position;
+        const float signedArea = 0.5f * ((b[u] - a[u]) * (c[v] - a[v])
+            - (b[v] - a[v]) * (c[u] - a[u]));
+        CHECK(signedArea * winding > 0.0f);
+        area += signedArea * winding;
+    }
+    // A fan from the first vertex incorrectly covers area 9 for this polygon.
+    CHECK(area == doctest::Approx(6.0f));
+}
+
+TEST_CASE("OBJ loader resolves negative position normal and UV indices")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "relative-indices.obj";
+    writeText(path,
+        "v 0 0 0\nv 2 0 0\nv 0 2 0\n"
+        "vt 0.25 0.75\nvt 0.5 0.5\nvt 1 0\nvn 0 0 -1\n"
+        "g relative\nf -3/-3/-1 -1/-1/-1 -2/-2/-1\n");
+
+    const auto mesh = woby::loadObjMesh(path);
+    REQUIRE(mesh.vertices.size() == 3u);
+    REQUIRE(mesh.indices.size() == 3u);
+    REQUIRE(mesh.nodes.size() == 1u);
+    CHECK(mesh.nodes[0].name == "relative");
+    CHECK(containsTexcoord(mesh, 0.25f, 0.25f));
+    CHECK(containsTexcoord(mesh, 0.5f, 0.5f));
+    CHECK(containsTexcoord(mesh, 1.0f, 1.0f));
+    CHECK(mesh.bounds.max == std::array<float, 3>{2.0f, 2.0f, 0.0f});
+    for (const auto& vertex : mesh.vertices) {
+        CHECK(vertex.normal[2] == doctest::Approx(-1.0f));
+    }
+}
+
+TEST_CASE("OBJ loader imports geometry when a material library is missing")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "missing-material.obj";
+    writeText(path,
+        "mtllib absent.mtl\nusemtl absent\n"
+        "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf 1 2 3 4\n");
+
+    const auto mesh = woby::loadObjMesh(path);
+    CHECK(mesh.vertices.size() == 4u);
+    CHECK(mesh.indices.size() == 6u);
+    REQUIRE(mesh.nodes.size() == 1u);
+    CHECK(mesh.nodes[0].name == "shape 1");
+}
+
+TEST_CASE("OBJ loader rejects invalid face indices")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "invalid-index.obj";
+    const char* face = "f 1 2 4\n";
+    SUBCASE("position out of range") {}
+    SUBCASE("negative position out of range") { face = "f -4 -2 -1\n"; }
+    SUBCASE("zero position") { face = "f 0 2 3\n"; }
+    SUBCASE("normal out of range") { face = "f 1//1 2//1 3//1\n"; }
+    SUBCASE("UV out of range") { face = "f 1/1 2/1 3/1\n"; }
+    const std::string text = std::string("v 0 0 0\nv 1 0 0\nv 0 1 0\n") + face;
+    writeText(path, text.c_str());
+    CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
+}
+
+TEST_CASE("OBJ parse errors identify the file and source line")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "malformed.obj";
+    writeText(path, "v 0 0 0\nv 1 0 0\nv invalid 1 0\nf 1 2 3\n");
+    try {
+        loadObjAndDiscard(path);
+        FAIL("Expected an OBJ parse error");
+    } catch (const std::runtime_error& error) {
+        const std::string message = error.what();
+        CHECK(message.find(path.string()) != std::string::npos);
+        CHECK(message.find("line 3") != std::string::npos);
+    }
+}
+
+TEST_CASE("OBJ loader reports missing files")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "absent.obj";
+    CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
+}
+
+TEST_CASE("OBJ loader supports Unicode filenames")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / std::filesystem::path(u8"model_\u6a21\u578b.obj");
+    writeText(path, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
+    const auto mesh = woby::loadObjMesh(path);
+    CHECK(mesh.indices.size() == 3u);
+}
+
+TEST_CASE("OBJ errors preserve Unicode filenames")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / std::filesystem::path(u8"model_\u6a21\u578b.obj");
+    SUBCASE("missing file") {}
+    SUBCASE("malformed file") { writeText(path, "v invalid 0 0\n"); }
+    SUBCASE("empty geometry") { writeText(path, "v 0 0 0\n"); }
+    try {
+        loadObjAndDiscard(path);
+        FAIL("Expected an OBJ load error");
+    } catch (const std::runtime_error& error) {
+        CHECK(std::string(error.what()).find(woby::pathToUtf8(path)) != std::string::npos);
+    }
 }

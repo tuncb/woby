@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 
+# Use the benchmarked RapidOBJ revision on every platform, including Linux.
+list(APPEND VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/vcpkg-ports")
+
 project(woby_obj_viewer VERSION 0.15.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -23,7 +26,7 @@ include(cmake/WobyRuntimeFiles.cmake)
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(bgfx CONFIG REQUIRED)
-find_package(tinyobjloader CONFIG REQUIRED)
+find_package(RapidObj CONFIG REQUIRED)
 find_package(meshoptimizer CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -174,7 +177,7 @@ target_link_libraries(woby PRIVATE
     SDL3::SDL3
     ${CMAKE_DL_LIBS}
     bgfx::bgfx
-    tinyobjloader::tinyobjloader
+    rapidobj::rapidobj
     meshoptimizer::meshoptimizer
     imgui::imgui
     spdlog::spdlog
@@ -405,7 +408,7 @@ if(BUILD_TESTING)
         imgui::imgui
         ${CMAKE_DL_LIBS}
         bgfx::bgfx
-        tinyobjloader::tinyobjloader
+        rapidobj::rapidobj
         meshoptimizer::meshoptimizer
         spdlog::spdlog
     )
