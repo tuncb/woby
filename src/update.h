@@ -15,6 +15,8 @@ enum class UpdateCommand { none, install, check, status };
 struct UpdateArguments {
     UpdateCommand command = UpdateCommand::none;
     bool json = false;
+    // UI installs reopen the viewer after verification; CLI installs leave it closed.
+    bool restart = false;
 };
 struct ReleaseUpdate {
     std::string version;

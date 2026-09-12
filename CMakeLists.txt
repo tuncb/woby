@@ -297,9 +297,14 @@ if(BUILD_TESTING)
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/python_tests.cmake")
     add_test(NAME woby_update_packaging COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/.github/scripts/package_manifest_tests.py")
+    add_executable(woby_update_viewer_fixture tests/update_viewer_fixture.cpp)
+    target_compile_definitions(woby_update_viewer_fixture PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
+    target_link_libraries(woby_update_viewer_fixture PRIVATE woby_update_core)
+    woby_enable_project_warnings(woby_update_viewer_fixture)
     add_test(NAME woby_update_helper_smoke COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_smoke.py" "$<TARGET_FILE:woby>"
-        "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets")
+        "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets"
+        "$<TARGET_FILE:woby_update_viewer_fixture>")
     set_tests_properties(woby_update_helper_smoke PROPERTIES TIMEOUT 180)
     add_test(NAME woby_update_helper_fixtures COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")

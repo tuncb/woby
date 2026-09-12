@@ -12,7 +12,8 @@ int runUpdateHelper(int argc, char** argv)
     try {
         if (argc == 2 && std::string(argv[1]) == "--version") { std::printf("%s\n", WOBY_VERSION); return 0; }
         const bool recover = argc == 4 && std::string(argv[1]) == "--recover";
-        if (!recover && !(argc == 5 && std::string(argv[1]) == "--apply")) {
+        const bool restart = argc == 6 && std::string(argv[5]) == "--restart";
+        if (!recover && !((argc == 5 || restart) && std::string(argv[1]) == "--apply")) {
             throw std::runtime_error("Usage: woby-update-helper --recover DEPLOYMENT JOB (normally launched by woby update).");
         }
         root = pathFromUtf8(argv[2]);
@@ -48,6 +49,17 @@ int runUpdateHelper(int argc, char** argv)
         const auto version = readPackageManifest(root).version;
         verifyUpdatedExecutable(root, job, version);
         writeUpdateStatus(root, "completed", "Woby " + version + " installed successfully.", job);
+        // A reopened viewer must be able to acquire its shared deployment lock.
+        // Restart failures must never roll back an already verified installation.
+        mayRecover = false;
+        lock.reset();
+        if (restart) {
+            try { launchUpdatedViewer(root); }
+            catch (const std::exception& error) {
+                writeUpdateStatus(root, "completed", "Woby " + version
+                    + " installed successfully, but could not restart: " + error.what() + " Open Woby manually.", job);
+            }
+        }
         return 0;
     } catch (const std::exception& error) {
         std::fprintf(stderr, "%s\n", error.what());

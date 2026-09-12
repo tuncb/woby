@@ -268,12 +268,13 @@ DeploymentOwner guardViewerDeployment()
     return lock;
 }
 
-void launchUpdateHelper(const std::filesystem::path& root, const std::filesystem::path& job)
+void launchUpdateHelper(const std::filesystem::path& root, const std::filesystem::path& job, bool restart)
 {
     const auto executable = job / "helper" / updateExecutableName(true);
 #ifdef _WIN32
     auto command = quoteArgument(executable.wstring()) + L" --apply " + quoteArgument(root.wstring())
         + L" " + quoteArgument(job.wstring()) + L" " + std::to_wstring(GetCurrentProcessId());
+    if (restart) { command += L" --restart"; }
     STARTUPINFOW startup{}; startup.cb = sizeof(startup);
     PROCESS_INFORMATION process{};
     if (!CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr,
@@ -285,7 +286,8 @@ void launchUpdateHelper(const std::filesystem::path& root, const std::filesystem
     if (child < 0) { throw std::runtime_error("Cannot start update helper."); }
     if (child == 0) {
         if (chdir(job.c_str()) != 0) { _exit(127); }
-        execl(executable.c_str(), executable.c_str(), "--apply", root.c_str(), job.c_str(), parent.c_str(), static_cast<char*>(nullptr));
+        execl(executable.c_str(), executable.c_str(), "--apply", root.c_str(), job.c_str(), parent.c_str(),
+            restart ? "--restart" : nullptr, static_cast<char*>(nullptr));
         _exit(127);
     }
     bool childExited = false;
@@ -308,6 +310,29 @@ void launchUpdateHelper(const std::filesystem::path& root, const std::filesystem
     if (!ready && !childExited) { kill(child, SIGKILL); int status = 0; while (waitpid(child, &status, 0) < 0 && errno == EINTR) {} }
 #endif
     if (!ready) { throw std::runtime_error("Update helper failed to start; deployment was not changed."); }
+}
+
+void launchUpdatedViewer(const std::filesystem::path& root)
+{
+    const auto executable = root / updateExecutableName();
+#ifdef _WIN32
+    auto command = quoteArgument(executable.wstring());
+    STARTUPINFOW startup{}; startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    if (!CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW,
+        nullptr, root.c_str(), &startup, &process)) { throw std::runtime_error("Cannot start updated Woby."); }
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+#else
+    // Replace the finished helper with the viewer. No deployment lock remains
+    // open, and exec reports launch errors synchronously to the helper.
+    const auto previousDirectory = std::filesystem::current_path();
+    if (chdir(root.c_str()) != 0) { throw std::runtime_error("Cannot open updated deployment directory."); }
+    execl(executable.c_str(), executable.c_str(), static_cast<char*>(nullptr));
+    std::error_code ignored;
+    std::filesystem::current_path(previousDirectory, ignored);
+    throw std::runtime_error("Cannot start updated Woby.");
+#endif
 }
 
 void waitForUpdateParent(uint64_t pid, const std::filesystem::path& job)

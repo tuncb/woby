@@ -41,12 +41,15 @@ version, latest release, and any connection or validation error. Checks run in t
 background and can also be used from development builds.
 
 For a managed portable release with a newer version available, choose **Install
-update and close**. Save scene changes first; the button is disabled while the
+update and restart**. Save scene changes first; the button is disabled while the
 scene is dirty. Close other viewers using the same deployment. The dialog stays
 open while Woby downloads and verifies the package. Errors leave the app open;
 check again to retry. Once the helper is ready, Woby closes and installation
-finishes in the background. Reopen Woby afterward; `woby update --status` reports
-the final result. There is no automatic restart or automatic update check.
+finishes in the background. After verification, the helper releases the deployment
+lock and reopens Woby. A failed installation or manual recovery does not reopen it.
+If restarting fails, the installation remains completed and `woby update --status`
+reports that Woby must be opened manually. Command-line installs do not restart
+Woby, and there is no automatic update check.
 
 ### Deployment requirements
 
@@ -125,4 +128,6 @@ CTest includes package-policy unit tests, ZIP/tar.gz validation, lock and rollba
 tests, packaging-script tests, and an offline integration test using the built
 helper. The integration test covers parent handoff, installation, a failed binary
 version check, interrupted-update recovery, and paths with spaces and Unicode.
+Headless viewer fixtures verify that UI installs restart only after completion,
+with the deployment lock available, while CLI installs and failed updates stay closed.
 Python is required for development/CI tests and package generation only.

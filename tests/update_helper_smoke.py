@@ -47,15 +47,16 @@ def short_path(path):
     return Path(buffer.value)
 
 
-def run_parent(helper, root, job):
+def run_parent(helper, root, job, restart=False, launcher=None):
     # The helper must observe its original parent exit before it modifies files.
     script = """
 import os, subprocess, sys, time
 from pathlib import Path
-helper, root, job = sys.argv[1:]
+helper, root, job, restart = sys.argv[1:]
 error_path = Path(job) / 'helper-stderr.log'
 with error_path.open('wb') as error:
-    child = subprocess.Popen([helper, '--apply', root, job, str(os.getpid())], stderr=error,
+    child = subprocess.Popen([helper, '--apply', root, job, str(os.getpid())] +
+        (['--restart'] if restart == 'True' else []), stderr=error,
         creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
 for _ in range(200):
     if (Path(job) / 'ready.json').exists():
@@ -67,7 +68,10 @@ for _ in range(200):
     time.sleep(.05)
 raise RuntimeError('helper handshake timed out')
 """
-    subprocess.run([sys.executable, "-c", script, str(helper), str(root), str(job)], check=True, timeout=20)
+    arguments = ([str(launcher), "--handoff", str(root), str(job), str(restart)] if launcher else
+                 [sys.executable, "-c", script, str(helper), str(root), str(job), str(restart)])
+    subprocess.run(arguments, check=True, timeout=20,
+                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
     last_read_error = None
     for _ in range(600):
         try:
@@ -89,6 +93,7 @@ def main():
     binary = Path(sys.argv[1]).resolve()
     helper_binary = Path(sys.argv[2]).resolve()
     assets = Path(sys.argv[3]).resolve()
+    viewer_fixture = Path(sys.argv[4]).resolve()
     platform = "windows-x64" if os.name == "nt" else "macos-arm64" if sys.platform == "darwin" else "linux-x64"
     suffix = ".exe" if os.name == "nt" else ""
     version = subprocess.check_output([str(binary), "--version"], text=True).strip()
@@ -100,12 +105,17 @@ def main():
         stage_template(binary, helper_binary, assets, template)
         # Use a metadata-only older version; this tests the installer with the
         # actual built binaries, without requiring a historical release/network.
-        scenarios = ["success", "health-failure", "interrupted"]
+        scenarios = ["success", "health-failure", "interrupted", "success-restart", "success-no-restart",
+                     "health-failure-restart", "interrupted-restart"]
         if os.name == "nt":
             scenarios += ["success-short-path", "interrupted-short-path"]
         for scenario in scenarios:
             root = base / (scenario + " deployment ünicode")
             shutil.copytree(template, root)
+            probe_restart = scenario.endswith("restart")
+            restart = probe_restart and scenario != "success-no-restart"
+            if probe_restart:
+                shutil.copy2(viewer_fixture, root / binary.name)
             (root / "obsolete.dat").write_text("old managed file")
             old_manifest = package.collect_manifest(root, platform, "0.0.0")
             write_json(root / package.MANIFEST, old_manifest)
@@ -114,7 +124,9 @@ def main():
             (root / "plugins/custom.dll").write_text("user plugin")
             job = root / ".woby-update/job-0123456789abcdef0123456789abcdef"
             shutil.copytree(template, job / "package")
-            new_manifest = package.collect_manifest(job / "package", platform, future if scenario == "health-failure" else version)
+            if probe_restart:
+                shutil.copy2(viewer_fixture, job / "package" / binary.name)
+            new_manifest = package.collect_manifest(job / "package", platform, future if scenario.startswith("health-failure") else version)
             write_json(job / "package" / package.MANIFEST, new_manifest)
             (job / "helper").mkdir()
             for source in template.iterdir():
@@ -143,7 +155,8 @@ def main():
                 subprocess.run([str(helper), "--recover", str(argument_root), str(argument_job)], check=True, timeout=30)
                 status = json.loads((root / ".woby-update/status.json").read_text())
             else:
-                status = run_parent(helper, argument_root, argument_job)
+                status = run_parent(helper, argument_root, argument_job, restart=restart,
+                                    launcher=viewer_fixture if probe_restart else None)
             success = scenario.startswith("success")
             expected = "completed" if success else "failed"
             assert status["state"] == expected, status
@@ -152,14 +165,27 @@ def main():
             assert (root / "obsolete.dat").exists() != success
             assert (root / "my-scene.woby").read_text() == "user scene"
             assert (root / "plugins/custom.dll").read_text() == "user plugin"
+            # Wait for startup before launching another helper that takes the
+            # exclusive lock; otherwise the recovery probe could block startup.
+            if success and restart:
+                for _ in range(200):
+                    if (root / "restarted.json").exists():
+                        break
+                    time.sleep(.05)
+                restarted = json.loads((root / "restarted.json").read_text(encoding="utf-8"))
+                assert restarted == {"argc": 1, "cwd": str(root), "guarded": True, "state": "completed"}, restarted
+            else:
+                time.sleep(.1)
+                assert not (root / "restarted.json").exists(), scenario
             # A completed transaction must never be rolled back by an old helper.
             completed = subprocess.run([str(helper), "--recover", str(root), str(job)], capture_output=True, timeout=30)
             assert completed.returncode == 1
             assert json.loads((root / package.MANIFEST).read_text()) == installed
             # Exercise the actual public CLI's result contract without network.
-            query = subprocess.run([str(root / ("woby" + suffix)), "update", "--status", "--json"], capture_output=True, text=True, timeout=15)
-            assert query.returncode == (0 if success else 1), query.stderr
-            assert json.loads(query.stdout)["state"] == expected
+            if not probe_restart:
+                query = subprocess.run([str(root / ("woby" + suffix)), "update", "--status", "--json"], capture_output=True, text=True, timeout=15)
+                assert query.returncode == (0 if success else 1), query.stderr
+                assert json.loads(query.stdout)["state"] == expected
             print(scenario + ": passed")
             time.sleep(.1)  # Allow the detached helper to finish exiting before cleanup.
 

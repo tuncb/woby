@@ -192,7 +192,7 @@ UpdateResult executeUpdate(const UpdateArguments& arguments, const std::string& 
             copyHelper(root, job, installed);
             if (cancellation.stop_requested()) { throw std::runtime_error("Update canceled."); }
             writeUpdateStatus(root, "pending", "Installing Woby " + release.version + ".", job);
-            launchUpdateHelper(root, job);
+            launchUpdateHelper(root, job, arguments.restart);
         } catch (const std::exception& error) {
             writeUpdateStatus(root, "failed", error.what(), job);
             throw;

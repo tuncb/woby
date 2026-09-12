@@ -40,7 +40,7 @@ void startUiUpdate(UpdateUiRuntime& runtime, UpdateCommand command, bool sceneDi
         }
         std::packaged_task<UpdateResult(std::stop_token)> task(
             [command, version = state.currentVersion, &deploymentGuard](std::stop_token cancellation) {
-                return executeUpdate({command, true}, version,
+                return executeUpdate({command, true, command == UpdateCommand::install}, version,
                     command == UpdateCommand::install ? &deploymentGuard : nullptr, cancellation);
             });
         runtime.result = task.get_future();
@@ -48,7 +48,7 @@ void startUiUpdate(UpdateUiRuntime& runtime, UpdateCommand command, bool sceneDi
         state.activeCommand = command;
         state.available = false;
         state.message = command == UpdateCommand::check ? "Checking for updates..."
-            : "Downloading and verifying update... Woby will close when ready.";
+            : "Downloading and verifying update... Woby will restart after installation.";
     } catch (const std::exception& error) {
         // Losing both locks means another updater could now change the deployment.
         if (command == UpdateCommand::install && !deploymentGuard) { throw; }

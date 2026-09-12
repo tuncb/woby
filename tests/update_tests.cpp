@@ -357,6 +357,20 @@ TEST_CASE("structured updater reports invalid commands without starting a downlo
     CHECK(result.data.contains("error"));
 }
 
+TEST_CASE("updater leaves command line restarts disabled by default")
+{
+    CHECK_FALSE(woby::UpdateArguments{}.restart);
+    CHECK_FALSE((woby::UpdateArguments{woby::UpdateCommand::install, true}.restart));
+}
+
+TEST_CASE("updater reports viewer launch failures without changing the working directory")
+{
+    const auto root = temporaryDirectory();
+    const auto current = fs::current_path();
+    CHECK_THROWS_WITH(woby::launchUpdatedViewer(*root), "Cannot start updated Woby.");
+    CHECK(fs::current_path() == current);
+}
+
 TEST_CASE("updater extracts verified zip and tar gzip packages")
 {
     const auto root = temporaryDirectory();

@@ -53,10 +53,10 @@ SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen, const 
             ImGui::TextWrapped("This build cannot install updates. Install a portable release to enable updating.");
         } else if (update.available || installing) {
             ImGui::TextWrapped("Save your scene and close other Woby windows using this installation. "
-                "Woby will close to install the update; reopen it after installation finishes.");
+                "Woby will close to install the update and reopen after installation finishes.");
             if (state.isDirty) { ImGui::TextWrapped("Save your scene changes before installing."); }
             ImGui::BeginDisabled(!canInstallUpdate(update, state.isDirty));
-            if (ImGui::Button("Install update and close")) { result.updateCommand = UpdateCommand::install; }
+            if (ImGui::Button("Install update and restart")) { result.updateCommand = UpdateCommand::install; }
             ImGui::EndDisabled();
         }
         ImGui::Spacing();
