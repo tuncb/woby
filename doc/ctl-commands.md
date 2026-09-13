@@ -144,7 +144,7 @@ computations fail capture; hide or repair the affected object before retrying.
 | --- | --- | --- |
 | `analysis create [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
 | `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
-| `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
+| `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode automatic\|original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
 | `analysis enable ANALYSIS_ID --side a\|b --enabled BOOL [--object OBJECT_ID]` | `analysis.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. Membership is preserved. |
 | `analysis remove ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.remove` | Remove the input's current triangular parts from the selected side. |
@@ -158,6 +158,40 @@ Exact source-duplicate controls are available through `analysis set`:
 The RPC names are `duplicatePoints`, `duplicateTriangles`, `showDuplicatePoints`,
 and `showDuplicateTriangles`. The first two enable computation; Show changes only
 presentation. These checks have no tolerance parameter.
+
+Topology inspection uses `--topology-mode automatic|original_index|exact_position`.
+Automatic preserves original source indices for OBJ and importer vertex tables, and
+uses exact-position topology for STL. Explicit original-index mode is unavailable
+for STL. All modes inspect selected parts separately within each source file;
+coincident points in different files are never joined. Original source point IDs
+are partitioned by world transform when parts move independently. Exact-position
+mode joins exactly equal double-precision world positions, normalizing signed zero,
+without an epsilon. Analysis display offsets do not affect topology.
+
+`--show-winding` and `--show-non-manifold` control independent overlays and do not
+invalidate analysis. Changing topology mode recomputes only the topology stage;
+distance, quality, duplicates, and degenerate findings remain cached. Surface-quality
+neighbor metrics and legacy `diagnostics` fields retain their original geometric
+welding definitions.
+
+The additive `boundary_edges`, `non_manifold_edges`, and
+`inconsistently_oriented_tris` detector results include status, requested and resolved
+per-source topology modes, provenance, excluded collapsed-face counts, edge endpoints,
+and incident source triangle/part references. Triangle and point IDs are one-based;
+edge IDs are one-based within a source and the current topology configuration.
+Boundary and non-manifold counts count edges. Winding counts count unique affected
+triangle instances; `findingCount` counts conflict edges. Both incident faces are
+reported, without asserting which face is erroneous. Same-direction edges and BFS
+orientation-contradiction witnesses have separate flags. An orientation contradiction
+means manifold flip constraints cannot all be satisfied; witness edges are not a
+repair prescription. Nondegenerate duplicate faces remain in edge incidence.
+
+Each JSON array is bounded to 100 entries, including findings, incident faces,
+endpoint source-point references, affected faces, and source metadata. Full counts
+and truncation flags accompany these arrays. Unavailable or partial detectors have
+a null `count` and a separate `knownCount`. UI pages and the incident-face list allow
+inspection of all retained findings. Scene version 10 persists topology mode and
+independent visibility; versions 2-9 migrate the old visibility switch to both.
 
 Each populated side of `analysis results --json` includes `detectors` schema version
 1, with `duplicate_points` and `duplicate_tris`. `count` counts extra source records

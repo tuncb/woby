@@ -260,7 +260,7 @@ TEST_CASE("degenerate scene operations navigation persistence and report agree")
     writeSceneDocument(saved, document);
     CHECK(readSceneDocument(saved).comparisons[0].settings == comparisonSettings(state, id));
     std::ifstream file(saved); const std::string text((std::istreambuf_iterator<char>(file)), {});
-    CHECK(text.find("version = 9") != std::string::npos);
+    CHECK(text.find("version = 10") != std::string::npos);
     CHECK(text.find("findings") == std::string::npos);
     CHECK(text.find("diagnostic_focus") == std::string::npos);
     const auto json = controlComparisonResults(result, .05)["aToB"]["detectors"]["degenerate_tris"];

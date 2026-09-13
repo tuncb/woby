@@ -287,10 +287,12 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
         lines.diagnosticEdges = edges;
         parts.push_back(lines);
     };
-    if (settings.showBoundaries) { appendEdges(surface.diagnostics.boundaryEdges); }
+    if (settings.showBoundaries) { appendEdges(surface.topology.sources.empty() ? surface.diagnostics.boundaryEdges : surface.topologyBoundaries); }
     if (settings.showNonManifold) {
-        appendEdges(surface.diagnostics.nonManifoldEdges);
-        appendEdges(surface.diagnostics.inconsistentWindingEdges);
+        appendEdges(surface.topology.sources.empty() ? surface.diagnostics.nonManifoldEdges : surface.topologyNonManifold);
+    }
+    if (settings.showWinding) {
+        appendEdges(surface.topology.sources.empty() ? surface.diagnostics.inconsistentWindingEdges : surface.topologyWinding);
     }
 }
 

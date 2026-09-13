@@ -1,8 +1,9 @@
 # Issue #41 implementation plan
 
 Status: duplicate-point and source-ID duplicate-triangle implementation added on
-2026-09-12; degenerate-triangle findings added on 2026-09-13. Remaining detectors
-and the complete shared-topology milestone are open.
+2026-09-12; degenerate-triangle findings and shared topology with upgraded edge/winding
+findings added on 2026-09-13. Non-manifold vertices, hole loops, and the later
+detectors remain open. Milestone A is not yet complete.
 
 The first slice preserves OBJ position records, STL corners, and importer vertex
 buffers; adds per-analysis exact source checks, grouped navigation/highlighting,
@@ -27,6 +28,21 @@ It uses retained source data and double-precision world transforms, excluding
 analysis display offsets. Each source triangle / transformed part is counted once
 in the union, including repeated faces and STL facets. Existing numerical-collapse
 counts retain their meanings. This does not implement shared topology.
+
+The topology slice adds retained per-source edge incidence, vertex links, boundary
+graphs, edge-connected components, and manifold orientation constraints. Automatic
+mode chooses original indices for indexed input and exact positions for STL;
+explicit original-index mode is unavailable for STL. Files remain separate in every
+mode (combined-source welding is not exposed in this slice). World positions use
+doubles from retained source records, and original IDs are partitioned by transform.
+Collapsed faces are excluded and counted; nondegenerate duplicates retain incidence.
+Boundary and non-manifold edge findings retain all incident triangle/part references.
+Winding reports unique affected face instances, conflict edges, and deterministic
+orientation-contradiction witnesses, with paged navigation and incident-face highlights.
+Scene version 10 adds topology mode and separate winding visibility, migrating old
+scenes and saved views. Mode edits invalidate only topology; stale mode results are
+rejected. JSON arrays are bounded to 100 entries with full counts/truncation flags.
+Legacy geometric diagnostic fields and quality-neighbor semantics are unchanged.
 
 Issue: [More explicit detectors](https://github.com/tuncb/woby/issues/41).
 Baseline inspected: `9463124`, 2026-09-08. Recheck the baseline before implementation.

@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstring>
 #include <climits>
+#include <limits>
 #include <stdexcept>
 
 namespace woby
@@ -129,9 +130,9 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         if (!bgfx::isValid(gpu.samples)) { throw std::runtime_error("Cannot allocate analysis distance buffer."); }
     }
     if (stages & comparisonTopology) {
-        gpu.boundaries = uploadEdges(surface.diagnostics.boundaryEdges);
-        gpu.nonManifold = uploadEdges(surface.diagnostics.nonManifoldEdges);
-        gpu.winding = uploadEdges(surface.diagnostics.inconsistentWindingEdges);
+        gpu.boundaries = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.boundaryEdges : surface.topologyBoundaries);
+        gpu.nonManifold = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.nonManifoldEdges : surface.topologyNonManifold);
+        gpu.winding = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.inconsistentWindingEdges : surface.topologyWinding);
     }
     if (stages & comparisonDegenerates) {
         std::vector<std::array<float, 3>> edges, fill;
@@ -336,7 +337,20 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
             else { ImGui::Text("%zu%s", result.findings.size(), result.unavailableSources ? "*" : ""); }
             if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%zu collapsed / collinear; %zu needles; %zu caps\nReason counts overlap; each triangle instance counted once.\nStatus: %s", result.collapsedCount, result.needleCount, result.capCount, degenerateStatus(result)); }
         }
-        else if (!duplicate) { ImGui::Text("%zu", comparisonDiagnosticEdges(runtime.result, side, category).size()); }
+        else if (!duplicate) {
+            const auto& topology = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).topology;
+            if (topology.unavailableSources && !topology.availableSources) { ImGui::TextDisabled("N/A"); }
+            else {
+                const auto count = category == DiagnosticCategory::winding ? topology.windingFaces.size()
+                    : comparisonDiagnosticEdges(runtime.result, side, category).size();
+                ImGui::Text("%zu%s", count, topology.unavailableSources ? "*" : "");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Status: %s\n%zu collapsed faces excluded from topology\n%zu unavailable sources\nWinding reports both incident faces, not a unique erroneous face.\n%zu conflict edges; %zu orientation contradiction witnesses",
+                    topologyStatus(topology), topology.excludedCollapsedFaces, topology.unavailableSources,
+                    topology.windingEdges.size(), topology.orientationContradictions);
+            }
+        }
         else {
             const auto& result = comparisonDuplicates(runtime.result, side, category);
             if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
@@ -350,17 +364,19 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     ImGui::TableNextColumn();
     bool visible = degenerate ? settings.degenerates.show : category == DiagnosticCategory::boundary ? settings.showBoundaries
         : category == DiagnosticCategory::duplicatePoints ? settings.duplicates.showPoints
-        : category == DiagnosticCategory::duplicateTriangles ? settings.duplicates.showTriangles : settings.showNonManifold;
+        : category == DiagnosticCategory::duplicateTriangles ? settings.duplicates.showTriangles
+        : category == DiagnosticCategory::winding ? settings.showWinding : settings.showNonManifold;
     if (ImGui::Checkbox("##show", &visible)) {
         if (degenerate) { settings.degenerates.show = visible; }
         else if (category == DiagnosticCategory::boundary) { settings.showBoundaries = visible; }
         else if (category == DiagnosticCategory::duplicatePoints) { settings.duplicates.showPoints = visible; }
         else if (category == DiagnosticCategory::duplicateTriangles) { settings.duplicates.showTriangles = visible; }
+        else if (category == DiagnosticCategory::winding) { settings.showWinding = visible; }
         else { settings.showNonManifold = visible; }
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("%s", category == DiagnosticCategory::nonManifold || category == DiagnosticCategory::winding
-            ? "Show non-manifold and winding edges (shared visibility)" : "Show this diagnostic overlay");
+            ? "Show this edge finding overlay" : "Show this diagnostic overlay");
     }
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     ImGui::TableNextColumn();
@@ -491,13 +507,79 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
     }
 }
 
+const std::vector<TopologyEdgeFinding>& topologyFindings(const MeshTopology& topology, DiagnosticCategory category)
+{
+    if (category == DiagnosticCategory::boundary) { return topology.boundaries; }
+    if (category == DiagnosticCategory::nonManifold) { return topology.nonManifoldEdges; }
+    return topology.windingEdges;
+}
+
+void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool current, SceneObjectId id)
+{
+    const auto settings = comparisonSettings(state, id);
+    const auto category = settings.diagnosticCategory;
+    if (category != DiagnosticCategory::boundary && category != DiagnosticCategory::nonManifold && category != DiagnosticCategory::winding) { return; }
+    if (!current || !comparisonResultsReady(runtime, state, id)) { return; }
+    const auto& surface = settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired;
+    const auto& topology = surface.topology;
+    ImGui::TextWrapped("Topology: %s; files inspected separately. Status: %s. Collapsed faces excluded: %zu.",
+        topologyModeName(topology.mode), topologyStatus(topology), topology.excludedCollapsedFaces);
+    if (topology.unavailableSources) { ImGui::TextWrapped("%zu sources unavailable. Original-index topology requires indexed input; use Automatic or Exact positions for STL.", topology.unavailableSources); }
+    const auto& findings = topologyFindings(topology, category);
+    if (findings.empty()) { return; }
+    if (category == DiagnosticCategory::winding) {
+        ImGui::TextWrapped("%zu affected triangle instances across %zu conflict edges. Both incident faces are reported; no unique erroneous face or repair direction is implied. %zu orientation contradiction witnesses.",
+            topology.windingFaces.size(), findings.size(), topology.orientationContradictions);
+    }
+    const auto* comparison = findComparison(state, id);
+    const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
+    constexpr size_t pageSize = 25;
+    const size_t page = selected / pageSize;
+    ImGui::Text("Edges %zu-%zu of %zu", page*pageSize+1, std::min(findings.size(), (page+1)*pageSize), findings.size());
+    ImGui::BeginDisabled(page == 0);
+    if (ImGui::SmallButton("Previous page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*pageSize, id); }
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled((page+1)*pageSize >= findings.size());
+    if (ImGui::SmallButton("Next page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*pageSize, id); }
+    ImGui::EndDisabled();
+    for (size_t i = page*pageSize; i < std::min(findings.size(), (page+1)*pageSize); ++i) {
+        const auto& finding = findings[i];
+        const auto& source = topology.sources[finding.source];
+        const auto& edge = source.edges[finding.edge];
+        ImGui::PushID(static_cast<int>(i));
+        const auto label = source.source + " / edge " + std::to_string(finding.edge+1) + " / " + std::to_string(edge.incidentFaces.size()) + " incident faces";
+        if (ImGui::Selectable(label.c_str(), comparison->diagnosticFocus && comparison->diagnosticFocus->index == i)) {
+            selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id);
+        }
+        ImGui::PopID();
+    }
+    if (!comparison->diagnosticFocus) { return; }
+    const auto& finding = findings.at(comparison->diagnosticFocus->index);
+    const auto& source = topology.sources[finding.source];
+    const auto& edge = source.edges[finding.edge];
+    ImGui::TextWrapped("%s: %s (%s)", source.source.c_str(), topologyModeName(source.mode), triangleProvenanceName(source.provenance));
+    if (edge.orientationContradiction) { ImGui::TextWrapped("Orientation contradiction: manifold flip constraints cannot all be satisfied in this region."); }
+    if (ImGui::BeginChild("incident_faces", {0, ImGui::GetTextLineHeightWithSpacing()*5}, ImGuiChildFlags_Borders)) {
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(std::min(edge.incidentFaces.size(), static_cast<size_t>(std::numeric_limits<int>::max()))));
+        while (clipper.Step()) {
+            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                const auto& use = edge.incidentFaces[static_cast<size_t>(i)];
+                const auto& ref = source.faces[use.face].reference;
+                ImGui::Text("Triangle %zu / part %llu / %s", ref.triangleId+1, static_cast<unsigned long long>(ref.partId), use.forward ? "forward" : "reverse");
+            }
+        }
+    }
+    ImGui::EndChild();
+}
+
 void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, bool current,
     bool hasA, bool hasB, SceneObjectId id)
 {
     ImGui::TextUnformatted("Diagnostics");
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
-        "Diagnostics describe combined surfaces; coincident edges across parts are matched. "
+        "Topology is inspected separately within each source file. Automatic uses original indices for indexed input and exact positions for STL. "
         "Open boundaries may be intentional. Self-intersections are not checked.\n\n"
         "Use each row's arrows to inspect edges or duplicate groups on the chosen target. "
         "Navigation wraps; right starts at the first finding and left at the last.\n\n"
@@ -520,6 +602,15 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         settings.diagnosticSide = ComparisonSide::b;
     }
     if (settings != initial) { setComparisonSettings(state, settings, id); }
+    int topologyMode = static_cast<int>(settings.topologyMode);
+    if (ImGui::Combo("Topology", &topologyMode, "Automatic\0Original indices\0Exact positions\0")) {
+        settings.topologyMode = static_cast<TopologyMode>(topologyMode);
+        setComparisonSettings(state, settings, id);
+        current = false;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity; unavailable for STL.\nExact positions join exactly equal world coordinates within a file, with no epsilon.\nAutomatic selects original indices except for STL.");
+    }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
     if (ImGui::BeginTable("Analysis diagnostics", 5 + static_cast<int>(hasA) + static_cast<int>(hasB),
             ImGuiTableFlags_SizingStretchProp)) {
@@ -534,7 +625,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::TableHeadersRow();
         diagnosticRow(state, runtime, current, "Boundary edges", DiagnosticCategory::boundary, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Non-manifold edges", DiagnosticCategory::nonManifold, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Winding edges", DiagnosticCategory::winding, hasA, hasB, id);
+        diagnosticRow(state, runtime, current, "Inconsistent triangles", DiagnosticCategory::winding, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Duplicate points", DiagnosticCategory::duplicatePoints, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Duplicate triangles", DiagnosticCategory::duplicateTriangles, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Degenerate triangles", DiagnosticCategory::degenerateTriangles, hasA, hasB, id);
@@ -557,6 +648,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     }
     drawDuplicateFindings(state, runtime, current, id);
     drawDegenerateFindings(state, runtime, current, id);
+    drawTopologyFindings(state, runtime, current, id);
     ImGui::BeginDisabled(!current);
     if (ImGui::Button("Full result")) { frameComparison(state, id); }
     ImGui::EndDisabled();
@@ -596,6 +688,7 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
         && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     const auto required = requestedComparisonStages(comparisonSettings(state, id), both, fullResults);
     return signature != 0 && runtime.resultSignature == signature && runtime.cache.signature == signature
+        && runtime.cache.topologyMode == comparisonSettings(state, id).topologyMode
         && sameDegenerateThresholds(runtime.cache.degenerates, comparisonSettings(state, id).degenerates)
         && (runtime.cache.completed & required) == required && (fullResults || runtime.ready);
 }
@@ -617,6 +710,18 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.inputs.reset();
         runtime.uploadedStages = 0;
         runtime.resultSignature = runtime.attemptedSignature = 0;
+        runtime.error.clear();
+        resetComparisonDiagnosticFocus(state, id);
+    }
+    if (resetComparisonTopologyCache(runtime.cache, settings.topologyMode)) {
+        for (auto* gpu : {&runtime.originalGpu, &runtime.repairedGpu}) {
+            for (auto* handle : {&gpu->boundaries, &gpu->nonManifold, &gpu->winding}) {
+                if (bgfx::isValid(*handle)) { bgfx::destroy(*handle); }
+                *handle = BGFX_INVALID_HANDLE;
+            }
+        }
+        runtime.uploadedStages &= ~comparisonTopology;
+        runtime.attemptedSignature = 0;
         runtime.error.clear();
         resetComparisonDiagnosticFocus(state, id);
     }
@@ -689,8 +794,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
             runtime.inputs = std::move(inputs);
         }
         runtime.stop = std::stop_source{};
-        runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, missing, degenerates = settings.degenerates, stop = runtime.stop.get_token()] {
-            return computeComparisonStages((*inputs)[0], (*inputs)[1], missing, stop, degenerates);
+        runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, missing, degenerates = settings.degenerates, topologyMode = settings.topologyMode, stop = runtime.stop.get_token()] {
+            return computeComparisonStages((*inputs)[0], (*inputs)[1], missing, stop, degenerates, topologyMode);
         });
     } catch (const std::exception& error) { runtime.error = error.what(); }
 }
@@ -1164,6 +1269,8 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
     if (settings.showNonManifold)
     {
         submitEdges(view, gpu.nonManifold, colorProgram, colorUniform, {1, .15f, .55f, 1}, identity);
+    }
+    if (settings.showWinding) {
         submitEdges(view, gpu.winding, colorProgram, colorUniform, {1, .2f, .2f, 1}, identity);
     }
 }
@@ -1224,6 +1331,18 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
         } else {
             points.push_back(edge->a); points.push_back(edge->b);
             for (const auto& endpoint : {edge->a, edge->b}) { appendCross(points, endpoint, radius); }
+            const auto& surface = focus.side == ComparisonSide::a ? it->second.result.original : it->second.result.repaired;
+            const auto& findings = topologyFindings(surface.topology, focus.category);
+            if (focus.index < findings.size()) {
+                const auto& finding = findings[focus.index];
+                const auto& source = surface.topology.sources[finding.source];
+                for (const auto& use : source.edges[finding.edge].incidentFaces) {
+                    for (const auto vertex : source.faces[use.face].vertices) {
+                        const auto& p = source.vertices[vertex].position;
+                        faceFill.push_back({static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2])});
+                    }
+                }
+            }
         }
         // Portable thick lines: bgfx line primitives are only one pixel wide on
         // some backends and would merge into the yellow object-selection outline.

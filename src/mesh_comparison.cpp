@@ -271,6 +271,31 @@ void inspectSurfaceDegenerates(SurfaceComparison& surface, const Mesh& mesh, Deg
     }
 }
 
+void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, TopologyMode mode, std::stop_token stop)
+{
+    const std::vector<DuplicateSource> empty;
+    surface.topology = buildMeshTopology(mesh.duplicateInput ? mesh.duplicateInput->sources : empty, mode, stop);
+    if (!mesh.duplicateInput) { surface.topology.unavailableSources = 1; }
+    const auto geometry = [&](const std::vector<TopologyEdgeFinding>& findings) {
+        std::vector<DiagnosticEdge> result;
+        for (const auto& finding : findings) {
+            checkCanceled(stop);
+            const auto& source = surface.topology.sources[finding.source];
+            const auto& edge = source.edges[finding.edge];
+            DiagnosticEdge value;
+            for (size_t k = 0; k < 3; ++k) {
+                value.a[k] = static_cast<float>(source.vertices[edge.vertices[0]].position[k]);
+                value.b[k] = static_cast<float>(source.vertices[edge.vertices[1]].position[k]);
+            }
+            result.push_back(value);
+        }
+        return result;
+    };
+    surface.topologyBoundaries = geometry(surface.topology.boundaries);
+    surface.topologyNonManifold = geometry(surface.topology.nonManifoldEdges);
+    surface.topologyWinding = geometry(surface.topology.windingEdges);
+}
+
 SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop, DegenerateSettings degenerates = {})
 {
     checkCanceled(stop);
@@ -419,13 +444,21 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.colorRange = std::max(settings.colorRange, settings.tolerance);
     settings.quality = normalizedSurfaceQualitySettings(settings.quality);
     settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
+    settings.topologyMode = normalizedTopologyMode(settings.topologyMode);
     return settings;
 }
 
 const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
     const MeshComparison& result, ComparisonSide side, DiagnosticCategory category)
 {
-    const auto& diagnostics = side == ComparisonSide::a ? result.original.diagnostics : result.repaired.diagnostics;
+    const auto& surface = side == ComparisonSide::a ? result.original : result.repaired;
+    const auto& diagnostics = surface.diagnostics;
+    // Legacy callers may supply geometry-only results. Application snapshots retain source records.
+    if (!surface.topology.sources.empty()) {
+        if (category == DiagnosticCategory::boundary) { return surface.topologyBoundaries; }
+        if (category == DiagnosticCategory::nonManifold) { return surface.topologyNonManifold; }
+        if (category == DiagnosticCategory::winding) { return surface.topologyWinding; }
+    }
     switch (category) {
     case DiagnosticCategory::boundary: return diagnostics.boundaryEdges;
     case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
@@ -537,7 +570,7 @@ MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop)
     return inspectTriangles(meshTriangles(mesh, stop), stop);
 }
 
-MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop, DegenerateSettings degenerates)
+MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode)
 {
     checkCanceled(stop);
     validateComparisonMeshSize(original.vertices.size(), original.indices.size() / 3);
@@ -546,6 +579,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         MeshComparison result;
         result.repaired = copySurface(repaired, stop, degenerates);
         result.repaired.diagnostics = inspectMesh(repaired, stop);
+        inspectSurfaceTopology(result.repaired, repaired, topologyMode, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
         return result;
     }
@@ -553,6 +587,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         MeshComparison result;
         result.original = copySurface(original, stop, degenerates);
         result.original.diagnostics = inspectMesh(original, stop);
+        inspectSurfaceTopology(result.original, original, topologyMode, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
         return result;
     }
@@ -560,6 +595,8 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
     MeshComparison result;
     result.original = compareSurface(original, originalTree, repairedTree, false, degenerates);
     result.repaired = compareSurface(repaired, repairedTree, originalTree, false, degenerates);
+    inspectSurfaceTopology(result.original, original, topologyMode, stop);
+    inspectSurfaceTopology(result.repaired, repaired, topologyMode, stop);
     result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
     return result;
 }
@@ -591,7 +628,16 @@ bool resetComparisonDegenerateCache(ComparisonCacheStatus& cache, DegenerateSett
     return changed;
 }
 
-MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop, DegenerateSettings degenerates)
+bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mode)
+{
+    mode = normalizedTopologyMode(mode);
+    if (cache.topologyMode == mode) { return false; }
+    cache.topologyMode = mode;
+    cache.completed &= ~comparisonTopology;
+    return true;
+}
+
+MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode)
 {
     checkCanceled(stop);
     MeshComparison result;
@@ -610,7 +656,10 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             surface.source.nodes = copyWithCancellation(mesh.nodes, stop);
             surface.source.bounds = mesh.bounds;
         }
-        if (stages & comparisonTopology) { surface.diagnostics = inspectMesh(mesh, stop); }
+        if (stages & comparisonTopology) {
+            surface.diagnostics = inspectMesh(mesh, stop);
+            inspectSurfaceTopology(surface, mesh, topologyMode, stop);
+        }
         if (stages & comparisonDegenerates) { degenerates.enabled = true; inspectSurfaceDegenerates(surface, mesh, degenerates, stop); }
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
         if (stages & (comparisonDuplicatePoints | comparisonDuplicateTriangles)) {
@@ -640,6 +689,13 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     uint64_t signature, uint32_t stages)
 {
     if (!signature || signature != cache.signature) { return false; }
+    if (stages & comparisonTopology) {
+        for (const auto* surface : {&update.original, &update.repaired}) {
+            if ((surface->topology.availableSources || surface->topology.unavailableSources)
+                && surface->topology.mode != cache.topologyMode) { stages &= ~comparisonTopology; break; }
+        }
+        if (!stages) { return false; }
+    }
     if (stages & comparisonDegenerates) {
         for (const auto* surface : {&update.original, &update.repaired}) {
             if ((surface->degenerates.availableSources || surface->degenerates.unavailableSources)
@@ -649,7 +705,13 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     }
     const auto merge = [&](SurfaceComparison& target, SurfaceComparison& source) {
         if (stages & comparisonSource) { target.source = std::move(source.source); }
-        if (stages & comparisonTopology) { target.diagnostics = std::move(source.diagnostics); }
+        if (stages & comparisonTopology) {
+            target.diagnostics = std::move(source.diagnostics);
+            target.topology = std::move(source.topology);
+            target.topologyBoundaries = std::move(source.topologyBoundaries);
+            target.topologyNonManifold = std::move(source.topologyNonManifold);
+            target.topologyWinding = std::move(source.topologyWinding);
+        }
         if (stages & comparisonQuality) { target.quality = std::move(source.quality); }
         if (stages & comparisonDegenerates) {
             target.degenerates = std::move(source.degenerates);

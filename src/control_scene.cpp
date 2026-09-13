@@ -78,7 +78,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"qualityMetric", surfaceQualityMetricKey(settings.quality.metric)}, {"qualityOnA", settings.quality.onOriginal},
                 {"qualityMinimumEnabled", settings.quality.minimumEnabled}, {"qualityMaximumEnabled", settings.quality.maximumEnabled},
                 {"qualityMinimumSize", settings.quality.minimumSize}, {"qualityMaximumSize", settings.quality.maximumSize},
-                {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}}},
+                {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}, {"showWinding", settings.showWinding}, {"topologyMode", topologyModeName(settings.topologyMode)}}},
                 {"valid", canInspectComparison(state, id)}, {"missingPartCount", missingComparisonPartCount(state, id)},
                 {"aPartCount", comparison->a.size()}, {"bPartCount", comparison->b.size()}};
         }
@@ -366,6 +366,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.colorRange) { settings.colorRange = *command.colorRange; }
             if (command.showEdges) { settings.showEdges = *command.showEdges; }
             if (command.showBoundaries) { settings.showBoundaries = *command.showBoundaries; }
+            if (command.topologyMode) { settings.topologyMode = parseTopologyMode(*command.topologyMode); }
+            if (command.showWinding) { settings.showWinding = *command.showWinding; }
             if (command.showNonManifold) { settings.showNonManifold = *command.showNonManifold; }
             setComparisonSettings(state, settings, id);
             if (command.name) { renameComparison(state, id, *command.name); }
@@ -518,6 +520,64 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
 }
 
 namespace {
+Json topologyFaceJson(const TopologyFaceReference& face)
+{
+    return {{"sourceId", std::to_string(face.fileId)}, {"partId", std::to_string(face.partId)}, {"triangleId", face.triangleId+1}};
+}
+Json topologyResultJson(const MeshTopology& topology, const std::vector<TopologyEdgeFinding>& edges, bool winding = false)
+{
+    constexpr size_t limit = 100;
+    Json findings = Json::array(), sources = Json::array(), affected = Json::array();
+    for (size_t i = 0; i < std::min(limit, topology.sources.size()); ++i) {
+        const auto& source = topology.sources[i];
+        sources.push_back({{"sourceId", std::to_string(source.fileId)}, {"source", source.source},
+            {"provenance", triangleProvenanceName(source.provenance)}, {"topologyMode", topologyModeName(source.mode)},
+            {"status", source.available ? "complete" : "unavailable"}, {"excludedCollapsedFaces", source.excludedCollapsedFaces}});
+    }
+    for (size_t i = 0; i < std::min(limit, edges.size()); ++i) {
+        const auto& finding = edges[i];
+        const auto& source = topology.sources[finding.source];
+        const auto& edge = source.edges[finding.edge];
+        Json faces = Json::array(), endpoints = Json::array();
+        for (size_t k = 0; k < std::min(limit, edge.incidentFaces.size()); ++k) {
+            const auto& use = edge.incidentFaces[k];
+            auto face = topologyFaceJson(source.faces[use.face].reference);
+            face["forward"] = use.forward;
+            faces.push_back(std::move(face));
+        }
+        for (const auto vertexId : edge.vertices) {
+            const auto& vertex = source.vertices[vertexId];
+            Json refs = Json::array();
+            for (size_t k = 0; k < std::min(limit, vertex.references.size()); ++k) {
+                const auto& ref = vertex.references[k];
+                refs.push_back({{"partId", std::to_string(ref.partId)}, {"pointId", ref.pointId+1}});
+            }
+            endpoints.push_back({{"position", vertex.position}, {"sourcePoints", refs},
+                {"sourcePointCount", vertex.references.size()}, {"sourcePointsTruncated", vertex.references.size() > limit}});
+        }
+        findings.push_back({{"sourceId", std::to_string(source.fileId)}, {"source", source.source},
+            {"edgeId", finding.edge+1}, {"topologyMode", topologyModeName(source.mode)},
+            {"provenance", triangleProvenanceName(source.provenance)}, {"endpoints", endpoints},
+            {"incidentFaceCount", edge.incidentFaces.size()}, {"incidentFaces", faces},
+            {"incidentFacesTruncated", edge.incidentFaces.size() > limit},
+            {"sameDirection", edge.windingConflict}, {"orientationContradiction", edge.orientationContradiction}});
+    }
+    const size_t count = winding ? topology.windingFaces.size() : edges.size();
+    Json result = {{"status", topologyStatus(topology)}, {"algorithm", "woby-source-topology-v1"},
+        {"topologyMode", topologyModeName(topology.mode)}, {"scope", "per-source; selected parts"},
+        {"count", topology.unavailableSources ? Json(nullptr) : Json(count)}, {"knownCount", count},
+        {"excludedCollapsedFaces", topology.excludedCollapsedFaces}, {"unavailableSources", topology.unavailableSources},
+        {"sources", sources}, {"sourceCount", topology.sources.size()}, {"sourcesTruncated", topology.sources.size() > limit},
+        {"findings", findings}, {"findingCount", edges.size()}, {"findingsTruncated", edges.size() > limit}};
+    if (winding) {
+        for (size_t i = 0; i < std::min(limit, topology.windingFaces.size()); ++i) { affected.push_back(topologyFaceJson(topology.windingFaces[i])); }
+        result["affectedFaces"] = affected;
+        result["affectedFacesTruncated"] = topology.windingFaces.size() > limit;
+        result["orientationContradictions"] = topology.orientationContradictions;
+        result["countUnit"] = "unique triangle instances";
+    } else { result["countUnit"] = "edges"; }
+    return result;
+}
 Json degenerateResultJson(const MeshDegenerates& result)
 {
     const bool enabled = result.settings.enabled;
@@ -586,7 +646,10 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
             {"percentile95", measured ? Json(value.percentile95) : Json(nullptr)},
             {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
             {"detectors", {{"schemaVersion", 1}, {"idBase", 1}, {"scope", "per-source; selected parts, including unused points when whole file selected"},
-                {"duplicate_points", duplicateResultJson(value.duplicates.points)}, {"duplicate_tris", duplicateResultJson(value.duplicates.triangles)}, {"degenerate_tris", degenerateResultJson(value.degenerates)}}},
+                {"duplicate_points", duplicateResultJson(value.duplicates.points)}, {"duplicate_tris", duplicateResultJson(value.duplicates.triangles)}, {"degenerate_tris", degenerateResultJson(value.degenerates)},
+                {"boundary_edges", topologyResultJson(value.topology, value.topology.boundaries)},
+                {"non_manifold_edges", topologyResultJson(value.topology, value.topology.nonManifoldEdges)},
+                {"inconsistently_oriented_tris", topologyResultJson(value.topology, value.topology.windingEdges, true)}}},
             {"surfaceMeshQuality", quality}, {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
             {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
                 {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},

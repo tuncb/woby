@@ -3,6 +3,7 @@
 #include "surface_mesh_quality.h"
 #include "mesh_duplicates.h"
 #include "mesh_degenerates.h"
+#include "mesh_topology.h"
 
 #include <cstddef>
 #include <string>
@@ -44,6 +45,8 @@ struct ComparisonSettings
     bool showEdges = false;
     bool showBoundaries = true;
     bool showNonManifold = true;
+    bool showWinding = true;
+    TopologyMode topologyMode = TopologyMode::automatic;
     ComparisonSide diagnosticSide = ComparisonSide::a;
     DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;
     SurfaceQualitySettings quality;

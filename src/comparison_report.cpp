@@ -51,6 +51,12 @@ std::vector<std::string> comparisonReportLines(
                 lines.push_back(label + " " + name + ": " + std::to_string(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")"
                     + (duplicates.informationalCount ? "; " + std::to_string(duplicates.informationalCount) + " informational STL corners" : ""));
             };
+            const auto& topology = surface->topology;
+            lines.push_back(label + " topology: " + topologyModeName(topology.mode) + "; per source (" + topologyStatus(topology) + ")");
+            lines.push_back(label + " known boundary / non-manifold edges / inconsistent triangles: "
+                + std::to_string(topology.boundaries.size()) + " / " + std::to_string(topology.nonManifoldEdges.size())
+                + " / " + std::to_string(topology.windingFaces.size()));
+            if (topology.excludedCollapsedFaces) { lines.push_back(label + " topology excluded collapsed faces: " + std::to_string(topology.excludedCollapsedFaces)); }
             append("duplicate points", surface->duplicates.points);
             append("source-ID duplicate triangles", surface->duplicates.triangles);
             if (settings.degenerates.enabled) {
@@ -113,14 +119,16 @@ std::vector<std::string> comparisonReportLines(
             }
         }
         if (settings.showBoundaries) { lines.push_back("Green edges: boundary"); }
-        if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
+        if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold"); }
+        if (settings.showWinding) { lines.push_back("Red edges: winding conflicts"); }
         return lines;
     }
     if (settings.mode != ComparisonMode::distance) {
         lines.push_back(settings.mode == ComparisonMode::overlay ? "Overlay: A blue wireframe; B gray surface" :
             settings.mode == ComparisonMode::original ? "Group A surface" : "Group B surface");
         if (settings.showBoundaries) { lines.push_back("Green edges: boundary"); }
-        if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
+        if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold"); }
+        if (settings.showWinding) { lines.push_back("Red edges: winding conflicts"); }
         return lines;
     }
     const auto& surface = settings.distanceOnOriginal ? result.original : result.repaired;
@@ -145,7 +153,8 @@ std::vector<std::string> comparisonReportLines(
         lines.push_back("Surface shading affects brightness; legend shows unlit colors.");
     }
     if (settings.showBoundaries) { lines.push_back("Green edges: boundary"); }
-    if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold; red edges: winding"); }
+    if (settings.showNonManifold) { lines.push_back("Pink edges: non-manifold"); }
+    if (settings.showWinding) { lines.push_back("Red edges: winding conflicts"); }
     return lines;
 }
 

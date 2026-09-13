@@ -92,7 +92,7 @@ def main():
                 assert findings()["count"] == 2
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved, "--overwrite")
-                assert "version = 9" in saved.read_text(encoding="utf-8")
+                assert "version = 10" in saved.read_text(encoding="utf-8")
                 ctl("scene", "open", saved)
                 objects = ctl("objects")["objects"]
                 analysis = next(item["id"] for item in objects if item["kind"] == "analysis")

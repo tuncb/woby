@@ -463,6 +463,8 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else if (category == "degenerate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::degenerateTriangles; }
         else if (category == "duplicate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::duplicateTriangles; }
         else { throw std::runtime_error("Unknown diagnostic category."); }
+    } else if (key == "topology_mode") { record.settings.topologyMode = parseTopologyMode(parseTomlString(value));
+    } else if (key == "analysis_show_winding") { record.settings.showWinding = parseTomlBool(value);
     } else if (key == "degenerate_triangles_enabled") { record.settings.degenerates.enabled = parseTomlBool(value);
     } else if (key == "show_degenerate_triangles") { record.settings.degenerates.show = parseTomlBool(value);
     } else if (key == "needle_threshold_ratio") { record.settings.degenerates.needleThresholdRatio = parseTomlFloat(value);
@@ -523,6 +525,8 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
     stream << "analysis_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
 
+    stream << "topology_mode = \"" << topologyModeName(comparison.topologyMode) << "\"\n";
+    stream << "analysis_show_winding = " << (comparison.showWinding ? "true" : "false") << "\n";
     stream << "degenerate_triangles_enabled = " << (comparison.degenerates.enabled ? "true" : "false") << "\n";
     stream << "show_degenerate_triangles = " << (comparison.degenerates.show ? "true" : "false") << "\n";
     stream << "needle_threshold_ratio = " << comparison.degenerates.needleThresholdRatio << "\n";
@@ -645,6 +649,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
     SceneDocument document;
     Section section = Section::root;
     bool viewCameraSeen = false;
+    int sceneVersion = 2;
     size_t lineNumber = 0;
 
     std::string line;
@@ -734,7 +739,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9) {
+                    sceneVersion = version;
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -840,7 +846,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 } else if (key == "index") { object.index = parseTomlInteger(value); }
                 else if (key == "group_index") { object.groupIndex = parseTomlInteger(value); }
                 else if (key == "selection_order") { object.settings.selectionOrder = parseTomlInteger(value); }
-                else if (key.starts_with("analysis_") || key.starts_with("quality_")) {
+                else if (key.starts_with("analysis_") || key.starts_with("quality_") || key == "topology_mode") {
                     SceneComparisonRecord comparison;
                     comparison.settings = object.settings.comparison;
                     assignComparisonValue(comparison, key, value);
@@ -876,6 +882,15 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 + std::to_string(lineNumber)
                 + ": "
                 + exception.what());
+        }
+    }
+
+    // Older scenes used one switch for both overlays, including saved views.
+    if (sceneVersion < 10) {
+        document.comparison.showWinding = document.comparison.showNonManifold;
+        for (auto& comparison : document.comparisons) { comparison.settings.showWinding = comparison.settings.showNonManifold; }
+        for (auto& view : document.views) {
+            for (auto& object : view.objects) { object.settings.comparison.showWinding = object.settings.comparison.showNonManifold; }
         }
     }
 
@@ -972,7 +987,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 9\n";
+    stream << "version = 10\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";

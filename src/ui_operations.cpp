@@ -337,6 +337,10 @@ const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
     if (!comparison || !diagnosticFocusCurrent(state, *comparison)
         || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
     const auto& focus = *comparison->diagnosticFocus;
+    if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding) {
+        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.topology.mode != comparison->settings.topologyMode) { return nullptr; }
+    }
     if (focus.category == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
         if (!sameDegenerateThresholds(surface.degenerates.settings, comparison->settings.degenerates)) { return nullptr; }
@@ -367,6 +371,10 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (!diagnosticDetectorEnabled(settings)) { return; }
+    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.topology.mode != settings.topologyMode) { return; }
+    }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (!sameDegenerateThresholds(surface.degenerates.settings, settings.degenerates)) { return; }
@@ -390,6 +398,10 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (!diagnosticDetectorEnabled(settings)) { return; }
+    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.topology.mode != settings.topologyMode) { return; }
+    }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (!sameDegenerateThresholds(surface.degenerates.settings, settings.degenerates)) { return; }
@@ -401,6 +413,24 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
     std::vector<Vertex> points(2);
     points[0].position = edge.a;
     points[1].position = edge.b;
+    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        const auto& topology = surface.topology;
+        const auto& findings = settings.diagnosticCategory == DiagnosticCategory::boundary ? topology.boundaries
+            : settings.diagnosticCategory == DiagnosticCategory::nonManifold ? topology.nonManifoldEdges : topology.windingEdges;
+        if (index < findings.size()) {
+            const auto& finding = findings[index];
+            const auto& source = topology.sources[finding.source];
+            for (const auto& use : source.edges[finding.edge].incidentFaces) {
+                for (const auto vertex : source.faces[use.face].vertices) {
+                    Vertex point;
+                    const auto& position = source.vertices[vertex].position;
+                    for (size_t k = 0; k < 3; ++k) { point.position[k] = static_cast<float>(position[k]); }
+                    points.push_back(point);
+                }
+            }
+        }
+    }
     auto bounds = calculateBounds(points);
     // Keep enough surrounding surface to understand the defect without allowing
     // distant, unrelated scene objects to overwhelm a small edge's framing.
@@ -486,6 +516,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
         const bool wasEnabled = comparison->settings.enabled;
         if (settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
             || settings.duplicates.points != comparison->settings.duplicates.points || settings.duplicates.triangles != comparison->settings.duplicates.triangles
+            || normalizedTopologyMode(settings.topologyMode) != comparison->settings.topologyMode
             || settings.degenerates.enabled != comparison->settings.degenerates.enabled
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
             comparison->diagnosticFocus.reset();

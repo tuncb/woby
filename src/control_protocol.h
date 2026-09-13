@@ -40,9 +40,9 @@ struct ControlOperation {
     std::optional<float> distance, fovDegrees, nearPlane;
     std::optional<std::string> name, mode, side, a, b, object;
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
-    std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, enabled;
+    std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;
     std::optional<float> tolerance, colorRange;
-    std::optional<std::string> qualityMetric;
+    std::optional<std::string> qualityMetric, topologyMode;
     std::optional<bool> duplicatePoints, duplicateTriangles, showDuplicatePoints, showDuplicateTriangles;
     std::optional<bool> degenerateTriangles, showDegenerateTriangles;
     std::optional<float> needleThresholdRatio, capMinAngleDegrees;

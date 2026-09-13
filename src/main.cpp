@@ -327,6 +327,7 @@ struct AutomationComparisonRuntime {
     uint64_t signature = 0, sceneGeneration = 0;
     uint32_t stages = 0;
     woby::DegenerateSettings degenerates;
+    woby::TopologyMode topologyMode = woby::TopologyMode::automatic;
 };
 
 struct ResolvedModelInputGroup {
@@ -3155,6 +3156,7 @@ int main(int argc, char** argv)
                 const bool changed = pending.sceneGeneration != ui.sceneGeneration
                     || !woby::findComparison(ui, pending.objectId)
                     || pending.signature != woby::comparisonGeometrySignature(ui, pending.objectId)
+                    || pending.topologyMode != woby::comparisonSettings(ui, pending.objectId).topologyMode
                     || !woby::sameDegenerateThresholds(pending.degenerates, woby::comparisonSettings(ui, pending.objectId).degenerates)
                     || pending.stages != woby::requestedComparisonStages(woby::comparisonSettings(ui, pending.objectId), both, true);
                 const bool ready = !changed && it != comparison.objects.end()
@@ -3235,6 +3237,7 @@ int main(int argc, char** argv)
                                 pending.objectId = payload.objectId;
                                 pending.tolerance = source->settings.tolerance;
                                 pending.degenerates = source->settings.degenerates;
+                                pending.topologyMode = source->settings.topologyMode;
                                 pending.signature = woby::comparisonGeometrySignature(ui, payload.objectId);
                                 pending.sceneGeneration = ui.sceneGeneration;
                                 const bool both = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, payload.objectId) != 0
