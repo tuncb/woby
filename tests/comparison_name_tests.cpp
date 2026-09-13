@@ -3,6 +3,7 @@
 #include "scene_file.h"
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
+#include "ui_popup_controls.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
@@ -305,4 +306,93 @@ TEST_CASE("analysis rename normalizes empty input and ignores missing objects")
     woby::renameComparison(state, id, "");
     woby::renameComparison(state, id + 1, "Missing");
     CHECK(state.sceneEditRevision == revision);
+}
+
+TEST_CASE("diagnostic settings popup edits only its analysis and persists without inline editors")
+{
+    ComparisonNameFixture f;
+    const auto other = woby::createComparison(f.state);
+    woby::selectSceneObject(f.state, f.id);
+    auto settings = woby::comparisonSettings(f.state, f.id);
+    settings.diagnosticCategory = woby::DiagnosticCategory::degenerateTriangles;
+    settings.degenerates.enabled = false;
+    woby::setComparisonSettings(f.state, settings, f.id);
+    const auto originalOther = woby::comparisonSettings(f.state, other);
+    const auto revision = f.state.sceneEditRevision;
+    woby::ComparisonRuntimes runtimes;
+    ImVec2 gear;
+    std::string contents;
+    const auto frame = [&] {
+        ImGui::GetIO().DisplaySize = ImVec2(900, 1000);
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos(ImVec2(20, 20));
+        ImGui::SetNextWindowSize(ImVec2(650, 900));
+        ImGui::Begin("Diagnostic properties");
+        ImGui::LogToBuffer();
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        for (auto* window : f.context->Windows) {
+            if (std::string(window->Name).find("comparison_properties") == std::string::npos) { continue; }
+            if (const auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
+                const auto& column = table->Columns[table->ColumnsCount-1];
+                gear = ImVec2(column.WorkMinX + woby::renderModeButtonSize()*0.5f,
+                    table->RowPosY1 + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize()*0.5f);
+            }
+        }
+        ImGui::End();
+        woby::dismissPopupOnEscape();
+        ImGui::EndFrame();
+    };
+    const auto click = [&](ImVec2 position) {
+        auto& io = ImGui::GetIO();
+        io.AddMousePosEvent(position.x, position.y); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    };
+    const auto key = [&](ImGuiKey value) {
+        ImGui::GetIO().AddKeyEvent(value, true); frame();
+        ImGui::GetIO().AddKeyEvent(value, false); frame(); frame();
+    };
+    frame(); frame();
+    CHECK(contents.find("Needle edge ratio") == std::string::npos);
+    CHECK(contents.find("Cap angle (degrees)") == std::string::npos);
+    REQUIRE(gear.x > 0);
+    click(gear);
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    CHECK(contents.find("Needle edge ratio") != std::string::npos);
+    CHECK(contents.find("Cap angle (degrees)") != std::string::npos);
+    CHECK(contents.find("Analysis: Analysis 1") != std::string::npos);
+    CHECK(f.state.sceneEditRevision == revision); // Opening settings is not an edit.
+    REQUIRE(f.context->InputTextState.ID != 0);
+    ImGui::GetIO().AddInputCharactersUTF8("2500"); frame();
+    key(ImGuiKey_Enter);
+    CHECK(woby::comparisonSettings(f.state, f.id).degenerates.needleThresholdRatio == 2500);
+    CHECK_FALSE(woby::comparisonSettings(f.state, f.id).degenerates.enabled);
+    CHECK(woby::comparisonSettings(f.state, other) == originalOther);
+    CHECK(f.state.sceneEditRevision > revision);
+    key(ImGuiKey_Escape);
+    CHECK(f.context->OpenPopupStack.empty());
+    CHECK(contents.find("Needle edge ratio") == std::string::npos);
+    click(gear);
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    CHECK(woby::comparisonSettings(f.state, f.id).degenerates.needleThresholdRatio == 2500);
+    // Switching analyses must never reuse the first analysis's open parameter frame.
+    woby::selectSceneObject(f.state, other);
+    frame(); frame();
+    CHECK(contents.find("Needle edge ratio") == std::string::npos);
+    CHECK(woby::comparisonSettings(f.state, other) == originalOther);
+    struct SavedFixture {
+        std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+            / ("woby-diagnostic-popup-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        SavedFixture() { std::filesystem::create_directory(root); }
+        ~SavedFixture() { std::error_code ignored; std::filesystem::remove_all(root, ignored); }
+    } saved;
+    const auto path = saved.root / "analyses.woby";
+    const auto document = woby::createSceneDocument(f.state);
+    woby::writeSceneDocument(path, document);
+    const auto loaded = woby::readSceneDocument(path);
+    REQUIRE(loaded.comparisons.size() == 2);
+    CHECK(loaded.comparisons[0].settings == woby::comparisonSettings(f.state, f.id));
+    CHECK(loaded.comparisons[1].settings == originalOther);
 }

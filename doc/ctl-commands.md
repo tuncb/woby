@@ -201,8 +201,9 @@ source records report unavailable rather than zero defects. Legacy
 `diagnostics.degenerateTriangles` and `surfaceMeshQuality.degenerateTriangles`
 retain their numerical-collapse definitions.
 
-In the Diagnostics table, select **Degenerate triangles** to edit thresholds and
-page through findings. Arrows select and frame triangles; purple overlays show
+In the Diagnostics table, click the gear button on the **Degenerate triangles**
+row to edit thresholds in a small popup for that analysis. The settings remain
+available while detection is off or computing. Select the row to page through findings. Arrows select and frame triangles; purple overlays show
 findings and yellow highlights the focused triangle. Crosses mark collapsed faces.
 Run and Show are independent. Threshold edits invalidate only this detector's
 cached stage; Show and analysis display-offset edits do not rerun detection.

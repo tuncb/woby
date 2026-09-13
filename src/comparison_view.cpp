@@ -265,6 +265,33 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     ImGui::TreePop();
     ImGui::PopID();
 }
+void drawDegenerateSettingsPopup(UiState& state, SceneObjectId id)
+{
+    if (drawRenderModeIconButton("settings", "\xef\x80\x93", "Degenerate triangle settings", RenderModeState::off, false)) {
+        ImGui::OpenPopup("diagnostic_settings");
+    }
+    ImGui::SetNextWindowSize(ImVec2(uiSize(360), 0), ImGuiCond_Always);
+    if (ImGui::BeginPopup("diagnostic_settings", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
+        auto settings = comparisonSettings(state, id);
+        const auto initial = settings;
+        ImGui::TextUnformatted("Degenerate triangles");
+        ImGui::TextWrapped("Analysis: %s", findComparison(state, id)->name.c_str());
+        ImGui::Separator();
+        if (ImGui::IsWindowAppearing()) { ImGui::SetKeyboardFocusHere(); }
+        ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
+        ImGui::InputFloat("Needle edge ratio", &settings.degenerates.needleThresholdRatio, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll);
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Longest / shortest edge must strictly exceed this ratio (minimum 1)."); }
+        ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
+        ImGui::InputFloat("Cap angle (degrees)", &settings.degenerates.capMinAngleDegrees, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll);
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Largest angle must strictly exceed this threshold (90 to 180 degrees)."); }
+        ImGui::Spacing();
+        ImGui::TextWrapped("Collapsed and collinear triangles are always included. Changes apply to this analysis and are saved with the scene.");
+        if (settings != initial) { setComparisonSettings(state, settings, id); }
+        if (ImGui::Button("Close")) { ImGui::CloseCurrentPopup(); }
+        ImGui::EndPopup();
+    }
+}
+
 void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool current,
     const char* name, DiagnosticCategory category, bool hasA, bool hasB, SceneObjectId id)
 {
@@ -357,6 +384,8 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         }
         navigateComparisonDiagnostic(state, runtime.result, runtime.resultSignature, step, id);
     }
+    ImGui::TableNextColumn();
+    if (degenerate) { drawDegenerateSettingsPopup(state, id); }
     ImGui::PopID();
 }
 
@@ -420,15 +449,7 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
 {
     auto settings = comparisonSettings(state, id);
     if (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles) { return; }
-    const auto initial = settings;
     ImGui::TextWrapped("Collapsed or collinear triangles, needles, and caps. Each source triangle / transformed part is counted once; reason counts can overlap.");
-    ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
-    ImGui::InputFloat("Needle edge ratio", &settings.degenerates.needleThresholdRatio, 0, 0, "%.6g");
-    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Longest / shortest edge must strictly exceed this ratio (minimum 1). Zero-length edges are reported as collapsed."); }
-    ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
-    ImGui::InputFloat("Cap angle (degrees)", &settings.degenerates.capMinAngleDegrees, 0, 0, "%.6g");
-    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Largest angle must strictly exceed this threshold (90 to 180 degrees). World transforms affect these measurements; analysis display offsets do not."); }
-    if (settings != initial) { setComparisonSettings(state, settings, id); }
     if (!current || !comparisonResultsReady(runtime, state, id) || !settings.degenerates.enabled
         || enabledComparisonPartCount(state, settings.diagnosticSide, id) == 0) { return; }
     const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).degenerates;
@@ -500,7 +521,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     }
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
-    if (ImGui::BeginTable("Analysis diagnostics", 4 + static_cast<int>(hasA) + static_cast<int>(hasB),
+    if (ImGui::BeginTable("Analysis diagnostics", 5 + static_cast<int>(hasA) + static_cast<int>(hasB),
             ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Run", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthStretch);
@@ -509,6 +530,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::TableSetupColumn("Show", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("##navigation", ImGuiTableColumnFlags_WidthFixed,
             2 * ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
         diagnosticRow(state, runtime, current, "Boundary edges", DiagnosticCategory::boundary, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Non-manifold edges", DiagnosticCategory::nonManifold, hasA, hasB, id);
