@@ -4,9 +4,31 @@
 
 #include <filesystem>
 #include <fstream>
+#include <atomic>
+#include <chrono>
+#include <thread>
 #include <vector>
 
 namespace {
+
+struct BatchTestDirectory {
+    std::filesystem::path path;
+
+    BatchTestDirectory()
+    {
+        static std::atomic<unsigned> next{0};
+        path = std::filesystem::temp_directory_path() / ("woby_batch_"
+            + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())
+            + "_" + std::to_string(next.fetch_add(1)));
+        std::filesystem::create_directory(path);
+    }
+
+    ~BatchTestDirectory()
+    {
+        std::error_code ignored;
+        std::filesystem::remove_all(path, ignored);
+    }
+};
 
 void writeTriangleObj(const std::filesystem::path& path)
 {
@@ -33,6 +55,94 @@ void writeTriangleStl(const std::filesystem::path& path)
 }
 
 } // namespace
+
+TEST_CASE("prefetched model batches preserve ordering colors and failures across ring reuse")
+{
+    const BatchTestDirectory fixture;
+    const auto obj = fixture.path / "triangle.obj", stl = fixture.path / "triangle.stl";
+    const auto invalid = fixture.path / "invalid.obj", skipped = fixture.path / "ignored.txt";
+    writeTriangleObj(obj);
+    writeTriangleStl(stl);
+    { std::ofstream file(invalid); file << "v invalid 0 0\n"; }
+    const std::vector<std::filesystem::path> paths = {
+        obj, obj, stl, invalid, obj, skipped, stl, obj, obj, stl, obj, stl, obj};
+    const auto coordinator = std::this_thread::get_id();
+    std::vector<size_t> progress;
+    const auto result = woby::loadModelBatchCpu(paths, 7, [&](const auto& update) {
+        CHECK(std::this_thread::get_id() == coordinator);
+        CHECK(update.currentPath == paths[update.completedCount]);
+        CHECK(update.totalCount == paths.size());
+        progress.push_back(update.completedCount);
+    }, [&] {
+        CHECK(std::this_thread::get_id() == coordinator);
+        return false;
+    });
+    CHECK_FALSE(result.canceled);
+    CHECK(result.failedCount == 1);
+    CHECK(result.skippedCount == 1);
+    REQUIRE(result.addedCount == paths.size() - 2);
+    REQUIRE(result.outcomes.size() == paths.size());
+    REQUIRE(progress.size() == paths.size());
+    size_t file = 0;
+    for (size_t i = 0; i < paths.size(); ++i) {
+        CHECK(progress[i] == i);
+        CHECK(result.outcomes[i].path == paths[i]);
+        if (paths[i] == invalid) { CHECK(result.outcomes[i].state == "failed"); }
+        else if (paths[i] == skipped) { CHECK(result.outcomes[i].state == "skipped"); }
+        else {
+            CHECK(result.outcomes[i].state == "loaded");
+            CHECK(result.files[file].path == paths[i]);
+            REQUIRE(result.files[file].groupSettings.size() == 1);
+            CHECK(result.files[file].groupSettings[0].color == woby::defaultGroupColor(7 + file));
+            ++file;
+        }
+    }
+}
+
+TEST_CASE("prefetched cancellation publishes only completed models")
+{
+    const BatchTestDirectory fixture;
+    const auto obj = fixture.path / "triangle.obj";
+    writeTriangleObj(obj);
+    const std::vector<std::filesystem::path> paths(12, obj);
+    size_t checks = 0;
+    const auto result = woby::loadModelBatchCpu(paths, 0, {}, [&] { return checks++ == 3; });
+    CHECK(result.canceled);
+    REQUIRE(result.files.size() == 3);
+    REQUIRE(result.outcomes.size() == paths.size());
+    for (size_t i = 0; i < paths.size(); ++i) {
+        CHECK(result.outcomes[i].state == (i < 3 ? "loaded" : "not-started"));
+    }
+}
+
+TEST_CASE("prefetched scene models retain per record settings and cancellation order")
+{
+    const BatchTestDirectory fixture;
+    const auto obj = fixture.path / "triangle.obj", scene = fixture.path / "scene.woby";
+    writeTriangleObj(obj);
+    woby::SceneDocument document;
+    for (size_t i = 0; i < 12; ++i) {
+        woby::SceneFileRecord record;
+        record.path = obj;
+        record.settings.visible = i % 2 == 0;
+        document.files.push_back(record);
+    }
+    woby::writeSceneDocument(scene, document);
+    bool cancel = false;
+    SUBCASE("all records") {}
+    SUBCASE("cancel after five records") { cancel = true; }
+    size_t checks = 0;
+    const auto coordinator = std::this_thread::get_id();
+    const auto result = woby::loadSceneCpu(scene, [&](const auto&) {
+        CHECK(std::this_thread::get_id() == coordinator);
+    }, [&] { return cancel && checks++ >= 5; });
+    CHECK(result.canceled == cancel);
+    REQUIRE(result.files.size() == (cancel ? 5u : 12u));
+    for (size_t i = 0; i < result.files.size(); ++i) {
+        CHECK(result.files[i].path == obj);
+        CHECK(result.files[i].fileSettings.visible == (i % 2 == 0));
+    }
+}
 
 TEST_CASE("background model batch loader creates UI file states")
 {

@@ -683,6 +683,103 @@ TEST_CASE("BVH distances match exhaustive triangle queries")
     }
 }
 
+TEST_CASE("parallel wide BVH keeps sample order and matches irregular exhaustive queries")
+{
+    auto a = largeGrid(46), b = largeGrid(48, .5f);
+    for (size_t i = 0; i < a.vertices.size(); ++i) {
+        a.vertices[i].position[2] = static_cast<float>((i * 17) % 31) / 8.0f;
+    }
+    for (size_t i = 0; i < b.vertices.size(); ++i) {
+        b.vertices[i].position[2] += static_cast<float>((i * 13) % 29) / 8.0f;
+    }
+    // Include collapsed triangles, duplicated faces, and overlapping bounds.
+    b.indices.insert(b.indices.end(), {0, 0, 1, 0, 0, 0, 0, 1, 50});
+    const auto originalIndices = a.indices;
+    const auto result = woby::computeComparisonStages(a, b, woby::comparisonDistance);
+    REQUIRE(result.original.distances.size() == a.indices.size() / 3 * 4);
+    for (size_t i = 0; i < result.original.distances.size(); i += 257) {
+        const auto face = i / 4;
+        CHECK(result.original.sampled.vertices[face * 12].position == a.vertices[a.indices[face * 3]].position);
+        std::array<float, 3> center{};
+        for (size_t k = 0; k < 3; ++k) {
+            double sum = 0;
+            for (size_t corner = 0; corner < 3; ++corner) { sum += result.original.sampled.vertices[i * 3 + corner].position[k]; }
+            center[k] = static_cast<float>(sum / 3);
+        }
+        double expected = std::numeric_limits<double>::infinity();
+        for (size_t t = 0; t < b.indices.size(); t += 3) {
+            expected = std::min(expected, woby::pointTriangleDistance(center, b.vertices[b.indices[t]].position,
+                b.vertices[b.indices[t + 1]].position, b.vertices[b.indices[t + 2]].position));
+        }
+        CHECK(result.original.distances[i] == doctest::Approx(expected).epsilon(1e-5).scale(1));
+    }
+    const auto repeated = woby::computeComparisonStages(a, b, woby::comparisonDistance);
+    CHECK(repeated.original.distances == result.original.distances);
+    CHECK(repeated.original.mean == result.original.mean);
+    CHECK(repeated.original.percentile95 == result.original.percentile95);
+    CHECK(a.indices == originalIndices);
+}
+
+TEST_CASE("bulk analysis membership scales across thousands of files and preserves missing references")
+{
+    auto state = stateWithFiles(2500);
+    std::vector<woby::SceneObjectId> files;
+    for (const auto& file : state.files) { files.push_back(file.objectId); }
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, files, woby::ComparisonSide::a, true, id);
+    REQUIRE(woby::comparisonPartCount(state, woby::ComparisonSide::a, id) == files.size());
+    CHECK(woby::canInspectComparison(state, id));
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    REQUIRE(signature != 0);
+    const auto world = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
+    CHECK(world.indices.size() == files.size() * 6);
+    REQUIRE(world.duplicateInput);
+    CHECK(world.duplicateInput->sources.size() == files.size());
+    // Overlapping and repeated membership stays canonical; bulk removals retain
+    // original member order and names for the remaining files.
+    woby::setComparisonObjects(state, files, woby::ComparisonSide::a, true, id);
+    CHECK(woby::findComparison(state, id)->a.size() == files.size());
+    files.resize(1250);
+    woby::setComparisonObjects(state, files, woby::ComparisonSide::a, false, id);
+    CHECK(woby::enabledComparisonPartCount(state, woby::ComparisonSide::a, id) == 1250);
+    CHECK(woby::findComparison(state, id)->a.front().name == "1250.obj / surface");
+    CHECK(woby::comparisonGeometrySignature(state, id) != signature);
+    woby::findComparison(state, id)->a.push_back({state.nextObjectId + 99, "missing", false});
+    CHECK(woby::canInspectComparison(state, id));
+    woby::findComparison(state, id)->a.back().enabled = true;
+    CHECK_FALSE(woby::canInspectComparison(state, id));
+    CHECK(woby::comparisonGeometrySignature(state, id) == 0);
+    const auto document = woby::createSceneDocument(state);
+    REQUIRE(document.comparisons.size() == 1);
+    const auto& saved = document.comparisons[0].a;
+    REQUIRE(saved.size() == 1251);
+    CHECK(saved[0].fileIndex == -1);
+    CHECK(saved[0].name == "missing");
+    CHECK(saved[0].enabled);
+    for (size_t i = 1; i < saved.size(); ++i) {
+        CHECK(saved[i].fileIndex == static_cast<int>(1249 + i));
+        CHECK(saved[i].groupIndex == 0);
+    }
+}
+
+TEST_CASE("file analysis availability only depends on its valid identified triangle parts")
+{
+    auto state = stateWithFiles(1);
+    auto& file = state.files[0];
+    CHECK(woby::fileHasComparableParts(file));
+    file.fileSettings.visible = false;
+    CHECK(woby::fileHasComparableParts(file));
+    file.mesh.nodes[0].indexCount = 4;
+    CHECK_FALSE(woby::fileHasComparableParts(file));
+    file.mesh.nodes[0].indexCount = 9;
+    CHECK_FALSE(woby::fileHasComparableParts(file));
+    file.mesh.nodes[0].indexCount = 6;
+    file.groupSettings[0].objectId = woby::invalidSceneObjectId;
+    CHECK_FALSE(woby::fileHasComparableParts(file));
+    file.groupSettings.clear();
+    CHECK_FALSE(woby::fileHasComparableParts(file));
+}
+
 TEST_CASE("diagnostics weld identical seam positions and distinguish edge defects")
 {
     const auto seams = mesh({{0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 0, 0}, {1, 1, 0}, {0, 1, 0}}, {0, 1, 2, 3, 4, 5});
@@ -698,6 +795,30 @@ TEST_CASE("diagnostics weld identical seam positions and distinguish edge defect
     CHECK(defects.nonManifoldEdges.size() == 1);
     duplicate.indices.insert(duplicate.indices.end(), {0, 0, 1});
     CHECK(woby::inspectMesh(duplicate).degenerateTriangles == 1);
+}
+
+TEST_CASE("quality adjacency preserves geometric seams signed zero and manifold counts")
+{
+    auto seams = mesh({{0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {-0.0f, 0, 0}, {1, 1, 0}, {0, 1, 0}},
+        {0, 1, 2, 3, 4, 5});
+    // Unreferenced positions remain irrelevant to topology, including non-finite
+    // source points that were never submitted as triangle corners.
+    woby::Vertex unused;
+    unused.position[0] = std::numeric_limits<float>::quiet_NaN();
+    seams.vertices.push_back(unused);
+    const auto seamed = woby::inspectSurfaceMeshQuality(seams);
+    const auto indexed = woby::inspectSurfaceMeshQuality(square());
+    REQUIRE(seamed.triangles.size() == indexed.triangles.size());
+    for (size_t i = 0; i < indexed.triangles.size(); ++i) {
+        CHECK(seamed.triangles[i].values == indexed.triangles[i].values);
+        CHECK(seamed.triangles[i].values[3] == doctest::Approx(1));
+    }
+    seams.indices.insert(seams.indices.end(), {0, 1, 2, 0, 0, 0});
+    const auto nonManifold = woby::inspectSurfaceMeshQuality(seams);
+    CHECK(nonManifold.degenerateTriangles == 1);
+    // The common diagonal now has three uses; the second face's remaining
+    // edges are boundaries, so it has no unique manifold neighbor.
+    CHECK(std::isnan(nonManifold.triangles[1].values[3]));
 }
 
 TEST_CASE("analysis validates empty and invalid input")

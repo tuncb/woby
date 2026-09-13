@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <memory_resource>
 #include <stdexcept>
 
 namespace woby {
@@ -77,9 +78,15 @@ SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token s
     canceled(stop);
     if (mesh.indices.size() % 3 != 0) { throw std::invalid_argument("Quality requires triangle indices."); }
     SurfaceMeshQuality result;
-    std::map<Point, size_t> vertices;
-    struct EdgeUse { size_t count = 0; size_t first = 0, second = 0; };
-    std::map<std::pair<size_t, size_t>, EdgeUse> edges;
+    std::pmr::monotonic_buffer_resource arena;
+    std::pmr::map<Point, size_t> vertices{&arena};
+    constexpr size_t unassigned = std::numeric_limits<size_t>::max();
+    std::vector<size_t> welded(mesh.vertices.size(), unassigned);
+    // Sort/reduce contiguous edge records instead of allocating a tree node
+    // and performing a pointer-chasing lookup for every triangle corner.
+    struct Edge { size_t a = 0, b = 0, face = 0; };
+    std::vector<Edge> edges;
+    edges.reserve(mesh.indices.size());
     result.triangles.reserve(mesh.indices.size() / 3);
     for (size_t face = 0; face < mesh.indices.size() / 3; ++face) {
         canceled(stop);
@@ -108,23 +115,34 @@ SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token s
         if (t.degenerate) { ++result.degenerateTriangles; continue; }
         std::array<size_t, 3> ids;
         for (size_t k = 0; k < 3; ++k) {
-            ids[k] = vertices.emplace(p[k], vertices.size()).first->second;
+            auto& id = welded[mesh.indices[face * 3 + k]];
+            if (id == unassigned) { id = vertices.emplace(p[k], vertices.size()).first->second; }
+            ids[k] = id;
         }
         for (size_t k = 0; k < 3; ++k) {
-            auto& use = edges[std::minmax(ids[k], ids[(k + 1) % 3])];
-            if (use.count == 0) { use.first = face; }
-            else if (use.count == 1) { use.second = face; }
-            ++use.count;
+            const auto [a, b] = std::minmax(ids[k], ids[(k + 1) % 3]);
+            edges.push_back({a, b, face});
         }
     }
     // Exact geometric welding matches OBJ/STL seam handling in topology inspection.
     // Boundary/non-manifold edges do not define a unique neighbor pair.
-    for (const auto& [edge, use] : edges) {
-        (void)edge;
+    size_t comparisons = 0;
+    std::sort(edges.begin(), edges.end(), [&](const Edge& a, const Edge& b) {
+        if (++comparisons % 256 == 0) { canceled(stop); }
+        return a.a == b.a ? a.b < b.b : a.a < b.a;
+    });
+    for (size_t first = 0; first < edges.size();) {
         canceled(stop);
-        if (use.count != 2) { continue; }
-        auto& a = result.triangles[use.first];
-        auto& b = result.triangles[use.second];
+        size_t end = first + 1;
+        while (end < edges.size() && edges[end].a == edges[first].a && edges[end].b == edges[first].b) {
+            if (end % 256 == 0) { canceled(stop); }
+            ++end;
+        }
+        const auto begin = first;
+        first = end;
+        if (end - begin != 2) { continue; }
+        auto& a = result.triangles[edges[begin].face];
+        auto& b = result.triangles[edges[begin + 1].face];
         const double jump = std::max(a.values[1], b.values[1]) / std::min(a.values[1], b.values[1]);
         for (auto* t : {&a, &b}) {
             t->values[3] = std::isfinite(t->values[3]) ? std::max(t->values[3], jump) : jump;

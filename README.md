@@ -489,6 +489,9 @@ for queue, timeout, and concurrency semantics.
 
 ## Build
 
+See [performance engineering](doc/performance.md) for the measured loading and
+analysis changes, reproducible Release benchmarks, and remaining scaling limits.
+
 OBJ loading uses the RapidOBJ header vendored in `third_party/rapidobj`, based on
 commit `fe4c779314b0daed19530c8b5aa323c789d08f81` with Woby's Unicode-path and
 polygon-winding fixes applied. All builds use this copy directly; no RapidOBJ

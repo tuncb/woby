@@ -8,6 +8,7 @@
 #include <limits>
 #include <stdexcept>
 #include <utility>
+#include <unordered_map>
 #include <tuple>
 
 #include <bx/math.h>
@@ -741,6 +742,23 @@ SceneDocument createSceneDocument(const UiState& state)
     document.camera = state.camera;
     document.views = sceneViewRecords(state);
     document.annotations = sceneAnnotationRecords(state);
+    // History snapshots use this mapping too. Resolve each part once instead
+    // of scanning every file/group for every analysis member on every edit.
+    std::unordered_map<SceneObjectId, std::pair<int, int>> partLocations;
+    if (!state.comparisons.empty()) {
+        size_t count = 0;
+        for (const auto& file : state.files) { count += std::min(file.groupSettings.size(), file.mesh.nodes.size()); }
+        partLocations.reserve(count);
+        for (size_t f = 0; f < state.files.size(); ++f) {
+            const auto& file = state.files[f];
+            for (size_t g = 0; g < std::min(file.groupSettings.size(), file.mesh.nodes.size()); ++g) {
+                const auto id = file.groupSettings[g].objectId;
+                if (id != invalidSceneObjectId) {
+                    partLocations.insert_or_assign(id, std::pair{static_cast<int>(f), static_cast<int>(g)});
+                }
+            }
+        }
+    }
     for (const auto& comparison : state.comparisons) {
         SceneComparisonRecord record;
         record.name = comparison.name;
@@ -748,18 +766,14 @@ SceneDocument createSceneDocument(const UiState& state)
         record.translation = comparison.translation;
         const auto saveParts = [&](const std::vector<UiComparisonPart>& members) {
             std::vector<SceneComparisonPartRecord> result;
+            result.reserve(members.size());
             for (const auto& part : members) {
                 SceneComparisonPartRecord reference;
                 reference.name = part.name;
                 reference.enabled = part.enabled;
-                for (size_t f = 0; f < state.files.size(); ++f) {
-                    const auto& groups = state.files[f].groupSettings;
-                    for (size_t g = 0; g < groups.size() && g < state.files[f].mesh.nodes.size(); ++g) {
-                        if (part.objectId != invalidSceneObjectId && groups[g].objectId == part.objectId) {
-                            reference.fileIndex = static_cast<int>(f);
-                            reference.groupIndex = static_cast<int>(g);
-                        }
-                    }
+                if (const auto location = partLocations.find(part.objectId); location != partLocations.end()) {
+                    reference.fileIndex = location->second.first;
+                    reference.groupIndex = location->second.second;
                 }
                 result.push_back(std::move(reference));
             }

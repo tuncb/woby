@@ -65,6 +65,7 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 namespace {
@@ -307,6 +308,7 @@ struct GpuFinalizeRuntime {
     size_t sourceFailedCount = 0;
     size_t sourceSkippedCount = 0;
     size_t gpuFailedCount = 0;
+    std::vector<woby::ModelInputOutcome> gpuFailures;
     std::string lastError;
     size_t nextFileIndex = 0;
     bool active = false;
@@ -900,7 +902,7 @@ void drawSceneTreeNode(
         drawSceneItemInteraction(state, node.objectId, true);
         ImGui::PopClipRect();
         ImGui::SameLine(analysisControlStartX, 0.0f);
-        const bool canAnalyze = !woby::comparisonObjectParts(state, {node.objectId}).empty();
+        const bool canAnalyze = woby::fileHasComparableParts(file);
         if (woby::drawRenderModeIconButton("analysis", "\xef\x82\x80", "Create analysis for this file",
                 woby::RenderModeState::off, !canAnalyze)) {
             woby::selectSceneObject(state, node.objectId);
@@ -1124,7 +1126,8 @@ LoadedModelFileWithRuntime loadModelFile(
         }
 
         const auto gpuStart = woby::PerformanceClock::now();
-        loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout, pointSpriteLayout);
+        loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout, pointSpriteLayout,
+            woby::requestedGpuMeshFeatures(loaded.file));
         const double gpuMilliseconds = elapsedMilliseconds(gpuStart);
 
         spdlog::info(
@@ -1249,7 +1252,8 @@ bool applySceneHistory(woby::SceneHistory& history, woby::UiState& state,
                 if (state.files[old].objectId == file.objectId) { reuse[index] = old; break; }
             }
             if (reuse[index] == woby::invalidSceneNodeIndex) {
-                staged[index].gpuMesh = createGpuMesh(file.mesh, layout, pointLayout);
+                staged[index].gpuMesh = createGpuMesh(file.mesh, layout, pointLayout,
+                    woby::requestedGpuMeshFeatures(file));
             }
         }
     } catch (...) {
@@ -1797,22 +1801,29 @@ std::optional<std::string> processGpuFinalizeStep(
         }
     }
 
-    LoadedModelFile file = std::move(finalize.files[finalize.nextFileIndex]);
-    ++finalize.nextFileIndex;
-    try {
-        LoadedModelRuntime runtime;
-        runtime.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout);
-        finalize.finalizedRuntimes.push_back(std::move(runtime));
-        finalize.finalizedFiles.push_back(std::move(file));
-    } catch (const std::exception& exception) {
-        ++finalize.gpuFailedCount;
-        finalize.lastError = exception.what();
-        if (finalize.kind == AsyncLoadKind::openScene) {
-            setToastMessage(toast, std::string("Open scene failed: ") + exception.what());
-            abortGpuFinalize(finalize);
-            return std::string(exception.what());
+    const auto uploadStart = woby::PerformanceClock::now();
+    // A time budget lets thousands of small files upload in batches instead of
+    // imposing one frame per file. A single large GPU allocation may exceed it.
+    do {
+        LoadedModelFile file = std::move(finalize.files[finalize.nextFileIndex]);
+        ++finalize.nextFileIndex;
+        try {
+            LoadedModelRuntime runtime;
+            runtime.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout,
+                woby::requestedGpuMeshFeatures(file));
+            finalize.finalizedRuntimes.push_back(std::move(runtime));
+            finalize.finalizedFiles.push_back(std::move(file));
+        } catch (const std::exception& exception) {
+            ++finalize.gpuFailedCount;
+            finalize.lastError = exception.what();
+            finalize.gpuFailures.push_back({file.path, "failed", exception.what()});
+            if (finalize.kind == AsyncLoadKind::openScene) {
+                setToastMessage(toast, std::string("Open scene failed: ") + exception.what());
+                abortGpuFinalize(finalize);
+                return std::string(exception.what());
+            }
         }
-    }
+    } while (finalize.nextFileIndex < finalize.files.size() && elapsedMilliseconds(uploadStart) < 4.0);
     return {};
 }
 
@@ -2255,6 +2266,11 @@ int main(int argc, char** argv)
         auto completeAppend = [&]() {
             if (!automationAppend) { return; }
             nlohmann::json outcomes = nlohmann::json::array(), addedIds = nlohmann::json::array();
+            std::unordered_map<std::filesystem::path, woby::SceneObjectId> addedFiles;
+            addedFiles.reserve(ui.files.size() - std::min(ui.files.size(), automationAppend->firstFileIndex));
+            for (size_t index = automationAppend->firstFileIndex; index < ui.files.size(); ++index) {
+                addedFiles.try_emplace(ui.files[index].path, ui.files[index].objectId);
+            }
             size_t failed = 0, skipped = 0;
             for (const auto& input : automationAppend->outcomes) {
                 nlohmann::json result = {{"path", woby::pathToUtf8(input.path)}, {"state", input.state}};
@@ -2263,13 +2279,10 @@ int main(int argc, char** argv)
                 if (input.state == "skipped") { ++skipped; }
                 if (automationAppend->canceled && (input.state == "loaded" || input.state == "not-started")) { result["state"] = "canceled"; }
                 else if (input.state == "loaded") {
-                    for (size_t index = automationAppend->firstFileIndex; index < ui.files.size(); ++index) {
-                        if (ui.files[index].path == input.path) {
-                            result["state"] = "added";
-                            result["id"] = formatObjectId(ui.files[index].objectId);
-                            addedIds.push_back(result["id"]);
-                            break;
-                        }
+                    if (const auto file = addedFiles.find(input.path); file != addedFiles.end()) {
+                        result["state"] = "added";
+                        result["id"] = formatObjectId(file->second);
+                        addedIds.push_back(result["id"]);
                     }
                 }
                 outcomes.push_back(std::move(result));
@@ -2530,9 +2543,7 @@ int main(int argc, char** argv)
                 }
             }
 
-            const auto previousGpuFailures = gpuFinalize.gpuFailedCount;
-            const auto finalizingPath = gpuFinalize.active && gpuFinalize.nextFileIndex < gpuFinalize.files.size()
-                ? gpuFinalize.files[gpuFinalize.nextFileIndex].path : std::filesystem::path{};
+            const auto previousGpuFailures = gpuFinalize.gpuFailures.size();
             const auto finalized = processGpuFinalizeStep(
                 gpuFinalize,
                 layout,
@@ -2546,9 +2557,12 @@ int main(int argc, char** argv)
                 woby::finishSceneHistoryInteraction(sceneHistory);
                 woby::recordSceneHistory(sceneHistory, ui);
             }
-            if (automationAppend && gpuFinalize.gpuFailedCount > previousGpuFailures) {
-                for (auto& input : automationAppend->outcomes) {
-                    if (input.path == finalizingPath) { input.state = "failed"; input.error = gpuFinalize.lastError; }
+            if (automationAppend) {
+                for (size_t i = previousGpuFailures; i < gpuFinalize.gpuFailures.size(); ++i) {
+                    const auto& failure = gpuFinalize.gpuFailures[i];
+                    for (auto& input : automationAppend->outcomes) {
+                        if (input.path == failure.path) { input.state = "failed"; input.error = failure.error; }
+                    }
                 }
             }
             if (finalized && automationAppend) {
@@ -3412,6 +3426,18 @@ int main(int argc, char** argv)
             }
 
             woby::updateComparisonRuntimes(comparison, ui);
+
+            for (size_t i = 0; i < std::min(files.size(), runtimes.size()); ++i) {
+                const auto features = woby::requestedGpuMeshFeatures(files[i]);
+                auto& runtime = runtimes[i];
+                if (runtime.requestedFeatures == features) { continue; }
+                runtime.requestedFeatures = features;
+                try {
+                    woby::prepareGpuMeshFeatures(runtime.gpuMesh, files[i].mesh, pointLayout, features);
+                } catch (const std::exception& error) {
+                    setToastMessage(toast, std::string("Display buffer upload failed: ") + error.what());
+                }
+            }
 
             const auto viewport = canvasLayout(window.get(), ui).viewport;
             const uint32_t sceneViewportWidth = viewport.width;

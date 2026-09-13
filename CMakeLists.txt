@@ -290,6 +290,19 @@ set(woby_runtime_targets woby woby-update-helper)
 
 include(CTest)
 
+option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
+if(WOBY_BUILD_BENCHMARKS)
+    add_executable(woby_benchmarks
+        tests/performance_benchmarks.cpp
+        src/model_mesh.cpp src/obj_mesh.cpp src/mesh_comparison.cpp
+        src/mesh_duplicates.cpp src/surface_mesh_quality.cpp)
+    target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+    target_link_libraries(woby_benchmarks PRIVATE meshoptimizer::meshoptimizer Threads::Threads)
+    woby_enable_project_warnings(woby_benchmarks)
+    list(APPEND woby_runtime_targets woby_benchmarks)
+endif()
+
 if(BUILD_TESTING)
     include(cmake/WobyPython.cmake)
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"

@@ -53,6 +53,35 @@ Mesh meshFor(const DuplicateSource& source)
 }
 }
 
+TEST_CASE("paired distance comparison preserves custom degenerate detector settings")
+{
+    const auto input = meshFor(sourceFor(Points{{{-1,0,0}, {1,0,0}, {0,.01,0}}}));
+    const auto defaults = compareMeshes(input, input);
+    REQUIRE(defaults.original.degenerates.findings.size() == 1);
+    REQUIRE(defaults.repaired.degenerates.findings.size() == 1);
+
+    DegenerateSettings settings;
+    settings.capMinAngleDegrees = 179.5f;
+    const auto custom = compareMeshes(input, input, {}, settings);
+    for (const auto* surface : {&custom.original, &custom.repaired}) {
+        CHECK(surface->degenerates.settings == settings);
+        CHECK(surface->degenerates.findings.empty());
+        CHECK(surface->degenerateBounds.empty());
+        REQUIRE(surface->distances.size() == 4);
+        for (const auto distance : surface->distances) { CHECK(distance == doctest::Approx(0)); }
+        CHECK(surface->topology.boundaries.size() == 3);
+        CHECK(surface->quality.triangles.size() == 1);
+    }
+    settings.enabled = false;
+    const auto disabled = compareMeshes(input, input, {}, settings);
+    CHECK_FALSE(disabled.original.degenerates.settings.enabled);
+    CHECK_FALSE(disabled.repaired.degenerates.settings.enabled);
+    CHECK(disabled.original.degenerates.findings.empty());
+    CHECK(disabled.repaired.degenerates.findings.empty());
+    CHECK(disabled.original.distances == custom.original.distances);
+    CHECK(disabled.repaired.distances == custom.repaired.distances);
+}
+
 TEST_CASE("degenerate triangles distinguish collapse needles and caps with strict thresholds")
 {
     const Points right = {{{0,0,0}, {4,0,0}, {0,3,0}}};

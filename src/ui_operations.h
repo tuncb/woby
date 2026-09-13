@@ -84,6 +84,12 @@ void setSelectedObjectsVisible(UiState& state, bool visible);
 // Files/folders expand to their current triangular mesh parts. IDs are deduplicated.
 [[nodiscard]] std::vector<SceneObjectId> comparisonObjectParts(
     const UiState& state, const std::vector<SceneObjectId>& objects);
+// Sorted, unique IDs for bulk queries. Build once per traversal instead of
+// repeatedly searching membership or resolving one object across the scene.
+[[nodiscard]] std::vector<SceneObjectId> comparableScenePartIds(const UiState& state);
+[[nodiscard]] bool fileHasComparableParts(const UiFileState& file);
+[[nodiscard]] std::vector<SceneObjectId> comparisonMemberIds(const UiState& state, ComparisonSide side,
+    SceneObjectId id, bool enabledOnly = true);
 [[nodiscard]] size_t comparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] bool comparisonPartEnabled(const UiState& state, SceneObjectId part, ComparisonSide side,
     SceneObjectId id = invalidSceneObjectId);
