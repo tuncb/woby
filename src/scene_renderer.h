@@ -34,7 +34,12 @@ struct GpuMesh {
 
 struct LoadedModelRuntime {
     GpuMesh gpuMesh;
+    // Retry failed optional uploads only when the requested modes change.
+    uint8_t requestedFeatures = 0;
 };
+
+enum GpuMeshFeature : uint8_t { gpuMeshEdges = 1, gpuMeshPoints = 2 };
+[[nodiscard]] uint8_t requestedGpuMeshFeatures(const UiFileState& file);
 
 [[nodiscard]] bgfx::VertexLayout meshVertexLayout();
 [[nodiscard]] bgfx::VertexLayout pointSpriteVertexLayout();
@@ -43,7 +48,11 @@ struct LoadedModelRuntime {
 [[nodiscard]] GpuMesh createGpuMesh(
     const Mesh& mesh,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout);
+    const bgfx::VertexLayout& pointSpriteLayout,
+    uint8_t features = 0);
+// Optional display buffers are retained once built; drawing never allocates.
+void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
+    const bgfx::VertexLayout& pointSpriteLayout, uint8_t features);
 void destroyGpuMesh(GpuMesh& mesh);
 void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 

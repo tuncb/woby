@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <set>
+#include <unordered_map>
 #include <utility>
 
 namespace woby
@@ -53,12 +54,14 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
 template <typename Visitor>
 void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, const Visitor& visitor)
 {
+    const auto members = comparisonMemberIds(state, side, id);
+    if (members.empty()) { return; }
     std::set<std::pair<size_t, size_t>> visited;
     const auto part = [&](size_t fileIndex, size_t groupIndex, const float* parent) {
         if (fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[fileIndex];
         if (groupIndex >= file.groupSettings.size() || groupIndex >= file.mesh.nodes.size()) { return; }
-        if (!comparisonPartEnabled(state, file.groupSettings[groupIndex].objectId, side, id)
+        if (!std::binary_search(members.begin(), members.end(), file.groupSettings[groupIndex].objectId)
             || file.mesh.nodes[groupIndex].indexCount == 0
             || !visited.emplace(fileIndex, groupIndex).second) { return; }
         visitor(file, groupIndex, parent);
@@ -99,6 +102,8 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
 
 std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side, SceneObjectId id)
 {
+    const auto members = comparisonMemberIds(state, side, id, false);
+    const auto enabled = comparisonMemberIds(state, side, id);
     std::set<std::pair<size_t, size_t>> visited;
     const auto build = [&](auto&& self, const UiSceneNode& source) -> ComparisonTreeNode {
         ComparisonTreeNode result;
@@ -113,12 +118,12 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
             }
             const auto& part = file.groupSettings[source.groupIndex];
             const auto& meshNode = file.mesh.nodes[source.groupIndex];
-            if (!comparisonContains(state, part.objectId, side, id) || meshNode.indexCount < 3 || meshNode.indexCount % 3 != 0
+            if (!std::binary_search(members.begin(), members.end(), part.objectId) || meshNode.indexCount < 3 || meshNode.indexCount % 3 != 0
                 || static_cast<size_t>(meshNode.indexOffset) + meshNode.indexCount > file.mesh.indices.size()
                 || !visited.emplace(source.fileIndex, source.groupIndex).second) { return result; }
             result.objectId = part.objectId;
             result.partCount = 1;
-            result.enabledPartCount = comparisonPartEnabled(state, part.objectId, side, id) ? 1 : 0;
+            result.enabledPartCount = std::binary_search(enabled.begin(), enabled.end(), part.objectId) ? 1 : 0;
             result.triangleCount = meshNode.indexCount / 3;
             return result;
         }
@@ -170,9 +175,11 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
     }
     const std::string label = side == ComparisonSide::a ? "A" : "B";
     if (const auto* comparison = findComparison(state, id)) {
+        const auto available = comparableScenePartIds(state);
         const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
         for (const auto& member : members) {
-            if (!member.enabled || !comparisonObjectParts(state, {member.objectId}).empty()) { continue; }
+            if (!member.enabled || std::binary_search(available.begin(), available.end(), member.objectId)
+                || !comparisonObjectParts(state, {member.objectId}).empty()) { continue; }
             if (result.issue.empty()) { result.issue = "Input " + label + " has missing or invalid references: "; }
             else { result.issue += ", "; }
             result.issue += member.name.empty() ? "Unnamed part" : member.name;
@@ -194,8 +201,10 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
     const auto* comparison = findComparison(state, id);
     if (!comparison) { throw std::runtime_error("Analysis no longer exists."); }
     const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    const auto available = comparableScenePartIds(state);
     for (const auto& member : members) {
-        if (member.enabled && comparisonObjectParts(state, {member.objectId}).empty()) {
+        if (member.enabled && !std::binary_search(available.begin(), available.end(), member.objectId)
+            && comparisonObjectParts(state, {member.objectId}).empty()) {
             throw std::runtime_error("Analysis has missing or invalid source parts.");
         }
     }
@@ -209,20 +218,21 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
     result.vertices.reserve(triangleCount * 3);
     result.indices.reserve(triangleCount * 3);
     auto duplicateInput = std::make_shared<DuplicateInput>();
+    std::unordered_map<SceneObjectId, size_t> sourceIndices;
+    sourceIndices.reserve(state.files.size());
     duplicateInput->settings = comparison->settings.duplicates;
     visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
         appendGroup(result, file, index, parent);
-        auto found = std::find_if(duplicateInput->sources.begin(), duplicateInput->sources.end(),
-            [&](const auto& source) { return source.fileId == file.objectId; });
-        if (found == duplicateInput->sources.end()) {
+        const auto [entry, inserted] = sourceIndices.try_emplace(file.objectId, duplicateInput->sources.size());
+        if (inserted) {
             DuplicateSource source;
             source.fileId = file.objectId;
             source.name = pathToUtf8(file.path.filename());
             source.data = file.mesh.sourceData;
             std::copy_n(parent, 16, source.unusedPointTransform.begin());
             duplicateInput->sources.push_back(std::move(source));
-            found = std::prev(duplicateInput->sources.end());
         }
+        auto& source = duplicateInput->sources[entry->second];
         SourcePartInstance part;
         part.partId = file.groupSettings[index].objectId;
         part.firstIndex = file.mesh.nodes[index].indexOffset;
@@ -230,8 +240,8 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         float local[16];
         groupTransformMatrix(file.groupSettings[index], local);
         bx::mtxMul(part.transform.data(), parent, local);
-        found->parts.push_back(part);
-        found->wholeFile = found->parts.size() == file.mesh.nodes.size();
+        source.parts.push_back(part);
+        source.wholeFile = source.parts.size() == file.mesh.nodes.size();
     });
     result.duplicateInput = std::move(duplicateInput);
     if (result.indices.empty()) {

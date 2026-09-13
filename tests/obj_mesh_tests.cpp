@@ -134,6 +134,32 @@ TEST_CASE("OBJ loader rejects files without renderable triangles")
 
 }
 
+TEST_CASE("OBJ dense indexing grows across many seams without merging source identities")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "many-seams.obj";
+    {
+        std::ofstream file(path);
+        file << "v 0 0 0\nv 1 0 0\nv 0 1 0\n";
+        for (unsigned i = 0; i < 80; ++i) { file << "vn " << i << " 0 1\n"; }
+        for (unsigned i = 1; i <= 80; ++i) {
+            file << "o seam" << i << "\nf 1//" << i << " 2//" << i << " 3//" << i << '\n';
+        }
+        file << "o repeat\nf 1//1 2//1 3//1\n";
+    }
+    const auto loaded = woby::loadObjMesh(path);
+    REQUIRE(loaded.vertices.size() == 240);
+    REQUIRE(loaded.indices.size() == 243);
+    REQUIRE(loaded.sourceData);
+    CHECK(loaded.sourceData->points.size() == 3);
+    REQUIRE(loaded.sourceData->indices.size() == loaded.indices.size());
+    for (size_t i = 0; i < loaded.indices.size(); ++i) {
+        CHECK(loaded.sourceData->indices[i] == i % 3);
+        CHECK(loaded.vertices[loaded.indices[i]].normal[0] == static_cast<float>((i / 3) % 80));
+    }
+    CHECK(loaded.indices[0] == loaded.indices[240]);
+}
+
 TEST_CASE("OBJ capacity estimates preserve seam vertices and reuse references across shapes")
 {
     const ObjTestDirectory fixture;
@@ -291,6 +317,46 @@ TEST_CASE("OBJ loader reports missing files")
     const ObjTestDirectory fixture;
     const auto path = fixture.path / "absent.obj";
     CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
+}
+
+TEST_CASE("buffered OBJ reads preserve optional materials beside the model independently of the working directory")
+{
+    const ObjTestDirectory fixture;
+    const auto folder = fixture.path / "nested";
+    std::filesystem::create_directory(folder);
+    const auto path = folder / "material.obj";
+    writeText(path, "mtllib local.mtl\nusemtl named\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
+    SUBCASE("valid adjacent material") {
+        writeText(folder / "local.mtl", "newmtl named\nKd 1 0 0\n");
+        CHECK(woby::loadObjMesh(path).indices.size() == 3);
+    }
+    SUBCASE("malformed optional material does not block geometry") {
+        writeText(folder / "local.mtl", "newmtl named\nKd broken 0 0\n");
+        CHECK(woby::loadObjMesh(path).indices.size() == 3);
+    }
+}
+
+TEST_CASE("small buffered and large parallel OBJ reads preserve the same geometry")
+{
+    const ObjTestDirectory fixture;
+    const auto small = fixture.path / "small.obj", large = fixture.path / "large.obj";
+    const char* text = "o face\nv 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 0 1\nf 1/1 2/2 3/3\n";
+    writeText(small, text);
+    {
+        std::ofstream file(large, std::ios::binary);
+        file << text;
+        const auto padding = std::string(1023, '#') + '\n';
+        for (int i = 0; i < 1100; ++i) { file << padding; }
+    }
+    const auto a = woby::loadObjMesh(small), b = woby::loadObjMesh(large);
+    REQUIRE(a.vertices.size() == b.vertices.size());
+    CHECK(a.indices == b.indices);
+    CHECK(a.sourceData->indices == b.sourceData->indices);
+    for (size_t i = 0; i < a.vertices.size(); ++i) {
+        CHECK(a.vertices[i].position == b.vertices[i].position);
+        CHECK(a.vertices[i].normal == b.vertices[i].normal);
+        CHECK(a.vertices[i].texcoord == b.vertices[i].texcoord);
+    }
 }
 
 TEST_CASE("OBJ loader supports Unicode filenames")

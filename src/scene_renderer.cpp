@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
+#include <memory>
 #include <stdexcept>
 
 namespace woby {
@@ -19,6 +21,28 @@ struct PointSpriteVertex {
 struct HelperLineVertex {
     std::array<float, 3> position{};
 };
+
+uint32_t sceneBufferBytes(size_t count, size_t elementBytes)
+{
+    if (count > std::numeric_limits<uint32_t>::max() / elementBytes) {
+        throw std::runtime_error("Scene exceeds the supported 32-bit GPU buffer size.");
+    }
+    return static_cast<uint32_t>(count * elementBytes);
+}
+
+template <typename T>
+const bgfx::Memory* ownedBuffer(std::vector<T> values)
+{
+    const auto bytes = sceneBufferBytes(values.size(), sizeof(T));
+    auto owner = std::make_unique<std::vector<T>>(std::move(values));
+    // bgfx releases this allocation on its render thread after consuming it.
+    // The callback owns only immutable upload data, never UI state or a mesh.
+    const auto* memory = bgfx::makeRef(owner->data(), bytes, [](void*, void* data) {
+        delete static_cast<std::vector<T>*>(data);
+    }, owner.get());
+    owner.release();
+    return memory;
+}
 
 std::array<float, 4> scaledRgbColor(const std::array<float, 4>& color, float scale)
 {
@@ -298,80 +322,114 @@ bgfx::VertexLayout helperLineVertexLayout()
     return layout;
 }
 
+uint8_t requestedGpuMeshFeatures(const UiFileState& file)
+{
+    uint8_t features = 0;
+    if (!file.fileSettings.visible || file.fileSettings.opacity <= 0) { return features; }
+    for (const auto& group : file.groupSettings) {
+        if (!group.visible || group.opacity <= 0) { continue; }
+        if (group.showTriangles) { features |= gpuMeshEdges; }
+        if (group.showVertices) { features |= gpuMeshPoints; }
+    }
+    return features;
+}
+
 GpuMesh createGpuMesh(
     const Mesh& mesh,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout)
+    const bgfx::VertexLayout& pointSpriteLayout,
+    uint8_t features)
 {
     GpuMesh gpuMesh;
-
+    const auto vertexBytes = sceneBufferBytes(mesh.vertices.size(), sizeof(Vertex));
+    const auto indexBytes = sceneBufferBytes(mesh.indices.size(), sizeof(uint32_t));
+    if (empty(mesh) || mesh.indices.size() % 3 != 0) {
+        throw std::runtime_error("Scene needs a nonempty triangular mesh.");
+    }
+    for (const auto index : mesh.indices) {
+        if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid vertex index."); }
+    }
+    gpuMesh.nodeRanges.reserve(mesh.nodes.size());
+    // Keep compact CPU point ranges for picking and geometry tooltips, even
+    // when the much larger GPU point sprites have not been requested yet.
+    gpuMesh.pointVertexIndices.reserve(mesh.vertices.size());
+    std::vector<size_t> vertexGroups(mesh.vertices.size(), mesh.nodes.size());
+    for (size_t nodeIndex = 0; nodeIndex < mesh.nodes.size(); ++nodeIndex) {
+        const auto& node = mesh.nodes[nodeIndex];
+        if (size_t(node.indexOffset) + node.indexCount > mesh.indices.size()
+            || node.indexOffset % 3 != 0 || node.indexCount % 3 != 0) {
+            throw std::runtime_error("Scene contains an invalid triangle range.");
+        }
+        GpuNodeRange range;
+        range.triangleIndexOffset = node.indexOffset;
+        range.triangleIndexCount = node.indexCount;
+        range.lineIndexOffset = node.indexOffset * 2u;
+        range.lineIndexCount = node.indexCount * 2u;
+        range.pointIndexOffset = static_cast<uint32_t>(gpuMesh.pointVertexIndices.size());
+        range.pointIndexCount = appendPointIndicesForRange(mesh.indices, node.indexOffset, node.indexCount,
+            vertexGroups, nodeIndex, gpuMesh.pointVertexIndices);
+        (void)sceneBufferBytes(gpuMesh.pointVertexIndices.size(), sizeof(uint32_t));
+        gpuMesh.nodeRanges.push_back(range);
+    }
     try {
         gpuMesh.vertexBuffer = bgfx::createVertexBuffer(
-            bgfx::copy(mesh.vertices.data(), static_cast<uint32_t>(mesh.vertices.size() * sizeof(Vertex))),
+            bgfx::copy(mesh.vertices.data(), vertexBytes),
             meshLayout);
 
         gpuMesh.triangleIndexBuffer = bgfx::createIndexBuffer(
-            bgfx::copy(mesh.indices.data(), static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t))),
+            bgfx::copy(mesh.indices.data(), indexBytes),
             BGFX_BUFFER_INDEX32);
-
-        const std::vector<uint32_t> lineIndices = buildLineIndices(mesh.indices);
-        gpuMesh.lineIndexBuffer = bgfx::createIndexBuffer(
-            bgfx::copy(lineIndices.data(), static_cast<uint32_t>(lineIndices.size() * sizeof(uint32_t))),
-            BGFX_BUFFER_INDEX32);
-
-        std::vector<uint32_t> pointIndices;
-        pointIndices.reserve(mesh.vertices.size());
-        const auto& nodes = mesh.nodes;
-        // The sentinel is outside the node-index range, so stamps cannot wrap.
-        // Reusing this array keeps shared vertices in each group's point list.
-        std::vector<size_t> vertexGroups(mesh.vertices.size(), nodes.size());
-        gpuMesh.nodeRanges.reserve(nodes.size());
-        for (size_t nodeIndex = 0; nodeIndex < nodes.size(); ++nodeIndex) {
-            const auto& node = nodes[nodeIndex];
-            GpuNodeRange range;
-            range.triangleIndexOffset = node.indexOffset;
-            range.triangleIndexCount = node.indexCount;
-            range.lineIndexOffset = (node.indexOffset / 3u) * 6u;
-            range.lineIndexCount = (node.indexCount / 3u) * 6u;
-            range.pointIndexOffset = static_cast<uint32_t>(pointIndices.size());
-            range.pointIndexCount = appendPointIndicesForRange(
-                mesh.indices,
-                node.indexOffset,
-                node.indexCount,
-                vertexGroups,
-                nodeIndex,
-                pointIndices);
-            range.pointSpriteIndexOffset = range.pointIndexOffset * 6u;
-            range.pointSpriteIndexCount = range.pointIndexCount * 6u;
-            gpuMesh.nodeRanges.push_back(range);
-        }
-
-        std::vector<PointSpriteVertex> pointSpriteVertices;
-        std::vector<uint32_t> pointSpriteIndices;
-        buildPointSprites(mesh, pointIndices, pointSpriteVertices, pointSpriteIndices);
-        gpuMesh.pointVertexIndices = std::move(pointIndices);
-
-        gpuMesh.pointSpriteVertexBuffer = bgfx::createVertexBuffer(
-            bgfx::copy(
-                pointSpriteVertices.data(),
-                static_cast<uint32_t>(pointSpriteVertices.size() * sizeof(PointSpriteVertex))),
-            pointSpriteLayout);
-        gpuMesh.pointSpriteIndexBuffer = bgfx::createIndexBuffer(
-            bgfx::copy(
-                pointSpriteIndices.data(),
-                static_cast<uint32_t>(pointSpriteIndices.size() * sizeof(uint32_t))),
-            BGFX_BUFFER_INDEX32);
-        if (!bgfx::isValid(gpuMesh.vertexBuffer) || !bgfx::isValid(gpuMesh.triangleIndexBuffer)
-            || !bgfx::isValid(gpuMesh.lineIndexBuffer) || !bgfx::isValid(gpuMesh.pointSpriteVertexBuffer)
-            || !bgfx::isValid(gpuMesh.pointSpriteIndexBuffer)) {
+        if (!bgfx::isValid(gpuMesh.vertexBuffer) || !bgfx::isValid(gpuMesh.triangleIndexBuffer)) {
             throw std::runtime_error("Failed to allocate scene GPU buffers.");
         }
+        prepareGpuMeshFeatures(gpuMesh, mesh, pointSpriteLayout, features);
     } catch (...) {
         destroyGpuMesh(gpuMesh);
         throw;
     }
-
     return gpuMesh;
+}
+
+void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
+    const bgfx::VertexLayout& pointSpriteLayout, uint8_t features)
+{
+    if ((features & gpuMeshEdges) && !bgfx::isValid(gpuMesh.lineIndexBuffer)) {
+        (void)sceneBufferBytes(mesh.indices.size(), 2 * sizeof(uint32_t));
+        gpuMesh.lineIndexBuffer = bgfx::createIndexBuffer(
+            ownedBuffer(buildLineIndices(mesh.indices)),
+            BGFX_BUFFER_INDEX32);
+        if (!bgfx::isValid(gpuMesh.lineIndexBuffer)) { throw std::runtime_error("Failed to allocate scene edge buffer."); }
+    }
+    if ((features & gpuMeshPoints) && !bgfx::isValid(gpuMesh.pointSpriteVertexBuffer)) {
+        const auto& pointIndices = gpuMesh.pointVertexIndices;
+        if (pointIndices.empty()) { return; }
+        (void)sceneBufferBytes(pointIndices.size(), 4 * sizeof(PointSpriteVertex));
+        (void)sceneBufferBytes(pointIndices.size(), 6 * sizeof(uint32_t));
+        auto ranges = gpuMesh.nodeRanges;
+        for (auto& range : ranges) {
+            range.pointSpriteIndexOffset = range.pointIndexOffset * 6u;
+            range.pointSpriteIndexCount = range.pointIndexCount * 6u;
+        }
+        std::vector<PointSpriteVertex> pointSpriteVertices;
+        std::vector<uint32_t> pointSpriteIndices;
+        buildPointSprites(mesh, pointIndices, pointSpriteVertices, pointSpriteIndices);
+        auto vertices = bgfx::VertexBufferHandle{bgfx::kInvalidHandle};
+        auto indices = bgfx::IndexBufferHandle{bgfx::kInvalidHandle};
+        try {
+            vertices = bgfx::createVertexBuffer(ownedBuffer(std::move(pointSpriteVertices)), pointSpriteLayout);
+            indices = bgfx::createIndexBuffer(ownedBuffer(std::move(pointSpriteIndices)), BGFX_BUFFER_INDEX32);
+            if (!bgfx::isValid(vertices) || !bgfx::isValid(indices)) {
+                throw std::runtime_error("Failed to allocate scene point buffers.");
+            }
+        } catch (...) {
+            if (bgfx::isValid(vertices)) { bgfx::destroy(vertices); }
+            if (bgfx::isValid(indices)) { bgfx::destroy(indices); }
+            throw;
+        }
+        gpuMesh.pointSpriteVertexBuffer = vertices;
+        gpuMesh.pointSpriteIndexBuffer = indices;
+        gpuMesh.nodeRanges = std::move(ranges);
+    }
 }
 
 void destroyGpuMesh(GpuMesh& mesh)

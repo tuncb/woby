@@ -148,7 +148,8 @@ void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
 
     static_assert(sizeof(uint32_t) == sizeof(unsigned int));
 
-    std::vector<uint32_t> remap(indices.size());
+    // The remap is indexed by source vertex, including unreferenced vertices.
+    std::vector<uint32_t> remap(vertices.size());
     const size_t vertexCount = meshopt_generateVertexRemap(
         remap.data(),
         reinterpret_cast<const unsigned int*>(indices.data()),
@@ -157,11 +158,10 @@ void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
         vertices.size(),
         sizeof(Vertex));
 
-    std::vector<uint32_t> remappedIndices(indices.size());
     std::vector<Vertex> remappedVertices(vertexCount);
 
     meshopt_remapIndexBuffer(
-        reinterpret_cast<unsigned int*>(remappedIndices.data()),
+        reinterpret_cast<unsigned int*>(indices.data()),
         reinterpret_cast<const unsigned int*>(indices.data()),
         indices.size(),
         remap.data());
@@ -173,19 +173,10 @@ void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
         sizeof(Vertex),
         remap.data());
 
-    indices = std::move(remappedIndices);
     vertices = std::move(remappedVertices);
-
-    std::vector<Vertex> fetchedVertices(vertices.size());
-    meshopt_optimizeVertexFetch(
-        fetchedVertices.data(),
-        reinterpret_cast<unsigned int*>(indices.data()),
-        indices.size(),
-        vertices.data(),
-        vertices.size(),
-        sizeof(Vertex));
-
-    vertices = std::move(fetchedVertices);
+    // generateVertexRemap assigns IDs in first index-use order. With triangle
+    // order unchanged, another vertex-fetch pass repeats that order and copies
+    // the entire mesh. Keep source triangle order for annotations/provenance.
 }
 
 void captureSourceMesh(Mesh& mesh, SourceProvenance provenance)

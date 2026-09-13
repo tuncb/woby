@@ -1,5 +1,6 @@
 #include "mesh_comparison.h"
 #include "comparison_settings.h"
+#include "parallel_work.h"
 
 #include <algorithm>
 #include <cmath>
@@ -7,6 +8,10 @@
 #include <map>
 #include <stdexcept>
 #include <utility>
+
+#if defined(__SSE2__) || defined(_M_X64)
+#include <emmintrin.h>
+#endif
 
 namespace woby
 {
@@ -135,63 +140,95 @@ std::vector<Triangle> meshTriangles(const Mesh &mesh, std::stop_token stop)
     return triangles;
 }
 
-struct DistanceNode
-{
-    Point minimum{}, maximum{};
-    size_t begin = 0, end = 0, left = 0, right = 0;
+struct DistanceBounds { Point minimum{}, maximum{}; };
+// Four siblings in structure-of-arrays form: contiguous double-precision bounds
+// allow two SSE2 lane pairs without narrowing large/near-coincident geometry.
+struct alignas(64) DistanceNode {
+    std::array<std::array<double, 4>, 3> minimum{}, maximum{};
+    std::array<uint32_t, 4> child{}, count{};
+    uint32_t childCount = 0;
+    std::array<uint32_t, 7> padding{};
 };
+static_assert(sizeof(DistanceNode) == 256);
 struct DistanceTree
 {
     std::stop_token stop;
     std::vector<Triangle> triangles;
-    std::vector<size_t> order;
+    std::vector<uint32_t> order;
     std::vector<DistanceNode> nodes;
 };
-size_t buildNode(DistanceTree &tree, size_t begin, size_t end)
+DistanceBounds distanceBounds(const DistanceTree& tree, size_t begin, size_t end)
 {
-    checkCanceled(tree.stop);
-    DistanceNode node;
-    node.minimum.fill(std::numeric_limits<double>::infinity());
-    node.maximum.fill(-std::numeric_limits<double>::infinity());
-    node.begin = begin;
-    node.end = end;
+    DistanceBounds bounds;
+    bounds.minimum.fill(std::numeric_limits<double>::infinity());
+    bounds.maximum.fill(-std::numeric_limits<double>::infinity());
     for (size_t i = begin; i < end; ++i)
     {
         if (i % 256 == 0) { checkCanceled(tree.stop); }
         for (const auto &p : tree.triangles[tree.order[i]])
             for (size_t axis = 0; axis < 3; ++axis)
             {
-                node.minimum[axis] = std::min(node.minimum[axis], p[axis]);
-                node.maximum[axis] = std::max(node.maximum[axis], p[axis]);
+                bounds.minimum[axis] = std::min(bounds.minimum[axis], p[axis]);
+                bounds.maximum[axis] = std::max(bounds.maximum[axis], p[axis]);
             }
     }
-    const size_t index = tree.nodes.size();
-    tree.nodes.push_back(node);
-    if (end - begin > 8)
-    {
+    return bounds;
+}
+
+uint32_t buildNode(DistanceTree& tree, size_t begin, size_t end, const DistanceBounds& bounds)
+{
+    checkCanceled(tree.stop);
+    struct Range { size_t begin = 0, end = 0; DistanceBounds bounds; };
+    std::array<Range, 4> ranges{};
+    ranges[0] = {begin, end, bounds};
+    uint32_t rangeCount = 1;
+    while (rangeCount < 4) {
+        uint32_t largest = 0;
+        for (uint32_t i = 1; i < rangeCount; ++i) {
+            if (ranges[i].end - ranges[i].begin > ranges[largest].end - ranges[largest].begin) { largest = i; }
+        }
+        const auto range = ranges[largest];
+        if (range.end - range.begin <= 8) { break; }
         size_t axis = 0;
-        for (size_t k = 1; k < 3; ++k)
-            if (node.maximum[k] - node.minimum[k] > node.maximum[axis] - node.minimum[axis])
-                axis = k;
-        const size_t middle = begin + (end - begin) / 2;
-        std::nth_element(tree.order.begin() + static_cast<std::ptrdiff_t>(begin),
-                         tree.order.begin() + static_cast<std::ptrdiff_t>(middle),
-                         tree.order.begin() + static_cast<std::ptrdiff_t>(end), [&](size_t a, size_t b) {
-                             checkCanceled(tree.stop);
-                             const auto &ta = tree.triangles[a];
-                             const auto &tb = tree.triangles[b];
-                             const double ca = ta[0][axis] + ta[1][axis] + ta[2][axis],
-                                          cb = tb[0][axis] + tb[1][axis] + tb[2][axis];
-                             return ca == cb ? a < b : ca < cb;
-                         });
-        const size_t left = buildNode(tree, begin, middle), right = buildNode(tree, middle, end);
-        tree.nodes[index].left = left;
-        tree.nodes[index].right = right;
+        for (size_t k = 1; k < 3; ++k) {
+            if (range.bounds.maximum[k] - range.bounds.minimum[k] > range.bounds.maximum[axis] - range.bounds.minimum[axis]) { axis = k; }
+        }
+        const size_t middle = range.begin + (range.end - range.begin) / 2;
+        std::nth_element(tree.order.begin() + static_cast<std::ptrdiff_t>(range.begin),
+            tree.order.begin() + static_cast<std::ptrdiff_t>(middle),
+            tree.order.begin() + static_cast<std::ptrdiff_t>(range.end), [&](uint32_t a, uint32_t b) {
+                checkCanceled(tree.stop);
+                const auto& ta = tree.triangles[a];
+                const auto& tb = tree.triangles[b];
+                const double ca = ta[0][axis] + ta[1][axis] + ta[2][axis];
+                const double cb = tb[0][axis] + tb[1][axis] + tb[2][axis];
+                return ca == cb ? a < b : ca < cb;
+            });
+        ranges[largest] = {range.begin, middle, distanceBounds(tree, range.begin, middle)};
+        ranges[rangeCount++] = {middle, range.end, distanceBounds(tree, middle, range.end)};
+    }
+    const auto index = static_cast<uint32_t>(tree.nodes.size());
+    tree.nodes.emplace_back();
+    tree.nodes[index].childCount = rangeCount;
+    for (uint32_t i = 0; i < rangeCount; ++i) {
+        const auto& range = ranges[i];
+        for (size_t k = 0; k < 3; ++k) {
+            tree.nodes[index].minimum[k][i] = range.bounds.minimum[k];
+            tree.nodes[index].maximum[k][i] = range.bounds.maximum[k];
+        }
+        if (range.end - range.begin <= 8) {
+            tree.nodes[index].child[i] = static_cast<uint32_t>(range.begin);
+            tree.nodes[index].count[i] = static_cast<uint32_t>(range.end - range.begin);
+        } else {
+            const auto child = buildNode(tree, range.begin, range.end, range.bounds);
+            tree.nodes[index].child[i] = child;
+        }
     }
     return index;
 }
 DistanceTree buildTree(const Mesh &mesh, std::stop_token stop)
 {
+    validateComparisonMeshSize(mesh.vertices.size(), mesh.indices.size() / 3);
     DistanceTree tree;
     tree.stop = stop;
     tree.triangles = meshTriangles(mesh, stop);
@@ -199,45 +236,105 @@ DistanceTree buildTree(const Mesh &mesh, std::stop_token stop)
     for (size_t i = 0; i < tree.triangles.size(); ++i)
     {
         if (i % 256 == 0) { checkCanceled(stop); }
-        tree.order.push_back(i);
+        tree.order.push_back(static_cast<uint32_t>(i));
     }
-    // A leaf contains up to eight faces. Avoid reserving two nodes per face.
-    tree.nodes.reserve(tree.order.size() / 2 + 1);
-    buildNode(tree, 0, tree.order.size());
+    tree.nodes.reserve(tree.order.size() / 16 + 1);
+    buildNode(tree, 0, tree.order.size(), distanceBounds(tree, 0, tree.order.size()));
+    // Apply the new-to-old permutation in place, then release it. Every leaf
+    // streams contiguous triangles, without a second triangle copy or indirection.
+    for (size_t i = 0; i < tree.order.size(); ++i) {
+        if (i % 256 == 0) { checkCanceled(stop); }
+        if (tree.order[i] == i) { continue; }
+        const auto first = tree.triangles[i];
+        size_t current = i;
+        while (tree.order[current] != i) {
+            checkCanceled(stop);
+            const auto next = tree.order[current];
+            tree.triangles[current] = tree.triangles[next];
+            tree.order[current] = static_cast<uint32_t>(current);
+            current = next;
+        }
+        tree.triangles[current] = first;
+        tree.order[current] = static_cast<uint32_t>(current);
+    }
+    std::vector<uint32_t>().swap(tree.order);
     return tree;
 }
-double boxSquared(const Point &p, const DistanceNode &node)
+std::array<double, 4> boxSquared(const Point& p, const DistanceNode& node)
 {
-    double result = 0;
-    for (size_t k = 0; k < 3; ++k)
-    {
-        const double d = p[k] - std::clamp(p[k], node.minimum[k], node.maximum[k]);
-        result += d * d;
+    std::array<double, 4> result{};
+#if defined(__SSE2__) || defined(_M_X64)
+    for (size_t lane = 0; lane < 4; lane += 2) {
+        auto sum = _mm_setzero_pd();
+        for (size_t k = 0; k < 3; ++k) {
+            const auto point = _mm_set1_pd(p[k]);
+            const auto low = _mm_loadu_pd(node.minimum[k].data() + lane);
+            const auto high = _mm_loadu_pd(node.maximum[k].data() + lane);
+            const auto delta = _mm_sub_pd(point, _mm_min_pd(_mm_max_pd(point, low), high));
+            sum = _mm_add_pd(sum, _mm_mul_pd(delta, delta));
+        }
+        _mm_storeu_pd(result.data() + lane, sum);
     }
+#else
+    for (size_t lane = 0; lane < node.childCount; ++lane) {
+        for (size_t k = 0; k < 3; ++k) {
+            const double d = p[k] - std::clamp(p[k], node.minimum[k][lane], node.maximum[k][lane]);
+            result[lane] += d * d;
+        }
+    }
+#endif
     return result;
 }
-void nearest(const DistanceTree &tree, size_t index, const Point &p, double &best)
+
+template <typename T>
+void resizeWithCancellation(std::vector<T>& values, size_t count, std::stop_token stop)
+{
+    checkCanceled(stop);
+    values.reserve(count);
+    constexpr size_t batch = std::max(size_t{1}, size_t{65536} / sizeof(T));
+    while (values.size() < count) {
+        checkCanceled(stop);
+        values.resize(values.size() + std::min(batch, count - values.size()));
+    }
+}
+void nearest(const DistanceTree& tree, const Point& p, double& best, uint32_t& hint)
 {
     checkCanceled(tree.stop);
-    if (best == 0)
-    {
-        return;
-    }
-    const auto &node = tree.nodes[index];
-    if (boxSquared(p, node) > best)
-        return;
-    if (node.left == 0)
-    {
-        for (size_t i = node.begin; i < node.end; ++i)
-            best = std::min(best, triangleSquared(p, tree.triangles[tree.order[i]]));
-    }
-    else
-    {
-        size_t first = node.left, second = node.right;
-        if (boxSquared(p, tree.nodes[first]) > boxSquared(p, tree.nodes[second]))
-            std::swap(first, second);
-        nearest(tree, first, p, best);
-        nearest(tree, second, p, best);
+    // The previous sample's closest face is an exact upper bound for this
+    // query. Neighboring centroids usually share a nearby target surface.
+    best = triangleSquared(p, tree.triangles[hint]);
+    struct Visit { double distance = 0; uint32_t child = 0, count = 0; };
+    // Median splits and 32-bit primitive counts bound depth to 32. At most
+    // three deferred siblings per level, plus the current entry, fit here.
+    std::array<Visit, 100> stack{};
+    size_t pending = 1, visits = 0;
+    while (pending && best != 0) {
+        if (++visits % 256 == 0) { checkCanceled(tree.stop); }
+        const auto visit = stack[--pending];
+        if (visit.distance > best) { continue; }
+        if (visit.count) {
+            for (size_t i = visit.child; i < size_t(visit.child) + visit.count; ++i) {
+                const auto distance = triangleSquared(p, tree.triangles[i]);
+                if (distance < best) { best = distance; hint = static_cast<uint32_t>(i); }
+            }
+            continue;
+        }
+        const auto& node = tree.nodes[visit.child];
+        const auto distances = boxSquared(p, node);
+        std::array<Visit, 4> children{};
+        size_t count = 0;
+        for (uint32_t lane = 0; lane < node.childCount; ++lane) {
+            if (distances[lane] > best) { continue; }
+            const Visit child{distances[lane], node.child[lane], node.count[lane]};
+            size_t position = count++;
+            while (position && children[position - 1].distance < child.distance) {
+                children[position] = children[position - 1];
+                --position;
+            }
+            children[position] = child;
+        }
+        // Push far-to-near so the closest child tightens the bound first.
+        for (size_t i = 0; i < count; ++i) { stack[pending++] = children[i]; }
     }
 }
 
@@ -279,46 +376,63 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
 {
     const auto stop = source.stop;
     auto result = distancesOnly ? SurfaceComparison{} : copySurface(mesh, stop);
-    if (!distancesOnly) { result.diagnostics = inspectTriangles(source.triangles, stop); }
-    result.sampled.vertices.reserve(source.triangles.size() * 12);
-    result.sampled.indices.reserve(source.triangles.size() * 12);
-    result.distances.reserve(source.triangles.size() * 4);
-    result.sampleAreas.reserve(source.triangles.size() * 4);
-    double weightedDistance = 0, totalArea = 0;
-    for (const auto &t : source.triangles)
-    {
-        checkCanceled(stop);
-        const Point ab = mul(add(t[0], t[1]), .5), bc = mul(add(t[1], t[2]), .5), ca = mul(add(t[2], t[0]), .5);
-        const std::array<Triangle, 4> parts = {Triangle{t[0], ab, ca}, Triangle{ab, t[1], bc}, Triangle{ca, bc, t[2]},
-                                               Triangle{ab, bc, ca}};
-        for (const auto &part : parts)
-        {
-            const Point center = mul(add(add(part[0], part[1]), part[2]), 1.0 / 3.0);
-            double squared = std::numeric_limits<double>::infinity();
-            nearest(target, 0, center, squared);
-            const double distance = std::sqrt(squared), weight = area(part);
-            if (distance > std::numeric_limits<float>::max())
-                throw std::runtime_error("Analysis distance exceeds the supported display range.");
-            result.distances.push_back(distance);
-            result.sampleAreas.push_back(weight);
-            result.maximum = std::max(result.maximum, distance);
-            weightedDistance += distance * weight;
-            totalArea += weight;
-            const auto normal = cross(sub(part[1], part[0]), sub(part[2], part[0]));
-            const double normalLength = std::sqrt(lengthSquared(normal));
-            for (const auto &p : part)
+    if (!distancesOnly) { result.diagnostics = inspectMesh(mesh, stop); }
+    const size_t triangleCount = mesh.indices.size() / 3;
+    resizeWithCancellation(result.sampled.vertices, triangleCount * 12, stop);
+    resizeWithCancellation(result.sampled.indices, triangleCount * 12, stop);
+    resizeWithCancellation(result.distances, triangleCount * 4, stop);
+    resizeWithCancellation(result.sampleAreas, triangleCount * 4, stop);
+    // Each worker owns disjoint output ranges. The source order remains the
+    // saved triangle order even though target BVH leaves are spatially packed.
+    parallelAnalysisBatches(triangleCount, 128, stop, [&](size_t begin, size_t end) {
+        uint32_t hint = 0;
+        for (size_t face = begin; face < end; ++face) {
+            checkCanceled(stop);
+            const Triangle t = {toPoint(mesh.vertices[mesh.indices[face * 3]].position),
+                toPoint(mesh.vertices[mesh.indices[face * 3 + 1]].position),
+                toPoint(mesh.vertices[mesh.indices[face * 3 + 2]].position)};
+            const Point ab = mul(add(t[0], t[1]), .5), bc = mul(add(t[1], t[2]), .5), ca = mul(add(t[2], t[0]), .5);
+            const std::array<Triangle, 4> parts = {Triangle{t[0], ab, ca}, Triangle{ab, t[1], bc}, Triangle{ca, bc, t[2]},
+                                                   Triangle{ab, bc, ca}};
+            for (size_t sample = 0; sample < parts.size(); ++sample)
             {
-                Vertex vertex;
-                for (size_t k = 0; k < 3; ++k)
+                const auto& part = parts[sample];
+                const size_t sampleIndex = face * 4 + sample;
+                const Point center = mul(add(add(part[0], part[1]), part[2]), 1.0 / 3.0);
+                double squared = std::numeric_limits<double>::infinity();
+                nearest(target, center, squared, hint);
+                const double distance = std::sqrt(squared), weight = area(part);
+                if (distance > std::numeric_limits<float>::max())
+                    throw std::runtime_error("Analysis distance exceeds the supported display range.");
+                result.distances[sampleIndex] = distance;
+                result.sampleAreas[sampleIndex] = weight;
+                const auto normal = cross(sub(part[1], part[0]), sub(part[2], part[0]));
+                const double normalLength = std::sqrt(lengthSquared(normal));
+                for (size_t corner = 0; corner < part.size(); ++corner)
                 {
-                    vertex.position[k] = static_cast<float>(p[k]);
-                    vertex.normal[k] = normalLength > 0 ? static_cast<float>(normal[k] / normalLength) : 0.0f;
+                    const auto& p = part[corner];
+                    Vertex vertex;
+                    for (size_t k = 0; k < 3; ++k)
+                    {
+                        vertex.position[k] = static_cast<float>(p[k]);
+                        vertex.normal[k] = normalLength > 0 ? static_cast<float>(normal[k] / normalLength) : 0.0f;
+                    }
+                    vertex.texcoord[0] = static_cast<float>(distance);
+                    const auto index = sampleIndex * 3 + corner;
+                    result.sampled.indices[index] = static_cast<uint32_t>(index);
+                    result.sampled.vertices[index] = vertex;
                 }
-                vertex.texcoord[0] = static_cast<float>(distance);
-                result.sampled.indices.push_back(static_cast<uint32_t>(result.sampled.vertices.size()));
-                result.sampled.vertices.push_back(vertex);
             }
         }
+    });
+    // Fixed-order reductions keep weighted statistics reproducible regardless
+    // of worker scheduling, available CPU capacity, and cancellation timing.
+    double weightedDistance = 0, totalArea = 0;
+    for (size_t i = 0; i < result.distances.size(); ++i) {
+        if (i % 256 == 0) { checkCanceled(stop); }
+        result.maximum = std::max(result.maximum, result.distances[i]);
+        weightedDistance += result.distances[i] * result.sampleAreas[i];
+        totalArea += result.sampleAreas[i];
     }
     // Compute bounds with cancellation between small batches of vertices.
     auto& bounds = result.sampled.bounds;

@@ -4,9 +4,11 @@
 #include <rapidobj/rapidobj.hpp>
 
 #include <algorithm>
+#include <bit>
+#include <fstream>
+#include <limits>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 namespace woby {
@@ -23,25 +25,82 @@ struct IndexKey {
     }
 };
 
-struct IndexKeyHash {
-    size_t operator()(const IndexKey& key) const noexcept
-    {
-        const auto a = static_cast<uint32_t>(key.vertex + 1);
-        const auto b = static_cast<uint32_t>(key.normal + 1);
-        const auto c = static_cast<uint32_t>(key.texcoord + 1);
-        size_t seed = a;
-        seed ^= size_t(b) + 0x9e3779b9u + (seed << 6u) + (seed >> 2u);
-        seed ^= size_t(c) + 0x9e3779b9u + (seed << 6u) + (seed >> 2u);
-        return seed;
-    }
+// Dense keys and 32-bit bucket references avoid an allocation and pointer chase
+// for every vertex. Entries never move logically and preserve first-use IDs.
+struct VertexIndexTable {
+    std::vector<IndexKey> keys;
+    std::vector<uint32_t> buckets;
 };
+constexpr uint32_t emptyBucket = std::numeric_limits<uint32_t>::max();
+
+size_t indexHash(const IndexKey& key)
+{
+    uint64_t hash = uint64_t(static_cast<uint32_t>(key.vertex)) * 0x9e3779b185ebca87ull;
+    hash ^= uint64_t(static_cast<uint32_t>(key.normal)) * 0xc2b2ae3d27d4eb4full;
+    hash ^= uint64_t(static_cast<uint32_t>(key.texcoord)) * 0x165667b19e3779f9ull;
+    hash ^= hash >> 33;
+    hash *= 0xff51afd7ed558ccdull;
+    return static_cast<size_t>(hash ^ (hash >> 33));
+}
+
+void reserveIndexTable(VertexIndexTable& table, size_t capacity)
+{
+    table.keys.reserve(capacity);
+    table.buckets.assign(std::bit_ceil(std::max(size_t{16}, capacity + capacity / 2)), emptyBucket);
+    const size_t mask = table.buckets.size() - 1;
+    for (size_t i = 0; i < table.keys.size(); ++i) {
+        size_t bucket = indexHash(table.keys[i]) & mask;
+        while (table.buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & mask; }
+        table.buckets[bucket] = static_cast<uint32_t>(i);
+    }
+}
+
+uint32_t vertexIndex(VertexIndexTable& table, const IndexKey& key)
+{
+    size_t mask = table.buckets.size() - 1;
+    size_t bucket = indexHash(key) & mask;
+    while (table.buckets[bucket] != emptyBucket) {
+        const auto index = table.buckets[bucket];
+        if (table.keys[index] == key) { return index; }
+        bucket = (bucket + 1) & mask;
+    }
+    if (table.keys.size() >= table.buckets.size() * 3 / 4) {
+        reserveIndexTable(table, table.buckets.size());
+        mask = table.buckets.size() - 1;
+        bucket = indexHash(key) & mask;
+        while (table.buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & mask; }
+    }
+    const auto index = static_cast<uint32_t>(table.keys.size());
+    table.keys.push_back(key);
+    table.buckets[bucket] = index;
+    return index;
+}
+
+rapidobj::Result parseObj(const std::filesystem::path& path)
+{
+#if defined(_WIN32)
+    // RapidOBJ's Windows file reader bypasses the OS page cache. That is useful
+    // for large parallel reads but makes thousands of tiny files I/O-bound.
+    // Match its single-thread cutoff, retaining ParseFile for larger meshes.
+    std::error_code error;
+    const auto bytes = std::filesystem::file_size(path, error);
+    if (!error && bytes <= 1024 * 1024) {
+        std::ifstream stream(path, std::ios::binary);
+        if (stream) {
+            return rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::SearchPath(
+                std::filesystem::absolute(path).parent_path(), rapidobj::Load::Optional));
+        }
+    }
+#endif
+    return rapidobj::ParseFile(path, rapidobj::MaterialLibrary::Default(rapidobj::Load::Optional));
+}
 
 } // namespace
 
 Mesh loadObjMesh(const std::filesystem::path& path)
 {
     // Missing material libraries must not prevent importing the geometry.
-    auto result = rapidobj::ParseFile(path, rapidobj::MaterialLibrary::Default(rapidobj::Load::Optional));
+    auto result = parseObj(path);
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
         if (result.error) {
@@ -65,22 +124,28 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     Mesh mesh;
     auto source = std::make_shared<SourceMeshData>();
     source->provenance = SourceProvenance::objPositions;
+    source->points.reserve(attrib.positions.size() / 3);
     for (size_t i = 0; i < attrib.positions.size(); i += 3) {
         const std::array<float, 3> point = {attrib.positions[i], attrib.positions[i+1], attrib.positions[i+2]};
         if (!finitePosition(point)) { throw std::runtime_error("OBJ contains a non-finite source coordinate."); }
         source->points.push_back({point[0], point[1], point[2]});
     }
-    std::unordered_map<IndexKey, uint32_t, IndexKeyHash> vertexMap;
+    VertexIndexTable vertexMap;
     size_t indexCount = 0;
     for (const auto& shape : shapes) {
         indexCount += shape.mesh.indices.size();
+    }
+    if (indexCount > std::numeric_limits<uint32_t>::max()
+        || source->points.size() > std::numeric_limits<uint32_t>::max()) {
+        throw std::runtime_error("OBJ exceeds the supported vertex or index range.");
     }
     // Position count is only an estimate: normal/UV seams can split vertices.
     const size_t vertexCapacity = std::min(attrib.positions.size() / 3u, indexCount);
     mesh.indices.reserve(indexCount);
     mesh.vertices.reserve(vertexCapacity);
     mesh.nodes.reserve(shapes.size());
-    vertexMap.reserve(vertexCapacity);
+    source->indices.reserve(indexCount);
+    reserveIndexTable(vertexMap, vertexCapacity);
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
         const auto& shape = shapes[shapeIndex];
@@ -92,9 +157,9 @@ Mesh loadObjMesh(const std::filesystem::path& path)
             }
             source->indices.push_back(static_cast<uint32_t>(index.position_index));
             const IndexKey key{index.position_index, index.normal_index, index.texcoord_index};
-            const auto found = vertexMap.find(key);
-            if (found != vertexMap.end()) {
-                mesh.indices.push_back(found->second);
+            const auto mappedIndex = vertexIndex(vertexMap, key);
+            if (mappedIndex < mesh.vertices.size()) {
+                mesh.indices.push_back(mappedIndex);
                 continue;
             }
 
@@ -128,7 +193,6 @@ Mesh loadObjMesh(const std::filesystem::path& path)
             }
 
             const uint32_t newIndex = static_cast<uint32_t>(mesh.vertices.size());
-            vertexMap.emplace(key, newIndex);
             mesh.vertices.push_back(vertex);
             mesh.indices.push_back(newIndex);
         }

@@ -1,4 +1,5 @@
 #include "model_mesh.h"
+#include "parallel_work.h"
 
 #include <doctest/doctest.h>
 
@@ -133,4 +134,46 @@ TEST_CASE("finalizing a mesh rejects empty input and fills derived data")
     for (const auto& item : mesh.vertices) {
         CHECK(woby::validNormal(item.normal));
     }
+}
+
+TEST_CASE("compaction preserves corners and first use order with sparse source vertices")
+{
+    std::vector<woby::Vertex> vertices(40);
+    vertices[30] = vertex(0, 1, 0);
+    vertices[25] = vertex(1, 0, 0);
+    vertices[15] = vertex(0, 0, 0);
+    vertices[39] = vertices[30];
+    const auto source = vertices;
+    std::vector<uint32_t> indices = {30, 25, 15, 39, 15, 25};
+    const auto original = indices;
+    woby::compactMesh(vertices, indices);
+    REQUIRE(vertices.size() == 3);
+    CHECK(indices == std::vector<uint32_t>{0, 1, 2, 0, 2, 1});
+    for (size_t i = 0; i < indices.size(); ++i) {
+        CHECK(vertices[indices[i]].position == source[original[i]].position);
+        CHECK(vertices[indices[i]].normal == source[original[i]].normal);
+    }
+}
+
+TEST_CASE("parallel analysis batches cover tails exactly once and recover from failure")
+{
+    std::vector<std::atomic<unsigned>> visits(16391);
+    const auto run = [&] {
+        woby::parallelAnalysisBatches(visits.size(), 31, {}, [&](size_t begin, size_t end) {
+            for (size_t i = begin; i < end; ++i) { visits[i].fetch_add(1, std::memory_order_relaxed); }
+        });
+    };
+    run();
+    for (const auto& value : visits) { CHECK(value.load() == 1); }
+    CHECK_THROWS_WITH(woby::parallelAnalysisBatches(visits.size(), 128, {}, [](size_t begin, size_t) {
+        if (begin == 0) { throw std::runtime_error("worker failure"); }
+    }), "worker failure");
+    CHECK(woby::analysisWorkerCount.load() == 0);
+    run();
+    for (const auto& value : visits) { CHECK(value.load() == 2); }
+    std::stop_source stop;
+    CHECK_THROWS_WITH(woby::parallelAnalysisBatches(visits.size(), 128, stop.get_token(), [&](size_t, size_t) {
+        stop.request_stop();
+    }), "Analysis canceled.");
+    CHECK(woby::analysisWorkerCount.load() == 0);
 }

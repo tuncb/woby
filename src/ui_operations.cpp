@@ -6,6 +6,7 @@
 #include <cmath>
 #include <string>
 #include <stdexcept>
+#include <unordered_map>
 #include <utility>
 
 namespace woby {
@@ -82,8 +83,10 @@ std::array<float, 3> initialComparisonTranslation(const UiState& state,
 std::vector<SceneObjectId> comparisonObjectParts(const UiState& state, const std::vector<SceneObjectId>& objects)
 {
     std::vector<SceneObjectId> parts;
-    const auto selected = [&objects](SceneObjectId id) {
-        return id != invalidSceneObjectId && std::find(objects.begin(), objects.end(), id) != objects.end();
+    auto sortedObjects = objects;
+    std::sort(sortedObjects.begin(), sortedObjects.end());
+    const auto selected = [&sortedObjects](SceneObjectId id) {
+        return id != invalidSceneObjectId && std::binary_search(sortedObjects.begin(), sortedObjects.end(), id);
     };
     const auto appendFile = [&parts](const UiFileState& file) {
         for (size_t i = 0; i < file.groupSettings.size(); ++i) {
@@ -153,15 +156,64 @@ bool comparisonContains(const UiState& state, SceneObjectId part, ComparisonSide
     });
 }
 
-size_t comparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id)
+std::vector<SceneObjectId> comparableScenePartIds(const UiState& state)
 {
+    std::vector<SceneObjectId> parts;
+    for (const auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size(); ++i) {
+            if (comparablePart(file, i) && file.groupSettings[i].objectId != invalidSceneObjectId) {
+                parts.push_back(file.groupSettings[i].objectId);
+            }
+        }
+    }
+    std::sort(parts.begin(), parts.end());
+    parts.erase(std::unique(parts.begin(), parts.end()), parts.end());
+    return parts;
+}
+
+bool fileHasComparableParts(const UiFileState& file)
+{
+    for (size_t i = 0; i < std::min(file.groupSettings.size(), file.mesh.nodes.size()); ++i) {
+        if (file.groupSettings[i].objectId != invalidSceneObjectId && comparablePart(file, i)) { return true; }
+    }
+    return false;
+}
+
+std::vector<SceneObjectId> comparisonMemberIds(const UiState& state, ComparisonSide side,
+    SceneObjectId id, bool enabledOnly)
+{
+    std::vector<SceneObjectId> parts;
+    const auto* comparison = findComparison(state, id);
+    if (!comparison) { return parts; }
+    const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+    parts.reserve(members.size());
+    for (const auto& member : members) {
+        if ((!enabledOnly || member.enabled) && member.objectId != invalidSceneObjectId) { parts.push_back(member.objectId); }
+    }
+    std::sort(parts.begin(), parts.end());
+    parts.erase(std::unique(parts.begin(), parts.end()), parts.end());
+    return parts;
+}
+
+namespace {
+size_t countComparisonParts(const UiState& state, ComparisonSide side, SceneObjectId id, bool enabledOnly)
+{
+    const auto members = comparisonMemberIds(state, side, id, enabledOnly);
+    if (members.empty()) { return 0; }
     size_t count = 0;
     for (const auto& file : state.files) {
         for (size_t i = 0; i < file.groupSettings.size(); ++i) {
-            if (comparablePart(file, i) && comparisonContains(state, file.groupSettings[i].objectId, side, id)) { ++count; }
+            if (comparablePart(file, i)
+                && std::binary_search(members.begin(), members.end(), file.groupSettings[i].objectId)) { ++count; }
         }
     }
     return count;
+}
+} // namespace
+
+size_t comparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id)
+{
+    return countComparisonParts(state, side, id, false);
 }
 
 bool comparisonPartEnabled(const UiState& state, SceneObjectId part, ComparisonSide side, SceneObjectId id)
@@ -176,13 +228,7 @@ bool comparisonPartEnabled(const UiState& state, SceneObjectId part, ComparisonS
 
 size_t enabledComparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id)
 {
-    size_t count = 0;
-    for (const auto& file : state.files) {
-        for (size_t i = 0; i < file.groupSettings.size(); ++i) {
-            if (comparablePart(file, i) && comparisonPartEnabled(state, file.groupSettings[i].objectId, side, id)) { ++count; }
-        }
-    }
-    return count;
+    return countComparisonParts(state, side, id, true);
 }
 
 void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side,
@@ -209,9 +255,11 @@ bool hasEnabledMissingComparisonParts(const UiState& state, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return false; }
+    const auto available = comparableScenePartIds(state);
     for (const auto* members : {&comparison->a, &comparison->b}) {
         for (const auto& member : *members) {
-            if (member.enabled && comparisonObjectParts(state, {member.objectId}).empty()) { return true; }
+            if (member.enabled && !std::binary_search(available.begin(), available.end(), member.objectId)
+                && comparisonObjectParts(state, {member.objectId}).empty()) { return true; }
         }
     }
     return false;
@@ -504,15 +552,23 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
     auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
     auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
-    for (const auto part : parts) {
-        if (member) {
-            if (comparisonContains(state, part, side, comparison->objectId)) { continue; }
-            const auto info = findSceneObject(state, part);
-            const auto file = info ? findSceneObject(state, info->fileId) : std::nullopt;
-            members.push_back({part, (file ? file->name + " / " : "") + (info ? info->name : "Missing part")});
-        } else {
-            std::erase_if(members, [part](const UiComparisonPart& entry) { return entry.objectId == part; });
+    if (member) {
+        const auto existing = comparisonMemberIds(state, side, comparison->objectId, false);
+        const auto objectsByOrder = sceneObjects(state);
+        std::unordered_map<SceneObjectId, const SceneObjectInfo*> objectLookup;
+        objectLookup.reserve(objectsByOrder.size());
+        for (const auto& object : objectsByOrder) { objectLookup.emplace(object.id, &object); }
+        for (const auto part : parts) {
+            if (std::binary_search(existing.begin(), existing.end(), part)) { continue; }
+            const auto info = objectLookup.find(part);
+            const auto file = info == objectLookup.end() ? objectLookup.end() : objectLookup.find(info->second->fileId);
+            members.push_back({part, (file != objectLookup.end() ? file->second->name + " / " : "")
+                + (info != objectLookup.end() ? info->second->name : "Missing part")});
         }
+    } else {
+        std::erase_if(members, [&](const UiComparisonPart& entry) {
+            return std::binary_search(parts.begin(), parts.end(), entry.objectId);
+        });
     }
     if (member) { setPropertiesPaneVisible(state, true); }
     recalculateSceneBounds(state);
@@ -523,8 +579,10 @@ void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObje
 {
     if (auto* comparison = findComparison(state, id)) {
         auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
+        const auto available = comparableScenePartIds(state);
         std::erase_if(members, [&](const UiComparisonPart& part) {
-            return comparisonObjectParts(state, {part.objectId}).empty();
+            return !std::binary_search(available.begin(), available.end(), part.objectId)
+                && comparisonObjectParts(state, {part.objectId}).empty();
         });
         recalculateSceneBounds(state);
         markSceneDirty(state);
