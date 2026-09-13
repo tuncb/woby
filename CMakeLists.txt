@@ -78,6 +78,7 @@ add_executable(woby
     src/comparison_report.cpp
     src/comparison_legend.cpp
     src/surface_mesh_quality.cpp
+    src/mesh_degenerates.cpp
     src/mesh_duplicates.cpp
     src/mesh_comparison.cpp
     src/comparison_scene.cpp
@@ -321,9 +322,11 @@ if(BUILD_TESTING)
         src/comparison_view.cpp
         src/comparison_legend.cpp
         src/surface_mesh_quality.cpp
+        src/mesh_degenerates.cpp
         src/mesh_duplicates.cpp
         src/mesh_comparison.cpp
         src/comparison_scene.cpp
+        tests/mesh_degenerates_tests.cpp
         tests/mesh_duplicates_tests.cpp
         tests/mesh_comparison_tests.cpp
         src/control_importers.cpp

@@ -256,7 +256,22 @@ std::vector<DiagnosticEdge> duplicateBounds(const DuplicateResult& result, std::
     return bounds;
 }
 
-SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop)
+void inspectSurfaceDegenerates(SurfaceComparison& surface, const Mesh& mesh, DegenerateSettings settings, std::stop_token stop)
+{
+    const std::vector<DuplicateSource> empty;
+    surface.degenerates = inspectDegenerates(mesh.duplicateInput ? mesh.duplicateInput->sources : empty, settings, stop);
+    if (settings.enabled && !mesh.duplicateInput) { surface.degenerates.unavailableSources = 1; }
+    for (const auto& finding : surface.degenerates.findings) {
+        checkCanceled(stop);
+        DiagnosticEdge bounds{finding.geometry[0], finding.geometry[0]};
+        for (const auto& p : finding.geometry) {
+            for (size_t k = 0; k < 3; ++k) { bounds.a[k] = std::min(bounds.a[k], p[k]); bounds.b[k] = std::max(bounds.b[k], p[k]); }
+        }
+        surface.degenerateBounds.push_back(bounds);
+    }
+}
+
+SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop, DegenerateSettings degenerates = {})
 {
     checkCanceled(stop);
     SurfaceComparison result;
@@ -265,6 +280,7 @@ SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop)
         result.duplicates.points.unavailableSources = 1;
         result.duplicates.triangles.unavailableSources = 1;
     }
+    inspectSurfaceDegenerates(result, mesh, degenerates, stop);
     result.duplicatePointBounds = duplicateBounds(result.duplicates.points, stop);
     result.duplicateTriangleBounds = duplicateBounds(result.duplicates.triangles, stop);
     result.source.vertices = copyWithCancellation(mesh.vertices, stop);
@@ -275,10 +291,10 @@ SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop)
     return result;
 }
 
-SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, const DistanceTree &target, bool distancesOnly = false)
+SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, const DistanceTree &target, bool distancesOnly = false, DegenerateSettings degenerates = {})
 {
     const auto stop = source.stop;
-    auto result = distancesOnly ? SurfaceComparison{} : copySurface(mesh, stop);
+    auto result = distancesOnly ? SurfaceComparison{} : copySurface(mesh, stop, degenerates);
     if (!distancesOnly) { result.diagnostics = inspectTriangles(source.triangles, stop); }
     result.sampled.vertices.reserve(source.triangles.size() * 12);
     result.sampled.indices.reserve(source.triangles.size() * 12);
@@ -390,7 +406,8 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
         settings.diagnosticCategory != DiagnosticCategory::nonManifold &&
         settings.diagnosticCategory != DiagnosticCategory::winding &&
         settings.diagnosticCategory != DiagnosticCategory::duplicatePoints &&
-        settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles) {
+        settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles &&
+        settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles) {
         settings.diagnosticCategory = DiagnosticCategory::boundary;
     }
     if (settings.mode != ComparisonMode::distance && settings.mode != ComparisonMode::original &&
@@ -401,6 +418,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.colorRange = std::isfinite(settings.colorRange) ? std::clamp(settings.colorRange, 1e-6f, 1e12f) : .5f;
     settings.colorRange = std::max(settings.colorRange, settings.tolerance);
     settings.quality = normalizedSurfaceQualitySettings(settings.quality);
+    settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
     return settings;
 }
 
@@ -413,6 +431,7 @@ const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
     case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
     case DiagnosticCategory::winding: return diagnostics.inconsistentWindingEdges;
     case DiagnosticCategory::duplicatePoints: return side == ComparisonSide::a ? result.original.duplicatePointBounds : result.repaired.duplicatePointBounds;
+    case DiagnosticCategory::degenerateTriangles: return side == ComparisonSide::a ? result.original.degenerateBounds : result.repaired.degenerateBounds;
     case DiagnosticCategory::duplicateTriangles: return side == ComparisonSide::a ? result.original.duplicateTriangleBounds : result.repaired.duplicateTriangleBounds;
     }
     static const std::vector<DiagnosticEdge> empty;
@@ -518,29 +537,29 @@ MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop)
     return inspectTriangles(meshTriangles(mesh, stop), stop);
 }
 
-MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop)
+MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop, DegenerateSettings degenerates)
 {
     checkCanceled(stop);
     validateComparisonMeshSize(original.vertices.size(), original.indices.size() / 3);
     validateComparisonMeshSize(repaired.vertices.size(), repaired.indices.size() / 3);
     if (original.vertices.empty() && original.indices.empty()) {
         MeshComparison result;
-        result.repaired = copySurface(repaired, stop);
+        result.repaired = copySurface(repaired, stop, degenerates);
         result.repaired.diagnostics = inspectMesh(repaired, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
         return result;
     }
     if (repaired.vertices.empty() && repaired.indices.empty()) {
         MeshComparison result;
-        result.original = copySurface(original, stop);
+        result.original = copySurface(original, stop, degenerates);
         result.original.diagnostics = inspectMesh(original, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
         return result;
     }
     const auto originalTree = buildTree(original, stop), repairedTree = buildTree(repaired, stop);
     MeshComparison result;
-    result.original = compareSurface(original, originalTree, repairedTree);
-    result.repaired = compareSurface(repaired, repairedTree, originalTree);
+    result.original = compareSurface(original, originalTree, repairedTree, false, degenerates);
+    result.repaired = compareSurface(repaired, repairedTree, originalTree, false, degenerates);
     result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
     return result;
 }
@@ -550,6 +569,7 @@ uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool both
     uint32_t stages = comparisonSource | comparisonTopology;
     if (settings.duplicates.points) { stages |= comparisonDuplicatePoints; }
     if (settings.duplicates.triangles) { stages |= comparisonDuplicateTriangles; }
+    if (settings.degenerates.enabled) { stages |= comparisonDegenerates; }
     if (fullResults || settings.mode == ComparisonMode::surfaceQuality) { stages |= comparisonQuality; }
     if (bothInputs && (fullResults || settings.mode == ComparisonMode::distance)) { stages |= comparisonDistance; }
     return stages;
@@ -562,7 +582,16 @@ bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature)
     return true;
 }
 
-MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop)
+bool resetComparisonDegenerateCache(ComparisonCacheStatus& cache, DegenerateSettings settings)
+{
+    settings = normalizedDegenerateSettings(settings);
+    const bool changed = !sameDegenerateThresholds(cache.degenerates, settings);
+    cache.degenerates = settings;
+    if (changed) { cache.completed &= ~comparisonDegenerates; }
+    return changed;
+}
+
+MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop, DegenerateSettings degenerates)
 {
     checkCanceled(stop);
     MeshComparison result;
@@ -582,6 +611,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             surface.source.bounds = mesh.bounds;
         }
         if (stages & comparisonTopology) { surface.diagnostics = inspectMesh(mesh, stop); }
+        if (stages & comparisonDegenerates) { degenerates.enabled = true; inspectSurfaceDegenerates(surface, mesh, degenerates, stop); }
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
         if (stages & (comparisonDuplicatePoints | comparisonDuplicateTriangles)) {
             DuplicateInput input;
@@ -610,10 +640,21 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     uint64_t signature, uint32_t stages)
 {
     if (!signature || signature != cache.signature) { return false; }
+    if (stages & comparisonDegenerates) {
+        for (const auto* surface : {&update.original, &update.repaired}) {
+            if ((surface->degenerates.availableSources || surface->degenerates.unavailableSources)
+                && !sameDegenerateThresholds(surface->degenerates.settings, cache.degenerates)) { stages &= ~comparisonDegenerates; break; }
+        }
+        if (!stages) { return false; }
+    }
     const auto merge = [&](SurfaceComparison& target, SurfaceComparison& source) {
         if (stages & comparisonSource) { target.source = std::move(source.source); }
         if (stages & comparisonTopology) { target.diagnostics = std::move(source.diagnostics); }
         if (stages & comparisonQuality) { target.quality = std::move(source.quality); }
+        if (stages & comparisonDegenerates) {
+            target.degenerates = std::move(source.degenerates);
+            target.degenerateBounds = std::move(source.degenerateBounds);
+        }
         if (stages & comparisonDuplicatePoints) {
             target.duplicates.points = std::move(source.duplicates.points);
             target.duplicatePointBounds = std::move(source.duplicatePointBounds);
@@ -636,6 +677,18 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     if (stages & comparisonQuality) { result.qualityDistributions = std::move(update.qualityDistributions); }
     cache.completed |= stages;
     return true;
+}
+
+void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings settings)
+{
+    settings = normalizedDegenerateSettings(settings);
+    for (auto* surface : {&result.original, &result.repaired}) {
+        surface->degenerates.settings.enabled = settings.enabled;
+        surface->degenerates.settings.show = settings.show;
+        // Disabled responses still describe the current configured thresholds.
+        // The cache separately invalidates findings when these thresholds change.
+        if (!settings.enabled) { surface->degenerates.settings = settings; }
+    }
 }
 
 void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettings& settings)

@@ -460,8 +460,13 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else if (category == "non_manifold") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifold; }
         else if (category == "winding") { record.settings.diagnosticCategory = DiagnosticCategory::winding; }
         else if (category == "duplicate_points") { record.settings.diagnosticCategory = DiagnosticCategory::duplicatePoints; }
+        else if (category == "degenerate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::degenerateTriangles; }
         else if (category == "duplicate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::duplicateTriangles; }
         else { throw std::runtime_error("Unknown diagnostic category."); }
+    } else if (key == "degenerate_triangles_enabled") { record.settings.degenerates.enabled = parseTomlBool(value);
+    } else if (key == "show_degenerate_triangles") { record.settings.degenerates.show = parseTomlBool(value);
+    } else if (key == "needle_threshold_ratio") { record.settings.degenerates.needleThresholdRatio = parseTomlFloat(value);
+    } else if (key == "cap_min_angle_degrees") { record.settings.degenerates.capMinAngleDegrees = parseTomlFloat(value);
     } else if (key == "duplicate_points_enabled") { record.settings.duplicates.points = parseTomlBool(value);
     } else if (key == "duplicate_triangles_enabled") { record.settings.duplicates.triangles = parseTomlBool(value);
     } else if (key == "show_duplicate_points") { record.settings.duplicates.showPoints = parseTomlBool(value);
@@ -508,6 +513,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "diagnostic_side = \"" << (comparison.diagnosticSide == ComparisonSide::a ? "a" : "b") << "\"\n";
     const char* category = comparison.diagnosticCategory == DiagnosticCategory::boundary ? "boundary"
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold"
+        : comparison.diagnosticCategory == DiagnosticCategory::degenerateTriangles ? "degenerate_triangles"
         : comparison.diagnosticCategory == DiagnosticCategory::duplicatePoints ? "duplicate_points"
         : comparison.diagnosticCategory == DiagnosticCategory::duplicateTriangles ? "duplicate_triangles" : "winding";
     stream << "diagnostic_category = \"" << category << "\"\n";
@@ -517,6 +523,10 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_show_boundaries = " << (comparison.showBoundaries ? "true" : "false") << "\n";
     stream << "analysis_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
 
+    stream << "degenerate_triangles_enabled = " << (comparison.degenerates.enabled ? "true" : "false") << "\n";
+    stream << "show_degenerate_triangles = " << (comparison.degenerates.show ? "true" : "false") << "\n";
+    stream << "needle_threshold_ratio = " << comparison.degenerates.needleThresholdRatio << "\n";
+    stream << "cap_min_angle_degrees = " << comparison.degenerates.capMinAngleDegrees << "\n";
     stream << "duplicate_points_enabled = " << (comparison.duplicates.points ? "true" : "false") << "\n";
     stream << "duplicate_triangles_enabled = " << (comparison.duplicates.triangles ? "true" : "false") << "\n";
     stream << "show_duplicate_points = " << (comparison.duplicates.showPoints ? "true" : "false") << "\n";
@@ -724,7 +734,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (section == Section::root) {
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -962,7 +972,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 8\n";
+    stream << "version = 9\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";

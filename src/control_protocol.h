@@ -44,6 +44,8 @@ struct ControlOperation {
     std::optional<float> tolerance, colorRange;
     std::optional<std::string> qualityMetric;
     std::optional<bool> duplicatePoints, duplicateTriangles, showDuplicatePoints, showDuplicateTriangles;
+    std::optional<bool> degenerateTriangles, showDegenerateTriangles;
+    std::optional<float> needleThresholdRatio, capMinAngleDegrees;
     std::optional<bool> qualityOnA, qualityMinimumEnabled, qualityMaximumEnabled;
     std::optional<float> qualityMinimumSize, qualityMaximumSize;
     std::optional<std::string> shape, comments;

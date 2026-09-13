@@ -53,7 +53,19 @@ std::vector<std::string> comparisonReportLines(
             };
             append("duplicate points", surface->duplicates.points);
             append("source-ID duplicate triangles", surface->duplicates.triangles);
+            if (settings.degenerates.enabled) {
+                const auto& d = surface->degenerates;
+                lines.push_back(label + " degenerate triangles: " + (d.unavailableSources ? std::string("N/A; known ") : std::string{})
+                    + std::to_string(d.findings.size()) + " (" + degenerateStatus(d) + ")");
+                lines.push_back(label + " collapsed / needle / cap: " + std::to_string(d.collapsedCount) + " / "
+                    + std::to_string(d.needleCount) + " / " + std::to_string(d.capCount) + " (reasons overlap)");
+            }
         }
+    }
+    if (settings.degenerates.enabled && (options.legend || options.tolerance)) {
+        lines.push_back("Degenerates: edge ratio > " + measurementNumber(settings.degenerates.needleThresholdRatio)
+            + "; maximum angle > " + measurementNumber(settings.degenerates.capMinAngleDegrees) + " degrees; collapsed faces always included.");
+        if (options.legend && settings.degenerates.show) { lines.push_back("Purple faces/edges: degenerate triangles; crosses mark collapsed faces."); }
     }
     if (settings.mode == ComparisonMode::surfaceQuality) {
         const auto metric = settings.quality.metric;

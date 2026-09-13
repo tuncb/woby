@@ -317,7 +317,8 @@ namespace {
 bool diagnosticDetectorEnabled(const ComparisonSettings& settings)
 {
     return (settings.diagnosticCategory != DiagnosticCategory::duplicatePoints || settings.duplicates.points)
-        && (settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles || settings.duplicates.triangles);
+        && (settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles || settings.duplicates.triangles)
+        && (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles || settings.degenerates.enabled);
 }
 bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison)
 {
@@ -336,6 +337,10 @@ const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
     if (!comparison || !diagnosticFocusCurrent(state, *comparison)
         || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
     const auto& focus = *comparison->diagnosticFocus;
+    if (focus.category == DiagnosticCategory::degenerateTriangles) {
+        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
+        if (!sameDegenerateThresholds(surface.degenerates.settings, comparison->settings.degenerates)) { return nullptr; }
+    }
     const auto& edges = comparisonDiagnosticEdges(result, focus.side, focus.category);
     return focus.index < edges.size() ? &edges[focus.index] : nullptr;
 }
@@ -362,6 +367,10 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (!diagnosticDetectorEnabled(settings)) { return; }
+    if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (!sameDegenerateThresholds(surface.degenerates.settings, settings.degenerates)) { return; }
+    }
     const auto& edges = comparisonDiagnosticEdges(result, settings.diagnosticSide, settings.diagnosticCategory);
     if (edges.empty()) { return; }
     size_t index = 0;
@@ -381,6 +390,10 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (!diagnosticDetectorEnabled(settings)) { return; }
+    if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (!sameDegenerateThresholds(surface.degenerates.settings, settings.degenerates)) { return; }
+    }
     const auto& edges = comparisonDiagnosticEdges(result, settings.diagnosticSide, settings.diagnosticCategory);
     if (index >= edges.size()) { return; }
     const auto& edge = edges[index];
@@ -392,7 +405,8 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
     // Keep enough surrounding surface to understand the defect without allowing
     // distant, unrelated scene objects to overwhelm a small edge's framing.
     const auto resultBounds = comparisonDisplayBounds(state, id);
-    const float padding = settings.diagnosticCategory == DiagnosticCategory::duplicateTriangles ? 1.2f : 3.0f;
+    const float padding = (settings.diagnosticCategory == DiagnosticCategory::duplicateTriangles
+        || settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) ? 1.2f : 3.0f;
     bounds.radius = std::max(bounds.radius * padding, resultBounds ? resultBounds->radius * .06f : .001f);
     for (size_t k = 0; k < 3; ++k) {
         bounds.min[k] += comparison->translation[k];
@@ -471,7 +485,9 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
     if (auto* comparison = findComparison(state, id)) {
         const bool wasEnabled = comparison->settings.enabled;
         if (settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
-            || settings.duplicates.points != comparison->settings.duplicates.points || settings.duplicates.triangles != comparison->settings.duplicates.triangles) {
+            || settings.duplicates.points != comparison->settings.duplicates.points || settings.duplicates.triangles != comparison->settings.duplicates.triangles
+            || settings.degenerates.enabled != comparison->settings.degenerates.enabled
+            || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
             comparison->diagnosticFocus.reset();
         }
         comparison->settings = normalizedComparisonSettings(settings);

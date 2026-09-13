@@ -44,6 +44,8 @@ struct SurfaceComparison
     MeshDiagnostics diagnostics;
     SurfaceMeshQuality quality;
     MeshDuplicates duplicates;
+    MeshDegenerates degenerates;
+    std::vector<DiagnosticEdge> degenerateBounds;
     // Bounds diagonals used by shared finding navigation; not rendered as edges.
     std::vector<DiagnosticEdge> duplicatePointBounds, duplicateTriangleBounds;
 };
@@ -62,22 +64,27 @@ enum ComparisonStage : uint32_t {
     comparisonDuplicatePoints = 1u << 2,
     comparisonDuplicateTriangles = 1u << 3,
     comparisonQuality = 1u << 4,
-    comparisonDistance = 1u << 5
+    comparisonDistance = 1u << 5,
+    comparisonDegenerates = 1u << 6
 };
 struct ComparisonCacheStatus {
     uint64_t signature = 0;
     uint32_t completed = 0;
+    DegenerateSettings degenerates;
 };
 [[nodiscard]] uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs,
     bool fullResults = false);
 // Returns true when a geometry change invalidates the retained stages.
 bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature);
+// Invalidates only the threshold-dependent detector stage.
+bool resetComparisonDegenerateCache(ComparisonCacheStatus& cache, DegenerateSettings settings);
 [[nodiscard]] MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired,
-    uint32_t stages, std::stop_token stop = {});
+    uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {});
 // Rejects stale worker results; moves only the stages produced by that worker.
 bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache, MeshComparison update,
     uint64_t signature, uint32_t stages);
 void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettings& settings);
+void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings settings);
 
 [[nodiscard]] const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
     const MeshComparison& result, ComparisonSide side, DiagnosticCategory category);
@@ -89,7 +96,7 @@ void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettin
                                            const std::array<float, 3> &b, const std::array<float, 3> &c);
 [[nodiscard]] MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop = {});
 // One empty mesh requests topology inspection only; no distance samples are produced.
-[[nodiscard]] MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop = {});
+[[nodiscard]] MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop = {}, DegenerateSettings degenerates = {});
 [[nodiscard]] double surfacePercentAboveTolerance(const SurfaceComparison &surface, double tolerance);
 
 } // namespace woby

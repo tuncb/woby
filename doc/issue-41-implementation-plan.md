@@ -1,7 +1,8 @@
 # Issue #41 implementation plan
 
 Status: duplicate-point and source-ID duplicate-triangle implementation added on
-2026-09-12. Remaining detectors and the complete shared-topology milestone are open.
+2026-09-12; degenerate-triangle findings added on 2026-09-13. Remaining detectors
+and the complete shared-topology milestone are open.
 
 The first slice preserves OBJ position records, STL corners, and importer vertex
 buffers; adds per-analysis exact source checks, grouped navigation/highlighting,
@@ -11,10 +12,21 @@ is per source file over selected parts, including unused points for whole-file
 inspection. STL corner repetitions are informational and its source-ID triangle
 check is unavailable. Legacy geometric counts retain their meanings.
 
-Run changes currently invalidate the shared analysis job; Show changes do not.
-Separating distance/topology/detector job caches remains part of later scheduling
-work. JSON findings are bounded to 100 groups and 100 members per group; full
-navigation is available in the UI. Performance budgets remain to be established.
+Distance, legacy topology, quality, duplicates, and degenerate findings now retain
+independent CPU stages and GPU uploads. Run toggles reuse completed stages; Show
+changes do not invalidate computation. Degenerate threshold changes invalidate
+only that stage and late results with old thresholds are rejected. JSON duplicate
+findings are bounded to 100 groups and 100 members per group; degenerate findings
+are bounded to 100 triangle instances. Full navigation is available in the UI.
+Performance budgets remain to be established.
+
+The degenerate slice includes collapsed/collinear, needle, and cap reason flags,
+strict configurable thresholds, source triangle/part references, Run/Show controls,
+paged navigation, face overlays, reports, and scene version 9 (loading v2–v8).
+It uses retained source data and double-precision world transforms, excluding
+analysis display offsets. Each source triangle / transformed part is counted once
+in the union, including repeated faces and STL facets. Existing numerical-collapse
+counts retain their meanings. This does not implement shared topology.
 
 Issue: [More explicit detectors](https://github.com/tuncb/woby/issues/41).
 Baseline inspected: `9463124`, 2026-09-08. Recheck the baseline before implementation.

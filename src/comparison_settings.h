@@ -2,6 +2,7 @@
 
 #include "surface_mesh_quality.h"
 #include "mesh_duplicates.h"
+#include "mesh_degenerates.h"
 
 #include <cstddef>
 #include <string>
@@ -10,7 +11,7 @@ namespace woby
 {
 
 enum class ComparisonSide { a, b };
-enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles };
+enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles };
 
 struct ComparisonMembership
 {
@@ -47,6 +48,7 @@ struct ComparisonSettings
     DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;
     SurfaceQualitySettings quality;
     DuplicateSettings duplicates;
+    DegenerateSettings degenerates;
     friend bool operator==(const ComparisonSettings &, const ComparisonSettings &) = default;
 };
 

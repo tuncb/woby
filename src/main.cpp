@@ -326,6 +326,7 @@ struct AutomationComparisonRuntime {
     woby::SceneObjectId objectId = woby::invalidSceneObjectId;
     uint64_t signature = 0, sceneGeneration = 0;
     uint32_t stages = 0;
+    woby::DegenerateSettings degenerates;
 };
 
 struct ResolvedModelInputGroup {
@@ -3154,6 +3155,7 @@ int main(int argc, char** argv)
                 const bool changed = pending.sceneGeneration != ui.sceneGeneration
                     || !woby::findComparison(ui, pending.objectId)
                     || pending.signature != woby::comparisonGeometrySignature(ui, pending.objectId)
+                    || !woby::sameDegenerateThresholds(pending.degenerates, woby::comparisonSettings(ui, pending.objectId).degenerates)
                     || pending.stages != woby::requestedComparisonStages(woby::comparisonSettings(ui, pending.objectId), both, true);
                 const bool ready = !changed && it != comparison.objects.end()
                     && woby::comparisonResultsReady(it->second, ui, pending.objectId, true);
@@ -3164,6 +3166,7 @@ int main(int argc, char** argv)
                         if (changed) { throw std::runtime_error("Analysis inputs or detectors changed while results were being requested; retry analysis.results."); }
                         if (!ready) { throw std::runtime_error(it->second.error); }
                         woby::setComparisonDuplicateEnabled(it->second.result, woby::comparisonSettings(ui, pending.objectId).duplicates);
+                        woby::setComparisonDegenerateSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).degenerates);
                         auto result = woby::controlComparisonResults(it->second.result, pending.tolerance);
                         result["target"] = pending.target;
                         woby::completeAutomationCommand(*automation, pending.id, woby::AutomationControlResult{std::move(result)});
@@ -3231,6 +3234,7 @@ int main(int argc, char** argv)
                                 pending.target = payload.target;
                                 pending.objectId = payload.objectId;
                                 pending.tolerance = source->settings.tolerance;
+                                pending.degenerates = source->settings.degenerates;
                                 pending.signature = woby::comparisonGeometrySignature(ui, payload.objectId);
                                 pending.sceneGeneration = ui.sceneGeneration;
                                 const bool both = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, payload.objectId) != 0

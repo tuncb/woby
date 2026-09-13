@@ -2157,7 +2157,7 @@ TEST_CASE("analysis requests only missing mode dependencies and enabled detector
     settings.duplicates.points = false;
     settings.duplicates.triangles = false;
     const auto base = requestedComparisonStages(settings, true);
-    CHECK(base == (comparisonSource | comparisonTopology));
+    CHECK(base == (comparisonSource | comparisonTopology | comparisonDegenerates));
     settings.showEdges = true;
     settings.duplicates.showPoints = false;
     settings.tolerance = 10;
@@ -2200,7 +2200,7 @@ TEST_CASE("analysis stages retain unrelated allocations and match the full resul
     REQUIRE(applyComparisonStages(result, cache, computeComparisonStages(a, b, base), 17, base));
     const auto* vertices = result.original.source.vertices.data();
     const auto* boundaries = result.original.diagnostics.boundaryEdges.data();
-    for (const auto stage : {comparisonDuplicatePoints, comparisonDuplicateTriangles, comparisonQuality, comparisonDistance}) {
+    for (const auto stage : {comparisonDuplicatePoints, comparisonDuplicateTriangles, comparisonDegenerates, comparisonQuality, comparisonDistance}) {
         auto update = computeComparisonStages(a, b, stage);
         CHECK(update.original.source.vertices.empty());
         CHECK(update.original.diagnostics.boundaryEdges.empty());
@@ -2236,7 +2236,7 @@ TEST_CASE("lazy analysis stages honor cancellation and single input distance req
     std::stop_source stop;
     stop.request_stop();
     for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints,
-        comparisonDuplicateTriangles, comparisonQuality, comparisonDistance}) {
+        comparisonDuplicateTriangles, comparisonDegenerates, comparisonQuality, comparisonDistance}) {
         CHECK_THROWS((void)computeComparisonStages(square(), square(2), stage, stop.get_token()));
     }
     const auto result = computeComparisonStages(square(), {}, comparisonDistance | comparisonQuality);

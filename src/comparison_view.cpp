@@ -24,7 +24,7 @@ namespace
 void destroySurface(ComparisonGpuSurface &gpu)
 {
     for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.boundaries, gpu.nonManifold, gpu.winding,
-        gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill})
+        gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill, gpu.degenerateEdges, gpu.degenerateFill})
     {
         if (bgfx::isValid(handle))
         {
@@ -132,6 +132,16 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         gpu.boundaries = uploadEdges(surface.diagnostics.boundaryEdges);
         gpu.nonManifold = uploadEdges(surface.diagnostics.nonManifoldEdges);
         gpu.winding = uploadEdges(surface.diagnostics.inconsistentWindingEdges);
+    }
+    if (stages & comparisonDegenerates) {
+        std::vector<std::array<float, 3>> edges, fill;
+        for (const auto& finding : surface.degenerates.findings) {
+            fill.insert(fill.end(), finding.geometry.begin(), finding.geometry.end());
+            for (size_t k = 0; k < 3; ++k) { edges.push_back(finding.geometry[k]); edges.push_back(finding.geometry[(k+1)%3]); }
+            if (finding.reasons.collapsed) { appendCross(edges, finding.geometry[0], std::max(.00001f, surface.source.bounds.radius*.008f)); }
+        }
+        gpu.degenerateEdges = uploadPositions(edges);
+        gpu.degenerateFill = uploadPositions(fill);
     }
     uploadDuplicateOverlays(gpu, surface, stages);
 }
@@ -262,15 +272,17 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool duplicate = category == DiagnosticCategory::duplicatePoints || category == DiagnosticCategory::duplicateTriangles;
-    bool enabled = !duplicate || (category == DiagnosticCategory::duplicatePoints ? settings.duplicates.points : settings.duplicates.triangles);
+    const bool degenerate = category == DiagnosticCategory::degenerateTriangles;
+    bool enabled = degenerate ? settings.degenerates.enabled : !duplicate || (category == DiagnosticCategory::duplicatePoints ? settings.duplicates.points : settings.duplicates.triangles);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::BeginDisabled(!duplicate);
+    ImGui::BeginDisabled(!duplicate && !degenerate);
     ImGui::Checkbox("##run", &enabled);
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("%s", duplicate ? "Enable this detector" : "Always included in surface analysis");
+        ImGui::SetTooltip("%s", (duplicate || degenerate) ? "Enable this detector" : "Always included in surface analysis");
     }
+    if (degenerate) { settings.degenerates.enabled = enabled; }
     if (category == DiagnosticCategory::duplicatePoints) { settings.duplicates.points = enabled; }
     if (category == DiagnosticCategory::duplicateTriangles) { settings.duplicates.triangles = enabled; }
     ImGui::TableNextColumn();
@@ -282,7 +294,8 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         settings.diagnosticCategory = category;
     }
     ImGui::GetWindowDrawList()->AddText(nullptr, 0, position, ImGui::GetColorU32(ImGuiCol_Text), name, nullptr, width);
-    const bool settingsCurrent = settings.duplicates.points == initial.duplicates.points && settings.duplicates.triangles == initial.duplicates.triangles;
+    const bool settingsCurrent = settings.duplicates.points == initial.duplicates.points && settings.duplicates.triangles == initial.duplicates.triangles
+        && settings.degenerates.enabled == initial.degenerates.enabled;
     current = current && settingsCurrent && runtime.resultSignature == comparisonGeometrySignature(state, id);
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }
@@ -290,6 +303,12 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         ImGui::AlignTextToFramePadding();
         if (!enabled) { ImGui::TextDisabled("Off"); }
         else if (!current) { ImGui::TextDisabled("%s", runtime.error.empty() ? "..." : "Failed"); }
+        else if (degenerate) {
+            const auto& result = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).degenerates;
+            if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
+            else { ImGui::Text("%zu%s", result.findings.size(), result.unavailableSources ? "*" : ""); }
+            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%zu collapsed / collinear; %zu needles; %zu caps\nReason counts overlap; each triangle instance counted once.\nStatus: %s", result.collapsedCount, result.needleCount, result.capCount, degenerateStatus(result)); }
+        }
         else if (!duplicate) { ImGui::Text("%zu", comparisonDiagnosticEdges(runtime.result, side, category).size()); }
         else {
             const auto& result = comparisonDuplicates(runtime.result, side, category);
@@ -302,11 +321,12 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         }
     }
     ImGui::TableNextColumn();
-    bool visible = category == DiagnosticCategory::boundary ? settings.showBoundaries
+    bool visible = degenerate ? settings.degenerates.show : category == DiagnosticCategory::boundary ? settings.showBoundaries
         : category == DiagnosticCategory::duplicatePoints ? settings.duplicates.showPoints
         : category == DiagnosticCategory::duplicateTriangles ? settings.duplicates.showTriangles : settings.showNonManifold;
     if (ImGui::Checkbox("##show", &visible)) {
-        if (category == DiagnosticCategory::boundary) { settings.showBoundaries = visible; }
+        if (degenerate) { settings.degenerates.show = visible; }
+        else if (category == DiagnosticCategory::boundary) { settings.showBoundaries = visible; }
         else if (category == DiagnosticCategory::duplicatePoints) { settings.duplicates.showPoints = visible; }
         else if (category == DiagnosticCategory::duplicateTriangles) { settings.duplicates.showTriangles = visible; }
         else { settings.showNonManifold = visible; }
@@ -322,12 +342,12 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     int step = 0;
     if (ImGui::ArrowButton("previous", ImGuiDir_Left)) { step = -1; }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Previous %s on %s", duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
+        ImGui::SetTooltip("Previous %s on %s", degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
     }
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
     if (ImGui::ArrowButton("next", ImGuiDir_Right)) { step = 1; }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Next %s on %s", duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
+        ImGui::SetTooltip("Next %s on %s", degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
     }
     ImGui::EndDisabled();
     if (step != 0) {
@@ -396,6 +416,60 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
     }
 }
 
+void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bool current, SceneObjectId id)
+{
+    auto settings = comparisonSettings(state, id);
+    if (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles) { return; }
+    const auto initial = settings;
+    ImGui::TextWrapped("Collapsed or collinear triangles, needles, and caps. Each source triangle / transformed part is counted once; reason counts can overlap.");
+    ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
+    ImGui::InputFloat("Needle edge ratio", &settings.degenerates.needleThresholdRatio, 0, 0, "%.6g");
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Longest / shortest edge must strictly exceed this ratio (minimum 1). Zero-length edges are reported as collapsed."); }
+    ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
+    ImGui::InputFloat("Cap angle (degrees)", &settings.degenerates.capMinAngleDegrees, 0, 0, "%.6g");
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Largest angle must strictly exceed this threshold (90 to 180 degrees). World transforms affect these measurements; analysis display offsets do not."); }
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
+    if (!current || !comparisonResultsReady(runtime, state, id) || !settings.degenerates.enabled
+        || enabledComparisonPartCount(state, settings.diagnosticSide, id) == 0) { return; }
+    const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).degenerates;
+    if (result.unavailableSources) { ImGui::TextWrapped("%zu source(s) unavailable: retained source records are missing.", result.unavailableSources); }
+    ImGui::TextWrapped("%zu affected triangles: %zu collapsed / collinear, %zu needles, %zu caps", result.findings.size(), result.collapsedCount, result.needleCount, result.capCount);
+    if (result.findings.empty()) { return; }
+    const auto* comparison = findComparison(state, id);
+    const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
+    constexpr size_t pageSize = 10;
+    const size_t page = selected/pageSize, pages = (result.findings.size()+pageSize-1)/pageSize;
+    const auto choose = [&](size_t index) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, index, id); };
+    if (ImGui::BeginTable("degenerate_findings", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Source"); ImGui::TableSetupColumn("Triangle"); ImGui::TableSetupColumn("Reasons");
+        ImGui::TableHeadersRow();
+        for (size_t i = page*pageSize; i < std::min((page+1)*pageSize, result.findings.size()); ++i) {
+            const auto& finding = result.findings[i];
+            ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            if (ImGui::Selectable(finding.source.c_str(), comparison->diagnosticFocus && selected == i, ImGuiSelectableFlags_SpanAllColumns)) { choose(i); }
+            ImGui::TableNextColumn(); ImGui::Text("%zu", finding.triangleId+1);
+            ImGui::TableNextColumn(); ImGui::TextWrapped("%s%s%s", finding.reasons.collapsed ? "Collapsed " : "",
+                finding.reasons.needle ? "Needle " : "", finding.reasons.cap ? "Cap" : ""); ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::BeginDisabled(page == 0);
+    if (ImGui::Button("Previous page")) { choose((page-1)*pageSize); }
+    ImGui::EndDisabled(); ImGui::SameLine(); ImGui::Text("%zu / %zu", page+1, pages); ImGui::SameLine();
+    ImGui::BeginDisabled(page+1 == pages);
+    if (ImGui::Button("Next page")) { choose((page+1)*pageSize); }
+    ImGui::EndDisabled();
+    if (comparison->diagnosticFocus && comparison->diagnosticFocus->index < result.findings.size()) {
+        const auto& finding = result.findings[comparison->diagnosticFocus->index];
+        ImGui::TextWrapped("%s - %s", finding.source.c_str(), triangleProvenanceName(finding.provenance));
+        ImGui::TextWrapped("Generated triangle %zu (1-based), part %llu", finding.triangleId+1, static_cast<unsigned long long>(finding.partId));
+        if (std::isfinite(finding.reasons.edgeRatio)) { ImGui::Text("Edge ratio: %.8g", finding.reasons.edgeRatio); }
+        else { ImGui::TextUnformatted("Edge ratio: unavailable or exceeds numeric range"); }
+        if (std::isfinite(finding.reasons.maximumAngleDegrees)) { ImGui::Text("Maximum angle: %.8g degrees", finding.reasons.maximumAngleDegrees); }
+        else { ImGui::TextUnformatted("Maximum angle: unavailable (zero-length edge)"); }
+    }
+}
+
 void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, bool current,
     bool hasA, bool hasB, SceneObjectId id)
 {
@@ -441,9 +515,10 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         diagnosticRow(state, runtime, current, "Winding edges", DiagnosticCategory::winding, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Duplicate points", DiagnosticCategory::duplicatePoints, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Duplicate triangles", DiagnosticCategory::duplicateTriangles, hasA, hasB, id);
+        diagnosticRow(state, runtime, current, "Degenerate triangles", DiagnosticCategory::degenerateTriangles, hasA, hasB, id);
         ImGui::EndTable();
     }
-    current = current && runtime.resultSignature == comparisonGeometrySignature(state, id);
+    current = current && comparisonResultsReady(runtime, state, id);
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
     const auto* comparison = findComparison(state, id);
     if (!current) { ImGui::TextWrapped("Diagnostics unavailable until results are ready"); }
@@ -452,12 +527,14 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         const char* name = focus.category == DiagnosticCategory::boundary ? "Boundary"
             : focus.category == DiagnosticCategory::nonManifold ? "Non-manifold edges"
             : focus.category == DiagnosticCategory::duplicatePoints ? "Duplicate point group"
+            : focus.category == DiagnosticCategory::degenerateTriangles ? "Degenerate triangle"
             : focus.category == DiagnosticCategory::duplicateTriangles ? "Duplicate triangle group" : "Winding edges";
         const auto count = comparisonDiagnosticEdges(runtime.result, focus.side, focus.category).size();
         ImGui::TextColored(ImVec4(1, 1, .1f, 1), "%s: %zu of %zu", name, focus.index + 1, count);
         ImGui::TextWrapped("Focused finding is highlighted in yellow");
     }
     drawDuplicateFindings(state, runtime, current, id);
+    drawDegenerateFindings(state, runtime, current, id);
     ImGui::BeginDisabled(!current);
     if (ImGui::Button("Full result")) { frameComparison(state, id); }
     ImGui::EndDisabled();
@@ -497,6 +574,7 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
         && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     const auto required = requestedComparisonStages(comparisonSettings(state, id), both, fullResults);
     return signature != 0 && runtime.resultSignature == signature && runtime.cache.signature == signature
+        && sameDegenerateThresholds(runtime.cache.degenerates, comparisonSettings(state, id).degenerates)
         && (runtime.cache.completed & required) == required && (fullResults || runtime.ready);
 }
 
@@ -520,6 +598,17 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.error.clear();
         resetComparisonDiagnosticFocus(state, id);
     }
+    if (resetComparisonDegenerateCache(runtime.cache, settings.degenerates)) {
+        for (auto* gpu : {&runtime.originalGpu, &runtime.repairedGpu}) {
+            if (bgfx::isValid(gpu->degenerateEdges)) { bgfx::destroy(gpu->degenerateEdges); }
+            if (bgfx::isValid(gpu->degenerateFill)) { bgfx::destroy(gpu->degenerateFill); }
+            gpu->degenerateEdges = gpu->degenerateFill = BGFX_INVALID_HANDLE;
+        }
+        runtime.uploadedStages &= ~comparisonDegenerates;
+        runtime.attemptedSignature = 0;
+        runtime.error.clear();
+        resetComparisonDiagnosticFocus(state, id);
+    }
     if (runtime.worker.valid() && runtime.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         try {
             auto update = runtime.worker.get();
@@ -533,6 +622,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         }
     }
     setComparisonDuplicateEnabled(runtime.result, settings.duplicates);
+    setComparisonDegenerateSettings(runtime.result, settings.degenerates);
     // CPU stages and their GPU uploads are retained independently. Retry an upload
     // without rerunning successful detectors, including after partial GPU failure.
     if (wanted && active && (runtime.error.empty() || runtime.attemptedSignature == 0)) {
@@ -577,8 +667,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
             runtime.inputs = std::move(inputs);
         }
         runtime.stop = std::stop_source{};
-        runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, missing, stop = runtime.stop.get_token()] {
-            return computeComparisonStages((*inputs)[0], (*inputs)[1], missing, stop);
+        runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, missing, degenerates = settings.degenerates, stop = runtime.stop.get_token()] {
+            return computeComparisonStages((*inputs)[0], (*inputs)[1], missing, stop, degenerates);
         });
     } catch (const std::exception& error) { runtime.error = error.what(); }
 }
@@ -965,10 +1055,10 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const auto &b = runtime.result.repaired.diagnostics;
     drawDiagnosticNavigation(state, runtime, true, hasA, hasB, id);
     if (both) {
-        ImGui::TextWrapped("Degenerate triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
+        ImGui::TextWrapped("Numerically collapsed triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
         ImGui::TextWrapped("Geometric duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
     } else {
-        ImGui::TextWrapped("Degenerate triangles: %zu", surface.diagnostics.degenerateTriangles);
+        ImGui::TextWrapped("Numerically collapsed triangles: %zu", surface.diagnostics.degenerateTriangles);
         ImGui::TextWrapped("Geometric duplicate triangles: %zu", surface.diagnostics.duplicateTriangles);
     }
 }
@@ -1021,6 +1111,16 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
     if (settings.mode == ComparisonMode::overlay)
     {
         submitWire(view, runtime.originalGpu, colorProgram, colorUniform, {.3f, .75f, 1, 1}, true, identity);
+    }
+    if (settings.degenerates.enabled && settings.degenerates.show) {
+        if (bgfx::isValid(gpu.degenerateFill)) {
+            const std::array<float, 4> purple = {.8f, .25f, 1, .45f};
+            bgfx::setTransform(identity); bgfx::setVertexBuffer(0, gpu.degenerateFill);
+            bgfx::setUniform(colorUniform, purple.data());
+            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA);
+            bgfx::submit(view, colorProgram);
+        }
+        submitEdges(view, gpu.degenerateEdges, colorProgram, colorUniform, {.8f, .25f, 1, 1}, identity);
     }
     if (settings.duplicates.triangles && settings.duplicates.showTriangles) {
         if (bgfx::isValid(gpu.duplicateTriangleFill)) {
@@ -1093,6 +1193,12 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
                     for (size_t k = 0; k < 3; ++k) { points.push_back(finding.geometry[i+k]); points.push_back(finding.geometry[i+(k+1)%3]); }
                 }
             }
+        } else if (focus.category == DiagnosticCategory::degenerateTriangles) {
+            const auto& surface = focus.side == ComparisonSide::a ? it->second.result.original : it->second.result.repaired;
+            const auto& finding = surface.degenerates.findings.at(focus.index);
+            faceFill.assign(finding.geometry.begin(), finding.geometry.end());
+            for (size_t k = 0; k < 3; ++k) { points.push_back(finding.geometry[k]); points.push_back(finding.geometry[(k+1)%3]); }
+            if (finding.reasons.collapsed) { appendCross(points, finding.geometry[0], radius); }
         } else {
             points.push_back(edge->a); points.push_back(edge->b);
             for (const auto& endpoint : {edge->a, edge->b}) { appendCross(points, endpoint, radius); }

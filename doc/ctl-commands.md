@@ -170,6 +170,45 @@ explicit `findingsTruncated` and `membersTruncated` flags; totals remain exact f
 completed checks. The UI offers the complete paged group list and scrollable members.
 Legacy `diagnostics.duplicateTriangles` remains the geometric-duplicate count.
 
+Degenerate triangles are independently selectable:
+
+```powershell
+woby ctl analysis set ANALYSIS_ID --degenerate-triangles true --show-degenerate-triangles true --needle-threshold-ratio 1000 --cap-min-angle-degrees 177.5
+```
+
+Replace `ANALYSIS_ID` with the analysis ID returned by `objects`. RPC fields are
+`degenerateTriangles`, `showDegenerateTriangles`, `needleThresholdRatio`, and
+`capMinAngleDegrees`. The ratio is dimensionless and normalized to at least 1;
+the angle is in degrees and normalized to [90, 180]. Both comparisons are strict:
+longest/shortest edge ratio **greater than** the needle threshold, or maximum angle
+**greater than** the cap threshold. Collapsed/collinear triangles are always
+included. Zero-length edges are handled before division and classified as collapsed.
+No distance-heatmap tolerance is used.
+
+`detectors.degenerate_tris` adds the union count, overlapping `reasonCounts`,
+thresholds, algorithm revision, status, and up to 100 findings. Each finding names
+the source, part ID, 1-based generated triangle ID, reason flags, edge ratio, and
+maximum angle. Non-finite/unavailable measurements are JSON `null`.
+`findingsTruncated` describes the bounded listing; totals remain exact for all
+available sources. Disabled/unavailable/partial results have `count: null`;
+`knownCount` reports the available subset (zero when disabled).
+
+Detection uses retained source records transformed into world coordinates in
+double precision, excluding the analysis display offset. Imported float precision
+is not recovered. Counts refer to source triangle / transformed part instances;
+overlapping selections do not multiply counts. STL facets are supported. Missing
+source records report unavailable rather than zero defects. Legacy
+`diagnostics.degenerateTriangles` and `surfaceMeshQuality.degenerateTriangles`
+retain their numerical-collapse definitions.
+
+In the Diagnostics table, select **Degenerate triangles** to edit thresholds and
+page through findings. Arrows select and frame triangles; purple overlays show
+findings and yellow highlights the focused triangle. Crosses mark collapsed faces.
+Run and Show are independent. Threshold edits invalidate only this detector's
+cached stage; Show and analysis display-offset edits do not rerun detection.
+Scene version 9 persists these controls and loads versions 2–8 with default
+thresholds and the detector enabled. Findings and focus are not saved.
+
 Surface quality controls are also available through `analysis set`:
 `--quality-metric longest_edge|equivalent_size|shape|size_jump`, `--quality-on-a BOOL`,
 `--quality-minimum-enabled BOOL`, `--quality-maximum-enabled BOOL`,

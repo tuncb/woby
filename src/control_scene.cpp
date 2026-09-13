@@ -72,6 +72,8 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
                 {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
+                {"degenerateTriangles", settings.degenerates.enabled}, {"showDegenerateTriangles", settings.degenerates.show},
+                {"needleThresholdRatio", settings.degenerates.needleThresholdRatio}, {"capMinAngleDegrees", settings.degenerates.capMinAngleDegrees},
                 {"duplicatePoints", settings.duplicates.points}, {"duplicateTriangles", settings.duplicates.triangles}, {"showDuplicatePoints", settings.duplicates.showPoints}, {"showDuplicateTriangles", settings.duplicates.showTriangles},
                 {"qualityMetric", surfaceQualityMetricKey(settings.quality.metric)}, {"qualityOnA", settings.quality.onOriginal},
                 {"qualityMinimumEnabled", settings.quality.minimumEnabled}, {"qualityMaximumEnabled", settings.quality.maximumEnabled},
@@ -345,6 +347,10 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
                     ? ComparisonMode::original : *command.mode == "b" ? ComparisonMode::repaired :
                     *command.mode == "surface_quality" ? ComparisonMode::surfaceQuality : ComparisonMode::overlay;
             }
+            if (command.degenerateTriangles) { settings.degenerates.enabled = *command.degenerateTriangles; }
+            if (command.showDegenerateTriangles) { settings.degenerates.show = *command.showDegenerateTriangles; }
+            if (command.needleThresholdRatio) { settings.degenerates.needleThresholdRatio = *command.needleThresholdRatio; }
+            if (command.capMinAngleDegrees) { settings.degenerates.capMinAngleDegrees = *command.capMinAngleDegrees; }
             if (command.duplicatePoints) { settings.duplicates.points = *command.duplicatePoints; }
             if (command.duplicateTriangles) { settings.duplicates.triangles = *command.duplicateTriangles; }
             if (command.showDuplicatePoints) { settings.duplicates.showPoints = *command.showDuplicatePoints; }
@@ -512,6 +518,27 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
 }
 
 namespace {
+Json degenerateResultJson(const MeshDegenerates& result)
+{
+    const bool enabled = result.settings.enabled;
+    Json findings = Json::array();
+    constexpr size_t limit = 100;
+    const auto number = [](double value) { return std::isfinite(value) ? Json(value) : Json(nullptr); };
+    for (size_t i = 0; enabled && i < std::min(limit, result.findings.size()); ++i) {
+        const auto& f = result.findings[i];
+        findings.push_back({{"sourceId", std::to_string(f.fileId)}, {"partId", std::to_string(f.partId)},
+            {"source", f.source}, {"provenance", triangleProvenanceName(f.provenance)}, {"triangleId", f.triangleId+1},
+            {"reasons", {{"collapsed", f.reasons.collapsed}, {"needle", f.reasons.needle}, {"cap", f.reasons.cap}}},
+            {"edgeRatio", number(f.reasons.edgeRatio)}, {"maximumAngleDegrees", number(f.reasons.maximumAngleDegrees)}});
+    }
+    return {{"status", degenerateStatus(result)}, {"algorithm", "woby-degenerate-triangles-v1"},
+        {"scope", "per-source generated triangle / transformed part instance; world coordinates; no display offset"},
+        {"needleThresholdRatio", result.settings.needleThresholdRatio}, {"capMinAngleDegrees", result.settings.capMinAngleDegrees},
+        {"count", enabled && !result.unavailableSources ? Json(result.findings.size()) : Json(nullptr)},
+        {"knownCount", enabled ? result.findings.size() : 0}, {"unavailableSources", enabled ? result.unavailableSources : 0},
+        {"reasonCounts", {{"collapsed", enabled ? result.collapsedCount : 0}, {"needle", enabled ? result.needleCount : 0}, {"cap", enabled ? result.capCount : 0}}},
+        {"findings", findings}, {"findingsTruncated", enabled && result.findings.size() > limit}};
+}
 Json duplicateResultJson(const DuplicateResult& result)
 {
     if (!result.enabled) {
@@ -559,7 +586,7 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
             {"percentile95", measured ? Json(value.percentile95) : Json(nullptr)},
             {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
             {"detectors", {{"schemaVersion", 1}, {"idBase", 1}, {"scope", "per-source; selected parts, including unused points when whole file selected"},
-                {"duplicate_points", duplicateResultJson(value.duplicates.points)}, {"duplicate_tris", duplicateResultJson(value.duplicates.triangles)}}},
+                {"duplicate_points", duplicateResultJson(value.duplicates.points)}, {"duplicate_tris", duplicateResultJson(value.duplicates.triangles)}, {"degenerate_tris", degenerateResultJson(value.degenerates)}}},
             {"surfaceMeshQuality", quality}, {"sampleCount", value.distances.size()}, {"triangleCount", value.source.indices.size() / 3},
             {"diagnostics", {{"boundaryEdges", diagnostics.boundaryEdges.size()},
                 {"nonManifoldEdges", diagnostics.nonManifoldEdges.size()},
