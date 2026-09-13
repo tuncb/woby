@@ -193,6 +193,51 @@ a null `count` and a separate `knownCount`. UI pages and the incident-face list 
 inspection of all retained findings. Scene version 10 persists topology mode and
 independent visibility; versions 2-9 migrate the old visibility switch to both.
 
+Non-manifold vertices and hole loops use the same source topology:
+
+```powershell
+woby ctl analysis set ANALYSIS_ID --non-manifold-vertices true --holes true --hole-size-ratio-tolerance 0.05 --show-non-manifold-vertices true --show-holes true
+```
+
+RPC fields are `nonManifoldVertices`, `holes`, `holeSizeRatioTolerance`,
+`showNonManifoldVertices`, and `showHoles`. The dimensionless hole ratio defaults
+to 0.05; negative values normalize to zero and values above 1 are allowed.
+Non-finite RPC numbers are rejected. Scene/operation normalization replaces
+non-finite ratios with the default. Scene version 11 persists these settings,
+including saved views, and continues loading versions 2–10 with defaults.
+
+`non_manifold_vertices` requires each vertex link to be one cycle (interior) or
+one path (boundary). Vertices incident to non-manifold edges are excluded and
+counted separately in `excludedNonManifoldEdgeVertices`. Unused points are not
+reported. Each finding includes the world position, source point/part references,
+incident triangle instances, and number of connected link components. Amber
+crosses mark findings; selection frames and highlights the incident faces.
+
+`holes` traces boundary regions within each edge-connected component, before any
+fin splitting. A simple loop qualifies when its axis-aligned world bounding-box
+diagonal divided by its component diagonal is **less than or equal to** the
+threshold. Each loop is counted once. Larger openings remain boundary findings;
+this size test does not distinguish an intentional opening from a defect. The
+ratio is invariant under translation and uniform scaling, but not generally under
+rotation. Analysis display offsets do not participate.
+
+Hole findings include an ordered vertex/edge cycle, source references, component
+ID, both diagonals, and the ratio. `boundaryRegions` also exposes larger loops,
+open chains, and branched regions, with separate counts. Open/branched boundaries
+and unavailable size ratios are never classified as holes. Loop and boundary IDs
+are one-based within the current analysis side; vertex/edge/component IDs are
+one-based within the source topology. Collapsed faces remain excluded and counted.
+
+Both detectors expose `status`, nullable `count`, `knownCount`, bounded findings,
+and truncation flags. Arrays are limited to 100 entries, including loop members
+and incident faces. Each loop vertex includes one representative source point/part
+reference, its total reference count, and a truncation flag. Disabled results have null counts and empty findings. Their
+Run switches control reporting while shared topology and findings remain cached;
+Show switches only affect presentation. Editing the hole threshold refilters
+cached loops and refreshes their overlays without rebuilding topology, distance,
+quality, or duplicate results. Blue loops mark holes; the UI has paged vertex/loop
+navigation and explains excluded boundaries. Reports include counts and thresholds.
+
 Each populated side of `analysis results --json` includes `detectors` schema version
 1, with `duplicate_points` and `duplicate_tris`. `count` counts extra source records
 and is null for disabled, unavailable, or partial results; `knownDuplicateCount`

@@ -327,6 +327,7 @@ struct AutomationComparisonRuntime {
     uint64_t signature = 0, sceneGeneration = 0;
     uint32_t stages = 0;
     woby::DegenerateSettings degenerates;
+    woby::TopologyInspectionSettings topologyInspection;
     woby::TopologyMode topologyMode = woby::TopologyMode::automatic;
 };
 
@@ -3156,6 +3157,7 @@ int main(int argc, char** argv)
                 const bool changed = pending.sceneGeneration != ui.sceneGeneration
                     || !woby::findComparison(ui, pending.objectId)
                     || pending.signature != woby::comparisonGeometrySignature(ui, pending.objectId)
+                    || !woby::sameTopologyInspectionFilters(pending.topologyInspection, woby::comparisonSettings(ui, pending.objectId).topologyInspection)
                     || pending.topologyMode != woby::comparisonSettings(ui, pending.objectId).topologyMode
                     || !woby::sameDegenerateThresholds(pending.degenerates, woby::comparisonSettings(ui, pending.objectId).degenerates)
                     || pending.stages != woby::requestedComparisonStages(woby::comparisonSettings(ui, pending.objectId), both, true);
@@ -3169,6 +3171,7 @@ int main(int argc, char** argv)
                         if (!ready) { throw std::runtime_error(it->second.error); }
                         woby::setComparisonDuplicateEnabled(it->second.result, woby::comparisonSettings(ui, pending.objectId).duplicates);
                         woby::setComparisonDegenerateSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).degenerates);
+                        (void)woby::setComparisonTopologyInspectionSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).topologyInspection);
                         auto result = woby::controlComparisonResults(it->second.result, pending.tolerance);
                         result["target"] = pending.target;
                         woby::completeAutomationCommand(*automation, pending.id, woby::AutomationControlResult{std::move(result)});
@@ -3237,6 +3240,7 @@ int main(int argc, char** argv)
                                 pending.objectId = payload.objectId;
                                 pending.tolerance = source->settings.tolerance;
                                 pending.degenerates = source->settings.degenerates;
+                                pending.topologyInspection = source->settings.topologyInspection;
                                 pending.topologyMode = source->settings.topologyMode;
                                 pending.signature = woby::comparisonGeometrySignature(ui, payload.objectId);
                                 pending.sceneGeneration = ui.sceneGeneration;

@@ -318,7 +318,9 @@ bool diagnosticDetectorEnabled(const ComparisonSettings& settings)
 {
     return (settings.diagnosticCategory != DiagnosticCategory::duplicatePoints || settings.duplicates.points)
         && (settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles || settings.duplicates.triangles)
-        && (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles || settings.degenerates.enabled);
+        && (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles || settings.degenerates.enabled)
+        && (settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices || settings.topologyInspection.nonManifoldVertices)
+        && (settings.diagnosticCategory != DiagnosticCategory::holes || settings.topologyInspection.holes);
 }
 bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison)
 {
@@ -337,9 +339,10 @@ const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
     if (!comparison || !diagnosticFocusCurrent(state, *comparison)
         || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
     const auto& focus = *comparison->diagnosticFocus;
-    if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding) {
+    if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding || focus.category == DiagnosticCategory::nonManifoldVertices || focus.category == DiagnosticCategory::holes) {
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
-        if (surface.topology.mode != comparison->settings.topologyMode) { return nullptr; }
+        if (surface.topology.mode != comparison->settings.topologyMode
+            || (focus.category == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance)) { return nullptr; }
     }
     if (focus.category == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
@@ -371,9 +374,10 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (!diagnosticDetectorEnabled(settings)) { return; }
-    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding) {
+    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
-        if (surface.topology.mode != settings.topologyMode) { return; }
+        if (surface.topology.mode != settings.topologyMode
+            || (settings.diagnosticCategory == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance)) { return; }
     }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
@@ -398,9 +402,10 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (!diagnosticDetectorEnabled(settings)) { return; }
-    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding) {
+    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
-        if (surface.topology.mode != settings.topologyMode) { return; }
+        if (surface.topology.mode != settings.topologyMode
+            || (settings.diagnosticCategory == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance)) { return; }
     }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
@@ -517,6 +522,9 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
         if (settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
             || settings.duplicates.points != comparison->settings.duplicates.points || settings.duplicates.triangles != comparison->settings.duplicates.triangles
             || normalizedTopologyMode(settings.topologyMode) != comparison->settings.topologyMode
+            || settings.topologyInspection.nonManifoldVertices != comparison->settings.topologyInspection.nonManifoldVertices
+            || settings.topologyInspection.holes != comparison->settings.topologyInspection.holes
+            || normalizedTopologyInspectionSettings(settings.topologyInspection).holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance
             || settings.degenerates.enabled != comparison->settings.degenerates.enabled
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
             comparison->diagnosticFocus.reset();

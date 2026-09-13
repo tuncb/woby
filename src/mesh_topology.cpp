@@ -16,6 +16,125 @@ void canceled(std::stop_token stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
 }
+void inspectVertexLinks(MeshTopology& result, const SourceTopology& source, std::stop_token stop)
+{
+    for (size_t v = 0; v < source.vertices.size(); ++v) {
+        canceled(stop);
+        const auto& vertex = source.vertices[v];
+        bool excluded = false;
+        for (const auto e : vertex.edges) {
+            canceled(stop);
+            if (source.edges[e].incidentFaces.size() > 2) { excluded = true; break; }
+        }
+        if (excluded) { ++result.excludedNonManifoldEdgeVertices; continue; }
+        if (vertex.faces.empty()) { continue; }
+        std::map<size_t, std::vector<size_t>> link;
+        for (const auto& edge : vertex.link) {
+            canceled(stop);
+            link[edge[0]].push_back(edge[1]); link[edge[1]].push_back(edge[0]);
+        }
+        size_t ends = 0, components = 0;
+        bool degreesValid = true;
+        std::set<size_t> seen;
+        for (const auto& [seed, neighbors] : link) {
+            canceled(stop);
+            ends += neighbors.size() == 1;
+            degreesValid = degreesValid && (neighbors.size() == 1 || neighbors.size() == 2);
+            if (!seen.insert(seed).second) { continue; }
+            ++components;
+            std::vector<size_t> queue{seed};
+            for (size_t head = 0; head < queue.size(); ++head) {
+                canceled(stop);
+                for (const auto next : link.at(queue[head])) {
+                    if (seen.insert(next).second) { queue.push_back(next); }
+                }
+            }
+        }
+        const bool boundary = !vertex.boundaryEdges.empty();
+        const bool valid = degreesValid && components == 1 && ends == (boundary ? 2u : 0u)
+            && (!boundary || vertex.boundaryEdges.size() == 2);
+        if (!valid) { result.nonManifoldVertices.push_back({result.sources.size(), v, components}); }
+    }
+}
+void inspectBoundaries(MeshTopology& result, const SourceTopology& source, std::stop_token stop)
+{
+    std::vector<std::vector<size_t>> componentEdges(source.components.size());
+    for (size_t e = 0; e < source.edges.size(); ++e) {
+        canceled(stop);
+        const auto& edge = source.edges[e];
+        if (edge.incidentFaces.size() == 1) {
+            componentEdges[source.faces[edge.incidentFaces[0].face].component].push_back(e);
+        }
+    }
+    for (size_t component = 0; component < componentEdges.size(); ++component) {
+        canceled(stop);
+        if (componentEdges[component].empty()) { continue; }
+        Point minimum{}, maximum{};
+        bool first = true;
+        for (const auto f : source.components[component]) {
+            canceled(stop);
+            for (const auto v : source.faces[f].vertices) {
+                const auto& p = source.vertices[v].position;
+                if (first) { minimum = maximum = p; first = false; }
+                for (size_t k = 0; k < 3; ++k) { minimum[k] = std::min(minimum[k], p[k]); maximum[k] = std::max(maximum[k], p[k]); }
+            }
+        }
+        const double diagonal = std::hypot(maximum[0]-minimum[0], maximum[1]-minimum[1], maximum[2]-minimum[2]);
+        std::map<size_t, std::vector<size_t>> adjacency;
+        for (const auto e : componentEdges[component]) {
+            canceled(stop);
+            for (const auto v : source.edges[e].vertices) { adjacency[v].push_back(e); }
+        }
+        std::set<size_t> seen;
+        for (const auto& [seed, incident] : adjacency) {
+            canceled(stop); (void)incident;
+            if (!seen.insert(seed).second) { continue; }
+            TopologyBoundary finding;
+            finding.source = result.sources.size(); finding.component = component;
+            finding.vertices.push_back(seed);
+            finding.minimum = finding.maximum = source.vertices[seed].position;
+            std::set<size_t> edges;
+            size_t ends = 0;
+            for (size_t head = 0; head < finding.vertices.size(); ++head) {
+                canceled(stop);
+                const auto v = finding.vertices[head];
+                const auto& p = source.vertices[v].position;
+                for (size_t k = 0; k < 3; ++k) { finding.minimum[k] = std::min(finding.minimum[k], p[k]); finding.maximum[k] = std::max(finding.maximum[k], p[k]); }
+                const auto& uses = adjacency.at(v);
+                ends += uses.size() == 1;
+                if (uses.size() > 2) { finding.kind = BoundaryKind::branched; }
+                for (const auto e : uses) {
+                    edges.insert(e);
+                    for (const auto next : source.edges[e].vertices) {
+                        if (seen.insert(next).second) { finding.vertices.push_back(next); }
+                    }
+                }
+            }
+            finding.edges.assign(edges.begin(), edges.end());
+            if (finding.kind != BoundaryKind::branched && ends) { finding.kind = BoundaryKind::open; }
+            if (finding.kind == BoundaryKind::loop) {
+                // Canonical start and direction; every vertex has degree two here.
+                finding.vertices.clear(); finding.edges.clear();
+                size_t vertex = seed, previous = std::numeric_limits<size_t>::max();
+                do {
+                    canceled(stop);
+                    finding.vertices.push_back(vertex);
+                    const auto& uses = adjacency.at(vertex);
+                    const size_t edge = uses[0] == previous ? uses[1] : uses[0];
+                    finding.edges.push_back(edge);
+                    const auto& endpoints = source.edges[edge].vertices;
+                    vertex = endpoints[0] == vertex ? endpoints[1] : endpoints[0];
+                    previous = edge;
+                } while (vertex != seed);
+            }
+            finding.diagonal = std::hypot(finding.maximum[0]-finding.minimum[0], finding.maximum[1]-finding.minimum[1], finding.maximum[2]-finding.minimum[2]);
+            finding.componentDiagonal = diagonal;
+            finding.ratioAvailable = diagonal > 0 && std::isfinite(diagonal);
+            if (finding.ratioAvailable) { finding.sizeRatio = finding.diagonal / diagonal; }
+            result.boundaryRegions.push_back(std::move(finding));
+        }
+    }
+}
 SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode mode, std::stop_token stop)
 {
     SourceTopology result;
@@ -201,6 +320,42 @@ const char* topologyStatus(const MeshTopology& topology)
     if (topology.unavailableSources) { return topology.availableSources ? "partial" : "unavailable"; }
     return "complete";
 }
+bool sameTopologyInspectionFilters(const TopologyInspectionSettings& a, const TopologyInspectionSettings& b)
+{
+    return a.holes == b.holes && a.nonManifoldVertices == b.nonManifoldVertices
+        && a.holeSizeRatioTolerance == b.holeSizeRatioTolerance;
+}
+TopologyInspectionSettings normalizedTopologyInspectionSettings(TopologyInspectionSettings settings)
+{
+    settings.holeSizeRatioTolerance = std::isfinite(settings.holeSizeRatioTolerance)
+        ? std::max(0.0f, settings.holeSizeRatioTolerance) : .05f;
+    return settings;
+}
+const char* boundaryKindName(BoundaryKind kind)
+{
+    switch (kind) {
+    case BoundaryKind::loop: return "loop";
+    case BoundaryKind::open: return "open";
+    case BoundaryKind::branched: return "branched";
+    }
+    return "branched";
+}
+bool filterTopologyFindings(MeshTopology& topology, TopologyInspectionSettings settings, std::stop_token stop)
+{
+    canceled(stop);
+    settings = normalizedTopologyInspectionSettings(settings);
+    const bool changed = topology.inspection.holeSizeRatioTolerance != settings.holeSizeRatioTolerance;
+    topology.inspection = settings;
+    topology.holes.clear();
+    for (size_t i = 0; i < topology.boundaryRegions.size(); ++i) {
+        canceled(stop);
+        const auto& boundary = topology.boundaryRegions[i];
+        if (boundary.kind == BoundaryKind::loop && boundary.ratioAvailable && boundary.sizeRatio <= settings.holeSizeRatioTolerance) {
+            topology.holes.push_back(i);
+        }
+    }
+    return changed;
+}
 MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, TopologyMode mode, std::stop_token stop)
 {
     canceled(stop);
@@ -230,9 +385,12 @@ MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, Topo
             }
             result.orientationContradictions += edge.orientationContradiction;
         }
+        inspectVertexLinks(result, source, stop);
+        inspectBoundaries(result, source, stop);
         result.sources.push_back(std::move(source));
     }
     for (const auto& [file, triangle, part] : windingFaces) { canceled(stop); result.windingFaces.push_back({file, part, triangle}); }
+    (void)filterTopologyFindings(result, {}, stop);
     return result;
 }
 } // namespace woby

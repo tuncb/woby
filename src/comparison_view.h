@@ -21,6 +21,8 @@ struct ComparisonGpuSurface
     bgfx::VertexBufferHandle quality = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle boundaries = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle nonManifold = BGFX_INVALID_HANDLE;
+    bgfx::VertexBufferHandle nonManifoldVertices = BGFX_INVALID_HANDLE;
+    bgfx::VertexBufferHandle holes = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle winding = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle degenerateEdges = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle degenerateFill = BGFX_INVALID_HANDLE;

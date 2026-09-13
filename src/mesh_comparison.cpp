@@ -271,6 +271,51 @@ void inspectSurfaceDegenerates(SurfaceComparison& surface, const Mesh& mesh, Deg
     }
 }
 
+void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_token stop, bool holesOnly = false)
+{
+    const auto point = [](const auto& p) { return std::array<float, 3>{static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2])}; };
+    if (!holesOnly) { surface.nonManifoldVertexBounds.clear(); surface.nonManifoldVertexMarkers.clear(); }
+    surface.holeBounds.clear(); surface.holeEdges.clear();
+    if (!holesOnly) {
+        for (const auto& finding : surface.topology.nonManifoldVertices) {
+            checkCanceled(stop);
+            const auto& source = surface.topology.sources[finding.source];
+            const auto& vertex = source.vertices[finding.vertex];
+            const auto p = point(vertex.position);
+            auto minimum = p, maximum = p;
+            for (const auto f : vertex.faces) {
+                checkCanceled(stop);
+                for (const auto v : source.faces[f].vertices) {
+                    const auto q = point(source.vertices[v].position);
+                    for (size_t k = 0; k < 3; ++k) { minimum[k] = std::min(minimum[k], q[k]); maximum[k] = std::max(maximum[k], q[k]); }
+                }
+            }
+            surface.nonManifoldVertexBounds.push_back({minimum, maximum});
+            double extent = 0;
+            for (size_t k = 0; k < 3; ++k) { extent = std::max(extent, static_cast<double>(maximum[k])-minimum[k]); }
+            const float radius = static_cast<float>(extent * .025);
+            for (size_t k = 0; k < 3; ++k) {
+                auto a = p, b = p;
+                constexpr double limit = std::numeric_limits<float>::max();
+                a[k] = static_cast<float>(std::clamp(static_cast<double>(p[k])-radius, -limit, limit));
+                b[k] = static_cast<float>(std::clamp(static_cast<double>(p[k])+radius, -limit, limit));
+                surface.nonManifoldVertexMarkers.push_back({a, b});
+            }
+        }
+    }
+    for (const auto index : surface.topology.holes) {
+        checkCanceled(stop);
+        const auto& finding = surface.topology.boundaryRegions[index];
+        const auto& source = surface.topology.sources[finding.source];
+        surface.holeBounds.push_back({point(finding.minimum), point(finding.maximum)});
+        for (const auto e : finding.edges) {
+            checkCanceled(stop);
+            const auto& edge = source.edges[e];
+            surface.holeEdges.push_back({point(source.vertices[edge.vertices[0]].position), point(source.vertices[edge.vertices[1]].position)});
+        }
+    }
+}
+
 void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, TopologyMode mode, std::stop_token stop)
 {
     const std::vector<DuplicateSource> empty;
@@ -294,6 +339,7 @@ void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, Topolo
     surface.topologyBoundaries = geometry(surface.topology.boundaries);
     surface.topologyNonManifold = geometry(surface.topology.nonManifoldEdges);
     surface.topologyWinding = geometry(surface.topology.windingEdges);
+    prepareTopologyInspectionGeometry(surface, stop);
 }
 
 SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop, DegenerateSettings degenerates = {})
@@ -432,7 +478,8 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
         settings.diagnosticCategory != DiagnosticCategory::winding &&
         settings.diagnosticCategory != DiagnosticCategory::duplicatePoints &&
         settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles &&
-        settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles) {
+        settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles &&
+        settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices && settings.diagnosticCategory != DiagnosticCategory::holes) {
         settings.diagnosticCategory = DiagnosticCategory::boundary;
     }
     if (settings.mode != ComparisonMode::distance && settings.mode != ComparisonMode::original &&
@@ -444,6 +491,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.colorRange = std::max(settings.colorRange, settings.tolerance);
     settings.quality = normalizedSurfaceQualitySettings(settings.quality);
     settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
+    settings.topologyInspection = normalizedTopologyInspectionSettings(settings.topologyInspection);
     settings.topologyMode = normalizedTopologyMode(settings.topologyMode);
     return settings;
 }
@@ -460,6 +508,8 @@ const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
         if (category == DiagnosticCategory::winding) { return surface.topologyWinding; }
     }
     switch (category) {
+    case DiagnosticCategory::nonManifoldVertices: return surface.nonManifoldVertexBounds;
+    case DiagnosticCategory::holes: return surface.holeBounds;
     case DiagnosticCategory::boundary: return diagnostics.boundaryEdges;
     case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
     case DiagnosticCategory::winding: return diagnostics.inconsistentWindingEdges;
@@ -711,6 +761,10 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
             target.topologyBoundaries = std::move(source.topologyBoundaries);
             target.topologyNonManifold = std::move(source.topologyNonManifold);
             target.topologyWinding = std::move(source.topologyWinding);
+            target.nonManifoldVertexBounds = std::move(source.nonManifoldVertexBounds);
+            target.nonManifoldVertexMarkers = std::move(source.nonManifoldVertexMarkers);
+            target.holeBounds = std::move(source.holeBounds);
+            target.holeEdges = std::move(source.holeEdges);
         }
         if (stages & comparisonQuality) { target.quality = std::move(source.quality); }
         if (stages & comparisonDegenerates) {
@@ -751,6 +805,23 @@ void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings 
         // The cache separately invalidates findings when these thresholds change.
         if (!settings.enabled) { surface->degenerates.settings = settings; }
     }
+}
+
+bool setComparisonTopologyInspectionSettings(MeshComparison& result, TopologyInspectionSettings settings)
+{
+    settings = normalizedTopologyInspectionSettings(settings);
+    bool geometryChanged = false;
+    for (auto* surface : {&result.original, &result.repaired}) {
+        if (surface->topology.inspection.holeSizeRatioTolerance == settings.holeSizeRatioTolerance) {
+            surface->topology.inspection = settings;
+            continue;
+        }
+        if (filterTopologyFindings(surface->topology, settings)) {
+            prepareTopologyInspectionGeometry(*surface, {}, true);
+            geometryChanged = true;
+        }
+    }
+    return geometryChanged;
 }
 
 void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettings& settings)

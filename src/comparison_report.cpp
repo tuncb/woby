@@ -56,6 +56,15 @@ std::vector<std::string> comparisonReportLines(
             lines.push_back(label + " known boundary / non-manifold edges / inconsistent triangles: "
                 + std::to_string(topology.boundaries.size()) + " / " + std::to_string(topology.nonManifoldEdges.size())
                 + " / " + std::to_string(topology.windingFaces.size()));
+            if (settings.topologyInspection.nonManifoldVertices) {
+                lines.push_back(label + " non-manifold vertices: " + std::to_string(topology.nonManifoldVertices.size()) + " known (" + topologyStatus(topology) + ")");
+            }
+            if (settings.topologyInspection.holes) {
+                size_t branched = 0, open = 0;
+                for (const auto& boundary : topology.boundaryRegions) { branched += boundary.kind == BoundaryKind::branched; open += boundary.kind == BoundaryKind::open; }
+                lines.push_back(label + " holes: " + std::to_string(topology.holes.size()) + " known (" + topologyStatus(topology) + "); "
+                    + std::to_string(branched) + " branched / " + std::to_string(open) + " open boundary regions");
+            }
             if (topology.excludedCollapsedFaces) { lines.push_back(label + " topology excluded collapsed faces: " + std::to_string(topology.excludedCollapsedFaces)); }
             append("duplicate points", surface->duplicates.points);
             append("source-ID duplicate triangles", surface->duplicates.triangles);
@@ -67,6 +76,13 @@ std::vector<std::string> comparisonReportLines(
                     + std::to_string(d.needleCount) + " / " + std::to_string(d.capCount) + " (reasons overlap)");
             }
         }
+    }
+    if (settings.topologyInspection.holes && (options.legend || options.tolerance)) {
+        lines.push_back("Holes: loop/component bounding-box diagonal ratio <= " + measurementNumber(settings.topologyInspection.holeSizeRatioTolerance) + "; larger openings remain boundaries.");
+        if (options.legend && settings.topologyInspection.showHoles) { lines.push_back("Blue loops: holes."); }
+    }
+    if (options.legend && settings.topologyInspection.nonManifoldVertices && settings.topologyInspection.showNonManifoldVertices) {
+        lines.push_back("Amber crosses: non-manifold vertices; endpoints of non-manifold edges excluded.");
     }
     if (settings.degenerates.enabled && (options.legend || options.tolerance)) {
         lines.push_back("Degenerates: edge ratio > " + measurementNumber(settings.degenerates.needleThresholdRatio)

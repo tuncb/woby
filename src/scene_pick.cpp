@@ -287,6 +287,8 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
         lines.diagnosticEdges = edges;
         parts.push_back(lines);
     };
+    if (settings.topologyInspection.nonManifoldVertices && settings.topologyInspection.showNonManifoldVertices) { appendEdges(surface.nonManifoldVertexMarkers); }
+    if (settings.topologyInspection.holes && settings.topologyInspection.showHoles) { appendEdges(surface.holeEdges); }
     if (settings.showBoundaries) { appendEdges(surface.topology.sources.empty() ? surface.diagnostics.boundaryEdges : surface.topologyBoundaries); }
     if (settings.showNonManifold) {
         appendEdges(surface.topology.sources.empty() ? surface.diagnostics.nonManifoldEdges : surface.topologyNonManifold);

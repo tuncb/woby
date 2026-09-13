@@ -25,7 +25,7 @@ namespace
 void destroySurface(ComparisonGpuSurface &gpu)
 {
     for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.boundaries, gpu.nonManifold, gpu.winding,
-        gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill, gpu.degenerateEdges, gpu.degenerateFill})
+        gpu.nonManifoldVertices, gpu.holes, gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill, gpu.degenerateEdges, gpu.degenerateFill})
     {
         if (bgfx::isValid(handle))
         {
@@ -132,6 +132,8 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
     if (stages & comparisonTopology) {
         gpu.boundaries = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.boundaryEdges : surface.topologyBoundaries);
         gpu.nonManifold = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.nonManifoldEdges : surface.topologyNonManifold);
+        gpu.nonManifoldVertices = uploadEdges(surface.nonManifoldVertexMarkers);
+        gpu.holes = uploadEdges(surface.holeEdges);
         gpu.winding = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.inconsistentWindingEdges : surface.topologyWinding);
     }
     if (stages & comparisonDegenerates) {
@@ -300,16 +302,20 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool duplicate = category == DiagnosticCategory::duplicatePoints || category == DiagnosticCategory::duplicateTriangles;
+    const bool vertex = category == DiagnosticCategory::nonManifoldVertices;
+    const bool holes = category == DiagnosticCategory::holes;
     const bool degenerate = category == DiagnosticCategory::degenerateTriangles;
-    bool enabled = degenerate ? settings.degenerates.enabled : !duplicate || (category == DiagnosticCategory::duplicatePoints ? settings.duplicates.points : settings.duplicates.triangles);
+    bool enabled = vertex ? settings.topologyInspection.nonManifoldVertices : holes ? settings.topologyInspection.holes : degenerate ? settings.degenerates.enabled : !duplicate || (category == DiagnosticCategory::duplicatePoints ? settings.duplicates.points : settings.duplicates.triangles);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    ImGui::BeginDisabled(!duplicate && !degenerate);
+    ImGui::BeginDisabled(!duplicate && !degenerate && !vertex && !holes);
     ImGui::Checkbox("##run", &enabled);
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("%s", (duplicate || degenerate) ? "Enable this detector" : "Always included in surface analysis");
+        ImGui::SetTooltip("%s", (duplicate || degenerate || vertex || holes) ? "Enable this detector" : "Always included in surface analysis");
     }
+    if (vertex) { settings.topologyInspection.nonManifoldVertices = enabled; }
+    if (holes) { settings.topologyInspection.holes = enabled; }
     if (degenerate) { settings.degenerates.enabled = enabled; }
     if (category == DiagnosticCategory::duplicatePoints) { settings.duplicates.points = enabled; }
     if (category == DiagnosticCategory::duplicateTriangles) { settings.duplicates.triangles = enabled; }
@@ -323,7 +329,8 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     }
     ImGui::GetWindowDrawList()->AddText(nullptr, 0, position, ImGui::GetColorU32(ImGuiCol_Text), name, nullptr, width);
     const bool settingsCurrent = settings.duplicates.points == initial.duplicates.points && settings.duplicates.triangles == initial.duplicates.triangles
-        && settings.degenerates.enabled == initial.degenerates.enabled;
+        && settings.degenerates.enabled == initial.degenerates.enabled
+        && settings.topologyInspection == initial.topologyInspection;
     current = current && settingsCurrent && runtime.resultSignature == comparisonGeometrySignature(state, id);
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }
@@ -346,9 +353,11 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
                 ImGui::Text("%zu%s", count, topology.unavailableSources ? "*" : "");
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Status: %s\n%zu collapsed faces excluded from topology\n%zu unavailable sources\nWinding reports both incident faces, not a unique erroneous face.\n%zu conflict edges; %zu orientation contradiction witnesses",
+                if (vertex) { ImGui::SetTooltip("One connected vertex link required. Endpoints of non-manifold edges are excluded."); }
+                else if (holes) { ImGui::SetTooltip("Simple boundary loops with loop/component bounding-box diagonal ratio <= %.6g. Larger openings remain boundary findings.", settings.topologyInspection.holeSizeRatioTolerance); }
+                else { ImGui::SetTooltip("Status: %s\n%zu collapsed faces excluded from topology\n%zu unavailable sources\nWinding reports both incident faces, not a unique erroneous face.\n%zu conflict edges; %zu orientation contradiction witnesses",
                     topologyStatus(topology), topology.excludedCollapsedFaces, topology.unavailableSources,
-                    topology.windingEdges.size(), topology.orientationContradictions);
+                    topology.windingEdges.size(), topology.orientationContradictions); }
             }
         }
         else {
@@ -362,12 +371,14 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         }
     }
     ImGui::TableNextColumn();
-    bool visible = degenerate ? settings.degenerates.show : category == DiagnosticCategory::boundary ? settings.showBoundaries
+    bool visible = vertex ? settings.topologyInspection.showNonManifoldVertices : holes ? settings.topologyInspection.showHoles : degenerate ? settings.degenerates.show : category == DiagnosticCategory::boundary ? settings.showBoundaries
         : category == DiagnosticCategory::duplicatePoints ? settings.duplicates.showPoints
         : category == DiagnosticCategory::duplicateTriangles ? settings.duplicates.showTriangles
         : category == DiagnosticCategory::winding ? settings.showWinding : settings.showNonManifold;
     if (ImGui::Checkbox("##show", &visible)) {
-        if (degenerate) { settings.degenerates.show = visible; }
+        if (vertex) { settings.topologyInspection.showNonManifoldVertices = visible; }
+        else if (holes) { settings.topologyInspection.showHoles = visible; }
+        else if (degenerate) { settings.degenerates.show = visible; }
         else if (category == DiagnosticCategory::boundary) { settings.showBoundaries = visible; }
         else if (category == DiagnosticCategory::duplicatePoints) { settings.duplicates.showPoints = visible; }
         else if (category == DiagnosticCategory::duplicateTriangles) { settings.duplicates.showTriangles = visible; }
@@ -385,12 +396,12 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     int step = 0;
     if (ImGui::ArrowButton("previous", ImGuiDir_Left)) { step = -1; }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Previous %s on %s", degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
+        ImGui::SetTooltip("Previous %s on %s", vertex ? "vertex" : holes ? "loop" : degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
     }
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
     if (ImGui::ArrowButton("next", ImGuiDir_Right)) { step = 1; }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Next %s on %s", degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
+        ImGui::SetTooltip("Next %s on %s", vertex ? "vertex" : holes ? "loop" : degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
     }
     ImGui::EndDisabled();
     if (step != 0) {
@@ -402,6 +413,17 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     }
     ImGui::TableNextColumn();
     if (degenerate) { drawDegenerateSettingsPopup(state, id); }
+    if (holes) {
+        if (ImGui::SmallButton("Settings")) { ImGui::OpenPopup("hole_settings"); }
+        if (ImGui::BeginPopup("hole_settings")) {
+            auto edited = comparisonSettings(state, id);
+            if (ImGui::InputFloat("Maximum size ratio", &edited.topologyInspection.holeSizeRatioTolerance, 0, 0, "%.6g")) {
+                setComparisonSettings(state, edited, id);
+            }
+            ImGui::TextWrapped("Loop bounding-box diagonal / edge-connected component diagonal, inclusive. Larger openings remain boundary findings. Ratios may exceed 1.");
+            ImGui::EndPopup();
+        }
+    }
     ImGui::PopID();
 }
 
@@ -514,6 +536,71 @@ const std::vector<TopologyEdgeFinding>& topologyFindings(const MeshTopology& top
     return topology.windingEdges;
 }
 
+void drawVertexAndHoleFindings(UiState& state, const ComparisonRuntime& runtime, bool current, SceneObjectId id)
+{
+    const auto settings = comparisonSettings(state, id);
+    const bool holes = settings.diagnosticCategory == DiagnosticCategory::holes;
+    if (!holes && settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices) { return; }
+    if (!current || !comparisonResultsReady(runtime, state, id)) { return; }
+    if (!(holes ? settings.topologyInspection.holes : settings.topologyInspection.nonManifoldVertices)) { return; }
+    const auto& topology = (settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).topology;
+    ImGui::TextWrapped("%s; per source; status: %s. %zu collapsed faces excluded.", topologyModeName(topology.mode), topologyStatus(topology), topology.excludedCollapsedFaces);
+    if (holes) {
+        size_t loops = 0, open = 0, branched = 0;
+        for (const auto& boundary : topology.boundaryRegions) {
+            loops += boundary.kind == BoundaryKind::loop; open += boundary.kind == BoundaryKind::open; branched += boundary.kind == BoundaryKind::branched;
+        }
+        ImGui::TextWrapped("%zu simple loops; %zu pass size ratio <= %.6g. %zu open and %zu branched boundary regions are excluded. All edges remain available under Boundary edges.", loops, topology.holes.size(), settings.topologyInspection.holeSizeRatioTolerance, open, branched);
+    } else {
+        ImGui::TextWrapped("Vertex links must form one interior cycle or one boundary path. %zu vertices on non-manifold edges excluded; unused points are not defects here.", topology.excludedNonManifoldEdgeVertices);
+    }
+    const size_t count = holes ? topology.holes.size() : topology.nonManifoldVertices.size();
+    if (!count) { return; }
+    const auto* comparison = findComparison(state, id);
+    const auto* focused = focusedComparisonDiagnostic(state, runtime.result, runtime.resultSignature, id);
+    const size_t selected = focused ? comparison->diagnosticFocus->index : 0;
+    constexpr size_t pageSize = 10;
+    const size_t page = selected / pageSize;
+    ImGui::PushID("vertex_hole_findings");
+    ImGui::BeginDisabled(page == 0);
+    if (ImGui::SmallButton("Previous page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*pageSize, id); }
+    ImGui::EndDisabled(); ImGui::SameLine();
+    ImGui::BeginDisabled((page+1)*pageSize >= count);
+    if (ImGui::SmallButton("Next page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*pageSize, id); }
+    ImGui::EndDisabled();
+    for (size_t i = page*pageSize; i < std::min(count, (page+1)*pageSize); ++i) {
+        std::string label;
+        if (holes) {
+            const auto& boundary = topology.boundaryRegions[topology.holes[i]];
+            label = topology.sources[boundary.source].source + ": loop " + std::to_string(topology.holes[i]+1)
+                + ", component " + std::to_string(boundary.component+1);
+        } else {
+            const auto& finding = topology.nonManifoldVertices[i];
+            const auto& source = topology.sources[finding.source];
+            const auto& ref = source.vertices[finding.vertex].references.front();
+            label = source.source + ": point " + std::to_string(ref.pointId+1) + ", part " + std::to_string(ref.partId);
+        }
+        ImGui::PushID(static_cast<int>(i));
+        if (ImGui::Selectable(label.c_str(), focused && selected == i)) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id); }
+        ImGui::PopID();
+    }
+    if (holes) {
+        const auto& boundary = topology.boundaryRegions[topology.holes[selected]];
+        ImGui::TextWrapped("%zu edges; loop diagonal %.9g / component diagonal %.9g = %.9g. Bounds use world axes; display offset is excluded.", boundary.edges.size(), boundary.diagonal, boundary.componentDiagonal, boundary.sizeRatio);
+    } else {
+        const auto& finding = topology.nonManifoldVertices[selected];
+        const auto& source = topology.sources[finding.source];
+        const auto& vertex = source.vertices[finding.vertex];
+        ImGui::TextWrapped("%zu link components; %zu incident faces; %zu source point references. %s", finding.linkComponents, vertex.faces.size(), vertex.references.size(), triangleProvenanceName(source.provenance));
+        for (size_t i = 0; i < std::min(size_t{100}, vertex.faces.size()); ++i) {
+            const auto& ref = source.faces[vertex.faces[i]].reference;
+            ImGui::Text("Triangle %zu, part %llu", ref.triangleId+1, static_cast<unsigned long long>(ref.partId));
+        }
+        if (vertex.faces.size() > 100) { ImGui::TextDisabled("Showing first 100 incident faces."); }
+    }
+    ImGui::PopID();
+}
+
 void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool current, SceneObjectId id)
 {
     const auto settings = comparisonSettings(state, id);
@@ -624,6 +711,8 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
         diagnosticRow(state, runtime, current, "Boundary edges", DiagnosticCategory::boundary, hasA, hasB, id);
+        diagnosticRow(state, runtime, current, "Non-manifold vertices", DiagnosticCategory::nonManifoldVertices, hasA, hasB, id);
+        diagnosticRow(state, runtime, current, "Holes", DiagnosticCategory::holes, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Non-manifold edges", DiagnosticCategory::nonManifold, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Inconsistent triangles", DiagnosticCategory::winding, hasA, hasB, id);
         diagnosticRow(state, runtime, current, "Duplicate points", DiagnosticCategory::duplicatePoints, hasA, hasB, id);
@@ -638,6 +727,8 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     else if (comparison->diagnosticFocus) {
         const auto& focus = *comparison->diagnosticFocus;
         const char* name = focus.category == DiagnosticCategory::boundary ? "Boundary"
+            : focus.category == DiagnosticCategory::nonManifoldVertices ? "Non-manifold vertex"
+            : focus.category == DiagnosticCategory::holes ? "Hole loop"
             : focus.category == DiagnosticCategory::nonManifold ? "Non-manifold edges"
             : focus.category == DiagnosticCategory::duplicatePoints ? "Duplicate point group"
             : focus.category == DiagnosticCategory::degenerateTriangles ? "Degenerate triangle"
@@ -649,6 +740,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     drawDuplicateFindings(state, runtime, current, id);
     drawDegenerateFindings(state, runtime, current, id);
     drawTopologyFindings(state, runtime, current, id);
+    drawVertexAndHoleFindings(state, runtime, current, id);
     ImGui::BeginDisabled(!current);
     if (ImGui::Button("Full result")) { frameComparison(state, id); }
     ImGui::EndDisabled();
@@ -688,6 +780,8 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
         && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     const auto required = requestedComparisonStages(comparisonSettings(state, id), both, fullResults);
     return signature != 0 && runtime.resultSignature == signature && runtime.cache.signature == signature
+        && sameTopologyInspectionFilters(runtime.result.original.topology.inspection, comparisonSettings(state, id).topologyInspection)
+        && sameTopologyInspectionFilters(runtime.result.repaired.topology.inspection, comparisonSettings(state, id).topologyInspection)
         && runtime.cache.topologyMode == comparisonSettings(state, id).topologyMode
         && sameDegenerateThresholds(runtime.cache.degenerates, comparisonSettings(state, id).degenerates)
         && (runtime.cache.completed & required) == required && (fullResults || runtime.ready);
@@ -715,7 +809,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
     }
     if (resetComparisonTopologyCache(runtime.cache, settings.topologyMode)) {
         for (auto* gpu : {&runtime.originalGpu, &runtime.repairedGpu}) {
-            for (auto* handle : {&gpu->boundaries, &gpu->nonManifold, &gpu->winding}) {
+            for (auto* handle : {&gpu->boundaries, &gpu->nonManifold, &gpu->winding, &gpu->nonManifoldVertices, &gpu->holes}) {
                 if (bgfx::isValid(*handle)) { bgfx::destroy(*handle); }
                 *handle = BGFX_INVALID_HANDLE;
             }
@@ -750,6 +844,15 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
     }
     setComparisonDuplicateEnabled(runtime.result, settings.duplicates);
     setComparisonDegenerateSettings(runtime.result, settings.degenerates);
+    if (setComparisonTopologyInspectionSettings(runtime.result, settings.topologyInspection)) {
+        for (auto* gpu : {&runtime.originalGpu, &runtime.repairedGpu}) {
+            for (auto* handle : {&gpu->boundaries, &gpu->nonManifold, &gpu->winding, &gpu->nonManifoldVertices, &gpu->holes}) {
+                if (bgfx::isValid(*handle)) { bgfx::destroy(*handle); }
+                *handle = BGFX_INVALID_HANDLE;
+            }
+        }
+        runtime.uploadedStages &= ~comparisonTopology;
+    }
     // CPU stages and their GPU uploads are retained independently. Retry an upload
     // without rerunning successful detectors, including after partial GPU failure.
     if (wanted && active && (runtime.error.empty() || runtime.attemptedSignature == 0)) {
@@ -1270,6 +1373,12 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
     {
         submitEdges(view, gpu.nonManifold, colorProgram, colorUniform, {1, .15f, .55f, 1}, identity);
     }
+    if (settings.topologyInspection.nonManifoldVertices && settings.topologyInspection.showNonManifoldVertices) {
+        submitEdges(view, gpu.nonManifoldVertices, colorProgram, colorUniform, {1, .65f, .05f, 1}, identity);
+    }
+    if (settings.topologyInspection.holes && settings.topologyInspection.showHoles) {
+        submitEdges(view, gpu.holes, colorProgram, colorUniform, {.1f, .65f, 1, 1}, identity);
+    }
     if (settings.showWinding) {
         submitEdges(view, gpu.winding, colorProgram, colorUniform, {1, .2f, .2f, 1}, identity);
     }
@@ -1328,6 +1437,24 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
             faceFill.assign(finding.geometry.begin(), finding.geometry.end());
             for (size_t k = 0; k < 3; ++k) { points.push_back(finding.geometry[k]); points.push_back(finding.geometry[(k+1)%3]); }
             if (finding.reasons.collapsed) { appendCross(points, finding.geometry[0], radius); }
+        } else if (focus.category == DiagnosticCategory::nonManifoldVertices || focus.category == DiagnosticCategory::holes) {
+            const auto& topology = (focus.side == ComparisonSide::a ? it->second.result.original : it->second.result.repaired).topology;
+            const auto point = [](const auto& p) { return std::array<float, 3>{static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2])}; };
+            if (focus.category == DiagnosticCategory::nonManifoldVertices) {
+                const auto& finding = topology.nonManifoldVertices.at(focus.index);
+                const auto& source = topology.sources[finding.source];
+                const auto& vertex = source.vertices[finding.vertex];
+                appendCross(points, point(vertex.position), radius);
+                for (const auto f : vertex.faces) {
+                    for (const auto v : source.faces[f].vertices) { faceFill.push_back(point(source.vertices[v].position)); }
+                }
+            } else {
+                const auto& boundary = topology.boundaryRegions[topology.holes.at(focus.index)];
+                const auto& source = topology.sources[boundary.source];
+                for (const auto e : boundary.edges) {
+                    for (const auto v : source.edges[e].vertices) { points.push_back(point(source.vertices[v].position)); }
+                }
+            }
         } else {
             points.push_back(edge->a); points.push_back(edge->b);
             for (const auto& endpoint : {edge->a, edge->b}) { appendCross(points, endpoint, radius); }

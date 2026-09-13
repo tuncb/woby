@@ -12,7 +12,7 @@ namespace woby
 {
 
 enum class ComparisonSide { a, b };
-enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles };
+enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes };
 
 struct ComparisonMembership
 {
@@ -46,6 +46,7 @@ struct ComparisonSettings
     bool showBoundaries = true;
     bool showNonManifold = true;
     bool showWinding = true;
+    TopologyInspectionSettings topologyInspection;
     TopologyMode topologyMode = TopologyMode::automatic;
     ComparisonSide diagnosticSide = ComparisonSide::a;
     DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;

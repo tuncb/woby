@@ -44,6 +44,7 @@ struct SurfaceComparison
     MeshDiagnostics diagnostics;
     MeshTopology topology;
     std::vector<DiagnosticEdge> topologyBoundaries, topologyNonManifold, topologyWinding;
+    std::vector<DiagnosticEdge> nonManifoldVertexBounds, nonManifoldVertexMarkers, holeBounds, holeEdges;
     SurfaceMeshQuality quality;
     MeshDuplicates duplicates;
     MeshDegenerates degenerates;
@@ -87,6 +88,7 @@ bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mod
 // Rejects stale worker results; moves only the stages produced by that worker.
 bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache, MeshComparison update,
     uint64_t signature, uint32_t stages);
+bool setComparisonTopologyInspectionSettings(MeshComparison& result, TopologyInspectionSettings settings);
 void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettings& settings);
 void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings settings);
 

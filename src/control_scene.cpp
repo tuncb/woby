@@ -72,6 +72,11 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
                 {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
+                {"nonManifoldVertices", settings.topologyInspection.nonManifoldVertices},
+                {"showNonManifoldVertices", settings.topologyInspection.showNonManifoldVertices},
+                {"holes", settings.topologyInspection.holes},
+                {"showHoles", settings.topologyInspection.showHoles},
+                {"holeSizeRatioTolerance", settings.topologyInspection.holeSizeRatioTolerance},
                 {"degenerateTriangles", settings.degenerates.enabled}, {"showDegenerateTriangles", settings.degenerates.show},
                 {"needleThresholdRatio", settings.degenerates.needleThresholdRatio}, {"capMinAngleDegrees", settings.degenerates.capMinAngleDegrees},
                 {"duplicatePoints", settings.duplicates.points}, {"duplicateTriangles", settings.duplicates.triangles}, {"showDuplicatePoints", settings.duplicates.showPoints}, {"showDuplicateTriangles", settings.duplicates.showTriangles},
@@ -347,6 +352,11 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
                     ? ComparisonMode::original : *command.mode == "b" ? ComparisonMode::repaired :
                     *command.mode == "surface_quality" ? ComparisonMode::surfaceQuality : ComparisonMode::overlay;
             }
+            if (command.nonManifoldVertices) { settings.topologyInspection.nonManifoldVertices = *command.nonManifoldVertices; }
+            if (command.showNonManifoldVertices) { settings.topologyInspection.showNonManifoldVertices = *command.showNonManifoldVertices; }
+            if (command.holes) { settings.topologyInspection.holes = *command.holes; }
+            if (command.showHoles) { settings.topologyInspection.showHoles = *command.showHoles; }
+            if (command.holeSizeRatioTolerance) { settings.topologyInspection.holeSizeRatioTolerance = *command.holeSizeRatioTolerance; }
             if (command.degenerateTriangles) { settings.degenerates.enabled = *command.degenerateTriangles; }
             if (command.showDegenerateTriangles) { settings.degenerates.show = *command.showDegenerateTriangles; }
             if (command.needleThresholdRatio) { settings.degenerates.needleThresholdRatio = *command.needleThresholdRatio; }
@@ -578,6 +588,99 @@ Json topologyResultJson(const MeshTopology& topology, const std::vector<Topology
     } else { result["countUnit"] = "edges"; }
     return result;
 }
+Json topologyVertexJson(const SourceTopology& source, size_t index)
+{
+    constexpr size_t limit = 100;
+    const auto& vertex = source.vertices[index];
+    Json references = Json::array(), faces = Json::array();
+    for (size_t i = 0; i < std::min(limit, vertex.references.size()); ++i) {
+        const auto& ref = vertex.references[i];
+        references.push_back({{"partId", std::to_string(ref.partId)}, {"pointId", ref.pointId+1}});
+    }
+    for (size_t i = 0; i < std::min(limit, vertex.faces.size()); ++i) {
+        faces.push_back(topologyFaceJson(source.faces[vertex.faces[i]].reference));
+    }
+    return {{"sourceId", std::to_string(source.fileId)}, {"source", source.source}, {"vertexId", index+1},
+        {"position", vertex.position}, {"topologyMode", topologyModeName(source.mode)},
+        {"pointReferences", references}, {"pointReferenceCount", vertex.references.size()}, {"pointReferencesTruncated", vertex.references.size() > limit},
+        {"incidentFaces", faces}, {"incidentFaceCount", vertex.faces.size()}, {"incidentFacesTruncated", vertex.faces.size() > limit}};
+}
+Json topologyBoundaryJson(const MeshTopology& topology, size_t index)
+{
+    constexpr size_t limit = 100;
+    const auto& boundary = topology.boundaryRegions[index];
+    const auto& source = topology.sources[boundary.source];
+    Json vertices = Json::array(), edges = Json::array(), faces = Json::array();
+    for (size_t i = 0; i < std::min(limit, boundary.vertices.size()); ++i) {
+        // One representative point reference per loop vertex avoids a third multiplicative array limit.
+        const auto v = boundary.vertices[i];
+        Json refs = Json::array();
+        const auto& vertex = source.vertices[v];
+        for (size_t j = 0; j < std::min(size_t{1}, vertex.references.size()); ++j) {
+            const auto& ref = vertex.references[j];
+            refs.push_back({{"partId", std::to_string(ref.partId)}, {"pointId", ref.pointId+1}});
+        }
+        vertices.push_back({{"vertexId", v+1}, {"position", vertex.position}, {"pointReferences", refs},
+            {"pointReferenceCount", vertex.references.size()}, {"pointReferencesTruncated", vertex.references.size() > 1}});
+    }
+    for (size_t i = 0; i < std::min(limit, boundary.edges.size()); ++i) {
+        const auto e = boundary.edges[i];
+        edges.push_back(e+1);
+        faces.push_back(topologyFaceJson(source.faces[source.edges[e].incidentFaces[0].face].reference));
+    }
+    return {{"sourceId", std::to_string(source.fileId)}, {"source", source.source}, {"boundaryId", index+1},
+        {"componentId", boundary.component+1}, {"topologyMode", topologyModeName(source.mode)},
+        {"kind", boundaryKindName(boundary.kind)}, {"diagonal", boundary.diagonal}, {"componentDiagonal", boundary.componentDiagonal},
+        {"sizeRatio", boundary.ratioAvailable ? Json(boundary.sizeRatio) : Json(nullptr)},
+        {"vertices", vertices}, {"vertexCount", boundary.vertices.size()}, {"verticesTruncated", boundary.vertices.size() > limit},
+        {"edgeIds", edges}, {"edgeCount", boundary.edges.size()}, {"edgesTruncated", boundary.edges.size() > limit},
+        {"incidentFacesByEdge", faces}};
+}
+Json topologyInspectionJson(const MeshTopology& topology, bool holes)
+{
+    constexpr size_t limit = 100;
+    const bool enabled = holes ? topology.inspection.holes : topology.inspection.nonManifoldVertices;
+    const size_t count = enabled ? (holes ? topology.holes.size() : topology.nonManifoldVertices.size()) : 0;
+    Json result = topologyResultJson(topology, {});
+    result["algorithm"] = holes ? "woby-boundary-loops-v1" : "woby-vertex-links-v1";
+    result["status"] = enabled ? topologyStatus(topology) : "disabled";
+    result["count"] = !enabled || topology.unavailableSources ? Json(nullptr) : Json(count);
+    result["knownCount"] = count; result["findingCount"] = count;
+    result["findingsTruncated"] = count > limit;
+    Json findings = Json::array();
+    for (size_t i = 0; i < std::min(limit, count); ++i) {
+        if (holes) { findings.push_back(topologyBoundaryJson(topology, topology.holes[i])); }
+        else {
+            const auto& finding = topology.nonManifoldVertices[i];
+            auto value = topologyVertexJson(topology.sources[finding.source], finding.vertex);
+            value["linkComponents"] = finding.linkComponents;
+            findings.push_back(std::move(value));
+        }
+    }
+    result["findings"] = std::move(findings);
+    if (holes) {
+        result["holeSizeRatioTolerance"] = topology.inspection.holeSizeRatioTolerance;
+        Json boundaries = Json::array();
+        size_t loops = 0, open = 0, branched = 0, unavailableRatios = 0;
+        if (enabled) {
+            for (size_t i = 0; i < topology.boundaryRegions.size(); ++i) {
+                const auto& boundary = topology.boundaryRegions[i];
+                loops += boundary.kind == BoundaryKind::loop;
+                open += boundary.kind == BoundaryKind::open;
+                branched += boundary.kind == BoundaryKind::branched;
+                unavailableRatios += !boundary.ratioAvailable;
+                if (i < limit) { boundaries.push_back(topologyBoundaryJson(topology, i)); }
+            }
+        }
+        result["boundaryRegions"] = std::move(boundaries);
+        result["boundaryRegionCount"] = loops + open + branched;
+        result["boundaryRegionsTruncated"] = loops + open + branched > limit;
+        result["loopCount"] = loops; result["openBoundaryCount"] = open; result["branchedBoundaryCount"] = branched;
+        result["unavailableSizeRatioCount"] = unavailableRatios;
+    } else { result["excludedNonManifoldEdgeVertices"] = enabled ? topology.excludedNonManifoldEdgeVertices : 0; }
+    return result;
+}
+
 Json degenerateResultJson(const MeshDegenerates& result)
 {
     const bool enabled = result.settings.enabled;
@@ -647,6 +750,8 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
             {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
             {"detectors", {{"schemaVersion", 1}, {"idBase", 1}, {"scope", "per-source; selected parts, including unused points when whole file selected"},
                 {"duplicate_points", duplicateResultJson(value.duplicates.points)}, {"duplicate_tris", duplicateResultJson(value.duplicates.triangles)}, {"degenerate_tris", degenerateResultJson(value.degenerates)},
+                {"non_manifold_vertices", topologyInspectionJson(value.topology, false)},
+                {"holes", topologyInspectionJson(value.topology, true)},
                 {"boundary_edges", topologyResultJson(value.topology, value.topology.boundaries)},
                 {"non_manifold_edges", topologyResultJson(value.topology, value.topology.nonManifoldEdges)},
                 {"inconsistently_oriented_tris", topologyResultJson(value.topology, value.topology.windingEdges, true)}}},

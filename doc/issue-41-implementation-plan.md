@@ -2,8 +2,9 @@
 
 Status: duplicate-point and source-ID duplicate-triangle implementation added on
 2026-09-12; degenerate-triangle findings and shared topology with upgraded edge/winding
-findings added on 2026-09-13. Non-manifold vertices, hole loops, and the later
-detectors remain open. Milestone A is not yet complete.
+findings added on 2026-09-13. Non-manifold vertices and hole loops are now also
+implemented end to end, making all seven inexpensive detector categories available.
+Self-intersections, fin candidates, and non-partitioning surfaces remain open.
 
 The first slice preserves OBJ position records, STL corners, and importer vertex
 buffers; adds per-analysis exact source checks, grouped navigation/highlighting,
@@ -43,6 +44,19 @@ Scene version 10 adds topology mode and separate winding visibility, migrating o
 scenes and saved views. Mode edits invalidate only topology; stale mode results are
 rejected. JSON arrays are bounded to 100 entries with full counts/truncation flags.
 Legacy geometric diagnostic fields and quality-neighbor semantics are unchanged.
+
+The vertex/hole slice validates vertex links, excluding endpoints of non-manifold
+edges, and traces ordered boundary cycles within edge-connected components.
+Open/branched regions are reported separately. Hole size filtering is inclusive,
+uses each component's world-axis bounding box, and reuses cached topology when the
+threshold changes. Run switches retain shared preprocessing/results; Show switches
+only affect presentation. Vertex and loop navigation, source references, overlays,
+picking, bounded CLI findings, reports, and scene version 11 (including saved views)
+are integrated. Fixtures cover bow ties, touching closed shells, duplicate faces,
+branched boundaries, threshold boundaries, independent components, both topology
+modes, stale selection, source isolation, and scene/CLI behavior. Numeric performance
+budgets and original polygon provenance remain follow-up work.
+
 
 Issue: [More explicit detectors](https://github.com/tuncb/woby/issues/41).
 Baseline inspected: `9463124`, 2026-09-08. Recheck the baseline before implementation.
