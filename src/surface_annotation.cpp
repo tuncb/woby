@@ -278,6 +278,11 @@ std::vector<VisibleInterval> visibleIntervals(std::span<const Interval> interval
 }
 void projectEdge(AnnotationGeometry& result, const AnnotationProjection& projection, P2 start, P2 end)
 {
+    for (const auto& point : {start, end}) {
+        if (pickAnnotationSurface(projection, {static_cast<float>(point[0]), static_cast<float>(point[1])}) != projection.targetId) {
+            throw std::runtime_error("Keep every endpoint or corner on the target surface.");
+        }
+    }
     const auto at = [&](double t) -> P2 { return {start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])}; };
     std::vector<Interval> intervals;
     for (const size_t i : projectionCandidates(projection, start, end)) {
@@ -296,22 +301,27 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
     const AnnotationProjectedTriangle* previousTriangle = nullptr;
     std::array<float, 3> previousPoint{};
     bool previous = false;
+    bool gap = false;
     for (const auto& visible : visibleIntervals(intervals)) {
         const double low = visible.begin, high = visible.end;
         if (high - low < 1e-10) { continue; }
         const auto* best = visible.surface;
-        if (!best || projection.triangles[best->index].objectId != projection.targetId) {
-            throw std::runtime_error("Keep the entire outline on the target surface, clear of holes and other objects.");
+        if (!best) { gap = true; continue; }
+        if (projection.triangles[best->index].objectId != projection.targetId) {
+            throw std::runtime_error("Keep the outline clear of other objects.");
         }
         const auto& triangle = projection.triangles[best->index];
-        const AnnotationSegment segment{triangle.triangle, anchor(triangle, at(low)), anchor(triangle, at(high))};
+        const AnnotationSegment segment{triangle.triangle, anchor(triangle, at(low)), anchor(triangle, at(high)), std::nullopt};
         const auto localPoint = [&](const auto& bary) {
             std::array<float, 3> p{};
             for (size_t k = 0; k < 3; ++k) { for (size_t axis = 0; axis < 3; ++axis) { p[axis] += bary[k] * triangle.localTriangle[k][axis]; } }
             return p;
         };
         const auto currentPoint = localPoint(segment.a);
-        if (previousTriangle) {
+        if (gap && previous) {
+            const auto& rim = result.segments.back();
+            result.segments.push_back({rim.triangle, rim.b, segment.a, segment.triangle});
+        } else if (previousTriangle) {
             size_t shared = 0;
             for (const auto& p : triangle.localTriangle) {
                 if (std::find(previousTriangle->localTriangle.begin(), previousTriangle->localTriangle.end(), p) != previousTriangle->localTriangle.end()) { ++shared; }
@@ -323,11 +333,12 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
             }
             if (!continuous) { throw std::runtime_error("The outline crosses a gap or a different surface layer."); }
         }
-        // Merge only within one face, so all stored geometry remains on the surface.
-        if (previous && !result.segments.empty() && result.segments.back().triangle == segment.triangle) {
+        // Merge surface fragments only within one face, never across a bridge.
+        if (previous && !gap && !result.segments.empty() && result.segments.back().triangle == segment.triangle) {
             result.segments.back().b = segment.b;
         } else { result.segments.push_back(segment); }
         previousTriangle = &triangle; previousPoint = localPoint(segment.b); previous = true;
+        gap = false;
     }
 }
 } // namespace
@@ -486,8 +497,10 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
         float best = std::numeric_limits<float>::max();
         std::optional<std::array<float, 3>> nearest;
         for (const auto& segment : geometry.segments) {
+            size_t endpoint = 0;
             for (const auto& bary : {segment.a, segment.b}) {
-                const auto local = annotationPosition(mesh, offset, segment.triangle, bary);
+                const auto triangle = endpoint++ == 0 ? segment.triangle : segment.endTriangle.value_or(segment.triangle);
+                const auto local = annotationPosition(mesh, offset, triangle, bary);
                 const auto clip = annotationTransform(geometry.projector, {local[0], local[1], local[2], 1});
                 if (clip[3] <= 0) { continue; }
                 const float x = clip[0] / clip[3] - control[0], y = clip[1] / clip[3] - control[1];
@@ -509,7 +522,8 @@ std::vector<DiagnosticEdge> annotationWorldLines(const UiAnnotation& item, std::
         DiagnosticEdge edge;
         size_t k = 0;
         for (const auto& bary : {segment.a, segment.b}) {
-            const auto local = annotationPosition(*target->mesh, target->indexOffset, segment.triangle, bary);
+            const auto triangle = k == 0 ? segment.triangle : segment.endTriangle.value_or(segment.triangle);
+            const auto local = annotationPosition(*target->mesh, target->indexOffset, triangle, bary);
             const auto world = annotationTransform(target->model, {local[0], local[1], local[2], 1});
             auto& endpoint = k++ == 0 ? edge.a : edge.b;
             endpoint = {world[0] / world[3], world[1] / world[3], world[2] / world[3]};

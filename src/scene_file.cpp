@@ -754,7 +754,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -819,10 +819,11 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 }
             } else if (section == Section::annotationSegment) {
                 auto& segment = document.annotations.back().geometry.segments.back();
-                if (key == "triangle") {
+                if (key == "triangle" || key == "end_triangle") {
                     const int triangle = parseTomlInteger(value);
                     if (triangle < 0) { throw std::runtime_error("Invalid annotation triangle."); }
-                    segment.triangle = static_cast<uint32_t>(triangle);
+                    if (key == "triangle") { segment.triangle = static_cast<uint32_t>(triangle); }
+                    else { segment.endTriangle = static_cast<uint32_t>(triangle); }
                 } else if (key == "a") { segment.a = parseTomlFloat3(value); }
                 else if (key == "b") { segment.b = parseTomlFloat3(value); }
             } else if (section == Section::view) {
@@ -1001,7 +1002,12 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 11\n";
+    const bool hasAnnotationBridges = std::any_of(document.annotations.begin(), document.annotations.end(), [](const auto& item) {
+        return std::any_of(item.geometry.segments.begin(), item.geometry.segments.end(), [](const auto& segment) {
+            return segment.endTriangle.has_value();
+        });
+    });
+    stream << "version = " << (hasAnnotationBridges ? 12 : 11) << "\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
@@ -1091,6 +1097,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         array("projector", item.geometry.projector); array("start", item.geometry.start); array("end", item.geometry.end);
         for (const auto& segment : item.geometry.segments) {
             stream << "\n[[annotations.segments]]\ntriangle = " << segment.triangle << "\n";
+            if (segment.endTriangle) { stream << "end_triangle = " << *segment.endTriangle << "\n"; }
             array("a", segment.a); array("b", segment.b);
         }
     }

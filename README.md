@@ -161,16 +161,18 @@ crosshair while drawing and a move cursor over editable endpoints and corners.
 
 Outlines stay attached through model transforms and hide with their target.
 They are depth-tested, included in scene PNG exports, and saved in `.woby` scenes
-(version 8). Saved views restore their visibility, color, and width. Older scene
-files remain readable. Removing a source retains a named annotation with a
+(version 12 when an annotation bridges a hole). Saved views restore their visibility,
+color, and width. Older scene files remain readable. Removing a source retains a named annotation with a
 **needs reattachment** status; restoring the unchanged source through Undo
 restores attachment. Changed source geometry is detected on Open or history
 restoration, and affected annotations remain unresolved instead of attaching to
 unrelated triangles.
 
-The initial tools create outlines on one model part. They reject outlines that
-cross holes, disconnected surface layers, or opaque occluding objects. They do
-not fill regions, measure surface area, or attach to derived analysis results.
+The tools create outlines on one model part. Line endpoints and rectangle corners
+must stay on the model; edges follow the surface and bridge holes with straight
+segments between the rims. Outlines still reject disconnected surface layer jumps
+and opaque occluding objects. They do not fill regions, measure surface area, or
+attach to derived analysis results.
 
 Try the [curved-surface annotation sample](assets/samples/surface-annotations/README.md).
 The CLI also supports `annotation list`, `get`, `create`, `set`, `reshape`, `move`,

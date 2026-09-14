@@ -39,7 +39,8 @@ void validateAnnotationTargets(UiState& state)
                 const auto& node = file.mesh.nodes[g];
                 item.targetValid = item.geometry.fingerprint == annotationFingerprint(file.mesh, node.indexOffset, node.indexCount)
                     && std::all_of(item.geometry.segments.begin(), item.geometry.segments.end(),
-                        [&](const auto& segment) { return segment.triangle < node.indexCount / 3; });
+                        [&](const auto& segment) { return segment.triangle < node.indexCount / 3
+                            && segment.endTriangle.value_or(segment.triangle) < node.indexCount / 3; });
             }
         }
     }
@@ -63,7 +64,8 @@ SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationG
             const auto& node = file.mesh.nodes[g];
             valid = item.geometry.fingerprint == annotationFingerprint(file.mesh, node.indexOffset, node.indexCount)
                 && std::all_of(item.geometry.segments.begin(), item.geometry.segments.end(),
-                    [&](const auto& segment) { return segment.triangle < node.indexCount / 3; });
+                    [&](const auto& segment) { return segment.triangle < node.indexCount / 3
+                        && segment.endTriangle.value_or(segment.triangle) < node.indexCount / 3; });
         }
     }
     if (!valid) { throw std::runtime_error("The annotation target has changed. Draw it again."); }
@@ -92,7 +94,10 @@ void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geom
         for (const auto& file : state.files) {
             for (size_t g = 0; g < file.groupSettings.size() && g < file.mesh.nodes.size(); ++g) {
                 if (file.groupSettings[g].objectId == item.targetId
-                    && std::any_of(geometry.segments.begin(), geometry.segments.end(), [&](const auto& s) { return s.triangle >= file.mesh.nodes[g].indexCount / 3; })) {
+                    && std::any_of(geometry.segments.begin(), geometry.segments.end(), [&](const auto& s) {
+                        return s.triangle >= file.mesh.nodes[g].indexCount / 3
+                            || s.endTriangle.value_or(s.triangle) >= file.mesh.nodes[g].indexCount / 3;
+                    })) {
                     throw std::runtime_error("Invalid annotation triangle.");
                 }
             }

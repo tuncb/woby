@@ -51,9 +51,10 @@ coordinates and model units. The response also contains `start`, `end`, `project
 is RGBA. `sourceId` is null when the source is missing; unresolved annotations
 return an empty vertex array while retaining their comments and settings.
 
-Creation rejects gaps, disconnected surface layers, and opaque occlusion. Move
-and reshape require an unlocked annotation and a visible, unchanged source;
-their complete outline must fit on the surface in its original projection.
+Creation bridges empty gaps between surface fragments, while rejecting disconnected
+surface layer jumps and opaque occlusion. Move and reshape require an unlocked
+annotation and a visible, unchanged source. Every endpoint or rectangle corner
+must lie on the source surface in its original projection; edges may bridge holes.
 Invalid edits leave the annotation unchanged. Names/comments/styles and deletion
 remain available for locked or unresolved annotations. Width is clamped to 1–12
 pixels, and RGB/opacity to 0–1. CLI comments accept up to 8192 UTF-8 bytes without

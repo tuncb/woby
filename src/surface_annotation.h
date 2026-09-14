@@ -35,7 +35,8 @@ struct AnnotationProjection {
     const AnnotationGeometry& geometry);
 [[nodiscard]] SceneObjectId pickAnnotationSurface(const AnnotationProjection& projection,
     std::array<float, 2> point);
-// Throws for gaps, occlusion, disconnected layers, or ambiguous intersections.
+// Endpoints/corners must hit the target. Bridges empty gaps between surface
+// fragments; throws for occlusion, disconnected layers, or ambiguous intersections.
 [[nodiscard]] AnnotationGeometry projectAnnotation(const AnnotationProjection& projection,
     AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end);
 [[nodiscard]] std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count);

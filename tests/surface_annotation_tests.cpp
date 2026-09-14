@@ -40,6 +40,30 @@ ScenePickView view()
     result.width = result.height = 200;
     return result;
 }
+Mesh holedSurface(bool multiple = false)
+{
+    Mesh mesh;
+    const std::vector<float> xs = multiple ? std::vector<float>{-1, -.6f, -.2f, .2f, .6f, 1}
+        : std::vector<float>{-1, -.3f, .3f, 1};
+    const std::array<float, 4> ys{-1, -.6f, .6f, 1};
+    for (float y : ys) {
+        for (float x : xs) {
+            Vertex vertex; vertex.position = {x, y, .5f + .2f * x};
+            mesh.vertices.push_back(vertex);
+        }
+    }
+    const auto width = static_cast<uint32_t>(xs.size());
+    for (uint32_t y = 0; y < 3; ++y) {
+        for (uint32_t x = 0; x + 1 < width; ++x) {
+            if (y == 1 && (x == 1 || (multiple && x == 3))) { continue; }
+            const uint32_t a = y * width + x, b = a + 1, c = a + width, d = c + 1;
+            mesh.indices.insert(mesh.indices.end(), {a,b,d,a,d,c});
+        }
+    }
+    mesh.nodes = {{"surface", 0, static_cast<uint32_t>(mesh.indices.size())}};
+    mesh.bounds = calculateBounds(mesh.vertices);
+    return mesh;
+}
 struct Fixture {
     std::filesystem::path root = std::filesystem::temp_directory_path() / ("woby-annotation-" + automationRandomHex(8));
     UiState state;
@@ -654,10 +678,10 @@ TEST_CASE("surface rectangle keeps four projected sides on curved geometry")
         CHECK((std::abs(std::abs(x) - .8f) < 1e-5f || std::abs(std::abs(y) - .4f) < 1e-5f));
     }
 }
-TEST_CASE("surface annotation rejects outlines spanning missing triangles and depth jumps")
+TEST_CASE("surface annotation rejects unsupported controls and depth jumps")
 {
     Fixture fixture;
-    SUBCASE("hole") { fixture.state.files[0].mesh.indices.erase(fixture.state.files[0].mesh.indices.begin() + 6, fixture.state.files[0].mesh.indices.end()); }
+    SUBCASE("endpoint outside model") { fixture.state.files[0].mesh.indices.erase(fixture.state.files[0].mesh.indices.begin() + 6, fixture.state.files[0].mesh.indices.end()); }
     SUBCASE("disconnected rear layer") {
         auto& mesh = fixture.state.files[0].mesh;
         mesh.vertices.push_back(mesh.vertices[2]); mesh.vertices.push_back(mesh.vertices[3]);
@@ -675,6 +699,167 @@ TEST_CASE("duplicate vertices at exact mesh seams do not break surface annotatio
     mesh.vertices.push_back(mesh.vertices[2]); mesh.vertices.push_back(mesh.vertices[3]);
     mesh.indices = {0, 2, 3, 0, 3, 1, 6, 4, 5, 6, 5, 7};
     CHECK_NOTHROW(fixture.geometry());
+}
+TEST_CASE("surface annotations bridge holes with surface anchored endpoints")
+{
+    Fixture fixture;
+    bool multiple = false;
+    SUBCASE("one hole") {}
+    SUBCASE("two holes") { multiple = true; }
+    fixture.state.files[0].mesh = holedSurface(multiple);
+    for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
+        for (const bool reversed : {false, true}) {
+            const std::array<float, 2> start = reversed ? std::array<float, 2>{.8f,.4f} : std::array<float, 2>{-.8f,-.4f};
+            const std::array<float, 2> end{-start[0], -start[1]};
+            const auto geometry = projectAnnotation(fixture.projection(), shape, start, end);
+            CHECK(geometry == projectAnnotation(fixture.projection(), shape, start, end));
+            const auto id = createAnnotation(fixture.state, fixture.target(), geometry);
+            const auto& item = *findAnnotation(fixture.state, id);
+            const auto lines = annotationWorldLines(item, scenePickParts(fixture.state));
+            REQUIRE(lines.size() == geometry.segments.size());
+            size_t bridges = 0;
+            for (size_t i = 0; i < lines.size(); ++i) {
+                if (i) { nearPoint(lines[i-1].b, lines[i].a); }
+                for (const auto& point : {lines[i].a, lines[i].b}) {
+                    CHECK(point[2] == doctest::Approx(.5f + .2f * point[0]));
+                }
+                if (geometry.segments[i].endTriangle) {
+                    ++bridges;
+                    const auto& a = lines[i].a; const auto& b = lines[i].b;
+                    const std::array<float, 2> middle{(a[0] + b[0]) * .5f, (a[1] + b[1]) * .5f};
+                    CHECK(pickAnnotationSurface(fixture.projection(), middle) == 0);
+                    CHECK(annotationEdgeHit(item, scenePickParts(fixture.state), view(),
+                        {(middle[0] + 1) * 100, (1 - middle[1]) * 100}));
+                }
+            }
+            CHECK(bridges == (shape == AnnotationShape::line ? 1u : 2u) * (multiple ? 2u : 1u));
+            const auto controls = annotationVertices(fixture.state, item);
+            REQUIRE(controls.size() == (shape == AnnotationShape::line ? 2u : 4u));
+            for (const auto& point : controls) {
+                CHECK(pickAnnotationSurface(fixture.projection(), {point[0], point[1]}) == fixture.target());
+            }
+            nearPoint(controls.front(), {start[0], start[1], .5f + .2f * start[0]});
+            if (shape == AnnotationShape::rectangle) { nearPoint(lines.back().b, lines.front().a); }
+            deleteAnnotation(fixture.state, id);
+        }
+    }
+}
+TEST_CASE("annotation controls cannot land in a hole")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = holedSurface();
+    const auto projection = fixture.projection();
+    CHECK_THROWS_WITH((void)projectAnnotation(projection, AnnotationShape::line, {-.8f,0}, {0,0}),
+        "Keep every endpoint or corner on the target surface.");
+    CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::line, {0,0}, {.8f,0}));
+    // Both drag controls hit the model, but the other rectangle corner hits the hole.
+    CHECK(pickAnnotationSurface(projection, {0,-.8f}) == fixture.target());
+    CHECK(pickAnnotationSurface(projection, {.8f,0}) == fixture.target());
+    CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::rectangle, {0,-.8f}, {.8f,0}));
+}
+TEST_CASE("annotation bridges survive editing transforms scene files and history")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = holedSurface();
+    const auto id = fixture.add(AnnotationShape::rectangle);
+    const auto clean = createSceneDocument(fixture.state);
+    SceneHistory history; resetSceneHistory(history, fixture.state);
+    const auto parts = scenePickParts(fixture.state);
+    const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& part) { return part.objectId == fixture.target(); });
+    REQUIRE(target != parts.end());
+    const auto projection = annotationEditProjection(*target, findAnnotation(fixture.state, id)->geometry);
+    const auto edited = projectAnnotation(projection, AnnotationShape::rectangle, {-.7f,-.3f}, {.7f,.3f});
+    reshapeAnnotation(fixture.state, id, edited);
+    REQUIRE(recordSceneHistory(history, fixture.state));
+    auto undo = prepareSceneHistoryStep(history, fixture.state, clean, false);
+    REQUIRE(undo); commitSceneHistoryStep(history, fixture.state, std::move(*undo), false);
+    CHECK(fixture.state.annotations[0].geometry == clean.annotations[0].geometry);
+    auto redo = prepareSceneHistoryStep(history, fixture.state, clean, true);
+    REQUIRE(redo); commitSceneHistoryStep(history, fixture.state, std::move(*redo), true);
+    CHECK(fixture.state.annotations[0].geometry == edited);
+    const auto before = annotationWorldLines(fixture.state.annotations[0], scenePickParts(fixture.state));
+    setFileTranslation(fixture.state.files[0].fileSettings, {3,4,5});
+    const auto moved = annotationWorldLines(fixture.state.annotations[0], scenePickParts(fixture.state));
+    REQUIRE(moved.size() == before.size());
+    for (size_t i = 0; i < before.size(); ++i) {
+        nearPoint(moved[i].a, {before[i].a[0]+3, before[i].a[1]+4, before[i].a[2]+5});
+        nearPoint(moved[i].b, {before[i].b[0]+3, before[i].b[1]+4, before[i].b[2]+5});
+    }
+    std::filesystem::create_directories(fixture.root);
+    const auto path = fixture.root / "bridges.woby";
+    const auto document = createSceneDocument(fixture.state);
+    writeSceneDocument(path, document);
+    { std::ifstream stream(path); std::string line; std::getline(stream, line); std::getline(stream, line); CHECK(line == "version = 12"); }
+    const auto read = readSceneDocument(path);
+    CHECK(read.annotations == document.annotations);
+    const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, read);
+    REQUIRE(restored.annotations.size() == 1);
+    CHECK(restored.annotations[0].targetValid);
+    const auto loaded = annotationWorldLines(restored.annotations[0], scenePickParts(restored));
+    REQUIRE(loaded.size() == moved.size());
+    for (size_t i = 0; i < loaded.size(); ++i) { nearPoint(loaded[i].a, moved[i].a); nearPoint(loaded[i].b, moved[i].b); }
+}
+TEST_CASE("annotation bridge endpoint triangle is validated at operation and load boundaries")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = holedSurface();
+    const auto id = fixture.add();
+    auto malformed = findAnnotation(fixture.state, id)->geometry;
+    auto bridge = std::find_if(malformed.segments.begin(), malformed.segments.end(), [](const auto& segment) { return segment.endTriangle.has_value(); });
+    REQUIRE(bridge != malformed.segments.end());
+    bridge->endTriangle = 10000;
+    CHECK_THROWS(createAnnotation(fixture.state, fixture.target(), malformed));
+    CHECK_THROWS(reshapeAnnotation(fixture.state, id, malformed));
+    auto document = createSceneDocument(fixture.state);
+    document.annotations[0].geometry = malformed;
+    const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, document);
+    REQUIRE(restored.annotations.size() == 1);
+    CHECK_FALSE(restored.annotations[0].targetValid);
+    CHECK(annotationWorldLines(restored.annotations[0], scenePickParts(restored)).empty());
+}
+TEST_CASE("annotation bridges remain on the drawn outline under perspective")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = holedSurface();
+    auto perspective = view();
+    perspective.projection[3] = .2f;
+    const auto projection = annotationProjection(scenePickParts(fixture.state), perspective, fixture.target());
+    const auto geometry = projectAnnotation(projection, AnnotationShape::line, {-.7f,-.3f}, {.7f,.3f});
+    const auto id = createAnnotation(fixture.state, fixture.target(), geometry);
+    const auto lines = annotationWorldLines(*findAnnotation(fixture.state, id), scenePickParts(fixture.state));
+    REQUIRE(lines.size() == geometry.segments.size());
+    bool bridge = false;
+    for (size_t i = 0; i < lines.size(); ++i) {
+        if (!geometry.segments[i].endTriangle) { continue; }
+        bridge = true;
+        for (float t : {0.0f, .5f, 1.0f}) {
+            std::array<float, 4> p{0,0,0,1};
+            for (size_t axis = 0; axis < 3; ++axis) { p[axis] = lines[i].a[axis] + t * (lines[i].b[axis] - lines[i].a[axis]); }
+            const auto clip = annotationTransform(geometry.projector, p);
+            CHECK(std::abs(.7f * clip[1] / clip[3] - .3f * clip[0] / clip[3]) < 1e-6f);
+        }
+    }
+    CHECK(bridge);
+}
+TEST_CASE("annotation pointer draws across a hole and rejects moving a main vertex into it")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = holedSurface();
+    AnnotationInteraction interaction; interaction.tool = AnnotationShape::line;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20,140}));
+    moveAnnotationPointer(fixture.state, interaction, {180,60});
+    REQUIRE(interaction.error.empty());
+    CHECK(std::any_of(interaction.preview.geometry.segments.begin(), interaction.preview.geometry.segments.end(),
+        [](const auto& segment) { return segment.endTriangle.has_value(); }));
+    endAnnotationPointer(fixture.state, interaction, true);
+    REQUIRE(fixture.state.annotations.size() == 1);
+    const auto original = fixture.state.annotations[0].geometry;
+    interaction.tool.reset();
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20,140}));
+    moveAnnotationPointer(fixture.state, interaction, {100,100});
+    CHECK_FALSE(interaction.error.empty());
+    endAnnotationPointer(fixture.state, interaction, true);
+    CHECK(fixture.state.annotations[0].geometry == original);
 }
 TEST_CASE("annotation placement honors target and opaque occlusion")
 {
@@ -1002,7 +1187,7 @@ TEST_CASE("surface annotation visibility ignores hidden crossings and detects na
         front.bounds = calculateBounds(front.vertices);
         fixture.state.files.push_back(createUiFileState(fixture.root / "occluder.obj", std::move(front), 1));
         appendDefaultSceneNodesForFiles(fixture.state, 1);
-        CHECK_THROWS_WITH(fixture.geometry(), "Keep the entire outline on the target surface, clear of holes and other objects.");
+        CHECK_THROWS_WITH(fixture.geometry(), "Keep the outline clear of other objects.");
     }
     SUBCASE("a depth crossing can make a different object become frontmost") {
         auto crossing = surface();
@@ -1010,7 +1195,7 @@ TEST_CASE("surface annotation visibility ignores hidden crossings and detects na
         crossing.bounds = calculateBounds(crossing.vertices);
         fixture.state.files.push_back(createUiFileState(fixture.root / "crossing.obj", std::move(crossing), 1));
         appendDefaultSceneNodesForFiles(fixture.state, 1);
-        CHECK_THROWS_WITH(fixture.geometry(), "Keep the entire outline on the target surface, clear of holes and other objects.");
+        CHECK_THROWS_WITH(fixture.geometry(), "Keep every endpoint or corner on the target surface.");
     }
 }
 

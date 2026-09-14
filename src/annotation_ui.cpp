@@ -38,7 +38,7 @@ void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, 
     for (const auto& line : lines) {
         const auto& segment = geometry.segments[segmentIndex++];
         double slopeX = 0, slopeY = 0;
-        if (target && target->mesh) {
+        if (target && target->mesh && !segment.endTriangle) {
             const auto transform = annotationCompose(target->model, vp);
             std::array<std::array<float, 4>, 3> corners;
             for (size_t k = 0; k < 3; ++k) {

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -9,10 +10,12 @@ namespace woby {
 
 enum class AnnotationShape { line, rectangle };
 
-// Both endpoints belong to this source-part triangle. No chord crosses faces.
+// Surface segments use one triangle. Bridges anchor their end on a second
+// source-part triangle, spanning the empty space between two surface rims.
 struct AnnotationSegment {
     uint32_t triangle = 0;
     std::array<float, 3> a{}, b{};
+    std::optional<uint32_t> endTriangle;
     friend bool operator==(const AnnotationSegment&, const AnnotationSegment&) = default;
 };
 
