@@ -377,7 +377,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         : category == DiagnosticCategory::duplicatePoints ? settings.duplicates.showPoints
         : category == DiagnosticCategory::duplicateTriangles ? settings.duplicates.showTriangles
         : category == DiagnosticCategory::winding ? settings.showWinding : settings.showNonManifold;
-    if (ImGui::Checkbox("##show", &visible)) {
+    if (drawVisibilityIconField(name, visible)) {
         if (vertex) { settings.topologyInspection.showNonManifoldVertices = visible; }
         else if (holes) { settings.topologyInspection.showHoles = visible; }
         else if (degenerate) { settings.degenerates.show = visible; }
@@ -386,10 +386,6 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         else if (category == DiagnosticCategory::duplicateTriangles) { settings.duplicates.showTriangles = visible; }
         else if (category == DiagnosticCategory::winding) { settings.showWinding = visible; }
         else { settings.showNonManifold = visible; }
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s", category == DiagnosticCategory::nonManifold || category == DiagnosticCategory::winding
-            ? "Show this edge finding overlay" : "Show this diagnostic overlay");
     }
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     ImGui::TableNextColumn();
@@ -416,11 +412,20 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     ImGui::TableNextColumn();
     if (degenerate) { drawDegenerateSettingsPopup(state, id); }
     if (holes) {
-        if (ImGui::SmallButton("Settings")) { ImGui::OpenPopup("hole_settings"); }
-        setLastItemTooltip("Adjust the maximum size ratio used to detect holes.");
-        if (ImGui::BeginPopup("hole_settings")) {
+        if (drawRenderModeIconButton("settings", "\xef\x80\x93", "Hole detection settings", RenderModeState::off, false)) {
+            ImGui::OpenPopup("hole_settings");
+        }
+        const auto buttonMax = ImGui::GetItemRectMax();
+        ImGui::SetNextWindowPos(ImVec2(buttonMax.x, buttonMax.y + ImGui::GetStyle().ItemSpacing.y),
+            ImGuiCond_Appearing, ImVec2(1, 0));
+        ImGui::SetNextWindowSize(ImVec2(uiSize(360), 0), ImGuiCond_Always);
+        if (ImGui::BeginPopup("hole_settings", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
             auto edited = comparisonSettings(state, id);
-            if (ImGui::InputFloat("Maximum size ratio", &edited.topologyInspection.holeSizeRatioTolerance, 0, 0, "%.6g")) {
+            ImGui::TextUnformatted("Holes");
+            ImGui::Separator();
+            if (ImGui::IsWindowAppearing()) { ImGui::SetKeyboardFocusHere(); }
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
+            if (ImGui::InputFloat("Maximum size ratio", &edited.topologyInspection.holeSizeRatioTolerance, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll)) {
                 setComparisonSettings(state, edited, id);
             }
             ImGui::TextWrapped("Loop bounding-box diagonal / edge-connected component diagonal, inclusive. Larger openings remain boundary findings. Ratios may exceed 1.");
@@ -713,11 +718,11 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
     if (ImGui::BeginTable("Analysis diagnostics", 5 + static_cast<int>(hasA) + static_cast<int>(hasB),
-            ImGuiTableFlags_SizingStretchProp)) {
+            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV)) {
         ImGui::TableSetupColumn("Run", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthStretch);
-        if (hasA) { ImGui::TableSetupColumn("A", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 3); }
-        if (hasB) { ImGui::TableSetupColumn("B", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 3); }
+        if (hasA) { ImGui::TableSetupColumn(hasB ? "Count A" : "Count", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 4); }
+        if (hasB) { ImGui::TableSetupColumn(hasA ? "Count B" : "Count", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 4); }
         ImGui::TableSetupColumn("Show", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("##navigation", ImGuiTableColumnFlags_WidthFixed,
             2 * ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x);

@@ -308,6 +308,110 @@ TEST_CASE("analysis rename normalizes empty input and ignores missing objects")
     CHECK(state.sceneEditRevision == revision);
 }
 
+TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby hole settings popup")
+{
+    ComparisonNameFixture f;
+    bool hasA = true, hasB = false;
+    SUBCASE("one input A") {}
+    SUBCASE("one input B") { hasA = false; hasB = true; }
+    SUBCASE("two inputs") { hasB = true; }
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    const auto part = f.state.files[0].groupSettings[0].objectId;
+    if (hasA) { woby::setComparisonObjects(f.state, {part}, woby::ComparisonSide::a, true, f.id); }
+    if (hasB) { woby::setComparisonObjects(f.state, {part}, woby::ComparisonSide::b, true, f.id); }
+    auto settings = woby::comparisonSettings(f.state, f.id);
+    settings.mode = woby::ComparisonMode::original;
+    woby::setComparisonSettings(f.state, settings, f.id);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    ImGuiTable* diagnostics = nullptr;
+    ImVec2 gear, eye, divider;
+    std::string contents;
+    const auto frame = [&] {
+        ImGui::GetIO().DisplaySize = ImVec2(1200, 1500);
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos(ImVec2(20, 20));
+        ImGui::SetNextWindowSize(ImVec2(900, 1400));
+        ImGui::Begin("Diagnostic controls");
+        ImGui::LogToBuffer();
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        for (auto* window : f.context->Windows) {
+            if (std::string(window->Name).find("comparison_properties") == std::string::npos) { continue; }
+            if (auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
+                diagnostics = table;
+                const float rowHeight = table->RowPosY2 - table->RowPosY1;
+                const float holeY = table->RowPosY1 - 5 * rowHeight
+                    + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize() * 0.5f;
+                gear = ImVec2(table->Columns[table->ColumnsCount - 1].WorkMinX
+                    + woby::renderModeButtonSize() * 0.5f, holeY);
+                eye = ImVec2(table->Columns[table->ColumnsCount - 3].WorkMinX
+                    + woby::renderModeButtonSize() * 0.5f, holeY);
+                divider = ImVec2(table->Columns[2].MaxX,
+                    table->OuterRect.Min.y + ImGui::GetTextLineHeight() * 0.5f);
+            }
+        }
+        ImGui::End();
+        woby::dismissPopupOnEscape();
+        ImGui::EndFrame();
+    };
+    const auto click = [&](ImVec2 position) {
+        auto& io = ImGui::GetIO();
+        io.AddMousePosEvent(position.x, position.y); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    };
+    for (int warmup = 0; warmup < 5; ++warmup) { frame(); }
+    REQUIRE(diagnostics);
+    CHECK(contents.find(hasA && hasB ? "Count A" : "Count") != std::string::npos);
+    CHECK((contents.find("Count B") != std::string::npos) == (hasA && hasB));
+    CHECK(contents.find("\xef\x80\x93") != std::string::npos); // Settings glyph.
+    REQUIRE((diagnostics->Flags & ImGuiTableFlags_Resizable) != 0);
+    auto& io = ImGui::GetIO();
+    const auto original = woby::comparisonSettings(f.state, f.id);
+    click(eye);
+    auto hidden = original;
+    hidden.topologyInspection.showHoles = !hidden.topologyInspection.showHoles;
+    CHECK(woby::comparisonSettings(f.state, f.id) == hidden);
+    click(eye);
+    CHECK(woby::comparisonSettings(f.state, f.id) == original);
+    const auto revision = f.state.sceneEditRevision;
+    const auto openingGear = gear;
+    click(gear);
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    const auto* popup = f.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    CHECK(popup->Pos.y > openingGear.y);
+    CHECK(popup->Pos.y < openingGear.y + woby::renderModeButtonSize());
+    CHECK(popup->Pos.x + popup->Size.x == doctest::Approx(openingGear.x + woby::renderModeButtonSize() * 0.5f).epsilon(0.002));
+    CHECK(popup->Size.x == doctest::Approx(woby::uiSize(360)));
+    CHECK(popup->Pos.y + popup->Size.y < io.DisplaySize.y);
+    CHECK(contents.find("Maximum size ratio") != std::string::npos);
+    CHECK(f.state.sceneEditRevision == revision);
+    REQUIRE(f.context->InputTextState.ID != 0);
+    io.AddInputCharactersUTF8("0.125"); frame();
+    io.AddKeyEvent(ImGuiKey_Enter, true); frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false); frame(); frame();
+    CHECK(woby::comparisonSettings(f.state, f.id).topologyInspection.holeSizeRatioTolerance == doctest::Approx(0.125));
+    io.AddKeyEvent(ImGuiKey_Escape, true); frame();
+    io.AddKeyEvent(ImGuiKey_Escape, false); frame(); frame();
+    CHECK(f.context->OpenPopupStack.empty());
+    const float countWidth = diagnostics->Columns[2].WidthGiven;
+    io.AddMousePosEvent(divider.x, divider.y); frame(); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    CHECK(diagnostics->ResizedColumn == 2);
+    io.AddMousePosEvent(divider.x + 30, divider.y); frame(); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    CHECK(diagnostics->Columns[2].WidthGiven > countWidth + 20);
+}
+
 TEST_CASE("diagnostic settings popup edits only its analysis and persists without inline editors")
 {
     ComparisonNameFixture f;
