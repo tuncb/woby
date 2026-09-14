@@ -241,6 +241,13 @@ woby_compile_bgfx_shader(woby
 )
 
 woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/annotation.vert.sc"
+    TYPE vertex
+    OUTPUT_NAME vs_annotation
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
+)
+
+woby_compile_bgfx_shader(woby
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/color.frag.sc"
     TYPE fragment
     OUTPUT_NAME fs_color

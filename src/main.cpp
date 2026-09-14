@@ -2214,6 +2214,7 @@ int main(int argc, char** argv)
         const auto shaderStart = woby::PerformanceClock::now();
         bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
+        bgfx::ProgramHandle annotationProgram = woby::loadProgram(assets, "vs_annotation.bin", "fs_color.bin");
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
         bgfx::UniformHandle colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
         bgfx::UniformHandle pointParamsUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4);
@@ -3558,7 +3559,7 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
             submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
-            woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, colorProgram, colorUniform, &annotationInteraction);
+            woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, annotationProgram, colorUniform, &annotationInteraction);
             const float annotationMessageBottom = woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
                 static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
                 scenePointerAvailable && !cameraInteractionActive);
@@ -3586,6 +3587,7 @@ int main(int argc, char** argv)
                     masterVertexPointSize,
                     meshProgram,
                     colorProgram,
+                    annotationProgram,
                     pointSpriteProgram,
                     colorUniform,
                     pointParamsUniform,
@@ -3669,6 +3671,7 @@ int main(int argc, char** argv)
         bgfx::destroy(colorUniform);
         bgfx::destroy(pointSpriteProgram);
         bgfx::destroy(colorProgram);
+        bgfx::destroy(annotationProgram);
         bgfx::destroy(meshProgram);
         destroySceneScreenshotFramebuffer(sceneScreenshot);
         destroyModelRuntimes(runtimes);

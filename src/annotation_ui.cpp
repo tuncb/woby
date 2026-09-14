@@ -31,8 +31,6 @@ void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, 
     bgfx::UniformHandle colorUniform)
 {
     const auto vp = annotationCompose(view.view, view.projection);
-    PickMatrix inverse;
-    bx::mtxInverse(inverse.data(), vp.data());
     std::vector<std::array<float, 3>> vertices;
     size_t segmentIndex = 0;
     for (const auto& line : lines) {
@@ -90,7 +88,9 @@ void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, 
             const float sign = i % 2 == 0 ? 1.0f : -1.0f;
             p[0] += sign * ox * p[3]; p[1] += sign * oy * p[3];
             p[2] += static_cast<float>(sign * (slopeX * ox + slopeY * oy) - 1e-6) * p[3];
-            p = annotationTransform(inverse, p);
+            // Keep the expanded stroke in NDC. Inverting the combined view and
+            // projection loses precision on large scenes with small near planes,
+            // shifting the rendered stroke away from its handles and pick edges.
             corners[i] = {p[0] / p[3], p[1] / p[3], p[2] / p[3]};
         }
         for (size_t i : {0u, 1u, 2u, 2u, 1u, 3u}) { vertices.push_back(corners[i]); }
@@ -101,9 +101,6 @@ void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, 
     bgfx::TransientVertexBuffer buffer;
     bgfx::allocTransientVertexBuffer(&buffer, count, layout);
     std::memcpy(buffer.data, vertices.data(), vertices.size() * sizeof(vertices.front()));
-    PickMatrix identity;
-    bx::mtxIdentity(identity.data());
-    bgfx::setTransform(identity.data());
     bgfx::setVertexBuffer(0, &buffer);
     bgfx::setUniform(colorUniform, settings.color.data());
     bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL

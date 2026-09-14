@@ -232,6 +232,7 @@ void submitSceneScreenshotCapture(
     float masterVertexPointSize,
     bgfx::ProgramHandle meshProgram,
     bgfx::ProgramHandle colorProgram,
+    bgfx::ProgramHandle annotationProgram,
     bgfx::ProgramHandle pointSpriteProgram,
     bgfx::UniformHandle colorUniform,
     bgfx::UniformHandle pointParamsUniform,
@@ -368,7 +369,7 @@ void submitSceneScreenshotCapture(
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
         submitSceneAnnotations(screenshotHelperView, ui, scenePickView(camera, ui.upAxis, sceneBounds,
-            sceneWidth, screenshot.height, homogeneousDepth, 1), helperLayout, colorProgram, colorUniform);
+            sceneWidth, screenshot.height, homogeneousDepth, 1), helperLayout, annotationProgram, colorUniform);
     }
     if (annotations || scaleOverlay) {
         // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.

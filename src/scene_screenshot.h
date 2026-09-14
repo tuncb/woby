@@ -43,6 +43,7 @@ void submitSceneScreenshotCapture(
     float masterVertexPointSize,
     bgfx::ProgramHandle meshProgram,
     bgfx::ProgramHandle colorProgram,
+    bgfx::ProgramHandle annotationProgram,
     bgfx::ProgramHandle pointSpriteProgram,
     bgfx::UniformHandle colorUniform,
     bgfx::UniformHandle pointParamsUniform,
