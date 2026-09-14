@@ -48,6 +48,7 @@ SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen, const 
         if (!update.message.empty()) { ImGui::TextWrapped("%s", update.message.c_str()); }
         ImGui::BeginDisabled(updateBusy(update) || update.closeRequested);
         if (ImGui::Button("Check for updates")) { result.updateCommand = UpdateCommand::check; }
+        setLastItemTooltip("Check whether a newer Woby release is available.");
         ImGui::EndDisabled();
         if (!update.managedDeployment) {
             ImGui::TextWrapped("This build cannot install updates. Install a portable release to enable updating.");
@@ -57,6 +58,7 @@ SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen, const 
             if (state.isDirty) { ImGui::TextWrapped("Save your scene changes before installing."); }
             ImGui::BeginDisabled(!canInstallUpdate(update, state.isDirty));
             if (ImGui::Button("Install update and restart")) { result.updateCommand = UpdateCommand::install; }
+            setLastItemTooltip("Install the latest release and restart Woby. Save your scene first.");
             ImGui::EndDisabled();
         }
         ImGui::Spacing();
@@ -69,6 +71,7 @@ SettingsDialogResult drawSettingsDialog(UiState& state, bool requestOpen, const 
         if (ImGui::Button("Close", ImVec2(uiSize(80.0f), 0.0f)) || escape) {
             ImGui::CloseCurrentPopup();
         }
+        setLastItemTooltip("Close settings and return to the scene (Esc).");
         ImGui::EndDisabled();
         ImGui::EndPopup();
     }

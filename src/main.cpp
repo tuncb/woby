@@ -78,6 +78,7 @@ using woby::drawTriStateMasterIconButton;
 using woby::drawTriStateVisibilityButton;
 using woby::drawVisibilityButton;
 using woby::drawRemoveButton;
+using woby::setLastItemTooltip;
 
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
 constexpr bgfx::ViewId clearView = 0;
@@ -479,13 +480,6 @@ void updateAppWindowTitle(
     const std::string& instanceId)
 {
     SDL_SetWindowTitle(window, appWindowTitle(currentScenePath, isDirty, instanceId).c_str());
-}
-
-void setLastItemTooltip(const char* text)
-{
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s", text);
-    }
 }
 
 void drawClippedTextItem(const char* id, const char* text, float width, bool selected)
@@ -1994,6 +1988,7 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
             if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                 backgroundLoad.cancelRequested.store(true);
             }
+            setLastItemTooltip("Cancel loading (Esc).");
         } else if (finalizingActive) {
             ImGui::TextUnformatted("Finalizing GPU resources...");
             if (gpuFinalize.nextFileIndex < gpuFinalize.files.size()) {
@@ -2736,8 +2731,10 @@ int main(int argc, char** argv)
                     newScene();
                     ImGui::CloseCurrentPopup();
                 }
+                setLastItemTooltip("Discard unsaved changes and create an empty scene.");
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) { ImGui::CloseCurrentPopup(); }
+                setLastItemTooltip("Keep the current scene and return to it (Esc).");
                 ImGui::EndPopup();
             }
             if (requestDirtyOpenWarning) {
@@ -2769,11 +2766,13 @@ int main(int argc, char** argv)
                     pendingDirtyOpenScenePath.reset();
                     ImGui::CloseCurrentPopup();
                 }
+                setLastItemTooltip("Discard unsaved changes and open the selected scene.");
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                     pendingDirtyOpenScenePath.reset();
                     ImGui::CloseCurrentPopup();
                 }
+                setLastItemTooltip("Keep the current scene and cancel opening another scene (Esc).");
                 ImGui::EndPopup();
             }
             if (requestDirtyQuitWarning) {
@@ -2791,10 +2790,12 @@ int main(int argc, char** argv)
                     woby::requestQuit(ui);
                     ImGui::CloseCurrentPopup();
                 }
+                setLastItemTooltip("Discard unsaved changes and exit Woby.");
                 ImGui::SameLine();
                 if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
                     ImGui::CloseCurrentPopup();
                 }
+                setLastItemTooltip("Keep Woby open with the current scene (Esc).");
                 ImGui::EndPopup();
             }
             if (drawProcessingDialog(backgroundLoad, gpuFinalize)) {
@@ -2867,6 +2868,7 @@ int main(int argc, char** argv)
                             newScene();
                         }
                     }
+                    setLastItemTooltip("Create an empty scene. Prompts before discarding unsaved changes.");
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
@@ -2892,12 +2894,14 @@ int main(int argc, char** argv)
                     if (ImGui::Button("Add models...##add_model_file", ImVec2(actionWidth, 0.0f))) {
                         showModelFileDialog(window.get(), modelFileDialogState);
                     }
+                    setLastItemTooltip("Choose model files to add to the current scene.");
                     ImGui::EndDisabled();
                     ImGui::SameLine();
                     ImGui::BeginDisabled(fileActionsDisabled());
                     if (ImGui::Button("Add model folder...##add_model_folder_tree", ImVec2(actionWidth, 0.0f))) {
                         showModelFolderTreeDialog(window.get(), modelFileDialogState);
                     }
+                    setLastItemTooltip("Add models from a folder and its subfolders, preserving the folder tree.");
                     ImGui::EndDisabled();
                     ImGui::Separator();
                     const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
@@ -3114,6 +3118,7 @@ int main(int argc, char** argv)
                     if (ImGui::Button("Add models", ImVec2(-1.0f, 0.0f))) {
                         showModelFileDialog(window.get(), modelFileDialogState);
                     }
+                    setLastItemTooltip("Choose model files to add to the current scene.");
                     ImGui::EndDisabled();
                     ImGui::BeginDisabled(fileActionsDisabled());
                     if (ImGui::Button("Open scene", ImVec2(-1.0f, 0.0f))) {

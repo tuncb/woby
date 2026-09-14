@@ -640,6 +640,72 @@ TEST_CASE("Escape dismisses color pickers and dropdowns without changing their v
     }
 }
 
+TEST_CASE("button hints remain visible when disabled and preserve click behavior")
+{
+    for (const bool disabled : {false, true}) {
+        for (int kind = 0; kind < 4; ++kind) {
+            CAPTURE(disabled);
+            CAPTURE(kind);
+            KeyboardFixture fixture;
+            ImVec2 button;
+            int clicks = 0;
+            const auto tooltipVisible = []() {
+                for (const auto* window : ImGui::GetCurrentContext()->Windows) {
+                    if (window->Active && !window->Hidden && (window->Flags & ImGuiWindowFlags_Tooltip) != 0) { return true; }
+                }
+                return false;
+            };
+            const auto frame = [&]() {
+                ImGui::NewFrame();
+                ImGui::SetNextWindowPos(ImVec2(0, 0));
+                ImGui::SetNextWindowSize(ImVec2(500, 500));
+                ImGui::Begin("Buttons", nullptr, ImGuiWindowFlags_NoMove);
+                bool clicked = false;
+                constexpr const char* hint = "Restore 100% opacity.";
+                if (kind == 0) {
+                    ImGui::BeginDisabled(disabled);
+                    clicked = ImGui::Button("Restore");
+                    woby::setLastItemTooltip(hint);
+                    ImGui::EndDisabled();
+                } else if (kind == 1) {
+                    clicked = woby::drawRenderModeIconButton("render", "R", hint, woby::RenderModeState::off, disabled);
+                } else if (kind == 2) {
+                    ImGui::BeginDisabled(disabled);
+                    clicked = woby::drawVisibilityButton("visible", true, "part");
+                    ImGui::EndDisabled();
+                } else {
+                    ImGui::BeginDisabled(disabled);
+                    clicked = woby::drawResetIconButton("reset", hint);
+                    ImGui::EndDisabled();
+                }
+                button = ImGui::GetItemRectMin();
+                button.x += 8.0f;
+                button.y += 8.0f;
+                if (clicked) { ++clicks; }
+                ImGui::End();
+                ImGui::EndFrame();
+            };
+            auto& io = ImGui::GetIO();
+            frame();
+            frame();
+            CHECK_FALSE(tooltipVisible());
+            io.AddMousePosEvent(button.x, button.y);
+            frame();
+            frame();
+            CHECK(tooltipVisible());
+            CHECK(clicks == 0);
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+            frame();
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            frame();
+            CHECK(clicks == (disabled ? 0 : 1));
+            io.AddMousePosEvent(450, 450);
+            frame();
+            CHECK_FALSE(tooltipVisible());
+        }
+    }
+}
+
 TEST_CASE("information icons show full hints on hover without click behavior")
 {
     KeyboardFixture fixture;

@@ -438,6 +438,7 @@ bool drawSceneScreenshotOptions(UiState& state)
         ImGui::EndDisabled();
         if (options != initial) { setScreenshotSettings(state, options); }
         if (ImGui::Button("Save PNG...")) { save = true; ImGui::CloseCurrentPopup(); }
+        setLastItemTooltip("Choose where to save a PNG screenshot with these display options.");
         ImGui::EndPopup();
     }
     return save;

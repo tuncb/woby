@@ -13,6 +13,8 @@ inline constexpr const char* verticesIcon = "\xef\x86\x92";
 float uiSize(float value);
 float renderModeButtonSize();
 float informationIconSize();
+// Call immediately after a control; disabled controls still explain their action.
+void setLastItemTooltip(const char* text);
 // Draw last in a row; reserve its size plus ItemSpacing.x beside stretch controls.
 void drawInformationIcon(const char* id, const char* title, const char* text);
 bool drawInformationHeader(const char* label, const char* title, const char* text);

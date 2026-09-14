@@ -259,8 +259,9 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     if (members.empty()) {
         ImGui::TextDisabled("No input");
     } else if (!current.issue.empty()) { ImGui::TextWrapped("%s", current.issue.c_str()); }
-    if (members.size() > current.partCount && ImGui::SmallButton("Remove missing references")) {
-        removeMissingComparisonParts(state, side, id);
+    if (members.size() > current.partCount) {
+        if (ImGui::SmallButton("Remove missing references")) { removeMissingComparisonParts(state, side, id); }
+        setLastItemTooltip("Remove references to parts that are no longer in the scene from this input.");
     }
     for (const auto& root : roots) {
         drawComparisonTreeNode(state, side, root, id);
@@ -291,6 +292,7 @@ void drawDegenerateSettingsPopup(UiState& state, SceneObjectId id)
         ImGui::TextWrapped("Collapsed and collinear triangles are always included. Changes apply to this analysis and are saved with the scene.");
         if (settings != initial) { setComparisonSettings(state, settings, id); }
         if (ImGui::Button("Close")) { ImGui::CloseCurrentPopup(); }
+        setLastItemTooltip("Close degenerate triangle settings. Changes apply immediately.");
         ImGui::EndPopup();
     }
 }
@@ -415,6 +417,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     if (degenerate) { drawDegenerateSettingsPopup(state, id); }
     if (holes) {
         if (ImGui::SmallButton("Settings")) { ImGui::OpenPopup("hole_settings"); }
+        setLastItemTooltip("Adjust the maximum size ratio used to detect holes.");
         if (ImGui::BeginPopup("hole_settings")) {
             auto edited = comparisonSettings(state, id);
             if (ImGui::InputFloat("Maximum size ratio", &edited.topologyInspection.holeSizeRatioTolerance, 0, 0, "%.6g")) {
@@ -461,9 +464,11 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
     }
     ImGui::BeginDisabled(page == 0);
     if (ImGui::Button("Previous page")) { choose((page-1)*pageSize); }
+    setLastItemTooltip("Show the previous page and select its first duplicate group.");
     ImGui::EndDisabled(); ImGui::SameLine(); ImGui::Text("%zu / %zu", page+1, pages); ImGui::SameLine();
     ImGui::BeginDisabled(page+1 == pages);
     if (ImGui::Button("Next page")) { choose((page+1)*pageSize); }
+    setLastItemTooltip("Show the next page and select its first duplicate group.");
     ImGui::EndDisabled();
     if (comparison->diagnosticFocus && comparison->diagnosticFocus->index < result.findings.size()) {
         const auto& finding = result.findings[comparison->diagnosticFocus->index];
@@ -514,9 +519,11 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
     }
     ImGui::BeginDisabled(page == 0);
     if (ImGui::Button("Previous page")) { choose((page-1)*pageSize); }
+    setLastItemTooltip("Show the previous page and select its first degenerate triangle.");
     ImGui::EndDisabled(); ImGui::SameLine(); ImGui::Text("%zu / %zu", page+1, pages); ImGui::SameLine();
     ImGui::BeginDisabled(page+1 == pages);
     if (ImGui::Button("Next page")) { choose((page+1)*pageSize); }
+    setLastItemTooltip("Show the next page and select its first degenerate triangle.");
     ImGui::EndDisabled();
     if (comparison->diagnosticFocus && comparison->diagnosticFocus->index < result.findings.size()) {
         const auto& finding = result.findings[comparison->diagnosticFocus->index];
@@ -564,9 +571,11 @@ void drawVertexAndHoleFindings(UiState& state, const ComparisonRuntime& runtime,
     ImGui::PushID("vertex_hole_findings");
     ImGui::BeginDisabled(page == 0);
     if (ImGui::SmallButton("Previous page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*pageSize, id); }
+    setLastItemTooltip("Show the previous page and select its first finding.");
     ImGui::EndDisabled(); ImGui::SameLine();
     ImGui::BeginDisabled((page+1)*pageSize >= count);
     if (ImGui::SmallButton("Next page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*pageSize, id); }
+    setLastItemTooltip("Show the next page and select its first finding.");
     ImGui::EndDisabled();
     for (size_t i = page*pageSize; i < std::min(count, (page+1)*pageSize); ++i) {
         std::string label;
@@ -625,9 +634,11 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     ImGui::Text("Edges %zu-%zu of %zu", page*pageSize+1, std::min(findings.size(), (page+1)*pageSize), findings.size());
     ImGui::BeginDisabled(page == 0);
     if (ImGui::SmallButton("Previous page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*pageSize, id); }
+    setLastItemTooltip("Show the previous page and select its first edge.");
     ImGui::EndDisabled(); ImGui::SameLine();
     ImGui::BeginDisabled((page+1)*pageSize >= findings.size());
     if (ImGui::SmallButton("Next page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*pageSize, id); }
+    setLastItemTooltip("Show the next page and select its first edge.");
     ImGui::EndDisabled();
     for (size_t i = page*pageSize; i < std::min(findings.size(), (page+1)*pageSize); ++i) {
         const auto& finding = findings[i];
@@ -684,10 +695,12 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     if (ImGui::RadioButton("A##diagnostics", settings.diagnosticSide == ComparisonSide::a)) {
         settings.diagnosticSide = ComparisonSide::a;
     }
+    setLastItemTooltip("Inspect mesh diagnostics for input A.");
     ImGui::SameLine();
     if (ImGui::RadioButton("B##diagnostics", settings.diagnosticSide == ComparisonSide::b)) {
         settings.diagnosticSide = ComparisonSide::b;
     }
+    setLastItemTooltip("Inspect mesh diagnostics for input B.");
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     int topologyMode = static_cast<int>(settings.topologyMode);
     if (ImGui::Combo("Topology", &topologyMode, "Automatic\0Original indices\0Exact positions\0")) {
@@ -743,6 +756,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     drawVertexAndHoleFindings(state, runtime, current, id);
     ImGui::BeginDisabled(!current);
     if (ImGui::Button("Full result")) { frameComparison(state, id); }
+    setLastItemTooltip("Clear the focused finding and fit the full analysis result in the viewer.");
     ImGui::EndDisabled();
 }
 
@@ -1144,6 +1158,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     membershipTree(state, ComparisonSide::b, id);
     ImGui::Separator();
     if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
+    setLastItemTooltip("Exchange inputs A and B while keeping the measurement direction.");
     ImGui::SameLine();
     drawInformationIcon("swap_info", "Swap inputs", "Swap exchanges assignments; measurement direction stays the same.");
     auto settings = comparisonSettings(state, id);
@@ -1182,8 +1197,10 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
                 + (settings.distanceOnOriginal ? b.sourceNames : a.sourceNames);
             drawInformationIcon("direction_info", "Measurement direction", directionHint.c_str());
             if (ImGui::RadioButton("A -> B", settings.distanceOnOriginal)) { settings.distanceOnOriginal = true; }
+            setLastItemTooltip("Measure distances from vertices on A to the nearest surface on B.");
             ImGui::SameLine();
             if (ImGui::RadioButton("B -> A", !settings.distanceOnOriginal)) { settings.distanceOnOriginal = false; }
+            setLastItemTooltip("Measure distances from vertices on B to the nearest surface on A.");
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
             ImGui::InputFloat("Tolerance", &settings.tolerance, 0, 0, "%.5g");
             ImGui::SetNextItemWidth(ImGui::GetFontSize() * 7.0f);
@@ -1193,6 +1210,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
                 const auto& surface = settings.distanceOnOriginal ? runtime.result.original : runtime.result.repaired;
                 settings.colorRange = std::max(static_cast<float>(surface.maximum), settings.tolerance);
             }
+            setLastItemTooltip("Fit the color maximum to the largest measured distance, with tolerance as the minimum.");
             ImGui::EndDisabled();
 
         }
@@ -1206,8 +1224,10 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             if (both) {
                 ImGui::TextUnformatted("Heatmap surface");
                 if (ImGui::RadioButton("A##quality", settings.quality.onOriginal)) { settings.quality.onOriginal = true; }
+                setLastItemTooltip("Show the surface quality heatmap on input A.");
                 ImGui::SameLine();
                 if (ImGui::RadioButton("B##quality", !settings.quality.onOriginal)) { settings.quality.onOriginal = false; }
+                setLastItemTooltip("Show the surface quality heatmap on input B.");
             }
         }
         if (both && settings.mode == ComparisonMode::overlay)
@@ -1255,6 +1275,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             {
                 runtime.attemptedSignature = 0;
             }
+            setLastItemTooltip("Run this analysis again after the previous attempt failed.");
         }
         else
         {
@@ -1569,6 +1590,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
                 selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
             }
             if (selected) { drawSceneItemOutline(); }
+            setLastItemTooltip((comparison.name + "\nSelect this analysis. Double-click to rename.").c_str());
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)
                 && !ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) {
                 beginRename(id);

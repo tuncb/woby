@@ -16,6 +16,13 @@ constexpr const char* mixedStateIcon = "\xef\x81\xa8";
 float uiSize(float value) { return value * ImGui::GetStyle().FontScaleMain; }
 float renderModeButtonSize() { return uiSize(28.0f); }
 
+void setLastItemTooltip(const char* text)
+{
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("%s", text);
+    }
+}
+
 RenderModeState renderModeState(size_t enabledCount, size_t totalCount)
 {
     if (totalCount > 0u && enabledCount == totalCount) {
@@ -108,9 +115,7 @@ bool drawRenderModeIconButton(
     if (disabled) {
         ImGui::EndDisabled();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s", tooltip);
-    }
+    setLastItemTooltip(tooltip);
 
     return changed;
 }
@@ -305,9 +310,7 @@ bool drawVisibilityIconButton(
     if (disabled) {
         ImGui::EndDisabled();
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("%s", tooltip);
-    }
+    setLastItemTooltip(tooltip);
 
     return changed;
 }
@@ -392,7 +395,7 @@ bool drawResetIconButton(const char* id, const char* tooltip)
     const std::string label = std::string("\xef\x83\xa2##") + id;
     const float size = ImGui::GetFrameHeight();
     const bool pressed = ImGui::Button(label.c_str(), ImVec2(size, size));
-    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s", tooltip); }
+    setLastItemTooltip(tooltip);
     return pressed;
 }
 
