@@ -22,6 +22,56 @@ namespace woby
 {
 namespace
 {
+enum class ComparisonActivity { idle, queued, calculating, failed };
+
+ComparisonActivity comparisonActivity(const UiState& state, const ComparisonRuntime& runtime, SceneObjectId id)
+{
+    if (!canInspectComparison(state, id) || !comparisonSettings(state, id).enabled
+        || comparisonResultsReady(runtime, state, id)) { return ComparisonActivity::idle; }
+    const auto signature = comparisonGeometrySignature(state, id);
+    if (!runtime.error.empty() && runtime.attemptedSignature == signature) { return ComparisonActivity::failed; }
+    return runtime.worker.valid() && runtime.workerSignature == signature && !runtime.stop.stop_requested()
+        ? ComparisonActivity::calculating : ComparisonActivity::queued;
+}
+
+void drawCalculationSpinner()
+{
+    const float size = ImGui::GetTextLineHeight();
+    const auto position = ImGui::GetCursorScreenPos();
+    const float radius = size * 0.35f;
+    const float angle = static_cast<float>(std::fmod(ImGui::GetTime() * 5.0, 6.283185307));
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->PathArcTo({position.x + size * 0.5f, position.y + size * 0.5f}, radius,
+        angle, angle + 4.7f, 24);
+    draw->PathStroke(ImGui::GetColorU32(ImGuiCol_Text), 0, std::max(1.0f, size * 0.1f));
+    ImGui::Dummy({size, size});
+}
+
+void drawComparisonActivity(const UiState& state, ComparisonRuntime& runtime, SceneObjectId id)
+{
+    // Reserve one row even when idle so finishing work does not move the editor or its scroll position.
+    if (ImGui::BeginChild("comparison_activity", {0, ImGui::GetFrameHeight()}, ImGuiChildFlags_None,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
+        const auto activity = comparisonActivity(state, runtime, id);
+        if (activity == ComparisonActivity::calculating || activity == ComparisonActivity::queued) {
+            ImGui::AlignTextToFramePadding();
+            drawCalculationSpinner();
+            ImGui::SameLine();
+            ImGui::TextUnformatted(activity == ComparisonActivity::calculating ? "Calculating analysis..." : "Queued...");
+        } else if (activity == ComparisonActivity::failed) {
+            if (ImGui::Button("Retry")) {
+                runtime.attemptedSignature = 0;
+                runtime.error.clear();
+            }
+            setLastItemTooltip("Run this analysis again after the previous attempt failed.");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "Analysis failed");
+            setLastItemTooltip(runtime.error.c_str());
+        }
+    }
+    ImGui::EndChild();
+}
+
 void destroySurface(ComparisonGpuSurface &gpu)
 {
     for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.boundaries, gpu.nonManifold, gpu.winding,
@@ -339,7 +389,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
         if (!enabled) { ImGui::TextDisabled("Off"); }
-        else if (!current) { ImGui::TextDisabled("%s", runtime.error.empty() ? "..." : "Failed"); }
+        else if (!current) { ImGui::TextDisabled("%s", comparisonActivity(state, runtime, id) == ComparisonActivity::failed ? "Failed" : "..."); }
         else if (degenerate) {
             const auto& result = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).degenerates;
             if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
@@ -680,6 +730,13 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     bool hasA, bool hasB, SceneObjectId id)
 {
     ImGui::TextUnformatted("Diagnostics");
+    const auto activity = comparisonActivity(state, runtime, id);
+    if (activity == ComparisonActivity::queued || activity == ComparisonActivity::calculating) {
+        ImGui::SameLine();
+        drawCalculationSpinner();
+        ImGui::SameLine();
+        ImGui::TextUnformatted("Updating...");
+    }
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
         "Topology is inspected separately within each source file. Automatic uses original indices for indexed input and exact positions for STL. "
@@ -1273,19 +1330,6 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const bool current = comparisonResultsReady(runtime, state, id);
     if (!current)
     {
-        if (!runtime.error.empty() && runtime.attemptedSignature == comparisonGeometrySignature(state, id))
-        {
-            ImGui::TextWrapped("%s", runtime.error.c_str());
-            if (ImGui::Button("Retry analysis"))
-            {
-                runtime.attemptedSignature = 0;
-            }
-            setLastItemTooltip("Run this analysis again after the previous attempt failed.");
-        }
-        else
-        {
-            ImGui::TextUnformatted("Computing analysis...");
-        }
         return;
     }
     if (settings.mode == ComparisonMode::surfaceQuality) {
@@ -1327,6 +1371,7 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
     if (!comparison) { return; }
     const auto id = comparison->objectId;
     ImGui::PushID(std::to_string(id).c_str());
+    drawComparisonActivity(state, runtimes.objects[id], id);
     if (ImGui::BeginChild("comparison_properties")) {
         drawComparisonContents(state, runtimes.objects[id], id);
     }

@@ -87,7 +87,7 @@ struct ComparisonNameFixture {
 };
 } // namespace
 
-TEST_CASE("analysis properties show computing only while the result is pending")
+TEST_CASE("analysis properties distinguish queued calculating failed and inactive results")
 {
     ComparisonNameFixture f;
     woby::Mesh mesh;
@@ -103,13 +103,53 @@ TEST_CASE("analysis properties show computing only while the result is pending")
     REQUIRE(woby::canInspectComparison(f.state, f.id));
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
-    bool computing = true;
-    SUBCASE("pending") {}
+    std::promise<woby::MeshComparison> pending;
+    const char* status = "Queued...";
+    bool updating = true;
+    SUBCASE("queued") {}
+    SUBCASE("calculating") {
+        runtime.worker = pending.get_future();
+        runtime.workerSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        status = "Calculating analysis...";
+    }
+    SUBCASE("obsolete worker leaves new work queued") {
+        runtime.worker = pending.get_future();
+        runtime.workerSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
+    }
+    SUBCASE("canceled worker leaves new work queued") {
+        runtime.worker = pending.get_future();
+        runtime.workerSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.stop.request_stop();
+    }
+    SUBCASE("failed") {
+        runtime.error = "Test analysis failure";
+        runtime.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        status = "Analysis failed";
+        updating = false;
+    }
+    SUBCASE("obsolete error does not report failure") {
+        runtime.error = "Old failure";
+        runtime.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
+    }
+    SUBCASE("disabled") {
+        auto settings = woby::comparisonSettings(f.state, f.id);
+        settings.enabled = false;
+        woby::setComparisonSettings(f.state, settings, f.id);
+        status = "";
+        updating = false;
+    }
+    SUBCASE("invalid inputs") {
+        woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
+            woby::ComparisonSide::a, false, f.id);
+        status = "";
+        updating = false;
+    }
     SUBCASE("ready") {
         runtime.ready = true;
         runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
         runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
-        computing = false;
+        status = "";
+        updating = false;
     }
     SUBCASE("new quality view waits for its missing stage") {
         runtime.ready = true;
@@ -140,7 +180,82 @@ TEST_CASE("analysis properties show computing only while the result is pending")
     CHECK(contents.find("Result position") != std::string::npos);
     CHECK(contents.find("Frame result") == std::string::npos);
     CHECK(contents.find("Result ready") == std::string::npos);
-    CHECK((contents.find("Computing analysis...") != std::string::npos) == computing);
+    for (const auto* label : {"Queued...", "Calculating analysis...", "Analysis failed"}) {
+        CHECK((contents.find(label) != std::string::npos) == (std::string(status) == label));
+    }
+    CHECK((contents.find("Updating...") != std::string::npos) == updating);
+    CHECK((contents.find("Retry") != std::string::npos) == (std::string(status) == "Analysis failed"));
+}
+
+TEST_CASE("analysis status stays fixed while scrolling and retry preserves the editor position")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
+        woby::ComparisonSide::a, true, f.id);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    ImGuiWindow* activity = nullptr;
+    ImGuiWindow* editor = nullptr;
+    std::string contents;
+    const auto frame = [&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({500, 350});
+        ImGui::Begin("Scrolling analysis properties");
+        ImGui::LogToBuffer();
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        for (auto* window : f.context->Windows) {
+            if (std::string(window->Name).find("comparison_activity") != std::string::npos) { activity = window; }
+            if (std::string(window->Name).find("comparison_properties") != std::string::npos) { editor = window; }
+        }
+        ImGui::End();
+        ImGui::EndFrame();
+    };
+    frame(); frame();
+    REQUIRE(activity);
+    REQUIRE(editor);
+    REQUIRE(editor->ScrollMax.y > 100);
+    const auto statusY = activity->Pos.y;
+    const auto editorY = editor->Pos.y;
+    ImGui::SetScrollY(editor, 100);
+    frame(); frame();
+    CHECK(editor->Scroll.y == doctest::Approx(100));
+    CHECK(activity->Pos.y == statusY);
+    CHECK(activity->Scroll.y == 0);
+    CHECK(contents.find("Queued...") != std::string::npos);
+
+    runtime.error = "Test failure";
+    runtime.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id);
+    frame();
+    CHECK(contents.find("Analysis failed") != std::string::npos);
+    auto& io = ImGui::GetIO();
+    io.AddMousePosEvent(activity->Pos.x + 15, activity->Pos.y + activity->Size.y * 0.5f); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
+    CHECK(runtime.error.empty());
+    CHECK(runtime.attemptedSignature == 0);
+    CHECK(contents.find("Queued...") != std::string::npos);
+    CHECK(editor->Scroll.y == doctest::Approx(100));
+
+    runtime.ready = true;
+    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+    frame(); frame();
+    CHECK(contents.find("Queued...") == std::string::npos);
+    CHECK(contents.find("Updating...") == std::string::npos);
+    CHECK(activity->Pos.y == statusY);
+    CHECK(editor->Pos.y == editorY);
+    CHECK(editor->Scroll.y == doctest::Approx(100));
 }
 
 TEST_CASE("new analyses use unique numbered names and preserve existing names")
