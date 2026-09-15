@@ -35,3 +35,9 @@ Render code should only draw from the already-updated state; it should not chang
 
 - Use procedural programming style. Structs + free functions.
 - No inheritance, no private or protected members.
+
+# UI rules
+
+- Use eye icon for showing visibility state.
+- Use settings icon for showing settings for detectors
+- If a button opens a dialog box the dialog box should be opened near the button.
