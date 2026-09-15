@@ -1603,8 +1603,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
         && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
         beginRename(state.selectedSceneObjects.front());
     }
-    ImGui::Separator();
-    ImGui::TextUnformatted("Analyses");
+    ImGui::SeparatorText("Analyses");
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;
         const auto label = std::to_string(id);
