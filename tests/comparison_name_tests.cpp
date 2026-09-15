@@ -446,7 +446,7 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
     ImGuiTable* diagnostics = nullptr;
-    ImVec2 gear, eye, divider;
+    ImVec2 gear, eye, divider, intersectionRun, intersectionEye;
     std::string contents;
     const auto frame = [&] {
         ImGui::GetIO().DisplaySize = ImVec2(1200, 1500);
@@ -463,12 +463,16 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
             if (auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
                 diagnostics = table;
                 const float rowHeight = table->RowPosY2 - table->RowPosY1;
-                const float holeY = table->RowPosY1 - 5 * rowHeight
+                const float holeY = table->RowPosY1 - (table->CurrentRow - 3) * rowHeight
                     + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize() * 0.5f;
                 gear = ImVec2(table->Columns[table->ColumnsCount - 1].WorkMinX
                     + woby::renderModeButtonSize() * 0.5f, holeY);
                 eye = ImVec2(table->Columns[table->ColumnsCount - 3].WorkMinX
                     + woby::renderModeButtonSize() * 0.5f, holeY);
+                const float intersectionY = table->RowPosY1 + ImGui::GetStyle().CellPadding.y
+                    + woby::renderModeButtonSize()*0.5f;
+                intersectionRun = ImVec2(table->Columns[0].WorkMinX + ImGui::GetFrameHeight()*0.5f, intersectionY);
+                intersectionEye = ImVec2(table->Columns[table->ColumnsCount - 3].WorkMinX + woby::renderModeButtonSize()*0.5f, intersectionY);
                 divider = ImVec2(table->Columns[2].MaxX,
                     table->OuterRect.Min.y + ImGui::GetTextLineHeight() * 0.5f);
             }
@@ -490,6 +494,28 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     CHECK(contents.find("\xef\x80\x93") != std::string::npos); // Settings glyph.
     REQUIRE((diagnostics->Flags & ImGuiTableFlags_Resizable) != 0);
     auto& io = ImGui::GetIO();
+    CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.autoUpdate);
+    const auto runRevision = f.state.sceneEditRevision;
+    click(intersectionRun);
+    CHECK(woby::findComparison(f.state, f.id)->intersectionRequestRevision == 1);
+    CHECK(f.state.sceneEditRevision == runRevision);
+    CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.autoUpdate);
+    click(intersectionEye);
+    CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.show);
+    CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.autoUpdate);
+    click(intersectionEye);
+    auto& inspection = runtimes.objects[f.id].result.original.intersections;
+    inspection.phase = woby::IntersectionPhase::running; frame();
+    CHECK(contents.find("Cancel") != std::string::npos);
+    click(intersectionRun);
+    CHECK(woby::findComparison(f.state,f.id)->cancelIntersections);
+    inspection.phase = woby::IntersectionPhase::outdated;
+    runtimes.objects[f.id].result.repaired.intersections.phase = woby::IntersectionPhase::outdated; frame();
+    CHECK(contents.find("Out of date") != std::string::npos);
+    click(intersectionRun);
+    CHECK_FALSE(woby::findComparison(f.state,f.id)->cancelIntersections);
+    CHECK(woby::findComparison(f.state,f.id)->intersectionRequestRevision == 3);
+    inspection.phase = woby::IntersectionPhase::notChecked; frame();
     const auto original = woby::comparisonSettings(f.state, f.id);
     click(eye);
     auto hidden = original;
@@ -556,7 +582,8 @@ TEST_CASE("diagnostic settings popup edits only its analysis and persists withou
             if (const auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
                 const auto& column = table->Columns[table->ColumnsCount-1];
                 gear = ImVec2(column.WorkMinX + woby::renderModeButtonSize()*0.5f,
-                    table->RowPosY1 + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize()*0.5f);
+                    table->RowPosY1 - (table->CurrentRow - 8)*(table->RowPosY2-table->RowPosY1)
+                    + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize()*0.5f);
             }
         }
         ImGui::End();

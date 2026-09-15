@@ -37,7 +37,10 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.views = state.views;
     content.annotations = state.annotations;
     content.comparisons = state.comparisons;
-    for (auto& comparison : content.comparisons) { comparison.diagnosticFocus.reset(); }
+    for (auto& comparison : content.comparisons) {
+        comparison.diagnosticFocus.reset();
+        comparison.intersectionRequestRevision = 0; comparison.cancelIntersections = false;
+    }
     content.sceneNodes = state.sceneNodes;
     for (const auto& file : state.files) {
         UiFileState metadata;
@@ -157,6 +160,13 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
         file.fileSettings.center = source->fileSettings.center;
         if (live != current.files.end()) { file.mesh = live->mesh; }
         else { file.mesh = std::move(loaded->mesh); }
+    }
+    // Undo/redo restores scene settings, not earlier one-shot detector requests.
+    for (auto& comparison : prepared.comparisons) {
+        if (const auto* live = findComparison(current, comparison.objectId)) {
+            comparison.intersectionRequestRevision = live->intersectionRequestRevision;
+            comparison.cancelIntersections = live->cancelIntersections;
+        }
     }
     validateAnnotationTargets(prepared);
     prepared.running = current.running;

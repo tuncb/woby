@@ -23,6 +23,7 @@
     { "name": "curl", "default-features": false, "features": ["ssl"] },
     { "name": "libarchive", "default-features": false },
     { "name": "openssl", "platform": "!windows" },
+    "boost-multiprecision",
     "doctest"
   ]
 }

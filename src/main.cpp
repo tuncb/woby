@@ -3190,6 +3190,7 @@ int main(int argc, char** argv)
                         if (changed) { throw std::runtime_error("Analysis inputs or detectors changed while results were being requested; retry analysis.results."); }
                         if (!ready) { throw std::runtime_error(it->second.error); }
                         woby::setComparisonDuplicateEnabled(it->second.result, woby::comparisonSettings(ui, pending.objectId).duplicates);
+                        woby::setComparisonIntersectionSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).intersections);
                         woby::setComparisonDegenerateSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).degenerates);
                         (void)woby::setComparisonTopologyInspectionSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).topologyInspection);
                         auto result = woby::controlComparisonResults(it->second.result, pending.tolerance);
@@ -3237,7 +3238,8 @@ int main(int argc, char** argv)
                                     return;
                                 }
                             }
-                            if (busy && (woby::controlMethod(payload.action).mutating || payload.action == A::comparisonResults)) {
+                            if (busy && payload.action != A::comparisonCancel
+                                && (woby::controlMethod(payload.action).mutating || payload.action == A::comparisonResults)) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{"Scene is busy loading, capturing, displaying a dialog, or editing a widget.", -32014});
                                 return;

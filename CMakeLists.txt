@@ -29,6 +29,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(Boost CONFIG REQUIRED COMPONENTS multiprecision)
 find_package(CURL REQUIRED)
 find_package(LibArchive REQUIRED)
 include(cmake/WobyUpdateDependencies.cmake)
@@ -78,6 +79,7 @@ add_executable(woby
     src/comparison_report.cpp
     src/comparison_legend.cpp
     src/surface_mesh_quality.cpp
+    src/mesh_intersections.cpp
     src/mesh_topology.cpp
     src/mesh_degenerates.cpp
     src/mesh_duplicates.cpp
@@ -176,6 +178,7 @@ target_include_directories(woby SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thir
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby PRIVATE
+    Boost::multiprecision
     woby_update
     woby_automation
     SDL3::SDL3
@@ -302,10 +305,10 @@ if(WOBY_BUILD_BENCHMARKS)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp
         src/model_mesh.cpp src/obj_mesh.cpp src/mesh_comparison.cpp
-        src/mesh_duplicates.cpp src/surface_mesh_quality.cpp)
+        src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
-    target_link_libraries(woby_benchmarks PRIVATE meshoptimizer::meshoptimizer Threads::Threads)
+    target_link_libraries(woby_benchmarks PRIVATE meshoptimizer::meshoptimizer Threads::Threads Boost::multiprecision)
     woby_enable_project_warnings(woby_benchmarks)
     list(APPEND woby_runtime_targets woby_benchmarks)
 endif()
@@ -343,11 +346,13 @@ if(BUILD_TESTING)
         src/comparison_view.cpp
         src/comparison_legend.cpp
         src/surface_mesh_quality.cpp
+        src/mesh_intersections.cpp
         src/mesh_topology.cpp
         src/mesh_degenerates.cpp
         src/mesh_duplicates.cpp
         src/mesh_comparison.cpp
         src/comparison_scene.cpp
+        tests/mesh_intersections_tests.cpp
         tests/mesh_topology_tests.cpp
         tests/mesh_degenerates_tests.cpp
         tests/mesh_duplicates_tests.cpp
@@ -442,6 +447,7 @@ if(BUILD_TESTING)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(woby_tests PRIVATE
+        Boost::multiprecision
         woby_update
         ${woby_archive_target}
         woby_automation

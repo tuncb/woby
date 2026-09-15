@@ -4,6 +4,7 @@
 #include "scene_renderer.h"
 
 #include <future>
+#include <chrono>
 #include <map>
 #include <string>
 
@@ -24,11 +25,21 @@ struct ComparisonGpuSurface
     bgfx::VertexBufferHandle nonManifoldVertices = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle holes = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle winding = BGFX_INVALID_HANDLE;
+    bgfx::VertexBufferHandle intersectionEdges = BGFX_INVALID_HANDLE;
+    bgfx::VertexBufferHandle intersectionFill = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle degenerateEdges = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle degenerateFill = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle duplicatePoints = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle duplicateTriangleEdges = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle duplicateTriangleFill = BGFX_INVALID_HANDLE;
+};
+
+struct IntersectionRuntime {
+    std::stop_source stop;
+    std::future<MeshComparison> worker;
+    uint64_t workerSignature = 0, revision = 0, workerRevision = 0, consumedRequest = 0;
+    bool requested = false, canceled = false, autoUpdate = false;
+    std::chrono::steady_clock::time_point started{};
 };
 
 struct ComparisonRuntime
@@ -37,6 +48,8 @@ struct ComparisonRuntime
     std::future<MeshComparison> worker;
     uint64_t workerSignature = 0;
     uint32_t workerStages = 0, attemptedStages = 0, uploadedStages = 0;
+    uint32_t failedStages = 0;
+    IntersectionRuntime intersection;
     ComparisonCacheStatus cache;
     std::shared_ptr<const std::array<Mesh, 2>> inputs;
     bool fullResultsRequested = false;
@@ -65,6 +78,10 @@ struct ComparisonNameEdit {
 
 [[nodiscard]] bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& state,
     SceneObjectId id, bool fullResults = false);
+[[nodiscard]] bool comparisonStagesReady(const ComparisonRuntime& runtime, const UiState& state,
+    SceneObjectId id, uint32_t stages, bool requireGpu = false);
+[[nodiscard]] ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime,
+    const UiState& state, SceneObjectId id);
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit);

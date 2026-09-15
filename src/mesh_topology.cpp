@@ -1,5 +1,5 @@
 #include "mesh_topology.h"
-#include "mesh_degenerates.h"
+#include "mesh_intersections.h"
 
 #include <algorithm>
 #include <cmath>
@@ -194,7 +194,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
                 }
             }
             // Needle/cap thresholds must never change connectivity.
-            if (classifyDegenerateTriangle(points, {}).collapsed) { ++result.excludedCollapsedFaces; continue; }
+            if (exactTriangleCollapsed(points)) { ++result.excludedCollapsedFaces; continue; }
             TopologyFace face;
             face.reference = {source.fileId, part->partId, i/3};
             for (size_t j = 0; j < 3; ++j) {

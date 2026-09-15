@@ -574,3 +574,50 @@ woby.exe ctl --instance main camera view top
 woby.exe ctl --instance main view apply $view.viewId
 woby.exe ctl --instance main scene save
 ```
+
+## Self-intersections
+
+```powershell
+woby ctl analysis run ANALYSIS --detector self_intersections
+woby ctl analysis results ANALYSIS --json
+woby ctl analysis cancel ANALYSIS --detector self_intersections
+woby ctl analysis set ANALYSIS --auto-update-self-intersections true --show-self-intersections true
+```
+
+`analysis.run` requests one check of current inputs, including Update or Rerun.
+It returns immediately. Poll `analysis.results` for the detector's status.
+`analysis.cancel` cancels that detector only. These actions do not dirty the scene.
+Results wait for ordinary requested stages and return the independent intersection
+status; reading results never starts a manual check.
+
+JSON settings: `autoUpdateSelfIntersections` (defaults false),
+`showSelfIntersections`. Legacy `selfIntersections` remains an auto-update alias.
+Statuses: `not_checked`, `queued`, `running`, `out_of_date`, `canceled`, `failed`,
+`complete`, `partial`, or `unavailable`. Cancel suppresses auto-update until a
+new request, a geometry change, or re-enabling auto-update.
+
+Each populated side exposes `detectors.self_intersections`: status, error,
+algorithm `woby-exact-rational-intersections-v1`, topology mode, scope, nullable
+exact pair `count` and `affectedFaceCount`, `knownCount`, `knownAffectedFaceCount`,
+`excludedCollapsedFaces`, `unavailableSources`, and `candidateTests`.
+Findings contain two source/part/generated triangle references, source provenance,
+and resolved topology mode. Triangle IDs are one-based; pairs are deterministic.
+
+JSON returns the first 100 retained pairs. `findingsTruncated` describes omitted
+findings; `detectionTruncated` indicates detection stopped at the 10,000-pair or
+1,000,000-candidate limit. Partial/unavailable results have null exact totals.
+Unchecked, queued, running, outdated, canceled, and failed states have null totals
+and no current findings. `previousCount` is a previous known pair count, if one
+exists; it does not describe current geometry. UI navigation covers all current
+retained pairs. The eye changes visibility only.
+
+Scene version 14 persists auto-update and display settings, including saved views.
+Requests and results are not saved. Version 13 enabled flags migrate to auto-update.
+Screenshots wait for requested visible checks; they do not initiate manual checks
+and may include a report indicating incomplete coverage.
+
+Checks are exact for finite double world coordinates, within each source file:
+coplanar overlap and unrelated-topology contact are included; valid shared vertices
+and edges are excluded. Duplicate faces are included even with matching vertex IDs.
+Source transforms apply; display offsets do not. Collapsed faces are excluded.
+STL original-index mode is unavailable. No proximity epsilon is used.

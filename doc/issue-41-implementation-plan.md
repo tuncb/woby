@@ -4,7 +4,32 @@ Status: duplicate-point and source-ID duplicate-triangle implementation added on
 2026-09-12; degenerate-triangle findings and shared topology with upgraded edge/winding
 findings added on 2026-09-13. Non-manifold vertices and hole loops are now also
 implemented end to end, making all seven inexpensive detector categories available.
-Self-intersections, fin candidates, and non-partitioning surfaces remain open.
+Self-intersections are now implemented as an opt-in eighth detector. Fin candidates
+and non-partitioning surfaces remain open.
+
+The intersection slice uses a per-source BVH and exact rational segment/triangle
+clipping through Boost.Multiprecision (`src/mesh_intersections.*`). This replaces
+the proposed CGAL-first production path: Woby controls traversal/cancellation,
+includes coincident duplicate faces, and uses Boost-licensed arithmetic without
+a CGAL/GMP runtime. CGAL's documented soup checker excludes the convex hull of
+three shared vertices, so its raw output would require adaptation for this contract.
+No GGM/GMM reference parity is claimed. See
+[CGAL semantics](https://doc.cgal.org/6.0/Polygon_mesh_processing/index.html) and
+[exact rational conversions](https://www.boost.org/doc/libs/latest/libs/multiprecision/doc/html/boost_multiprecision/tut/conversions.html).
+
+The detector uses shared topology and world doubles, excludes exactly collapsed
+faces, normalizes pairs, and reports unique affected face instances. Valid shared
+features are excluded; overlap beyond them and coplanar overlap are included.
+Explicit Run/Update/Cancel, an independent eye control, paged pair navigation,
+overlays, picking, bounded CLI output, reports, and scene version 14 are integrated.
+Self-intersections start Not checked; source/topology edits mark old results Out of
+date and hide stale findings. Auto-update is opt-in. Each inexpensive stage publishes
+independently, with a separate cancellable worker for intersections. Requests and
+results are transient; v13 enabled flags migrate to auto-update. Detection retains at most 10,000 pairs and
+checks at most 1,000,000 candidates per side; partial results never claim exact totals.
+Tests cover crossing/contained/shared-feature/near-miss cases, source isolation,
+transforms, topology modes, cancellation, limits, caches, and persistence.
+An independent layered-triangle oracle validates BVH pair collection.
 
 The first slice preserves OBJ position records, STL corners, and importer vertex
 buffers; adds per-analysis exact source checks, grouped navigation/highlighting,

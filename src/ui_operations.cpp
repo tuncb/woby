@@ -299,6 +299,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     if (!source) { return invalidSceneObjectId; }
     auto copy = *source;
     copy.diagnosticFocus.reset();
+    copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
     copy.objectId = invalidSceneObjectId;
     copy.name += " copy";
     const auto sourceBounds = comparisonDisplayBounds(state, id);
@@ -392,6 +393,10 @@ const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
         if (surface.topology.mode != comparison->settings.topologyMode
             || (focus.category == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance)) { return nullptr; }
     }
+    if (focus.category == DiagnosticCategory::selfIntersections) {
+        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != comparison->settings.topologyMode) { return nullptr; }
+    }
     if (focus.category == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
         if (!sameDegenerateThresholds(surface.degenerates.settings, comparison->settings.degenerates)) { return nullptr; }
@@ -427,6 +432,10 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
         if (surface.topology.mode != settings.topologyMode
             || (settings.diagnosticCategory == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance)) { return; }
     }
+    if (settings.diagnosticCategory == DiagnosticCategory::selfIntersections) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != settings.topologyMode) { return; }
+    }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (!sameDegenerateThresholds(surface.degenerates.settings, settings.degenerates)) { return; }
@@ -454,6 +463,10 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (surface.topology.mode != settings.topologyMode
             || (settings.diagnosticCategory == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance)) { return; }
+    }
+    if (settings.diagnosticCategory == DiagnosticCategory::selfIntersections) {
+        const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != settings.topologyMode) { return; }
     }
     if (settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
@@ -489,6 +502,7 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
     // distant, unrelated scene objects to overwhelm a small edge's framing.
     const auto resultBounds = comparisonDisplayBounds(state, id);
     const float padding = (settings.diagnosticCategory == DiagnosticCategory::duplicateTriangles
+        || settings.diagnosticCategory == DiagnosticCategory::selfIntersections
         || settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) ? 1.2f : 3.0f;
     bounds.radius = std::max(bounds.radius * padding, resultBounds ? resultBounds->radius * .06f : .001f);
     for (size_t k = 0; k < 3; ++k) {
@@ -561,6 +575,17 @@ bool compareSceneSelection(UiState& state)
     if (selection.size() == 2) { setComparisonObjects(state, {selection[1]}, ComparisonSide::b, true, id); }
     frameCameraToScene(state);
     return true;
+}
+
+void requestComparisonIntersections(UiState& state, SceneObjectId id, bool cancel)
+{
+    if (auto* comparison = findComparison(state, id)) {
+        ++comparison->intersectionRequestRevision;
+        comparison->cancelIntersections = cancel;
+        if (comparison->diagnosticFocus && comparison->diagnosticFocus->category == DiagnosticCategory::selfIntersections) {
+            comparison->diagnosticFocus.reset();
+        }
+    }
 }
 
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id)

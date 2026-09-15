@@ -592,6 +592,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
         settings.diagnosticCategory != DiagnosticCategory::winding &&
         settings.diagnosticCategory != DiagnosticCategory::duplicatePoints &&
         settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles &&
+        settings.diagnosticCategory != DiagnosticCategory::selfIntersections &&
         settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles &&
         settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices && settings.diagnosticCategory != DiagnosticCategory::holes) {
         settings.diagnosticCategory = DiagnosticCategory::boundary;
@@ -628,6 +629,7 @@ const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
     case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
     case DiagnosticCategory::winding: return diagnostics.inconsistentWindingEdges;
     case DiagnosticCategory::duplicatePoints: return side == ComparisonSide::a ? result.original.duplicatePointBounds : result.repaired.duplicatePointBounds;
+    case DiagnosticCategory::selfIntersections: return side == ComparisonSide::a ? result.original.intersectionBounds : result.repaired.intersectionBounds;
     case DiagnosticCategory::degenerateTriangles: return side == ComparisonSide::a ? result.original.degenerateBounds : result.repaired.degenerateBounds;
     case DiagnosticCategory::duplicateTriangles: return side == ComparisonSide::a ? result.original.duplicateTriangleBounds : result.repaired.duplicateTriangleBounds;
     }
@@ -765,12 +767,38 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
     return result;
 }
 
+uint32_t comparisonDiagnosticStage(DiagnosticCategory category)
+{
+    switch (category) {
+    case DiagnosticCategory::duplicatePoints: return comparisonDuplicatePoints;
+    case DiagnosticCategory::duplicateTriangles: return comparisonDuplicateTriangles;
+    case DiagnosticCategory::degenerateTriangles: return comparisonDegenerates;
+    case DiagnosticCategory::selfIntersections: return comparisonIntersections;
+    case DiagnosticCategory::boundary:
+    case DiagnosticCategory::nonManifold:
+    case DiagnosticCategory::winding:
+    case DiagnosticCategory::nonManifoldVertices:
+    case DiagnosticCategory::holes: return comparisonTopology;
+    }
+    return comparisonTopology;
+}
+uint32_t nextComparisonStage(uint32_t missing)
+{
+    // Publish inexpensive findings before distance/quality and expensive checks.
+    for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints,
+        comparisonDuplicateTriangles, comparisonDegenerates, comparisonQuality, comparisonDistance}) {
+        if (missing & stage) { return stage; }
+    }
+    return 0;
+}
+
 uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs, bool fullResults)
 {
     uint32_t stages = comparisonSource | comparisonTopology;
     if (settings.duplicates.points) { stages |= comparisonDuplicatePoints; }
     if (settings.duplicates.triangles) { stages |= comparisonDuplicateTriangles; }
     if (settings.degenerates.enabled) { stages |= comparisonDegenerates; }
+    if (settings.intersections.autoUpdate) { stages |= comparisonIntersections; }
     if (fullResults || settings.mode == ComparisonMode::surfaceQuality) { stages |= comparisonQuality; }
     if (bothInputs && (fullResults || settings.mode == ComparisonMode::distance)) { stages |= comparisonDistance; }
     return stages;
@@ -797,7 +825,7 @@ bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mod
     mode = normalizedTopologyMode(mode);
     if (cache.topologyMode == mode) { return false; }
     cache.topologyMode = mode;
-    cache.completed &= ~comparisonTopology;
+    cache.completed &= ~(comparisonTopology | comparisonIntersections);
     return true;
 }
 
@@ -812,7 +840,13 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     }
     const auto inspect = [&](const Mesh& mesh, SurfaceComparison& surface) {
         checkCanceled(stop);
-        if (mesh.vertices.empty() && mesh.indices.empty()) { return; }
+        if (mesh.vertices.empty() && mesh.indices.empty()) {
+            if (stages & comparisonIntersections) {
+                surface.intersections.phase = IntersectionPhase::complete;
+                surface.intersections.hasResult = true; surface.intersections.mode = topologyMode;
+            }
+            return;
+        }
         validateComparisonMeshSize(mesh.vertices.size(), mesh.indices.size() / 3);
         if (stages & comparisonSource) {
             surface.source.vertices = copyWithCancellation(mesh.vertices, stop);
@@ -823,6 +857,21 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
         if (stages & comparisonTopology) {
             surface.diagnostics = inspectMesh(mesh, stop);
             inspectSurfaceTopology(surface, mesh, topologyMode, stop);
+        }
+        if (stages & comparisonIntersections) {
+            if (!(stages & comparisonTopology)) { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
+            surface.intersections = inspectIntersections(surface.topology, {true, true}, stop);
+            for (const auto& finding : surface.intersections.findings) {
+                checkCanceled(stop);
+                DiagnosticEdge bounds{finding.geometry[0], finding.geometry[0]};
+                for (const auto& p : finding.geometry) {
+                    for (size_t k = 0; k < 3; ++k) { bounds.a[k] = std::min(bounds.a[k], p[k]); bounds.b[k] = std::max(bounds.b[k], p[k]); }
+                }
+                surface.intersectionBounds.push_back(bounds);
+                for (size_t i = 0; i < 6; i += 3) {
+                    for (size_t k = 0; k < 3; ++k) { surface.intersectionEdges.push_back({finding.geometry[i+k], finding.geometry[i+(k+1)%3]}); }
+                }
+            }
         }
         if (stages & comparisonDegenerates) { degenerates.enabled = true; inspectSurfaceDegenerates(surface, mesh, degenerates, stop); }
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
@@ -867,7 +916,19 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
         }
         if (!stages) { return false; }
     }
+    if (stages & comparisonIntersections) {
+        for (const auto* surface : {&update.original, &update.repaired}) {
+            if ((surface->intersections.availableSources || surface->intersections.unavailableSources)
+                && surface->intersections.mode != cache.topologyMode) { stages &= ~comparisonIntersections; break; }
+        }
+        if (!stages) { return false; }
+    }
     const auto merge = [&](SurfaceComparison& target, SurfaceComparison& source) {
+        if (stages & comparisonIntersections) {
+            target.intersections = std::move(source.intersections);
+            target.intersectionBounds = std::move(source.intersectionBounds);
+            target.intersectionEdges = std::move(source.intersectionEdges);
+        }
         if (stages & comparisonSource) { target.source = std::move(source.source); }
         if (stages & comparisonTopology) {
             target.diagnostics = std::move(source.diagnostics);
@@ -907,6 +968,11 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     if (stages & comparisonQuality) { result.qualityDistributions = std::move(update.qualityDistributions); }
     cache.completed |= stages;
     return true;
+}
+
+void setComparisonIntersectionSettings(MeshComparison& result, IntersectionSettings settings)
+{
+    result.original.intersections.settings = result.repaired.intersections.settings = settings;
 }
 
 void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings settings)

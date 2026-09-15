@@ -161,7 +161,7 @@ crosshair while drawing and a move cursor over editable endpoints and corners.
 
 Outlines stay attached through model transforms and hide with their target.
 They are depth-tested, included in scene PNG exports, and saved in `.woby` scenes
-(version 12 when an annotation bridges a hole). Saved views restore their visibility,
+(version 13, including annotations that bridge holes). Saved views restore their visibility,
 color, and width. Older scene files remain readable. Removing a source retains a named annotation with a
 **needs reattachment** status; restoring the unchanged source through Undo
 restores attachment. Changed source geometry is detected on Open or history
@@ -584,3 +584,38 @@ configuration changes, including after building just `woby_tests`.
 
 See [CI builds and releases](doc/ci.md) for dependency caching, the pinned CI
 toolchain, and reuse of main-build packages when publishing a version tag.
+
+### Self-intersections
+
+Click **Run** on the **Self-intersections** diagnostic row to check each selected
+source file for triangle crossings and coplanar overlap. It starts **Not checked**.
+After source geometry or topology changes, the result becomes **Out of date**:
+click **Update** to check again. Previous counts remain in the status tooltip;
+stale findings and overlays are hidden. **Cancel** stops a queued or running
+check; **Retry** starts it again. **Rerun** repeats a completed check.
+The eye controls red face/edge overlays without rerunning the detector. Select a pair or use the arrows to inspect and frame both triangles.
+The list is paged and includes generated triangle IDs and part IDs.
+
+The selected topology mode determines shared vertices/edges. Valid shared features
+are excluded; overlap beyond them and coincident duplicate faces are included.
+Automatic mode uses original indices for indexed input and exact positions for
+STL. Separate source files are checked independently. Coordinates include source
+transforms and exclude analysis offsets. Collapsed faces are excluded and counted
+separately. No proximity tolerance is used.
+
+Detection retains at most 10,000 pairs and tests at most 1,000,000 bounding-box
+candidates per analysis side. When either limit stops detection, results are
+explicitly partial and pair/affected-face counts are lower bounds. Exact checks
+may take time on dense meshes; workers support cancellation between pairs.
+Other detectors publish counts, navigation, and overlays as each stage finishes;
+they remain usable while self-intersections run. Cheap checks update automatically.
+The self-intersection gear offers **Automatically update after changes** as an
+opt-in. Cancel pauses automatic checking until another request, a geometry change,
+or re-enabling auto-update.
+
+Scene version 14 saves auto-update, Show, and the selected category, including saved
+views. Requests and computed results are transient; reopened manual analyses start
+Not checked. Version 13 Run settings migrate to auto-update.
+
+See [the sample](assets/samples/self-intersections/README.md) and
+[CLI details](doc/ctl-commands.md#self-intersections).

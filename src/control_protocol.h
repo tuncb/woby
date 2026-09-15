@@ -19,7 +19,7 @@ enum class ControlAction {
     modelAdd, modelRemove, folderAdd, importersList, importersAdd, importersScan,
     importersForget, stats, performance, pane,
     comparisonCreate, comparisonDelete, comparisonSet, comparisonAdd, comparisonRemove,
-    comparisonClear, comparisonSwap, comparisonResults, comparisonEnable,
+    comparisonClear, comparisonSwap, comparisonResults, comparisonEnable, comparisonRun, comparisonCancel,
     annotationList, annotationGet, annotationCreate, annotationSet, annotationReshape, annotationMove, annotationDelete,
 };
 
@@ -42,10 +42,11 @@ struct ControlOperation {
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;
     std::optional<float> tolerance, colorRange;
-    std::optional<std::string> qualityMetric, topologyMode;
+    std::optional<std::string> qualityMetric, topologyMode, detector;
     std::optional<bool> duplicatePoints, duplicateTriangles, showDuplicatePoints, showDuplicateTriangles;
     std::optional<bool> nonManifoldVertices, showNonManifoldVertices, holes, showHoles;
     std::optional<float> holeSizeRatioTolerance;
+    std::optional<bool> selfIntersections, autoUpdateSelfIntersections, showSelfIntersections;
     std::optional<bool> degenerateTriangles, showDegenerateTriangles;
     std::optional<float> needleThresholdRatio, capMinAngleDegrees;
     std::optional<bool> qualityOnA, qualityMinimumEnabled, qualityMaximumEnabled;

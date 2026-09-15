@@ -75,12 +75,14 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance"}, {}, true, true},
+            {"name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
         {ControlAction::comparisonClear, "analysis.clear", "analysis clear", "target", {"side"}, {"side"}, false, true},
         {ControlAction::comparisonSwap, "analysis.swap", "analysis swap", "target", {}, {}, false, true},
+        {ControlAction::comparisonRun, "analysis.run", "analysis run", "target", {"detector"}, {"detector"}, false, true},
+        {ControlAction::comparisonCancel, "analysis.cancel", "analysis cancel", "target", {"detector"}, {"detector"}, false, true},
         {ControlAction::comparisonResults, "analysis.results", "analysis results", "target", {}, {}},
     };
     return methods;
@@ -101,14 +103,14 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
-    return name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
+    return name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
         || name == "locked" || name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "showWinding" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
 bool stringOption(const std::string& name)
 {
-    return name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
+    return name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
 }
 size_t vectorSize(const std::string& name) { return name == "start" || name == "end" || name == "delta" ? 2u : 3u; }
 bool vectorOption(const std::string& name)
@@ -135,6 +137,9 @@ std::string cliOption(const std::string& name)
     if (name == "holeSizeRatioTolerance") { return "--hole-size-ratio-tolerance"; }
     if (name == "topologyMode") { return "--topology-mode"; }
     if (name == "showNonManifold") { return "--show-non-manifold"; }
+    if (name == "autoUpdateSelfIntersections") { return "--auto-update-self-intersections"; }
+    if (name == "selfIntersections") { return "--self-intersections"; }
+    if (name == "showSelfIntersections") { return "--show-self-intersections"; }
     if (name == "degenerateTriangles") { return "--degenerate-triangles"; }
     if (name == "showDegenerateTriangles") { return "--show-degenerate-triangles"; }
     if (name == "needleThresholdRatio") { return "--needle-threshold-ratio"; }
@@ -246,6 +251,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
     BOOL_FIELD(nonManifoldVertices) BOOL_FIELD(showNonManifoldVertices) BOOL_FIELD(holes) BOOL_FIELD(showHoles)
+    BOOL_FIELD(autoUpdateSelfIntersections) BOOL_FIELD(selfIntersections) BOOL_FIELD(showSelfIntersections)
     BOOL_FIELD(degenerateTriangles) BOOL_FIELD(showDegenerateTriangles)
     BOOL_FIELD(duplicatePoints) BOOL_FIELD(duplicateTriangles) BOOL_FIELD(showDuplicatePoints) BOOL_FIELD(showDuplicateTriangles)
     BOOL_FIELD(locked)
@@ -273,7 +279,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         command.cameraTarget = params["target"].get<std::array<float, 3>>();
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
-    STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
+    STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
     STRING_FIELD(shape) STRING_FIELD(comments)
 #undef STRING_FIELD
     if (command.shape && *command.shape != "line" && *command.shape != "rectangle") { throw std::invalid_argument("shape must be line or rectangle."); }
@@ -288,6 +294,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         && *command.qualityMetric != "shape" && *command.qualityMetric != "size_jump") {
         throw std::invalid_argument("qualityMetric must be longest_edge, equivalent_size, shape, or size_jump.");
     }
+    if (command.detector && *command.detector != "self_intersections") { throw std::invalid_argument("detector must be self_intersections."); }
     if (command.topologyMode && *command.topologyMode != "automatic" && *command.topologyMode != "original_index" && *command.topologyMode != "exact_position") {
         throw std::invalid_argument("topologyMode must be automatic, original_index, or exact_position.");
     }
@@ -349,6 +356,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
     FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance)
+    FIELD(detector) FIELD(autoUpdateSelfIntersections) FIELD(selfIntersections) FIELD(showSelfIntersections)
     FIELD(degenerateTriangles) FIELD(showDegenerateTriangles) FIELD(needleThresholdRatio) FIELD(capMinAngleDegrees)
     FIELD(duplicatePoints) FIELD(duplicateTriangles) FIELD(showDuplicatePoints) FIELD(showDuplicateTriangles)
     FIELD(shape) FIELD(comments) FIELD(locked) FIELD(start) FIELD(end) FIELD(delta) FIELD(aspect) FIELD(opacity)

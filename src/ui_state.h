@@ -116,6 +116,9 @@ struct UiComparison {
     std::array<float, 3> translation{};
     std::vector<UiComparisonPart> a, b;
     std::optional<DiagnosticFocus> diagnosticFocus;
+    // One-shot inspection commands, excluded from scene files and history.
+    uint64_t intersectionRequestRevision = 0;
+    bool cancelIntersections = false;
 };
 
 using ViewId = uint64_t;

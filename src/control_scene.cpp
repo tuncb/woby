@@ -77,6 +77,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"holes", settings.topologyInspection.holes},
                 {"showHoles", settings.topologyInspection.showHoles},
                 {"holeSizeRatioTolerance", settings.topologyInspection.holeSizeRatioTolerance},
+                {"autoUpdateSelfIntersections", settings.intersections.autoUpdate}, {"selfIntersections", settings.intersections.autoUpdate}, {"showSelfIntersections", settings.intersections.show},
                 {"degenerateTriangles", settings.degenerates.enabled}, {"showDegenerateTriangles", settings.degenerates.show},
                 {"needleThresholdRatio", settings.degenerates.needleThresholdRatio}, {"capMinAngleDegrees", settings.degenerates.capMinAngleDegrees},
                 {"duplicatePoints", settings.duplicates.points}, {"duplicateTriangles", settings.duplicates.triangles}, {"showDuplicatePoints", settings.duplicates.showPoints}, {"showDuplicateTriangles", settings.duplicates.showTriangles},
@@ -322,7 +323,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     if (command.action == A::comparisonCreate || command.action == A::comparisonDelete
         || command.action == A::comparisonSet || command.action == A::comparisonAdd
         || command.action == A::comparisonRemove || command.action == A::comparisonClear
-        || command.action == A::comparisonSwap || command.action == A::comparisonEnable) {
+        || command.action == A::comparisonSwap || command.action == A::comparisonEnable
+        || command.action == A::comparisonRun || command.action == A::comparisonCancel) {
         // Validate all inputs before any mutation, including creation of an empty object.
         if (command.action != A::comparisonCreate
             && (command.objectId == invalidSceneObjectId || !findComparison(state, command.objectId))) {
@@ -335,6 +337,11 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             }
         }
         auto id = command.objectId;
+        if (command.action == A::comparisonRun || command.action == A::comparisonCancel) {
+            if (command.action == A::comparisonRun && !canInspectComparison(state, id)) { throw std::invalid_argument("Analysis needs valid input before running a check."); }
+            requestComparisonIntersections(state, id, command.action == A::comparisonCancel);
+            return {{"target", formatId(id)}, {"detector", "self_intersections"}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
+        }
         if (command.action == A::comparisonCreate) {
             id = createComparison(state);
             if (command.name) { renameComparison(state, id, *command.name); }
@@ -357,6 +364,9 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.holes) { settings.topologyInspection.holes = *command.holes; }
             if (command.showHoles) { settings.topologyInspection.showHoles = *command.showHoles; }
             if (command.holeSizeRatioTolerance) { settings.topologyInspection.holeSizeRatioTolerance = *command.holeSizeRatioTolerance; }
+            if (command.selfIntersections) { settings.intersections.autoUpdate = *command.selfIntersections; }
+            if (command.autoUpdateSelfIntersections) { settings.intersections.autoUpdate = *command.autoUpdateSelfIntersections; }
+            if (command.showSelfIntersections) { settings.intersections.show = *command.showSelfIntersections; }
             if (command.degenerateTriangles) { settings.degenerates.enabled = *command.degenerateTriangles; }
             if (command.showDegenerateTriangles) { settings.degenerates.show = *command.showDegenerateTriangles; }
             if (command.needleThresholdRatio) { settings.degenerates.needleThresholdRatio = *command.needleThresholdRatio; }
@@ -514,7 +524,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::comparisonResults: case A::sceneUndo: case A::sceneRedo:
         throw std::invalid_argument("Command requires a runtime adapter.");
     case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:
-    case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap: case A::comparisonEnable:
+    case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap: case A::comparisonEnable: case A::comparisonRun: case A::comparisonCancel:
         throw std::invalid_argument("Analysis command was not dispatched.");
     }
     // Read-only and session-only operations return above. Struct-level setters
@@ -681,6 +691,28 @@ Json topologyInspectionJson(const MeshTopology& topology, bool holes)
     return result;
 }
 
+Json intersectionResultJson(const MeshIntersections& result)
+{
+    const bool enabled = result.phase == IntersectionPhase::complete;
+    const bool complete = enabled && !result.truncated && !result.unavailableSources;
+    constexpr size_t limit = 100;
+    Json findings = Json::array();
+    for (size_t i = 0; enabled && i < std::min(limit, result.findings.size()); ++i) {
+        const auto& f = result.findings[i];
+        Json faces = Json::array();
+        for (const auto& face : f.faces) { faces.push_back({{"sourceId", std::to_string(face.fileId)}, {"partId", std::to_string(face.partId)}, {"triangleId", face.triangleId+1}}); }
+        findings.push_back({{"source", f.source}, {"provenance", triangleProvenanceName(f.provenance)},
+            {"topologyMode", topologyModeName(f.mode)}, {"faces", faces}});
+    }
+    return {{"status", intersectionStatus(result)}, {"error", result.error},
+        {"previousCount", !enabled && result.hasResult ? Json(result.findings.size()) : Json(nullptr)}, {"algorithm", "woby-exact-rational-intersections-v1"},
+        {"scope", "per-source; selected parts; world coordinates; no display offset"}, {"topologyMode", topologyModeName(result.mode)},
+        {"count", complete ? Json(result.findings.size()) : Json(nullptr)}, {"knownCount", enabled ? result.findings.size() : 0},
+        {"affectedFaceCount", complete ? Json(result.affectedFaces) : Json(nullptr)}, {"knownAffectedFaceCount", enabled ? result.affectedFaces : 0},
+        {"excludedCollapsedFaces", enabled ? result.excludedCollapsedFaces : 0}, {"unavailableSources", enabled ? result.unavailableSources : 0},
+        {"candidateTests", enabled ? result.candidateTests : 0}, {"detectionTruncated", enabled && result.truncated},
+        {"findings", findings}, {"findingsTruncated", enabled && (result.truncated || result.findings.size() > limit)}};
+}
 Json degenerateResultJson(const MeshDegenerates& result)
 {
     const bool enabled = result.settings.enabled;
@@ -750,6 +782,7 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
             {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
             {"detectors", {{"schemaVersion", 1}, {"idBase", 1}, {"scope", "per-source; selected parts, including unused points when whole file selected"},
                 {"duplicate_points", duplicateResultJson(value.duplicates.points)}, {"duplicate_tris", duplicateResultJson(value.duplicates.triangles)}, {"degenerate_tris", degenerateResultJson(value.degenerates)},
+                {"self_intersections", intersectionResultJson(value.intersections)},
                 {"non_manifold_vertices", topologyInspectionJson(value.topology, false)},
                 {"holes", topologyInspectionJson(value.topology, true)},
                 {"boundary_edges", topologyResultJson(value.topology, value.topology.boundaries)},

@@ -254,3 +254,5 @@ void validateAnnotationTargets(UiState& state);
 void loadSceneAnnotations(UiState& state, const SceneDocument& document);
 
 } // namespace woby
+
+namespace woby { void requestComparisonIntersections(UiState& state, SceneObjectId id, bool cancel = false); }

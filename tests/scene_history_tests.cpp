@@ -594,3 +594,25 @@ TEST_CASE("scene history preparation does not partly restore a batch when one so
     CHECK_FALSE(woby::canRedoScene(f.history));
     CHECK(f.state.files.empty());
 }
+
+TEST_CASE("undo redo and restoring removed analyses do not replay detector requests")
+{
+    HistoryFixture f;
+    const auto id = woby::createComparison(f.state);
+    woby::resetSceneHistory(f.history,f.state);
+    woby::requestComparisonIntersections(f.state,id);
+    CHECK_FALSE(woby::recordSceneHistory(f.history,f.state));
+    f.translate(3);
+    CHECK(f.history.snapshots.back().content.comparisons[0].intersectionRequestRevision == 0);
+    woby::requestComparisonIntersections(f.state,id,true);
+    f.step();
+    CHECK(woby::findComparison(f.state,id)->intersectionRequestRevision == 2);
+    CHECK(woby::findComparison(f.state,id)->cancelIntersections);
+    f.step(true);
+    CHECK(woby::findComparison(f.state,id)->intersectionRequestRevision == 2);
+    woby::removeComparison(f.state,id);
+    REQUIRE(woby::recordSceneHistory(f.history,f.state));
+    f.step();
+    CHECK(woby::findComparison(f.state,id)->intersectionRequestRevision == 0);
+    CHECK_FALSE(woby::findComparison(f.state,id)->cancelIntersections);
+}

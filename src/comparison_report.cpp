@@ -68,6 +68,16 @@ std::vector<std::string> comparisonReportLines(
             if (topology.excludedCollapsedFaces) { lines.push_back(label + " topology excluded collapsed faces: " + std::to_string(topology.excludedCollapsedFaces)); }
             append("duplicate points", surface->duplicates.points);
             append("source-ID duplicate triangles", surface->duplicates.triangles);
+            {
+                const auto& d = surface->intersections;
+                if (d.phase != IntersectionPhase::complete) {
+                    lines.push_back(label + " self-intersections: " + intersectionStatus(d)
+                        + (d.hasResult ? "; previous result: " + std::to_string(d.findings.size()) + " known pairs" : ""));
+                } else {
+                    lines.push_back(label + " self-intersections: " + ((d.unavailableSources || d.truncated) ? std::string("N/A; known ") : std::string{})
+                        + std::to_string(d.findings.size()) + " pairs; " + std::to_string(d.affectedFaces) + " known affected faces (" + intersectionStatus(d) + ")");
+                }
+            }
             if (settings.degenerates.enabled) {
                 const auto& d = surface->degenerates;
                 lines.push_back(label + " degenerate triangles: " + (d.unavailableSources ? std::string("N/A; known ") : std::string{})
@@ -83,6 +93,10 @@ std::vector<std::string> comparisonReportLines(
     }
     if (options.legend && settings.topologyInspection.nonManifoldVertices && settings.topologyInspection.showNonManifoldVertices) {
         lines.push_back("Amber crosses: non-manifold vertices; endpoints of non-manifold edges excluded.");
+    }
+    if (options.legend) {
+        lines.push_back("Self-intersections: exact world-coordinate checks per source; valid shared features excluded; coplanar overlap included.");
+        if (settings.intersections.show && (result.original.intersections.phase == IntersectionPhase::complete || result.repaired.intersections.phase == IntersectionPhase::complete)) { lines.push_back("Red faces/edges: intersecting triangle pairs."); }
     }
     if (settings.degenerates.enabled && (options.legend || options.tolerance)) {
         lines.push_back("Degenerates: edge ratio > " + measurementNumber(settings.degenerates.needleThresholdRatio)

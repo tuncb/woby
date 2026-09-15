@@ -462,6 +462,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else if (category == "holes") { record.settings.diagnosticCategory = DiagnosticCategory::holes; }
         else if (category == "winding") { record.settings.diagnosticCategory = DiagnosticCategory::winding; }
         else if (category == "duplicate_points") { record.settings.diagnosticCategory = DiagnosticCategory::duplicatePoints; }
+        else if (category == "self_intersections") { record.settings.diagnosticCategory = DiagnosticCategory::selfIntersections; }
         else if (category == "degenerate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::degenerateTriangles; }
         else if (category == "duplicate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::duplicateTriangles; }
         else { throw std::runtime_error("Unknown diagnostic category."); }
@@ -472,6 +473,8 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "analysis_hole_size_ratio_tolerance") { record.settings.topologyInspection.holeSizeRatioTolerance = parseTomlFloat(value);
     } else if (key == "topology_mode") { record.settings.topologyMode = parseTopologyMode(parseTomlString(value));
     } else if (key == "analysis_show_winding") { record.settings.showWinding = parseTomlBool(value);
+    } else if ((key == "self_intersections_enabled" || key == "self_intersections_auto_update")) { record.settings.intersections.autoUpdate = parseTomlBool(value);
+    } else if (key == "show_self_intersections") { record.settings.intersections.show = parseTomlBool(value);
     } else if (key == "degenerate_triangles_enabled") { record.settings.degenerates.enabled = parseTomlBool(value);
     } else if (key == "show_degenerate_triangles") { record.settings.degenerates.show = parseTomlBool(value);
     } else if (key == "needle_threshold_ratio") { record.settings.degenerates.needleThresholdRatio = parseTomlFloat(value);
@@ -524,6 +527,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifoldVertices ? "non_manifold_vertices"
         : comparison.diagnosticCategory == DiagnosticCategory::holes ? "holes"
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold"
+        : comparison.diagnosticCategory == DiagnosticCategory::selfIntersections ? "self_intersections"
         : comparison.diagnosticCategory == DiagnosticCategory::degenerateTriangles ? "degenerate_triangles"
         : comparison.diagnosticCategory == DiagnosticCategory::duplicatePoints ? "duplicate_points"
         : comparison.diagnosticCategory == DiagnosticCategory::duplicateTriangles ? "duplicate_triangles" : "winding";
@@ -541,6 +545,8 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_hole_size_ratio_tolerance = " << comparison.topologyInspection.holeSizeRatioTolerance << "\n";
     stream << "topology_mode = \"" << topologyModeName(comparison.topologyMode) << "\"\n";
     stream << "analysis_show_winding = " << (comparison.showWinding ? "true" : "false") << "\n";
+    stream << "self_intersections_auto_update = " << (comparison.intersections.autoUpdate ? "true" : "false") << "\n";
+    stream << "show_self_intersections = " << (comparison.intersections.show ? "true" : "false") << "\n";
     stream << "degenerate_triangles_enabled = " << (comparison.degenerates.enabled ? "true" : "false") << "\n";
     stream << "show_degenerate_triangles = " << (comparison.degenerates.show ? "true" : "false") << "\n";
     stream << "needle_threshold_ratio = " << comparison.degenerates.needleThresholdRatio << "\n";
@@ -754,7 +760,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -861,7 +867,9 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 } else if (key == "index") { object.index = parseTomlInteger(value); }
                 else if (key == "group_index") { object.groupIndex = parseTomlInteger(value); }
                 else if (key == "selection_order") { object.settings.selectionOrder = parseTomlInteger(value); }
-                else if (key.starts_with("analysis_") || key.starts_with("quality_") || key == "topology_mode") {
+                else if (key.starts_with("analysis_") || key.starts_with("quality_") || key == "topology_mode"
+                    || key == "self_intersections_enabled" || key == "self_intersections_auto_update" || key == "show_self_intersections"
+                    || key == "diagnostic_category" || key == "diagnostic_side") {
                     SceneComparisonRecord comparison;
                     comparison.settings = object.settings.comparison;
                     assignComparisonValue(comparison, key, value);
@@ -1002,12 +1010,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    const bool hasAnnotationBridges = std::any_of(document.annotations.begin(), document.annotations.end(), [](const auto& item) {
-        return std::any_of(item.geometry.segments.begin(), item.geometry.segments.end(), [](const auto& segment) {
-            return segment.endTriangle.has_value();
-        });
-    });
-    stream << "version = " << (hasAnnotationBridges ? 12 : 11) << "\n";
+    stream << "version = 14\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";

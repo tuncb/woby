@@ -48,6 +48,8 @@ struct SurfaceComparison
     SurfaceMeshQuality quality;
     MeshDuplicates duplicates;
     MeshDegenerates degenerates;
+    MeshIntersections intersections;
+    std::vector<DiagnosticEdge> intersectionBounds, intersectionEdges;
     std::vector<DiagnosticEdge> degenerateBounds;
     // Bounds diagonals used by shared finding navigation; not rendered as edges.
     std::vector<DiagnosticEdge> duplicatePointBounds, duplicateTriangleBounds;
@@ -68,7 +70,8 @@ enum ComparisonStage : uint32_t {
     comparisonDuplicateTriangles = 1u << 3,
     comparisonQuality = 1u << 4,
     comparisonDistance = 1u << 5,
-    comparisonDegenerates = 1u << 6
+    comparisonDegenerates = 1u << 6,
+    comparisonIntersections = 1u << 7
 };
 struct ComparisonCacheStatus {
     uint64_t signature = 0;
@@ -78,6 +81,8 @@ struct ComparisonCacheStatus {
 };
 [[nodiscard]] uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs,
     bool fullResults = false);
+[[nodiscard]] uint32_t comparisonDiagnosticStage(DiagnosticCategory category);
+[[nodiscard]] uint32_t nextComparisonStage(uint32_t missing);
 // Returns true when a geometry change invalidates the retained stages.
 bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature);
 // Invalidates only the threshold-dependent detector stage.
@@ -90,6 +95,7 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     uint64_t signature, uint32_t stages);
 bool setComparisonTopologyInspectionSettings(MeshComparison& result, TopologyInspectionSettings settings);
 void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettings& settings);
+void setComparisonIntersectionSettings(MeshComparison& result, IntersectionSettings settings);
 void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings settings);
 
 [[nodiscard]] const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(

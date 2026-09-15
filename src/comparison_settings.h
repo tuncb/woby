@@ -4,6 +4,7 @@
 #include "mesh_duplicates.h"
 #include "mesh_degenerates.h"
 #include "mesh_topology.h"
+#include "mesh_intersections.h"
 
 #include <cstddef>
 #include <string>
@@ -12,7 +13,7 @@ namespace woby
 {
 
 enum class ComparisonSide { a, b };
-enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes };
+enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes, selfIntersections };
 
 struct ComparisonMembership
 {
@@ -53,6 +54,7 @@ struct ComparisonSettings
     SurfaceQualitySettings quality;
     DuplicateSettings duplicates;
     DegenerateSettings degenerates;
+    IntersectionSettings intersections;
     friend bool operator==(const ComparisonSettings &, const ComparisonSettings &) = default;
 };
 

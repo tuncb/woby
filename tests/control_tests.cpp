@@ -82,6 +82,8 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"analysis", "add", "object", "--side", "a", "--object", "source"},
         {"analysis", "remove", "object", "--side", "b", "--object", "source"},
         {"analysis", "enable", "object", "--side", "a", "--object", "source", "--enabled", "false"},
+        {"analysis", "run", "object", "--detector", "self_intersections"},
+        {"analysis", "cancel", "object", "--detector", "self_intersections"},
         {"analysis", "clear", "object", "--side", "a"}, {"analysis", "swap", "object"}, {"analysis", "results", "object"},
     };
     CHECK(commands.size() == woby::controlMethods().size());
