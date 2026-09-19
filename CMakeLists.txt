@@ -135,6 +135,9 @@ add_executable(woby
     src/utf8_path.h
     src/native_dialogs.cpp
     src/native_dialogs.h
+    src/manual_path_dialog.cpp
+    src/manual_path_dialog_ui.cpp
+    src/manual_path_dialog.h
     src/model_mesh.cpp
     src/model_mesh.h
     src/obj_mesh.cpp
@@ -341,6 +344,10 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        tests/manual_path_dialog_tests.cpp
+        src/manual_path_dialog.cpp
+        src/manual_path_dialog_ui.cpp
+        src/native_dialogs.cpp
         tests/app_icon_tests.cpp
         tests/update_tests.cpp
         src/comparison_report.cpp

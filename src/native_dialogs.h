@@ -1,5 +1,7 @@
 #pragma once
 
+#include "manual_path_dialog.h"
+
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_dialog.h>
 
@@ -13,6 +15,7 @@
 namespace woby {
 
 struct ModelFileDialogState {
+    ManualPathDialog fallback;
     std::vector<std::string> filterNames;
     std::vector<std::string> filterPatterns;
     std::vector<SDL_DialogFileFilter> filters;
@@ -26,6 +29,7 @@ struct ModelFileDialogState {
 };
 
 struct SceneFileDialogState {
+    ManualPathDialog fallback;
     std::mutex mutex;
     std::optional<std::filesystem::path> pendingOpenPath;
     std::optional<std::filesystem::path> pendingSavePath;
@@ -36,6 +40,7 @@ struct SceneFileDialogState {
 };
 
 struct SceneScreenshotDialogState {
+    ManualPathDialog fallback;
     std::mutex mutex;
     std::optional<std::filesystem::path> pendingSavePath;
     std::string status;
@@ -68,5 +73,8 @@ void setSceneScreenshotDialogStatus(SceneScreenshotDialogState& state, std::stri
     SceneScreenshotDialogState& state,
     uint64_t& statusVersion);
 [[nodiscard]] bool sceneScreenshotDialogIsOpen(SceneScreenshotDialogState& state);
+
+void drawNativeDialogFallbacks(ModelFileDialogState& models, SceneFileDialogState& scene,
+    SceneScreenshotDialogState& screenshot);
 
 } // namespace woby

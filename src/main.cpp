@@ -2714,8 +2714,12 @@ int main(int argc, char** argv)
             const bool popupWasOpen = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
+            drawNativeDialogFallbacks(modelFileDialogState, sceneFileDialogState, sceneScreenshotDialogState);
             bool modalDialogOpen = ImGui::IsPopupOpen("Settings") || ImGui::IsPopupOpen("Updates")
-                || ImGui::IsPopupOpen("Export PNG");
+                || ImGui::IsPopupOpen("Export PNG")
+                || modelFileDialogIsOpen(modelFileDialogState)
+                || sceneFileDialogIsOpen(sceneFileDialogState)
+                || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
             bool requestSettings = false;
             bool requestUpdates = false;
             const auto newScene = [&]() {

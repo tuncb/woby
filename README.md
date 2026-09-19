@@ -65,6 +65,12 @@ Use Add models for OBJ, STL, or installed importer formats, and Open Scene for
 saved `.woby` scenes. The empty viewport offers both actions and accepts dropped
 model files, folders, and scenes. Add model folder imports models recursively.
 
+On Linux, if the system file chooser cannot open, a fallback dialog lets you
+paste absolute file or folder paths. For Add models, enter one path per line;
+other actions accept one path. Spaces and surrounding quotes are supported.
+Scene saves and PNG exports also use this fallback and ask before overwriting
+an existing file. Canceling the system chooser does not open the fallback.
+
 The **Objects** tree lists scene content, and **Display** contains global viewing
 controls. **File > Export PNG...** opens PNG export options. Choose resolution,
 the scene or visible analysis results, and legend/name/source/direction/threshold
