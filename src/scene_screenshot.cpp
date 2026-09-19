@@ -410,20 +410,24 @@ void submitSceneScreenshotCapture(
 bool drawSceneScreenshotOptions(UiState& state)
 {
     bool save = false;
-    ImGui::SetNextWindowSize({440, 0}, ImGuiCond_Always);
-    if (ImGui::BeginPopup("Export PNG")) {
+    bool open = true;
+    ImGui::SetNextWindowSize({uiSize(440.0f), 0}, ImGuiCond_Always);
+    if (ImGui::BeginPopupModal("Export PNG", &open,
+            ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
+                | ImGuiWindowFlags_NoMove)) {
+        const bool editing = ImGui::IsAnyItemActive();
         auto options = state.screenshotSettings;
         const auto initial = options;
-        ImGui::TextUnformatted("Export PNG");
+        ImGui::TextUnformatted("Image");
         ImGui::SameLine();
         drawInformationIcon("export_info", "Export PNG",
             "Choose a width from 960 to 7680 pixels and a height from 720 to 4320 pixels.\n\n"
             "Visible results only exports analysis results. Otherwise the image includes the scene, helpers and visible results. "
             "Uses the current camera.\n\nExport waits for complete visible results.");
         ImGui::Separator();
-        ImGui::SetNextItemWidth(140);
+        ImGui::SetNextItemWidth(uiSize(140.0f));
         ImGui::InputInt("Width (px)", &options.width, 0);
-        ImGui::SetNextItemWidth(140);
+        ImGui::SetNextItemWidth(uiSize(140.0f));
         ImGui::InputInt("Height (px)", &options.height, 0);
         ImGui::Checkbox("Visible results only", &options.resultsOnly);
         ImGui::Separator();
@@ -438,8 +442,19 @@ bool drawSceneScreenshotOptions(UiState& state)
         drawVisibilityField("Tolerance", options.tolerance);
         ImGui::EndDisabled();
         if (options != initial) { setScreenshotSettings(state, options); }
+        ImGui::Spacing();
+        ImGui::Separator();
         if (ImGui::Button("Save PNG...")) { save = true; ImGui::CloseCurrentPopup(); }
         setLastItemTooltip("Choose where to save a PNG screenshot with these display options.");
+        ImGui::SameLine();
+        const bool escape = !editing && !ImGui::IsAnyItemActive()
+            && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)
+            && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId)
+            && ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+        if (ImGui::Button("Close", ImVec2(uiSize(80.0f), 0.0f)) || escape) {
+            ImGui::CloseCurrentPopup();
+        }
+        setLastItemTooltip("Close and return to the scene (Esc).");
         ImGui::EndPopup();
     }
     return save;

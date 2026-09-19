@@ -34,7 +34,7 @@ struct SceneScreenshotRuntime {
 void destroySceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot);
 void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std::filesystem::path& outputPath,
     ScreenshotSettings options = {});
-// Returns true when the user chooses Save PNG in the export options popup.
+// Returns true when the user chooses Save PNG in the export options dialog.
 bool drawSceneScreenshotOptions(UiState& state);
 void submitSceneScreenshotCapture(
     SceneScreenshotRuntime& screenshot,

@@ -2714,7 +2714,8 @@ int main(int argc, char** argv)
             const bool popupWasOpen = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
-            bool modalDialogOpen = ImGui::IsPopupOpen("Settings") || ImGui::IsPopupOpen("Updates");
+            bool modalDialogOpen = ImGui::IsPopupOpen("Settings") || ImGui::IsPopupOpen("Updates")
+                || ImGui::IsPopupOpen("Export PNG");
             bool requestSettings = false;
             bool requestUpdates = false;
             const auto newScene = [&]() {
@@ -2862,6 +2863,7 @@ int main(int argc, char** argv)
             if (woby::drawSceneScreenshotOptions(ui)) {
                 showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
             }
+            modalDialogOpen = modalDialogOpen || ImGui::IsPopupOpen("Export PNG");
             const auto panelLayout = canvasLayout(window.get(), ui);
             if (ui.viewerPaneVisible) {
                 const float availableHeight = panelLayout.height - panelLayout.top;
