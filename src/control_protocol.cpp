@@ -76,7 +76,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance"}, {}, true, true},
+            {"autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
@@ -104,7 +104,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
-    return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
+    return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
         || name == "locked" || name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "showWinding" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
@@ -133,6 +133,9 @@ std::string cliOption(const std::string& name)
     if (name == "showWinding") { return "--show-winding"; }
     if (name == "nonManifoldVertices") { return "--non-manifold-vertices"; }
     if (name == "showNonManifoldVertices") { return "--show-non-manifold-vertices"; }
+    if (name == "fins") { return "--fins"; }
+    if (name == "showFins") { return "--show-fins"; }
+    if (name == "finMaxAreaRatio") { return "--fin-max-area-ratio"; }
     if (name == "holes") { return "--holes"; }
     if (name == "showHoles") { return "--show-holes"; }
     if (name == "holeSizeRatioTolerance") { return "--hole-size-ratio-tolerance"; }
@@ -254,7 +257,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
-    BOOL_FIELD(nonManifoldVertices) BOOL_FIELD(showNonManifoldVertices) BOOL_FIELD(holes) BOOL_FIELD(showHoles)
+    BOOL_FIELD(nonManifoldVertices) BOOL_FIELD(showNonManifoldVertices) BOOL_FIELD(holes) BOOL_FIELD(showHoles) BOOL_FIELD(fins) BOOL_FIELD(showFins)
     BOOL_FIELD(autoUpdateBoundaries) BOOL_FIELD(autoUpdateNonManifold) BOOL_FIELD(autoUpdateWinding)
     BOOL_FIELD(autoUpdateSelfIntersections) BOOL_FIELD(selfIntersections) BOOL_FIELD(showSelfIntersections)
     BOOL_FIELD(degenerateTriangles) BOOL_FIELD(showDegenerateTriangles)
@@ -270,7 +273,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     NUMBER_FIELD(right) NUMBER_FIELD(up) NUMBER_FIELD(forward) NUMBER_FIELD(factor)
     NUMBER_FIELD(distance) NUMBER_FIELD(fovDegrees) NUMBER_FIELD(nearPlane)
     NUMBER_FIELD(qualityMinimumSize) NUMBER_FIELD(qualityMaximumSize)
-    NUMBER_FIELD(holeSizeRatioTolerance)
+    NUMBER_FIELD(holeSizeRatioTolerance) NUMBER_FIELD(finMaxAreaRatio)
     NUMBER_FIELD(needleThresholdRatio) NUMBER_FIELD(capMinAngleDegrees)
     NUMBER_FIELD(tolerance) NUMBER_FIELD(colorRange)
 #undef NUMBER_FIELD
@@ -362,7 +365,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
-    FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance)
+    FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance) FIELD(fins) FIELD(showFins) FIELD(finMaxAreaRatio)
     FIELD(autoUpdateBoundaries) FIELD(autoUpdateNonManifold) FIELD(autoUpdateWinding)
     FIELD(detector) FIELD(autoUpdateSelfIntersections) FIELD(selfIntersections) FIELD(showSelfIntersections)
     FIELD(degenerateTriangles) FIELD(showDegenerateTriangles) FIELD(needleThresholdRatio) FIELD(capMinAngleDegrees)

@@ -44,8 +44,8 @@ struct ControlOperation {
     std::optional<float> tolerance, colorRange;
     std::optional<std::string> qualityMetric, topologyMode, detector;
     std::optional<bool> duplicatePoints, duplicateTriangles, showDuplicatePoints, showDuplicateTriangles;
-    std::optional<bool> nonManifoldVertices, showNonManifoldVertices, holes, showHoles;
-    std::optional<float> holeSizeRatioTolerance;
+    std::optional<bool> nonManifoldVertices, showNonManifoldVertices, holes, showHoles, fins, showFins;
+    std::optional<float> holeSizeRatioTolerance, finMaxAreaRatio;
     std::optional<bool> selfIntersections, autoUpdateSelfIntersections, showSelfIntersections;
     std::optional<bool> autoUpdateBoundaries, autoUpdateNonManifold, autoUpdateWinding;
     std::optional<bool> degenerateTriangles, showDegenerateTriangles;

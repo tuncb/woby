@@ -55,7 +55,7 @@ std::vector<std::string> comparisonReportLines(
                     + (duplicates.informationalCount ? "; " + std::to_string(duplicates.informationalCount) + " informational STL corners" : ""));
             };
             const char* detectorNames[] = {"boundary edges", "non-manifold edges", "inconsistent triangles", "duplicate points",
-                "source-ID duplicate triangles", "degenerate triangles", "non-manifold vertices", "holes"};
+                "source-ID duplicate triangles", "degenerate triangles", "non-manifold vertices", "holes", "fin candidates"};
             for (size_t i = 0; i < backgroundDetectorCount; ++i) {
                 const auto& status = result.detectors[i];
                 if (status.phase == IntersectionPhase::complete) { continue; }
@@ -75,6 +75,9 @@ std::vector<std::string> comparisonReportLines(
             }
             if (ready(DiagnosticCategory::nonManifoldVertices)) {
                 lines.push_back(label + " non-manifold vertices: " + std::to_string(topology.nonManifoldVertices.size()) + " known (" + topologyStatus(topology) + ")");
+            }
+            if (ready(DiagnosticCategory::fins)) {
+                lines.push_back(label + " Woby fin candidates: " + std::to_string(topology.fins.size()) + " known (" + finStatus(topology) + "); heuristic");
             }
             if (ready(DiagnosticCategory::holes)) {
                 size_t branched = 0, open = 0;
@@ -103,6 +106,10 @@ std::vector<std::string> comparisonReportLines(
                     + std::to_string(d.needleCount) + " / " + std::to_string(d.capCount) + " (reasons overlap)");
             }
         }
+    }
+    if (ready(DiagnosticCategory::fins) && (options.legend || options.tolerance)) {
+        lines.push_back("Fin candidates: physical boundary is not one simple loop after splitting at non-manifold edges; patch/largest boundary-bearing patch area ratio <= " + measurementNumber(settings.topologyInspection.finMaxAreaRatio) + ".");
+        if (options.legend && settings.topologyInspection.showFins) { lines.push_back("Green faces/edges: Woby fin candidates (heuristic)."); }
     }
     if (ready(DiagnosticCategory::holes) && (options.legend || options.tolerance)) {
         lines.push_back("Holes: loop/component bounding-box diagonal ratio <= " + measurementNumber(settings.topologyInspection.holeSizeRatioTolerance) + "; larger openings remain boundaries.");

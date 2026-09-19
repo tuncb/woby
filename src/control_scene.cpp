@@ -74,6 +74,9 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
                 {"nonManifoldVertices", settings.topologyInspection.nonManifoldVertices},
                 {"showNonManifoldVertices", settings.topologyInspection.showNonManifoldVertices},
+                {"fins", settings.topologyInspection.fins},
+                {"showFins", settings.topologyInspection.showFins},
+                {"finMaxAreaRatio", settings.topologyInspection.finMaxAreaRatio},
                 {"holes", settings.topologyInspection.holes},
                 {"showHoles", settings.topologyInspection.showHoles},
                 {"holeSizeRatioTolerance", settings.topologyInspection.holeSizeRatioTolerance},
@@ -364,6 +367,9 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             }
             if (command.nonManifoldVertices) { settings.topologyInspection.nonManifoldVertices = *command.nonManifoldVertices; }
             if (command.showNonManifoldVertices) { settings.topologyInspection.showNonManifoldVertices = *command.showNonManifoldVertices; }
+            if (command.fins) { settings.topologyInspection.fins = *command.fins; }
+            if (command.showFins) { settings.topologyInspection.showFins = *command.showFins; }
+            if (command.finMaxAreaRatio) { settings.topologyInspection.finMaxAreaRatio = *command.finMaxAreaRatio; }
             if (command.holes) { settings.topologyInspection.holes = *command.holes; }
             if (command.showHoles) { settings.topologyInspection.showHoles = *command.showHoles; }
             if (command.holeSizeRatioTolerance) { settings.topologyInspection.holeSizeRatioTolerance = *command.holeSizeRatioTolerance; }
@@ -697,6 +703,45 @@ Json topologyInspectionJson(const MeshTopology& topology, bool holes)
     return result;
 }
 
+Json finResultJson(const MeshTopology& topology)
+{
+    constexpr size_t limit = 100;
+    const bool enabled = topology.inspection.fins;
+    const size_t count = enabled ? topology.fins.size() : 0;
+    Json result = topologyResultJson(topology, {});
+    result["algorithm"] = "woby-fin-candidates-v1";
+    result["heuristic"] = true;
+    result["status"] = enabled ? finStatus(topology) : "disabled";
+    result["unavailableAreaSources"] = topology.unavailableFinAreaSources;
+    result["count"] = !enabled || topology.unavailableSources || topology.unavailableFinAreaSources ? Json(nullptr) : Json(count);
+    result["knownCount"] = count; result["findingCount"] = count;
+    result["maxAreaRatio"] = topology.inspection.finMaxAreaRatio;
+    result["boundaryDefinition"] = "physical edges only; non-manifold cuts retained separately";
+    result["denominatorDefinition"] = "largest physical-boundary-bearing split patch per source, before boundary-shape filtering";
+    result["findingsTruncated"] = count > limit;
+    Json findings = Json::array();
+    for (size_t i = 0; i < std::min(limit, count); ++i) {
+        const auto& patch = topology.finPatches[topology.fins[i]];
+        const auto& source = topology.sources[patch.source];
+        Json faces = Json::array(), physical = Json::array(), cuts = Json::array();
+        for (size_t j = 0; j < std::min(limit, patch.faces.size()); ++j) { faces.push_back(topologyFaceJson(source.faces[patch.faces[j]].reference)); }
+        for (size_t j = 0; j < std::min(limit, patch.physicalBoundaryEdges.size()); ++j) { physical.push_back(patch.physicalBoundaryEdges[j]+1); }
+        for (size_t j = 0; j < std::min(limit, patch.cutBoundaryEdges.size()); ++j) { cuts.push_back(patch.cutBoundaryEdges[j]+1); }
+        findings.push_back({{"sourceId", std::to_string(source.fileId)}, {"source", source.source},
+            {"provenance", triangleProvenanceName(source.provenance)},
+            {"patchId", patch.patch+1}, {"topologyMode", topologyModeName(source.mode)},
+            {"splitComponentCount", patch.splitComponentCount}, {"boundaryKind", finBoundaryKindName(patch.boundary)},
+            {"boundaryComponentCount", patch.boundaryComponents}, {"area", patch.area},
+            {"denominatorArea", patch.denominatorArea}, {"areaRatio", patch.areaRatio},
+            {"faces", faces}, {"faceCount", patch.faces.size()}, {"facesTruncated", patch.faces.size() > limit},
+            {"physicalBoundaryEdgeIds", physical}, {"physicalBoundaryEdgeCount", patch.physicalBoundaryEdges.size()},
+            {"physicalBoundaryEdgesTruncated", patch.physicalBoundaryEdges.size() > limit},
+            {"cutBoundaryEdgeIds", cuts}, {"cutBoundaryEdgeCount", patch.cutBoundaryEdges.size()},
+            {"cutBoundaryEdgesTruncated", patch.cutBoundaryEdges.size() > limit}});
+    }
+    result["findings"] = std::move(findings);
+    return result;
+}
 Json intersectionResultJson(const MeshIntersections& result)
 {
     const bool enabled = result.phase == IntersectionPhase::complete;
@@ -791,6 +836,7 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
                 {"self_intersections", intersectionResultJson(value.intersections)},
                 {"non_manifold_vertices", topologyInspectionJson(value.topology, false)},
                 {"holes", topologyInspectionJson(value.topology, true)},
+                {"fins", finResultJson(value.topology)},
                 {"boundary_edges", topologyResultJson(value.topology, value.topology.boundaries)},
                 {"non_manifold_edges", topologyResultJson(value.topology, value.topology.nonManifoldEdges)},
                 {"inconsistently_oriented_tris", topologyResultJson(value.topology, value.topology.windingEdges, true)}}},

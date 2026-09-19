@@ -459,6 +459,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         if (category == "boundary") { record.settings.diagnosticCategory = DiagnosticCategory::boundary; }
         else if (category == "non_manifold") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifold; }
         else if (category == "non_manifold_vertices") { record.settings.diagnosticCategory = DiagnosticCategory::nonManifoldVertices; }
+        else if (category == "fins") { record.settings.diagnosticCategory = DiagnosticCategory::fins; }
         else if (category == "holes") { record.settings.diagnosticCategory = DiagnosticCategory::holes; }
         else if (category == "winding") { record.settings.diagnosticCategory = DiagnosticCategory::winding; }
         else if (category == "duplicate_points") { record.settings.diagnosticCategory = DiagnosticCategory::duplicatePoints; }
@@ -471,6 +472,9 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "analysis_auto_update_winding") { record.settings.autoUpdateWinding = parseTomlBool(value);
     } else if (key == "analysis_non_manifold_vertices_enabled") { record.settings.topologyInspection.nonManifoldVertices = parseTomlBool(value);
     } else if (key == "analysis_show_non_manifold_vertices") { record.settings.topologyInspection.showNonManifoldVertices = parseTomlBool(value);
+    } else if (key == "analysis_fins_enabled") { record.settings.topologyInspection.fins = parseTomlBool(value);
+    } else if (key == "analysis_show_fins") { record.settings.topologyInspection.showFins = parseTomlBool(value);
+    } else if (key == "analysis_fin_max_area_ratio") { record.settings.topologyInspection.finMaxAreaRatio = parseTomlFloat(value);
     } else if (key == "analysis_holes_enabled") { record.settings.topologyInspection.holes = parseTomlBool(value);
     } else if (key == "analysis_show_holes") { record.settings.topologyInspection.showHoles = parseTomlBool(value);
     } else if (key == "analysis_hole_size_ratio_tolerance") { record.settings.topologyInspection.holeSizeRatioTolerance = parseTomlFloat(value);
@@ -528,6 +532,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "diagnostic_side = \"" << (comparison.diagnosticSide == ComparisonSide::a ? "a" : "b") << "\"\n";
     const char* category = comparison.diagnosticCategory == DiagnosticCategory::boundary ? "boundary"
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifoldVertices ? "non_manifold_vertices"
+        : comparison.diagnosticCategory == DiagnosticCategory::fins ? "fins"
         : comparison.diagnosticCategory == DiagnosticCategory::holes ? "holes"
         : comparison.diagnosticCategory == DiagnosticCategory::nonManifold ? "non_manifold"
         : comparison.diagnosticCategory == DiagnosticCategory::selfIntersections ? "self_intersections"
@@ -546,6 +551,9 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_auto_update_non_manifold_edges = " << (comparison.autoUpdateNonManifold ? "true" : "false") << "\n";
     stream << "analysis_auto_update_winding = " << (comparison.autoUpdateWinding ? "true" : "false") << "\n";
     stream << "analysis_show_non_manifold_vertices = " << (comparison.topologyInspection.showNonManifoldVertices ? "true" : "false") << "\n";
+    stream << "analysis_fins_enabled = " << (comparison.topologyInspection.fins ? "true" : "false") << "\n";
+    stream << "analysis_show_fins = " << (comparison.topologyInspection.showFins ? "true" : "false") << "\n";
+    stream << "analysis_fin_max_area_ratio = " << comparison.topologyInspection.finMaxAreaRatio << "\n";
     stream << "analysis_holes_enabled = " << (comparison.topologyInspection.holes ? "true" : "false") << "\n";
     stream << "analysis_show_holes = " << (comparison.topologyInspection.showHoles ? "true" : "false") << "\n";
     stream << "analysis_hole_size_ratio_tolerance = " << comparison.topologyInspection.holeSizeRatioTolerance << "\n";
@@ -766,7 +774,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -1019,7 +1027,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 14\n";
+    stream << "version = 15\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";

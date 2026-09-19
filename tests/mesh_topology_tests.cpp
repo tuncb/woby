@@ -531,3 +531,204 @@ TEST_CASE("non manifold vertex navigation uses both sides and retains marker geo
     settings.topologyInspection.nonManifoldVertices = false; setComparisonSettings(state,settings,id);
     selectComparisonDiagnostic(state,result,signature,0,id); CHECK_FALSE(findComparison(state,id)->diagnosticFocus);
 }
+
+
+namespace {
+DuplicateSource attachedFinSource()
+{
+    return sourceFor({{0,0,0},{1,0,0},{0,1,0},{0,0,1},{.5,-1,0}},
+        {0,2,1, 0,1,3, 1,2,3, 2,0,3, 0,1,4});
+}
+DuplicateSource threeFinSource()
+{
+    return sourceFor({{0,0,0},{1,0,0},{0,1,0},{0,-2,0},{0,0,4}}, {0,1,2, 1,0,3, 0,1,4});
+}
+}
+TEST_CASE("fin candidates separate attached patches from closed shells and intentional sheets")
+{
+    for (const auto mode : {TopologyMode::automatic, TopologyMode::originalIndex, TopologyMode::exactPosition}) {
+        auto topology = buildMeshTopology({attachedFinSource()}, mode);
+        REQUIRE(topology.finPatches.size() == 2); REQUIRE(topology.fins.size() == 1);
+        const auto& fin = topology.finPatches[topology.fins[0]];
+        CHECK(fin.splitComponentCount == 2); CHECK(fin.faces.size() == 1);
+        CHECK(fin.physicalBoundaryEdges.size() == 2); CHECK(fin.cutBoundaryEdges.size() == 1);
+        CHECK(fin.boundary == FinBoundaryKind::open); CHECK(fin.area == doctest::Approx(.5));
+        CHECK(fin.denominatorArea == doctest::Approx(.5)); CHECK(fin.areaRatio == 1);
+        const auto json = jsonFor(topology, "fins");
+        CHECK(json["count"] == 1); CHECK(json["algorithm"] == "woby-fin-candidates-v1"); CHECK(json["heuristic"] == true);
+        CHECK(json["findings"][0]["faces"][0]["triangleId"] == 5);
+        CHECK(json["findings"][0]["faces"][0]["partId"] == "2");
+        CHECK(json["findings"][0]["boundaryKind"] == "open");
+        CHECK(topology.finPatches[0].boundary == FinBoundaryKind::none);
+        CHECK(buildMeshTopology({sourceFor()}, mode).fins.empty());
+        CHECK(buildMeshTopology({ringSource()}, mode).fins.empty()); // Only one split component.
+        auto sheet = sourceFor(); sheet.fileId = 2;
+        CHECK(buildMeshTopology({sourceFor(), sheet}, mode).fins.empty());
+    }
+}
+TEST_CASE("fin area ratios use the largest boundary bearing patch and inclusive threshold")
+{
+    auto topology = buildMeshTopology({threeFinSource()}); REQUIRE(topology.fins.size() == 3);
+    auto settings = topology.inspection; settings.finMaxAreaRatio = .25f;
+    const auto* cached = topology.finPatches.data();
+    REQUIRE(filterTopologyFindings(topology, settings)); REQUIRE(topology.fins.size() == 1);
+    const auto& first = topology.finPatches[topology.fins[0]];
+    CHECK(first.area == .5); CHECK(first.denominatorArea == 2); CHECK(first.areaRatio == .25);
+    settings.finMaxAreaRatio = std::nextafter(.25f, 0.0f);
+    (void)filterTopologyFindings(topology, settings); CHECK(topology.fins.empty());
+    settings.finMaxAreaRatio = std::nextafter(.25f, 1.0f);
+    (void)filterTopologyFindings(topology, settings); CHECK(topology.fins.size() == 1);
+    settings.finMaxAreaRatio = 0; (void)filterTopologyFindings(topology, settings); CHECK(topology.fins.empty());
+    settings.finMaxAreaRatio = 2; (void)filterTopologyFindings(topology, settings); CHECK(topology.fins.size() == 3);
+    settings.showFins = false; settings.fins = false;
+    CHECK_FALSE(filterTopologyFindings(topology, settings)); CHECK(topology.fins.size() == 3);
+    CHECK(topology.finPatches.data() == cached); CHECK(jsonFor(topology, "fins")["status"] == "disabled");
+    settings.finMaxAreaRatio = -1; CHECK(normalizedTopologyInspectionSettings(settings).finMaxAreaRatio == 0);
+    settings.finMaxAreaRatio = std::numeric_limits<float>::infinity(); CHECK(normalizedTopologyInspectionSettings(settings).finMaxAreaRatio == 1);
+    // An ordinary disk is included in the denominator population even though its
+    // simple-loop boundary excludes it from the final candidate population.
+    auto source = threeFinSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
+    data->points.insert(data->points.end(), {{10,0,0},{14,0,0},{10,4,0}});
+    data->indices.insert(data->indices.end(), {5,6,7}); source.data = data; source.parts[0].indexCount = data->indices.size();
+    topology = buildMeshTopology({source}); REQUIRE(topology.fins.size() == 3);
+    CHECK(topology.finPatches[0].denominatorArea == 8); CHECK(topology.finPatches[0].areaRatio == .0625);
+}
+TEST_CASE("fin multiple loop boundary classification is explicitly heuristic")
+{
+    auto source = ringSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
+    data->points.insert(data->points.end(), {{10,0,0},{11,0,0},{10,1,0}});
+    data->indices.insert(data->indices.end(), {8,9,10}); source.data = data; source.parts[0].indexCount = data->indices.size();
+    auto topology = buildMeshTopology({source}); REQUIRE(topology.fins.size() == 1);
+    const auto& patch = topology.finPatches[topology.fins[0]];
+    CHECK(patch.boundary == FinBoundaryKind::multipleLoops); CHECK(patch.boundaryComponents == 2);
+    CHECK(patch.cutBoundaryEdges.empty()); CHECK(patch.area == 60); CHECK(patch.areaRatio == 1);
+}
+TEST_CASE("fin source isolation transforms unavailable input collapse and cancellation")
+{
+    auto source = threeFinSource(), other = attachedFinSource(); other.fileId = 20;
+    for (size_t axis = 0; axis < 3; ++axis) { other.parts[0].transform[axis*5] = 100; }
+    auto topology = buildMeshTopology({other, source}); CHECK(topology.fins.size() == 4);
+    CHECK(topology.finPatches[0].denominatorArea == 2); CHECK(topology.finPatches[0].areaRatio == .25);
+    CHECK(jsonFor(topology, "fins") == jsonFor(buildMeshTopology({source, other}), "fins"));
+    for (size_t axis = 0; axis < 3; ++axis) { source.parts[0].transform[axis*5] = 3; source.parts[0].transform[12+axis] = 10; }
+    topology = buildMeshTopology({source}); CHECK(topology.finPatches[0].area == 4.5); CHECK(topology.finPatches[0].areaRatio == .25);
+    source.parts[0].transform[5] = 6;
+    topology = buildMeshTopology({source}); CHECK(topology.finPatches[0].area == 9); CHECK(topology.finPatches[0].areaRatio == .5);
+    auto collapsed = sourceFor({{0,0,0},{1,0,0},{2,0,0}}, {0,1,2});
+    topology = buildMeshTopology({collapsed}); CHECK(topology.fins.empty()); CHECK(topology.excludedCollapsedFaces == 1);
+    auto missing = sourceFor(); missing.fileId = 50; missing.data.reset();
+    auto json = jsonFor(buildMeshTopology({missing}), "fins"); CHECK(json["count"].is_null()); CHECK(json["status"] == "unavailable");
+    json = jsonFor(buildMeshTopology({source, missing}), "fins"); CHECK(json["count"].is_null()); CHECK(json["status"] == "partial"); CHECK(json["knownCount"] == 3);
+    auto stl = attachedFinSource(); auto data = std::make_shared<SourceMeshData>(*stl.data); data->provenance = SourceProvenance::stlCorners; stl.data = data;
+    CHECK(buildMeshTopology({stl}).fins.size() == 1);
+    CHECK(jsonFor(buildMeshTopology({stl}, TopologyMode::originalIndex), "fins")["status"] == "unavailable");
+    std::stop_source stop; stop.request_stop();
+    CHECK_THROWS((void)buildMeshTopology({source}, TopologyMode::automatic, stop.get_token()));
+    CHECK_THROWS((void)filterTopologyFindings(topology, {}, stop.get_token()));
+}
+TEST_CASE("fin JSON output bounds patches and source face references")
+{
+    std::vector<DuplicateSource> sources;
+    for (uint64_t i = 0; i < 120; ++i) { auto source = attachedFinSource(); source.fileId = i+1; sources.push_back(source); }
+    const auto json = jsonFor(buildMeshTopology(sources), "fins");
+    CHECK(json["count"] == 120); CHECK(json["findings"].size() == 100); CHECK(json["findingsTruncated"] == true);
+    auto topology = buildMeshTopology({attachedFinSource()});
+    auto& patch = topology.finPatches[topology.fins[0]];
+    patch.faces.resize(120, patch.faces[0]); patch.physicalBoundaryEdges.resize(120, patch.physicalBoundaryEdges[0]);
+    const auto bounded = jsonFor(topology, "fins")["findings"][0];
+    CHECK(bounded["faces"].size() == 100); CHECK(bounded["faceCount"] == 120); CHECK(bounded["facesTruncated"] == true);
+    CHECK(bounded["physicalBoundaryEdgeIds"].size() == 100); CHECK(bounded["physicalBoundaryEdgesTruncated"] == true);
+}
+TEST_CASE("fin settings navigate persist validate and control picking reports and cached geometry")
+{
+    Fixture fixture;
+    const auto path = fixture.write("fin.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\nv .5 -1 0\nf 1 3 2\nf 1 2 4\nf 2 3 4\nf 3 1 4\nf 1 2 5\n");
+    UiState state; state.files.push_back(createUiFileState(path, loadObjMesh(path), 0)); appendDefaultSceneNodesForFiles(state, 0);
+    const auto id = createComparison(state); setComparisonObjects(state, {state.files[0].objectId}, ComparisonSide::a, true, id);
+    setComparisonTranslation(state, id, {100,0,0});
+    auto settings = comparisonSettings(state, id); settings.diagnosticCategory = DiagnosticCategory::fins;
+    settings.mode = ComparisonMode::original;
+    settings.showBoundaries = settings.showNonManifold = settings.showWinding = false;
+    settings.topologyInspection.showHoles = settings.topologyInspection.showNonManifoldVertices = false;
+    setComparisonSettings(state, settings, id);
+    const auto clean = createSceneDocument(state); const auto signature = comparisonGeometrySignature(state, id);
+    auto result = compareMeshes(comparisonWorldMesh(state, ComparisonSide::a, id), {});
+    REQUIRE(result.original.finBounds.size() == 1); CHECK(result.original.finFill.size() == 3); CHECK(result.original.finEdges.size() == 3);
+    selectComparisonDiagnostic(state, result, signature, 0, id); REQUIRE(findComparison(state,id)->diagnosticFocus);
+    CHECK(state.camera.target[0] == doctest::Approx(100.5));
+    navigateComparisonDiagnostic(state, result, signature, 1, id); CHECK(findComparison(state,id)->diagnosticFocus->index == 0);
+    auto command = parseControlOperation(*findControlMethod("analysis.set"), {{"target","analysis"},{"fins",false},{"showFins",false},{"finMaxAreaRatio",.5}});
+    CHECK(controlOperationParams(command)["finMaxAreaRatio"] == .5); command.objectId = id;
+    (void)applyControlSceneOperation(state, clean, command, [](auto value) { return std::to_string(value); }, 200, 800);
+    CHECK_FALSE(findComparison(state,id)->diagnosticFocus); CHECK(comparisonGeometrySignature(state,id) == signature);
+    selectComparisonDiagnostic(state, result, signature, 0, id); CHECK_FALSE(findComparison(state,id)->diagnosticFocus);
+    const auto* cached = result.original.topology.finPatches.data();
+    CHECK(setComparisonTopologyInspectionSettings(result, comparisonSettings(state,id).topologyInspection));
+    CHECK(result.original.finBounds.empty()); CHECK(result.original.finFill.empty()); CHECK(result.original.finEdges.empty());
+    CHECK(result.original.topology.finPatches.data() == cached);
+    writeSceneDocument(fixture.root/"new.woby", createSceneDocument(state));
+    CHECK(readSceneDocument(fixture.root/"new.woby").comparisons[0].settings == comparisonSettings(state,id));
+    auto views = readSceneDocument(fixture.write("views.woby", "version = 15\n[[analyses]]\nname = \"test\"\n[[views]]\nname = \"saved\"\n[[views.objects]]\nkind = \"analysis\"\nindex = 0\nanalysis_fins_enabled = false\nanalysis_show_fins = false\nanalysis_fin_max_area_ratio = 0.25\ndiagnostic_category = \"fins\"\n"));
+    REQUIRE(views.views.size() == 1); REQUIRE(views.views[0].objects.size() == 1);
+    const auto& saved = views.views[0].objects[0].settings.comparison;
+    CHECK(saved.diagnosticCategory == DiagnosticCategory::fins); CHECK_FALSE(saved.topologyInspection.fins); CHECK_FALSE(saved.topologyInspection.showFins); CHECK(saved.topologyInspection.finMaxAreaRatio == .25f);
+    writeSceneDocument(fixture.root/"views-roundtrip.woby", views);
+    CHECK(readSceneDocument(fixture.root/"views-roundtrip.woby").views[0].objects[0].settings.comparison == saved);
+    for (int version = 2; version <= 14; ++version) {
+        const auto old = readSceneDocument(fixture.write("old.woby", "version = " + std::to_string(version) + "\n[[analyses]]\nname = \"old\"\n"));
+        CHECK(old.comparisons[0].settings.topologyInspection.fins); CHECK(old.comparisons[0].settings.topologyInspection.finMaxAreaRatio == 1);
+    }
+    CHECK_THROWS(parseControlOperation(*findControlMethod("analysis.set"), {{"target","analysis"},{"fins","true"}}));
+    CHECK_THROWS(parseControlOperation(*findControlMethod("analysis.set"), {{"target","analysis"},{"finMaxAreaRatio",std::numeric_limits<double>::infinity()}}));
+    (void)setComparisonTopologyInspectionSettings(result, settings.topologyInspection);
+    std::vector<ScenePickPart> parts; appendComparisonPickParts(parts, *findComparison(state,id), settings, result, false);
+    REQUIRE(parts.size() == 2); CHECK(parts[1].diagnosticEdges.size() == 3);
+    settings.topologyInspection.showFins = false; parts.clear(); appendComparisonPickParts(parts, *findComparison(state,id), settings, result, false);
+    CHECK(parts.size() == 1);
+    std::string report; for (const auto& line : comparisonReportLines("Test","fin.obj","",settings,result,{})) { report += line; }
+    CHECK(report.find("Woby fin candidates: 1 known (complete); heuristic") != std::string::npos);
+}
+
+
+TEST_CASE("unrepresentable fin areas do not fail shared topology or claim clean results")
+{
+    auto source = threeFinSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
+    for (auto& point : data->points) { for (auto& axis : point) { axis *= 1e-200; } }
+    source.data = data;
+    const auto topology = buildMeshTopology({source});
+    CHECK(topologyStatus(topology) == std::string("complete")); CHECK(topology.nonManifoldEdges.size() == 1);
+    CHECK(topology.excludedCollapsedFaces == 0); CHECK(topology.unavailableFinAreaSources == 1);
+    const auto json = jsonFor(topology,"fins"); CHECK(json["status"] == "unavailable"); CHECK(json["count"].is_null());
+    auto normal = threeFinSource(); normal.fileId = 2;
+    const auto mixed = jsonFor(buildMeshTopology({source,normal}),"fins");
+    CHECK(mixed["status"] == "partial"); CHECK(mixed["knownCount"] == 3); CHECK(mixed["count"].is_null());
+}
+
+
+TEST_CASE("fin patches classify pinched boundaries and retain duplicate face incidence")
+{
+    std::vector<Point> points;
+    for (const double radius : {4.0, 1.0}) {
+        for (size_t i = 0; i < 8; ++i) {
+            const double angle = static_cast<double>(i) * std::numbers::pi / 4;
+            points.push_back({radius*std::cos(angle),radius*std::sin(angle),0});
+        }
+    }
+    std::vector<uint32_t> faces;
+    for (uint32_t i = 0; i < 8; ++i) {
+        const uint32_t next = (i+1)%8;
+        faces.insert(faces.end(),{i,next,8+next, i,8+next,8+i});
+    }
+    // Pinch the inner and outer rims at a vertex without sharing an edge.
+    for (auto& vertex : faces) { if (vertex == 12) { vertex = 0; } }
+    points.insert(points.end(),{{10,0,0},{11,0,0},{10,1,0}}); faces.insert(faces.end(),{16,17,18});
+    const auto topology = buildMeshTopology({sourceFor(points,faces)});
+    REQUIRE(topology.fins.size() == 1);
+    CHECK(topology.finPatches[topology.fins[0]].boundary == FinBoundaryKind::branched);
+    CHECK(topology.finPatches[topology.fins[0]].boundaryComponents == 1);
+    auto source = attachedFinSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
+    data->indices.insert(data->indices.end(),{0,1,4}); source.data = data; source.parts[0].indexCount = data->indices.size();
+    const auto duplicate = buildMeshTopology({source});
+    CHECK(duplicate.sources[0].faces.size() == 6); CHECK(duplicate.nonManifoldEdges.size() == 1);
+    CHECK(duplicate.fins.empty());
+}

@@ -629,3 +629,50 @@ TEST_CASE("automatic detector preferences round trip scenes and saved views")
     CHECK_FALSE(diagnosticAutoUpdate(legacy.comparisons[0].settings, DiagnosticCategory::holes));
     CHECK(diagnosticAutoUpdate(legacy.comparisons[0].settings, DiagnosticCategory::boundary));
 }
+
+
+TEST_CASE("fin lifecycle filters cached patches and hides stale canceled and failed findings")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    f.state = {};
+    const auto path = f.files.write("fins.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 -2 0\nv 0 0 4\nf 1 2 3\nf 2 1 4\nf 1 2 5\n");
+    f.state.files.push_back(createUiFileState(path,loadObjMesh(path),0)); appendDefaultSceneNodesForFiles(f.state,0);
+    f.id = createComparison(f.state); setComparisonObjects(f.state,{f.state.files[0].objectId},ComparisonSide::a,true,f.id);
+    auto settings = comparisonSettings(f.state,f.id); settings.mode = ComparisonMode::original; setComparisonSettings(f.state,settings,f.id);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime,f.state,f.id); }));
+    REQUIRE(runtime.result.original.topology.fins.size() == 3);
+    const auto* patches = runtime.result.original.topology.finPatches.data();
+    settings = comparisonSettings(f.state,f.id); settings.topologyInspection.finMaxAreaRatio = .25f;
+    setComparisonSettings(f.state,settings,f.id); updateComparisonRuntimes(f.runtimes,f.state);
+    CHECK_FALSE(runtime.worker.valid()); CHECK(runtime.result.original.topology.finPatches.data() == patches);
+    CHECK(comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true));
+    CHECK(runtime.result.original.topology.fins.size() == 1);
+    CHECK(comparisonDetectorStatus(runtime.result,DiagnosticCategory::fins).knownCounts[0] == 1);
+    settings.topologyInspection.showFins = false; setComparisonSettings(f.state,settings,f.id); updateComparisonRuntimes(f.runtimes,f.state);
+    CHECK_FALSE(runtime.worker.valid()); CHECK(runtime.result.original.topology.finPatches.data() == patches);
+    CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
+    settings.topologyInspection.showFins = true; settings.topologyInspection.fins = false; settings.topologyInspection.finMaxAreaRatio = .5f;
+    setComparisonSettings(f.state,settings,f.id); updateComparisonRuntimes(f.runtimes,f.state);
+    CHECK(comparisonDetectorStatus(runtime.result,DiagnosticCategory::fins).phase == IntersectionPhase::outdated);
+    CHECK(comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::holes));
+    CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
+    CHECK(controlComparisonResults(runtime.result,.05)["aToB"]["detectors"]["fins"]["findings"].empty());
+    requestComparisonDetector(f.state,f.id,DiagnosticCategory::fins); updateComparisonRuntimes(f.runtimes,f.state);
+    CHECK_FALSE(runtime.worker.valid()); CHECK(runtime.result.original.topology.finPatches.data() == patches);
+    CHECK(comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true));
+    CHECK(runtime.result.original.topology.fins.size() == 2);
+    requestComparisonDetector(f.state,f.id,DiagnosticCategory::fins,true); updateComparisonRuntimes(f.runtimes,f.state);
+    CHECK(comparisonDetectorStatus(runtime.result,DiagnosticCategory::fins).phase == IntersectionPhase::canceled);
+    CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
+    requestComparisonDetector(f.state,f.id,DiagnosticCategory::fins); updateComparisonRuntimes(f.runtimes,f.state);
+    CHECK(comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true));
+    auto& status = runtime.result.detectors[static_cast<size_t>(DiagnosticCategory::fins)];
+    status.phase = IntersectionPhase::failed; status.error = "fixture failure";
+    CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
+    CHECK(controlComparisonResults(runtime.result,.05)["aToB"]["detectors"]["fins"]["status"] == "failed");
+    setFileTranslation(f.state.files[0].fileSettings,{3,0,0});
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime,f.state,f.id); }));
+    CHECK(comparisonDetectorStatus(runtime.result,DiagnosticCategory::fins).phase == IntersectionPhase::outdated);
+    CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
+}

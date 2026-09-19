@@ -4,8 +4,20 @@ Status: duplicate-point and source-ID duplicate-triangle implementation added on
 2026-09-12; degenerate-triangle findings and shared topology with upgraded edge/winding
 findings added on 2026-09-13. Non-manifold vertices and hole loops are now also
 implemented end to end, making all seven inexpensive detector categories available.
-Self-intersections are now implemented as an opt-in eighth detector. Fin candidates
-and non-partitioning surfaces remain open.
+Self-intersections are implemented as an opt-in eighth detector. Woby fin candidates
+are implemented as the ninth category (2026-09-19); non-partitioning surfaces remain open.
+
+The fin slice reuses shared topology, splitting adjacency at non-manifold edges.
+It classifies physical boundaries separately from cut boundaries, requires at least
+two split patches per source, and filters by inclusive patch area / largest
+physical-boundary-bearing split patch area (before boundary-shape filtering).
+Closed patches are excluded from the denominator. This makes attached open-rim
+fins candidates while simple-loop sheets are excluded. Multi-opening sheets can
+also qualify when another component exists: this is an explicitly documented
+Woby heuristic, not verified GGM/GMM parity. Cached threshold filtering, per-detector
+lifecycle, settings/eye controls, paged patch navigation, face overlays, picking,
+bounded CLI findings, reports, samples, and scene version 15 are integrated.
+Reference candidate-population validation remains open.
 
 The intersection slice uses a per-source BVH and exact rational segment/triangle
 clipping through Boost.Multiprecision (`src/mesh_intersections.*`). This replaces

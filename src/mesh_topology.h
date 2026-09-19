@@ -13,6 +13,8 @@ struct TopologyInspectionSettings {
     bool nonManifoldVertices = true, holes = true;
     bool showNonManifoldVertices = true, showHoles = true;
     float holeSizeRatioTolerance = .05f;
+    bool fins = true, showFins = true;
+    float finMaxAreaRatio = 1.0f;
     friend bool operator==(const TopologyInspectionSettings&, const TopologyInspectionSettings&) = default;
 };
 [[nodiscard]] bool sameTopologyInspectionFilters(const TopologyInspectionSettings& a, const TopologyInspectionSettings& b);
@@ -70,6 +72,16 @@ struct TopologyBoundary {
     double diagonal = 0, componentDiagonal = 0, sizeRatio = 0;
     bool ratioAvailable = false;
 };
+enum class FinBoundaryKind { none, simpleLoop, multipleLoops, open, branched };
+[[nodiscard]] const char* finBoundaryKindName(FinBoundaryKind kind);
+struct TopologyFinPatch {
+    size_t source = 0, patch = 0, splitComponentCount = 0;
+    std::vector<size_t> faces, physicalBoundaryEdges, cutBoundaryEdges;
+    FinBoundaryKind boundary = FinBoundaryKind::none;
+    size_t boundaryComponents = 0;
+    double area = 0, denominatorArea = 0, areaRatio = 0;
+    bool candidate = false;
+};
 struct MeshTopology {
     TopologyMode mode = TopologyMode::automatic;
     size_t availableSources = 0, unavailableSources = 0, excludedCollapsedFaces = 0;
@@ -82,12 +94,16 @@ struct MeshTopology {
     std::vector<TopologyBoundary> boundaryRegions;
     TopologyInspectionSettings inspection;
     std::vector<size_t> holes; // Indices into boundaryRegions; filtered without rebuilding topology.
+    std::vector<TopologyFinPatch> finPatches;
+    std::vector<size_t> fins; // Indices into finPatches after the inclusive area filter.
+    size_t unavailableFinAreaSources = 0;
 };
 
-// Returns true when the hole geometry filter changed. Run/Show retain cached findings.
+// Returns true when a geometry filter changed. Run/Show retain cached findings.
 bool filterTopologyFindings(MeshTopology& topology, TopologyInspectionSettings settings, std::stop_token stop = {});
 
 [[nodiscard]] const char* topologyStatus(const MeshTopology& topology);
+[[nodiscard]] const char* finStatus(const MeshTopology& topology);
 // Pure, source-scoped topology. Source files are never welded together.
 // Original IDs are partitioned by world transform; exact-position keys use doubles.
 [[nodiscard]] MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources,

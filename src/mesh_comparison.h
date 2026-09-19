@@ -44,7 +44,8 @@ struct SurfaceComparison
     MeshDiagnostics diagnostics;
     MeshTopology topology;
     std::vector<DiagnosticEdge> topologyBoundaries, topologyNonManifold, topologyWinding;
-    std::vector<DiagnosticEdge> nonManifoldVertexBounds, nonManifoldVertexMarkers, holeBounds, holeEdges;
+    std::vector<DiagnosticEdge> nonManifoldVertexBounds, nonManifoldVertexMarkers, holeBounds, holeEdges, finBounds, finEdges;
+    std::vector<std::array<float, 3>> finFill;
     SurfaceMeshQuality quality;
     MeshDuplicates duplicates;
     MeshDegenerates degenerates;

@@ -13,12 +13,12 @@ namespace woby
 {
 
 enum class ComparisonSide { a, b };
-enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes, selfIntersections };
+enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes, fins, selfIntersections };
 inline constexpr size_t backgroundDetectorCount = static_cast<size_t>(DiagnosticCategory::selfIntersections);
 inline constexpr size_t diagnosticCategoryCount = backgroundDetectorCount + 1;
 inline constexpr std::array<const char*, diagnosticCategoryCount> diagnosticCategoryKeys = {
     "boundary_edges", "non_manifold_edges", "inconsistently_oriented_tris", "duplicate_points",
-    "duplicate_tris", "degenerate_tris", "non_manifold_vertices", "holes", "self_intersections"
+    "duplicate_tris", "degenerate_tris", "non_manifold_vertices", "holes", "fins", "self_intersections"
 };
 
 struct DetectorRequest {

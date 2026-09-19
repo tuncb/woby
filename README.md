@@ -629,9 +629,37 @@ they remain usable while self-intersections run. Automatic checks run initially 
 after relevant changes. Cancel or failure pauses automatic checking until another request, a geometry change,
 or a relevant detector-settings change. Merely changing Show or toggling automatic updates does not restart a stopped check.
 
-Scene version 14 saves auto-update, Show, and the selected category, including saved
+Scene version 15 saves auto-update, Show, and the selected category, including saved
 views. Requests and computed results are transient; reopened manual analyses start
 Not checked. Version 13 Run settings migrate to auto-update.
 
 See [the sample](assets/samples/self-intersections/README.md) and
 [CLI details](doc/ctl-commands.md#self-intersections).
+
+
+### Fin candidates
+
+The **Fin candidates** detector reports heuristic Woby patch classifications.
+It shares the topology mode and per-source scope of the other topology checks.
+Faces connect through edges with exactly two incident faces; edges with more
+than two incident faces split the mesh into patches. At least two resulting
+patches in a source are required. Collapsed faces remain excluded from topology.
+
+Classification uses **physical boundary edges** (one incident face), preserving
+non-manifold cut edges separately. A patch qualifies when it has physical
+boundaries that are open, branched, or multiple loops rather than one simple
+closed loop. Its world-coordinate area divided by the largest physical-boundary-
+bearing split patch in that source must be **<= Maximum area ratio** (default 1).
+The denominator includes ordinary disk patches before boundary-shape filtering;
+it excludes closed patches and is not total mesh area. Source transforms affect
+areas; the analysis display offset does not.
+
+This definition can also flag intentional sheets with multiple openings when
+another component is present. Results are labeled **Woby fin candidates**; no
+GGM/GMM reference parity or unique repair choice is claimed. The gear menu
+controls the area ratio and automatic updates; the eye controls green patch
+faces and edges. Select a row or use arrows to frame a patch and inspect its
+source triangles, area, denominator, ratio, and physical/cut boundaries.
+Threshold changes reuse cached patches; stale or canceled findings are hidden.
+Settings and saved views persist in scene version 15 (versions 2-14 still load).
+See [the sample](assets/samples/fin-candidates/README.md).

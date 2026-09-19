@@ -382,9 +382,10 @@ const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
         || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
     const auto& focus = *comparison->diagnosticFocus;
     if (comparisonDetectorStatus(result, focus.category).phase != IntersectionPhase::complete) { return nullptr; }
-    if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding || focus.category == DiagnosticCategory::nonManifoldVertices || focus.category == DiagnosticCategory::holes) {
+    if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding || focus.category == DiagnosticCategory::nonManifoldVertices || focus.category == DiagnosticCategory::holes || focus.category == DiagnosticCategory::fins) {
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
         if (surface.topology.mode != comparison->settings.topologyMode
+            || (focus.category == DiagnosticCategory::fins && surface.topology.inspection.finMaxAreaRatio != comparison->settings.topologyInspection.finMaxAreaRatio)
             || (focus.category == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance)) { return nullptr; }
     }
     if (focus.category == DiagnosticCategory::selfIntersections) {
@@ -421,9 +422,10 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (comparisonDetectorStatus(result, settings.diagnosticCategory).phase != IntersectionPhase::complete) { return; }
-    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes) {
+    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes || settings.diagnosticCategory == DiagnosticCategory::fins) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (surface.topology.mode != settings.topologyMode
+            || (settings.diagnosticCategory == DiagnosticCategory::fins && surface.topology.inspection.finMaxAreaRatio != settings.topologyInspection.finMaxAreaRatio)
             || (settings.diagnosticCategory == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance)) { return; }
     }
     if (settings.diagnosticCategory == DiagnosticCategory::selfIntersections) {
@@ -453,9 +455,10 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
     if (comparisonDetectorStatus(result, settings.diagnosticCategory).phase != IntersectionPhase::complete) { return; }
-    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes) {
+    if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes || settings.diagnosticCategory == DiagnosticCategory::fins) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (surface.topology.mode != settings.topologyMode
+            || (settings.diagnosticCategory == DiagnosticCategory::fins && surface.topology.inspection.finMaxAreaRatio != settings.topologyInspection.finMaxAreaRatio)
             || (settings.diagnosticCategory == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance)) { return; }
     }
     if (settings.diagnosticCategory == DiagnosticCategory::selfIntersections) {
@@ -609,6 +612,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
         const bool wasEnabled = comparison->settings.enabled;
         if (settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
             || normalizedTopologyMode(settings.topologyMode) != comparison->settings.topologyMode
+            || normalizedTopologyInspectionSettings(settings.topologyInspection).finMaxAreaRatio != comparison->settings.topologyInspection.finMaxAreaRatio
             || normalizedTopologyInspectionSettings(settings.topologyInspection).holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
             comparison->diagnosticFocus.reset();

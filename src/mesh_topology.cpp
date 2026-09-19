@@ -135,6 +135,87 @@ void inspectBoundaries(MeshTopology& result, const SourceTopology& source, std::
         }
     }
 }
+void inspectFinPatches(MeshTopology& result, const SourceTopology& source, std::stop_token stop)
+{
+    // Physical boundaries determine the classification. A cut edge is retained as
+    // provenance, but must not close the open rim of an attached fin artificially.
+    const size_t first = result.finPatches.size();
+    std::vector<bool> seen(source.faces.size());
+    double denominator = 0;
+    bool areasAvailable = true;
+    for (size_t seed = 0; seed < source.faces.size(); ++seed) {
+        canceled(stop);
+        if (seen[seed]) { continue; }
+        TopologyFinPatch patch;
+        patch.source = result.sources.size(); patch.patch = result.finPatches.size() - first;
+        patch.faces.push_back(seed); seen[seed] = true;
+        std::set<size_t> physical, cuts;
+        for (size_t head = 0; head < patch.faces.size(); ++head) {
+            canceled(stop);
+            const auto& face = source.faces[patch.faces[head]];
+            const auto& a = source.vertices[face.vertices[0]].position;
+            const auto& b = source.vertices[face.vertices[1]].position;
+            const auto& c = source.vertices[face.vertices[2]].position;
+            Point u{}, v{};
+            for (size_t k = 0; k < 3; ++k) { u[k] = b[k]-a[k]; v[k] = c[k]-a[k]; }
+            patch.area += .5 * std::hypot(u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]);
+            for (const auto e : face.edges) {
+                canceled(stop);
+                const auto& uses = source.edges[e].incidentFaces;
+                if (uses.size() == 1) { physical.insert(e); }
+                else if (uses.size() > 2) { cuts.insert(e); }
+                else {
+                    for (const auto& use : uses) {
+                        if (!seen[use.face]) { seen[use.face] = true; patch.faces.push_back(use.face); }
+                    }
+                }
+            }
+        }
+        std::sort(patch.faces.begin(), patch.faces.end(), [&](size_t a, size_t b) { canceled(stop); return a < b; });
+        patch.physicalBoundaryEdges.assign(physical.begin(), physical.end());
+        patch.cutBoundaryEdges.assign(cuts.begin(), cuts.end());
+        std::map<size_t, std::vector<size_t>> graph;
+        for (const auto e : physical) {
+            canceled(stop);
+            const auto& v = source.edges[e].vertices;
+            graph[v[0]].push_back(v[1]); graph[v[1]].push_back(v[0]);
+        }
+        bool open = false, branched = false;
+        std::set<size_t> visited;
+        for (const auto& [vertex, neighbors] : graph) {
+            canceled(stop);
+            open |= neighbors.size() == 1; branched |= neighbors.size() > 2;
+            if (!visited.insert(vertex).second) { continue; }
+            ++patch.boundaryComponents;
+            std::vector<size_t> queue{vertex};
+            for (size_t head = 0; head < queue.size(); ++head) {
+                canceled(stop);
+                for (const auto next : graph.at(queue[head])) {
+                    if (visited.insert(next).second) { queue.push_back(next); }
+                }
+            }
+        }
+        if (!physical.empty()) {
+            // Exact topology may retain triangles whose area underflows double.
+            // Keep other detectors usable, but never claim a clean fin result.
+            areasAvailable &= std::isfinite(patch.area) && patch.area > 0;
+            patch.boundary = branched ? FinBoundaryKind::branched : open ? FinBoundaryKind::open
+                : patch.boundaryComponents == 1 ? FinBoundaryKind::simpleLoop : FinBoundaryKind::multipleLoops;
+            denominator = std::max(denominator, patch.area);
+        }
+        result.finPatches.push_back(std::move(patch));
+    }
+    const size_t count = result.finPatches.size() - first;
+    if (count >= 2 && !areasAvailable) { ++result.unavailableFinAreaSources; }
+    for (size_t i = first; i < result.finPatches.size(); ++i) {
+        canceled(stop);
+        auto& patch = result.finPatches[i];
+        patch.splitComponentCount = count; patch.denominatorArea = denominator;
+        if (denominator > 0) { patch.areaRatio = patch.area / denominator; }
+        patch.candidate = areasAvailable && count >= 2 && patch.boundary != FinBoundaryKind::none
+            && patch.boundary != FinBoundaryKind::simpleLoop;
+    }
+}
 SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode mode, std::stop_token stop)
 {
     SourceTopology result;
@@ -320,15 +401,24 @@ const char* topologyStatus(const MeshTopology& topology)
     if (topology.unavailableSources) { return topology.availableSources ? "partial" : "unavailable"; }
     return "complete";
 }
+const char* finStatus(const MeshTopology& topology)
+{
+    if (topology.unavailableSources || topology.unavailableFinAreaSources) {
+        return topology.availableSources > topology.unavailableFinAreaSources ? "partial" : "unavailable";
+    }
+    return "complete";
+}
 bool sameTopologyInspectionFilters(const TopologyInspectionSettings& a, const TopologyInspectionSettings& b)
 {
     return a.holes == b.holes && a.nonManifoldVertices == b.nonManifoldVertices
+        && a.fins == b.fins && a.finMaxAreaRatio == b.finMaxAreaRatio
         && a.holeSizeRatioTolerance == b.holeSizeRatioTolerance;
 }
 TopologyInspectionSettings normalizedTopologyInspectionSettings(TopologyInspectionSettings settings)
 {
     settings.holeSizeRatioTolerance = std::isfinite(settings.holeSizeRatioTolerance)
         ? std::max(0.0f, settings.holeSizeRatioTolerance) : .05f;
+    settings.finMaxAreaRatio = std::isfinite(settings.finMaxAreaRatio) ? std::max(0.0f, settings.finMaxAreaRatio) : 1.0f;
     return settings;
 }
 const char* boundaryKindName(BoundaryKind kind)
@@ -340,11 +430,23 @@ const char* boundaryKindName(BoundaryKind kind)
     }
     return "branched";
 }
+const char* finBoundaryKindName(FinBoundaryKind kind)
+{
+    switch (kind) {
+    case FinBoundaryKind::none: return "none";
+    case FinBoundaryKind::simpleLoop: return "simple_loop";
+    case FinBoundaryKind::multipleLoops: return "multiple_loops";
+    case FinBoundaryKind::open: return "open";
+    case FinBoundaryKind::branched: return "branched";
+    }
+    return "none";
+}
 bool filterTopologyFindings(MeshTopology& topology, TopologyInspectionSettings settings, std::stop_token stop)
 {
     canceled(stop);
     settings = normalizedTopologyInspectionSettings(settings);
-    const bool changed = topology.inspection.holeSizeRatioTolerance != settings.holeSizeRatioTolerance;
+    const bool changed = topology.inspection.holeSizeRatioTolerance != settings.holeSizeRatioTolerance
+        || topology.inspection.finMaxAreaRatio != settings.finMaxAreaRatio;
     topology.inspection = settings;
     topology.holes.clear();
     for (size_t i = 0; i < topology.boundaryRegions.size(); ++i) {
@@ -353,6 +455,12 @@ bool filterTopologyFindings(MeshTopology& topology, TopologyInspectionSettings s
         if (boundary.kind == BoundaryKind::loop && boundary.ratioAvailable && boundary.sizeRatio <= settings.holeSizeRatioTolerance) {
             topology.holes.push_back(i);
         }
+    }
+    topology.fins.clear();
+    for (size_t i = 0; i < topology.finPatches.size(); ++i) {
+        canceled(stop);
+        const auto& patch = topology.finPatches[i];
+        if (patch.candidate && patch.areaRatio <= settings.finMaxAreaRatio) { topology.fins.push_back(i); }
     }
     return changed;
 }
@@ -387,6 +495,7 @@ MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, Topo
         }
         inspectVertexLinks(result, source, stop);
         inspectBoundaries(result, source, stop);
+        inspectFinPatches(result, source, stop);
         result.sources.push_back(std::move(source));
     }
     for (const auto& [file, triangle, part] : windingFaces) { canceled(stop); result.windingFaces.push_back({file, part, triangle}); }

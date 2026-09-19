@@ -423,10 +423,11 @@ TEST_CASE("analysis rename normalizes empty input and ignores missing objects")
     CHECK(state.sceneEditRevision == revision);
 }
 
-TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby hole settings popup")
+TEST_CASE("diagnostics use count columns resizable dividers eyes and nearby detector settings popups")
 {
     ComparisonNameFixture f;
-    bool hasA = true, hasB = false;
+    bool hasA = true, hasB = false, finSettings = false;
+    SUBCASE("fin settings") { finSettings = true; }
     SUBCASE("one input A") {}
     SUBCASE("one input B") { hasA = false; hasB = true; }
     SUBCASE("two inputs") { hasB = true; }
@@ -448,8 +449,8 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     woby::ComparisonRuntimes runtimes;
     ImGuiTable* diagnostics = nullptr;
     ImVec2 gear, eye, divider, intersectionRun, intersectionEye;
-    std::array<ImVec2, 8> updateButtons;
-    std::array<ImVec2, 9> settingsButtons;
+    std::array<ImVec2, woby::backgroundDetectorCount> updateButtons;
+    std::array<ImVec2, woby::diagnosticCategoryCount> settingsButtons;
     std::string contents;
     const auto frame = [&] {
         ImGui::GetIO().DisplaySize = ImVec2(1200, 1500);
@@ -466,7 +467,7 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
             if (auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
                 diagnostics = table;
                 const float rowHeight = table->RowPosY2 - table->RowPosY1;
-                const float holeY = table->RowPosY1 - (table->CurrentRow - 3) * rowHeight
+                const float holeY = table->RowPosY1 - (table->CurrentRow - (finSettings ? 4 : 3)) * rowHeight
                     + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize() * 0.5f;
                 gear = ImVec2(table->Columns[table->ColumnsCount - 1].WorkMinX
                     + woby::renderModeButtonSize() * 0.5f, holeY);
@@ -480,7 +481,7 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
                         intersectionY - static_cast<float>(updateButtons.size() - row) * rowHeight);
                 }
                 for (size_t row = 0; row < settingsButtons.size(); ++row) {
-                    settingsButtons[row] = ImVec2(gear.x, intersectionY - static_cast<float>(8 - row) * rowHeight);
+                    settingsButtons[row] = ImVec2(gear.x, intersectionY - static_cast<float>(settingsButtons.size() - 1 - row) * rowHeight);
                 }
                 intersectionEye = ImVec2(table->Columns[table->ColumnsCount - 3].WorkMinX + woby::renderModeButtonSize()*0.5f, intersectionY);
                 divider = ImVec2(table->Columns[2].MaxX,
@@ -520,7 +521,7 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     }
     const woby::DiagnosticCategory rowCategories[] = {
         woby::DiagnosticCategory::boundary, woby::DiagnosticCategory::nonManifoldVertices,
-        woby::DiagnosticCategory::holes, woby::DiagnosticCategory::nonManifold,
+        woby::DiagnosticCategory::holes, woby::DiagnosticCategory::fins, woby::DiagnosticCategory::nonManifold,
         woby::DiagnosticCategory::winding, woby::DiagnosticCategory::duplicatePoints,
         woby::DiagnosticCategory::duplicateTriangles, woby::DiagnosticCategory::degenerateTriangles,
         woby::DiagnosticCategory::selfIntersections,
@@ -605,7 +606,8 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     const auto original = woby::comparisonSettings(f.state, f.id);
     click(eye);
     auto hidden = original;
-    hidden.topologyInspection.showHoles = !hidden.topologyInspection.showHoles;
+    if (finSettings) { hidden.topologyInspection.showFins = !hidden.topologyInspection.showFins; }
+    else { hidden.topologyInspection.showHoles = !hidden.topologyInspection.showHoles; }
     CHECK(woby::comparisonSettings(f.state, f.id) == hidden);
     click(eye);
     CHECK(woby::comparisonSettings(f.state, f.id) == original);
@@ -620,13 +622,14 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     CHECK(popup->Pos.x + popup->Size.x == doctest::Approx(openingGear.x + woby::renderModeButtonSize() * 0.5f).epsilon(0.002));
     CHECK(popup->Size.x == doctest::Approx(woby::uiSize(360)));
     CHECK(popup->Pos.y + popup->Size.y < io.DisplaySize.y);
-    CHECK(contents.find("Maximum size ratio") != std::string::npos);
+    CHECK(contents.find(finSettings ? "Maximum area ratio" : "Maximum size ratio") != std::string::npos);
     CHECK(f.state.sceneEditRevision == revision);
     REQUIRE(f.context->InputTextState.ID != 0);
     io.AddInputCharactersUTF8("0.125"); frame();
     io.AddKeyEvent(ImGuiKey_Enter, true); frame();
     io.AddKeyEvent(ImGuiKey_Enter, false); frame(); frame();
-    CHECK(woby::comparisonSettings(f.state, f.id).topologyInspection.holeSizeRatioTolerance == doctest::Approx(0.125));
+    const auto& updated = woby::comparisonSettings(f.state, f.id).topologyInspection;
+    CHECK((finSettings ? updated.finMaxAreaRatio : updated.holeSizeRatioTolerance) == doctest::Approx(0.125));
     io.AddKeyEvent(ImGuiKey_Escape, true); frame();
     io.AddKeyEvent(ImGuiKey_Escape, false); frame(); frame();
     CHECK(f.context->OpenPopupStack.empty());
@@ -668,7 +671,7 @@ TEST_CASE("diagnostic settings popup edits only its analysis and persists withou
             if (const auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
                 const auto& column = table->Columns[table->ColumnsCount-1];
                 gear = ImVec2(column.WorkMinX + woby::renderModeButtonSize()*0.5f,
-                    table->RowPosY1 - (table->CurrentRow - 8)*(table->RowPosY2-table->RowPosY1)
+                    table->RowPosY1 - (table->CurrentRow - 9)*(table->RowPosY2-table->RowPosY1)
                     + ImGui::GetStyle().CellPadding.y + woby::renderModeButtonSize()*0.5f);
             }
         }

@@ -373,6 +373,25 @@ void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_tok
     const auto point = [](const auto& p) { return std::array<float, 3>{static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2])}; };
     if (!holesOnly) { surface.nonManifoldVertexBounds.clear(); surface.nonManifoldVertexMarkers.clear(); }
     surface.holeBounds.clear(); surface.holeEdges.clear();
+    surface.finBounds.clear(); surface.finEdges.clear(); surface.finFill.clear();
+    for (const auto index : surface.topology.fins) {
+        checkCanceled(stop);
+        const auto& patch = surface.topology.finPatches[index];
+        const auto& source = surface.topology.sources[patch.source];
+        const auto first = point(source.vertices[source.faces[patch.faces.front()].vertices[0]].position);
+        DiagnosticEdge bounds{first, first};
+        for (const auto f : patch.faces) {
+            checkCanceled(stop);
+            const auto& vertices = source.faces[f].vertices;
+            for (size_t k = 0; k < 3; ++k) {
+                const auto p = point(source.vertices[vertices[k]].position);
+                surface.finFill.push_back(p);
+                surface.finEdges.push_back({p, point(source.vertices[vertices[(k+1)%3]].position)});
+                for (size_t axis = 0; axis < 3; ++axis) { bounds.a[axis] = std::min(bounds.a[axis], p[axis]); bounds.b[axis] = std::max(bounds.b[axis], p[axis]); }
+            }
+        }
+        surface.finBounds.push_back(bounds);
+    }
     if (!holesOnly) {
         for (const auto& finding : surface.topology.nonManifoldVertices) {
             checkCanceled(stop);
@@ -594,7 +613,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
         settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles &&
         settings.diagnosticCategory != DiagnosticCategory::selfIntersections &&
         settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles &&
-        settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices && settings.diagnosticCategory != DiagnosticCategory::holes) {
+        settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices && settings.diagnosticCategory != DiagnosticCategory::holes && settings.diagnosticCategory != DiagnosticCategory::fins) {
         settings.diagnosticCategory = DiagnosticCategory::boundary;
     }
     if (settings.mode != ComparisonMode::distance && settings.mode != ComparisonMode::original &&
@@ -625,6 +644,7 @@ const std::vector<DiagnosticEdge>& comparisonDiagnosticEdges(
     switch (category) {
     case DiagnosticCategory::nonManifoldVertices: return surface.nonManifoldVertexBounds;
     case DiagnosticCategory::holes: return surface.holeBounds;
+    case DiagnosticCategory::fins: return surface.finBounds;
     case DiagnosticCategory::boundary: return diagnostics.boundaryEdges;
     case DiagnosticCategory::nonManifold: return diagnostics.nonManifoldEdges;
     case DiagnosticCategory::winding: return diagnostics.inconsistentWindingEdges;
@@ -798,6 +818,7 @@ bool diagnosticAutoUpdate(const ComparisonSettings& settings, DiagnosticCategory
     case DiagnosticCategory::degenerateTriangles: return settings.degenerates.enabled;
     case DiagnosticCategory::nonManifoldVertices: return settings.topologyInspection.nonManifoldVertices;
     case DiagnosticCategory::holes: return settings.topologyInspection.holes;
+    case DiagnosticCategory::fins: return settings.topologyInspection.fins;
     case DiagnosticCategory::selfIntersections: return settings.intersections.autoUpdate;
     }
     return false;
@@ -814,6 +835,7 @@ void setDiagnosticAutoUpdate(ComparisonSettings& settings, DiagnosticCategory ca
     case DiagnosticCategory::degenerateTriangles: settings.degenerates.enabled = automatic; break;
     case DiagnosticCategory::nonManifoldVertices: settings.topologyInspection.nonManifoldVertices = automatic; break;
     case DiagnosticCategory::holes: settings.topologyInspection.holes = automatic; break;
+    case DiagnosticCategory::fins: settings.topologyInspection.fins = automatic; break;
     case DiagnosticCategory::selfIntersections: settings.intersections.autoUpdate = automatic; break;
     }
 }
@@ -861,7 +883,8 @@ uint32_t comparisonDiagnosticStage(DiagnosticCategory category)
     case DiagnosticCategory::nonManifold:
     case DiagnosticCategory::winding:
     case DiagnosticCategory::nonManifoldVertices:
-    case DiagnosticCategory::holes: return comparisonTopology;
+    case DiagnosticCategory::holes:
+    case DiagnosticCategory::fins: return comparisonTopology;
     }
     return comparisonTopology;
 }
@@ -1024,6 +1047,9 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
             target.nonManifoldVertexMarkers = std::move(source.nonManifoldVertexMarkers);
             target.holeBounds = std::move(source.holeBounds);
             target.holeEdges = std::move(source.holeEdges);
+            target.finBounds = std::move(source.finBounds);
+            target.finEdges = std::move(source.finEdges);
+            target.finFill = std::move(source.finFill);
         }
         if (stages & comparisonQuality) { target.quality = std::move(source.quality); }
         if (stages & comparisonDegenerates) {
@@ -1079,7 +1105,8 @@ bool setComparisonTopologyInspectionSettings(MeshComparison& result, TopologyIns
     settings = normalizedTopologyInspectionSettings(settings);
     bool geometryChanged = false;
     for (auto* surface : {&result.original, &result.repaired}) {
-        if (surface->topology.inspection.holeSizeRatioTolerance == settings.holeSizeRatioTolerance) {
+        if (surface->topology.inspection.holeSizeRatioTolerance == settings.holeSizeRatioTolerance
+            && surface->topology.inspection.finMaxAreaRatio == settings.finMaxAreaRatio) {
             surface->topology.inspection = settings;
             continue;
         }

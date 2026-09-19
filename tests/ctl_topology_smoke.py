@@ -94,7 +94,7 @@ def main():
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved, "--overwrite")
                 text = saved.read_text(encoding="utf-8")
-                assert 'version = 14' in text and 'topology_mode = "exact_position"' in text
+                assert 'version = 15' in text and 'topology_mode = "exact_position"' in text
                 assert 'analysis_show_winding = true' in text and 'analysis_show_non_manifold = false' in text
                 ctl("scene", "open", saved)
                 objects = ctl("objects")["objects"]

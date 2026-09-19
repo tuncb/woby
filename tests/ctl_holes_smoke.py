@@ -99,7 +99,7 @@ def main():
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved, "--overwrite")
                 text = saved.read_text(encoding="utf-8")
-                assert 'version = 14' in text and 'analysis_hole_size_ratio_tolerance = 0.25' in text
+                assert 'version = 15' in text and 'analysis_hole_size_ratio_tolerance = 0.25' in text
                 ctl("scene", "open", saved)
                 objects = ctl("objects")["objects"]
                 analysis = next(item["id"] for item in objects if item["kind"] == "analysis")

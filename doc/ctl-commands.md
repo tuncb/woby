@@ -629,7 +629,7 @@ and no current findings. `previousCount` is a previous known pair count, if one
 exists; it does not describe current geometry. UI navigation covers all current
 retained pairs. The eye changes visibility only.
 
-Scene version 14 persists auto-update and display settings, including saved views.
+Scene version 15 persists auto-update and display settings, including saved views.
 Requests and results are not saved. Version 13 enabled flags migrate to auto-update.
 Screenshots wait for requested visible checks; they do not initiate manual checks
 and may include a report indicating incomplete coverage.
@@ -639,3 +639,34 @@ coplanar overlap and unrelated-topology contact are included; valid shared verti
 and edges are excluded. Duplicate faces are included even with matching vertex IDs.
 Source transforms apply; display offsets do not. Collapsed faces are excluded.
 STL original-index mode is unavailable. No proximity epsilon is used.
+
+
+## Fin candidates
+
+`analysis run ANALYSIS --detector fins` and `analysis cancel ANALYSIS --detector fins`
+control the fin candidate lifecycle. `analysis set` accepts `--fins BOOL` for
+automatic updates, `--show-fins BOOL` for visibility, and
+`--fin-max-area-ratio NUMBER` for the inclusive area filter (default 1, minimum 0).
+Non-finite values are rejected by the control protocol.
+
+Each populated side of `analysis results --json` includes `detectors.fins`, with
+algorithm `woby-fin-candidates-v1`, `heuristic: true`, status, nullable exact count,
+known count, maximum area ratio, and at most 100 patch findings. Each patch
+reports source and topology mode, patch ID, split-component count, physical
+boundary classification, area, denominator area, ratio, source face references,
+and separate physical/cut boundary edge IDs. Face and edge lists are bounded to
+100 entries each, with full counts and truncation flags. IDs are 1-based.
+Unavailable sources produce partial/unavailable status and null exact counts.
+Stale, canceled, failed, and unchecked results expose no current findings.
+
+Patches are connected through manifold edges only. At least two split patches
+per source are required. Candidate physical boundaries must be open, branched,
+or multiple loops. Cut edges are not counted as physical boundaries. The area
+denominator is the largest physical-boundary-bearing split patch per source,
+before boundary-shape filtering, including ordinary simple-loop disks. Closed
+patches are excluded. This is a Woby heuristic; intentional multi-opening sheets
+can qualify, and GGM/GMM parity is not claimed.
+
+If a physical-boundary patch area cannot be represented as a positive finite
+double, fin results for that source are unavailable (`unavailableAreaSources`);
+other topology detectors remain usable.

@@ -1,0 +1,26 @@
+version = 15
+show_grid = false
+show_origin = false
+[[files]]
+path = "attached-fin.obj"
+[[files.groups]]
+name = "attached_fin"
+show_vertices = false
+show_triangles = false
+[[analyses]]
+name = "Woby fin candidates"
+analysis_enabled = true
+analysis_mode = "a"
+diagnostic_category = "fins"
+analysis_show_boundaries = false
+analysis_show_non_manifold = false
+analysis_show_winding = false
+analysis_show_non_manifold_vertices = false
+analysis_show_holes = false
+analysis_fins_enabled = true
+analysis_show_fins = true
+analysis_fin_max_area_ratio = 1
+[[analyses.a]]
+file_index = 0
+group_index = 0
+name = "attached_fin"

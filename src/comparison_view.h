@@ -24,6 +24,7 @@ struct ComparisonGpuSurface
     bgfx::VertexBufferHandle nonManifold = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle nonManifoldVertices = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle holes = BGFX_INVALID_HANDLE;
+    bgfx::VertexBufferHandle finEdges = BGFX_INVALID_HANDLE, finFill = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle winding = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle intersectionEdges = BGFX_INVALID_HANDLE;
     bgfx::VertexBufferHandle intersectionFill = BGFX_INVALID_HANDLE;
@@ -53,6 +54,7 @@ struct ComparisonRuntime
     std::array<uint64_t, backgroundDetectorCount> workerDetectorRequests{};
     uint32_t workerDetectors = 0;
     float holeSizeRatioTolerance = .05f;
+    float finMaxAreaRatio = 1.0f;
     IntersectionRuntime intersection;
     ComparisonCacheStatus cache;
     std::shared_ptr<const std::array<Mesh, 2>> inputs;
