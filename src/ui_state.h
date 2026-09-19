@@ -119,6 +119,7 @@ struct UiComparison {
     // One-shot inspection commands, excluded from scene files and history.
     uint64_t intersectionRequestRevision = 0;
     bool cancelIntersections = false;
+    std::array<DetectorRequest, backgroundDetectorCount> detectorRequests{};
 };
 
 using ViewId = uint64_t;

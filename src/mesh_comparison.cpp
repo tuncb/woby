@@ -736,6 +736,23 @@ MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop)
     return inspectTriangles(meshTriangles(mesh, stop), stop);
 }
 
+static void completeComparisonDetectors(MeshComparison& result, uint32_t stages)
+{
+    for (size_t i = 0; i < result.detectors.size(); ++i) {
+        const auto category = static_cast<DiagnosticCategory>(i);
+        if (!(stages & comparisonDiagnosticStage(category))) { continue; }
+        auto& status = result.detectors[i];
+        status.phase = IntersectionPhase::complete; status.hasResult = true;
+        for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+            const auto& surface = side == ComparisonSide::a ? result.original : result.repaired;
+            status.knownCounts[side == ComparisonSide::a ? 0 : 1] = category == DiagnosticCategory::duplicatePoints
+                ? surface.duplicates.points.duplicateCount : category == DiagnosticCategory::duplicateTriangles
+                ? surface.duplicates.triangles.duplicateCount : category == DiagnosticCategory::winding
+                ? surface.topology.windingFaces.size() : comparisonDiagnosticEdges(result, side, category).size();
+        }
+    }
+}
+
 MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode)
 {
     checkCanceled(stop);
@@ -747,6 +764,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         result.repaired.diagnostics = inspectMesh(repaired, stop);
         inspectSurfaceTopology(result.repaired, repaired, topologyMode, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
+        completeComparisonDetectors(result, comparisonDetectors);
         return result;
     }
     if (repaired.vertices.empty() && repaired.indices.empty()) {
@@ -755,6 +773,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         result.original.diagnostics = inspectMesh(original, stop);
         inspectSurfaceTopology(result.original, original, topologyMode, stop);
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
+        completeComparisonDetectors(result, comparisonDetectors);
         return result;
     }
     const auto originalTree = buildTree(original, stop), repairedTree = buildTree(repaired, stop);
@@ -764,7 +783,71 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
     inspectSurfaceTopology(result.original, original, topologyMode, stop);
     inspectSurfaceTopology(result.repaired, repaired, topologyMode, stop);
     result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
+    completeComparisonDetectors(result, comparisonDetectors);
     return result;
+}
+
+bool diagnosticAutoUpdate(const ComparisonSettings& settings, DiagnosticCategory category)
+{
+    switch (category) {
+    case DiagnosticCategory::boundary: return settings.autoUpdateBoundaries;
+    case DiagnosticCategory::nonManifold: return settings.autoUpdateNonManifold;
+    case DiagnosticCategory::winding: return settings.autoUpdateWinding;
+    case DiagnosticCategory::duplicatePoints: return settings.duplicates.points;
+    case DiagnosticCategory::duplicateTriangles: return settings.duplicates.triangles;
+    case DiagnosticCategory::degenerateTriangles: return settings.degenerates.enabled;
+    case DiagnosticCategory::nonManifoldVertices: return settings.topologyInspection.nonManifoldVertices;
+    case DiagnosticCategory::holes: return settings.topologyInspection.holes;
+    case DiagnosticCategory::selfIntersections: return settings.intersections.autoUpdate;
+    }
+    return false;
+}
+
+void setDiagnosticAutoUpdate(ComparisonSettings& settings, DiagnosticCategory category, bool automatic)
+{
+    switch (category) {
+    case DiagnosticCategory::boundary: settings.autoUpdateBoundaries = automatic; break;
+    case DiagnosticCategory::nonManifold: settings.autoUpdateNonManifold = automatic; break;
+    case DiagnosticCategory::winding: settings.autoUpdateWinding = automatic; break;
+    case DiagnosticCategory::duplicatePoints: settings.duplicates.points = automatic; break;
+    case DiagnosticCategory::duplicateTriangles: settings.duplicates.triangles = automatic; break;
+    case DiagnosticCategory::degenerateTriangles: settings.degenerates.enabled = automatic; break;
+    case DiagnosticCategory::nonManifoldVertices: settings.topologyInspection.nonManifoldVertices = automatic; break;
+    case DiagnosticCategory::holes: settings.topologyInspection.holes = automatic; break;
+    case DiagnosticCategory::selfIntersections: settings.intersections.autoUpdate = automatic; break;
+    }
+}
+
+const char* detectorPhaseName(IntersectionPhase phase)
+{
+    switch (phase) {
+    case IntersectionPhase::notChecked: return "not_checked";
+    case IntersectionPhase::queued: return "queued";
+    case IntersectionPhase::running: return "running";
+    case IntersectionPhase::complete: return "complete";
+    case IntersectionPhase::outdated: return "out_of_date";
+    case IntersectionPhase::canceled: return "canceled";
+    case IntersectionPhase::failed: return "failed";
+    }
+    return "not_checked";
+}
+
+DetectorStatus comparisonDetectorStatus(const MeshComparison& result, DiagnosticCategory category)
+{
+    if (category != DiagnosticCategory::selfIntersections) { return result.detectors.at(static_cast<size_t>(category)); }
+    const auto& inspection = result.original.intersections;
+    return {inspection.phase, inspection.hasResult,
+        {inspection.findings.size(), result.repaired.intersections.findings.size()}, inspection.error};
+}
+
+void invalidateComparisonDetectors(MeshComparison& result, uint32_t stages)
+{
+    for (size_t i = 0; i < result.detectors.size(); ++i) {
+        if (!(comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i)) & stages)) { continue; }
+        auto& status = result.detectors[i];
+        status.phase = status.hasResult ? IntersectionPhase::outdated : IntersectionPhase::notChecked;
+        status.error.clear();
+    }
 }
 
 uint32_t comparisonDiagnosticStage(DiagnosticCategory category)
@@ -794,11 +877,11 @@ uint32_t nextComparisonStage(uint32_t missing)
 
 uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs, bool fullResults)
 {
-    uint32_t stages = comparisonSource | comparisonTopology;
-    if (settings.duplicates.points) { stages |= comparisonDuplicatePoints; }
-    if (settings.duplicates.triangles) { stages |= comparisonDuplicateTriangles; }
-    if (settings.degenerates.enabled) { stages |= comparisonDegenerates; }
-    if (settings.intersections.autoUpdate) { stages |= comparisonIntersections; }
+    uint32_t stages = comparisonSource;
+    for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
+        const auto category = static_cast<DiagnosticCategory>(i);
+        if (diagnosticAutoUpdate(settings, category)) { stages |= comparisonDiagnosticStage(category); }
+    }
     if (fullResults || settings.mode == ComparisonMode::surfaceQuality) { stages |= comparisonQuality; }
     if (bothInputs && (fullResults || settings.mode == ComparisonMode::distance)) { stages |= comparisonDistance; }
     return stages;
@@ -891,6 +974,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     };
     inspect(original, result.original);
     inspect(repaired, result.repaired);
+    completeComparisonDetectors(result, stages);
     if (stages & comparisonQuality) {
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
     }
@@ -965,6 +1049,9 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     };
     merge(result.original, update.original);
     merge(result.repaired, update.repaired);
+    for (size_t i = 0; i < result.detectors.size(); ++i) {
+        if (stages & comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i))) { result.detectors[i] = std::move(update.detectors[i]); }
+    }
     if (stages & comparisonQuality) { result.qualityDistributions = std::move(update.qualityDistributions); }
     cache.completed |= stages;
     return true;

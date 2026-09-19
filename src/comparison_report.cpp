@@ -41,6 +41,9 @@ std::vector<std::string> comparisonReportLines(
         if (!a.empty()) { lines.push_back("A: " + a); }
         if (!b.empty()) { lines.push_back("B: " + b); }
     }
+    const auto ready = [&](DiagnosticCategory category) {
+        return comparisonDetectorStatus(result, category).phase == IntersectionPhase::complete;
+    };
     if (options.legend) {
         size_t side = 0;
         for (const auto* surface : {&result.original, &result.repaired}) {
@@ -51,23 +54,37 @@ std::vector<std::string> comparisonReportLines(
                 lines.push_back(label + " " + name + ": " + std::to_string(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")"
                     + (duplicates.informationalCount ? "; " + std::to_string(duplicates.informationalCount) + " informational STL corners" : ""));
             };
+            const char* detectorNames[] = {"boundary edges", "non-manifold edges", "inconsistent triangles", "duplicate points",
+                "source-ID duplicate triangles", "degenerate triangles", "non-manifold vertices", "holes"};
+            for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                const auto& status = result.detectors[i];
+                if (status.phase == IntersectionPhase::complete) { continue; }
+                lines.push_back(label + " " + detectorNames[i] + ": " + detectorPhaseName(status.phase)
+                    + (status.hasResult ? "; previous result: " + std::to_string(status.knownCounts[side - 1]) + " known findings" : ""));
+            }
             const auto& topology = surface->topology;
             lines.push_back(label + " topology: " + topologyModeName(topology.mode) + "; per source (" + topologyStatus(topology) + ")");
-            lines.push_back(label + " known boundary / non-manifold edges / inconsistent triangles: "
-                + std::to_string(topology.boundaries.size()) + " / " + std::to_string(topology.nonManifoldEdges.size())
-                + " / " + std::to_string(topology.windingFaces.size()));
-            if (settings.topologyInspection.nonManifoldVertices) {
+            if (ready(DiagnosticCategory::boundary) && ready(DiagnosticCategory::nonManifold) && ready(DiagnosticCategory::winding)) {
+                lines.push_back(label + " known boundary / non-manifold edges / inconsistent triangles: "
+                    + std::to_string(topology.boundaries.size()) + " / " + std::to_string(topology.nonManifoldEdges.size())
+                    + " / " + std::to_string(topology.windingFaces.size()));
+            } else {
+                if (ready(DiagnosticCategory::boundary)) { lines.push_back(label + " boundary edges: " + std::to_string(topology.boundaries.size())); }
+                if (ready(DiagnosticCategory::nonManifold)) { lines.push_back(label + " non-manifold edges: " + std::to_string(topology.nonManifoldEdges.size())); }
+                if (ready(DiagnosticCategory::winding)) { lines.push_back(label + " inconsistent triangles: " + std::to_string(topology.windingFaces.size())); }
+            }
+            if (ready(DiagnosticCategory::nonManifoldVertices)) {
                 lines.push_back(label + " non-manifold vertices: " + std::to_string(topology.nonManifoldVertices.size()) + " known (" + topologyStatus(topology) + ")");
             }
-            if (settings.topologyInspection.holes) {
+            if (ready(DiagnosticCategory::holes)) {
                 size_t branched = 0, open = 0;
                 for (const auto& boundary : topology.boundaryRegions) { branched += boundary.kind == BoundaryKind::branched; open += boundary.kind == BoundaryKind::open; }
                 lines.push_back(label + " holes: " + std::to_string(topology.holes.size()) + " known (" + topologyStatus(topology) + "); "
                     + std::to_string(branched) + " branched / " + std::to_string(open) + " open boundary regions");
             }
             if (topology.excludedCollapsedFaces) { lines.push_back(label + " topology excluded collapsed faces: " + std::to_string(topology.excludedCollapsedFaces)); }
-            append("duplicate points", surface->duplicates.points);
-            append("source-ID duplicate triangles", surface->duplicates.triangles);
+            if (ready(DiagnosticCategory::duplicatePoints)) { append("duplicate points", surface->duplicates.points); }
+            if (ready(DiagnosticCategory::duplicateTriangles)) { append("source-ID duplicate triangles", surface->duplicates.triangles); }
             {
                 const auto& d = surface->intersections;
                 if (d.phase != IntersectionPhase::complete) {
@@ -78,7 +95,7 @@ std::vector<std::string> comparisonReportLines(
                         + std::to_string(d.findings.size()) + " pairs; " + std::to_string(d.affectedFaces) + " known affected faces (" + intersectionStatus(d) + ")");
                 }
             }
-            if (settings.degenerates.enabled) {
+            if (ready(DiagnosticCategory::degenerateTriangles)) {
                 const auto& d = surface->degenerates;
                 lines.push_back(label + " degenerate triangles: " + (d.unavailableSources ? std::string("N/A; known ") : std::string{})
                     + std::to_string(d.findings.size()) + " (" + degenerateStatus(d) + ")");
@@ -87,18 +104,18 @@ std::vector<std::string> comparisonReportLines(
             }
         }
     }
-    if (settings.topologyInspection.holes && (options.legend || options.tolerance)) {
+    if (ready(DiagnosticCategory::holes) && (options.legend || options.tolerance)) {
         lines.push_back("Holes: loop/component bounding-box diagonal ratio <= " + measurementNumber(settings.topologyInspection.holeSizeRatioTolerance) + "; larger openings remain boundaries.");
         if (options.legend && settings.topologyInspection.showHoles) { lines.push_back("Blue loops: holes."); }
     }
-    if (options.legend && settings.topologyInspection.nonManifoldVertices && settings.topologyInspection.showNonManifoldVertices) {
+    if (options.legend && ready(DiagnosticCategory::nonManifoldVertices) && settings.topologyInspection.showNonManifoldVertices) {
         lines.push_back("Amber crosses: non-manifold vertices; endpoints of non-manifold edges excluded.");
     }
     if (options.legend) {
         lines.push_back("Self-intersections: exact world-coordinate checks per source; valid shared features excluded; coplanar overlap included.");
         if (settings.intersections.show && (result.original.intersections.phase == IntersectionPhase::complete || result.repaired.intersections.phase == IntersectionPhase::complete)) { lines.push_back("Red faces/edges: intersecting triangle pairs."); }
     }
-    if (settings.degenerates.enabled && (options.legend || options.tolerance)) {
+    if (ready(DiagnosticCategory::degenerateTriangles) && (options.legend || options.tolerance)) {
         lines.push_back("Degenerates: edge ratio > " + measurementNumber(settings.degenerates.needleThresholdRatio)
             + "; maximum angle > " + measurementNumber(settings.degenerates.capMinAngleDegrees) + " degrees; collapsed faces always included.");
         if (options.legend && settings.degenerates.show) { lines.push_back("Purple faces/edges: degenerate triangles; crosses mark collapsed faces."); }

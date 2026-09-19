@@ -466,6 +466,9 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else if (category == "degenerate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::degenerateTriangles; }
         else if (category == "duplicate_triangles") { record.settings.diagnosticCategory = DiagnosticCategory::duplicateTriangles; }
         else { throw std::runtime_error("Unknown diagnostic category."); }
+    } else if (key == "analysis_auto_update_boundaries") { record.settings.autoUpdateBoundaries = parseTomlBool(value);
+    } else if (key == "analysis_auto_update_non_manifold_edges") { record.settings.autoUpdateNonManifold = parseTomlBool(value);
+    } else if (key == "analysis_auto_update_winding") { record.settings.autoUpdateWinding = parseTomlBool(value);
     } else if (key == "analysis_non_manifold_vertices_enabled") { record.settings.topologyInspection.nonManifoldVertices = parseTomlBool(value);
     } else if (key == "analysis_show_non_manifold_vertices") { record.settings.topologyInspection.showNonManifoldVertices = parseTomlBool(value);
     } else if (key == "analysis_holes_enabled") { record.settings.topologyInspection.holes = parseTomlBool(value);
@@ -539,6 +542,9 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_show_non_manifold = " << (comparison.showNonManifold ? "true" : "false") << "\n";
 
     stream << "analysis_non_manifold_vertices_enabled = " << (comparison.topologyInspection.nonManifoldVertices ? "true" : "false") << "\n";
+    stream << "analysis_auto_update_boundaries = " << (comparison.autoUpdateBoundaries ? "true" : "false") << "\n";
+    stream << "analysis_auto_update_non_manifold_edges = " << (comparison.autoUpdateNonManifold ? "true" : "false") << "\n";
+    stream << "analysis_auto_update_winding = " << (comparison.autoUpdateWinding ? "true" : "false") << "\n";
     stream << "analysis_show_non_manifold_vertices = " << (comparison.topologyInspection.showNonManifoldVertices ? "true" : "false") << "\n";
     stream << "analysis_holes_enabled = " << (comparison.topologyInspection.holes ? "true" : "false") << "\n";
     stream << "analysis_show_holes = " << (comparison.topologyInspection.showHoles ? "true" : "false") << "\n";
@@ -868,6 +874,9 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 else if (key == "group_index") { object.groupIndex = parseTomlInteger(value); }
                 else if (key == "selection_order") { object.settings.selectionOrder = parseTomlInteger(value); }
                 else if (key.starts_with("analysis_") || key.starts_with("quality_") || key == "topology_mode"
+                    || key.starts_with("duplicate_") || key.starts_with("show_duplicate_")
+                    || key == "degenerate_triangles_enabled" || key == "show_degenerate_triangles"
+                    || key == "needle_threshold_ratio" || key == "cap_min_angle_degrees"
                     || key == "self_intersections_enabled" || key == "self_intersections_auto_update" || key == "show_self_intersections"
                     || key == "diagnostic_category" || key == "diagnostic_side") {
                     SceneComparisonRecord comparison;

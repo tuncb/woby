@@ -243,7 +243,7 @@ TEST_CASE("duplicate analysis navigation persistence signatures and CLI agree")
     (void)woby::applyControlSceneOperation(state, document, command, [](auto value) { return std::to_string(value); }, 200, 800);
     CHECK_FALSE(woby::comparisonSettings(state, id).duplicates.points);
     CHECK(woby::comparisonGeometrySignature(state, id) == signature);
-    CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+    CHECK(woby::findComparison(state, id)->diagnosticFocus.has_value()); // Disabling automatic updates retains the result.
     const auto disabled = woby::compareMeshes(woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id), {});
     CHECK(std::string(woby::duplicateStatus(disabled.original.duplicates.points)) == "disabled");
     const auto disabledJson = woby::controlComparisonResults(disabled, .05);
@@ -263,6 +263,7 @@ TEST_CASE("duplicate settings migrate old scenes and JSON findings are bounded")
     auto data = triangle();
     for (size_t i = 0; i < 120; ++i) { data->indices.insert(data->indices.end(), {0,1,2}); }
     woby::MeshComparison result;
+    result.detectors[static_cast<size_t>(woby::DiagnosticCategory::duplicateTriangles)].phase = woby::IntersectionPhase::complete;
     result.original.source.indices = {0,1,2};
     result.original.duplicates = woby::inspectDuplicates(inputFor(data));
     const auto json = woby::controlComparisonResults(result, .05)["aToB"]["detectors"]["duplicate_tris"];

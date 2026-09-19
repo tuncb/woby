@@ -14,6 +14,17 @@ namespace woby
 
 enum class ComparisonSide { a, b };
 enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes, selfIntersections };
+inline constexpr size_t backgroundDetectorCount = static_cast<size_t>(DiagnosticCategory::selfIntersections);
+inline constexpr size_t diagnosticCategoryCount = backgroundDetectorCount + 1;
+inline constexpr std::array<const char*, diagnosticCategoryCount> diagnosticCategoryKeys = {
+    "boundary_edges", "non_manifold_edges", "inconsistently_oriented_tris", "duplicate_points",
+    "duplicate_tris", "degenerate_tris", "non_manifold_vertices", "holes", "self_intersections"
+};
+
+struct DetectorRequest {
+    uint64_t revision = 0;
+    bool cancel = false;
+};
 
 struct ComparisonMembership
 {
@@ -47,6 +58,7 @@ struct ComparisonSettings
     bool showBoundaries = true;
     bool showNonManifold = true;
     bool showWinding = true;
+    bool autoUpdateBoundaries = true, autoUpdateNonManifold = true, autoUpdateWinding = true;
     TopologyInspectionSettings topologyInspection;
     TopologyMode topologyMode = TopologyMode::automatic;
     ComparisonSide diagnosticSide = ComparisonSide::a;
@@ -59,5 +71,8 @@ struct ComparisonSettings
 };
 
 [[nodiscard]] ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings);
+// The legacy detector enabled fields now specify automatic scheduling, not result visibility.
+[[nodiscard]] bool diagnosticAutoUpdate(const ComparisonSettings& settings, DiagnosticCategory category);
+void setDiagnosticAutoUpdate(ComparisonSettings& settings, DiagnosticCategory category, bool automatic);
 
 } // namespace woby

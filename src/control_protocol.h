@@ -47,6 +47,7 @@ struct ControlOperation {
     std::optional<bool> nonManifoldVertices, showNonManifoldVertices, holes, showHoles;
     std::optional<float> holeSizeRatioTolerance;
     std::optional<bool> selfIntersections, autoUpdateSelfIntersections, showSelfIntersections;
+    std::optional<bool> autoUpdateBoundaries, autoUpdateNonManifold, autoUpdateWinding;
     std::optional<bool> degenerateTriangles, showDegenerateTriangles;
     std::optional<float> needleThresholdRatio, capMinAngleDegrees;
     std::optional<bool> qualityOnA, qualityMinimumEnabled, qualityMaximumEnabled;

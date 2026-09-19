@@ -77,6 +77,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"holes", settings.topologyInspection.holes},
                 {"showHoles", settings.topologyInspection.showHoles},
                 {"holeSizeRatioTolerance", settings.topologyInspection.holeSizeRatioTolerance},
+                {"autoUpdateBoundaries", settings.autoUpdateBoundaries}, {"autoUpdateNonManifold", settings.autoUpdateNonManifold}, {"autoUpdateWinding", settings.autoUpdateWinding},
                 {"autoUpdateSelfIntersections", settings.intersections.autoUpdate}, {"selfIntersections", settings.intersections.autoUpdate}, {"showSelfIntersections", settings.intersections.show},
                 {"degenerateTriangles", settings.degenerates.enabled}, {"showDegenerateTriangles", settings.degenerates.show},
                 {"needleThresholdRatio", settings.degenerates.needleThresholdRatio}, {"capMinAngleDegrees", settings.degenerates.capMinAngleDegrees},
@@ -339,8 +340,10 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         auto id = command.objectId;
         if (command.action == A::comparisonRun || command.action == A::comparisonCancel) {
             if (command.action == A::comparisonRun && !canInspectComparison(state, id)) { throw std::invalid_argument("Analysis needs valid input before running a check."); }
-            requestComparisonIntersections(state, id, command.action == A::comparisonCancel);
-            return {{"target", formatId(id)}, {"detector", "self_intersections"}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
+            const auto detector = std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), command.detector.value_or(""));
+            if (detector == diagnosticCategoryKeys.end()) { throw std::invalid_argument("Unknown detector."); }
+            requestComparisonDetector(state, id, static_cast<DiagnosticCategory>(detector - diagnosticCategoryKeys.begin()), command.action == A::comparisonCancel);
+            return {{"target", formatId(id)}, {"detector", *detector}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
         }
         if (command.action == A::comparisonCreate) {
             id = createComparison(state);
@@ -364,6 +367,9 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.holes) { settings.topologyInspection.holes = *command.holes; }
             if (command.showHoles) { settings.topologyInspection.showHoles = *command.showHoles; }
             if (command.holeSizeRatioTolerance) { settings.topologyInspection.holeSizeRatioTolerance = *command.holeSizeRatioTolerance; }
+            if (command.autoUpdateBoundaries) { settings.autoUpdateBoundaries = *command.autoUpdateBoundaries; }
+            if (command.autoUpdateNonManifold) { settings.autoUpdateNonManifold = *command.autoUpdateNonManifold; }
+            if (command.autoUpdateWinding) { settings.autoUpdateWinding = *command.autoUpdateWinding; }
             if (command.selfIntersections) { settings.intersections.autoUpdate = *command.selfIntersections; }
             if (command.autoUpdateSelfIntersections) { settings.intersections.autoUpdate = *command.autoUpdateSelfIntersections; }
             if (command.showSelfIntersections) { settings.intersections.show = *command.showSelfIntersections; }
@@ -794,6 +800,20 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance)
                 {"inconsistentWindingEdges", diagnostics.inconsistentWindingEdges.size()},
                 {"degenerateTriangles", diagnostics.degenerateTriangles}, {"duplicateTriangles", diagnostics.duplicateTriangles}}}};
     };
-    return {{"tolerance", tolerance}, {"aToB", surface(result.original)}, {"bToA", surface(result.repaired)}};
+    auto a = surface(result.original), b = surface(result.repaired);
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        const auto& status = result.detectors[i];
+        if (status.phase == IntersectionPhase::complete) { continue; }
+        const char* phase = detectorPhaseName(status.phase);
+        for (size_t side = 0; side < 2; ++side) {
+            auto& output = side == 0 ? a : b;
+            if (output.is_null()) { continue; }
+            output["detectors"][diagnosticCategoryKeys[i]] = {{"status", phase}, {"count", nullptr},
+                {"knownCount", status.knownCounts[side]}, {"hasPreviousResult", status.hasResult},
+                {"error", status.error}, {"findings", Json::array()}};
+        }
+    }
+    return {{"tolerance", tolerance}, {"aToB", std::move(a)}, {"bToA", std::move(b)}};
+
 }
 } // namespace woby

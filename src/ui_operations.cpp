@@ -300,6 +300,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     auto copy = *source;
     copy.diagnosticFocus.reset();
     copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
+    copy.detectorRequests = {};
     copy.objectId = invalidSceneObjectId;
     copy.name += " copy";
     const auto sourceBounds = comparisonDisplayBounds(state, id);
@@ -363,18 +364,10 @@ void frameComparison(UiState& state, SceneObjectId id)
 }
 
 namespace {
-bool diagnosticDetectorEnabled(const ComparisonSettings& settings)
-{
-    return (settings.diagnosticCategory != DiagnosticCategory::duplicatePoints || settings.duplicates.points)
-        && (settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles || settings.duplicates.triangles)
-        && (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles || settings.degenerates.enabled)
-        && (settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices || settings.topologyInspection.nonManifoldVertices)
-        && (settings.diagnosticCategory != DiagnosticCategory::holes || settings.topologyInspection.holes);
-}
 bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison)
 {
     const auto& focus = comparison.diagnosticFocus;
-    return focus && comparison.settings.enabled && diagnosticDetectorEnabled(comparison.settings) && focus->signature != 0
+    return focus && comparison.settings.enabled && focus->signature != 0
         && focus->side == comparison.settings.diagnosticSide
         && focus->category == comparison.settings.diagnosticCategory
         && focus->signature == comparisonGeometrySignature(state, comparison.objectId);
@@ -388,6 +381,7 @@ const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
     if (!comparison || !diagnosticFocusCurrent(state, *comparison)
         || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
     const auto& focus = *comparison->diagnosticFocus;
+    if (comparisonDetectorStatus(result, focus.category).phase != IntersectionPhase::complete) { return nullptr; }
     if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding || focus.category == DiagnosticCategory::nonManifoldVertices || focus.category == DiagnosticCategory::holes) {
         const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
         if (surface.topology.mode != comparison->settings.topologyMode
@@ -426,7 +420,7 @@ void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
     if (!comparison || !comparison->settings.enabled || resultSignature == 0
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
-    if (!diagnosticDetectorEnabled(settings)) { return; }
+    if (comparisonDetectorStatus(result, settings.diagnosticCategory).phase != IntersectionPhase::complete) { return; }
     if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (surface.topology.mode != settings.topologyMode
@@ -458,7 +452,7 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
     if (!comparison || !comparison->settings.enabled || resultSignature == 0
         || resultSignature != comparisonGeometrySignature(state, id)) { return; }
     const auto& settings = comparison->settings;
-    if (!diagnosticDetectorEnabled(settings)) { return; }
+    if (comparisonDetectorStatus(result, settings.diagnosticCategory).phase != IntersectionPhase::complete) { return; }
     if (settings.diagnosticCategory == DiagnosticCategory::boundary || settings.diagnosticCategory == DiagnosticCategory::nonManifold || settings.diagnosticCategory == DiagnosticCategory::winding || settings.diagnosticCategory == DiagnosticCategory::nonManifoldVertices || settings.diagnosticCategory == DiagnosticCategory::holes) {
         const auto& surface = settings.diagnosticSide == ComparisonSide::a ? result.original : result.repaired;
         if (surface.topology.mode != settings.topologyMode
@@ -588,17 +582,34 @@ void requestComparisonIntersections(UiState& state, SceneObjectId id, bool cance
     }
 }
 
+void requestComparisonDetector(UiState& state, SceneObjectId id, DiagnosticCategory category, bool cancel)
+{
+    if (category == DiagnosticCategory::selfIntersections) { requestComparisonIntersections(state, id, cancel); return; }
+    const auto index = static_cast<size_t>(category);
+    if (index >= backgroundDetectorCount) { return; }
+    if (auto* comparison = findComparison(state, id)) {
+        auto& request = comparison->detectorRequests[index];
+        ++request.revision; request.cancel = cancel;
+        if (comparison->diagnosticFocus && comparison->diagnosticFocus->category == category) { comparison->diagnosticFocus.reset(); }
+    }
+}
+
+void setComparisonAutomaticUpdate(UiState& state, SceneObjectId id, DiagnosticCategory category, bool automatic)
+{
+    if (static_cast<size_t>(category) >= diagnosticCategoryCount || !findComparison(state, id)) { return; }
+    auto settings = comparisonSettings(state, id);
+    if (diagnosticAutoUpdate(settings, category) == automatic) { return; }
+    setDiagnosticAutoUpdate(settings, category, automatic);
+    setComparisonSettings(state, settings, id);
+}
+
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id)
 {
     if (auto* comparison = findComparison(state, id)) {
         const bool wasEnabled = comparison->settings.enabled;
         if (settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
-            || settings.duplicates.points != comparison->settings.duplicates.points || settings.duplicates.triangles != comparison->settings.duplicates.triangles
             || normalizedTopologyMode(settings.topologyMode) != comparison->settings.topologyMode
-            || settings.topologyInspection.nonManifoldVertices != comparison->settings.topologyInspection.nonManifoldVertices
-            || settings.topologyInspection.holes != comparison->settings.topologyInspection.holes
             || normalizedTopologyInspectionSettings(settings.topologyInspection).holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance
-            || settings.degenerates.enabled != comparison->settings.degenerates.enabled
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
             comparison->diagnosticFocus.reset();
         }

@@ -313,13 +313,16 @@ TEST_CASE("manual intersection requests are transient and CLI actions validate d
     WorkflowFixture f; REQUIRE(f.initialized);
     const auto revision = f.state.sceneEditRevision;
     const auto document = createSceneDocument(f.state);
+    for (const auto* key : diagnosticCategoryKeys) {
     for (const auto* method : {"analysis.run", "analysis.cancel"}) {
-        auto operation = parseControlOperation(*findControlMethod(method), {{"target","analysis"},{"detector","self_intersections"}});
+        auto operation = parseControlOperation(*findControlMethod(method), {{"target","analysis"},{"detector",key}});
         operation.objectId = f.id;
-        CHECK(controlOperationParams(operation)["detector"] == "self_intersections");
+        CHECK(controlOperationParams(operation)["detector"] == key);
         (void)applyControlSceneOperation(f.state,document,operation,[](auto value){return std::to_string(value);},200,800);
         CHECK(f.state.sceneEditRevision == revision);
     }
+    }
+    for (const auto& request : findComparison(f.state, f.id)->detectorRequests) { CHECK(request.revision == 2); CHECK(request.cancel); }
     CHECK(findComparison(f.state,f.id)->intersectionRequestRevision == 2);
     CHECK(findComparison(f.state,f.id)->cancelIntersections);
     CHECK_FALSE(comparisonSettings(f.state,f.id).intersections.autoUpdate);
@@ -405,6 +408,9 @@ TEST_CASE("manual checks update only on request and keep stale counts separate f
     CHECK(runtime.result.original.intersections.phase == IntersectionPhase::canceled);
     CHECK(comparisonResultsReady(runtime,f.state,f.id));
     settings.intersections.autoUpdate = true; setComparisonSettings(f.state,settings,f.id);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(runtime.result.original.intersections.phase == IntersectionPhase::canceled);
+    requestComparisonIntersections(f.state, f.id);
     REQUIRE(f.until([&]{ return comparisonStagesReady(runtime,f.state,f.id,comparisonIntersections); }));
 }
 
@@ -450,4 +456,176 @@ TEST_CASE("cancel and failed intersection jobs do not block completed detectors 
         REQUIRE(f.until([&]{ return comparisonStagesReady(runtime,f.state,f.id,comparisonIntersections); }));
     }
     CHECK((runtime.cache.completed & fastStages) == fastStages);
+}
+
+
+TEST_CASE("all detectors support manual runs with independent retained states")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    SUBCASE("input A") {}
+    SUBCASE("input B") {
+        setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::a, false, f.id);
+        setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, f.id);
+    }
+    for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
+        setComparisonAutomaticUpdate(f.state, f.id, static_cast<DiagnosticCategory>(i), false);
+    }
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    CHECK(runtime.cache.completed == comparisonSource);
+    const auto document = createSceneDocument(f.state);
+    const auto revision = f.state.sceneEditRevision;
+    for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
+        const auto category = static_cast<DiagnosticCategory>(i);
+        CAPTURE(i);
+        CHECK(comparisonDetectorStatus(runtime.result, category).phase == IntersectionPhase::notChecked);
+        requestComparisonDetector(f.state, f.id, category);
+        REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, category, true); }));
+        CHECK_FALSE(diagnosticAutoUpdate(comparisonSettings(f.state, f.id), category));
+        CHECK(f.state.sceneEditRevision == revision);
+        for (size_t other = i + 1; other < diagnosticCategoryCount; ++other) {
+            CHECK(comparisonDetectorStatus(runtime.result, static_cast<DiagnosticCategory>(other)).phase == IntersectionPhase::notChecked);
+        }
+    }
+    const auto visible = readyComparisonSettings(runtime, f.state, f.id);
+    CHECK(visible.showBoundaries); CHECK(visible.showNonManifold); CHECK(visible.showWinding);
+    CHECK(visible.duplicates.showPoints); CHECK(visible.duplicates.showTriangles);
+    CHECK(visible.topologyInspection.showNonManifoldVertices); CHECK(visible.topologyInspection.showHoles);
+    CHECK(visible.degenerates.show); CHECK(visible.intersections.show);
+    auto thresholds = comparisonSettings(f.state, f.id);
+    thresholds.topologyInspection.holeSizeRatioTolerance = .5f;
+    setComparisonSettings(f.state, thresholds, f.id);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(comparisonDetectorStatus(runtime.result, DiagnosticCategory::holes).phase == IntersectionPhase::outdated);
+    CHECK(comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::boundary));
+    CHECK_FALSE(runtime.worker.valid());
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::holes);
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes, true); }));
+    const auto oldCounts = runtime.result.detectors[0].knownCounts;
+    setFileTranslation(f.state.files[0].fileSettings, {3, 0, 0});
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
+        CHECK(comparisonDetectorStatus(runtime.result, static_cast<DiagnosticCategory>(i)).phase == IntersectionPhase::outdated);
+    }
+    CHECK(runtime.result.detectors[0].knownCounts == oldCounts);
+    const bool hasA = enabledComparisonPartCount(f.state, ComparisonSide::a, f.id) != 0;
+    const auto json = controlComparisonResults(runtime.result, .05)[hasA ? "aToB" : "bToA"]["detectors"];
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        CHECK(json[diagnosticCategoryKeys[i]]["status"] == "out_of_date");
+        CHECK(json[diagnosticCategoryKeys[i]]["count"].is_null());
+        CHECK(json[diagnosticCategoryKeys[i]]["findings"].empty());
+    }
+    CHECK(json["boundary_edges"]["knownCount"] == oldCounts[hasA ? 0 : 1]);
+    std::string report;
+    for (const auto& line : comparisonReportLines("Manual", "A", "B", thresholds, runtime.result, {})) { report += line; }
+    CHECK(report.find("boundary edges: out_of_date; previous result:") != std::string::npos);
+    CHECK_FALSE(readyComparisonSettings(runtime, f.state, f.id).showBoundaries);
+    CHECK(runtime.cache.completed == comparisonSource);
+    CHECK_FALSE(runtime.worker.valid());
+    const auto copy = duplicateComparison(f.state, f.id);
+    for (const auto& request : findComparison(f.state, copy)->detectorRequests) { CHECK(request.revision == 0); }
+    const auto loaded = prepareSceneReplacement(f.state, f.state.files, document);
+    for (const auto& request : loaded.comparisons[0].detectorRequests) { CHECK(request.revision == 0); }
+}
+
+TEST_CASE("canceling one shared topology detector preserves the other worker results")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    const auto boundary = static_cast<size_t>(DiagnosticCategory::boundary);
+    const auto holes = static_cast<size_t>(DiagnosticCategory::holes);
+    const auto signature = comparisonGeometrySignature(f.state, f.id);
+    runtime.workerSignature = signature;
+    runtime.workerStages = comparisonTopology;
+    runtime.workerDetectors = (1u << boundary) | (1u << holes);
+    runtime.result.detectors[boundary].phase = runtime.result.detectors[holes].phase = IntersectionPhase::running;
+    std::promise<MeshComparison> work;
+    runtime.worker = work.get_future();
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::boundary, true);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(runtime.result.detectors[boundary].phase == IntersectionPhase::canceled);
+    CHECK_FALSE(runtime.stop.stop_requested());
+    work.set_value(computeComparisonStages(comparisonWorldMesh(f.state, ComparisonSide::a, f.id), {}, comparisonTopology));
+    REQUIRE(f.until([&] { return !runtime.worker.valid(); }));
+    CHECK(runtime.result.detectors[boundary].phase == IntersectionPhase::canceled);
+    CHECK(comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes, true));
+    CHECK_FALSE(readyComparisonSettings(runtime, f.state, f.id).showBoundaries);
+    CHECK(readyComparisonSettings(runtime, f.state, f.id).topologyInspection.showHoles);
+    for (int frame = 0; frame < 3; ++frame) { updateComparisonRuntimes(f.runtimes, f.state); }
+    CHECK_FALSE(runtime.worker.valid());
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::boundary);
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::boundary, true); }));
+}
+
+TEST_CASE("failed and canceled automatic detectors wait for retry or relevant changes")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    const auto index = static_cast<size_t>(DiagnosticCategory::degenerateTriangles);
+    SUBCASE("failed worker") {
+        runtime.workerSignature = comparisonGeometrySignature(f.state, f.id);
+        runtime.workerStages = comparisonDegenerates;
+        runtime.workerDetectors = 1u << index;
+        runtime.result.detectors[index].phase = IntersectionPhase::running;
+        std::promise<MeshComparison> work;
+        runtime.worker = work.get_future();
+        work.set_exception(std::make_exception_ptr(std::runtime_error("Detector failed")));
+        updateComparisonRuntimes(f.runtimes, f.state);
+        CHECK(runtime.result.detectors[index].phase == IntersectionPhase::failed);
+        CHECK(runtime.result.detectors[index].error == "Detector failed");
+    }
+    SUBCASE("canceled") {
+        requestComparisonDetector(f.state, f.id, DiagnosticCategory::degenerateTriangles, true);
+        updateComparisonRuntimes(f.runtimes, f.state);
+        CHECK(runtime.result.detectors[index].phase == IntersectionPhase::canceled);
+    }
+    const auto stopped = runtime.result.detectors[index].phase;
+    for (int frame = 0; frame < 3; ++frame) { updateComparisonRuntimes(f.runtimes, f.state); }
+    CHECK_FALSE(runtime.worker.valid());
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.degenerates.show = !settings.degenerates.show;
+    setComparisonSettings(f.state, settings, f.id);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(runtime.result.detectors[index].phase == stopped);
+    settings.degenerates.needleThresholdRatio += 1;
+    setComparisonSettings(f.state, settings, f.id);
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::degenerateTriangles, true); }));
+    CHECK(runtime.result.detectors[index].error.empty());
+}
+
+TEST_CASE("automatic detector preferences round trip scenes and saved views")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
+        const auto category = static_cast<DiagnosticCategory>(i);
+        CHECK(diagnosticAutoUpdate(comparisonSettings(f.state, f.id), category) == (category != DiagnosticCategory::selfIntersections));
+        setComparisonAutomaticUpdate(f.state, f.id, category, category == DiagnosticCategory::selfIntersections);
+    }
+    auto command = parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"},
+        {"autoUpdateBoundaries", false}, {"autoUpdateNonManifold", false}, {"autoUpdateWinding", false}});
+    command.objectId = f.id;
+    CHECK(controlOperationParams(command)["autoUpdateBoundaries"] == false);
+    CHECK(controlOperationParams(command)["autoUpdateNonManifold"] == false);
+    CHECK(controlOperationParams(command)["autoUpdateWinding"] == false);
+    (void)applyControlSceneOperation(f.state, createSceneDocument(f.state), command, [](auto value) { return std::to_string(value); }, 200, 800);
+    const auto settings = comparisonSettings(f.state, f.id);
+    auto document = createSceneDocument(f.state);
+    // Both scene and view records use the same settings mapping.
+    SceneViewRecord view;
+    view.name = "Manual detectors";
+    SceneViewObjectRecord object;
+    object.kind = ViewObjectKind::comparison; object.index = 0;
+    object.settings.comparison = settings;
+    view.objects.push_back(object); document.views.push_back(view);
+    const auto path = f.files.root / "manual-detectors.woby";
+    writeSceneDocument(path, document);
+    const auto loaded = readSceneDocument(path);
+    CHECK(loaded.comparisons[0].settings == settings);
+    CHECK(loaded.views[0].objects[0].settings.comparison == settings);
+    const auto legacy = readSceneDocument(f.files.write("legacy.woby", "version = 13\n[[analyses]]\nname = \"legacy\"\nduplicate_points_enabled = false\nanalysis_holes_enabled = false\n"));
+    CHECK_FALSE(diagnosticAutoUpdate(legacy.comparisons[0].settings, DiagnosticCategory::duplicatePoints));
+    CHECK_FALSE(diagnosticAutoUpdate(legacy.comparisons[0].settings, DiagnosticCategory::holes));
+    CHECK(diagnosticAutoUpdate(legacy.comparisons[0].settings, DiagnosticCategory::boundary));
 }

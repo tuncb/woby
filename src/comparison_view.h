@@ -49,6 +49,10 @@ struct ComparisonRuntime
     uint64_t workerSignature = 0;
     uint32_t workerStages = 0, attemptedStages = 0, uploadedStages = 0;
     uint32_t failedStages = 0;
+    std::array<uint64_t, backgroundDetectorCount> consumedDetectorRequests{};
+    std::array<uint64_t, backgroundDetectorCount> workerDetectorRequests{};
+    uint32_t workerDetectors = 0;
+    float holeSizeRatioTolerance = .05f;
     IntersectionRuntime intersection;
     ComparisonCacheStatus cache;
     std::shared_ptr<const std::array<Mesh, 2>> inputs;
@@ -67,6 +71,9 @@ struct ComparisonRuntimes {
     bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;
     bgfx::UniformHandle parameters = BGFX_INVALID_HANDLE;
 };
+
+[[nodiscard]] bool comparisonDetectorReady(const ComparisonRuntime& runtime, const UiState& state,
+    SceneObjectId id, DiagnosticCategory category, bool requireGpu = false);
 
 // Transient scene-panel editor state; the committed name belongs to UiState.
 struct ComparisonNameEdit {

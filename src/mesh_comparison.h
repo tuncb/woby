@@ -55,10 +55,18 @@ struct SurfaceComparison
     std::vector<DiagnosticEdge> duplicatePointBounds, duplicateTriangleBounds;
 };
 
+struct DetectorStatus {
+    IntersectionPhase phase = IntersectionPhase::notChecked;
+    bool hasResult = false;
+    std::array<size_t, 2> knownCounts{};
+    std::string error;
+};
+
 struct MeshComparison
 {
     SurfaceComparison original;
     SurfaceComparison repaired;
+    std::array<DetectorStatus, backgroundDetectorCount> detectors{};
     std::array<QualityDistribution, surfaceQualityMetricCount> qualityDistributions{};
 };
 
@@ -73,6 +81,12 @@ enum ComparisonStage : uint32_t {
     comparisonDegenerates = 1u << 6,
     comparisonIntersections = 1u << 7
 };
+inline constexpr uint32_t comparisonDetectors = comparisonTopology | comparisonDuplicatePoints
+    | comparisonDuplicateTriangles | comparisonDegenerates;
+[[nodiscard]] DetectorStatus comparisonDetectorStatus(const MeshComparison& result, DiagnosticCategory category);
+[[nodiscard]] const char* detectorPhaseName(IntersectionPhase phase);
+// Retain previous counts, but prevent stale findings from being inspected or drawn.
+void invalidateComparisonDetectors(MeshComparison& result, uint32_t stages);
 struct ComparisonCacheStatus {
     uint64_t signature = 0;
     uint32_t completed = 0;

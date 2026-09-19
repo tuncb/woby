@@ -246,10 +246,10 @@ points** groups equal imported coordinates within each source file. **Duplicate
 triangles** groups the same three source point IDs regardless of winding, including
 collapsed triangles. Three identical records count as two duplicates. Select a row
 or use the arrows to frame a group; the scrollable details retain every source ID.
-The table keeps per-side counts and per-row Show controls; duplicate rows also have
-Run controls. Edge checks always run, and non-manifold/winding visibility remains
-shared. Cyan crosses mark duplicate points, orange fill/outlines mark duplicate triangles,
-and yellow marks the focused group. Run controls computation; Show controls only
+The table keeps per-side counts, per-row Show controls, and manual Update actions.
+Each row has a settings gear with its own Automatic updates preference.
+Cyan crosses mark duplicate points, orange fill/outlines mark duplicate triangles,
+and yellow marks the focused group. Update controls computation; Show controls only
 the overlay. Settings support undo/redo and scene save/load; focus is temporary.
 
 Whole-file inspection includes unused source points; selected parts inspect their
@@ -259,7 +259,7 @@ OBJ IDs use position records (before UV/normal splits); triangle IDs refer to
 triangulated output, not original polygons. Importer IDs refer to its returned vertex
 table, which may differ from original file IDs. Import precision is unchanged.
 STL repeated corners are informational; its source-ID triangle check is unavailable.
-Unavailable/partial/disabled results are explicitly labeled. The existing
+Unavailable, partial, and not-checked results are explicitly labeled. The existing
 **Geometric duplicate triangles** count keeps its coordinate-based definition.
 
 Open the [duplicate inspection sample](assets/samples/duplicates/README.md) for a
@@ -309,8 +309,8 @@ distance and area above tolerance. With one input, unavailable distance metrics
 and the absent side are `null`.
 
 Analysis retains separate caches for topology, duplicate points, duplicate triangles,
-surface quality, and distances. Run enables a duplicate detector; disabling it hides
-its results but retains them for reuse. Show only changes the overlay. Group A/B and
+surface quality, and distances. Automatic updates control scheduling; turning them
+off retains current results and allows manual updates. Show only changes the overlay. Group A/B and
 Overlay views do not request distance or quality calculations; those run when their
 view is selected or a CLI results request needs them. CLI queries reuse the same
 cache and compute only missing stages. Camera, result position, tolerance, colors,
@@ -587,12 +587,18 @@ toolchain, and reuse of main-build packages when publishing a version tag.
 
 ### Self-intersections
 
-Click **Run** on the **Self-intersections** diagnostic row to check each selected
+Click the **play icon** on the **Self-intersections** diagnostic row to check each selected
 source file for triangle crossings and coplanar overlap. It starts **Not checked**.
 After source geometry or topology changes, the result becomes **Out of date**:
-click **Update** to check again. Previous counts remain in the status tooltip;
-stale findings and overlays are hidden. **Cancel** stops a queued or running
-check; **Retry** starts it again. **Rerun** repeats a completed check.
+click the **amber refresh icon** to check again. Previous counts remain in the status tooltip;
+stale findings and overlays are hidden. The **stop icon** cancels a queued or running
+check; the **repeat icon** retries a canceled or failed check, or reruns a completed check.
+Failures show a red repeat icon with an error badge. Hover each icon for its action and status.
+Every detector uses these same actions in the Update column. Its gear opens settings
+with an **Automatic updates** checkbox. All detectors default to automatic except
+self-intersections, and automatic updates can be turned off for every detector.
+Turning them off retains completed results and permits manual runs. Changed inputs
+make manual results outdated; stale findings and overlays remain hidden until updated.
 The eye controls red face/edge overlays without rerunning the detector. Select a pair or use the arrows to inspect and frame both triangles.
 The list is paged and includes generated triangle IDs and part IDs.
 
@@ -608,10 +614,9 @@ candidates per analysis side. When either limit stops detection, results are
 explicitly partial and pair/affected-face counts are lower bounds. Exact checks
 may take time on dense meshes; workers support cancellation between pairs.
 Other detectors publish counts, navigation, and overlays as each stage finishes;
-they remain usable while self-intersections run. Cheap checks update automatically.
-The self-intersection gear offers **Automatically update after changes** as an
-opt-in. Cancel pauses automatic checking until another request, a geometry change,
-or re-enabling auto-update.
+they remain usable while self-intersections run. Automatic checks run initially and
+after relevant changes. Cancel or failure pauses automatic checking until another request, a geometry change,
+or a relevant detector-settings change. Merely changing Show or toggling automatic updates does not restart a stopped check.
 
 Scene version 14 saves auto-update, Show, and the selected category, including saved
 views. Requests and computed results are transient; reopened manual analyses start

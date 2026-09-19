@@ -40,6 +40,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     for (auto& comparison : content.comparisons) {
         comparison.diagnosticFocus.reset();
         comparison.intersectionRequestRevision = 0; comparison.cancelIntersections = false;
+        comparison.detectorRequests = {};
     }
     content.sceneNodes = state.sceneNodes;
     for (const auto& file : state.files) {
@@ -166,6 +167,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
         if (const auto* live = findComparison(current, comparison.objectId)) {
             comparison.intersectionRequestRevision = live->intersectionRequestRevision;
             comparison.cancelIntersections = live->cancelIntersections;
+            comparison.detectorRequests = live->detectorRequests;
         }
     }
     validateAnnotationTargets(prepared);

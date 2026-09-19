@@ -9,6 +9,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <array>
 #include <chrono>
 
 namespace {
@@ -105,7 +106,6 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
     auto& runtime = runtimes.objects[f.id];
     std::promise<woby::MeshComparison> pending;
     const char* status = "Queued...";
-    bool updating = true;
     SUBCASE("queued") {}
     SUBCASE("calculating") {
         runtime.worker = pending.get_future();
@@ -125,7 +125,6 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
         runtime.error = "Test analysis failure";
         runtime.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id);
         status = "Analysis failed";
-        updating = false;
     }
     SUBCASE("obsolete error does not report failure") {
         runtime.error = "Old failure";
@@ -136,25 +135,24 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
         settings.enabled = false;
         woby::setComparisonSettings(f.state, settings, f.id);
         status = "";
-        updating = false;
     }
     SUBCASE("invalid inputs") {
         woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
             woby::ComparisonSide::a, false, f.id);
         status = "";
-        updating = false;
     }
     SUBCASE("ready") {
         runtime.ready = true;
         runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
         runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+        for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
         status = "";
-        updating = false;
     }
     SUBCASE("new quality view waits for its missing stage") {
         runtime.ready = true;
         runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
         runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+        for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
         auto settings = woby::comparisonSettings(f.state, f.id);
         settings.mode = woby::ComparisonMode::surfaceQuality;
         woby::setComparisonSettings(f.state, settings, f.id);
@@ -183,7 +181,8 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
     for (const auto* label : {"Queued...", "Calculating analysis...", "Analysis failed"}) {
         CHECK((contents.find(label) != std::string::npos) == (std::string(status) == label));
     }
-    CHECK((contents.find("Updating...") != std::string::npos) == updating);
+    CHECK(contents.find("Diagnostics") != std::string::npos);
+    CHECK(contents.find("Updating...") == std::string::npos);
     CHECK((contents.find("Retry") != std::string::npos) == (std::string(status) == "Analysis failed"));
 }
 
@@ -250,6 +249,7 @@ TEST_CASE("analysis status stays fixed while scrolling and retry preserves the e
     runtime.ready = true;
     runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
     runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+        for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
     frame(); frame();
     CHECK(contents.find("Queued...") == std::string::npos);
     CHECK(contents.find("Updating...") == std::string::npos);
@@ -430,6 +430,7 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     SUBCASE("one input A") {}
     SUBCASE("one input B") { hasA = false; hasB = true; }
     SUBCASE("two inputs") { hasB = true; }
+    SUBCASE("no inputs") { hasA = hasB = false; }
     woby::Mesh mesh;
     mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
     mesh.indices = {0, 1, 2};
@@ -447,6 +448,8 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     woby::ComparisonRuntimes runtimes;
     ImGuiTable* diagnostics = nullptr;
     ImVec2 gear, eye, divider, intersectionRun, intersectionEye;
+    std::array<ImVec2, 8> updateButtons;
+    std::array<ImVec2, 9> settingsButtons;
     std::string contents;
     const auto frame = [&] {
         ImGui::GetIO().DisplaySize = ImVec2(1200, 1500);
@@ -471,7 +474,14 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
                     + woby::renderModeButtonSize() * 0.5f, holeY);
                 const float intersectionY = table->RowPosY1 + ImGui::GetStyle().CellPadding.y
                     + woby::renderModeButtonSize()*0.5f;
-                intersectionRun = ImVec2(table->Columns[0].WorkMinX + ImGui::GetFrameHeight()*0.5f, intersectionY);
+                intersectionRun = ImVec2(table->Columns[0].WorkMinX + woby::renderModeButtonSize()*0.5f, intersectionY);
+                for (size_t row = 0; row < updateButtons.size(); ++row) {
+                    updateButtons[row] = ImVec2(intersectionRun.x,
+                        intersectionY - static_cast<float>(updateButtons.size() - row) * rowHeight);
+                }
+                for (size_t row = 0; row < settingsButtons.size(); ++row) {
+                    settingsButtons[row] = ImVec2(gear.x, intersectionY - static_cast<float>(8 - row) * rowHeight);
+                }
                 intersectionEye = ImVec2(table->Columns[table->ColumnsCount - 3].WorkMinX + woby::renderModeButtonSize()*0.5f, intersectionY);
                 divider = ImVec2(table->Columns[2].MaxX,
                     table->OuterRect.Min.y + ImGui::GetTextLineHeight() * 0.5f);
@@ -489,11 +499,63 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     };
     for (int warmup = 0; warmup < 5; ++warmup) { frame(); }
     REQUIRE(diagnostics);
-    CHECK(contents.find(hasA && hasB ? "Count A" : "Count") != std::string::npos);
+    CHECK((contents.find(hasA && hasB ? "Count A" : "Count") != std::string::npos) == (hasA || hasB));
     CHECK((contents.find("Count B") != std::string::npos) == (hasA && hasB));
     CHECK(contents.find("\xef\x80\x93") != std::string::npos); // Settings glyph.
     REQUIRE((diagnostics->Flags & ImGuiTableFlags_Resizable) != 0);
     auto& io = ImGui::GetIO();
+    if (!hasA && !hasB) {
+        for (const auto phase : {woby::IntersectionPhase::notChecked, woby::IntersectionPhase::outdated, woby::IntersectionPhase::failed}) {
+            auto& result = runtimes.objects[f.id].result;
+            result.original.intersections.phase = phase;
+            for (auto& status : result.detectors) { status.phase = phase; }
+            frame();
+            click(intersectionRun);
+            CHECK(woby::findComparison(f.state, f.id)->intersectionRequestRevision == 0);
+            CHECK(contents.find("No input. Add an enabled input") != std::string::npos);
+            for (const auto button : updateButtons) { click(button); }
+            for (const auto& request : woby::findComparison(f.state, f.id)->detectorRequests) { CHECK(request.revision == 0); }
+        }
+        return;
+    }
+    const woby::DiagnosticCategory rowCategories[] = {
+        woby::DiagnosticCategory::boundary, woby::DiagnosticCategory::nonManifoldVertices,
+        woby::DiagnosticCategory::holes, woby::DiagnosticCategory::nonManifold,
+        woby::DiagnosticCategory::winding, woby::DiagnosticCategory::duplicatePoints,
+        woby::DiagnosticCategory::duplicateTriangles, woby::DiagnosticCategory::degenerateTriangles,
+        woby::DiagnosticCategory::selfIntersections,
+    };
+    for (size_t row = 0; row < updateButtons.size(); ++row) {
+        const auto before = woby::comparisonSettings(f.state, f.id);
+        const auto revision = f.state.sceneEditRevision;
+        click(updateButtons[row]);
+        CHECK(woby::comparisonSettings(f.state, f.id) == before);
+        CHECK(f.state.sceneEditRevision == revision);
+        const auto& request = woby::findComparison(f.state, f.id)->detectorRequests[static_cast<size_t>(rowCategories[row])];
+        CHECK(request.revision == 1);
+        CHECK_FALSE(request.cancel);
+        CHECK(contents.find("Run detection") != std::string::npos);
+    }
+    for (size_t row = 0; row < settingsButtons.size(); ++row) {
+        const auto before = woby::comparisonSettings(f.state, f.id);
+        click(settingsButtons[row]);
+        REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+        const auto* settingsPopup = f.context->OpenPopupStack.back().Window;
+        REQUIRE(settingsPopup);
+        CHECK(contents.find("Automatic updates") != std::string::npos);
+        const auto start = settingsPopup->DC.CursorStartPos;
+        const ImVec2 automatic(start.x + ImGui::GetFrameHeight() * .5f,
+            start.y + ImGui::GetTextLineHeightWithSpacing() + 1 + ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeight() * .5f);
+        click(automatic);
+        auto expected = before;
+        woby::setDiagnosticAutoUpdate(expected, rowCategories[row], !woby::diagnosticAutoUpdate(before, rowCategories[row]));
+        CHECK(woby::comparisonSettings(f.state, f.id) == expected);
+        click(automatic);
+        CHECK(woby::comparisonSettings(f.state, f.id) == before);
+        io.AddKeyEvent(ImGuiKey_Escape, true); frame();
+        io.AddKeyEvent(ImGuiKey_Escape, false); frame(); frame();
+        CHECK(f.context->OpenPopupStack.empty());
+    }
     CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.autoUpdate);
     const auto runRevision = f.state.sceneEditRevision;
     click(intersectionRun);
@@ -505,16 +567,40 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and a nearby ho
     CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.autoUpdate);
     click(intersectionEye);
     auto& inspection = runtimes.objects[f.id].result.original.intersections;
-    inspection.phase = woby::IntersectionPhase::running; frame();
-    CHECK(contents.find("Cancel") != std::string::npos);
-    click(intersectionRun);
-    CHECK(woby::findComparison(f.state,f.id)->cancelIntersections);
-    inspection.phase = woby::IntersectionPhase::outdated;
-    runtimes.objects[f.id].result.repaired.intersections.phase = woby::IntersectionPhase::outdated; frame();
-    CHECK(contents.find("Out of date") != std::string::npos);
-    click(intersectionRun);
-    CHECK_FALSE(woby::findComparison(f.state,f.id)->cancelIntersections);
-    CHECK(woby::findComparison(f.state,f.id)->intersectionRequestRevision == 3);
+    struct ActionCase {
+        woby::IntersectionPhase phase;
+        const char* icon;
+        const char* hint;
+        bool cancel;
+    };
+    const ActionCase actions[] = {
+        {woby::IntersectionPhase::notChecked, "\xef\x81\x8b", "Run detection", false},
+        {woby::IntersectionPhase::queued, "\xef\x81\x8d", "Queued. Cancel", true},
+        {woby::IntersectionPhase::running, "\xef\x81\x8d", "Running. Cancel", true},
+        {woby::IntersectionPhase::complete, "\xef\x80\x9e", "Complete. Rerun", false},
+        {woby::IntersectionPhase::outdated, "\xef\x80\xa1", "Out of date. Update", false},
+        {woby::IntersectionPhase::canceled, "\xef\x80\x9e", "Canceled. Retry", false},
+        {woby::IntersectionPhase::failed, "\xef\x80\x9e", "Failed. Retry", false},
+    };
+    for (const auto& action : actions) {
+        CAPTURE(action.hint);
+        inspection.phase = action.phase;
+        inspection.error = action.phase == woby::IntersectionPhase::failed ? "Test check failure" : "";
+        runtimes.objects[f.id].result.repaired.intersections.phase = action.phase;
+        frame();
+        const auto request = woby::findComparison(f.state, f.id)->intersectionRequestRevision;
+        const auto revision = f.state.sceneEditRevision;
+        click(intersectionRun);
+        CHECK(contents.find(action.icon) != std::string::npos);
+        CHECK(contents.find(action.hint) != std::string::npos);
+        if (action.phase == woby::IntersectionPhase::failed) {
+            CHECK(contents.find("Test check failure") != std::string::npos);
+        }
+        CHECK(woby::findComparison(f.state, f.id)->cancelIntersections == action.cancel);
+        CHECK(woby::findComparison(f.state, f.id)->intersectionRequestRevision == request + 1);
+        CHECK(f.state.sceneEditRevision == revision);
+        CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.autoUpdate);
+    }
     inspection.phase = woby::IntersectionPhase::notChecked; frame();
     const auto original = woby::comparisonSettings(f.state, f.id);
     click(eye);

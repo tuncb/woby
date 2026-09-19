@@ -56,6 +56,7 @@ Mesh meshFor(const DuplicateSource& source)
 nlohmann::json jsonFor(const MeshTopology& topology, const char* detector)
 {
     MeshComparison result; result.original.source.indices = {0,1,2}; result.original.topology = topology;
+    for (auto& status : result.detectors) { status.phase = IntersectionPhase::complete; status.hasResult = true; }
     return controlComparisonResults(result, .05)["aToB"]["detectors"][detector];
 }
 }
@@ -465,7 +466,7 @@ TEST_CASE("vertex and hole settings navigate persist validate and drive reports 
     (void)setComparisonTopologyInspectionSettings(result, settings.topologyInspection);
     selectComparisonDiagnostic(state, result, signature, 1, id); REQUIRE(findComparison(state, id)->diagnosticFocus);
     settings.topologyInspection.holes = false; setComparisonSettings(state, settings, id);
-    selectComparisonDiagnostic(state, result, signature, 0, id); CHECK_FALSE(findComparison(state, id)->diagnosticFocus);
+    selectComparisonDiagnostic(state, result, signature, 0, id); CHECK(findComparison(state, id)->diagnosticFocus.has_value());
     writeSceneDocument(fixture.root/"new.woby", createSceneDocument(state));
     CHECK(readSceneDocument(fixture.root/"new.woby").comparisons[0].settings == comparisonSettings(state, id));
     for (int version = 2; version <= 10; ++version) {

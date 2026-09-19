@@ -326,6 +326,7 @@ TEST_CASE("degenerate scene migration and bounded JSON retain exact totals")
     for (size_t i = 1; i < 120; ++i) { data->indices.insert(data->indices.end(), {0,1,2}); }
     source.data = data; source.parts[0].indexCount = data->indices.size();
     MeshComparison result;
+    result.detectors[static_cast<size_t>(DiagnosticCategory::degenerateTriangles)].phase = IntersectionPhase::complete;
     result.original.source.indices = {0,1,2};
     result.original.degenerates = inspectDegenerates({source}, {});
     auto json = controlComparisonResults(result, .05)["aToB"]["detectors"]["degenerate_tris"];

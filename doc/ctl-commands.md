@@ -141,6 +141,25 @@ computations fail capture; hide or repair the affected object before retrying.
 
 ## Analyses
 
+Every detector has an **Automatic updates** checkbox in its gear menu. The Update
+column provides play, stop, refresh, and retry actions. Automatic updates default
+to on except for self-intersections; none is permanently automatic. Turning off
+automatic updates retains completed findings. Relevant geometry/settings edits mark
+manual results out of date and hide stale overlays until the next run. Cancellation
+and failure wait for an explicit retry or a relevant geometry/settings change.
+
+`analysis run ANALYSIS_ID --detector KEY` and `analysis cancel ANALYSIS_ID --detector KEY`
+accept `boundary_edges`, `non_manifold_edges`, `inconsistently_oriented_tris`,
+`non_manifold_vertices`, `holes`, `duplicate_points`, `duplicate_tris`,
+`degenerate_tris`, and `self_intersections`.
+
+`analysis set` exposes `--auto-update-boundaries`, `--auto-update-non-manifold`,
+and `--auto-update-winding` for the three edge/orientation detectors. Existing
+`--duplicate-points`, `--duplicate-triangles`, `--degenerate-triangles`,
+`--non-manifold-vertices`, `--holes`, and `--auto-update-self-intersections`
+control automatic scheduling for the other detectors. All accept a Boolean.
+Manual run/cancel requests do not change these saved preferences.
+
 | CLI | RPC method | Behavior |
 | --- | --- | --- |
 | `analysis create [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
@@ -232,19 +251,18 @@ one-based within the source topology. Collapsed faces remain excluded and counte
 Both detectors expose `status`, nullable `count`, `knownCount`, bounded findings,
 and truncation flags. Arrays are limited to 100 entries, including loop members
 and incident faces. Each loop vertex includes one representative source point/part
-reference, its total reference count, and a truncation flag. Disabled results have null counts and empty findings. Their
-Run switches control reporting while shared topology and findings remain cached;
-Show switches only affect presentation. Editing the hole threshold refilters
-cached loops and refreshes their overlays without rebuilding topology, distance,
-quality, or duplicate results. Blue loops mark holes; the UI has paged vertex/loop
+reference, its total reference count, and a truncation flag. Not-checked, outdated, canceled, or failed detectors have null current counts and empty findings. Previous known counts remain separate.
+Automatic-update preferences control scheduling; Show switches only affect presentation.
+Editing the hole threshold invalidates the hole detector. Other completed detectors retain their results. Blue loops mark holes; the UI has paged vertex/loop
 navigation and explains excluded boundaries. Reports include counts and thresholds.
 
 Each populated side of `analysis results --json` includes `detectors` schema version
 1, with `duplicate_points` and `duplicate_tris`. `count` counts extra source records
-and is null for disabled, unavailable, or partial results; `knownDuplicateCount`
+and is null until a current check completes, or for unavailable or partial results; `knownDuplicateCount`
 reports findings from supported sources, and `informationalCount` separately counts
-STL corner repetitions. `status` is `complete`, `disabled`, `unavailable`, or `partial`.
-Failed computations fail the request. Source and generated triangle IDs are 1-based.
+STL corner repetitions. Completed results have status `complete`, `unavailable`, or `partial`.
+Pending, stale, stopped, and failed checks use the detector lifecycle statuses listed above, with separate previous `knownCount` values.
+Detector failures are returned as failed statuses; source or measurement failures fail the request. Source and generated triangle IDs are 1-based.
 The response includes up to 100 groups per detector and 100 members per group, with
 explicit `findingsTruncated` and `membersTruncated` flags; totals remain exact for
 completed checks. The UI offers the complete paged group list and scrollable members.
@@ -270,8 +288,8 @@ thresholds, algorithm revision, status, and up to 100 findings. Each finding nam
 the source, part ID, 1-based generated triangle ID, reason flags, edge ratio, and
 maximum angle. Non-finite/unavailable measurements are JSON `null`.
 `findingsTruncated` describes the bounded listing; totals remain exact for all
-available sources. Disabled/unavailable/partial results have `count: null`;
-`knownCount` reports the available subset (zero when disabled).
+available sources. Incomplete, unavailable, or partial results have `count: null`;
+`knownCount` reports the available subset or the previous completed count.
 
 Detection uses retained source records transformed into world coordinates in
 double precision, excluding the analysis display offset. Imported float precision
@@ -285,7 +303,7 @@ In the Diagnostics table, click the gear button on the **Degenerate triangles**
 row to edit thresholds in a small popup for that analysis. The settings remain
 available while detection is off or computing. Select the row to page through findings. Arrows select and frame triangles; purple overlays show
 findings and yellow highlights the focused triangle. Crosses mark collapsed faces.
-Run and Show are independent. Threshold edits invalidate only this detector's
+Automatic updates and Show are independent. Threshold edits invalidate only this detector's
 cached stage; Show and analysis display-offset edits do not rerun detection.
 Scene version 9 persists these controls and loads versions 2–8 with default
 thresholds and the detector enabled. Findings and focus are not saved.
@@ -338,7 +356,7 @@ quality, and distance stages run in the shared background queue (at most two ana
 at once). Repeated queries reuse completed stages. Ordinary source visibility,
 Show toggles, and the analysis's display offset do not invalidate these results.
 The command retains its FIFO slot until it finishes; later CLI edits execute afterward.
-If a manual UI edit changes inputs, transforms, Run toggles, or the scene while the
+If a manual UI edit changes inputs, transforms, automatic-update preferences, or the scene while the
 request is pending, it returns an error asking for a retry rather than mixing revisions.
 Empty analyses
 or missing references fail with `-32602`; loading/capture/dialog activity rejects
@@ -594,7 +612,7 @@ JSON settings: `autoUpdateSelfIntersections` (defaults false),
 `showSelfIntersections`. Legacy `selfIntersections` remains an auto-update alias.
 Statuses: `not_checked`, `queued`, `running`, `out_of_date`, `canceled`, `failed`,
 `complete`, `partial`, or `unavailable`. Cancel suppresses auto-update until a
-new request, a geometry change, or re-enabling auto-update.
+new request, a geometry change, or a relevant detector-settings change.
 
 Each populated side exposes `detectors.self_intersections`: status, error,
 algorithm `woby-exact-rational-intersections-v1`, topology mode, scope, nullable

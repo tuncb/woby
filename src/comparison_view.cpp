@@ -331,32 +331,106 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     ImGui::TreePop();
     ImGui::PopID();
 }
-void drawDegenerateSettingsPopup(UiState& state, SceneObjectId id)
+void drawDiagnosticSettingsPopup(UiState& state, SceneObjectId id, DiagnosticCategory category, const char* name)
 {
-    if (drawRenderModeIconButton("settings", "\xef\x80\x93", "Degenerate triangle settings", RenderModeState::off, false)) {
+    const std::string hint = std::string(name) + " settings";
+    if (drawRenderModeIconButton("settings", "\xef\x80\x93", hint.c_str(), RenderModeState::off, false)) {
         ImGui::OpenPopup("diagnostic_settings");
     }
-    ImGui::SetNextWindowSize(ImVec2(uiSize(360), 0), ImGuiCond_Always);
-    if (ImGui::BeginPopup("diagnostic_settings", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
-        auto settings = comparisonSettings(state, id);
-        const auto initial = settings;
-        ImGui::TextUnformatted("Degenerate triangles");
-        ImGui::TextWrapped("Analysis: %s", findComparison(state, id)->name.c_str());
-        ImGui::Separator();
+    const auto buttonMax = ImGui::GetItemRectMax();
+    ImGui::SetNextWindowPos({buttonMax.x, buttonMax.y + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing, {1, 0});
+    ImGui::SetNextWindowSize({uiSize(360), 0}, ImGuiCond_Always);
+    if (!ImGui::BeginPopup("diagnostic_settings", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) { return; }
+    ImGui::TextUnformatted(name);
+    ImGui::Separator();
+    auto settings = comparisonSettings(state, id);
+    bool automatic = diagnosticAutoUpdate(settings, category);
+    if (ImGui::Checkbox("Automatic updates", &automatic)) {
+        setComparisonAutomaticUpdate(state, id, category, automatic);
+        settings = comparisonSettings(state, id);
+    }
+    const auto initial = settings;
+    ImGui::TextWrapped("Analysis: %s", findComparison(state, id)->name.c_str());
+    if (category == DiagnosticCategory::degenerateTriangles) {
         if (ImGui::IsWindowAppearing()) { ImGui::SetKeyboardFocusHere(); }
         ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
         ImGui::InputFloat("Needle edge ratio", &settings.degenerates.needleThresholdRatio, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll);
-        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Longest / shortest edge must strictly exceed this ratio (minimum 1)."); }
+        setLastItemTooltip("Longest / shortest edge must strictly exceed this ratio (minimum 1).");
         ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
         ImGui::InputFloat("Cap angle (degrees)", &settings.degenerates.capMinAngleDegrees, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll);
-        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Largest angle must strictly exceed this threshold (90 to 180 degrees)."); }
-        ImGui::Spacing();
-        ImGui::TextWrapped("Collapsed and collinear triangles are always included. Changes apply to this analysis and are saved with the scene.");
-        if (settings != initial) { setComparisonSettings(state, settings, id); }
-        if (ImGui::Button("Close")) { ImGui::CloseCurrentPopup(); }
-        setLastItemTooltip("Close degenerate triangle settings. Changes apply immediately.");
-        ImGui::EndPopup();
+        setLastItemTooltip("Largest angle must strictly exceed this threshold (90 to 180 degrees).");
+        ImGui::TextWrapped("Collapsed and collinear triangles are always included.");
+    } else if (category == DiagnosticCategory::holes) {
+        if (ImGui::IsWindowAppearing()) { ImGui::SetKeyboardFocusHere(); }
+        ImGui::SetNextItemWidth(ImGui::GetFontSize()*8);
+        ImGui::InputFloat("Maximum size ratio", &settings.topologyInspection.holeSizeRatioTolerance, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll);
+        ImGui::TextWrapped("Loop bounding-box diagonal / edge-connected component diagonal, inclusive. Larger openings remain boundary findings. Ratios may exceed 1.");
     }
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
+    ImGui::TextWrapped("Automatic updates run initially and after relevant input or detector settings change. Turn off to run only from the Update column. Cancel or failure waits for a retry or a relevant change.");
+    if (ImGui::Button("Close")) { ImGui::CloseCurrentPopup(); }
+    ImGui::EndPopup();
+}
+
+void drawDetectorUpdate(UiState& state, const DetectorStatus& result, bool hasInput, SceneObjectId id, DiagnosticCategory category)
+{
+    const bool busy = result.phase == IntersectionPhase::queued || result.phase == IntersectionPhase::running;
+    const char* icon = "\xef\x80\x9e"; // Repeat.
+    const char* tooltip = "";
+    switch (result.phase) {
+    case IntersectionPhase::notChecked:
+        icon = "\xef\x81\x8b"; // Play.
+        tooltip = "Run detection for the current geometry.";
+        break;
+    case IntersectionPhase::queued:
+        icon = "\xef\x81\x8d"; // Stop.
+        tooltip = "Queued. Cancel this check; other checks keep running.";
+        break;
+    case IntersectionPhase::running:
+        icon = "\xef\x81\x8d";
+        tooltip = "Running. Cancel this check; other checks keep running.";
+        break;
+    case IntersectionPhase::complete:
+        tooltip = "Complete. Rerun detection for the current geometry.";
+        break;
+    case IntersectionPhase::outdated:
+        icon = "\xef\x80\xa1"; // Refresh.
+        tooltip = "Out of date. Update detection for the current geometry.";
+        break;
+    case IntersectionPhase::canceled:
+        tooltip = "Canceled. Retry detection.";
+        break;
+    case IntersectionPhase::failed:
+        tooltip = "Failed. Retry detection.";
+        break;
+    }
+    if (!hasInput) { icon = "\xef\x81\x8b"; }
+    const bool failed = hasInput && result.phase == IntersectionPhase::failed;
+    const auto color = failed ? ImVec4(1.0f, 0.38f, 0.35f, 1.0f)
+        : hasInput && result.phase == IntersectionPhase::outdated ? ImVec4(1.0f, 0.72f, 0.25f, 1.0f)
+        : ImGui::GetStyleColorVec4(ImGuiCol_Text);
+    ImGui::BeginDisabled(!hasInput);
+    ImGui::PushStyleColor(ImGuiCol_Text, color);
+    const std::string label = std::string(icon) + "###detector_update";
+    if (ImGui::Button(label.c_str(), {renderModeButtonSize(), renderModeButtonSize()})) {
+        requestComparisonDetector(state, id, category, busy);
+    }
+    if (failed) {
+        // Keep failure recognizable without relying on color alone.
+        const auto high = ImGui::GetItemRectMax();
+        const float unit = uiSize(1.0f);
+        const ImVec2 center(high.x - 5 * unit, high.y - 6 * unit);
+        auto* draw = ImGui::GetWindowDrawList();
+        const auto ink = ImGui::GetColorU32(ImGuiCol_Text);
+        draw->AddCircleFilled(center, 4 * unit, ImGui::GetColorU32(ImGuiCol_WindowBg));
+        draw->AddLine({center.x, center.y - 3 * unit}, {center.x, center.y}, ink, unit);
+        draw->AddCircleFilled({center.x, center.y + 2 * unit}, unit, ink);
+    }
+    ImGui::PopStyleColor();
+    ImGui::EndDisabled();
+    std::string hint = hasInput ? tooltip : "No input. Add an enabled input to run this check.";
+    if (hasInput && failed && !result.error.empty()) { hint += "\n" + result.error; }
+    setLastItemTooltip(hint.c_str());
 }
 
 void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool current,
@@ -370,33 +444,10 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     const bool holes = category == DiagnosticCategory::holes;
     const bool intersection = category == DiagnosticCategory::selfIntersections;
     const bool degenerate = category == DiagnosticCategory::degenerateTriangles;
-    bool enabled = intersection ? settings.intersections.autoUpdate : vertex ? settings.topologyInspection.nonManifoldVertices : holes ? settings.topologyInspection.holes : degenerate ? settings.degenerates.enabled : !duplicate || (category == DiagnosticCategory::duplicatePoints ? settings.duplicates.points : settings.duplicates.triangles);
+    const auto detector = comparisonDetectorStatus(runtime.result, category);
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
-    if (intersection) {
-        const auto& result = runtime.result.original.intersections;
-        const auto phase = result.phase;
-        const bool busy = phase == IntersectionPhase::queued || phase == IntersectionPhase::running;
-        const char* action = busy ? "Cancel" : phase == IntersectionPhase::outdated ? "Update"
-            : phase == IntersectionPhase::failed || phase == IntersectionPhase::canceled ? "Retry"
-            : phase == IntersectionPhase::complete ? "Rerun" : "Run";
-        ImGui::BeginDisabled(!hasA && !hasB);
-        if (ImGui::Button(action)) { requestComparisonIntersections(state, id, busy); }
-        ImGui::EndDisabled();
-        setLastItemTooltip(busy ? "Cancel this check. Other checks keep running." : "Check self-intersections for the current geometry once.");
-    } else {
-        ImGui::BeginDisabled(!duplicate && !degenerate && !vertex && !holes);
-        ImGui::Checkbox("Auto", &enabled);
-        ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s", (duplicate || degenerate || vertex || holes) ? "Keep this check updated automatically" : "Always updated automatically");
-        }
-    }
-    if (vertex) { settings.topologyInspection.nonManifoldVertices = enabled; }
-    if (holes) { settings.topologyInspection.holes = enabled; }
-    if (degenerate) { settings.degenerates.enabled = enabled; }
-    if (category == DiagnosticCategory::duplicatePoints) { settings.duplicates.points = enabled; }
-    if (category == DiagnosticCategory::duplicateTriangles) { settings.duplicates.triangles = enabled; }
+    drawDetectorUpdate(state, detector, hasA || hasB, id, category);
     ImGui::TableNextColumn();
     // Wrap long edge labels in narrower panels while retaining a selectable row.
     const auto position = ImGui::GetCursorScreenPos();
@@ -406,29 +457,21 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         settings.diagnosticCategory = category;
     }
     ImGui::GetWindowDrawList()->AddText(nullptr, 0, position, ImGui::GetColorU32(ImGuiCol_Text), name, nullptr, width);
-    const bool settingsCurrent = settings.duplicates.points == initial.duplicates.points && settings.duplicates.triangles == initial.duplicates.triangles
-        && settings.intersections.autoUpdate == initial.intersections.autoUpdate
-        && settings.degenerates.enabled == initial.degenerates.enabled
-        && settings.topologyInspection == initial.topologyInspection;
-    current = comparisonStagesReady(runtime, state, id, comparisonDiagnosticStage(category))
-        && settingsCurrent;
+    current = comparisonDetectorReady(runtime, state, id, category);
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
-        if (intersection && !current) {
-            const auto& result = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).intersections;
-            const char* status = result.phase == IntersectionPhase::queued ? "Queued" : result.phase == IntersectionPhase::running ? "Checking..."
-                : result.phase == IntersectionPhase::outdated ? "Out of date" : result.phase == IntersectionPhase::canceled ? "Canceled"
-                : result.phase == IntersectionPhase::failed ? "Failed" : "Not checked";
+        if (!current) {
+            const char* status = detector.phase == IntersectionPhase::queued ? "Queued" : detector.phase == IntersectionPhase::running ? "Checking..."
+                : detector.phase == IntersectionPhase::outdated ? "Out of date" : detector.phase == IntersectionPhase::canceled ? "Canceled"
+                : detector.phase == IntersectionPhase::failed ? "Failed" : "Not checked";
             ImGui::TextDisabled("%s", status);
             if (ImGui::IsItemHovered()) {
-                if (result.hasResult) { ImGui::SetTooltip("Previous result: %zu known pairs. Update to inspect the current geometry.", result.findings.size()); }
-                if (!result.error.empty()) { ImGui::SetTooltip("%s", result.error.c_str()); }
+                if (detector.hasResult) { ImGui::SetTooltip("Previous result: %zu known findings. Update to inspect the current geometry.", detector.knownCounts[side == ComparisonSide::a ? 0 : 1]); }
+                if (!detector.error.empty()) { ImGui::SetTooltip("%s", detector.error.c_str()); }
             }
         }
-        else if (!intersection && !enabled) { ImGui::TextDisabled("Off"); }
-        else if (!current) { ImGui::TextDisabled("%s", (runtime.failedStages & comparisonDiagnosticStage(category)) ? "Failed" : "..."); }
         else if (intersection) {
             const auto& result = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).intersections;
             if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
@@ -486,7 +529,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     ImGui::TableNextColumn();
     const auto& findings = comparisonDiagnosticEdges(runtime.result, settings.diagnosticSide, category);
-    ImGui::BeginDisabled(!current || (!intersection && !enabled) || findings.empty());
+    ImGui::BeginDisabled(!current || findings.empty());
     int step = 0;
     if (ImGui::ArrowButton("previous", ImGuiDir_Left)) { step = -1; }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -506,41 +549,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         navigateComparisonDiagnostic(state, runtime.result, runtime.resultSignature, step, id);
     }
     ImGui::TableNextColumn();
-    if (intersection) {
-        if (drawRenderModeIconButton("settings", "\xef\x80\x93", "Self-intersection settings", RenderModeState::off, false)) { ImGui::OpenPopup("intersection_settings"); }
-        const auto buttonMax = ImGui::GetItemRectMax();
-        ImGui::SetNextWindowPos(ImVec2(buttonMax.x, buttonMax.y + ImGui::GetStyle().ItemSpacing.y), ImGuiCond_Appearing, ImVec2(1,0));
-        ImGui::SetNextWindowSize(ImVec2(uiSize(360),0), ImGuiCond_Always);
-        if (ImGui::BeginPopup("intersection_settings", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
-            auto edited = comparisonSettings(state, id);
-            ImGui::TextUnformatted("Self-intersections"); ImGui::Separator();
-            if (ImGui::Checkbox("Automatically update after changes", &edited.intersections.autoUpdate)) { setComparisonSettings(state, edited, id); }
-            ImGui::TextWrapped("Manual checks keep their previous counts after geometry changes. Update checks the current geometry. Exact checks can take time on dense meshes.");
-            ImGui::EndPopup();
-        }
-    }
-    if (degenerate) { drawDegenerateSettingsPopup(state, id); }
-    if (holes) {
-        if (drawRenderModeIconButton("settings", "\xef\x80\x93", "Hole detection settings", RenderModeState::off, false)) {
-            ImGui::OpenPopup("hole_settings");
-        }
-        const auto buttonMax = ImGui::GetItemRectMax();
-        ImGui::SetNextWindowPos(ImVec2(buttonMax.x, buttonMax.y + ImGui::GetStyle().ItemSpacing.y),
-            ImGuiCond_Appearing, ImVec2(1, 0));
-        ImGui::SetNextWindowSize(ImVec2(uiSize(360), 0), ImGuiCond_Always);
-        if (ImGui::BeginPopup("hole_settings", ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings)) {
-            auto edited = comparisonSettings(state, id);
-            ImGui::TextUnformatted("Holes");
-            ImGui::Separator();
-            if (ImGui::IsWindowAppearing()) { ImGui::SetKeyboardFocusHere(); }
-            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 8);
-            if (ImGui::InputFloat("Maximum size ratio", &edited.topologyInspection.holeSizeRatioTolerance, 0, 0, "%.6g", ImGuiInputTextFlags_AutoSelectAll)) {
-                setComparisonSettings(state, edited, id);
-            }
-            ImGui::TextWrapped("Loop bounding-box diagonal / edge-connected component diagonal, inclusive. Larger openings remain boundary findings. Ratios may exceed 1.");
-            ImGui::EndPopup();
-        }
-    }
+    drawDiagnosticSettingsPopup(state, id, category, name);
     ImGui::PopID();
 }
 
@@ -551,8 +560,8 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
     const bool points = settings.diagnosticCategory == DiagnosticCategory::duplicatePoints;
     if (!points && settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles) { return; }
     const auto& result = comparisonDuplicates(runtime.result, settings.diagnosticSide, settings.diagnosticCategory);
-    current = comparisonStagesReady(runtime, state, id, points ? comparisonDuplicatePoints : comparisonDuplicateTriangles);
-    if (!current || !hasTarget || !(points ? settings.duplicates.points : settings.duplicates.triangles)) { return; }
+    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
+    if (!current || !hasTarget) { return; }
     if (result.unavailableSources) {
         ImGui::TextWrapped("%zu source(s) unavailable: %s", result.unavailableSources,
             points ? "original source records were not retained." : "STL has no shared point IDs, or source records were not retained.");
@@ -644,8 +653,8 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
     auto settings = comparisonSettings(state, id);
     if (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles) { return; }
     ImGui::TextWrapped("Collapsed or collinear triangles, needles, and caps. Each source triangle / transformed part is counted once; reason counts can overlap.");
-    current = comparisonStagesReady(runtime, state, id, comparisonDegenerates);
-    if (!current || !settings.degenerates.enabled
+    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
+    if (!current
         || enabledComparisonPartCount(state, settings.diagnosticSide, id) == 0) { return; }
     const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).degenerates;
     if (result.unavailableSources) { ImGui::TextWrapped("%zu source(s) unavailable: retained source records are missing.", result.unavailableSources); }
@@ -700,9 +709,8 @@ void drawVertexAndHoleFindings(UiState& state, const ComparisonRuntime& runtime,
     const auto settings = comparisonSettings(state, id);
     const bool holes = settings.diagnosticCategory == DiagnosticCategory::holes;
     if (!holes && settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices) { return; }
-    current = comparisonStagesReady(runtime, state, id, comparisonTopology);
+    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current) { return; }
-    if (!(holes ? settings.topologyInspection.holes : settings.topologyInspection.nonManifoldVertices)) { return; }
     const auto& topology = (settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).topology;
     ImGui::TextWrapped("%s; per source; status: %s. %zu collapsed faces excluded.", topologyModeName(topology.mode), topologyStatus(topology), topology.excludedCollapsedFaces);
     if (holes) {
@@ -768,7 +776,7 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     const auto settings = comparisonSettings(state, id);
     const auto category = settings.diagnosticCategory;
     if (category != DiagnosticCategory::boundary && category != DiagnosticCategory::nonManifold && category != DiagnosticCategory::winding) { return; }
-    current = comparisonStagesReady(runtime, state, id, comparisonTopology);
+    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current) { return; }
     const auto& surface = settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired;
     const auto& topology = surface.topology;
@@ -829,13 +837,6 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     bool hasA, bool hasB, SceneObjectId id)
 {
     ImGui::TextUnformatted("Diagnostics");
-    const auto activity = comparisonActivity(state, runtime, id);
-    if (activity == ComparisonActivity::queued || activity == ComparisonActivity::calculating) {
-        ImGui::SameLine();
-        drawCalculationSpinner();
-        ImGui::SameLine();
-        ImGui::TextUnformatted("Updating...");
-    }
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
         "Topology is inspected separately within each source file. Automatic uses original indices for indexed input and exact positions for STL. "
@@ -875,7 +876,8 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
     if (ImGui::BeginTable("Analysis diagnostics", 5 + static_cast<int>(hasA) + static_cast<int>(hasB),
             ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV)) {
-        ImGui::TableSetupColumn("Update", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("Cancel").x + ImGui::GetStyle().FramePadding.x*2);
+        ImGui::TableSetupColumn("Update", ImGuiTableColumnFlags_WidthFixed,
+            std::max(renderModeButtonSize(), ImGui::CalcTextSize("Update").x));
         ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthStretch);
         if (hasA) { ImGui::TableSetupColumn(hasB ? "Count A" : "Count", ImGuiTableColumnFlags_WidthFixed, std::max(ImGui::GetFontSize() * 4, ImGui::CalcTextSize("Not checked").x)); }
         if (hasB) { ImGui::TableSetupColumn(hasA ? "Count B" : "Count", ImGuiTableColumnFlags_WidthFixed, std::max(ImGui::GetFontSize() * 4, ImGui::CalcTextSize("Not checked").x)); }
@@ -961,19 +963,36 @@ bool comparisonStagesReady(const ComparisonRuntime& runtime, const UiState& stat
         || (requireGpu && (runtime.uploadedStages & stages) != stages)) { return false; }
     if ((stages & (comparisonTopology | comparisonIntersections)) && runtime.cache.topologyMode != settings.topologyMode) { return false; }
     if ((stages & comparisonDegenerates) && !sameDegenerateThresholds(runtime.cache.degenerates, settings.degenerates)) { return false; }
-    if ((stages & comparisonTopology) && (!sameTopologyInspectionFilters(runtime.result.original.topology.inspection, settings.topologyInspection)
-        || !sameTopologyInspectionFilters(runtime.result.repaired.topology.inspection, settings.topologyInspection))) { return false; }
+    if ((stages & comparisonTopology) && (runtime.result.original.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance
+        || runtime.result.repaired.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance)) { return false; }
     if ((stages & comparisonIntersections) && runtime.result.original.intersections.phase != IntersectionPhase::complete) { return false; }
     return true;
+}
+
+bool comparisonDetectorReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id,
+    DiagnosticCategory category, bool requireGpu)
+{
+    return comparisonDetectorStatus(runtime.result, category).phase == IntersectionPhase::complete
+        && comparisonStagesReady(runtime, state, id, comparisonDiagnosticStage(category), requireGpu);
 }
 
 bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id, bool fullResults)
 {
     const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0
         && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
-    // Manual/expensive checks publish their own status; they never hold up other results.
-    const auto required = requestedComparisonStages(comparisonSettings(state, id), both, fullResults) & ~comparisonIntersections;
-    return comparisonStagesReady(runtime, state, id, required) && (fullResults || runtime.ready);
+    const auto settings = comparisonSettings(state, id);
+    const auto required = requestedComparisonStages(settings, both, fullResults) & ~(comparisonDetectors | comparisonIntersections);
+    if (!comparisonStagesReady(runtime, state, id, required) || (!fullResults && !runtime.ready)) { return false; }
+    const auto* comparison = findComparison(state, id);
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        const auto category = static_cast<DiagnosticCategory>(i);
+        const auto phase = runtime.result.detectors[i].phase;
+        if (comparison && comparison->detectorRequests[i].revision != runtime.consumedDetectorRequests[i]) { return false; }
+        if (phase == IntersectionPhase::queued || phase == IntersectionPhase::running) { return false; }
+        if (diagnosticAutoUpdate(settings, category) && phase != IntersectionPhase::canceled
+            && phase != IntersectionPhase::failed && !comparisonDetectorReady(runtime, state, id, category)) { return false; }
+    }
+    return true;
 }
 
 ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id)
@@ -984,11 +1003,21 @@ ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, con
         || (settings.mode == ComparisonMode::surfaceQuality && (!ready(comparisonQuality) || runtime.uploadedQualityMetric != settings.quality.metric))) {
         settings.mode = originalActive(settings) ? ComparisonMode::original : ComparisonMode::repaired;
     }
-    settings.showBoundaries &= ready(comparisonTopology); settings.showNonManifold &= ready(comparisonTopology);
-    settings.showWinding &= ready(comparisonTopology); settings.topologyInspection.showHoles &= ready(comparisonTopology);
-    settings.topologyInspection.showNonManifoldVertices &= ready(comparisonTopology);
-    settings.duplicates.showPoints &= ready(comparisonDuplicatePoints); settings.duplicates.showTriangles &= ready(comparisonDuplicateTriangles);
-    settings.degenerates.show &= ready(comparisonDegenerates); settings.intersections.show &= ready(comparisonIntersections);
+    const auto detectorReady = [&](DiagnosticCategory category) { return comparisonDetectorReady(runtime, state, id, category, true); };
+    settings.showBoundaries &= detectorReady(DiagnosticCategory::boundary);
+    settings.showNonManifold &= detectorReady(DiagnosticCategory::nonManifold);
+    settings.showWinding &= detectorReady(DiagnosticCategory::winding);
+    settings.topologyInspection.nonManifoldVertices = detectorReady(DiagnosticCategory::nonManifoldVertices);
+    settings.topologyInspection.holes = detectorReady(DiagnosticCategory::holes);
+    settings.duplicates.points = detectorReady(DiagnosticCategory::duplicatePoints);
+    settings.duplicates.triangles = detectorReady(DiagnosticCategory::duplicateTriangles);
+    settings.degenerates.enabled = detectorReady(DiagnosticCategory::degenerateTriangles);
+    settings.topologyInspection.showHoles &= settings.topologyInspection.holes;
+    settings.topologyInspection.showNonManifoldVertices &= settings.topologyInspection.nonManifoldVertices;
+    settings.duplicates.showPoints &= settings.duplicates.points;
+    settings.duplicates.showTriangles &= settings.duplicates.triangles;
+    settings.degenerates.show &= settings.degenerates.enabled;
+    settings.intersections.show &= ready(comparisonIntersections);
     return settings;
 }
 
@@ -1033,9 +1062,12 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
     };
     if (resetComparisonCache(runtime.cache, wanted)) {
         runtime.stop.request_stop(); invalidateIntersection();
+        invalidateComparisonDetectors(runtime.result, comparisonDetectors);
+        auto detectors = std::move(runtime.result.detectors);
         auto a = std::move(runtime.result.original.intersections), b = std::move(runtime.result.repaired.intersections);
         destroySurface(runtime.originalGpu); destroySurface(runtime.repairedGpu);
         runtime.result = {}; runtime.result.original.intersections = std::move(a); runtime.result.repaired.intersections = std::move(b);
+        runtime.result.detectors = std::move(detectors);
         runtime.inputs.reset(); runtime.uploadedStages = runtime.failedStages = 0;
         runtime.resultSignature = runtime.attemptedSignature = 0; runtime.error.clear();
         resetComparisonDiagnosticFocus(state, id);
@@ -1043,13 +1075,48 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
     if (resetComparisonTopologyCache(runtime.cache, settings.topologyMode)) {
         if (runtime.workerStages & comparisonTopology) { runtime.stop.request_stop(); }
         invalidateIntersection(); invalidateGpu(comparisonTopology);
+        invalidateComparisonDetectors(runtime.result, comparisonTopology);
         runtime.failedStages &= ~comparisonTopology; runtime.attemptedSignature = 0; runtime.error.clear();
         resetComparisonDiagnosticFocus(state, id);
     }
     if (resetComparisonDegenerateCache(runtime.cache, settings.degenerates)) {
         if (runtime.workerStages & comparisonDegenerates) { runtime.stop.request_stop(); }
         invalidateGpu(comparisonDegenerates); runtime.failedStages &= ~comparisonDegenerates;
+        invalidateComparisonDetectors(runtime.result, comparisonDegenerates);
         runtime.attemptedSignature = 0; runtime.error.clear(); resetComparisonDiagnosticFocus(state, id);
+    }
+    if (runtime.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance) {
+        runtime.holeSizeRatioTolerance = settings.topologyInspection.holeSizeRatioTolerance;
+        auto& status = runtime.result.detectors[static_cast<size_t>(DiagnosticCategory::holes)];
+        status.phase = status.hasResult ? IntersectionPhase::outdated : IntersectionPhase::notChecked;
+        status.error.clear();
+    }
+    uint32_t queuedStages = 0;
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        auto& status = runtime.result.detectors[i];
+        const auto& request = comparison->detectorRequests[i];
+        if (request.revision != runtime.consumedDetectorRequests[i]) {
+            runtime.consumedDetectorRequests[i] = request.revision;
+            if (request.revision != 0) {
+                status.phase = request.cancel ? IntersectionPhase::canceled : wanted ? IntersectionPhase::queued : IntersectionPhase::notChecked;
+                status.error.clear();
+            }
+        }
+        if (wanted && (settings.enabled || runtime.fullResultsRequested)
+            && diagnosticAutoUpdate(settings, static_cast<DiagnosticCategory>(i))
+            && (status.phase == IntersectionPhase::notChecked || status.phase == IntersectionPhase::outdated)) {
+            status.phase = IntersectionPhase::queued;
+        }
+        if (status.phase == IntersectionPhase::queued) { queuedStages |= comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i)); }
+    }
+    const auto workerParticipates = [&](size_t i) {
+        return (runtime.workerDetectors & (1u << i)) && runtime.result.detectors[i].phase == IntersectionPhase::running
+            && runtime.workerDetectorRequests[i] == runtime.consumedDetectorRequests[i];
+    };
+    if (runtime.worker.valid() && runtime.workerDetectors) {
+        bool any = false;
+        for (size_t i = 0; i < backgroundDetectorCount; ++i) { any |= workerParticipates(i); }
+        if (!any) { runtime.stop.request_stop(); }
     }
     if (comparison->intersectionRequestRevision != job.consumedRequest) {
         job.consumedRequest = comparison->intersectionRequestRevision;
@@ -1063,19 +1130,30 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         }
     }
     if (settings.intersections.autoUpdate != job.autoUpdate) {
-        if (settings.intersections.autoUpdate) { job.canceled = false; }
         job.autoUpdate = settings.intersections.autoUpdate;
     }
     if (runtime.worker.valid() && runtime.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         try {
             auto update = runtime.worker.get();
-            if (!runtime.stop.stop_requested() && applyComparisonStages(runtime.result, runtime.cache, std::move(update), runtime.workerSignature, runtime.workerStages)) {
-                runtime.resultSignature = wanted; runtime.failedStages &= ~runtime.workerStages;
-                if (!runtime.failedStages) { runtime.error.clear(); }
+            if (!runtime.stop.stop_requested()) {
+                auto previous = runtime.result.detectors;
+                uint32_t participants = 0;
+                for (size_t i = 0; i < backgroundDetectorCount; ++i) { if (workerParticipates(i)) { participants |= 1u << i; } }
+                if (applyComparisonStages(runtime.result, runtime.cache, std::move(update), runtime.workerSignature, runtime.workerStages)) {
+                    invalidateGpu(runtime.workerStages);
+                    runtime.resultSignature = wanted; runtime.failedStages &= ~runtime.workerStages;
+                    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                        if (!(participants & (1u << i))) { runtime.result.detectors[i] = std::move(previous[i]); }
+                    }
+                    if (!runtime.failedStages) { runtime.error.clear(); }
+                }
             }
         } catch (const std::exception& error) {
             if (!runtime.stop.stop_requested() && wanted == runtime.workerSignature) {
                 runtime.error = error.what(); runtime.failedStages |= runtime.workerStages;
+                for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                    if (workerParticipates(i)) { runtime.result.detectors[i].phase = IntersectionPhase::failed; runtime.result.detectors[i].error = error.what(); }
+                }
             } else { runtime.attemptedSignature = 0; }
         }
     }
@@ -1095,11 +1173,20 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         job.requested = true;
     }
     if (job.requested) { phase(IntersectionPhase::queued); }
-    setComparisonDuplicateEnabled(runtime.result, settings.duplicates);
-    setComparisonDegenerateSettings(runtime.result, settings.degenerates);
+    auto resultSettings = settings;
+    resultSettings.duplicates.points = resultSettings.duplicates.triangles = true;
+    resultSettings.degenerates.enabled = true;
+    resultSettings.topologyInspection.nonManifoldVertices = resultSettings.topologyInspection.holes = true;
+    setComparisonDuplicateEnabled(runtime.result, resultSettings.duplicates);
+    setComparisonDegenerateSettings(runtime.result, resultSettings.degenerates);
     setComparisonIntersectionSettings(runtime.result, settings.intersections);
-    if (setComparisonTopologyInspectionSettings(runtime.result, settings.topologyInspection)) { invalidateGpu(comparisonTopology); }
-    const bool active = settings.enabled || runtime.fullResultsRequested || job.requested;
+    if (setComparisonTopologyInspectionSettings(runtime.result, resultSettings.topologyInspection)) { invalidateGpu(comparisonTopology); }
+    // Filtering may change the count from the worker's default hole threshold.
+    auto& holes = runtime.result.detectors[static_cast<size_t>(DiagnosticCategory::holes)];
+    if (holes.phase == IntersectionPhase::complete) {
+        holes.knownCounts = {runtime.result.original.topology.holes.size(), runtime.result.repaired.topology.holes.size()};
+    }
+    const bool active = settings.enabled || runtime.fullResultsRequested || job.requested || queuedStages;
     if (wanted && active) {
         const auto pending = runtime.cache.completed & ~runtime.uploadedStages & ~runtime.failedStages;
         for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints, comparisonDuplicateTriangles,
@@ -1111,7 +1198,16 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
             } catch (const std::exception& error) {
                 invalidateGpu(stage); runtime.failedStages |= stage; runtime.attemptedSignature = wanted;
                 if (stage == comparisonIntersections) { phase(IntersectionPhase::failed, error.what()); }
-                else { runtime.error = error.what(); }
+                else {
+                    runtime.error = error.what();
+                    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                        if ((comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i)) & stage)
+                            && runtime.result.detectors[i].phase == IntersectionPhase::complete) {
+                            runtime.result.detectors[i].phase = IntersectionPhase::failed;
+                            runtime.result.detectors[i].error = error.what();
+                        }
+                    }
+                }
             }
         }
         if ((runtime.cache.completed & comparisonQuality) && settings.mode == ComparisonMode::surfaceQuality
@@ -1128,8 +1224,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
     }
     runtime.ready = wanted && settings.enabled && (runtime.cache.completed & comparisonSource) && (runtime.uploadedStages & comparisonSource);
     const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) && enabledComparisonPartCount(state, ComparisonSide::b, id);
-    const auto requested = requestedComparisonStages(settings, both, runtime.fullResultsRequested) & ~comparisonIntersections;
-    const auto missing = requested & ~runtime.cache.completed & ~runtime.failedStages;
+    const auto requested = requestedComparisonStages(settings, both, runtime.fullResultsRequested) & ~(comparisonDetectors | comparisonIntersections);
+    const auto missing = (requested & ~runtime.cache.completed & ~runtime.failedStages) | queuedStages;
     if (!wanted || !allowStart || !active || (!missing && !job.requested)) { return; }
     try {
         if (!runtime.inputs) {
@@ -1141,6 +1237,15 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         if (missing && !runtime.worker.valid()) {
             runtime.attemptedSignature = runtime.workerSignature = wanted;
             runtime.attemptedStages = runtime.workerStages = nextComparisonStage(missing);
+            runtime.workerDetectors = 0;
+            for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                auto& status = runtime.result.detectors[i];
+                if (status.phase == IntersectionPhase::queued && (comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i)) & runtime.workerStages)) {
+                    status.phase = IntersectionPhase::running;
+                    runtime.workerDetectors |= 1u << i;
+                    runtime.workerDetectorRequests[i] = runtime.consumedDetectorRequests[i];
+                }
+            }
             runtime.stop = std::stop_source{};
             runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, stage = runtime.workerStages,
                 degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.stop.get_token()] {
@@ -1155,7 +1260,14 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         }
     } catch (const std::exception& error) {
         if (job.requested) { job.requested = false; phase(IntersectionPhase::failed, error.what()); }
-        else { runtime.error = error.what(); runtime.failedStages |= missing; }
+        else {
+            runtime.error = error.what(); runtime.failedStages |= missing;
+            for (auto& status : runtime.result.detectors) {
+                if (status.phase == IntersectionPhase::queued || status.phase == IntersectionPhase::running) {
+                    status.phase = IntersectionPhase::failed; status.error = error.what();
+                }
+            }
+        }
     }
 }
 

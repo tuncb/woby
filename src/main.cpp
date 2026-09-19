@@ -101,10 +101,14 @@ constexpr ImWchar appFontGlyphRanges[] = {
     0xf013,
     0xf01e,
     0xf01e,
+    0xf021,
+    0xf021,
     0xf05a,
     0xf05a,
     0xf04b,
     0xf04b,
+    0xf04d,
+    0xf04d,
     0xf00d,
     0xf00d,
     0xf030,
@@ -3189,10 +3193,6 @@ int main(int argc, char** argv)
                     try {
                         if (changed) { throw std::runtime_error("Analysis inputs or detectors changed while results were being requested; retry analysis.results."); }
                         if (!ready) { throw std::runtime_error(it->second.error); }
-                        woby::setComparisonDuplicateEnabled(it->second.result, woby::comparisonSettings(ui, pending.objectId).duplicates);
-                        woby::setComparisonIntersectionSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).intersections);
-                        woby::setComparisonDegenerateSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).degenerates);
-                        (void)woby::setComparisonTopologyInspectionSettings(it->second.result, woby::comparisonSettings(ui, pending.objectId).topologyInspection);
                         auto result = woby::controlComparisonResults(it->second.result, pending.tolerance);
                         result["target"] = pending.target;
                         woby::completeAutomationCommand(*automation, pending.id, woby::AutomationControlResult{std::move(result)});
