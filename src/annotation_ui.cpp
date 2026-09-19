@@ -328,12 +328,12 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
     } catch (const std::exception& error) { interaction.error = error.what(); }
 }
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
-    const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed)
+    const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed, float windowY)
 {
     auto* draw = ImGui::GetForegroundDrawList();
-    const ImVec2 low{windowX, 0}, high{windowX + static_cast<float>(view.width) * pixelsToWindow, static_cast<float>(view.height) * pixelsToWindow};
+    const ImVec2 low{windowX, windowY}, high{windowX + static_cast<float>(view.width) * pixelsToWindow, windowY + static_cast<float>(view.height) * pixelsToWindow};
     draw->PushClipRect(low, high);
-    const auto screenPoint = [&](PickPoint p) { return ImVec2{windowX + p[0] * pixelsToWindow, p[1] * pixelsToWindow}; };
+    const auto screenPoint = [&](PickPoint p) { return ImVec2{windowX + p[0] * pixelsToWindow, windowY + p[1] * pixelsToWindow}; };
     if (interaction.dragging && !interaction.error.empty()) {
         const auto a = screenPoint(interaction.pointerStart), b = screenPoint(interaction.pointerEnd);
         if (interaction.preview.geometry.shape == AnnotationShape::rectangle) { draw->AddRect(ImVec2{std::min(a.x,b.x),std::min(a.y,b.y)}, ImVec2{std::max(a.x,b.x),std::max(a.y,b.y)}, IM_COL32(255,90,90,255)); }
@@ -376,7 +376,7 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
         const float margin = uiSize(12), paddingX = uiSize(12), paddingY = uiSize(8);
         const float wrapWidth = std::max(1.0f, high.x - low.x - 2 * (margin + paddingX));
         const auto size = ImGui::CalcTextSize(text, nullptr, false, wrapWidth);
-        const ImVec2 messageLow{low.x + (high.x - low.x - size.x) * .5f - paddingX, margin};
+        const ImVec2 messageLow{low.x + (high.x - low.x - size.x) * .5f - paddingX, windowY + margin};
         const ImVec2 messageHigh{messageLow.x + size.x + paddingX * 2, messageLow.y + size.y + paddingY * 2};
         draw->AddRectFilled(messageLow, messageHigh, IM_COL32(24,28,34,235), uiSize(4));
         draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
@@ -386,7 +386,7 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
     const auto mouse = ImGui::GetIO().MousePos;
     if (pointerAllowed && !ImGui::GetIO().WantCaptureMouse
         && mouse.x >= low.x && mouse.x < high.x && mouse.y >= low.y && mouse.y < high.y) {
-        const PickPoint point{(mouse.x - windowX) / pixelsToWindow, mouse.y / pixelsToWindow};
+        const PickPoint point{(mouse.x - windowX) / pixelsToWindow, (mouse.y - windowY) / pixelsToWindow};
         const bool overHandle = std::any_of(interaction.overlayHandles.begin(), interaction.overlayHandles.end(),
             [&](auto p) { return std::hypot(point[0] - p[0], point[1] - p[1]) <= 9 * view.pixelScale; });
         if (!interaction.tool && !interaction.dragging && interaction.overlayReady

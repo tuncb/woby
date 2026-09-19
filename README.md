@@ -25,9 +25,15 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Getting started
 
-Undo and Redo arrow buttons sit beside Settings in the top toolbar.
-The file actions are arranged in three rows of two: **New scene** / **Open scene...**,
-**Save scene** / **Save scene as...**, and **Add models...** / **Add model folder...**.
+The main menu stays available above the scene and panes:
+
+- **File**: New scene, Open scene, Save, Save as, Add models, Add model folder, Export PNG, and Exit.
+- **Edit**: Undo, Redo, and Settings (UI scale). Undo and Redo arrows also remain in the Scene controls header.
+- **View**: Scene/Properties pane visibility, camera directions, Fit All/Selection, grid, origin, dimensions, and Y/Z scene up axis.
+- **Tools**: Surface line and Surface rectangle, also available as buttons in Display.
+- **Help**: Check for updates, with update status and installation in a separate dialog.
+
+Frequent inspection controls and saved Views remain in the left pane.
 New scene starts an untitled scene and asks before discarding unsaved changes.
 `Ctrl+O` opens a scene, `Ctrl+S` saves it (asking for a path for an untitled scene),
 and `Ctrl+Shift+S` opens Save As. Save As switches to the chosen destination only
@@ -60,7 +66,7 @@ saved `.woby` scenes. The empty viewport offers both actions and accepts dropped
 model files, folders, and scenes. Add model folder imports models recursively.
 
 The **Objects** tree lists scene content, and **Display** contains global viewing
-controls. The camera icon beside the Y/Z up-axis button opens PNG export options. Choose resolution,
+controls. **File > Export PNG...** opens PNG export options. Choose resolution,
 the scene or visible analysis results, and legend/name/source/direction/threshold
 annotations. Analysis exports wait for complete visible results and report an
 error if annotations cannot fit; increase the image height or reduce visible results.
@@ -97,7 +103,7 @@ All values are raw coordinates, without unit conversion. Dimension visibility is
 saved in `.woby` files and supports Undo/Redo; selection remains transient. Scene
 PNG exports include these overlays when enabled (results-only exports omit them).
 
-**Interface > UI scale** adjusts text and controls from 100% to 200%, in addition to
+**Edit > Settings > Interface > UI scale** adjusts text and controls from 100% to 200%, in addition to
 automatic monitor scaling. This preference is saved for the current user and survives
 scene changes without dirtying the scene. Panes scroll when needed at larger sizes.
 Save/load/export feedback appears in floating toasts at the top of the viewport
@@ -385,11 +391,10 @@ woby update
 woby update --status
 ```
 
-Settings also provides **Check for updates** and, for portable releases,
-**Install update and close**. Save scene changes and close other viewers using
+**Help > Check for updates...** opens the Updates dialog and checks for a release.
+Portable releases also offer **Install update and restart**. Save scene changes and close other viewers using
 the same installation first. Woby downloads and verifies the update in the
-background, then closes so the helper can install it. Reopen Woby after the
-installation finishes. Development builds can check but cannot install updates.
+background, then closes so the helper can install it and reopen Woby. Development builds can check but cannot install updates.
 
 For command-line installation, close viewers using that installation first. The updater downloads the
 latest stable package for the executable's platform, verifies SHA-256 and the

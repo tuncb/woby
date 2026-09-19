@@ -39,7 +39,7 @@ void cancelAnnotationPointer(AnnotationInteraction& interaction);
 // Returns the message banner's bottom edge in window coordinates (zero if absent),
 // so other viewport notifications can be stacked below it.
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
-    const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed);
+    const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed, float windowY = 0.0f);
 // Requires the annotation vertex shader, which consumes projected NDC positions.
 void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const ScenePickView& view,
     const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,

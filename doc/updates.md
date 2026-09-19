@@ -34,9 +34,9 @@ libraries on Windows. The helper runs without opening an extra console window.
 
 ## Installation requirements
 
-### Updating from Settings
+### Updating from Help
 
-Open **Settings**, then choose **Check for updates**. The dialog shows the installed
+Choose **Help > Check for updates...**. The dialog shows the installed
 version, latest release, and any connection or validation error. Checks run in the
 background and can also be used from development builds.
 

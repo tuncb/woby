@@ -1997,3 +1997,24 @@ TEST_CASE("Windows scaling keeps the scene full height at every supported scale"
     CHECK(tiny.width == 1);
     CHECK(tiny.height == 1);
 }
+
+
+TEST_CASE("Scene viewport excludes the menu bar at each DPI and clamps tiny windows")
+{
+    for (const float scale : {1.0f, 1.25f, 1.5f, 2.0f}) {
+        for (const float menuHeight : {20.0f, 31.5f, 40.0f}) {
+            const auto viewport = woby::sceneViewport(static_cast<uint32_t>(1200 * scale),
+                static_cast<uint32_t>(800 * scale), 1200, 300, 200, menuHeight, 800);
+            CHECK(viewport.y == static_cast<uint32_t>(std::ceil(menuHeight * scale)));
+            CHECK(viewport.y + viewport.height == static_cast<uint32_t>(800 * scale));
+            CHECK(woby::contains(viewport, static_cast<float>(viewport.x), static_cast<float>(viewport.y)));
+            CHECK_FALSE(woby::contains(viewport, static_cast<float>(viewport.x), static_cast<float>(viewport.y) - 0.01f));
+            CHECK_FALSE(woby::contains(viewport, static_cast<float>(viewport.x), static_cast<float>(viewport.y + viewport.height)));
+        }
+    }
+    const auto tiny = woby::sceneViewport(1, 1, 1, 300, 400, 40, 1);
+    CHECK(tiny.y == 0);
+    CHECK(tiny.height == 1);
+    const auto asymmetric = woby::sceneViewport(1200, 1600, 1200, 0, 0, 20, 800);
+    CHECK(asymmetric.y == 40);
+}

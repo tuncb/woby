@@ -5,6 +5,8 @@
 #include "ui_operations.h"
 #include "ui_popup_controls.h"
 #include "settings_dialog.h"
+#include "main_menu.h"
+#include "annotation_ui.h"
 #include "scene_history.h"
 #include "scene_inspector.h"
 #include "scene_dimensions.h"
@@ -482,7 +484,7 @@ TEST_CASE("Settings toolbar opens a dialog that closes and reopens without chang
     CHECK(fixture.state.uiScale == 1.5f);
 }
 
-TEST_CASE("Settings update controls emit actions and guard dirty and busy installations")
+TEST_CASE("Help update controls emit actions and guard dirty and busy installations")
 {
     KeyboardFixture fixture;
     woby::UpdateUiState update;
@@ -493,13 +495,13 @@ TEST_CASE("Settings update controls emit actions and guard dirty and busy instal
     woby::SettingsDialogResult result;
     const auto frame = [&]() {
         ImGui::NewFrame();
-        result = woby::drawSettingsDialog(fixture.state, requestOpen, update);
+        result = woby::drawUpdatesDialog(fixture.state, requestOpen, update);
         requestOpen = false;
         ImGui::EndFrame();
     };
     frame();
     frame();
-    auto* dialog = ImGui::FindWindowByName("Settings");
+    auto* dialog = ImGui::FindWindowByName("Updates");
     REQUIRE(dialog != nullptr);
     const auto activate = [&](const char* label) {
         ImGui::ActivateItemByID(dialog->GetID(label));
@@ -823,7 +825,7 @@ TEST_CASE("object identity rows stay single-line and reveal complete wrapped nam
     }
 }
 
-TEST_CASE("history toolbar buttons share the Settings row and respect history and busy states")
+TEST_CASE("history toolbar buttons share the Scene controls row and respect history and busy states")
 {
     for (const float scale : {1.0f, 1.5f, 2.0f}) {
         KeyboardFixture fixture;
@@ -845,7 +847,7 @@ TEST_CASE("history toolbar buttons share the Settings row and respect history an
             const auto& style = ImGui::GetStyle();
             const float size = woby::renderModeButtonSize();
             ImGui::SetCursorPosX(ImGui::GetWindowWidth() - style.WindowPadding.x
-                - 3 * size - 2 * style.ItemSpacing.x);
+                - 2 * size - style.ItemSpacing.x);
             const auto undoLow = ImGui::GetCursorScreenPos();
             CHECK(undoLow.x > titleRight);
             undoPosition = ImVec2(undoLow.x + size * 0.5f, undoLow.y + size * 0.5f);
@@ -856,11 +858,7 @@ TEST_CASE("history toolbar buttons share the Settings row and respect history an
             redoPosition = ImVec2(redoLow.x + size * 0.5f, redoLow.y + size * 0.5f);
             CHECK(redoLow.y == undoLow.y);
             CHECK(redoLow.x >= undoLow.x + size);
-            ImGui::SameLine();
-            CHECK_FALSE(woby::drawSettingsButton(blocked));
-            CHECK(ImGui::GetItemRectMin().y == undoLow.y);
-            CHECK(ImGui::GetItemRectMin().x >= redoHigh.x);
-            CHECK(ImGui::GetItemRectMax().x <= ImGui::GetWindowPos().x + ImGui::GetWindowWidth());
+            CHECK(redoHigh.x <= ImGui::GetWindowPos().x + ImGui::GetWindowWidth());
             ImGui::End();
             if (command != woby::SceneHistoryCommand::none) {
                 const bool redo = command == woby::SceneHistoryCommand::redo;
@@ -1331,5 +1329,113 @@ TEST_CASE("fractional UI scales keep separators drawable across scale changes")
         ImGui::Render();
         REQUIRE(ImGui::GetDrawData() != nullptr);
         CHECK(ImGui::GetDrawData()->TotalVtxCount > 0);
+    }
+}
+
+
+TEST_CASE("main menu commands respect busy captures and history availability")
+{
+    using Command = woby::MainMenuCommand;
+    struct Case { const char* menu; const char* item; Command command; bool captureBlocked; };
+    for (const auto& entry : {
+            Case{"File", "New scene", Command::newScene, true},
+            {"File", "Open scene...", Command::openScene, false},
+            {"File", "Save", Command::saveScene, false},
+            {"File", "Save as...", Command::saveSceneAs, false},
+            {"File", "Add models...", Command::addModels, false},
+            {"File", "Add model folder...", Command::addModelFolder, false},
+            {"File", "Export PNG...", Command::exportPng, true},
+            {"File", "Exit", Command::exit, true},
+            {"Edit", "Undo", Command::undo, true},
+            {"Edit", "Redo", Command::redo, true},
+            {"Edit", "Settings...", Command::settings, false},
+            {"Help", "Check for updates...", Command::checkUpdates, false}}) {
+        for (const int mode : {0, 1, 2, 3}) {
+            CAPTURE(std::string(entry.item));
+            CAPTURE(mode);
+            KeyboardFixture fixture;
+            fixture.state.viewerPaneVisible = false;
+            fixture.state.propertiesPaneVisible = false;
+            woby::AnnotationInteraction annotation;
+            woby::MainMenuAvailability availability;
+            availability.fileActionsDisabled = mode == 1;
+            availability.capturePending = mode == 2;
+            availability.canUndo = mode != 3;
+            availability.canRedo = mode != 3;
+            availability.updateBusy = mode == 3;
+            woby::MainMenuResult result;
+            const auto frame = [&]() {
+                ImGui::NewFrame();
+                result = woby::drawMainMenu(fixture.state, annotation, availability);
+                ImGui::EndFrame();
+            };
+            frame(); frame();
+            auto* bar = ImGui::FindWindowByName("##MainMenuBar");
+            REQUIRE(bar != nullptr);
+            ImGui::ActivateItemByID(ImHashStr(entry.menu, 0, bar->GetID("##MenuBar")));
+            frame(); frame();
+            ImGuiWindow* popup = nullptr;
+            for (auto* window : ImGui::GetCurrentContext()->Windows) {
+                if (window->Active && (window->Flags & ImGuiWindowFlags_ChildMenu) != 0) { popup = window; }
+            }
+            REQUIRE(popup != nullptr);
+            ImGui::ActivateItemByID(popup->GetID(entry.item));
+            frame();
+            const bool blocked = mode == 1 || (mode == 2 && entry.captureBlocked)
+                || (mode == 3 && (entry.command == Command::undo || entry.command == Command::redo
+                    || entry.command == Command::checkUpdates));
+            CHECK(result.command == (blocked ? Command::none : entry.command));
+            if (!blocked) { CHECK(result.popupPosition.y > bar->Size.y); }
+        }
+    }
+}
+
+TEST_CASE("View and Tools menus edit the same scene and tool state as the pane")
+{
+    for (const char* item : {"Scene pane", "Properties pane", "Ground grid", "Origin axes", "Show dimensions",
+            "Surface line", "Surface rectangle"}) {
+        CAPTURE(std::string(item));
+        KeyboardFixture fixture;
+        woby::AnnotationInteraction annotation;
+        const bool tool = std::string(item).starts_with("Surface");
+        fixture.state.files.push_back(woby::createUiFileState("menu.obj", {}, 0));
+        const auto original = woby::createSceneDocument(fixture.state);
+        const bool initialScenePane = fixture.state.viewerPaneVisible;
+        const bool initialPropertiesPane = fixture.state.propertiesPaneVisible;
+        const bool initialGrid = fixture.state.showGrid;
+        const bool initialOrigin = fixture.state.showOrigin;
+        const bool initialDimensions = fixture.state.showDimensions;
+        const auto frame = [&]() {
+            ImGui::NewFrame();
+            woby::drawMainMenu(fixture.state, annotation, {});
+            ImGui::EndFrame();
+        };
+        const auto activate = [&]() {
+            auto* bar = ImGui::FindWindowByName("##MainMenuBar");
+            REQUIRE(bar != nullptr);
+            ImGui::ActivateItemByID(ImHashStr(tool ? "Tools" : "View", 0, bar->GetID("##MenuBar")));
+            frame(); frame();
+            ImGuiWindow* popup = nullptr;
+            for (auto* window : ImGui::GetCurrentContext()->Windows) {
+                if (window->Active && (window->Flags & ImGuiWindowFlags_ChildMenu) != 0) { popup = window; }
+            }
+            REQUIRE(popup != nullptr);
+            ImGui::ActivateItemByID(popup->GetID(item));
+            frame(); frame();
+        };
+        frame(); frame();
+        activate();
+        const std::string label = item;
+        CHECK(fixture.state.viewerPaneVisible == (label == "Scene pane" ? !initialScenePane : initialScenePane));
+        CHECK(fixture.state.propertiesPaneVisible == (label == "Properties pane" ? !initialPropertiesPane : initialPropertiesPane));
+        CHECK(fixture.state.showGrid == (label == "Ground grid" ? !initialGrid : initialGrid));
+        CHECK(fixture.state.showOrigin == (label == "Origin axes" ? !initialOrigin : initialOrigin));
+        CHECK(fixture.state.showDimensions == (label == "Show dimensions" ? !initialDimensions : initialDimensions));
+        if (tool) {
+            CHECK(annotation.tool == (label == "Surface line" ? woby::AnnotationShape::line : woby::AnnotationShape::rectangle));
+        }
+        activate();
+        CHECK_FALSE(annotation.tool.has_value());
+        CHECK(woby::createSceneDocument(fixture.state) == original);
     }
 }

@@ -94,6 +94,7 @@ struct AnnotationUiFixture {
     bool showObjects = false, showInspector = false;
     bool showScaleOverlay = false;
     float messageBottom = 0;
+    float windowY = 0;
     ImVec2 removeButton{}, visibilityButton{};
     std::string inspectorContents, objectContents;
     AnnotationUiFixture()
@@ -139,7 +140,7 @@ struct AnnotationUiFixture {
             ImGui::End();
         }
         ImGui::GetIO().WantCaptureMouse = captureMouse;
-        messageBottom = drawAnnotationOverlay(scene.state, interaction, pickView, 300, 1 / pickView.pixelScale, pointerAllowed);
+        messageBottom = drawAnnotationOverlay(scene.state, interaction, pickView, 300, 1 / pickView.pixelScale, pointerAllowed, windowY);
         if (showScaleOverlay) {
             drawSceneScaleOverlay(*ImGui::GetBackgroundDrawList(), scene.state, std::nullopt,
                 pickView, {300, 0}, 1 / pickView.pixelScale, ImGui::GetFontSize());
@@ -1217,4 +1218,23 @@ TEST_CASE("annotation projection keeps shared mesh groups in their own transform
         CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::line, {-.8f,0}, {.8f,0}));
         std::swap(parts[0], parts[1]);
     }
+}
+
+
+TEST_CASE("annotation overlays offset their handles and input below the main menu")
+{
+    AnnotationUiFixture fixture;
+    fixture.interaction.tool = AnnotationShape::line;
+    fixture.frame();
+    const float originalBottom = fixture.messageBottom;
+    fixture.windowY = 40;
+    fixture.frame();
+    CHECK(fixture.messageBottom == doctest::Approx(originalBottom + 40));
+    CHECK(fixture.cursor({400, 20}) != ImGuiMouseCursor_None);
+    CHECK(fixture.cursor({400, 100}) == ImGuiMouseCursor_None);
+    fixture.interaction.tool.reset();
+    fixture.interaction.overlayReady = true;
+    fixture.interaction.overlayHandles = {{100, 100}};
+    CHECK(fixture.cursor({400, 140}) == ImGuiMouseCursor_ResizeAll);
+    CHECK(fixture.cursor({400, 100}) != ImGuiMouseCursor_ResizeAll);
 }

@@ -120,6 +120,8 @@ add_executable(woby
     src/imgui_bgfx.cpp
     src/imgui_bgfx.h
     src/main.cpp
+    src/main_menu.cpp
+    src/main_menu.h
     src/settings_dialog.cpp
     src/settings_dialog.h
     src/scene_inspector.cpp
@@ -368,6 +370,8 @@ if(BUILD_TESTING)
         tests/keyboard_input_tests.cpp
         src/scene_inspector.cpp
         tests/comparison_name_tests.cpp
+        src/main_menu.cpp
+        src/main_menu.h
         src/settings_dialog.cpp
         src/ui_icon_controls.cpp
         src/camera.cpp
