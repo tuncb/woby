@@ -48,8 +48,7 @@ void drawViews(UiState& state, ViewNameEdit& edit)
             for (const auto& view : state.views) {
                 const auto id = view.id;
                 ImGui::PushID(std::to_string(id).c_str());
-                const float saveWidth = ImGui::CalcTextSize("Save").x + ImGui::GetStyle().FramePadding.x * 2;
-                const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - saveWidth - button - spacing * 2);
+                const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - button * 2 - spacing * 2);
                 bool removed = false;
                 if (edit.id == id) {
                     const bool focusing = edit.focus;
@@ -80,8 +79,9 @@ void drawViews(UiState& state, ViewNameEdit& edit)
                 }
                 if (!removed) {
                     ImGui::SameLine();
-                    if (ImGui::Button("Save", ImVec2(saveWidth, button))) { updateView(state, id); }
-                    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Replace this checkpoint with the current state. Save the .woby file to keep it on disk."); }
+                    if (drawRenderModeIconButton("save", "\xef\x83\x87",
+                        "Save current state to this view. Save the .woby file to keep it on disk.",
+                        RenderModeState::off, false)) { updateView(state, id); }
                     ImGui::SameLine();
                     if (drawRemoveButton("delete", "Delete view")) { removeView(state, id); removed = true; }
                 }

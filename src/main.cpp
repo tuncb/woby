@@ -98,6 +98,8 @@ constexpr float popupBackgroundAlpha = 1.0f;
 constexpr float appFontSize = 17.0f;
 constexpr const char* appFontFilename = "RobotoMonoNerdFont-Regular.ttf";
 constexpr ImWchar appFontGlyphRanges[] = {
+    0xf0c7,
+    0xf0c7,
     0xf013,
     0xf013,
     0xf01e,
