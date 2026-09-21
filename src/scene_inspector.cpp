@@ -107,9 +107,16 @@ void axisFields(UiState& state, const char* title, const char* tooltip,
     ImGui::PushID(title);
     propertyHeading(state, title, tooltip, group, false);
     if (ImGui::BeginTable("axes", 3)) {
+        // Keep labels in their own row so input frame padding cannot shift
+        // the text baseline of subsequent columns.
+        ImGui::TableNextRow();
         for (int axis = 0; axis < 3; ++axis) {
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(axis == 0 ? "X" : axis == 1 ? "Y" : "Z");
+        }
+        ImGui::TableNextRow();
+        for (int axis = 0; axis < 3; ++axis) {
+            ImGui::TableNextColumn();
             numericInput(state, static_cast<UiObjectProperty>(static_cast<int>(first) + axis));
         }
         ImGui::EndTable();

@@ -58,6 +58,69 @@ struct KeyboardFixture {
 
 } // namespace
 
+TEST_CASE("inspector axis inputs align across columns at different pane widths and UI scales")
+{
+    for (const float scale : {1.0f, 1.25f, 2.0f}) {
+        for (const float width : {320.0f, 520.0f}) {
+            CAPTURE(scale);
+            CAPTURE(width);
+            KeyboardFixture fixture;
+            auto& style = ImGui::GetStyle();
+            style = woby::scaledUiStyle(style, scale);
+            style.FrameRounding = 0;
+            style.Colors[ImGuiCol_FrameBg] = ImVec4(0.13f, 0.27f, 0.39f, 1);
+            const auto fieldColor = ImGui::GetColorU32(ImGuiCol_FrameBg);
+            auto& state = fixture.state;
+            woby::Mesh mesh;
+            mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+            mesh.indices = {0, 1, 2};
+            mesh.nodes = {{"triangle", 0, 3}};
+            mesh.bounds = woby::calculateBounds(mesh.vertices);
+            state.files.push_back(woby::createUiFileState("alignment.obj", std::move(mesh), 0));
+            woby::appendDefaultSceneNodesForFiles(state, 0);
+            woby::assignSceneObjectIds(state);
+            woby::selectSceneObject(state, state.files[0].objectId);
+            woby::SceneDimensionsCache cache;
+            for (int frame = 0; frame < 2; ++frame) {
+                ImGui::GetIO().DisplaySize = ImVec2(1000, 2000);
+                ImGui::NewFrame();
+                ImGui::SetNextWindowPos(ImVec2(0, 0));
+                ImGui::SetNextWindowSize(ImVec2(width, 1800));
+                ImGui::Begin("Axis alignment");
+                woby::drawSceneInspector(state, cache);
+                // Square input backgrounds provide their actual rendered bounds.
+                std::vector<ImRect> fields;
+                for (const auto* window : fixture.context->Windows) {
+                    if (!window->Active) { continue; }
+                    std::vector<ImVec2> corners;
+                    for (const auto& vertex : window->DrawList->VtxBuffer) {
+                        if (vertex.col == fieldColor) { corners.push_back(vertex.pos); }
+                    }
+                    for (size_t i = 0; i + 3 < corners.size(); i += 4) {
+                        fields.emplace_back(corners[i], corners[i + 2]);
+                    }
+                }
+                ImGui::End();
+                ImGui::EndFrame();
+                if (frame == 0) { continue; }
+                REQUIRE(fields.size() >= 6);
+                std::sort(fields.begin(), fields.end(), [](const auto& a, const auto& b) {
+                    return a.Min.y != b.Min.y ? a.Min.y < b.Min.y : a.Min.x < b.Min.x;
+                });
+                for (size_t row = 0; row < 2; ++row) {
+                    const auto first = row * 3;
+                    for (size_t axis = 1; axis < 3; ++axis) {
+                        const auto next = first + axis;
+                        CHECK(fields[next].Min.y == doctest::Approx(fields[first].Min.y));
+                        CHECK(fields[next].Max.y == doctest::Approx(fields[first].Max.y));
+                        CHECK(fields[next].Min.x > fields[next - 1].Max.x);
+                    }
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("geometry inspector uses compact single rows and preserves tiny and large geometry")
 {
     float scale = 1.0f;
