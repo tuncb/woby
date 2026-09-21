@@ -440,6 +440,41 @@ void drawDetectorUpdate(UiState& state, const DetectorStatus& result, bool hasIn
     setLastItemTooltip(hint.c_str());
 }
 
+const char* diagnosticHint(DiagnosticCategory category)
+{
+    switch (category) {
+    case DiagnosticCategory::boundary:
+        return "Finds edges used by only one triangle, marking open borders of the mesh.";
+    case DiagnosticCategory::nonManifoldVertices:
+        return "Finds vertices whose surrounding triangles do not form one connected fan or ring. "
+            "Vertices on non-manifold edges are excluded.";
+    case DiagnosticCategory::holes:
+        return "Finds simple closed boundary loops small enough to meet the hole-size setting, "
+            "relative to their connected component. Larger openings remain boundary findings.";
+    case DiagnosticCategory::fins:
+        return "Finds candidate patches after splitting at non-manifold edges whose physical boundary "
+            "is not one simple loop. The area-ratio setting filters these candidates.";
+    case DiagnosticCategory::nonManifold:
+        return "Finds edges shared by more than two triangles, where the mesh branches instead of forming a single surface.";
+    case DiagnosticCategory::winding:
+        return "Finds adjacent triangles with conflicting winding along a shared edge. "
+            "Both incident triangles are reported; this does not identify which one should be flipped.";
+    case DiagnosticCategory::duplicatePoints:
+        return "Finds separate point records with exactly equal source coordinates within a file. "
+            "Repeated STL corners are informational because STL stores corners separately for each triangle.";
+    case DiagnosticCategory::duplicateTriangles:
+        return "Finds triangles that reuse the same three source point indices within a file, "
+            "including reversed winding. This check is unavailable for STL.";
+    case DiagnosticCategory::degenerateTriangles:
+        return "Finds collapsed or collinear triangles, thin needles with a large edge-length ratio, "
+            "and flat caps with a large maximum angle. Settings control the needle and cap thresholds.";
+    case DiagnosticCategory::selfIntersections:
+        return "Finds triangle pairs that intersect or overlap in the same plane. "
+            "Valid shared edges and vertices are excluded, as are collapsed triangles.";
+    }
+    return "";
+}
+
 void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool current,
     const char* name, DiagnosticCategory category, bool hasA, bool hasB, SceneObjectId id)
 {
@@ -465,6 +500,13 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         settings.diagnosticCategory = category;
     }
     ImGui::GetWindowDrawList()->AddText(nullptr, 0, position, ImGui::GetColorU32(ImGuiCol_Text), name, nullptr, width);
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28.0f);
+        ImGui::TextUnformatted(diagnosticHint(category));
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
     current = comparisonDetectorReady(runtime, state, id, category);
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }

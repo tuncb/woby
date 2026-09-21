@@ -451,6 +451,7 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and nearby dete
     ImVec2 gear, eye, divider, intersectionRun, intersectionEye;
     std::array<ImVec2, woby::backgroundDetectorCount> updateButtons;
     std::array<ImVec2, woby::diagnosticCategoryCount> settingsButtons;
+    std::array<ImVec2, woby::diagnosticCategoryCount> findingLabels;
     std::string contents;
     const auto frame = [&] {
         ImGui::GetIO().DisplaySize = ImVec2(1200, 1500);
@@ -482,6 +483,7 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and nearby dete
                 }
                 for (size_t row = 0; row < settingsButtons.size(); ++row) {
                     settingsButtons[row] = ImVec2(gear.x, intersectionY - static_cast<float>(settingsButtons.size() - 1 - row) * rowHeight);
+                    findingLabels[row] = ImVec2(table->Columns[1].WorkMinX + 5, settingsButtons[row].y);
                 }
                 intersectionEye = ImVec2(table->Columns[table->ColumnsCount - 3].WorkMinX + woby::renderModeButtonSize()*0.5f, intersectionY);
                 divider = ImVec2(table->Columns[2].MaxX,
@@ -505,6 +507,22 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and nearby dete
     CHECK(contents.find("\xef\x80\x93") != std::string::npos); // Settings glyph.
     REQUIRE((diagnostics->Flags & ImGuiTableFlags_Resizable) != 0);
     auto& io = ImGui::GetIO();
+    const char* hintFragments[] = {
+        "edges used by only one triangle", "one connected fan or ring", "simple closed boundary loops",
+        "candidate patches", "edges shared by more than two triangles", "conflicting winding",
+        "exactly equal source coordinates", "same three source point indices", "collapsed or collinear triangles",
+        "triangle pairs that intersect",
+    };
+    const auto settingsBeforeHints = woby::comparisonSettings(f.state, f.id);
+    const auto revisionBeforeHints = f.state.sceneEditRevision;
+    for (size_t row = 0; row < findingLabels.size(); ++row) {
+        CAPTURE(row);
+        io.AddMousePosEvent(findingLabels[row].x, findingLabels[row].y);
+        frame(); frame();
+        CHECK(contents.find(hintFragments[row]) != std::string::npos);
+        CHECK(woby::comparisonSettings(f.state, f.id) == settingsBeforeHints);
+        CHECK(f.state.sceneEditRevision == revisionBeforeHints);
+    }
     if (!hasA && !hasB) {
         for (const auto phase : {woby::IntersectionPhase::notChecked, woby::IntersectionPhase::outdated, woby::IntersectionPhase::failed}) {
             auto& result = runtimes.objects[f.id].result;
