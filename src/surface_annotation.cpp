@@ -383,7 +383,10 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
     const auto vp = annotationCompose(view.view, view.projection);
     ProjectionVertexCache cache;
     for (const auto& part : parts) {
-        if (!part.mesh || (!part.solid && part.objectId != target) || (part.opacity < .999f && part.objectId != target)) { continue; }
+        // Without a target, visible transparent surfaces are candidates too.
+        // Once a target is chosen, only opaque neighbors occlude its outline.
+        if (!part.mesh || (!part.solid && part.objectId != target)
+            || (target != 0 && part.opacity < .999f && part.objectId != target)) { continue; }
         const auto transform = annotationCompose(part.model, vp);
         if (part.objectId == target) {
             result.definition.projector = transform;

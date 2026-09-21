@@ -176,6 +176,57 @@ void annotationCamera(Fixture& fixture)
 }
 }
 
+TEST_CASE("annotation gestures draw on half-opacity surfaces with any selection scope")
+{
+    for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
+        Fixture fixture;
+        setFileOpacity(fixture.state.files[0].fileSettings, .5f);
+        SUBCASE("no selection") { fixture.state.selectedSceneObjects.clear(); }
+        SUBCASE("single part selected") { selectSceneObject(fixture.state, fixture.target()); }
+        SUBCASE("multiple parts selected") {
+            fixture.state.files.push_back(createUiFileState(fixture.root / "other.obj", surface(), 1));
+            appendDefaultSceneNodesForFiles(fixture.state, 1);
+            setFileTranslation(fixture.state.files[1].fileSettings, {3,0,0});
+            fixture.state.selectedSceneObjects = {fixture.target(), fixture.state.files[1].groupSettings[0].objectId};
+        }
+        AnnotationInteraction interaction;
+        interaction.tool = shape;
+        REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20,140}));
+        REQUIRE(interaction.dragging);
+        moveAnnotationPointer(fixture.state, interaction, {180,60});
+        REQUIRE(interaction.error.empty());
+        endAnnotationPointer(fixture.state, interaction, true);
+        REQUIRE(fixture.state.annotations.size() == 1);
+        CHECK(fixture.state.annotations.front().targetId == fixture.target());
+        const auto& item = fixture.state.annotations.front();
+        CHECK(item.geometry.shape == shape);
+        const auto vertices = annotationVertices(fixture.state, item);
+        REQUIRE(vertices.size() == (shape == AnnotationShape::line ? 2u : 4u));
+        nearPoint(vertices.front(), {-.8f,-.4f,.5f});
+        nearPoint(vertices[shape == AnnotationShape::line ? 1 : 2], {.8f,.4f,.5f});
+    }
+}
+
+TEST_CASE("annotation target picking includes transparency but projection ignores transparent neighbors")
+{
+    Fixture fixture;
+    auto front = surface();
+    for (auto& vertex : front.vertices) { vertex.position[2] = .2f; }
+    front.bounds = calculateBounds(front.vertices);
+    fixture.state.files.push_back(createUiFileState(fixture.root / "front.obj", std::move(front), 1));
+    appendDefaultSceneNodesForFiles(fixture.state, 1);
+    setFileOpacity(fixture.state.files[1].fileSettings, .5f);
+    const auto parts = scenePickParts(fixture.state);
+    CHECK(pickAnnotationSurface(annotationProjection(parts, view(), 0), {0,0})
+        == fixture.state.files[1].groupSettings[0].objectId);
+    CHECK(pickAnnotationSurface(fixture.projection(), {0,0}) == fixture.target());
+    CHECK_NOTHROW(fixture.geometry());
+    setFileOpacity(fixture.state.files[1].fileSettings, 0);
+    CHECK(pickAnnotationSurface(annotationProjection(scenePickParts(fixture.state), view(), 0), {0,0}) == fixture.target());
+    setFileOpacity(fixture.state.files[1].fileSettings, 1);
+    CHECK_THROWS(fixture.geometry());
+}
+
 TEST_CASE("annotation CLI creates inspects styles moves reshapes and deletes surface annotations")
 {
     Fixture fixture(true); annotationCamera(fixture);

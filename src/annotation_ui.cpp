@@ -254,10 +254,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
                 throw std::runtime_error("Start on a visible surface of the selected model.");
             }
             if (initial != target) {
-                const auto part = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == target; });
-                projection.targetId = target;
-                projection.definition.projector = annotationCompose(part->model, annotationCompose(view.view, view.projection));
-                projection.definition.fingerprint = annotationFingerprint(*part->mesh, part->indexOffset, part->indexCount);
+                projection = annotationProjection(parts, view, target);
             }
             interaction.projection = std::move(projection);
             interaction.preview = {};
