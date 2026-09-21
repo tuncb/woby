@@ -45,6 +45,16 @@ result = run([app, '--version'])
 assert result.returncode == 0 and result.stdout.strip() == version and not result.stderr, result
 result = run([app, '--help'])
 assert result.returncode == 0 and 'Usage:' in result.stdout and not result.stderr, result
+help_text = result.stdout
+# Startup guidance must be discoverable before the exhaustive option reference.
+startup_help = help_text.split('Startup options:')[0]
+for instruction in ('ctl never starts a viewer', 'Start-Process', 'must NOT use -Wait',
+                    'subprocess.Popen', '$_.id -eq $id -and $_.ready',
+                    'Viewer startup timed out', 'objects --json', 'quit --json'):
+    assert instruction in startup_help, instruction
+for alias in (['-h'], ['help'], ['ctl', '--help'], ['ctl', 'help']):
+    result = run([app, *alias])
+    assert result.returncode == 0 and result.stdout == help_text and not result.stderr, result
 result = run([app, '--unknown-option'])
 assert result.returncode == 1 and result.stderr and not result.stdout, result
 result = run([app, 'ctl', 'instances', '--json'])
