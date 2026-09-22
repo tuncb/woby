@@ -349,6 +349,30 @@ TEST_CASE("save-as model paths resolve relative to the final destination")
     CHECK(woby::sceneAbsolutePath(destination, read.files[0].path) == file.path);
 }
 
+#ifdef _WIN32
+TEST_CASE("scene files store absolute model paths on another drive")
+{
+    LifecycleFixture fixture;
+    const auto destination = fixture.root / "scene.woby";
+    const std::string otherDrive = fixture.root.root_name() == "C:" ? "D:" : "C:";
+    const auto modelPath = (std::filesystem::path(otherDrive + "\\")
+        / fixture.root.relative_path() / "models" / "part.obj").lexically_normal();
+    REQUIRE(modelPath.is_absolute());
+    REQUIRE(modelPath.root_name() != destination.root_name());
+
+    woby::SceneDocument document;
+    woby::SceneFileRecord file;
+    file.path = modelPath;
+    document.files.push_back(file);
+
+    CHECK_NOTHROW(woby::writeSceneDocument(destination, document, false));
+    const auto read = woby::readSceneDocument(destination);
+    REQUIRE(read.files.size() == 1);
+    CHECK(read.files[0].path == modelPath);
+    CHECK(woby::sceneAbsolutePath(destination, read.files[0].path) == modelPath);
+}
+#endif
+
 TEST_CASE("replacement assigns fresh IDs while preserving session preferences")
 {
     LifecycleFixture fixture;

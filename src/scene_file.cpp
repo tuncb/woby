@@ -323,14 +323,14 @@ void writeTomlFloat4(std::ostream& stream, const std::array<float, 4>& value)
     stream << ']';
 }
 
-std::filesystem::path sceneRelativePath(
+std::filesystem::path sceneStoredPath(
     const std::filesystem::path& scenePath,
     const std::filesystem::path& modelPath)
 {
     const std::filesystem::path basePath = std::filesystem::absolute(scenePath).parent_path().lexically_normal();
     const std::filesystem::path absoluteModelPath = std::filesystem::absolute(modelPath).lexically_normal();
     if (basePath.root_name() != absoluteModelPath.root_name()) {
-        throw std::runtime_error("Cannot save model path relative to scene file: " + modelPath.string());
+        return absoluteModelPath;
     }
 
     std::filesystem::path relativePath = absoluteModelPath.lexically_relative(basePath);
@@ -1076,9 +1076,9 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     }
 
     for (const auto& file : document.files) {
-        const std::filesystem::path relativeModelPath = sceneRelativePath(scenePath, file.path);
+        const std::filesystem::path storedModelPath = sceneStoredPath(scenePath, file.path);
         stream << "\n[[files]]\n";
-        const auto encodedPath = relativeModelPath.generic_u8string();
+        const auto encodedPath = storedModelPath.generic_u8string();
         const std::string pathText(reinterpret_cast<const char*>(encodedPath.data()), encodedPath.size());
         stream << "path = \"" << escapeTomlString(pathText) << "\"\n";
         if (!file.importerId.empty()) {
