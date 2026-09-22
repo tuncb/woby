@@ -71,13 +71,7 @@ void ensureSceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
         throw std::runtime_error("Export resolution exceeds the renderer texture limit.");
     }
 
-    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_READ_BACK) == 0u) {
-        throw std::runtime_error("Renderer does not support texture readback.");
-    }
-
-    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_BLIT) == 0u) {
-        throw std::runtime_error("Renderer does not support texture blit for screenshot readback.");
-    }
+    validateSceneScreenshotRenderer();
 
     constexpr uint64_t colorFlags = BGFX_TEXTURE_RT
         | BGFX_SAMPLER_U_CLAMP
@@ -190,6 +184,19 @@ void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
 }
 
 } // namespace
+
+void validateSceneScreenshotRenderer()
+{
+    if (bgfx::getRendererType() == bgfx::RendererType::Noop) {
+        throw std::runtime_error("A graphics renderer is required for screenshots; bgfx Noop is not supported.");
+    }
+    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_READ_BACK) == 0u) {
+        throw std::runtime_error("Renderer does not support texture readback.");
+    }
+    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_BLIT) == 0u) {
+        throw std::runtime_error("Renderer does not support texture blit for screenshot readback.");
+    }
+}
 
 void destroySceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
 {

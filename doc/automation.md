@@ -4,6 +4,11 @@ Every viewer exposes `POST http://127.0.0.1:<port>/rpc` on an OS-assigned port. 
 and HTTP requests share the same bounded FIFO command queue. Control commands execute before SDL
 initialization, so they do not create a second window or renderer.
 
+Launch `woby --headless --instance ID` for windowless camera/scene control and PNG
+rendering. The process keeps running and uses the same API and queue. See the
+[headless agent guide](headless.md) for startup, readiness, supported graphics
+backends, and an inspection workflow. `--headless` is not a `ctl` option.
+
 ## Instance discovery
 
 For all supported CLI commands, RPC names, parameters, and target scopes, see the
@@ -11,7 +16,7 @@ For all supported CLI commands, RPC names, parameters, and target scopes, see th
 editing, camera navigation, model/importer management, diagnostics, and pane controls.
 
 Use `woby ctl instances --json` to list live instances. Each result includes `id`, `pid`,
-`url`, `apiVersion`, `ready`, `queuedCommands`, and `activeSequence` (a string, or null).
+`url`, `apiVersion`, `ready`, `headless`, `queuedCommands`, and `activeSequence` (a string, or null).
 The queued count excludes the active command. Discovery checks the authenticated endpoint and ignores
 stale records, including records left by a crashed process. An instance may be listed
 as `ready: false` while startup loads models. Wait until ready before requesting capture.
@@ -54,6 +59,10 @@ and perform no work. Every executed command has an acknowledged result or error.
 ```
 
 The result has the same public metadata as CLI discovery. It never includes the token.
+`headless` is available even while `ready` is false. The queued `status` method also
+returns `renderer` and `screenshot: {width, height, format}`. Its `pane` field is null
+in headless mode. `capabilities` includes `headless`, `renderer`, and per-method
+`available`; `pane.set` is unavailable in headless mode and returns `-32602`.
 
 ### Capture the scene
 

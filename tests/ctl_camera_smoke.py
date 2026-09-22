@@ -5,6 +5,7 @@
 """Verify camera commands against actual scene pixels and saved scene reloads.
 
 uv run tests/ctl_camera_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
+uv run tests/ctl_camera_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe --headless
 """
 import json
 import math
@@ -32,7 +33,7 @@ def main():
             startup.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startup.wShowWindow = 0
         with (root / "viewer.log").open("w", encoding="utf-8") as log:
-            viewer = subprocess.Popen([str(executable), "--instance", instance], cwd=root,
+            viewer = subprocess.Popen([str(executable), "--instance", instance, *sys.argv[2:]], cwd=root,
                                       stdout=log, stderr=log, startupinfo=startup)
 
             def ctl(*args, code=None):

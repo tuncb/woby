@@ -327,6 +327,14 @@ AppArguments parseCommandLine(int argc, char** argv)
             continue;
         }
 
+        if (argument == "--headless") {
+            if (arguments.headless) {
+                throw std::runtime_error("Only one --headless option can be specified.");
+            }
+            arguments.headless = true;
+            continue;
+        }
+
         if (argument == "--log-level") {
             requireValue(argc, index, argument, "a level");
             if (logLevelSpecified) {

@@ -53,6 +53,7 @@ TEST_CASE("command line defaults keep logging off")
     const woby::AppArguments arguments = parse({"woby"});
 
     CHECK_FALSE(arguments.showVersion);
+    CHECK_FALSE(arguments.headless);
     CHECK(arguments.logLevel == woby::LogLevel::off);
     CHECK_FALSE(arguments.logFile.has_value());
     CHECK_FALSE(arguments.logPerformance);
@@ -79,6 +80,24 @@ TEST_CASE("instance IDs are explicit unique names with portable spelling")
     CHECK_FALSE(woby::validInstanceId(std::string(65u, 'a')));
     CHECK_THROWS_AS(parse({"woby", "--instance"}), std::runtime_error);
     CHECK_THROWS_AS(parse({"woby", "--instance", "a", "--instance", "b"}), std::runtime_error);
+}
+
+TEST_CASE("headless mode is a viewer launch option and composes with model and scene inputs")
+{
+    const auto arguments = parse({"woby", "--headless", "--instance", "agent", "--scene", "review.woby",
+        "--file", "part.obj", "--folder", "models", "--plugin", "importer.dll"});
+    CHECK(arguments.headless);
+    CHECK(arguments.instanceId == "agent");
+    CHECK(arguments.scenePath == "review.woby");
+    CHECK(arguments.inputPaths.size() == 2);
+    CHECK(arguments.pluginPaths.size() == 1);
+    CHECK(arguments.control.command == woby::ControlCommand::none);
+    CHECK(parse({"woby", "--headless", "--help"}).showHelp);
+    CHECK(parse({"woby", "--headless", "--version"}).showVersion);
+    CHECK_THROWS(parse({"woby", "--headless", "--headless"}));
+    CHECK_THROWS(parse({"woby", "--headless", "false"}));
+    CHECK_THROWS(parse({"woby", "ctl", "--instance", "agent", "--headless", "objects"}));
+    CHECK_THROWS(parse({"woby", "update", "--headless"}));
 }
 
 TEST_CASE("control CLI supports discovery and synchronous screenshots")

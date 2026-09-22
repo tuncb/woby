@@ -320,6 +320,14 @@ endif()
 
 if(BUILD_TESTING)
     include(cmake/WobyPython.cmake)
+    option(WOBY_TEST_HEADLESS "Run headless integration tests (requires D3D11 or Vulkan graphics support)" OFF)
+    if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
+        add_test(NAME woby_headless COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_headless_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_headless_camera COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_camera_smoke.py" "$<TARGET_FILE:woby>" --headless)
+        set_tests_properties(woby_headless woby_headless_camera PROPERTIES TIMEOUT 180 LABELS graphics)
+    endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
         "-DPYTHON_MODULE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/WobyPython.cmake"

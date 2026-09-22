@@ -104,6 +104,7 @@ TEST_CASE("automation instances reserve IDs and publish independent authenticate
     CHECK(info.at("id") == "test-request");
     CHECK(info.at("result").at("id") == "test");
     CHECK_FALSE(info.at("result").at("ready").get<bool>());
+    CHECK_FALSE(info.at("result").at("headless").get<bool>());
     CHECK(info.dump().find(fixture.instance.token) == std::string::npos);
     woby::setAutomationReady(*fixture.server);
     CHECK(request(fixture.instance, "instance.info").at("result").at("ready").get<bool>());
@@ -111,6 +112,35 @@ TEST_CASE("automation instances reserve IDs and publish independent authenticate
     CHECK(woby::readAutomationInstances(fixture.directory).size() == 1u);
     auto reused = woby::startAutomation(otherId, fixture.directory);
     CHECK(woby::automationInstanceId(*reused) == otherId);
+}
+
+TEST_CASE("headless discovery is available before startup completes")
+{
+    AutomationFixture fixture;
+    auto server = woby::startAutomation("headless", fixture.directory, true);
+    const auto instance = woby::readAutomationInstance(fixture.directory, "headless");
+    const auto starting = request(instance, "instance.info").at("result");
+    CHECK(starting.at("headless") == true);
+    CHECK(starting.at("ready") == false);
+    woby::setAutomationReady(*server);
+    const auto ready = request(instance, "instance.info").at("result");
+    CHECK(ready.at("headless") == true);
+    CHECK(ready.at("ready") == true);
+}
+
+TEST_CASE("idle runtime wakes for newly admitted automation work")
+{
+    AutomationFixture fixture;
+    woby::setAutomationReady(*fixture.server);
+    auto waiting = std::async(std::launch::async, [&] { woby::waitForAutomationWork(*fixture.server, 3s); });
+    CHECK(waiting.wait_for(20ms) == std::future_status::timeout);
+    auto pending = std::async(std::launch::async, [&] { return request(fixture.instance, "objects.list"); });
+    CHECK(waiting.wait_for(2s) == std::future_status::ready);
+    waiting.get();
+    const auto command = takeCommand(*fixture.server);
+    REQUIRE(command);
+    REQUIRE(completeCommand(*fixture.server, command->id, woby::AutomationObjectsResult{}));
+    CHECK(pending.get().contains("result"));
 }
 
 TEST_CASE("automation history triggers preserve direction and replay outcomes without another step")

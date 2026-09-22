@@ -84,6 +84,13 @@ intended surface before creation.
 
 ## Discovery, inspection, capture, and lifecycle
 
+All scene/camera/capture commands also work in [headless mode](headless.md).
+Launch with `woby --headless --instance ID`, poll `instances --json` for `ready`,
+then use the same `ctl --instance ID` commands. The launch flag is not a CTL option.
+`status` includes `headless`, `renderer`, and `screenshot` dimensions/format.
+In headless mode `pane` is null and `pane set` returns `-32602`. `capabilities`
+marks each method with `available`, which is false for `pane.set` in this mode.
+
 | CLI | RPC method | Result / behavior |
 | --- | --- | --- |
 | `woby ctl instances [--json]` | `instance.info` on discovered endpoints | Live instances, PID, URL, API version, startup readiness, queued count, active sequence. |

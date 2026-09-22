@@ -50,7 +50,9 @@ help_text = result.stdout
 startup_help = help_text.split('Startup options:')[0]
 for instruction in ('ctl never starts a viewer', 'Start-Process', 'must NOT use -Wait',
                     'subprocess.Popen', '$_.id -eq $id -and $_.ready',
-                    'Viewer startup timed out', 'objects --json', 'quit --json'):
+                    'Viewer startup timed out', 'objects --json', 'quit --on-dirty discard',
+                    '--headless', 'camera frame', 'screenshot', 'GPU readback',
+                    'not a ctl option', 'headless=true'):
     assert instruction in startup_help, instruction
 for alias in (['-h'], ['help'], ['ctl', '--help'], ['ctl', 'help']):
     result = run([app, *alias])

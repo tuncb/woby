@@ -61,6 +61,7 @@ struct ControlArguments {
 struct AppArguments {
     bool showHelp = false;
     bool showVersion = false;
+    bool headless = false;
     std::optional<std::string> instanceId;
     ControlArguments control;
     UpdateArguments update;

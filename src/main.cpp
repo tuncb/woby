@@ -62,6 +62,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <thread>
 #include <type_traits>
@@ -487,7 +488,9 @@ void updateAppWindowTitle(
     bool isDirty,
     const std::string& instanceId)
 {
-    SDL_SetWindowTitle(window, appWindowTitle(currentScenePath, isDirty, instanceId).c_str());
+    if (window) {
+        SDL_SetWindowTitle(window, appWindowTitle(currentScenePath, isDirty, instanceId).c_str());
+    }
 }
 
 void drawClippedTextItem(const char* id, const char* text, float width, bool selected)
@@ -2067,12 +2070,16 @@ void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex,
 int main(int argc, char** argv)
 {
     woby::initializeConsole();
+    // Even argument-validation failures in headless launches must never open a dialog.
+    const bool headlessLaunchRequested = std::any_of(argv + 1, argv + argc,
+        [](const char* argument) { return std::string_view(argument) == "--headless"; });
     bool sdlInitialized = false;
     bool bgfxInitialized = false;
     woby::AutomationOwner automation(nullptr, &woby::stopAutomation);
 
     try {
         const auto commandLine = woby::parseCommandLine(argc, argv);
+        const bool headless = commandLine.headless;
         if (commandLine.showHelp) {
             woby::printCommandLineHelp();
             return 0;
@@ -2096,11 +2103,11 @@ int main(int argc, char** argv)
         updateRuntime.state.currentVersion = WOBY_VERSION;
         updateRuntime.state.managedDeployment = std::filesystem::is_regular_file(
             woby::updateExecutablePath().parent_path() / woby::packageManifestName);
-        automation = woby::startAutomation(commandLine.instanceId);
+        automation = woby::startAutomation(commandLine.instanceId, {}, headless);
         const std::string instanceId = woby::automationInstanceId(*automation);
 
         const auto sdlStart = woby::PerformanceClock::now();
-        if (!SDL_Init(SDL_INIT_VIDEO)) {
+        if (!SDL_Init(headless ? 0 : SDL_INIT_VIDEO)) {
             throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
         }
         sdlInitialized = true;
@@ -2138,47 +2145,64 @@ int main(int argc, char** argv)
             reportImporterError("Importer settings directory is unavailable; registrations are session-only.");
         }
 
-        SDL_Window* rawWindow = SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);
-        if (rawWindow == nullptr) {
+        SDL_Window* rawWindow = headless ? nullptr
+            : SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);
+        if (!headless && rawWindow == nullptr) {
             throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
         }
 
         std::unique_ptr<SDL_Window, SdlDeleter> window(rawWindow);
 
         const auto assets = assetRoot();
-        const auto iconPath = woby::pathToUtf8(assets / "icons" / "woby.bmp");
-        SDL_Surface* icon = SDL_LoadBMP(iconPath.c_str());
-        if (icon != nullptr) {
-            if (!SDL_SetWindowIcon(window.get(), icon)) {
-                spdlog::warn("Could not set window icon: {}", SDL_GetError());
+        if (window) {
+            const auto iconPath = woby::pathToUtf8(assets / "icons" / "woby.bmp");
+            SDL_Surface* icon = SDL_LoadBMP(iconPath.c_str());
+            if (icon != nullptr) {
+                if (!SDL_SetWindowIcon(window.get(), icon)) {
+                    spdlog::warn("Could not set window icon: {}", SDL_GetError());
+                }
+                SDL_DestroySurface(icon);
+            } else {
+                spdlog::warn("Could not load window icon: {}", SDL_GetError());
             }
-            SDL_DestroySurface(icon);
-        } else {
-            spdlog::warn("Could not load window icon: {}", SDL_GetError());
         }
 
         uint32_t width = 0;
         uint32_t height = 0;
-        getDrawableSize(window.get(), width, height);
+        if (window) { getDrawableSize(window.get(), width, height); }
         woby::logDuration("startup_sdl_window", elapsedMilliseconds(sdlStart));
 
         const auto bgfxStart = woby::PerformanceClock::now();
         bgfx::Init init;
         init.type = bgfx::RendererType::Count;
-        init.platformData = platformDataFromSdlWindow(window.get());
+        if (headless) {
+            // Use a backend with a windowless device and packaged shaders.
+#if defined(_WIN32)
+            init.type = bgfx::RendererType::Direct3D11;
+#elif defined(__linux__)
+            init.type = bgfx::RendererType::Vulkan;
+#else
+            throw std::runtime_error("Headless mode currently supports Windows (Direct3D 11) and Linux (Vulkan).");
+#endif
+        } else {
+            init.platformData = platformDataFromSdlWindow(window.get());
+        }
         init.resolution.width = width;
         init.resolution.height = height;
-        init.resolution.reset = resetFlags;
+        init.resolution.reset = headless ? BGFX_RESET_NONE : resetFlags;
 
         if (!bgfx::init(init)) {
-            throw std::runtime_error("bgfx::init failed.");
+            throw std::runtime_error(headless
+                ? "Headless renderer initialization failed. A working Direct3D 11 (Windows) or Vulkan (Linux) graphics device/driver is required."
+                : "bgfx::init failed.");
         }
         bgfxInitialized = true;
+        if (headless) { woby::validateSceneScreenshotRenderer(); }
 
         bgfx::setViewClear(clearView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
         bgfx::setViewClear(sceneView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
         bgfx::setViewClear(helperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
-        bgfx::setDebug(BGFX_DEBUG_TEXT);
+        bgfx::setDebug(headless ? BGFX_DEBUG_NONE : BGFX_DEBUG_TEXT);
         woby::logDuration("startup_bgfx", elapsedMilliseconds(bgfxStart));
 
         const auto modelPathsStart = woby::PerformanceClock::now();
@@ -2235,12 +2259,19 @@ int main(int argc, char** argv)
         configureAppStyle();
         const ImGuiStyle baseStyle = ImGui::GetStyle();
         const auto preferencePath = uiPreferencePath();
-        float savedUiScale = 1.0f;
-        if (std::ifstream preference{preferencePath}; preference >> savedUiScale) { woby::setUiScale(ui, savedUiScale); }
-        updateUiScale(window.get(), ui, baseStyle);
-
-        if (!ImGui_ImplSDL3_InitForOther(window.get())) {
-            throw std::runtime_error("ImGui_ImplSDL3_InitForOther failed.");
+        if (headless) {
+            // Export labels use ImGui's fonts/draw lists, without a platform backend.
+            auto& io = ImGui::GetIO();
+            io.IniFilename = nullptr;
+            io.LogFilename = nullptr;
+            io.DisplaySize = ImVec2(static_cast<float>(ui.screenshotSettings.width), static_cast<float>(ui.screenshotSettings.height));
+        } else {
+            float savedUiScale = 1.0f;
+            if (std::ifstream preference{preferencePath}; preference >> savedUiScale) { woby::setUiScale(ui, savedUiScale); }
+            updateUiScale(window.get(), ui, baseStyle);
+            if (!ImGui_ImplSDL3_InitForOther(window.get())) {
+                throw std::runtime_error("ImGui_ImplSDL3_InitForOther failed.");
+            }
         }
         woby::imgui_bgfx::init(assets, imguiView);
         woby::logDuration("startup_imgui", elapsedMilliseconds(imguiStart));
@@ -2343,7 +2374,7 @@ int main(int argc, char** argv)
             bool annotationEscapeConsumed = false;
             std::optional<woby::PickPoint> annotationMotion;
             SDL_Event event;
-            while (SDL_PollEvent(&event)) {
+            while (!headless && SDL_PollEvent(&event)) {
                 ImGui_ImplSDL3_ProcessEvent(&event);
 
                 if (event.type == SDL_EVENT_QUIT) {
@@ -2494,7 +2525,7 @@ int main(int argc, char** argv)
             if (annotationMotion && annotationInteraction.dragging) { woby::moveAnnotationPointer(ui, annotationInteraction, *annotationMotion); }
             recordFrameStage(frameTimings, woby::FrameStage::events, stageStart);
 
-            getDrawableSize(window.get(), width, height);
+            if (window) { getDrawableSize(window.get(), width, height); }
 
             if (auto outcome = takeBackgroundLoadOutcome(backgroundLoad); outcome.has_value()) {
                 if (outcome->failed) {
@@ -2584,56 +2615,6 @@ int main(int argc, char** argv)
                 automationOpenCommandId.reset();
             }
 
-            const bool processingFiles = backgroundLoad.active || gpuFinalize.active;
-            const auto pendingModelPaths = takePendingModelPaths(modelFileDialogState);
-            if (!pendingModelPaths.empty()) {
-                if (processingFiles) {
-                    setModelFileDialogStatus(modelFileDialogState, "Already processing files");
-                } else if (!startAppendModelBackgroundLoad(
-                               backgroundLoad,
-                               pendingModelPaths,
-                               woby::totalGroupCount(ui))) {
-                    setModelFileDialogStatus(modelFileDialogState, "Open model files failed: already processing files");
-                }
-            }
-            const auto pendingFolderTreeRoots = takePendingModelFolderTreeRoots(modelFileDialogState);
-            for (const auto& folderTreeRoot : pendingFolderTreeRoots) {
-                if (backgroundLoad.active || gpuFinalize.active) {
-                    setModelFileDialogStatus(modelFileDialogState, "Already processing files");
-                    break;
-                }
-
-                std::string folderTreeStatus;
-                if (!startAppendFolderTreeBackgroundLoad(
-                        backgroundLoad,
-                        folderTreeRoot,
-                        woby::totalGroupCount(ui),
-                        folderTreeStatus)) {
-                    folderTreeStatus = "Open folder tree failed: already processing files";
-                }
-                if (!folderTreeStatus.empty()) {
-                    setModelFileDialogStatus(modelFileDialogState, std::move(folderTreeStatus));
-                }
-            }
-            const std::string modelDialogStatus = modelFileDialogStatus(
-                modelFileDialogState,
-                observedModelFileDialogStatusVersion);
-            if (!modelDialogStatus.empty()) {
-                setToastMessage(toast, modelDialogStatus);
-            }
-
-            const auto pendingOpenScenePath = takePendingOpenScenePath(sceneFileDialogState);
-            if (pendingOpenScenePath.has_value()) {
-                openSceneOrRequestDirtyWarning(
-                    pendingOpenScenePath.value(),
-                    ui,
-                    backgroundLoad,
-                    gpuFinalize,
-                    sceneFileDialogState,
-                    toast,
-                    pendingDirtyOpenScenePath,
-                    requestDirtyOpenWarning);
-            }
             const auto saveDocument = [&](const std::filesystem::path& path) {
                 woby::recordSceneHistory(sceneHistory, ui, woby::sceneHistoryInteraction());
                 woby::finishSceneHistoryInteraction(sceneHistory);
@@ -2644,41 +2625,49 @@ int main(int argc, char** argv)
                     setToastMessage(toast, std::string("Save scene failed: ") + exception.what());
                 }
             };
-            if (const auto path = takePendingSaveScenePath(sceneFileDialogState)) {
-                saveDocument(*path);
-            }
-            const std::string sceneDialogStatus = sceneFileDialogStatus(
-                sceneFileDialogState,
-                observedSceneFileDialogStatusVersion);
-            if (!sceneDialogStatus.empty()) {
-                setToastMessage(toast, sceneDialogStatus);
-            }
-
-            const auto pendingSceneScreenshotPath = takePendingSaveSceneScreenshotPath(sceneScreenshotDialogState);
-            if (pendingSceneScreenshotPath.has_value()) {
-                try {
-                    requestSceneScreenshotCapture(sceneScreenshot, pendingSceneScreenshotPath.value(), ui.screenshotSettings);
-                    setToastMessage(toast, "Saving screenshot...");
-                } catch (const std::exception& exception) {
-                    setSceneScreenshotDialogStatus(
-                        sceneScreenshotDialogState,
-                        std::string("Save screenshot failed: ") + exception.what());
+            if (!headless) {
+                const bool processingFiles = backgroundLoad.active || gpuFinalize.active;
+                const auto pendingModelPaths = takePendingModelPaths(modelFileDialogState);
+                if (!pendingModelPaths.empty()) {
+                    if (processingFiles) {
+                        setModelFileDialogStatus(modelFileDialogState, "Already processing files");
+                    } else if (!startAppendModelBackgroundLoad(
+                                   backgroundLoad,
+                                   pendingModelPaths,
+                                   woby::totalGroupCount(ui))) {
+                        setModelFileDialogStatus(modelFileDialogState, "Open model files failed: already processing files");
+                    }
                 }
-            }
-            const std::string screenshotDialogStatus = sceneScreenshotDialogStatus(
-                sceneScreenshotDialogState,
-                observedSceneScreenshotDialogStatusVersion);
-            if (!screenshotDialogStatus.empty()) {
-                setToastMessage(toast, screenshotDialogStatus);
-            }
+                const auto pendingFolderTreeRoots = takePendingModelFolderTreeRoots(modelFileDialogState);
+                for (const auto& folderTreeRoot : pendingFolderTreeRoots) {
+                    if (backgroundLoad.active || gpuFinalize.active) {
+                        setModelFileDialogStatus(modelFileDialogState, "Already processing files");
+                        break;
+                    }
 
-            const auto droppedPaths = takePendingDropPaths(dragDropState);
-            if (!droppedPaths.empty()) {
-                if (processingFiles) {
-                    setToastMessage(toast, "Already processing files");
-                } else {
-                    processDroppedPaths(
-                        droppedPaths,
+                    std::string folderTreeStatus;
+                    if (!startAppendFolderTreeBackgroundLoad(
+                            backgroundLoad,
+                            folderTreeRoot,
+                            woby::totalGroupCount(ui),
+                            folderTreeStatus)) {
+                        folderTreeStatus = "Open folder tree failed: already processing files";
+                    }
+                    if (!folderTreeStatus.empty()) {
+                        setModelFileDialogStatus(modelFileDialogState, std::move(folderTreeStatus));
+                    }
+                }
+                const std::string modelDialogStatus = modelFileDialogStatus(
+                    modelFileDialogState,
+                    observedModelFileDialogStatusVersion);
+                if (!modelDialogStatus.empty()) {
+                    setToastMessage(toast, modelDialogStatus);
+                }
+
+                const auto pendingOpenScenePath = takePendingOpenScenePath(sceneFileDialogState);
+                if (pendingOpenScenePath.has_value()) {
+                    openSceneOrRequestDirtyWarning(
+                        pendingOpenScenePath.value(),
                         ui,
                         backgroundLoad,
                         gpuFinalize,
@@ -2687,7 +2676,52 @@ int main(int argc, char** argv)
                         pendingDirtyOpenScenePath,
                         requestDirtyOpenWarning);
                 }
+                if (const auto path = takePendingSaveScenePath(sceneFileDialogState)) {
+                    saveDocument(*path);
+                }
+                const std::string sceneDialogStatus = sceneFileDialogStatus(
+                    sceneFileDialogState,
+                    observedSceneFileDialogStatusVersion);
+                if (!sceneDialogStatus.empty()) {
+                    setToastMessage(toast, sceneDialogStatus);
+                }
+
+                const auto pendingSceneScreenshotPath = takePendingSaveSceneScreenshotPath(sceneScreenshotDialogState);
+                if (pendingSceneScreenshotPath.has_value()) {
+                    try {
+                        requestSceneScreenshotCapture(sceneScreenshot, pendingSceneScreenshotPath.value(), ui.screenshotSettings);
+                        setToastMessage(toast, "Saving screenshot...");
+                    } catch (const std::exception& exception) {
+                        setSceneScreenshotDialogStatus(
+                            sceneScreenshotDialogState,
+                            std::string("Save screenshot failed: ") + exception.what());
+                    }
+                }
+                const std::string screenshotDialogStatus = sceneScreenshotDialogStatus(
+                    sceneScreenshotDialogState,
+                    observedSceneScreenshotDialogStatusVersion);
+                if (!screenshotDialogStatus.empty()) {
+                    setToastMessage(toast, screenshotDialogStatus);
+                }
+
+                const auto droppedPaths = takePendingDropPaths(dragDropState);
+                if (!droppedPaths.empty()) {
+                    if (processingFiles) {
+                        setToastMessage(toast, "Already processing files");
+                    } else {
+                        processDroppedPaths(
+                            droppedPaths,
+                            ui,
+                            backgroundLoad,
+                            gpuFinalize,
+                            sceneFileDialogState,
+                            toast,
+                            pendingDirtyOpenScenePath,
+                            requestDirtyOpenWarning);
+                    }
+                }
             }
+
             recordFrameStage(frameTimings, woby::FrameStage::pendingIo, stageStart);
 
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
@@ -2703,120 +2737,29 @@ int main(int argc, char** argv)
                 fpsWindowStart = now;
             }
 
-            updateUiScale(window.get(), ui, baseStyle);
+            if (!headless) { updateUiScale(window.get(), ui, baseStyle); }
             const float minViewerPaneWidth = minimumViewerPaneWidth();
             const float maxViewerPaneWidth = std::max(
                 minViewerPaneWidth,
-                canvasLayout(window.get(), ui).width - minSceneViewportWidth);
-            woby::setViewerPaneWidth(ui, viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth);
+                headless ? minViewerPaneWidth : canvasLayout(window.get(), ui).width - minSceneViewportWidth);
+            if (!headless) { woby::setViewerPaneWidth(ui, viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth); }
 
-            bgfx::dbgTextClear();
+            if (!headless) { bgfx::dbgTextClear(); }
             recordFrameStage(frameTimings, woby::FrameStage::stateUpdate, stageStart);
 
-            const bool popupWasOpen = ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-            ImGui_ImplSDL3_NewFrame();
+            const bool popupWasOpen = !headless && ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
+            if (headless) {
+                auto& io = ImGui::GetIO();
+                io.DisplaySize = ImVec2(static_cast<float>(ui.screenshotSettings.width), static_cast<float>(ui.screenshotSettings.height));
+                io.DeltaTime = std::max(deltaSeconds, 0.000001f);
+            } else {
+                ImGui_ImplSDL3_NewFrame();
+            }
             ImGui::NewFrame();
-            drawNativeDialogFallbacks(modelFileDialogState, sceneFileDialogState, sceneScreenshotDialogState);
-            bool modalDialogOpen = ImGui::IsPopupOpen("Settings") || ImGui::IsPopupOpen("Updates")
-                || ImGui::IsPopupOpen("Export PNG")
-                || modelFileDialogIsOpen(modelFileDialogState)
-                || sceneFileDialogIsOpen(sceneFileDialogState)
-                || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
-            bool requestSettings = false;
-            bool requestUpdates = false;
-            const auto newScene = [&]() {
-                try {
-                    resetSceneToUntitled(ui, runtimes, currentScenePath, cleanSceneDocument);
-                    setToastMessage(toast, "Created new scene");
-                } catch (const std::exception& error) {
-                    setToastMessage(toast, std::string("New scene failed: ") + error.what());
-                }
-            };
-            if (requestDirtyNewWarning) {
-                ImGui::OpenPopup("Unsaved scene changes##new");
-                requestDirtyNewWarning = false;
-            }
-            if (ImGui::BeginPopupModal("Unsaved scene changes##new", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                modalDialogOpen = true;
-                ImGui::TextUnformatted("The current scene has unsaved changes.");
-                ImGui::TextUnformatted("Create a new scene and discard them?");
-                if (ImGui::Button("New scene")) {
-                    newScene();
-                    ImGui::CloseCurrentPopup();
-                }
-                setLastItemTooltip("Discard unsaved changes and create an empty scene.");
-                ImGui::SameLine();
-                if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) { ImGui::CloseCurrentPopup(); }
-                setLastItemTooltip("Keep the current scene and return to it (Esc).");
-                ImGui::EndPopup();
-            }
-            if (requestDirtyOpenWarning) {
-                ImGui::OpenPopup("Unsaved scene changes");
-                requestDirtyOpenWarning = false;
-            }
-            if (ImGui::BeginPopupModal(
-                    "Unsaved scene changes",
-                    nullptr,
-                    ImGuiWindowFlags_AlwaysAutoResize)) {
-                modalDialogOpen = true;
-                ImGui::TextUnformatted("The current scene has unsaved changes.");
-                if (pendingDirtyOpenScenePath.has_value()) {
-                    ImGui::Text(
-                        "Open %s and discard them?",
-                        fileDisplayName(pendingDirtyOpenScenePath.value()).c_str());
-                }
-                if (ImGui::Button("Open")) {
-                    if (pendingDirtyOpenScenePath.has_value()) {
-                        const auto scenePath = pendingDirtyOpenScenePath.value();
-                        if (!startOpenSceneBackgroundLoad(backgroundLoad, scenePath)) {
-                            setSceneFileDialogStatus(
-                                sceneFileDialogState,
-                                "Open scene failed: already processing files");
-                        } else {
-                            setToastMessage(toast, "Opening scene " + fileDisplayName(scenePath));
-                        }
-                    }
-                    pendingDirtyOpenScenePath.reset();
-                    ImGui::CloseCurrentPopup();
-                }
-                setLastItemTooltip("Discard unsaved changes and open the selected scene.");
-                ImGui::SameLine();
-                if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-                    pendingDirtyOpenScenePath.reset();
-                    ImGui::CloseCurrentPopup();
-                }
-                setLastItemTooltip("Keep the current scene and cancel opening another scene (Esc).");
-                ImGui::EndPopup();
-            }
-            if (requestDirtyQuitWarning) {
-                ImGui::OpenPopup("Unsaved scene changes##quit");
-                requestDirtyQuitWarning = false;
-            }
-            if (ImGui::BeginPopupModal(
-                    "Unsaved scene changes##quit",
-                    nullptr,
-                    ImGuiWindowFlags_AlwaysAutoResize)) {
-                modalDialogOpen = true;
-                ImGui::TextUnformatted("The current scene has unsaved changes.");
-                ImGui::TextUnformatted("Exit and discard them?");
-                if (ImGui::Button("Exit")) {
-                    woby::requestQuit(ui);
-                    ImGui::CloseCurrentPopup();
-                }
-                setLastItemTooltip("Discard unsaved changes and exit Woby.");
-                ImGui::SameLine();
-                if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-                    ImGui::CloseCurrentPopup();
-                }
-                setLastItemTooltip("Keep Woby open with the current scene (Esc).");
-                ImGui::EndPopup();
-            }
-            if (drawProcessingDialog(backgroundLoad, gpuFinalize)) {
-                modalDialogOpen = true;
-            }
+            bool modalDialogOpen = false;
             // Recheck after each action: opening a dialog blocks other entry points in this frame.
             const auto fileActionsDisabled = [&]() {
-                return modalDialogOpen || backgroundLoad.active || gpuFinalize.active
+                return headless || modalDialogOpen || backgroundLoad.active || gpuFinalize.active
                     || modelFileDialogIsOpen(modelFileDialogState)
                     || sceneFileDialogIsOpen(sceneFileDialogState)
                     || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
@@ -2834,296 +2777,397 @@ int main(int argc, char** argv)
                 }
             };
             auto historyCommand = woby::SceneHistoryCommand::none;
-            const auto menu = woby::drawMainMenu(ui, annotationInteraction,
-                {fileActionsDisabled(), sceneScreenshot.captureRequested || sceneScreenshot.readbackPending,
-                    woby::canUndoScene(sceneHistory), woby::canRedoScene(sceneHistory), woby::updateBusy(updateRuntime.state)});
-            switch (menu.command) {
-            case woby::MainMenuCommand::newScene:
-                woby::updateSceneDirty(ui, cleanSceneDocument);
-                if (ui.isDirty) { requestDirtyNewWarning = true; modalDialogOpen = true; }
-                else { newScene(); }
-                break;
-            case woby::MainMenuCommand::openScene: documentCommand(woby::SceneAction::open); break;
-            case woby::MainMenuCommand::saveScene: documentCommand(woby::SceneAction::save); break;
-            case woby::MainMenuCommand::saveSceneAs: documentCommand(woby::SceneAction::saveAs); break;
-            case woby::MainMenuCommand::addModels: showModelFileDialog(window.get(), modelFileDialogState); break;
-            case woby::MainMenuCommand::addModelFolder: showModelFolderTreeDialog(window.get(), modelFileDialogState); break;
-            case woby::MainMenuCommand::exportPng:
-                ImGui::OpenPopup("Export PNG");
-                ImGui::SetNextWindowPos(menu.popupPosition, ImGuiCond_Appearing);
-                break;
-            case woby::MainMenuCommand::exit:
-                woby::updateSceneDirty(ui, cleanSceneDocument);
-                if (ui.isDirty) { requestDirtyQuitWarning = true; modalDialogOpen = true; }
-                else { woby::requestQuit(ui); }
-                break;
-            case woby::MainMenuCommand::undo: historyCommand = woby::SceneHistoryCommand::undo; break;
-            case woby::MainMenuCommand::redo: historyCommand = woby::SceneHistoryCommand::redo; break;
-            case woby::MainMenuCommand::settings: requestSettings = true; break;
-            case woby::MainMenuCommand::checkUpdates:
-                requestUpdates = true;
-                woby::startUiUpdate(updateRuntime, woby::UpdateCommand::check, ui.isDirty, deploymentGuard);
-                break;
-            case woby::MainMenuCommand::none: break;
-            }
-            if (woby::drawSceneScreenshotOptions(ui)) {
-                showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
-            }
-            modalDialogOpen = modalDialogOpen || ImGui::IsPopupOpen("Export PNG");
-            const auto panelLayout = canvasLayout(window.get(), ui);
-            if (ui.viewerPaneVisible) {
-                const float availableHeight = panelLayout.height - panelLayout.top;
-                ImGui::SetNextWindowPos(ImVec2(0.0f, panelLayout.top), ImGuiCond_Always);
-                ImGui::SetNextWindowSize(
-                    ImVec2(panelLayout.leftWidth, availableHeight),
-                    ImGuiCond_Always);
-                ImGui::SetNextWindowSizeConstraints(
-                    ImVec2(std::min(minViewerPaneWidth, panelLayout.leftWidth), availableHeight),
-                    ImVec2(panelLayout.maxLeftWidth, availableHeight));
-                const bool showViewerContent = ImGui::Begin(
-                    "##ViewerPane",
-                    nullptr,
-                    ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
-                if (showViewerContent) {
-                    woby::setViewerPaneWidth(
-                        ui,
-                        ImGui::GetWindowSize().x,
-                        minViewerPaneWidth,
-                        maxViewerPaneWidth);
+            if (!headless) {
+                drawNativeDialogFallbacks(modelFileDialogState, sceneFileDialogState, sceneScreenshotDialogState);
+                modalDialogOpen = ImGui::IsPopupOpen("Settings") || ImGui::IsPopupOpen("Updates")
+                    || ImGui::IsPopupOpen("Export PNG")
+                    || modelFileDialogIsOpen(modelFileDialogState)
+                    || sceneFileDialogIsOpen(sceneFileDialogState)
+                    || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+                bool requestSettings = false;
+                bool requestUpdates = false;
+                const auto newScene = [&]() {
+                    try {
+                        resetSceneToUntitled(ui, runtimes, currentScenePath, cleanSceneDocument);
+                        setToastMessage(toast, "Created new scene");
+                    } catch (const std::exception& error) {
+                        setToastMessage(toast, std::string("New scene failed: ") + error.what());
+                    }
+                };
+                if (requestDirtyNewWarning) {
+                    ImGui::OpenPopup("Unsaved scene changes##new");
+                    requestDirtyNewWarning = false;
+                }
+                if (ImGui::BeginPopupModal("Unsaved scene changes##new", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    modalDialogOpen = true;
+                    ImGui::TextUnformatted("The current scene has unsaved changes.");
+                    ImGui::TextUnformatted("Create a new scene and discard them?");
+                    if (ImGui::Button("New scene")) {
+                        newScene();
+                        ImGui::CloseCurrentPopup();
+                    }
+                    setLastItemTooltip("Discard unsaved changes and create an empty scene.");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) { ImGui::CloseCurrentPopup(); }
+                    setLastItemTooltip("Keep the current scene and return to it (Esc).");
+                    ImGui::EndPopup();
+                }
+                if (requestDirtyOpenWarning) {
+                    ImGui::OpenPopup("Unsaved scene changes");
+                    requestDirtyOpenWarning = false;
+                }
+                if (ImGui::BeginPopupModal(
+                        "Unsaved scene changes",
+                        nullptr,
+                        ImGuiWindowFlags_AlwaysAutoResize)) {
+                    modalDialogOpen = true;
+                    ImGui::TextUnformatted("The current scene has unsaved changes.");
+                    if (pendingDirtyOpenScenePath.has_value()) {
+                        ImGui::Text(
+                            "Open %s and discard them?",
+                            fileDisplayName(pendingDirtyOpenScenePath.value()).c_str());
+                    }
+                    if (ImGui::Button("Open")) {
+                        if (pendingDirtyOpenScenePath.has_value()) {
+                            const auto scenePath = pendingDirtyOpenScenePath.value();
+                            if (!startOpenSceneBackgroundLoad(backgroundLoad, scenePath)) {
+                                setSceneFileDialogStatus(
+                                    sceneFileDialogState,
+                                    "Open scene failed: already processing files");
+                            } else {
+                                setToastMessage(toast, "Opening scene " + fileDisplayName(scenePath));
+                            }
+                        }
+                        pendingDirtyOpenScenePath.reset();
+                        ImGui::CloseCurrentPopup();
+                    }
+                    setLastItemTooltip("Discard unsaved changes and open the selected scene.");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+                        pendingDirtyOpenScenePath.reset();
+                        ImGui::CloseCurrentPopup();
+                    }
+                    setLastItemTooltip("Keep the current scene and cancel opening another scene (Esc).");
+                    ImGui::EndPopup();
+                }
+                if (requestDirtyQuitWarning) {
+                    ImGui::OpenPopup("Unsaved scene changes##quit");
+                    requestDirtyQuitWarning = false;
+                }
+                if (ImGui::BeginPopupModal(
+                        "Unsaved scene changes##quit",
+                        nullptr,
+                        ImGuiWindowFlags_AlwaysAutoResize)) {
+                    modalDialogOpen = true;
+                    ImGui::TextUnformatted("The current scene has unsaved changes.");
+                    ImGui::TextUnformatted("Exit and discard them?");
+                    if (ImGui::Button("Exit")) {
+                        woby::requestQuit(ui);
+                        ImGui::CloseCurrentPopup();
+                    }
+                    setLastItemTooltip("Discard unsaved changes and exit Woby.");
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+                        ImGui::CloseCurrentPopup();
+                    }
+                    setLastItemTooltip("Keep Woby open with the current scene (Esc).");
+                    ImGui::EndPopup();
+                }
+                if (drawProcessingDialog(backgroundLoad, gpuFinalize)) {
+                    modalDialogOpen = true;
+                }
+                const auto menu = woby::drawMainMenu(ui, annotationInteraction,
+                    {fileActionsDisabled(), sceneScreenshot.captureRequested || sceneScreenshot.readbackPending,
+                        woby::canUndoScene(sceneHistory), woby::canRedoScene(sceneHistory), woby::updateBusy(updateRuntime.state)});
+                switch (menu.command) {
+                case woby::MainMenuCommand::newScene:
+                    woby::updateSceneDirty(ui, cleanSceneDocument);
+                    if (ui.isDirty) { requestDirtyNewWarning = true; modalDialogOpen = true; }
+                    else { newScene(); }
+                    break;
+                case woby::MainMenuCommand::openScene: documentCommand(woby::SceneAction::open); break;
+                case woby::MainMenuCommand::saveScene: documentCommand(woby::SceneAction::save); break;
+                case woby::MainMenuCommand::saveSceneAs: documentCommand(woby::SceneAction::saveAs); break;
+                case woby::MainMenuCommand::addModels: showModelFileDialog(window.get(), modelFileDialogState); break;
+                case woby::MainMenuCommand::addModelFolder: showModelFolderTreeDialog(window.get(), modelFileDialogState); break;
+                case woby::MainMenuCommand::exportPng:
+                    ImGui::OpenPopup("Export PNG");
+                    ImGui::SetNextWindowPos(menu.popupPosition, ImGuiCond_Appearing);
+                    break;
+                case woby::MainMenuCommand::exit:
+                    woby::updateSceneDirty(ui, cleanSceneDocument);
+                    if (ui.isDirty) { requestDirtyQuitWarning = true; modalDialogOpen = true; }
+                    else { woby::requestQuit(ui); }
+                    break;
+                case woby::MainMenuCommand::undo: historyCommand = woby::SceneHistoryCommand::undo; break;
+                case woby::MainMenuCommand::redo: historyCommand = woby::SceneHistoryCommand::redo; break;
+                case woby::MainMenuCommand::settings: requestSettings = true; break;
+                case woby::MainMenuCommand::checkUpdates:
+                    requestUpdates = true;
+                    woby::startUiUpdate(updateRuntime, woby::UpdateCommand::check, ui.isDirty, deploymentGuard);
+                    break;
+                case woby::MainMenuCommand::none: break;
+                }
+                if (woby::drawSceneScreenshotOptions(ui)) {
+                    showSaveSceneScreenshotDialog(window.get(), sceneScreenshotDialogState);
+                }
+                modalDialogOpen = modalDialogOpen || ImGui::IsPopupOpen("Export PNG");
+                const auto panelLayout = canvasLayout(window.get(), ui);
+                if (ui.viewerPaneVisible) {
+                    const float availableHeight = panelLayout.height - panelLayout.top;
+                    ImGui::SetNextWindowPos(ImVec2(0.0f, panelLayout.top), ImGuiCond_Always);
+                    ImGui::SetNextWindowSize(
+                        ImVec2(panelLayout.leftWidth, availableHeight),
+                        ImGuiCond_Always);
+                    ImGui::SetNextWindowSizeConstraints(
+                        ImVec2(std::min(minViewerPaneWidth, panelLayout.leftWidth), availableHeight),
+                        ImVec2(panelLayout.maxLeftWidth, availableHeight));
+                    const bool showViewerContent = ImGui::Begin(
+                        "##ViewerPane",
+                        nullptr,
+                        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+                    if (showViewerContent) {
+                        woby::setViewerPaneWidth(
+                            ui,
+                            ImGui::GetWindowSize().x,
+                            minViewerPaneWidth,
+                            maxViewerPaneWidth);
 
-                    drawViewerPaneToggleButton(ui);
-                    ImGui::SameLine();
-                    ImGui::TextUnformatted("Scene controls");
-                    ImGui::SameLine();
-                    ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x
-                        - 2.0f * renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x);
-                    const auto toolbarHistoryCommand = woby::drawSceneHistoryToolbar(
-                        woby::canUndoScene(sceneHistory), woby::canRedoScene(sceneHistory),
-                        fileActionsDisabled() || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
-                    if (toolbarHistoryCommand != woby::SceneHistoryCommand::none) { historyCommand = toolbarHistoryCommand; }
+                        drawViewerPaneToggleButton(ui);
+                        ImGui::SameLine();
+                        ImGui::TextUnformatted("Scene controls");
+                        ImGui::SameLine();
+                        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - ImGui::GetStyle().WindowPadding.x
+                            - 2.0f * renderModeButtonSize() - ImGui::GetStyle().ItemSpacing.x);
+                        const auto toolbarHistoryCommand = woby::drawSceneHistoryToolbar(
+                            woby::canUndoScene(sceneHistory), woby::canRedoScene(sceneHistory),
+                            fileActionsDisabled() || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
+                        if (toolbarHistoryCommand != woby::SceneHistoryCommand::none) { historyCommand = toolbarHistoryCommand; }
+                        ImGui::Separator();
+                        const float statusHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f
+                            + ImGui::GetStyle().ItemSpacing.y + 1.0f;
+                        const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
+                            "Inspection presets apply to all current parts and hide grid and origin. "
+                            "Visibility and transforms stay as set.\n\nVertex size sets the base vertex point size for all groups.");
+                    if (scenePaneOpen) {
+                        ImGui::SetNextItemWidth(-1.0f);
+                        if (ImGui::BeginCombo("##inspection_preset", "Inspection presets")) {
+                            if (ImGui::Selectable("Solid")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::solid); }
+                            if (ImGui::Selectable("Solid + edges")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::edges); }
+                            if (ImGui::Selectable("Solid + edges + vertices")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::vertices); }
+                            ImGui::EndCombo();
+                        }
+                        const float sceneContentHeight = renderModeButtonSize() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+                        if (ImGui::BeginChild(
+                                "SceneContent",
+                                ImVec2(0.0f, sceneContentHeight),
+                                ImGuiChildFlags_None)) {
+                            drawCameraToolbar(ui);
+                            if (drawRenderModeIconButton(
+                                    "origin",
+                                    originIcon,
+                                    ui.showOrigin ? "Hide origin axes" : "Show origin axes",
+                                    ui.showOrigin ? RenderModeState::on : RenderModeState::off,
+                                    false)) {
+                                woby::toggleShowOrigin(ui);
+                            }
+                            ImGui::SameLine();
+                            if (drawRenderModeIconButton(
+                                    "grid",
+                                    gridIcon,
+                                    ui.showGrid ? "Hide ground grid" : "Show ground grid",
+                                    ui.showGrid ? RenderModeState::on : RenderModeState::off,
+                                    false)) {
+                                woby::toggleShowGrid(ui);
+                            }
+                            const size_t groupCount = woby::totalGroupCount(ui);
+                            const size_t visibleCount = woby::countVisibleSceneGroups(ui);
+                            if (drawTriStateVisibilityButton(
+                                    "visible",
+                                    "Scene",
+                                    visibleCount,
+                                    groupCount)) {
+                                woby::setAllSceneVisible(ui, visibleCount != groupCount);
+                            }
+                            ImGui::SameLine();
+                            const size_t solidMeshCount = woby::countEnabledSceneRenderMode(
+                                ui,
+                                woby::UiRenderMode::solidMesh);
+                            if (drawTriStateMasterIconButton(
+                                    "solid_mesh",
+                                    solidMeshIcon,
+                                    "Solid mesh",
+                                    solidMeshCount,
+                                    groupCount)) {
+                                woby::setAllSceneRenderModes(
+                                    ui,
+                                    woby::UiRenderMode::solidMesh,
+                                    solidMeshCount != groupCount);
+                            }
+                            ImGui::SameLine();
+                            const size_t triangleCount = woby::countEnabledSceneRenderMode(
+                                ui,
+                                woby::UiRenderMode::triangles);
+                            if (drawTriStateMasterIconButton(
+                                    "triangles",
+                                    trianglesIcon,
+                                    "Triangle edges",
+                                    triangleCount,
+                                    groupCount)) {
+                                woby::setAllSceneRenderModes(
+                                    ui,
+                                    woby::UiRenderMode::triangles,
+                                    triangleCount != groupCount);
+                            }
+                            ImGui::SameLine();
+                            const size_t vertexCount = woby::countEnabledSceneRenderMode(
+                                ui,
+                                woby::UiRenderMode::vertices);
+                            if (drawTriStateMasterIconButton(
+                                    "vertices",
+                                    verticesIcon,
+                                    "Vertices",
+                                    vertexCount,
+                                    groupCount)) {
+                                woby::setAllSceneRenderModes(
+                                    ui,
+                                    woby::UiRenderMode::vertices,
+                                    vertexCount != groupCount);
+                            }
+                            ImGui::SameLine(0.0f, 0.0f);
+                            float editedMasterVertexPointSize = masterVertexPointSize;
+                            ImGui::SetNextItemWidth(renderModeButtonRowWidth());
+                            pushRenderModeControlHeight();
+                            if (ImGui::DragFloat(
+                                "##vertex_size",
+                                &editedMasterVertexPointSize,
+                                0.2f,
+                                woby::minVertexPointSize,
+                                woby::maxVertexPointSize,
+                                "%.0f px")) {
+                                woby::setMasterVertexPointSize(ui, editedMasterVertexPointSize);
+                            }
+                            ImGui::PopStyleVar();
+                        }
+                        ImGui::EndChild();
+                    }
+
+                    if (scenePaneOpen) {
+                        woby::drawAnnotationTools(ui, annotationInteraction, fileActionsDisabled());
+                        ImGui::SameLine();
+                        bool showDimensions = ui.showDimensions;
+                        if (ImGui::Checkbox("Show dimensions", &showDimensions)) {
+                            woby::setShowDimensions(ui, showDimensions);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Size of visible selected geometry, including parent transforms.");
+                        }
+                        if (showDimensions && ui.selectedSceneObjects.empty()) {
+                            ImGui::TextDisabled("Select a mesh to see its dimensions.");
+                        }
+                    }
+
+                    ImGui::BeginDisabled(fileActionsDisabled()
+                        || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
+                    woby::drawViews(ui, viewNameEdit);
+                    ImGui::EndDisabled();
+
+                    const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
+                    if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
+                    if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
+                    const bool filesPaneOpen = ImGui::CollapsingHeader(
+                        filesPaneTitle.c_str(),
+                        ImGuiTreeNodeFlags_DefaultOpen);
+                    if (filesPaneOpen) {
+                        const float filesContentHeight = std::max(
+                            ImGui::GetContentRegionAvail().y - statusHeight - ImGui::GetStyle().ItemSpacing.y,
+                            ImGui::GetFrameHeight());
+                        if (ImGui::BeginChild(
+                                "FilesContent",
+                                ImVec2(0.0f, filesContentHeight),
+                                ImGuiChildFlags_None)) {
+                            if (files.empty() && ui.comparisons.empty()) {
+                                ImGui::TextDisabled("No objects yet.");
+                            }
+                            std::optional<size_t> removeFileIndex;
+                            for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
+                                ImGui::PushID(static_cast<int>(nodeIndex));
+                                drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath);
+                                ImGui::PopID();
+                            }
+                            woby::drawComparisonObjects(ui, comparisonNameEdit);
+                            woby::drawAnnotationObjects(ui);
+                            canvasSelectionPath.clear();
+                            if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
+                                const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
+                                removeModelFile(ui, runtimes, removeFileIndex.value());
+                                setToastMessage(toast, "Removed " + removedName);
+                            }
+                        }
+                        ImGui::EndChild();
+                    }
+                    ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(),
+                        ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y
+                            - statusHeight));
                     ImGui::Separator();
-                    const float statusHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f
-                        + ImGui::GetStyle().ItemSpacing.y + 1.0f;
-                    const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
-                        "Inspection presets apply to all current parts and hide grid and origin. "
-                        "Visibility and transforms stay as set.\n\nVertex size sets the base vertex point size for all groups.");
-                if (scenePaneOpen) {
-                    ImGui::SetNextItemWidth(-1.0f);
-                    if (ImGui::BeginCombo("##inspection_preset", "Inspection presets")) {
-                        if (ImGui::Selectable("Solid")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::solid); }
-                        if (ImGui::Selectable("Solid + edges")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::edges); }
-                        if (ImGui::Selectable("Solid + edges + vertices")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::vertices); }
-                        ImGui::EndCombo();
+                    size_t vertexCountTotal = 0;
+                    size_t triangleCountTotal = 0;
+                    for (const auto& file : files) {
+                        vertexCountTotal += file.mesh.vertices.size();
+                        triangleCountTotal += file.mesh.indices.size() / 3u;
                     }
-                    const float sceneContentHeight = renderModeButtonSize() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
-                    if (ImGui::BeginChild(
-                            "SceneContent",
-                            ImVec2(0.0f, sceneContentHeight),
-                            ImGuiChildFlags_None)) {
-                        drawCameraToolbar(ui);
-                        if (drawRenderModeIconButton(
-                                "origin",
-                                originIcon,
-                                ui.showOrigin ? "Hide origin axes" : "Show origin axes",
-                                ui.showOrigin ? RenderModeState::on : RenderModeState::off,
-                                false)) {
-                            woby::toggleShowOrigin(ui);
-                        }
-                        ImGui::SameLine();
-                        if (drawRenderModeIconButton(
-                                "grid",
-                                gridIcon,
-                                ui.showGrid ? "Hide ground grid" : "Show ground grid",
-                                ui.showGrid ? RenderModeState::on : RenderModeState::off,
-                                false)) {
-                            woby::toggleShowGrid(ui);
-                        }
-                        const size_t groupCount = woby::totalGroupCount(ui);
-                        const size_t visibleCount = woby::countVisibleSceneGroups(ui);
-                        if (drawTriStateVisibilityButton(
-                                "visible",
-                                "Scene",
-                                visibleCount,
-                                groupCount)) {
-                            woby::setAllSceneVisible(ui, visibleCount != groupCount);
-                        }
-                        ImGui::SameLine();
-                        const size_t solidMeshCount = woby::countEnabledSceneRenderMode(
-                            ui,
-                            woby::UiRenderMode::solidMesh);
-                        if (drawTriStateMasterIconButton(
-                                "solid_mesh",
-                                solidMeshIcon,
-                                "Solid mesh",
-                                solidMeshCount,
-                                groupCount)) {
-                            woby::setAllSceneRenderModes(
-                                ui,
-                                woby::UiRenderMode::solidMesh,
-                                solidMeshCount != groupCount);
-                        }
-                        ImGui::SameLine();
-                        const size_t triangleCount = woby::countEnabledSceneRenderMode(
-                            ui,
-                            woby::UiRenderMode::triangles);
-                        if (drawTriStateMasterIconButton(
-                                "triangles",
-                                trianglesIcon,
-                                "Triangle edges",
-                                triangleCount,
-                                groupCount)) {
-                            woby::setAllSceneRenderModes(
-                                ui,
-                                woby::UiRenderMode::triangles,
-                                triangleCount != groupCount);
-                        }
-                        ImGui::SameLine();
-                        const size_t vertexCount = woby::countEnabledSceneRenderMode(
-                            ui,
-                            woby::UiRenderMode::vertices);
-                        if (drawTriStateMasterIconButton(
-                                "vertices",
-                                verticesIcon,
-                                "Vertices",
-                                vertexCount,
-                                groupCount)) {
-                            woby::setAllSceneRenderModes(
-                                ui,
-                                woby::UiRenderMode::vertices,
-                                vertexCount != groupCount);
-                        }
-                        ImGui::SameLine(0.0f, 0.0f);
-                        float editedMasterVertexPointSize = masterVertexPointSize;
-                        ImGui::SetNextItemWidth(renderModeButtonRowWidth());
-                        pushRenderModeControlHeight();
-                        if (ImGui::DragFloat(
-                            "##vertex_size",
-                            &editedMasterVertexPointSize,
-                            0.2f,
-                            woby::minVertexPointSize,
-                            woby::maxVertexPointSize,
-                            "%.0f px")) {
-                            woby::setMasterVertexPointSize(ui, editedMasterVertexPointSize);
-                        }
-                        ImGui::PopStyleVar();
-                    }
-                    ImGui::EndChild();
+                    ImGui::TextDisabled("%zu vertices | %zu triangles", vertexCountTotal, triangleCountTotal);
+                    ImGui::TextDisabled("%s | %.1f FPS", bgfx::getRendererName(bgfx::getRendererType()), fps);
                 }
+                    ImGui::End();
+                }
+                drawPaneToggles(ui, panelLayout.width, panelLayout.top);
+                if (files.empty() && ui.comparisons.empty() && !backgroundLoad.active && !gpuFinalize.active) {
+                    const float viewportWidth = panelLayout.width - panelLayout.leftWidth
+                        - (ui.propertiesPaneVisible ? panelLayout.rightWidth : 0.0f);
+                    ImGui::SetNextWindowPos(
+                        ImVec2(panelLayout.leftWidth + viewportWidth * 0.5f, (panelLayout.top + panelLayout.height) * 0.5f),
+                        ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                    ImGui::SetNextWindowSize(ImVec2(std::max(120.0f, std::min(420.0f, viewportWidth - 24.0f)), 0.0f));
+                    if (ImGui::Begin("##EmptyScene", nullptr, ImGuiWindowFlags_NoDecoration
+                        | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove
+                        | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing)) {
+                        ImGui::TextWrapped("Start a scene");
+                        ImGui::TextWrapped("Add models to inspect, or open a saved scene.");
+                        ImGui::Spacing();
+                        ImGui::BeginDisabled(fileActionsDisabled());
+                        if (ImGui::Button("Add models", ImVec2(-1.0f, 0.0f))) {
+                            showModelFileDialog(window.get(), modelFileDialogState);
+                        }
+                        setLastItemTooltip("Choose model files to add to the current scene.");
+                        ImGui::EndDisabled();
+                        ImGui::BeginDisabled(fileActionsDisabled());
+                        if (ImGui::Button("Open scene", ImVec2(-1.0f, 0.0f))) {
+                            documentCommand(woby::SceneAction::open);
+                        }
+                        setLastItemTooltip("Open scene (Ctrl+O)");
+                        ImGui::EndDisabled();
+                        ImGui::Spacing();
+                        ImGui::TextWrapped("Models: OBJ, STL and installed importer formats. Scenes: .woby.");
+                        ImGui::TextWrapped("Tip: drop model files, folders or a .woby scene into this window.");
+                    }
+                    ImGui::End();
+                }
+                drawPropertiesPane(ui, comparison, panelLayout, dimensionsCache);
+                const auto settings = woby::drawSettingsDialog(ui, requestSettings, menu.popupPosition);
+                const auto updates = woby::drawUpdatesDialog(ui, requestUpdates, updateRuntime.state, menu.popupPosition);
+                modalDialogOpen = modalDialogOpen || settings.open || updates.open;
+                if (updates.updateCommand != woby::UpdateCommand::none) {
+                    woby::startUiUpdate(updateRuntime, updates.updateCommand, ui.isDirty, deploymentGuard);
+                }
+                if (settings.scaleChanged && !preferencePath.empty()) {
+                    std::ofstream preference(preferencePath);
+                    if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
+                }
+            }
 
-                if (scenePaneOpen) {
-                    woby::drawAnnotationTools(ui, annotationInteraction, fileActionsDisabled());
-                    ImGui::SameLine();
-                    bool showDimensions = ui.showDimensions;
-                    if (ImGui::Checkbox("Show dimensions", &showDimensions)) {
-                        woby::setShowDimensions(ui, showDimensions);
-                    }
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("Size of visible selected geometry, including parent transforms.");
-                    }
-                    if (showDimensions && ui.selectedSceneObjects.empty()) {
-                        ImGui::TextDisabled("Select a mesh to see its dimensions.");
-                    }
-                }
-
-                ImGui::BeginDisabled(fileActionsDisabled()
-                    || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
-                woby::drawViews(ui, viewNameEdit);
-                ImGui::EndDisabled();
-
-                const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
-                if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
-                if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
-                const bool filesPaneOpen = ImGui::CollapsingHeader(
-                    filesPaneTitle.c_str(),
-                    ImGuiTreeNodeFlags_DefaultOpen);
-                if (filesPaneOpen) {
-                    const float filesContentHeight = std::max(
-                        ImGui::GetContentRegionAvail().y - statusHeight - ImGui::GetStyle().ItemSpacing.y,
-                        ImGui::GetFrameHeight());
-                    if (ImGui::BeginChild(
-                            "FilesContent",
-                            ImVec2(0.0f, filesContentHeight),
-                            ImGuiChildFlags_None)) {
-                        if (files.empty() && ui.comparisons.empty()) {
-                            ImGui::TextDisabled("No objects yet.");
-                        }
-                        std::optional<size_t> removeFileIndex;
-                        for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
-                            ImGui::PushID(static_cast<int>(nodeIndex));
-                            drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath);
-                            ImGui::PopID();
-                        }
-                        woby::drawComparisonObjects(ui, comparisonNameEdit);
-                        woby::drawAnnotationObjects(ui);
-                        canvasSelectionPath.clear();
-                        if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
-                            const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
-                            removeModelFile(ui, runtimes, removeFileIndex.value());
-                            setToastMessage(toast, "Removed " + removedName);
-                        }
-                    }
-                    ImGui::EndChild();
-                }
-                ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(),
-                    ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y
-                        - statusHeight));
-                ImGui::Separator();
-                size_t vertexCountTotal = 0;
-                size_t triangleCountTotal = 0;
-                for (const auto& file : files) {
-                    vertexCountTotal += file.mesh.vertices.size();
-                    triangleCountTotal += file.mesh.indices.size() / 3u;
-                }
-                ImGui::TextDisabled("%zu vertices | %zu triangles", vertexCountTotal, triangleCountTotal);
-                ImGui::TextDisabled("%s | %.1f FPS", bgfx::getRendererName(bgfx::getRendererType()), fps);
-            }
-                ImGui::End();
-            }
-            drawPaneToggles(ui, panelLayout.width, panelLayout.top);
-            if (files.empty() && ui.comparisons.empty() && !backgroundLoad.active && !gpuFinalize.active) {
-                const float viewportWidth = panelLayout.width - panelLayout.leftWidth
-                    - (ui.propertiesPaneVisible ? panelLayout.rightWidth : 0.0f);
-                ImGui::SetNextWindowPos(
-                    ImVec2(panelLayout.leftWidth + viewportWidth * 0.5f, (panelLayout.top + panelLayout.height) * 0.5f),
-                    ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                ImGui::SetNextWindowSize(ImVec2(std::max(120.0f, std::min(420.0f, viewportWidth - 24.0f)), 0.0f));
-                if (ImGui::Begin("##EmptyScene", nullptr, ImGuiWindowFlags_NoDecoration
-                    | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove
-                    | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing)) {
-                    ImGui::TextWrapped("Start a scene");
-                    ImGui::TextWrapped("Add models to inspect, or open a saved scene.");
-                    ImGui::Spacing();
-                    ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Add models", ImVec2(-1.0f, 0.0f))) {
-                        showModelFileDialog(window.get(), modelFileDialogState);
-                    }
-                    setLastItemTooltip("Choose model files to add to the current scene.");
-                    ImGui::EndDisabled();
-                    ImGui::BeginDisabled(fileActionsDisabled());
-                    if (ImGui::Button("Open scene", ImVec2(-1.0f, 0.0f))) {
-                        documentCommand(woby::SceneAction::open);
-                    }
-                    setLastItemTooltip("Open scene (Ctrl+O)");
-                    ImGui::EndDisabled();
-                    ImGui::Spacing();
-                    ImGui::TextWrapped("Models: OBJ, STL and installed importer formats. Scenes: .woby.");
-                    ImGui::TextWrapped("Tip: drop model files, folders or a .woby scene into this window.");
-                }
-                ImGui::End();
-            }
-            drawPropertiesPane(ui, comparison, panelLayout, dimensionsCache);
-            const auto settings = woby::drawSettingsDialog(ui, requestSettings, menu.popupPosition);
-            const auto updates = woby::drawUpdatesDialog(ui, requestUpdates, updateRuntime.state, menu.popupPosition);
-            modalDialogOpen = modalDialogOpen || settings.open || updates.open;
-            if (updates.updateCommand != woby::UpdateCommand::none) {
-                woby::startUiUpdate(updateRuntime, updates.updateCommand, ui.isDirty, deploymentGuard);
-            }
-            if (settings.scaleChanged && !preferencePath.empty()) {
-                std::ofstream preference(preferencePath);
-                if (!(preference << ui.uiScale)) { setToastMessage(toast, "Could not save UI scale preference"); }
-            }
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
-            if (woby::recordSceneHistory(sceneHistory, ui, woby::sceneHistoryInteraction())) {
+            if (!headless && woby::recordSceneHistory(sceneHistory, ui, woby::sceneHistoryInteraction())) {
                 woby::updateSceneDirty(ui, cleanSceneDocument);
             }
 
@@ -3200,6 +3244,9 @@ int main(int argc, char** argv)
                         } else if constexpr (std::is_same_v<Command, woby::ControlOperation>) {
                             using A = woby::ControlAction;
                             using Json = nlohmann::json;
+                            if (headless && payload.action == A::pane) {
+                                throw std::invalid_argument("pane.set is unavailable in headless mode; camera and screenshot commands remain available.");
+                            }
                             const bool historyOperation = payload.action == A::sceneUndo || payload.action == A::sceneRedo;
                             const bool busy = backgroundLoad.active || gpuFinalize.active
                                 || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
@@ -3253,9 +3300,16 @@ int main(int argc, char** argv)
                                     {"dirty", ui.isDirty}, {"loading", backgroundLoad.active}, {"gpuFinalizing", gpuFinalize.active},
                                     {"capturing", sceneScreenshot.captureRequested || sceneScreenshot.readbackPending},
                                     {"busy", busy}, {"version", WOBY_VERSION},
-                                    {"pane", {{"visible", ui.viewerPaneVisible}, {"width", ui.viewerPaneWidth}}}});
+                                    {"renderer", bgfx::getRendererName(bgfx::getRendererType())},
+                                    {"screenshot", {{"width", ui.screenshotSettings.width}, {"height", ui.screenshotSettings.height}, {"format", "png"}}},
+                                    {"pane", headless ? Json(nullptr) : Json{{"visible", ui.viewerPaneVisible}, {"width", ui.viewerPaneWidth}}}});
                             } else if (payload.action == A::capabilities) {
                                 result = woby::controlCapabilities();
+                                result["headless"] = headless;
+                                result["renderer"] = bgfx::getRendererName(bgfx::getRendererType());
+                                for (auto& method : result["methods"]) {
+                                    method["available"] = !headless || method["method"] != "pane.set";
+                                }
                                 result["limits"] = {{"admittedCommands", woby::maxAutomationCommands},
                                     {"retainedResults", woby::maxAutomationHistory}, {"requestKeys", woby::maxAutomationRequestKeys},
                                     {"timeoutSeconds", {1, 3600}}, {"vertexPixels", {woby::minVertexPointSize, woby::maxVertexPointSize}},
@@ -3356,56 +3410,59 @@ int main(int argc, char** argv)
             }
             recordFrameStage(frameTimings, woby::FrameStage::sceneState, stageStart);
 
-            // Global document commands still work when the scene controls are hidden.
-            // Run after widgets have applied edits so Save includes this frame's changes.
-            const auto historyShortcut = woby::sceneHistoryShortcut(fileActionsDisabled()
-                || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
-                || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) == 0u);
-            if (historyShortcut != woby::SceneHistoryCommand::none) { historyCommand = historyShortcut; }
-            if (historyCommand != woby::SceneHistoryCommand::none && !fileActionsDisabled()
-                && !sceneScreenshot.captureRequested && !sceneScreenshot.readbackPending) {
-                try {
-                    (void)runSceneHistory(historyCommand == woby::SceneHistoryCommand::redo);
-                } catch (const std::exception&) {
-                    // The shared adapter already consumed the action and displayed the error.
-                }
-            }
-            if (!fileActionsDisabled() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
-                if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) {
-                    documentCommand(woby::SceneAction::open);
-                    documentShortcutHeld = true;
-                } else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
-                    documentCommand(woby::SceneAction::saveAs);
-                    documentShortcutHeld = true;
-                } else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
-                    documentCommand(woby::SceneAction::save);
-                    documentShortcutHeld = true;
-                }
-            }
-            if (!ImGui::IsKeyDown(ImGuiKey_S) && !ImGui::IsKeyDown(ImGuiKey_O)) {
-                documentShortcutHeld = false;
-            }
-            // Read keyboard input after widgets have claimed it, before drawing the scene.
-            woby::dismissPopupOnEscape();
-            const auto& keyboardIo = ImGui::GetIO();
-            const bool sceneKeyboardAvailable = !fileActionsDisabled() && !documentShortcutHeld
-                && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0u
-                && !keyboardIo.WantCaptureKeyboard && !keyboardIo.WantTextInput
-                && !ImGui::IsAnyItemActive()
-                && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
-            if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool) {
-                if (!keyboardIo.KeyCtrl && !keyboardIo.KeyAlt && !keyboardIo.KeySuper) {
-                    if (!popupWasOpen && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
-                        woby::clearSceneSelection(ui);
-                    }
-                    if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
-                        woby::fitCameraToScene(ui);
+            if (!headless) {
+                // Global document commands still work when the scene controls are hidden.
+                // Run after widgets have applied edits so Save includes this frame's changes.
+                const auto historyShortcut = woby::sceneHistoryShortcut(fileActionsDisabled()
+                    || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending
+                    || (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) == 0u);
+                if (historyShortcut != woby::SceneHistoryCommand::none) { historyCommand = historyShortcut; }
+                if (historyCommand != woby::SceneHistoryCommand::none && !fileActionsDisabled()
+                    && !sceneScreenshot.captureRequested && !sceneScreenshot.readbackPending) {
+                    try {
+                        (void)runSceneHistory(historyCommand == woby::SceneHistoryCommand::redo);
+                    } catch (const std::exception&) {
+                        // The shared adapter already consumed the action and displayed the error.
                     }
                 }
-                if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_B)) {
-                    woby::toggleViewerPaneVisible(ui);
+                if (!fileActionsDisabled() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)) {
+                    if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) {
+                        documentCommand(woby::SceneAction::open);
+                        documentShortcutHeld = true;
+                    } else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
+                        documentCommand(woby::SceneAction::saveAs);
+                        documentShortcutHeld = true;
+                    } else if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
+                        documentCommand(woby::SceneAction::save);
+                        documentShortcutHeld = true;
+                    }
                 }
-                woby::updateCameraFromKeyboard(ui, deltaSeconds);
+                if (!ImGui::IsKeyDown(ImGuiKey_S) && !ImGui::IsKeyDown(ImGuiKey_O)) {
+                    documentShortcutHeld = false;
+                }
+                // Read keyboard input after widgets have claimed it, before drawing the scene.
+                woby::dismissPopupOnEscape();
+                const auto& keyboardIo = ImGui::GetIO();
+                const bool sceneKeyboardAvailable = !fileActionsDisabled() && !documentShortcutHeld
+                    && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0u
+                    && !keyboardIo.WantCaptureKeyboard && !keyboardIo.WantTextInput
+                    && !ImGui::IsAnyItemActive()
+                    && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
+                if (sceneKeyboardAvailable && !annotationEscapeConsumed && !annotationInteraction.dragging && !annotationInteraction.tool) {
+                    if (!keyboardIo.KeyCtrl && !keyboardIo.KeyAlt && !keyboardIo.KeySuper) {
+                        if (!popupWasOpen && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+                            woby::clearSceneSelection(ui);
+                        }
+                        if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
+                            woby::fitCameraToScene(ui);
+                        }
+                    }
+                    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_B)) {
+                        woby::toggleViewerPaneVisible(ui);
+                    }
+                    woby::updateCameraFromKeyboard(ui, deltaSeconds);
+                }
+
             }
 
             woby::updateComparisonRuntimes(comparison, ui);
@@ -3422,141 +3479,147 @@ int main(int argc, char** argv)
                 }
             }
 
-            const auto viewport = canvasLayout(window.get(), ui).viewport;
-            const uint32_t sceneViewportWidth = viewport.width;
-            const uint32_t sceneViewportHeight = viewport.height;
-            bgfx::setViewRect(clearView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
-            bgfx::touch(clearView);
-            bgfx::setViewRect(
-                sceneView,
-                static_cast<uint16_t>(viewport.x),
-                static_cast<uint16_t>(viewport.y),
-                static_cast<uint16_t>(sceneViewportWidth),
-                static_cast<uint16_t>(sceneViewportHeight));
-            bgfx::setViewRect(
-                helperView,
-                static_cast<uint16_t>(viewport.x),
-                static_cast<uint16_t>(viewport.y),
-                static_cast<uint16_t>(sceneViewportWidth),
-                static_cast<uint16_t>(sceneViewportHeight));
-            bgfx::touch(sceneView);
-            bgfx::touch(helperView);
+            if (!headless) {
+                const auto viewport = canvasLayout(window.get(), ui).viewport;
+                const uint32_t sceneViewportWidth = viewport.width;
+                const uint32_t sceneViewportHeight = viewport.height;
+                bgfx::setViewRect(clearView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
+                bgfx::touch(clearView);
+                bgfx::setViewRect(
+                    sceneView,
+                    static_cast<uint16_t>(viewport.x),
+                    static_cast<uint16_t>(viewport.y),
+                    static_cast<uint16_t>(sceneViewportWidth),
+                    static_cast<uint16_t>(sceneViewportHeight));
+                bgfx::setViewRect(
+                    helperView,
+                    static_cast<uint16_t>(viewport.x),
+                    static_cast<uint16_t>(viewport.y),
+                    static_cast<uint16_t>(sceneViewportWidth),
+                    static_cast<uint16_t>(sceneViewportHeight));
+                bgfx::touch(sceneView);
+                bgfx::touch(helperView);
 
-            const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
-            const auto currentPickView = woby::scenePickView(camera, ui.upAxis, sceneBounds,
-                sceneViewportWidth, sceneViewportHeight, homogeneousDepth,
-                static_cast<float>(width) / canvasLayout(window.get(), ui).width);
-            const auto* view = currentPickView.view.data();
-            const auto* projection = currentPickView.projection.data();
-            presentedPickView = currentPickView;
-            presentedViewport = viewport;
-            bgfx::setViewTransform(sceneView, view, projection);
-            bgfx::setViewTransform(helperView, view, projection);
-            recordFrameStage(frameTimings, woby::FrameStage::viewSetup, stageStart);
+                const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
+                const auto currentPickView = woby::scenePickView(camera, ui.upAxis, sceneBounds,
+                    sceneViewportWidth, sceneViewportHeight, homogeneousDepth,
+                    static_cast<float>(width) / canvasLayout(window.get(), ui).width);
+                const auto* view = currentPickView.view.data();
+                const auto* projection = currentPickView.projection.data();
+                presentedPickView = currentPickView;
+                presentedViewport = viewport;
+                bgfx::setViewTransform(sceneView, view, projection);
+                bgfx::setViewTransform(helperView, view, projection);
+                recordFrameStage(frameTimings, woby::FrameStage::viewSetup, stageStart);
 
-            std::optional<HoveredVertex> hoveredVertex;
-            const MousePosition windowMouse = mousePositionInPixels(window.get());
-            const bool mouseInsideViewport = woby::contains(viewport, windowMouse.x, windowMouse.y);
-            const MousePosition mouse{windowMouse.x - static_cast<float>(viewport.x), windowMouse.y - static_cast<float>(viewport.y)};
-            const bool cameraInteractionActive = cameraInput.orbiting
-                || cameraInput.rolling
-                || cameraInput.panning;
-            const bool nativeFileDialogOpen = modelFileDialogIsOpen(modelFileDialogState)
-                || sceneFileDialogIsOpen(sceneFileDialogState)
-                || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
-            const bool dialogOpen = modalDialogOpen
-                || nativeFileDialogOpen
-                || backgroundLoad.active
-                || gpuFinalize.active;
-            scenePointerAvailable = !dialogOpen && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)
-                && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0u;
-            if (!scenePointerAvailable) {
-                scenePointer = {};
-                woby::setCameraOrbiting(ui, false);
-                woby::setCameraRolling(ui, false);
-                woby::setCameraPanning(ui, false);
-            }
-            const bool hoverPickingEnabled = mouseInsideViewport
-                && !ImGui::GetIO().WantCaptureMouse
-                && !cameraInteractionActive
-                && !dialogOpen;
-            if (!hoverPickingEnabled) {
-                hoverPickCache.hoveredVertex.reset();
-                hoverPickCache.valid = false;
-            } else {
-                const uint64_t hoverSignature = hoverPickSignature(
-                    files,
-                    ui.sceneNodes,
-                    runtimes,
-                    mouse,
-                    mouseInsideViewport,
-                    masterVertexPointSize,
-                    camera,
-                    ui.upAxis,
-                    sceneBounds,
-                    sceneViewportWidth,
-                    sceneViewportHeight,
-                    homogeneousDepth);
-                if (!hoverPickCache.valid || hoverPickCache.signature != hoverSignature) {
+                std::optional<HoveredVertex> hoveredVertex;
+                const MousePosition windowMouse = mousePositionInPixels(window.get());
+                const bool mouseInsideViewport = woby::contains(viewport, windowMouse.x, windowMouse.y);
+                const MousePosition mouse{windowMouse.x - static_cast<float>(viewport.x), windowMouse.y - static_cast<float>(viewport.y)};
+                const bool cameraInteractionActive = cameraInput.orbiting
+                    || cameraInput.rolling
+                    || cameraInput.panning;
+                const bool nativeFileDialogOpen = modelFileDialogIsOpen(modelFileDialogState)
+                    || sceneFileDialogIsOpen(sceneFileDialogState)
+                    || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+                const bool dialogOpen = modalDialogOpen
+                    || nativeFileDialogOpen
+                    || backgroundLoad.active
+                    || gpuFinalize.active;
+                scenePointerAvailable = !dialogOpen && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup)
+                    && (SDL_GetWindowFlags(window.get()) & SDL_WINDOW_INPUT_FOCUS) != 0u;
+                if (!scenePointerAvailable) {
+                    scenePointer = {};
+                    woby::setCameraOrbiting(ui, false);
+                    woby::setCameraRolling(ui, false);
+                    woby::setCameraPanning(ui, false);
+                }
+                const bool hoverPickingEnabled = mouseInsideViewport
+                    && !ImGui::GetIO().WantCaptureMouse
+                    && !cameraInteractionActive
+                    && !dialogOpen;
+                if (!hoverPickingEnabled) {
                     hoverPickCache.hoveredVertex.reset();
-                    hoverPickCache.hoveredVertex = findHoveredVertex(
+                    hoverPickCache.valid = false;
+                } else {
+                    const uint64_t hoverSignature = hoverPickSignature(
                         files,
                         ui.sceneNodes,
                         runtimes,
                         mouse,
+                        mouseInsideViewport,
                         masterVertexPointSize,
-                        view,
-                        projection,
+                        camera,
+                        ui.upAxis,
+                        sceneBounds,
                         sceneViewportWidth,
                         sceneViewportHeight,
                         homogeneousDepth);
-                    hoverPickCache.signature = hoverSignature;
-                    hoverPickCache.valid = true;
+                    if (!hoverPickCache.valid || hoverPickCache.signature != hoverSignature) {
+                        hoverPickCache.hoveredVertex.reset();
+                        hoverPickCache.hoveredVertex = findHoveredVertex(
+                            files,
+                            ui.sceneNodes,
+                            runtimes,
+                            mouse,
+                            masterVertexPointSize,
+                            view,
+                            projection,
+                            sceneViewportWidth,
+                            sceneViewportHeight,
+                            homogeneousDepth);
+                        hoverPickCache.signature = hoverSignature;
+                        hoverPickCache.valid = true;
+                    }
                 }
-            }
-            hoveredVertex = hoverPickCache.hoveredVertex;
-            recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
+                hoveredVertex = hoverPickCache.hoveredVertex;
+                recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
-            bgfx::setViewMode(sceneView, bgfx::ViewMode::Sequential);
-            {
-                submitSceneFiles(
-                    sceneView,
-                    files,
-                    ui.sceneNodes,
-                    runtimes,
-                    masterVertexPointSize,
-                    meshProgram,
-                    colorProgram,
-                    pointSpriteProgram,
-                    colorUniform,
-                    pointParamsUniform,
-                    sceneViewportWidth,
-                    sceneViewportHeight);
-            }
-            woby::submitComparisonScenes(sceneView, ui, comparison, colorProgram, colorUniform);
-            recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
-
-            submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
-            woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, annotationProgram, colorUniform, &annotationInteraction);
-            const float annotationMessageBottom = woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
-                static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
-                scenePointerAvailable && !cameraInteractionActive, static_cast<float>(viewport.y) / currentPickView.pixelScale);
-            if (!ui.selectedSceneObjects.empty()) {
-                auto selectedParts = woby::scenePickParts(ui);
-                woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
-                woby::submitSceneSelection(helperView, selectedParts, helperLayout, colorProgram, colorUniform);
-                if (ui.showDimensions) {
-                    woby::updateSceneDimensions(dimensionsCache, selectedParts, ui.sceneGeneration, ui.sceneEditRevision);
+                bgfx::setViewMode(sceneView, bgfx::ViewMode::Sequential);
+                {
+                    submitSceneFiles(
+                        sceneView,
+                        files,
+                        ui.sceneNodes,
+                        runtimes,
+                        masterVertexPointSize,
+                        meshProgram,
+                        colorProgram,
+                        pointSpriteProgram,
+                        colorUniform,
+                        pointParamsUniform,
+                        sceneViewportWidth,
+                        sceneViewportHeight);
                 }
-            }
-            if (ui.showGrid || ui.showDimensions) {
-                const float pixelScale = 1.0f / currentPickView.pixelScale;
-                woby::drawSceneScaleOverlay(*ImGui::GetBackgroundDrawList(), ui,
-                    ui.selectedSceneObjects.empty() ? std::nullopt : dimensionsCache.dimensions,
-                    currentPickView, {static_cast<float>(viewport.x) * pixelScale, static_cast<float>(viewport.y) * pixelScale}, pixelScale, ImGui::GetFontSize());
-            }
-            recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
+                woby::submitComparisonScenes(sceneView, ui, comparison, colorProgram, colorUniform);
+                recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
+                submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
+                woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, annotationProgram, colorUniform, &annotationInteraction);
+                const float annotationMessageBottom = woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
+                    static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
+                    scenePointerAvailable && !cameraInteractionActive, static_cast<float>(viewport.y) / currentPickView.pixelScale);
+                if (!ui.selectedSceneObjects.empty()) {
+                    auto selectedParts = woby::scenePickParts(ui);
+                    woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
+                    woby::submitSceneSelection(helperView, selectedParts, helperLayout, colorProgram, colorUniform);
+                    if (ui.showDimensions) {
+                        woby::updateSceneDimensions(dimensionsCache, selectedParts, ui.sceneGeneration, ui.sceneEditRevision);
+                    }
+                }
+                if (ui.showGrid || ui.showDimensions) {
+                    const float pixelScale = 1.0f / currentPickView.pixelScale;
+                    woby::drawSceneScaleOverlay(*ImGui::GetBackgroundDrawList(), ui,
+                        ui.selectedSceneObjects.empty() ? std::nullopt : dimensionsCache.dimensions,
+                        currentPickView, {static_cast<float>(viewport.x) * pixelScale, static_cast<float>(viewport.y) * pixelScale}, pixelScale, ImGui::GetFontSize());
+                }
+                drawToastMessage(toast, viewport, width, std::max(annotationMessageBottom, static_cast<float>(viewport.y) / currentPickView.pixelScale));
+                drawHoveredVertexOverlay(hoveredVertex, viewport, width);
+                recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
+
+            }
+
+            const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
             try {
                 submitSceneScreenshotCapture(
                     sceneScreenshot,
@@ -3585,10 +3648,12 @@ int main(int argc, char** argv)
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
             }
 
-            drawToastMessage(toast, viewport, width, std::max(annotationMessageBottom, static_cast<float>(viewport.y) / currentPickView.pixelScale));
-            drawHoveredVertexOverlay(hoveredVertex, viewport, width);
-            ImGui::Render();
-            woby::imgui_bgfx::render(ImGui::GetDrawData());
+            if (headless) {
+                ImGui::EndFrame();
+            } else {
+                ImGui::Render();
+                woby::imgui_bgfx::render(ImGui::GetDrawData());
+            }
             recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);
 
             const uint32_t frameNumber = bgfx::frame();
@@ -3627,6 +3692,12 @@ int main(int argc, char** argv)
                     woby::resetFrameTimingAccumulator(frameTimingAccumulator);
                 }
             }
+            if (headless && running && !gpuFinalize.active && !sceneScreenshot.readbackPending) {
+                // Wake promptly for commands; poll CPU workers without spinning at idle.
+                // GPU readback must keep advancing frames until its completion frame.
+                const bool processing = backgroundLoad.active || automationComparison.has_value() || sceneScreenshot.captureRequested;
+                woby::waitForAutomationWork(*automation, std::chrono::milliseconds(processing ? 10 : 50));
+            }
         }
 
         updateRuntime.worker.request_stop();
@@ -3641,7 +3712,7 @@ int main(int argc, char** argv)
         woby::unloadImporters();
 
         woby::imgui_bgfx::shutdown();
-        ImGui_ImplSDL3_Shutdown();
+        if (!headless) { ImGui_ImplSDL3_Shutdown(); }
         ImGui::DestroyContext();
 
         bgfx::destroy(pointParamsUniform);
@@ -3665,7 +3736,7 @@ int main(int argc, char** argv)
         automation.reset();
         woby::unloadImporters();
         std::fprintf(stderr, "%s\n", exception.what());
-        if (!woby::hasStandardError()) {
+        if (!headlessLaunchRequested && !woby::hasStandardError()) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Woby could not continue", exception.what(), nullptr);
         }
         if (bgfxInitialized) {

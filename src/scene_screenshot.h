@@ -31,6 +31,8 @@ struct SceneScreenshotRuntime {
     bool readbackPending = false;
 };
 
+// Fail before advertising a headless instance as ready when capture is unavailable.
+void validateSceneScreenshotRenderer();
 void destroySceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot);
 void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std::filesystem::path& outputPath,
     ScreenshotSettings options = {});

@@ -434,8 +434,15 @@ Frame performance logging is opt-in. `--log-frame-interval` controls how many fr
 
 ## Control a running instance
 
+For scripting and AI inspection, start `woby --headless --instance review` to render
+without a window. It uses the same camera, scene, analysis, and screenshot commands
+as the desktop viewer. Windows uses Direct3D 11 and Linux uses Vulkan; graphics
+support is still required. See the [headless agent guide](doc/headless.md) for
+launch/readiness handling and the camera-to-PNG inspection loop. `woby --help`
+also includes a complete agent quick start. Without `--headless`, Woby opens its UI.
+
 Every Woby viewer automatically starts a local HTTP API. Its generated instance ID appears
-in the window title, for example `woby [woby-3c981bd42b76e80f] - untitled`.
+in the desktop window title, for example `woby [woby-3c981bd42b76e80f] - untitled`.
 You can choose a custom ID when starting the viewer:
 
 ```powershell

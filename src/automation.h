@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstdint>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -21,10 +22,14 @@ using AutomationOwner = std::unique_ptr<AutomationRuntime, void (*)(AutomationRu
 
 [[nodiscard]] AutomationOwner startAutomation(
     const std::optional<std::string>& instanceId,
-    const std::filesystem::path& registryDirectory = {});
+    const std::filesystem::path& registryDirectory = {},
+    bool headless = false);
 void stopAutomation(AutomationRuntime* runtime);
 [[nodiscard]] const std::string& automationInstanceId(const AutomationRuntime& runtime);
 void setAutomationReady(AutomationRuntime& runtime);
+// Bounded idle wait for the runtime thread. Enqueue/shutdown wakes it immediately;
+// the timeout lets background loads and analysis workers continue to be polled.
+void waitForAutomationWork(AutomationRuntime& runtime, std::chrono::milliseconds timeout);
 [[nodiscard]] std::string automationObjectId(const AutomationRuntime& runtime, SceneObjectId id);
 [[nodiscard]] nlohmann::json automationInstanceInfo(AutomationRuntime& runtime);
 

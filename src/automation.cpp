@@ -40,6 +40,7 @@ struct AutomationRuntime {
     httplib::Server server;
     std::thread listener;
     std::atomic<bool> ready = false;
+    bool headless = false;
     std::mutex mutex;
     std::condition_variable changed;
     bool stopping = false;
@@ -74,7 +75,7 @@ Json instanceInfo(AutomationRuntime& runtime)
     const auto& instance = runtime.registration.instance;
     return {{"id", instance.id}, {"pid", instance.pid}, {"apiVersion", 1},
         {"url", "http://127.0.0.1:" + std::to_string(instance.port) + "/rpc"},
-        {"ready", runtime.ready.load()}, {"queuedCommands", runtime.pending.size()},
+        {"ready", runtime.ready.load()}, {"headless", runtime.headless}, {"queuedCommands", runtime.pending.size()},
         {"activeSequence", runtime.request ? Json(std::to_string(runtime.request->command.id)) : Json(nullptr)}};
 }
 
@@ -443,6 +444,7 @@ Json submitAutomationCommand(
     if (!requestKey.empty()) {
         runtime.requestKeys.emplace(requestKey, AutomationKeyRecord{request->command.id, fingerprint});
     }
+    runtime.changed.notify_all();
     if (!runtime.changed.wait_until(lock, request->deadline, [&] { return request->finished || runtime.stopping; })) {
         // Started work may still finish after the HTTP deadline. Reserve its slot
         // until the main thread completes that command, so results cannot cross requests.
@@ -738,9 +740,11 @@ nlohmann::json automationInstanceInfo(AutomationRuntime& runtime)
     return instanceInfo(runtime);
 }
 
-AutomationOwner startAutomation(const std::optional<std::string>& instanceId, const std::filesystem::path& registryDirectory)
+AutomationOwner startAutomation(const std::optional<std::string>& instanceId, const std::filesystem::path& registryDirectory,
+    bool headless)
 {
     AutomationOwner runtime(new AutomationRuntime, &stopAutomation);
+    runtime->headless = headless;
     runtime->objectIdPrefix = "obj-" + automationRandomHex(16u) + "-";
     runtime->commandIdPrefix = "cmd-" + automationRandomHex(16u) + "-";
     const auto directory = registryDirectory.empty() ? automationRegistryDirectory() : registryDirectory;
@@ -797,6 +801,14 @@ const std::string& automationInstanceId(const AutomationRuntime& runtime)
 void setAutomationReady(AutomationRuntime& runtime)
 {
     runtime.ready.store(true);
+}
+
+void waitForAutomationWork(AutomationRuntime& runtime, std::chrono::milliseconds timeout)
+{
+    std::unique_lock lock(runtime.mutex);
+    runtime.changed.wait_for(lock, timeout, [&] {
+        return runtime.stopping || (!runtime.request && !runtime.pending.empty());
+    });
 }
 
 std::optional<AutomationCommand> takeAutomationCommand(AutomationRuntime& runtime)
@@ -956,13 +968,16 @@ int runAutomationCommand(const ControlArguments& arguments, const std::filesyste
 void printCommandLineHelp()
 {
     std::printf(
-        "Woby - interactive 3D viewer with a command-line control client.\n"
+        "Woby - interactive or headless 3D viewer with a command-line control client.\n"
         "\nStart here:\n"
         "  woby [STARTUP_OPTIONS] starts a GUI viewer and its local API.\n"
+        "  woby --headless [STARTUP_OPTIONS] starts a windowless viewer with the same API.\n"
         "  The viewer stays running until closed; a harness must launch it asynchronously.\n"
         "  woby ctl ... sends a command to an existing viewer, prints a result, and exits.\n"
         "  ctl never starts a viewer. No separate server command or API-enable flag is needed.\n"
-        "  The viewer needs a graphical desktop and graphics support, including for automation.\n"
+        "  Headless mode needs graphics support, but no graphical desktop or SDL video driver.\n"
+        "  Supported headless backends: Windows/Direct3D 11 and Linux/Vulkan. Not yet macOS.\n"
+        "  It renders real images; it is not a GPU-free mode. Initialization errors exit with code 1.\n"
         "  --help and --version print and exit without starting a viewer.\n"
         "\nUsage:\n"
         "  woby [STARTUP_OPTIONS]\n"
@@ -973,10 +988,10 @@ void printCommandLineHelp()
         "    Exit 0: complete/check succeeded; 1: failed; 2: helper still pending.\n"
         "  woby help | --help | -h\n"
         "  woby ctl help | --help | -h\n"
-        "\nWindows PowerShell quick start (run from the folder containing woby.exe):\n"
+        "\nWindows PowerShell agent quick start (run from the folder containing woby.exe):\n"
         "  $exe = (Resolve-Path .\\woby.exe).Path\n"
         "  $id = 'agent-' + [guid]::NewGuid().ToString('N')\n"
-        "  $viewer = Start-Process -FilePath $exe -ArgumentList @('--instance', $id) -PassThru\n"
+        "  $viewer = Start-Process -FilePath $exe -ArgumentList @('--headless', '--instance', $id) -WindowStyle Hidden -PassThru\n"
         "  $deadline = (Get-Date).AddSeconds(60)\n"
         "  do {\n"
         "    if ($viewer.HasExited) { throw 'Viewer exited during startup' }\n"
@@ -988,7 +1003,15 @@ void printCommandLineHelp()
         "    Start-Sleep -Milliseconds 200\n"
         "  } while ($true)\n"
         "  & $exe ctl --instance $id objects --json | Out-String\n"
-        "  & $exe ctl --instance $id quit --json | Out-String\n"
+        "  # Replace this model path; check $LASTEXITCODE after every ctl call.\n"
+        "  & $exe ctl --instance $id model add 'C:\\models\\part.obj' --json | Out-String\n"
+        "  & $exe ctl --instance $id camera view isometric --json | Out-String\n"
+        "  & $exe ctl --instance $id camera frame --json | Out-String\n"
+        "  & $exe ctl --instance $id screenshot 'C:\\output\\overview.png' --json | Out-String\n"
+        "  # Open the returned PNG with your image tool, then adjust the camera and capture again.\n"
+        "  # Save the scene first if needed; this inspection example discards its edits.\n"
+        "  & $exe ctl --instance $id quit --on-dirty discard --json | Out-String\n"
+        "  $viewer.WaitForExit()\n"
         "Replace .\\woby.exe with your executable's path if needed; it need not be on PATH.\n"
         "Start-Process must NOT use -Wait: that waits for the viewer to close.\n"
         "Windows woby.exe is a GUI executable. In PowerShell, pipe ctl output to\n"
@@ -1001,7 +1024,22 @@ void printCommandLineHelp()
         "Use a unique instance ID per launch; reuse it on every ctl command.\n"
         "Check each ctl exit code. quit defaults to refusing unsaved changes; save first,\n"
         "or explicitly use --on-dirty discard only for changes you intend to lose.\n"
+        "\nHeadless inspection contract:\n"
+        "--headless is a startup flag, not a ctl option; the process persists between captures.\n"
+        "instances and status report headless=true. status includes renderer and screenshot size.\n"
+        "Camera, models, analyses, annotations, saved views, and scene save/load use the same\n"
+        "commands as the GUI. pane set is unavailable; capabilities marks its available=false.\n"
+        "Wait for each command's response before sending the next dependent command. ready=true\n"
+        "means startup completed; screenshot waits for visible analyses, GPU readback, and PNG writing.\n"
+        "Inspect the returned path with your image tool; camera commands alone return numbers, not images.\n"
+        "Use camera view/frame for an overview, camera frame --object OBJECT_ID for a part,\n"
+        "then camera set/look-at/orbit/pan/dolly to inspect details. Capture preserves the camera.\n"
+        "Use --request-key for relative camera moves so retries do not apply the move twice.\n"
+        "The default export is 1920 x 1800 PNG, including enabled scene helpers/analysis labels,\n"
+        "with no UI controls. CLI capture has no width/height options. Existing outputs are overwritten.\n"
+        "Use one instance per independent inspection. Headless errors use stderr/RPC, never dialogs.\n"
         "\nStartup options:\n"
+        "  --headless                 Render offscreen without a window; control with ctl or local RPC.\n"
         "  --instance ID              Choose the viewer's instance ID.\n"
         "  --scene PATH | --woby PATH Open one saved .woby scene.\n"
         "  --file PATH                Add a model; repeat for multiple files.\n"
@@ -1045,7 +1083,7 @@ void printCommandLineHelp()
         "either COMMAND_ID or --request-key KEY, with no --timeout or --wait.\n"
         "Duplicates in progress return RPC code -32008; inspect them with ctl command.\n"
         "\nTargets and values:\n"
-        "Every viewer starts a local HTTP API and displays its instance ID in the title.\n"
+        "Every viewer starts a local HTTP API; desktop viewers also show their ID in the title.\n"
         "ctl connects to a running viewer; it never starts one. Discover it with ctl instances.\n"
         "Instance IDs: 1-64 lowercase letters, digits, '-' or '_'; start with a letter or digit.\n"
         "OBJECT_ID, FILE_ID, GROUP_ID, and ANALYSIS_ID come from objects, not names or paths.\n"
