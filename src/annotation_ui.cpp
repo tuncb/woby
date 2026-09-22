@@ -367,7 +367,9 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
             interaction.overlaySelection = selectedId; interaction.overlayRevision = state.sceneEditRevision;
             interaction.overlayReady = false; interaction.overlayHandles.clear();
             interaction.overlayEdgePoint.reset(); interaction.overlayEdgeHit = false;
-        } else if (!interaction.overlayReady && item && item->targetValid && item->settings.visible && !item->settings.locked) {
+        } else if (pointerAllowed && !interaction.overlayReady && item && item->targetValid && item->settings.visible && !item->settings.locked) {
+            // A drag can have frames with no mouse motion. Do not mistake one
+            // of those frames for settled navigation and ray-pick the mesh.
             auto parts = scenePickParts(state);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == item->targetId; });
             if (target != parts.end()) {

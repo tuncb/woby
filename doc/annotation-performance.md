@@ -1,5 +1,50 @@
 # Rectangular annotation performance
 
+## Camera navigation investigation (23 September 2026)
+
+The supplied `slow_rectangle.woby` contains one visible rectangle with 761
+segments on the 1,054,542-triangle map. In the Debug viewer, a 360-degree
+scripted yaw sweep with varying pitch measured a median 119.96 FPS both with
+the rectangle visible and hidden. GPU frame time was approximately 0.6 ms.
+A smaller alternating rotation measured median helper submission times of
+3.708 ms visible and 0.378 ms hidden. These measurements include other scene
+helpers and are not isolated annotation draw timings. The frame rate is capped
+by presentation; hiding the rectangle increases waiting time rather than FPS.
+
+A subsequent manual mouse-rotation check with the rectangle explicitly visible
+also stayed fast. The reported unselected-annotation drop to 20 FPS has not been
+reproduced in this checkout's Debug build; these results do not establish its
+cause or demonstrate that it is fixed.
+
+A separate selected-annotation problem was reproduced: the handle overlay
+treated one unchanged camera frame as settled navigation, even when a drag was
+still active. It could then perform four full-mesh visibility picks between
+mouse events. Handle visibility now waits until scene pointer interaction is
+available again. The regression test covers unchanged frames during navigation
+and restoration of the handles after navigation ends. The visibility work still
+runs after navigation ends; this change does not accelerate those mesh picks.
+
+On this scene, the updated benchmark's median navigation overlay time was
+0.082 ms per frame across three runs. The settled visibility update still took
+about 3.2 seconds in Debug. Before the guard, that work ran during navigation:
+the first baseline run averaged 1,711 ms per frame over changed/unchanged pairs.
+This is deferred work, not an improvement to the picking algorithm. The Debug
+build completed without compiler warnings and all 567 CTest entries passed,
+including the graphics and slow tests.
+
+An opt-in benchmark exercises the real saved scene, alternating a camera change
+and an unchanged frame while pointer interaction is unavailable, then timing
+the settled visibility update separately. It measures CPU overlay construction,
+not GPU rendering or complete viewer FPS. Model loading is outside the timers:
+
+```powershell
+$env:WOBY_ANNOTATION_SCENE = 'C:\path\to\slow_rectangle.woby'
+& build/vs2026-vcpkg/bin/Debug/woby_tests.exe `
+  '--test-case=annotation navigation overlay external scene benchmark' --no-skip
+```
+
+## Annotation creation measurements
+
 Measured on 22 September 2026 with the Visual Studio 2026 `vs2026-vcpkg`
 preset. Timings use `steady_clock`, three runs, and the median. Mesh import and
 fixture construction are outside the annotation timers. The synthetic workload

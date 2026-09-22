@@ -1603,6 +1603,78 @@ TEST_CASE("sampled annotation gestures cannot commit narrow occluders missed by 
     CHECK(interaction.error == "Keep the outline clear of other objects.");
 }
 
+TEST_CASE("annotation handle visibility waits until camera interaction ends")
+{
+    AnnotationUiFixture fixture;
+    fixture.scene.add(AnnotationShape::rectangle);
+    fixture.frame(); fixture.frame();
+    REQUIRE(fixture.interaction.overlayReady);
+    REQUIRE(fixture.interaction.overlayHandles.size() == 4);
+
+    fixture.pointerAllowed = false;
+    fixture.pickView.view[12] += .05f;
+    fixture.frame();
+    REQUIRE_FALSE(fixture.interaction.overlayReady);
+    CHECK(fixture.interaction.overlayHandles.empty());
+    // Several frames without motion still belong to the same camera drag.
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.frame();
+        CHECK_FALSE(fixture.interaction.overlayReady);
+        CHECK(fixture.interaction.overlayHandles.empty());
+    }
+    fixture.pointerAllowed = true;
+    fixture.frame();
+    CHECK(fixture.interaction.overlayReady);
+    CHECK(fixture.interaction.overlayHandles.size() == 4);
+}
+
+// Set WOBY_ANNOTATION_SCENE to a local scene, then opt in with --no-skip.
+TEST_CASE("annotation navigation overlay external scene benchmark" * doctest::skip())
+{
+    std::filesystem::path scenePath;
+#ifdef _WIN32
+    wchar_t* value = nullptr;
+    size_t length = 0;
+    REQUIRE(_wdupenv_s(&value, &length, L"WOBY_ANNOTATION_SCENE") == 0);
+    if (value) { scenePath = value; }
+    std::free(value);
+#else
+    if (const auto* value = std::getenv("WOBY_ANNOTATION_SCENE")) { scenePath = value; }
+#endif
+    REQUIRE_FALSE(scenePath.empty());
+    auto document = readSceneDocument(scenePath);
+    for (auto& file : document.files) { file.path = sceneAbsolutePath(scenePath, file.path); }
+    AnnotationUiFixture fixture;
+    std::vector<UiFileState> files;
+    for (const auto& file : document.files) {
+        files.push_back(createUiFileState(file.path, loadObjMesh(file.path), files.size()));
+    }
+    fixture.scene.state = prepareSceneReplacement(fixture.scene.state, std::move(files), document);
+    auto& state = fixture.scene.state;
+    REQUIRE_FALSE(state.annotations.empty());
+    state.selectedSceneObjects = {state.annotations.front().objectId};
+    fixture.pointerAllowed = false;
+    for (int run = 0; run < 3; ++run) {
+        double navigationMs = 0, settleMs = 0;
+        for (int step = 0; step < 6; ++step) {
+            orbitUiCamera(state, 1, 0);
+            fixture.pickView = scenePickView(state.camera, state.upAxis, state.sceneBounds, 1920, 1080, false, 1);
+            const auto start = std::chrono::steady_clock::now();
+            fixture.frame();
+            // Input events need not arrive every render frame during a drag.
+            fixture.frame();
+            navigationMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+            fixture.pointerAllowed = true;
+            const auto settle = std::chrono::steady_clock::now();
+            fixture.frame();
+            settleMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - settle).count();
+            fixture.pointerAllowed = false;
+        }
+        std::cout << "Annotation overlay navigation_ms_per_frame=" << navigationMs / 12
+            << " settled_visibility_ms=" << settleMs / 6 << std::endl;
+    }
+}
+
 TEST_CASE("annotation overlays offset their handles and input below the main menu")
 {
     AnnotationUiFixture fixture;
