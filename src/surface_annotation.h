@@ -36,6 +36,7 @@ struct AnnotationProjectionFace {
 // Gesture-owned immutable projection cache. Contains no borrowed mesh pointers.
 struct AnnotationProjection {
     SceneObjectId targetId = 0;
+    std::vector<SceneObjectId> targetIds;
     AnnotationGeometry definition;
     std::vector<AnnotationProjectionVertex> vertices;
     std::vector<AnnotationProjectionFace> triangles;
@@ -46,7 +47,17 @@ struct AnnotationProjection {
 
 [[nodiscard]] std::array<float, 2> annotationNdc(const ScenePickView& view, PickPoint point);
 [[nodiscard]] AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, SceneObjectId target);
+    const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets = {});
+[[nodiscard]] std::vector<SceneObjectId> annotationGroupTargets(const UiState& state, SceneObjectId target);
+[[nodiscard]] bool annotationHasTarget(const UiAnnotation& item, SceneObjectId target);
+[[nodiscard]] bool annotationHasTarget(const AnnotationProjection& projection, SceneObjectId target);
+[[nodiscard]] const ScenePickPart* annotationSourcePart(const UiAnnotation& item,
+    std::span<const ScenePickPart> parts, uint32_t source);
+[[nodiscard]] const PickMatrix& annotationSourceProjector(const AnnotationGeometry& geometry, uint32_t source);
+[[nodiscard]] uint32_t annotationSourceIndex(const AnnotationProjection& projection, SceneObjectId target);
+[[nodiscard]] AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> parts, const UiAnnotation& item);
+[[nodiscard]] std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnotation& item,
+    std::span<const ScenePickPart> parts);
 [[nodiscard]] AnnotationProjection annotationEditProjection(const ScenePickPart& target,
     const AnnotationGeometry& geometry);
 // Reuse a target-discovery projection, removing transparent non-target parts.

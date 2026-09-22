@@ -11,7 +11,10 @@ std::vector<SceneObjectId> sceneIdentities(const UiState& state)
 {
     std::vector<SceneObjectId> result;
     for (const auto& object : sceneObjects(state)) { result.push_back(object.id); }
-    for (const auto& item : state.annotations) { result.push_back(item.targetId); }
+    for (const auto& item : state.annotations) {
+        result.push_back(item.targetId);
+        result.insert(result.end(), item.targetIds.begin(), item.targetIds.end());
+    }
     // Missing comparison references must also retain their original identities.
     for (const auto& comparison : state.comparisons) {
         for (const auto& part : comparison.a) { result.push_back(part.objectId); }

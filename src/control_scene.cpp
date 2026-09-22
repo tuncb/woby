@@ -293,6 +293,10 @@ Json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectId
     auto result = localObjectDetails(state, id);
     if (const auto* item = findAnnotation(state, id)) {
         result["sourceId"] = findSceneObject(state, item->targetId) ? Json(formatId(item->targetId)) : Json(nullptr);
+        auto sources = Json::array();
+        const auto ids = item->targetIds.empty() ? std::vector<SceneObjectId>{item->targetId} : item->targetIds;
+        for (const auto source : ids) { sources.push_back(findSceneObject(state, source) ? Json(formatId(source)) : Json(nullptr)); }
+        result["sourceIds"] = std::move(sources);
     }
     if (id != invalidSceneObjectId) {
         if (const auto* comparison = findComparison(state, id)) {

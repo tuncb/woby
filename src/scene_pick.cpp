@@ -47,14 +47,14 @@ bool selected(const UiState& state, SceneObjectId id)
 }
 
 void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t fileIndex,
-    size_t groupIndex, const PickMatrix& parent, float opacity, bool parentSelected)
+    size_t groupIndex, const PickMatrix& parent, float opacity, bool parentSelected, bool includeHidden)
 {
     if (fileIndex >= state.files.size()) { return; }
     const auto& file = state.files[fileIndex];
     if (groupIndex >= file.mesh.nodes.size() || groupIndex >= file.groupSettings.size()) { return; }
     const auto& group = file.groupSettings[groupIndex];
     opacity *= group.opacity;
-    if (!group.visible || opacity <= 0.0f || (!group.showSolidMesh && !group.showTriangles && !group.showVertices)) { return; }
+    if (!includeHidden && (!group.visible || opacity <= 0.0f || (!group.showSolidMesh && !group.showTriangles && !group.showVertices))) { return; }
     const auto& node = file.mesh.nodes[groupIndex];
     PickMatrix local;
     groupTransformMatrix(group, local.data());
@@ -76,33 +76,33 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
 }
 
 void appendNode(std::vector<ScenePickPart>& parts, const UiState& state, const UiSceneNode& node,
-    const PickMatrix& parent, float opacity, bool parentSelected)
+    const PickMatrix& parent, float opacity, bool parentSelected, bool includeHidden)
 {
     const bool nodeSelected = parentSelected || selected(state, node.objectId);
     if (node.kind == UiSceneNodeKind::group) {
-        appendGroup(parts, state, node.fileIndex, node.groupIndex, parent, opacity, nodeSelected);
+        appendGroup(parts, state, node.fileIndex, node.groupIndex, parent, opacity, nodeSelected, includeHidden);
         return;
     }
     PickMatrix local;
     if (node.kind == UiSceneNodeKind::folder) {
-        if (!node.settings.visible) { return; }
+        if (!includeHidden && !node.settings.visible) { return; }
         opacity *= node.settings.opacity;
         sceneNodeTransformMatrix(node.settings, local.data());
     } else {
         if (node.fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[node.fileIndex];
-        if (!file.fileSettings.visible) { return; }
+        if (!includeHidden && !file.fileSettings.visible) { return; }
         opacity *= file.fileSettings.opacity;
         fileTransformMatrix(file.fileSettings, local.data());
     }
-    if (opacity <= 0.0f) { return; }
+    if (!includeHidden && opacity <= 0.0f) { return; }
     const auto model = compose(parent, local);
     if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
         for (size_t i = 0; i < state.files[node.fileIndex].groupSettings.size(); ++i) {
-            appendGroup(parts, state, node.fileIndex, i, model, opacity, nodeSelected);
+            appendGroup(parts, state, node.fileIndex, i, model, opacity, nodeSelected, includeHidden);
         }
     } else {
-        for (const auto& child : node.children) { appendNode(parts, state, child, model, opacity, nodeSelected); }
+        for (const auto& child : node.children) { appendNode(parts, state, child, model, opacity, nodeSelected, includeHidden); }
     }
 }
 
@@ -226,19 +226,19 @@ ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis, const
     return result;
 }
 
-std::vector<ScenePickPart> scenePickParts(const UiState& state)
+std::vector<ScenePickPart> scenePickParts(const UiState& state, bool includeHidden)
 {
     std::vector<ScenePickPart> result;
     if (!state.sceneNodes.empty()) {
-        for (const auto& node : state.sceneNodes) { appendNode(result, state, node, identity(), 1, false); }
+        for (const auto& node : state.sceneNodes) { appendNode(result, state, node, identity(), 1, false, includeHidden); }
     } else {
         for (size_t i = 0; i < state.files.size(); ++i) {
             const auto& file = state.files[i];
-            if (!file.fileSettings.visible || file.fileSettings.opacity <= 0) { continue; }
+            if (!includeHidden && (!file.fileSettings.visible || file.fileSettings.opacity <= 0)) { continue; }
             PickMatrix model;
             fileTransformMatrix(file.fileSettings, model.data());
             for (size_t j = 0; j < file.groupSettings.size(); ++j) {
-                appendGroup(result, state, i, j, model, file.fileSettings.opacity, selected(state, file.objectId));
+                appendGroup(result, state, i, j, model, file.fileSettings.opacity, selected(state, file.objectId), includeHidden);
             }
         }
     }

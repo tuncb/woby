@@ -667,6 +667,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         root,
         annotation,
         annotationSegment,
+        annotationSource,
         view,
         viewCamera,
         viewObject,
@@ -697,6 +698,13 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
         try {
             if (text == "[[annotations]]") {
                 document.annotations.emplace_back(); section = Section::annotation; continue;
+            }
+            if (text == "[[annotations.sources]]") {
+                if (document.annotations.empty()) { throw std::runtime_error("Annotation source appeared before annotation."); }
+                auto& item = document.annotations.back();
+                if (item.geometry.sources.size() >= 100000) { throw std::runtime_error("Too many annotation sources."); }
+                item.geometry.sources.emplace_back(); item.targets.emplace_back();
+                section = Section::annotationSource; continue;
             }
             if (text == "[[annotations.segments]]") {
                 if (document.annotations.empty()) { throw std::runtime_error("Annotation segment appeared before annotation."); }
@@ -774,7 +782,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "master_vertex_point_size") {
@@ -837,13 +845,28 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     auto& control = key == "start" ? item.geometry.start : item.geometry.end;
                     control = {values[0], values[1]};
                 }
+            } else if (section == Section::annotationSource) {
+                auto& item = document.annotations.back();
+                auto& source = item.geometry.sources.back();
+                auto& target = item.targets.back();
+                if (key == "file_index") { target.fileIndex = parseTomlInteger(value); }
+                else if (key == "group_index") { target.groupIndex = parseTomlInteger(value); }
+                else if (key == "fingerprint") { source.fingerprint = parseTomlString(value); }
+                else if (key == "projector" || key == "to_primary") {
+                    const auto values = parseTomlFloatArray(value);
+                    if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation source transform values."); }
+                    auto& matrix = key == "projector" ? source.projector : source.toPrimary;
+                    std::copy(values.begin(), values.end(), matrix.begin());
+                }
             } else if (section == Section::annotationSegment) {
                 auto& segment = document.annotations.back().geometry.segments.back();
-                if (key == "triangle" || key == "end_triangle") {
+                if (key == "triangle" || key == "end_triangle" || key == "source" || key == "end_source") {
                     const int triangle = parseTomlInteger(value);
                     if (triangle < 0) { throw std::runtime_error("Invalid annotation triangle."); }
                     if (key == "triangle") { segment.triangle = static_cast<uint32_t>(triangle); }
-                    else { segment.endTriangle = static_cast<uint32_t>(triangle); }
+                    else if (key == "end_triangle") { segment.endTriangle = static_cast<uint32_t>(triangle); }
+                    else if (key == "source") { segment.source = static_cast<uint32_t>(triangle); }
+                    else { segment.endSource = static_cast<uint32_t>(triangle); }
                 } else if (key == "a") { segment.a = parseTomlFloat3(value); }
                 else if (key == "b") { segment.b = parseTomlFloat3(value); }
             } else if (section == Section::view) {
@@ -967,6 +990,17 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
     for (auto& item : document.annotations) {
         validateAnnotationGeometry(item.geometry);
         item.settings = normalizedAnnotationSettings(std::move(item.settings));
+        if (item.targets.size() != item.geometry.sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        for (const auto& target : item.targets) {
+            if (target.fileIndex == -1 && target.groupIndex == -1) { continue; }
+            if (target.fileIndex < 0 || static_cast<size_t>(target.fileIndex) >= document.files.size()
+                || target.groupIndex < 0 || static_cast<size_t>(target.groupIndex) >= document.files[static_cast<size_t>(target.fileIndex)].groups.size()) {
+                throw std::runtime_error("Annotation references an invalid source part.");
+            }
+        }
+        if (!item.targets.empty() && item.targets.front() != SceneAnnotationTarget{item.fileIndex, item.groupIndex}) {
+            throw std::runtime_error("Invalid annotation primary source.");
+        }
         if (item.fileIndex == -1 && item.groupIndex == -1) { continue; }
         if (item.fileIndex < 0 || static_cast<size_t>(item.fileIndex) >= document.files.size()
             || item.groupIndex < 0 || static_cast<size_t>(item.groupIndex) >= document.files[static_cast<size_t>(item.fileIndex)].groups.size()) {
@@ -1027,7 +1061,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 15\n";
+    stream << "version = 16\n";
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
@@ -1115,9 +1149,20 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             stream << "]\n";
         };
         array("projector", item.geometry.projector); array("start", item.geometry.start); array("end", item.geometry.end);
+        if (item.targets.size() != item.geometry.sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
+        for (size_t i = 0; i < item.geometry.sources.size(); ++i) {
+            const auto& source = item.geometry.sources[i];
+            stream << "\n[[annotations.sources]]\nfile_index = " << item.targets[i].fileIndex
+                << "\ngroup_index = " << item.targets[i].groupIndex << "\n";
+            stream << "fingerprint = \"" << escapeTomlString(source.fingerprint) << "\"\n";
+            array("projector", source.projector);
+            array("to_primary", source.toPrimary);
+        }
         for (const auto& segment : item.geometry.segments) {
             stream << "\n[[annotations.segments]]\ntriangle = " << segment.triangle << "\n";
             if (segment.endTriangle) { stream << "end_triangle = " << *segment.endTriangle << "\n"; }
+            if (!item.geometry.sources.empty()) { stream << "source = " << segment.source << "\n"; }
+            if (segment.endSource) { stream << "end_source = " << *segment.endSource << "\n"; }
             array("a", segment.a); array("b", segment.b);
         }
     }

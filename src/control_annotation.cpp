@@ -18,7 +18,7 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
             {"locked", settings.locked}, {"width", settings.width}, {"color", settings.color}}},
         {"sourceName", item.targetName}, {"targetValid", item.targetValid && findSceneObject(state, item.targetId).has_value()},
         {"effectiveVisible", !annotationWorldLines(item, parts).empty()},
-        {"vertices", annotationVertices(state, item)}, {"vertexSpace", "model"},
+        {"vertices", annotationVertices(state, item)}, {"vertexSpace", item.targetIds.empty() ? "model" : "world"},
         {"start", item.geometry.start}, {"end", item.geometry.end}, {"controlSpace", "original-projector-ndc"},
         {"projector", item.geometry.projector}, {"homogeneousDepth", item.geometry.homogeneousDepth},
         {"segmentCount", item.geometry.segments.size()}};
@@ -47,12 +47,12 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         const float aspect = command.aspect.value_or(1);
         bx::mtxProj(view.projection.data(), cameraViewportFov(state.camera, aspect), aspect,
             state.camera.nearPlane, cameraFarPlane(state.camera, state.sceneBounds), true);
-        const auto projection = annotationProjection(scenePickParts(state), view, id);
+        const auto projection = annotationProjection(scenePickParts(state), view, id, annotationGroupTargets(state, id));
         auto geometry = projectAnnotation(projection, *command.shape == "line" ? AnnotationShape::line : AnnotationShape::rectangle,
             *command.start, *command.end);
         // CLI commands name their target explicitly; preserve the user's selection.
         const auto selection = state.selectedSceneObjects;
-        id = createAnnotation(state, id, std::move(geometry));
+        id = createAnnotation(state, id, std::move(geometry), projection.targetIds);
         clearSceneSelection(state);
         for (const auto selected : selection) { selectSceneObject(state, selected, true); }
     } else {
@@ -72,7 +72,7 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             if (command.delta) {
                 for (size_t axis = 0; axis < 2; ++axis) { start[axis] += (*command.delta)[axis]; end[axis] += (*command.delta)[axis]; }
             }
-            const auto projection = annotationEditProjection(*target, item->geometry);
+            const auto projection = annotationEditProjection(parts, *item);
             reshapeAnnotation(state, id, projectAnnotation(projection, item->geometry.shape, start, end));
         } else if (command.action != A::annotationSet && command.action != A::visibility
             && command.action != A::colorSet && command.action != A::colorReset && command.action != A::opacity) {

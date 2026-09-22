@@ -16,6 +16,8 @@ struct AnnotationSegment {
     uint32_t triangle = 0;
     std::array<float, 3> a{}, b{};
     std::optional<uint32_t> endTriangle;
+    uint32_t source = 0;
+    std::optional<uint32_t> endSource;
     friend bool operator==(const AnnotationSegment&, const AnnotationSegment&) = default;
 };
 
@@ -27,6 +29,15 @@ struct AnnotationSettings {
     friend bool operator==(const AnnotationSettings&, const AnnotationSettings&) = default;
 };
 
+struct AnnotationSource {
+    std::array<float, 16> projector{};
+    std::string fingerprint;
+    // Frozen source-local to primary-local transform, independent of camera depth
+    // precision. Used when validating joins again during editing.
+    std::array<float, 16> toPrimary{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    friend bool operator==(const AnnotationSource&, const AnnotationSource&) = default;
+};
+
 struct AnnotationGeometry {
     AnnotationShape shape = AnnotationShape::line;
     // Frozen source-local to clip transform and normalized drawing coordinates.
@@ -35,7 +46,15 @@ struct AnnotationGeometry {
     bool homogeneousDepth = false;
     std::string fingerprint;
     std::vector<AnnotationSegment> segments;
+    // Empty for legacy single-part annotations; otherwise source zero is the
+    // primary target and every segment identifies its own source part.
+    std::vector<AnnotationSource> sources;
     friend bool operator==(const AnnotationGeometry&, const AnnotationGeometry&) = default;
+};
+
+struct SceneAnnotationTarget {
+    int fileIndex = -1, groupIndex = -1;
+    friend bool operator==(const SceneAnnotationTarget&, const SceneAnnotationTarget&) = default;
 };
 
 struct SceneAnnotationRecord {
@@ -43,6 +62,7 @@ struct SceneAnnotationRecord {
     std::string targetName;
     AnnotationSettings settings;
     AnnotationGeometry geometry;
+    std::vector<SceneAnnotationTarget> targets;
     friend bool operator==(const SceneAnnotationRecord&, const SceneAnnotationRecord&) = default;
 };
 

@@ -25,12 +25,15 @@ be relative; RPC paths must be absolute.
 These commands use runtime IDs from `objects` or `annotation list`. Creation takes
 a **model group ID**; other annotation commands take an **annotation ID**. Explicit
 IDs let scripts edit annotations without changing the current UI selection.
+Creation includes sibling parts from the target's model file. If a selected parent
+folder contains the target, its descendant parts define the scope instead. Unrelated
+selected parts remain outside the scope.
 
 | CLI | RPC method | Behavior |
 | --- | --- | --- |
 | `annotation list` | `annotation.list` | Return `annotations`, including properties, source IDs/status, and vertex coordinates. |
 | `annotation get ANNOTATION_ID` | `annotation.get` | Return one annotation under `object`. |
-| `annotation create GROUP_ID --shape line\|rectangle --start U V --end U V [--aspect N]` | `annotation.create` | Project the outline onto the visible source part using the current camera. Returns its ID as `target` and its details as `object`. Accepts the same optional style fields as `annotation set`. |
+| `annotation create GROUP_ID --shape line\|rectangle --start U V --end U V [--aspect N]` | `annotation.create` | Project the outline onto the source part and its visible siblings using the current camera. Returns its ID as `target` and its details as `object`. Accepts the same optional style fields as `annotation set`. |
 | `annotation set ANNOTATION_ID [--name TEXT] [--comments TEXT] [--visible BOOL] [--locked BOOL] [--rgb R G B] [--opacity N] [--width N]` | `annotation.set` | Update only supplied properties. Empty comments clear the text. |
 | `annotation reshape ANNOTATION_ID [--start U V] [--end U V]` | `annotation.reshape` | Change endpoints or opposite rectangle corners in the original drawing projection. At least one is required. |
 | `annotation move ANNOTATION_ID --delta U V` | `annotation.move` | Translate both controls in the original drawing projection, preserving their separation. |
@@ -44,16 +47,20 @@ authoring area is wanted. The chosen projection is frozen in the annotation.
 Move and reshape always use that original projection, even after camera changes.
 These values are not model-space distances or screen pixels.
 
-`vertices` contains two line endpoints or four rectangle corners, in model-local
-coordinates and model units. The response also contains `start`, `end`, `projector`
+`vertices` contains two line endpoints or four rectangle corners. `vertexSpace` is
+`model` for single-part annotations and `world` for annotations with multiple source
+parts. Coordinates use model units. The response also contains `start`, `end`, `projector`
 (column-major model-to-clip matrix), `controlSpace`, `vertexSpace`, `sourceId`,
 `sourceName`, `targetValid`, `effectiveVisible`, and `settings`. `settings.color`
-is RGBA. `sourceId` is null when the source is missing; unresolved annotations
+is RGBA. `sourceIds` lists every source part, with null entries for missing sources;
+`sourceId` retains the primary source for compatibility. Unresolved annotations
 return an empty vertex array while retaining their comments and settings.
 
-Creation bridges empty gaps between surface fragments, while rejecting disconnected
-surface layer jumps and opaque occlusion. Move and reshape require an unlocked
-annotation and a visible, unchanged source. Every endpoint or rectangle corner
+Creation accepts touching sibling surfaces without requiring shared mesh vertices,
+and bridges empty gaps between surface fragments. It still rejects disconnected
+surface layer jumps and opaque occlusion by objects outside the group. Move and
+reshape require an unlocked annotation with all of its original source parts visible
+and unchanged. Every endpoint or rectangle corner
 must lie on the source surface in its original projection; edges may bridge holes.
 Invalid edits leave the annotation unchanged. Names/comments/styles and deletion
 remain available for locked or unresolved annotations. Width is clamped to 1–12

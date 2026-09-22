@@ -335,7 +335,7 @@ std::vector<VisibleInterval> visibleIntervals(std::span<const Interval> interval
 void projectEdge(AnnotationGeometry& result, const AnnotationProjection& projection, P2 start, P2 end)
 {
     for (const auto& point : {start, end}) {
-        if (pickAnnotationSurface(projection, {static_cast<float>(point[0]), static_cast<float>(point[1])}) != projection.targetId) {
+        if (!annotationHasTarget(projection, pickAnnotationSurface(projection, {static_cast<float>(point[0]), static_cast<float>(point[1])}))) {
             throw std::runtime_error("Keep every endpoint or corner on the target surface.");
         }
     }
@@ -354,7 +354,6 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
         if (high - low <= 1e-10) { continue; }
         intervals.push_back({i, low, high, depth(triangle, start), depth(triangle, end)});
     }
-    std::optional<AnnotationProjectedTriangle> previousTriangle;
     std::array<float, 3> previousPoint{};
     bool previous = false;
     bool gap = false;
@@ -363,37 +362,44 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
         if (high - low < 1e-10) { continue; }
         const auto* best = visible.surface;
         if (!best) { gap = true; continue; }
-        if (projection.triangles[best->index].objectId != projection.targetId) {
+        if (!annotationHasTarget(projection, projection.triangles[best->index].objectId)) {
             throw std::runtime_error("Keep the outline clear of other objects.");
         }
         const auto triangle = projectedTriangle(projection, best->index);
-        const AnnotationSegment segment{triangle.triangle, anchor(triangle, at(low)), anchor(triangle, at(high)), std::nullopt};
+        const AnnotationSegment segment{triangle.triangle, anchor(triangle, at(low)), anchor(triangle, at(high)), std::nullopt,
+            annotationSourceIndex(projection, triangle.objectId), std::nullopt};
         const auto localPoint = [&](const auto& bary) {
             std::array<float, 3> p{};
             for (size_t k = 0; k < 3; ++k) { for (size_t axis = 0; axis < 3; ++axis) { p[axis] += bary[k] * triangle.localTriangle[k][axis]; } }
+            if (!projection.definition.sources.empty()) {
+                const auto q = annotationTransform(projection.definition.sources[segment.source].toPrimary, {p[0], p[1], p[2], 1});
+                return std::array<float, 3>{q[0] / q[3], q[1] / q[3], q[2] / q[3]};
+            }
             return p;
         };
         const auto currentPoint = localPoint(segment.a);
         if (gap && previous) {
             const auto& rim = result.segments.back();
-            result.segments.push_back({rim.triangle, rim.b, segment.a, segment.triangle});
-        } else if (previousTriangle) {
-            size_t shared = 0;
-            for (const auto& p : triangle.localTriangle) {
-                if (std::find(previousTriangle->localTriangle.begin(), previousTriangle->localTriangle.end(), p) != previousTriangle->localTriangle.end()) { ++shared; }
-            }
-            bool continuous = shared > 0;
+            result.segments.push_back({rim.triangle, rim.b, segment.a, segment.triangle, rim.source, segment.source});
+        } else if (previous) {
+            // Touching surfaces need not share vertices (split seams and
+            // T-junctions are common). Compare the actual join in one space.
+            bool continuous = true;
+            float scale = 1e-10f;
             for (size_t axis = 0; axis < 3; ++axis) {
-                const float scale = std::max({1e-10f, std::abs(currentPoint[axis]), std::abs(previousPoint[axis])});
+                scale = std::max({scale, std::abs(currentPoint[axis]), std::abs(previousPoint[axis])});
+            }
+            for (size_t axis = 0; axis < 3; ++axis) {
                 continuous &= std::abs(previousPoint[axis] - currentPoint[axis]) <= scale * 4e-6f + 1e-8f;
             }
-            if (!continuous) { throw std::runtime_error("The outline crosses a gap or a different surface layer."); }
+            if (!continuous) { throw std::runtime_error("The outline jumps between separate surface layers."); }
         }
         // Merge surface fragments only within one face, never across a bridge.
-        if (previous && !gap && !result.segments.empty() && result.segments.back().triangle == segment.triangle) {
+        if (previous && !gap && !result.segments.empty() && !result.segments.back().endTriangle
+            && result.segments.back().source == segment.source && result.segments.back().triangle == segment.triangle) {
             result.segments.back().b = segment.b;
         } else { result.segments.push_back(segment); }
-        previousTriangle = triangle; previousPoint = localPoint(segment.b); previous = true;
+        previousPoint = localPoint(segment.b); previous = true;
         gap = false;
     }
 }
@@ -431,18 +437,41 @@ std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count)
     return std::to_string(hash);
 }
 AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, SceneObjectId target)
+    const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets)
 {
     AnnotationProjection result;
     result.targetId = target;
+    if (targets.size() > 1) {
+        result.targetIds.push_back(target);
+        for (const auto id : targets) {
+            if (id != target && std::find(result.targetIds.begin(), result.targetIds.end(), id) == result.targetIds.end()
+                && std::any_of(parts.begin(), parts.end(), [id](const auto& p) { return p.objectId == id && p.mesh && p.opacity > 0; })) {
+                result.targetIds.push_back(id);
+            }
+        }
+        if (result.targetIds.size() == 1) { result.targetIds.clear(); }
+    }
     result.definition.homogeneousDepth = view.homogeneousDepth;
     const auto vp = annotationCompose(view.view, view.projection);
     ProjectionVertexCache cache;
+    if (!result.targetIds.empty()) {
+        result.definition.sources.resize(result.targetIds.size());
+        const auto primary = std::find_if(parts.begin(), parts.end(), [target](const auto& p) { return p.objectId == target; });
+        if (primary == parts.end() || !primary->mesh) { throw std::runtime_error("The annotation target is unavailable."); }
+        PickMatrix inverse;
+        bx::mtxInverse(inverse.data(), primary->model.data());
+        for (size_t i = 0; i < result.targetIds.size(); ++i) {
+            const auto source = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == result.targetIds[i]; });
+            result.definition.sources[i] = {annotationCompose(source->model, vp),
+                annotationFingerprint(*source->mesh, source->indexOffset, source->indexCount)};
+            if (i != 0) { result.definition.sources[i].toPrimary = annotationCompose(source->model, inverse); }
+        }
+    }
     for (const auto& part : parts) {
         // Without a target, visible transparent surfaces are candidates too.
         // Once a target is chosen, only opaque neighbors occlude its outline.
-        if (!part.mesh || (!part.solid && part.objectId != target)
-            || (target != 0 && part.opacity < .999f && part.objectId != target)) { continue; }
+        if (!part.mesh || (!part.solid && !annotationHasTarget(result, part.objectId))
+            || (target != 0 && part.opacity < .999f && !annotationHasTarget(result, part.objectId))) { continue; }
         const auto transform = annotationCompose(part.model, vp);
         if (part.objectId == target) {
             result.definition.projector = transform;
@@ -461,6 +490,52 @@ AnnotationProjection annotationEditProjection(const ScenePickPart& target, const
     result.definition.segments.clear();
     ProjectionVertexCache cache;
     appendProjection(result, target, geometry.projector, geometry.homogeneousDepth, cache);
+    finishProjection(result);
+    return result;
+}
+bool annotationHasTarget(const UiAnnotation& item, SceneObjectId target)
+{
+    return target != 0 && (item.targetIds.empty() ? target == item.targetId
+        : std::find(item.targetIds.begin(), item.targetIds.end(), target) != item.targetIds.end());
+}
+bool annotationHasTarget(const AnnotationProjection& projection, SceneObjectId target)
+{
+    return target != 0 && (projection.targetIds.empty() ? target == projection.targetId
+        : std::find(projection.targetIds.begin(), projection.targetIds.end(), target) != projection.targetIds.end());
+}
+uint32_t annotationSourceIndex(const AnnotationProjection& projection, SceneObjectId target)
+{
+    if (projection.targetIds.empty() && target == projection.targetId) { return 0; }
+    const auto found = std::find(projection.targetIds.begin(), projection.targetIds.end(), target);
+    if (found == projection.targetIds.end()) { throw std::runtime_error("The annotation target is unavailable."); }
+    return static_cast<uint32_t>(found - projection.targetIds.begin());
+}
+const ScenePickPart* annotationSourcePart(const UiAnnotation& item, std::span<const ScenePickPart> parts, uint32_t source)
+{
+    if (source >= std::max(size_t{1}, item.targetIds.size())) { return nullptr; }
+    const auto id = item.targetIds.empty() ? item.targetId : item.targetIds[source];
+    const auto found = std::find_if(parts.begin(), parts.end(), [id](const auto& p) { return p.objectId == id; });
+    return found == parts.end() ? nullptr : &*found;
+}
+const PickMatrix& annotationSourceProjector(const AnnotationGeometry& geometry, uint32_t source)
+{
+    return geometry.sources.empty() ? geometry.projector : geometry.sources.at(source).projector;
+}
+AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> parts, const UiAnnotation& item)
+{
+    const auto* primary = annotationSourcePart(item, parts, 0);
+    if (!primary) { throw std::runtime_error("Make the annotation source model visible before editing its geometry."); }
+    if (item.targetIds.empty()) { return annotationEditProjection(*primary, item.geometry); }
+    AnnotationProjection result;
+    result.targetId = item.targetId; result.targetIds = item.targetIds;
+    result.definition = item.geometry; result.definition.segments.clear();
+    ProjectionVertexCache cache;
+    for (size_t i = 0; i < item.targetIds.size(); ++i) {
+        const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
+        if (!part || !part->mesh) { throw std::runtime_error("Make all annotation source parts visible before editing."); }
+        const auto& projector = annotationSourceProjector(item.geometry, static_cast<uint32_t>(i));
+        appendProjection(result, *part, projector, item.geometry.homogeneousDepth, cache);
+    }
     finishProjection(result);
     return result;
 }
@@ -566,13 +641,14 @@ AnnotationGeometry previewAnnotation(const AnnotationProjection& projection, Ann
             const auto& a = points[edge - 1]; const auto& b = points[edge];
             const auto hit = annotationSurfaceHit(projection,
                 {static_cast<float>(a[0] + t * (b[0] - a[0])), static_cast<float>(a[1] + t * (b[1] - a[1]))});
-            if ((!hit || hit->objectId != projection.targetId) && (i == 0 || i == steps)) {
+            if ((!hit || !annotationHasTarget(projection, hit->objectId)) && (i == 0 || i == steps)) {
                 throw std::runtime_error("Keep every endpoint or corner on the target surface.");
             }
             if (!hit) { continue; }
-            if (hit->objectId != projection.targetId) { throw std::runtime_error("Keep the outline clear of other objects."); }
+            if (!annotationHasTarget(projection, hit->objectId)) { throw std::runtime_error("Keep the outline clear of other objects."); }
             if (previous) {
-                result.segments.push_back({previous->triangle, previous->bary, hit->bary, hit->triangle});
+                result.segments.push_back({previous->triangle, previous->bary, hit->bary, hit->triangle,
+                    annotationSourceIndex(projection, previous->objectId), annotationSourceIndex(projection, hit->objectId)});
             }
             previous = hit;
         }
@@ -606,10 +682,26 @@ void validateAnnotationGeometry(const AnnotationGeometry& geometry)
     PickMatrix inverse;
     bx::mtxInverse(inverse.data(), geometry.projector.data());
     for (auto v : inverse) { if (!std::isfinite(v)) { throw std::runtime_error("Singular annotation projector."); } }
+    if (!geometry.sources.empty()) {
+        if (geometry.sources.size() > 100000 || geometry.sources.front().projector != geometry.projector
+            || geometry.sources.front().fingerprint != geometry.fingerprint) { throw std::runtime_error("Invalid annotation sources."); }
+        for (const auto& source : geometry.sources) {
+            if (source.fingerprint.empty()) { throw std::runtime_error("Invalid annotation source fingerprint."); }
+            for (const auto& matrix : {source.projector, source.toPrimary}) {
+                for (const auto v : matrix) { if (!std::isfinite(v)) { throw std::runtime_error("Invalid annotation source transform."); } }
+                bx::mtxInverse(inverse.data(), matrix.data());
+                for (const auto v : inverse) { if (!std::isfinite(v)) { throw std::runtime_error("Singular annotation source transform."); } }
+            }
+        }
+    }
     for (auto point : {geometry.start, geometry.end}) {
         for (auto v : point) { if (!std::isfinite(v) || std::abs(v) > 1.00001f) { throw std::runtime_error("Invalid annotation control point."); } }
     }
     for (const auto& segment : geometry.segments) {
+        const auto count = std::max(size_t{1}, geometry.sources.size());
+        if (segment.source >= count || segment.endSource.value_or(segment.source) >= count
+            || (segment.endSource && !segment.endTriangle)) { throw std::runtime_error("Invalid annotation source index."); }
+
         for (const auto& bary : {segment.a, segment.b}) {
             double sum = 0;
             for (float value : bary) {
@@ -649,16 +741,60 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
     }
     return result;
 }
+std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnotation& item,
+    std::span<const ScenePickPart> parts)
+{
+    std::vector<const ScenePickPart*> sources;
+    for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
+        const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
+        if (!part || !part->mesh) { return {}; }
+        sources.push_back(part);
+    }
+    const auto& geometry = item.geometry;
+    const auto controls = outlinePoints(geometry.shape, geometry.start, geometry.end);
+    std::vector<std::array<float, 3>> result;
+    const size_t count = geometry.shape == AnnotationShape::line ? 2 : 4;
+    for (size_t c = 0; c < count; ++c) {
+        double best = std::numeric_limits<double>::infinity();
+        std::optional<std::array<float, 3>> nearest;
+        for (const auto& segment : geometry.segments) {
+            for (size_t k = 0; k < 2; ++k) {
+                const auto source = k == 0 ? segment.source : segment.endSource.value_or(segment.source);
+                const auto* part = sources[source];
+                const auto triangle = k == 0 ? segment.triangle : segment.endTriangle.value_or(segment.triangle);
+                const auto local = annotationPosition(*part->mesh, part->indexOffset, triangle, k == 0 ? segment.a : segment.b);
+                const auto clip = annotationTransform(annotationSourceProjector(geometry, source), {local[0], local[1], local[2], 1});
+                if (clip[3] <= 0) { continue; }
+                const double x = clip[0] / clip[3] - controls[c][0], y = clip[1] / clip[3] - controls[c][1];
+                if (x*x + y*y < best) {
+                    best = x*x + y*y;
+                    const auto world = annotationTransform(part->model, {local[0], local[1], local[2], 1});
+                    nearest = {world[0] / world[3], world[1] / world[3], world[2] / world[3]};
+                }
+            }
+        }
+        if (!nearest) { return {}; }
+        result.push_back(*nearest);
+    }
+    return result;
+}
 std::vector<DiagnosticEdge> annotationWorldLines(const UiAnnotation& item, std::span<const ScenePickPart> parts)
 {
     std::vector<DiagnosticEdge> lines;
     if (!item.settings.visible || !item.targetValid || item.settings.color[3] <= 0) { return lines; }
-    const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& part) { return part.objectId == item.targetId; });
-    if (target == parts.end() || !target->mesh || target->opacity <= 0) { return lines; }
+    std::vector<const ScenePickPart*> sources;
+    // Keep the outline complete: hiding a participating source hides the annotation.
+    for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
+        const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
+        if (!part || !part->mesh || part->opacity <= 0) { return lines; }
+        sources.push_back(part);
+    }
     for (const auto& segment : item.geometry.segments) {
         DiagnosticEdge edge;
         size_t k = 0;
         for (const auto& bary : {segment.a, segment.b}) {
+            const auto source = k == 0 ? segment.source : segment.endSource.value_or(segment.source);
+            const auto* target = sources[source];
             const auto triangle = k == 0 ? segment.triangle : segment.endTriangle.value_or(segment.triangle);
             const auto local = annotationPosition(*target->mesh, target->indexOffset, triangle, bary);
             const auto world = annotationTransform(target->model, {local[0], local[1], local[2], 1});

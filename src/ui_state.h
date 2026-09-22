@@ -158,6 +158,7 @@ struct ViewApplication {
 
 struct UiAnnotation {
     SceneObjectId objectId = 0, targetId = 0;
+    std::vector<SceneObjectId> targetIds;
     std::string targetName;
     AnnotationSettings settings;
     AnnotationGeometry geometry;

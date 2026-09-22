@@ -12,11 +12,11 @@
 
 namespace woby {
 namespace {
-std::vector<PickPoint> handles(const UiAnnotation& item, const ScenePickPart& target, const ScenePickView& view)
+std::vector<PickPoint> handles(const UiAnnotation& item, std::span<const ScenePickPart> parts, const ScenePickView& view)
 {
     std::vector<PickPoint> result;
-    const auto transform = annotationCompose(target.model, annotationCompose(view.view, view.projection));
-    for (const auto& nearest : annotationControlPositions(*target.mesh, target.indexOffset, item.geometry)) {
+    const auto transform = annotationCompose(view.view, view.projection);
+    for (const auto& nearest : annotationControlWorldPositions(item, parts)) {
         const auto clip = annotationTransform(transform, {nearest[0], nearest[1], nearest[2], 1});
         const float minimumZ = view.homogeneousDepth ? -clip[3] : 0;
         if (clip[3] <= 0 || clip[2] < minimumZ || clip[2] > clip[3]) { result.push_back({-100000, -100000}); }
@@ -26,15 +26,21 @@ std::vector<PickPoint> handles(const UiAnnotation& item, const ScenePickPart& ta
     return result;
 }
 void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, const ScenePickView& view,
-    const ScenePickPart* target, const AnnotationGeometry& geometry,
-    const AnnotationSettings& settings, const bgfx::VertexLayout& layout, bgfx::ProgramHandle program,
+    const UiAnnotation& item, std::span<const ScenePickPart> parts, const bgfx::VertexLayout& layout, bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform, bool sampledPreview = false)
 {
+    std::vector<const ScenePickPart*> sources;
+    for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
+        sources.push_back(annotationSourcePart(item, parts, static_cast<uint32_t>(i)));
+    }
+    const auto& geometry = item.geometry;
+    const auto& settings = item.settings;
     const auto vp = annotationCompose(view.view, view.projection);
     std::vector<std::array<float, 3>> vertices;
     size_t segmentIndex = 0;
     for (const auto& line : lines) {
         const auto& segment = geometry.segments[segmentIndex++];
+        const auto* target = sources[segment.source];
         double slopeX = 0, slopeY = 0;
         if (target && target->mesh && !segment.endTriangle) {
             const auto transform = annotationCompose(target->model, vp);
@@ -193,7 +199,8 @@ void drawAnnotationInspector(UiState& state)
     changed |= ImGui::SliderFloat("Line width", &settings.width, 1, 12, "%.1f px");
     if (changed) { setAnnotationSettings(state, id, std::move(settings)); }
     ImGui::SeparatorText("Vertex coordinates");
-    ImGui::TextWrapped("Model coordinates, before scene transforms. Values use the model's units.");
+    ImGui::TextWrapped(item->targetIds.empty() ? "Model coordinates, before scene transforms. Values use the model's units."
+        : "World coordinates. Each vertex follows its attached source part.");
     const auto vertices = annotationVertices(state, *item);
     if (vertices.empty()) { ImGui::TextWrapped("Coordinates unavailable: restore the original source model."); }
     else if (ImGui::BeginTable("vertices", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
@@ -221,7 +228,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
     if (!interaction.tool && selected && selected->targetValid && selected->settings.visible && !selected->settings.locked) {
         const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == selected->targetId; });
         if (target != parts.end()) {
-            const auto positions = handles(*selected, *target, view);
+            const auto positions = handles(*selected, parts, view);
             for (size_t i = 0; i < positions.size(); ++i) {
                 if (std::hypot(point[0] - positions[i][0], point[1] - positions[i][1]) <= 9 * view.pixelScale) { handle = static_cast<int>(i); break; }
             }
@@ -236,15 +243,16 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
     interaction.editing = 0; interaction.handle = handle;
     try {
         if ((handle >= 0 || moveWhole) && selected) {
-            const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == selected->targetId; });
-            interaction.currentProjection = annotationProjection(parts, view, selected->targetId);
+            interaction.currentProjection = annotationProjection(parts, view, selected->targetId, selected->targetIds);
             const auto hit = annotationSurfaceHit(interaction.currentProjection, annotationNdc(view, point));
-            if (!hit || hit->objectId != selected->targetId) { return false; }
-            interaction.projection = annotationEditProjection(*target, selected->geometry);
+            if (!hit || !annotationHasTarget(*selected, hit->objectId)) { return false; }
+            interaction.projection = annotationEditProjection(parts, *selected);
             interaction.preview = *selected; interaction.editing = selected->objectId;
             interaction.start = selected->geometry.start; interaction.end = selected->geometry.end;
+            const auto source = annotationSourceIndex(interaction.projection, hit->objectId);
+            const auto* target = annotationSourcePart(*selected, parts, source);
             const auto local = annotationPosition(*target->mesh, target->indexOffset, hit->triangle, hit->bary);
-            const auto clip = annotationTransform(selected->geometry.projector, {local[0], local[1], local[2], 1});
+            const auto clip = annotationTransform(annotationSourceProjector(selected->geometry, source), {local[0], local[1], local[2], 1});
             if (clip[3] <= 0) { return false; }
             interaction.grabControl = {clip[0] / clip[3], clip[1] / clip[3]};
         } else {
@@ -255,12 +263,13 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
             if (!target || (!allowed.empty() && std::find(allowed.begin(), allowed.end(), target) == allowed.end())) {
                 throw std::runtime_error("Start on a visible surface of the selected model.");
             }
-            if (initial != target) {
-                setAnnotationProjectionTarget(projection, parts, view, target);
-            }
+            const auto targets = annotationGroupTargets(state, target);
+            if (targets.size() > 1) { projection = annotationProjection(parts, view, target, targets); }
+            else if (initial != target) { setAnnotationProjectionTarget(projection, parts, view, target); }
             interaction.projection = std::move(projection);
             interaction.preview = {};
             interaction.preview.targetId = target; interaction.preview.targetValid = true;
+            interaction.preview.targetIds = interaction.projection.targetIds;
             interaction.preview.geometry = interaction.projection.definition;
             interaction.preview.geometry.shape = *interaction.tool;
             interaction.start = interaction.end = annotationNdc(view, point);
@@ -283,12 +292,13 @@ void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interact
             const auto* selected = selectedAnnotation(state);
             if (!selected || selected->objectId != interaction.editing) { throw std::runtime_error("Annotation selection changed. Start again."); }
             const auto hit = annotationSurfaceHit(interaction.currentProjection, control);
-            if (!hit || hit->objectId != interaction.preview.targetId) { throw std::runtime_error("Keep the annotation on its target surface."); }
+            if (!hit || !annotationHasTarget(interaction.preview, hit->objectId)) { throw std::runtime_error("Keep the annotation on its target surface."); }
             const auto parts = scenePickParts(state);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == hit->objectId; });
             if (target == parts.end()) { throw std::runtime_error("Target is unavailable."); }
             const auto p = annotationPosition(*target->mesh, target->indexOffset, hit->triangle, hit->bary);
-            const auto clip = annotationTransform(interaction.projection.definition.projector, {p[0], p[1], p[2], 1});
+            const auto clip = annotationTransform(annotationSourceProjector(interaction.projection.definition,
+                annotationSourceIndex(interaction.projection, hit->objectId)), {p[0], p[1], p[2], 1});
             if (clip[3] <= 0) { throw std::runtime_error("Keep the handle in its original drawing view."); }
             control = {clip[0] / clip[3], clip[1] / clip[3]};
             if (interaction.handle < 0) {
@@ -329,7 +339,7 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
             if (!selected || selected->objectId != interaction.editing) { throw std::runtime_error("Annotation selection changed. Start again."); }
             reshapeAnnotation(state, interaction.editing, interaction.preview.geometry);
         }
-        else { createAnnotation(state, interaction.preview.targetId, interaction.preview.geometry); }
+        else { createAnnotation(state, interaction.preview.targetId, interaction.preview.geometry, interaction.preview.targetIds); }
         cancelAnnotationPointer(interaction);
     } catch (const std::exception& error) { interaction.error = error.what(); }
 }
@@ -361,11 +371,11 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
             auto parts = scenePickParts(state);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == item->targetId; });
             if (target != parts.end()) {
-                const auto positions = handles(*item, *target, view);
+                const auto positions = handles(*item, parts, view);
                 // Only show handles on visible target surfaces, not through other models.
                 for (auto& part : parts) { part.edges = false; part.vertices = false; }
                 for (auto p : positions) {
-                    if (pickSceneObject(parts, view, p) != item->targetId) { continue; }
+                    if (!annotationHasTarget(*item, pickSceneObject(parts, view, p))) { continue; }
                     interaction.overlayHandles.push_back(p);
                 }
             }
@@ -427,16 +437,12 @@ void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const Sce
 {
     if (state.annotations.empty() && (!interaction || !interaction->dragging)) { return; }
     const auto parts = scenePickParts(state);
-    const auto targetOf = [&](const UiAnnotation& item) -> const ScenePickPart* {
-        const auto found = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == item.targetId; });
-        return found == parts.end() ? nullptr : &*found;
-    };
     for (const auto& item : state.annotations) {
         if (interaction && interaction->dragging && interaction->editing == item.objectId && interaction->error.empty()) { continue; }
-        submitLines(viewId, annotationWorldLines(item, parts), view, targetOf(item), item.geometry, item.settings, layout, program, colorUniform);
+        submitLines(viewId, annotationWorldLines(item, parts), view, item, parts, layout, program, colorUniform);
     }
     if (interaction && interaction->dragging && interaction->error.empty()) {
-        submitLines(viewId, annotationWorldLines(interaction->preview, parts), view, targetOf(interaction->preview), interaction->preview.geometry, interaction->preview.settings, layout, program, colorUniform, interaction->sampledPreview);
+        submitLines(viewId, annotationWorldLines(interaction->preview, parts), view, interaction->preview, parts, layout, program, colorUniform, interaction->sampledPreview);
     }
 }
 } // namespace woby

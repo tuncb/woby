@@ -47,7 +47,7 @@ struct ScenePickView {
 
 [[nodiscard]] ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis,
     const Bounds& bounds, uint32_t width, uint32_t height, bool homogeneousDepth, float pixelScale);
-[[nodiscard]] std::vector<ScenePickPart> scenePickParts(const UiState& state);
+[[nodiscard]] std::vector<ScenePickPart> scenePickParts(const UiState& state, bool includeHidden = false);
 [[nodiscard]] std::vector<SceneObjectId> sceneSelectionPath(const UiState& state, SceneObjectId id);
 void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiComparison& comparison,
     const ComparisonSettings& settings, const MeshComparison& result, bool selected);

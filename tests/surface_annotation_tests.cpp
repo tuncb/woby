@@ -107,6 +107,37 @@ struct Fixture {
     { return projectAnnotation(projection(), shape, {-.8f, -.4f}, {.8f, .4f}); }
     SceneObjectId add(AnnotationShape shape = AnnotationShape::line) { return createAnnotation(state, target(), geometry(shape)); }
 };
+// Independently tessellated siblings with no identical seam vertices. The right
+// part has its own local origin; it touches the left only after its transform.
+void siblingSurface(Fixture& fixture, float gap = 0, float depthJump = 0)
+{
+    Mesh mesh;
+    for (const auto p : std::vector<std::array<float, 3>>{
+        {-1,-1,.5f}, {-gap,-1,.5f}, {-gap,1,.5f}, {-1,1,.5f},
+        {2+gap,-.9f,.8f+depthJump}, {3,-.9f,.8f+depthJump}, {3,.9f,.8f+depthJump}, {2+gap,.9f,.8f+depthJump}}) {
+        Vertex vertex; vertex.position = p; mesh.vertices.push_back(vertex);
+    }
+    mesh.indices = {0,1,2,0,2,3,4,5,6,4,6,7};
+    mesh.nodes = {{"left",0,6}, {"right",6,6}};
+    mesh.bounds = calculateBounds(mesh.vertices);
+    fixture.state = {};
+    fixture.state.files.push_back(createUiFileState(fixture.root / "siblings.obj", mesh, 0));
+    appendDefaultSceneNodesForFiles(fixture.state, 0);
+    fixture.state.files[0].groupSettings[1].translation = {-2,0,-.3f};
+    clearSceneDirty(fixture.state);
+}
+SceneObjectId drawSiblingAnnotation(Fixture& fixture, AnnotationShape shape = AnnotationShape::line)
+{
+    AnnotationInteraction interaction; interaction.tool = shape;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20,140}));
+    REQUIRE(interaction.dragging);
+    moveAnnotationPointer(fixture.state, interaction, {180,60});
+    REQUIRE(interaction.error.empty());
+    endAnnotationPointer(fixture.state, interaction, true);
+    REQUIRE(interaction.error.empty());
+    REQUIRE(fixture.state.annotations.size() == 1);
+    return fixture.state.annotations.front().objectId;
+}
 void nearPoint(const std::array<float, 3>& a, const std::array<float, 3>& b)
 {
     for (size_t k = 0; k < 3; ++k) { CHECK(a[k] == doctest::Approx(b[k]).epsilon(1e-5)); }
@@ -869,7 +900,7 @@ TEST_CASE("annotation bridges survive editing transforms scene files and history
     const auto path = fixture.root / "bridges.woby";
     const auto document = createSceneDocument(fixture.state);
     writeSceneDocument(path, document);
-    { std::ifstream stream(path); std::string line; std::getline(stream, line); std::getline(stream, line); CHECK(line == "version = 15"); }
+    { std::ifstream stream(path); std::string line; std::getline(stream, line); std::getline(stream, line); CHECK(line == "version = 16"); }
     const auto read = readSceneDocument(path);
     CHECK(read.annotations == document.annotations);
     const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, read);
@@ -1588,4 +1619,242 @@ TEST_CASE("annotation overlays offset their handles and input below the main men
     fixture.interaction.overlayHandles = {{100, 100}};
     CHECK(fixture.cursor({400, 140}) == ImGuiMouseCursor_ResizeAll);
     CHECK(fixture.cursor({400, 100}) != ImGuiMouseCursor_ResizeAll);
+}
+
+TEST_CASE("annotations cross touching transformed siblings without matching seam vertices")
+{
+    for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
+        Fixture fixture; siblingSurface(fixture);
+        const auto id = drawSiblingAnnotation(fixture, shape);
+        const auto& item = *findAnnotation(fixture.state, id);
+        REQUIRE(item.targetIds.size() == 2);
+        REQUIRE(item.geometry.sources.size() == 2);
+        CHECK(item.targetValid);
+        const auto lines = annotationWorldLines(item, scenePickParts(fixture.state));
+        REQUIRE(lines.size() == item.geometry.segments.size());
+        bool left = false, right = false;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            left |= item.geometry.segments[i].source == 0;
+            right |= item.geometry.segments[i].source == 1;
+            if (i) { nearPoint(lines[i-1].b, lines[i].a); }
+            CHECK(lines[i].a[2] == doctest::Approx(.5));
+            CHECK(lines[i].b[2] == doctest::Approx(.5));
+        }
+        CHECK(left); CHECK(right);
+        const auto controls = annotationVertices(fixture.state, item);
+        REQUIRE(controls.size() == (shape == AnnotationShape::line ? 2u : 4u));
+        nearPoint(controls.front(), {-.8f,-.4f,.5f});
+        nearPoint(controls[shape == AnnotationShape::line ? 1 : 2], {.8f,.4f,.5f});
+    }
+}
+TEST_CASE("sibling gap bridges retain separate endpoint attachments after transforms")
+{
+    Fixture fixture; siblingSurface(fixture, .2f);
+    const auto id = drawSiblingAnnotation(fixture);
+    const auto item = *findAnnotation(fixture.state, id);
+    const auto before = annotationWorldLines(item, scenePickParts(fixture.state));
+    REQUIRE(std::any_of(item.geometry.segments.begin(), item.geometry.segments.end(), [](const auto& s) {
+        return s.endTriangle && s.endSource && *s.endSource != s.source;
+    }));
+    fixture.state.files[0].groupSettings[1].translation[2] += 2;
+    const auto after = annotationWorldLines(item, scenePickParts(fixture.state));
+    REQUIRE(after.size() == before.size());
+    for (size_t i = 0; i < before.size(); ++i) {
+        const auto& segment = item.geometry.segments[i];
+        nearPoint(after[i].a, {before[i].a[0], before[i].a[1], before[i].a[2] + (segment.source == 1 ? 2.0f : 0.0f)});
+        nearPoint(after[i].b, {before[i].b[0], before[i].b[1], before[i].b[2] + (segment.endSource.value_or(segment.source) == 1 ? 2.0f : 0.0f)});
+    }
+    fixture.state.files[0].groupSettings[1].visible = false;
+    CHECK(annotationWorldLines(item, scenePickParts(fixture.state)).empty());
+    const auto hiddenControls = annotationVertices(fixture.state, item);
+    REQUIRE(hiddenControls.size() == 2);
+    nearPoint(hiddenControls.back(), {.8f,.4f,2.5f});
+}
+TEST_CASE("group annotations still reject depth jumps and unrelated foreground objects")
+{
+    Fixture fixture;
+    SUBCASE("different sibling layer") { siblingSurface(fixture, 0, .2f); }
+    SUBCASE("unrelated object covers the middle") {
+        siblingSurface(fixture);
+        auto blocker = surface();
+        for (auto& vertex : blocker.vertices) { vertex.position[0] *= .1f; vertex.position[2] = .1f; }
+        fixture.state.files.push_back(createUiFileState(fixture.root / "blocker.obj", blocker, 1));
+        appendDefaultSceneNodesForFiles(fixture.state, 1);
+    }
+    const auto projection = annotationProjection(scenePickParts(fixture.state), view(), fixture.target(),
+        annotationGroupTargets(fixture.state, fixture.target()));
+    CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f}));
+    CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f}));
+}
+TEST_CASE("multi source annotation editing save load and undo preserve attachments")
+{
+    Fixture fixture; siblingSurface(fixture, .15f);
+    const auto id = drawSiblingAnnotation(fixture, AnnotationShape::rectangle);
+    const auto clean = createSceneDocument(fixture.state);
+    SceneHistory history; resetSceneHistory(history, fixture.state);
+    const auto original = *findAnnotation(fixture.state, id);
+    const auto projection = annotationEditProjection(scenePickParts(fixture.state), original);
+    const auto edited = projectAnnotation(projection, AnnotationShape::rectangle, {-.7f,-.3f}, {.7f,.3f});
+    reshapeAnnotation(fixture.state, id, edited);
+    REQUIRE(recordSceneHistory(history, fixture.state));
+    auto undo = prepareSceneHistoryStep(history, fixture.state, clean, false);
+    REQUIRE(undo); commitSceneHistoryStep(history, fixture.state, std::move(*undo), false);
+    CHECK(fixture.state.annotations[0].geometry == original.geometry);
+    CHECK(fixture.state.annotations[0].targetIds == original.targetIds);
+    auto redo = prepareSceneHistoryStep(history, fixture.state, clean, true);
+    REQUIRE(redo); commitSceneHistoryStep(history, fixture.state, std::move(*redo), true);
+    CHECK(fixture.state.annotations[0].geometry == edited);
+    std::filesystem::create_directories(fixture.root);
+    const auto path = fixture.root / "multi.woby";
+    const auto document = createSceneDocument(fixture.state);
+    writeSceneDocument(path, document);
+    const auto read = readSceneDocument(path);
+    CHECK(read.annotations == document.annotations);
+    const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, read);
+    REQUIRE(restored.annotations.size() == 1);
+    REQUIRE(restored.annotations[0].targetValid);
+    REQUIRE(restored.annotations[0].targetIds.size() == 2);
+    CHECK(restored.annotations[0].targetIds[1] == restored.files[0].groupSettings[1].objectId);
+    const auto before = annotationWorldLines(fixture.state.annotations[0], scenePickParts(fixture.state));
+    const auto after = annotationWorldLines(restored.annotations[0], scenePickParts(restored));
+    REQUIRE(before.size() == after.size());
+    for (size_t i = 0; i < before.size(); ++i) { nearPoint(before[i].a, after[i].a); nearPoint(before[i].b, after[i].b); }
+    auto changed = restored;
+    changed.files[0].mesh.vertices[4].position[2] += .1f;
+    validateAnnotationTargets(changed);
+    CHECK_FALSE(changed.annotations[0].targetValid);
+    CHECK(annotationWorldLines(changed.annotations[0], scenePickParts(changed)).empty());
+}
+TEST_CASE("multi source annotation rejects malformed references atomically")
+{
+    Fixture fixture; siblingSurface(fixture);
+    const auto id = drawSiblingAnnotation(fixture);
+    const auto original = *findAnnotation(fixture.state, id);
+    auto geometry = original.geometry;
+    SUBCASE("invalid start source") { geometry.segments.front().source = 99; }
+    SUBCASE("invalid end source") { geometry.segments.front().endTriangle = 0; geometry.segments.front().endSource = 99; }
+    SUBCASE("invalid secondary triangle") { geometry.segments.back().triangle = 99; }
+    SUBCASE("changed secondary attachment") { geometry.sources[1].fingerprint = "changed"; }
+    SUBCASE("singular secondary projector") { geometry.sources[1].projector.fill(0); }
+    CHECK_THROWS(reshapeAnnotation(fixture.state, id, geometry));
+    CHECK(findAnnotation(fixture.state, id)->geometry == original.geometry);
+}
+TEST_CASE("sibling endpoint handles edit across source parts")
+{
+    Fixture fixture; siblingSurface(fixture);
+    const auto id = drawSiblingAnnotation(fixture);
+    AnnotationInteraction interaction;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {180,60}));
+    REQUIRE(interaction.dragging);
+    CHECK(interaction.handle == 1);
+    moveAnnotationPointer(fixture.state, interaction, {170,70});
+    REQUIRE(interaction.error.empty());
+    endAnnotationPointer(fixture.state, interaction, true);
+    REQUIRE(interaction.error.empty());
+    const auto vertices = annotationVertices(fixture.state, *findAnnotation(fixture.state, id));
+    REQUIRE(vertices.size() == 2);
+    nearPoint(vertices[1], {.7f,.3f,.5f});
+}
+
+TEST_CASE("annotation scope follows a selected parent without combining unrelated selections")
+{
+    Fixture fixture; siblingSurface(fixture);
+    auto left = fixture.state.files[0].mesh;
+    auto right = left;
+    left.nodes = {{"left",0,6}}; right.nodes = {{"right",6,6}};
+    fixture.state = {};
+    fixture.state.files.push_back(createUiFileState(fixture.root / "left.obj", left, 0));
+    fixture.state.files.push_back(createUiFileState(fixture.root / "right.obj", right, 1));
+    appendDefaultSceneNodesForFiles(fixture.state, 0);
+    fixture.state.files[1].groupSettings[0].translation = {-2,0,-.3f};
+    const auto second = fixture.state.files[1].groupSettings[0].objectId;
+    SUBCASE("selected parent includes children from both files") {
+        UiSceneNode parent; parent.kind = UiSceneNodeKind::folder; parent.name = "Assembly";
+        parent.children = std::move(fixture.state.sceneNodes);
+        fixture.state.sceneNodes = {std::move(parent)};
+        assignSceneObjectIds(fixture.state);
+        selectSceneObject(fixture.state, fixture.state.sceneNodes[0].objectId);
+        const auto id = drawSiblingAnnotation(fixture);
+        CHECK(findAnnotation(fixture.state, id)->targetIds == std::vector<SceneObjectId>{fixture.target(), second});
+        const auto clean = createSceneDocument(fixture.state);
+        const auto files = fixture.state.files;
+        SceneHistory history; resetSceneHistory(history, fixture.state);
+        REQUIRE(removeFileFromState(fixture.state, 1));
+        REQUIRE(recordSceneHistory(history, fixture.state));
+        CHECK(annotationWorldLines(*findAnnotation(fixture.state, id), scenePickParts(fixture.state)).empty());
+        std::filesystem::create_directories(fixture.root);
+        const auto path = fixture.root / "missing-sibling.woby";
+        const auto missing = createSceneDocument(fixture.state);
+        REQUIRE(missing.annotations[0].targets.size() == 2);
+        CHECK(missing.annotations[0].targets[1].fileIndex == -1);
+        writeSceneDocument(path, missing);
+        CHECK(readSceneDocument(path).annotations == missing.annotations);
+        auto undo = prepareSceneHistoryStep(history, fixture.state, clean, false, files);
+        REQUIRE(undo); commitSceneHistoryStep(history, fixture.state, std::move(*undo), false);
+        REQUIRE(fixture.state.annotations[0].targetValid);
+        CHECK(fixture.state.annotations[0].targetIds[1] == second);
+    }
+    SUBCASE("unrelated selected objects cannot share an annotation") {
+        fixture.state.selectedSceneObjects = {fixture.target(), second};
+        CHECK(annotationGroupTargets(fixture.state, fixture.target()) == std::vector<SceneObjectId>{fixture.target()});
+        // Even a caller that bypasses the drawing scope cannot commit foreign sources.
+        const std::vector<SceneObjectId> targets{fixture.target(), second};
+        const auto projection = annotationProjection(scenePickParts(fixture.state), view(), fixture.target(), targets);
+        auto geometry = projectAnnotation(projection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f});
+        CHECK_THROWS(createAnnotation(fixture.state, fixture.target(), geometry, projection.targetIds));
+        CHECK(fixture.state.annotations.empty());
+    }
+}
+TEST_CASE("sampled annotation previews keep sibling bridge source identities")
+{
+    Fixture fixture; siblingSurface(fixture, .2f);
+    const auto projection = annotationProjection(scenePickParts(fixture.state), view(), fixture.target(),
+        annotationGroupTargets(fixture.state, fixture.target()));
+    UiAnnotation preview;
+    preview.targetId = fixture.target(); preview.targetIds = projection.targetIds; preview.targetValid = true;
+    preview.geometry = previewAnnotation(projection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f});
+    const auto lines = annotationWorldLines(preview, scenePickParts(fixture.state));
+    REQUIRE_FALSE(lines.empty());
+    nearPoint(lines.front().a, {-.8f,-.4f,.5f}); nearPoint(lines.back().b, {.8f,.4f,.5f});
+    CHECK(std::any_of(preview.geometry.segments.begin(), preview.geometry.segments.end(), [](const auto& segment) {
+        return segment.endSource && segment.source != *segment.endSource;
+    }));
+}
+TEST_CASE("annotation scene loading rejects malformed multi source references")
+{
+    Fixture fixture; siblingSurface(fixture);
+    drawSiblingAnnotation(fixture);
+    std::filesystem::create_directories(fixture.root);
+    const auto path = fixture.root / "invalid-sources.woby";
+    writeSceneDocument(path, createSceneDocument(fixture.state));
+    std::ifstream stream(path);
+    std::string text{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+    stream.close();
+    SUBCASE("source table references a missing file index") {
+        const auto index = text.find("file_index = 0", text.find("[[annotations.sources]]"));
+        REQUIRE(index != std::string::npos);
+        text.replace(index, std::string("file_index = 0").size(), "file_index = 999");
+    }
+    SUBCASE("segment references an absent source") {
+        const auto index = text.find("source = 0", text.find("[[annotations.segments]]"));
+        REQUIRE(index != std::string::npos);
+        text.replace(index, std::string("source = 0").size(), "source = 999");
+    }
+    { std::ofstream output(path); output << text; }
+    CHECK_THROWS((void)readSceneDocument(path));
+}
+TEST_CASE("annotation CLI creates and reshapes across sibling surfaces")
+{
+    Fixture fixture; siblingSurface(fixture);
+    annotationCamera(fixture);
+    const auto created = annotationCommand(fixture, "annotation.create",
+        {{"shape", "line"}, {"start", {-.2,-.1}}, {"end", {.2,.1}}}, fixture.target());
+    REQUIRE(fixture.state.annotations.size() == 1);
+    const auto id = fixture.state.annotations[0].objectId;
+    REQUIRE(fixture.state.annotations[0].targetIds.size() == 2);
+    CHECK(created["object"]["vertexSpace"] == "world");
+    CHECK(created["object"]["sourceIds"].size() == 2);
+    const auto moved = annotationCommand(fixture, "annotation.move", {{"delta", {0,.05}}}, id);
+    CHECK(moved["object"]["targetValid"] == true);
+    CHECK(fixture.state.annotations[0].geometry.start[1] == doctest::Approx(-.05));
 }

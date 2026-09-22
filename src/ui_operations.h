@@ -245,7 +245,8 @@ void navigateUiCamera(UiState& state, const CameraNavigation& navigation);
 [[nodiscard]] const UiAnnotation* findAnnotation(const UiState& state, SceneObjectId id);
 [[nodiscard]] const UiAnnotation* selectedAnnotation(const UiState& state);
 [[nodiscard]] std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const UiAnnotation& item);
-SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry);
+SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry,
+    std::vector<SceneObjectId> targets = {});
 void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings settings);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry);
 void deleteAnnotation(UiState& state, SceneObjectId id);

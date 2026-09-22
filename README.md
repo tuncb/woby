@@ -148,15 +148,18 @@ for example `$instances = .\woby.exe ctl instances --json`.
 
 Use the **Surface line** or **Surface rectangle** icon to the left of
 **Show dimensions**, then drag
-on a visible model surface. Selecting a file or part first restricts placement to
-that selection; the first hit chooses one target part. The complete outline is
-projected onto that part. Rectangles follow curved surfaces, so their edges can
-bend in 3D. Camera movement never changes the marked range.
+on a visible model surface. Selecting a file or part first restricts where the
+drag can start. The outline can continue across sibling parts in that model file.
+Select a parent folder to allow its descendant parts, including parts from different
+files. Selecting unrelated parts does not combine them into one annotation scope.
+Rectangles follow curved surfaces, so their edges can bend in 3D. Camera movement
+never changes the marked range.
 
 Release to create an Annotation item. Select it in Objects or click its outline
 to edit its name, multiline comments, color, width, visibility, and shape lock in Properties.
 Properties also shows the line's two endpoints or rectangle's four corners in
-model coordinates (model units, before scene transforms). Comments support
+model coordinates for single-part annotations, or world coordinates for annotations
+with multiple source parts. The coordinate space is labeled in Properties. Comments support
 Undo/Redo and are saved with the scene; existing annotation notes appear as comments.
 Use the eye icon in the annotation row or Properties to toggle visibility, and
 the X at the right of its row to remove it. Removal supports Undo/Redo.
@@ -167,24 +170,26 @@ one Undo/Redo action.
 Drag an edge of a selected, unlocked annotation to move the whole outline on its
 source surface. Moving preserves its size in the original drawing projection;
 the outline conforms to the surface at its new position. Unselected outlines
-must be selected first. The complete outline must fit on the source part.
+must be selected first. Endpoints and corners must stay on the original source parts.
 The active tool is highlighted; click it again to cancel. The pointer becomes a
 crosshair while drawing and a move cursor over editable endpoints and corners.
 
-Outlines stay attached through model transforms and hide with their target.
+Each outline section follows its own source part through transforms. Outlines hide
+when one of their source parts is hidden.
 They are depth-tested, included in scene PNG exports, and saved in `.woby` scenes
-(version 13, including annotations that bridge holes). Saved views restore their visibility,
+(version 16, including multiple source attachments and gap bridges). Saved views restore their visibility,
 color, and width. Older scene files remain readable. Removing a source retains a named annotation with a
 **needs reattachment** status; restoring the unchanged source through Undo
 restores attachment. Changed source geometry is detected on Open or history
 restoration, and affected annotations remain unresolved instead of attaching to
 unrelated triangles.
 
-The tools create outlines on one model part. Line endpoints and rectangle corners
-must stay on the model; edges follow the surface and bridge holes with straight
-segments between the rims. Outlines still reject disconnected surface layer jumps
-and opaque occluding objects. They do not fill regions, measure surface area, or
-attach to derived analysis results.
+Line endpoints and rectangle corners must stay on a source surface. Outlines can
+cross touching sibling surfaces even when their mesh vertices do not match, and
+bridge empty gaps with straight segments between the rims. Outlines still reject
+jumps between separate surface layers and opaque occluding objects outside their
+group. They do not fill regions, measure surface area, or attach to derived analysis
+results.
 
 Try the [curved-surface annotation sample](assets/samples/surface-annotations/README.md).
 The CLI also supports `annotation list`, `get`, `create`, `set`, `reshape`, `move`,
