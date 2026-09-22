@@ -5,15 +5,18 @@
 #include "scene_history.h"
 #include "automation_registry.h"
 #include "control_scene.h"
+#include "obj_mesh.h"
 #include <nlohmann/json.hpp>
 
 #include <bx/math.h>
 #include <doctest/doctest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <algorithm>
 #include <fstream>
 #include <limits>
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 
 namespace {
@@ -30,6 +33,31 @@ Mesh surface(bool folded = false)
     }
     mesh.indices = {0, 2, 3, 0, 3, 1, 2, 4, 5, 2, 5, 3};
     mesh.nodes = {{"surface", 0, 12}};
+    mesh.bounds = calculateBounds(mesh.vertices);
+    return mesh;
+}
+Mesh tessellatedSurface(uint32_t n, uint32_t layers = 1)
+{
+    Mesh mesh;
+    for (uint32_t layer = 0; layer < layers; ++layer) {
+        const auto offset = static_cast<uint32_t>(mesh.vertices.size());
+        for (uint32_t y = 0; y <= n; ++y) {
+            for (uint32_t x = 0; x <= n; ++x) {
+                Vertex vertex;
+                const float u = static_cast<float>(x) / static_cast<float>(n) * 2 - 1;
+                const float v = static_cast<float>(y) / static_cast<float>(n) * 2 - 1;
+                vertex.position = {u, v, .2f + .3f * u * u + static_cast<float>(layer) * .01f};
+                mesh.vertices.push_back(vertex);
+            }
+        }
+        for (uint32_t y = 0; y < n; ++y) {
+            for (uint32_t x = 0; x < n; ++x) {
+                const uint32_t a = offset + y * (n + 1) + x, b = a + 1, c = a + n + 1, d = c + 1;
+                mesh.indices.insert(mesh.indices.end(), {a,b,d,a,d,c});
+            }
+        }
+    }
+    mesh.nodes = {{"surface", 0, static_cast<uint32_t>(mesh.indices.size())}};
     mesh.bounds = calculateBounds(mesh.vertices);
     return mesh;
 }
@@ -1184,6 +1212,140 @@ TEST_CASE("surface annotation previews on a tessellated model")
         << std::chrono::duration<double,std::milli>(done-ready).count() << " ms\n";
 }
 
+// Opt-in workload: report timings, never assert machine-dependent thresholds.
+// Run with --test-case="surface annotation large mesh benchmark" --no-skip.
+TEST_CASE("surface annotation large mesh benchmark" * doctest::skip())
+{
+    for (const auto [width, layers] : {std::pair{100u, 1u}, std::pair{700u, 1u}, std::pair{250u, 8u}}) {
+        Fixture fixture;
+        fixture.state.files[0].mesh = tessellatedSurface(width, layers);
+        std::vector<double> setupTimes, rectangleTimes, gestureTimes, previewTimes;
+        size_t segments = 0;
+        size_t cacheBytes = 0;
+        for (size_t run = 0; run < 3; ++run) {
+            const auto begin = std::chrono::steady_clock::now();
+            const auto projection = fixture.projection();
+            const auto ready = std::chrono::steady_clock::now();
+            cacheBytes = projection.vertices.size() * sizeof(AnnotationProjectionVertex)
+                + projection.triangles.size() * sizeof(AnnotationProjectionFace)
+                + projection.clippedTriangles.size() * sizeof(AnnotationProjectedTriangle)
+                + projection.order.size() * sizeof(size_t) + projection.nodes.size() * sizeof(AnnotationProjectionNode);
+            for (size_t move = 0; move < 10; ++move) {
+                const float delta = static_cast<float>(move) * .001f;
+                segments += projectAnnotation(projection, AnnotationShape::rectangle, {-.791f,-.431f}, {.771f + delta,.511f + delta}).segments.size();
+            }
+            const auto done = std::chrono::steady_clock::now();
+            AnnotationInteraction interaction;
+            interaction.tool = AnnotationShape::rectangle;
+            REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {21,143}));
+            REQUIRE(interaction.dragging);
+            const auto gesture = std::chrono::steady_clock::now();
+            for (size_t move = 0; move < 10; ++move) {
+                const float delta = static_cast<float>(move) * .1f;
+                moveAnnotationPointer(fixture.state, interaction, {177.1f + delta,48.9f - delta});
+                REQUIRE(interaction.error.empty());
+            }
+            const auto preview = std::chrono::steady_clock::now();
+            setupTimes.push_back(std::chrono::duration<double,std::milli>(ready-begin).count());
+            rectangleTimes.push_back(std::chrono::duration<double,std::milli>(done-ready).count() / 10);
+            gestureTimes.push_back(std::chrono::duration<double,std::milli>(gesture-done).count());
+            previewTimes.push_back(std::chrono::duration<double,std::milli>(preview-gesture).count() / 10);
+        }
+        std::sort(setupTimes.begin(), setupTimes.end());
+        std::sort(rectangleTimes.begin(), rectangleTimes.end());
+        std::sort(gestureTimes.begin(), gestureTimes.end());
+        std::sort(previewTimes.begin(), previewTimes.end());
+        std::cout << "Annotation benchmark: triangles=" << fixture.state.files[0].mesh.indices.size() / 3
+            << " layers=" << layers << " setup_ms=" << setupTimes[1] << " rectangle_ms=" << rectangleTimes[1]
+            << " unselected_gesture_ms=" << gestureTimes[1] << " drag_ms=" << previewTimes[1]
+            << " cache_bytes=" << cacheBytes << " segments_checksum=" << segments << '\n';
+    }
+}
+
+// Set WOBY_ANNOTATION_MODEL to a local OBJ, then opt in with --no-skip.
+TEST_CASE("surface annotation external model benchmark" * doctest::skip())
+{
+    std::filesystem::path modelPath;
+#ifdef _WIN32
+    wchar_t* value = nullptr;
+    size_t length = 0;
+    REQUIRE(_wdupenv_s(&value, &length, L"WOBY_ANNOTATION_MODEL") == 0);
+    if (value) { modelPath = value; }
+    std::free(value);
+#else
+    if (const auto* value = std::getenv("WOBY_ANNOTATION_MODEL")) { modelPath = value; }
+#endif
+    REQUIRE_FALSE(modelPath.empty());
+    Fixture fixture;
+    fixture.state = {};
+    fixture.state.files.push_back(createUiFileState(modelPath, loadObjMesh(modelPath), 0));
+    appendDefaultSceneNodesForFiles(fixture.state, 0);
+    const auto& mesh = fixture.state.files[0].mesh;
+    const auto largest = std::max_element(mesh.nodes.begin(), mesh.nodes.end(),
+        [](const auto& a, const auto& b) { return a.indexCount < b.indexCount; });
+    REQUIRE(largest != mesh.nodes.end());
+    const auto target = fixture.state.files[0].groupSettings[static_cast<size_t>(largest - mesh.nodes.begin())].objectId;
+    const auto camera = cameraWithView(frameCameraBounds(mesh.bounds, SceneUpAxis::y), CameraView::top);
+    const auto modelView = scenePickView(camera, SceneUpAxis::y, mesh.bounds, 1920, 1080, false, 1);
+    std::cout << "External model: triangles=" << mesh.indices.size() / 3 << " groups=" << mesh.nodes.size()
+        << " largest=" << largest->name << " bounds=" << mesh.bounds.min[0] << ',' << mesh.bounds.min[1]
+        << ',' << mesh.bounds.min[2] << " to " << mesh.bounds.max[0] << ',' << mesh.bounds.max[1]
+        << ',' << mesh.bounds.max[2] << std::endl;
+    std::array<float, 2> start{}, end{};
+    bool found = false;
+    {
+        const auto projection = annotationProjection(scenePickParts(fixture.state), modelView, target);
+        for (float extent : {.15f, .07f, .03f, .01f}) {
+            for (int y = -8; y <= 8 && !found; ++y) {
+                for (int x = -8; x <= 8 && !found; ++x) {
+                    start = {static_cast<float>(x) * .05f - extent, static_cast<float>(y) * .05f - extent};
+                    end = {start[0] + 2 * extent, start[1] + 2 * extent};
+                    try { (void)projectAnnotation(projection, AnnotationShape::rectangle, start, end); found = true; }
+                    catch (const std::runtime_error&) { }
+                }
+            }
+            if (found) { break; }
+        }
+    }
+    REQUIRE(found);
+    const auto pointer = [&](const auto& point) -> PickPoint {
+        return {(point[0] + 1) * static_cast<float>(modelView.width) * .5f,
+            (1 - point[1]) * static_cast<float>(modelView.height) * .5f};
+    };
+    std::vector<double> setupTimes, dragTimes, exactTimes, commitTimes;
+    size_t segments = 0, faces = 0;
+    for (size_t run = 0; run < 3; ++run) {
+        AnnotationInteraction interaction;
+        interaction.tool = AnnotationShape::rectangle;
+        const auto begin = std::chrono::steady_clock::now();
+        REQUIRE(beginAnnotationPointer(fixture.state, interaction, modelView, pointer(start)));
+        REQUIRE(interaction.dragging);
+        const auto ready = std::chrono::steady_clock::now();
+        for (size_t i = 0; i < 10; ++i) { moveAnnotationPointer(fixture.state, interaction, pointer(end)); }
+        const auto moved = std::chrono::steady_clock::now();
+        REQUIRE(interaction.error.empty());
+        const auto exact = projectAnnotation(interaction.projection, AnnotationShape::rectangle, interaction.start, interaction.end);
+        const auto resolved = std::chrono::steady_clock::now();
+        faces = interaction.projection.triangles.size();
+        endAnnotationPointer(fixture.state, interaction, true);
+        const auto done = std::chrono::steady_clock::now();
+        REQUIRE(interaction.error.empty());
+        REQUIRE(fixture.state.annotations.size() == 1);
+        CHECK(fixture.state.annotations.front().geometry == exact);
+        segments = exact.segments.size();
+        setupTimes.push_back(std::chrono::duration<double,std::milli>(ready-begin).count());
+        dragTimes.push_back(std::chrono::duration<double,std::milli>(moved-ready).count() / 10);
+        exactTimes.push_back(std::chrono::duration<double,std::milli>(resolved-moved).count());
+        commitTimes.push_back(std::chrono::duration<double,std::milli>(done-resolved).count());
+        deleteAnnotation(fixture.state, fixture.state.annotations.front().objectId);
+    }
+    for (auto* times : {&setupTimes, &dragTimes, &exactTimes, &commitTimes}) { std::sort(times->begin(), times->end()); }
+    std::cout << "External annotation benchmark: triangles=" << mesh.indices.size() / 3 << " groups=" << mesh.nodes.size()
+        << " projected_faces=" << faces << " target=" << largest->name << " start=" << start[0] << ',' << start[1]
+        << " end=" << end[0] << ',' << end[1] << " setup_ms=" << setupTimes[1] << " drag_ms=" << dragTimes[1]
+        << " exact_ms=" << exactTimes[1] << " commit_ms=" << commitTimes[1] << " segments=" << segments << '\n';
+}
+
 TEST_CASE("surface annotations handle thousands of coincident faces without an overlap limit")
 {
     Fixture fixture;
@@ -1271,6 +1433,144 @@ TEST_CASE("annotation projection keeps shared mesh groups in their own transform
     }
 }
 
+
+TEST_CASE("annotation projection shares vertices and owns them after the source changes")
+{
+    Fixture fixture;
+    const auto projection = fixture.projection();
+    REQUIRE(projection.vertices.size() == fixture.state.files[0].mesh.vertices.size());
+    CHECK(projection.clippedTriangles.empty());
+    CHECK(sizeof(AnnotationProjectionFace) < sizeof(AnnotationProjectedTriangle));
+    const auto expected = projectAnnotation(projection, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f});
+    fixture.state.files[0].mesh = {};
+    CHECK(projectAnnotation(projection, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f}) == expected);
+}
+
+TEST_CASE("annotation discovery cache can select a target without reprojecting its vertices")
+{
+    Fixture fixture;
+    auto front = surface();
+    for (auto& vertex : front.vertices) { vertex.position[2] = .1f; }
+    fixture.state.files.push_back(createUiFileState(fixture.root / "transparent.obj", std::move(front), 1));
+    appendDefaultSceneNodesForFiles(fixture.state, 1);
+    setFileOpacity(fixture.state.files[1].fileSettings, .5f);
+    const auto parts = scenePickParts(fixture.state);
+    for (const auto& part : parts) {
+        auto discovered = annotationProjection(parts, view(), 0);
+        const auto* vertices = discovered.vertices.data();
+        setAnnotationProjectionTarget(discovered, parts, view(), part.objectId);
+        CHECK(discovered.vertices.data() == vertices);
+        const auto expected = annotationProjection(parts, view(), part.objectId);
+        CHECK(projectAnnotation(discovered, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f})
+            == projectAnnotation(expected, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f}));
+    }
+}
+
+TEST_CASE("sampled annotation guides have bounded work and preserve corners under perspective")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = tessellatedSurface(160);
+    auto perspective = view();
+    perspective.projection[3] = .2f;
+    const auto projection = annotationProjection(scenePickParts(fixture.state), perspective, fixture.target());
+    const auto guide = previewAnnotation(projection, AnnotationShape::rectangle, {-.7f,-.3f}, {.7f,.3f});
+    CHECK(guide.segments.size() <= 128);
+    const auto exact = projectAnnotation(projection, AnnotationShape::rectangle, {-.7f,-.3f}, {.7f,.3f});
+    REQUIRE(exact.segments.size() > guide.segments.size());
+    const auto controls = annotationControlPositions(fixture.state.files[0].mesh, 0, guide);
+    const auto expected = annotationControlPositions(fixture.state.files[0].mesh, 0, exact);
+    REQUIRE(controls.size() == 4);
+    for (size_t i = 0; i < controls.size(); ++i) { nearPoint(controls[i], expected[i]); }
+    CHECK_THROWS((void)previewAnnotation(projection, AnnotationShape::rectangle, {0,0}, {0,.4f}));
+    CHECK_THROWS((void)previewAnnotation(projection, AnnotationShape::line, {0,0}, {2,.4f}));
+}
+
+TEST_CASE("annotation point traversal agrees with a full scan including depth ties")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = tessellatedSurface(12, 3);
+    auto& mesh = fixture.state.files[0].mesh;
+    const auto original = mesh.indices;
+    mesh.indices.insert(mesh.indices.end(), original.begin(), original.end());
+    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    const auto projection = fixture.projection();
+    auto scanned = projection;
+    scanned.nodes.resize(1);
+    scanned.nodes[0].left = scanned.nodes[0].right = 0;
+    scanned.nodes[0].begin = 0; scanned.nodes[0].end = scanned.order.size();
+    for (int y = -10; y <= 10; ++y) {
+        for (int x = -10; x <= 10; ++x) {
+            const std::array<float, 2> point{static_cast<float>(x) / 10, static_cast<float>(y) / 10};
+            const auto hit = annotationSurfaceHit(projection, point), expected = annotationSurfaceHit(scanned, point);
+            REQUIRE(hit);
+            REQUIRE(expected);
+            CHECK(hit->objectId == expected->objectId);
+            CHECK(hit->triangle == expected->triangle);
+            nearPoint(hit->bary, expected->bary);
+        }
+    }
+}
+
+TEST_CASE("dense annotation gestures resolve the sampled guide before committing or reshaping")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = tessellatedSurface(160);
+    AnnotationInteraction interaction;
+    interaction.tool = AnnotationShape::rectangle;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {21,143}));
+    REQUIRE(interaction.sampledPreview);
+    moveAnnotationPointer(fixture.state, interaction, {177,49});
+    REQUIRE(interaction.error.empty());
+    REQUIRE(interaction.preview.geometry.segments.size() <= 128);
+    const auto expected = projectAnnotation(interaction.projection, AnnotationShape::rectangle, interaction.start, interaction.end);
+    REQUIRE(expected.segments.size() > 128);
+    SUBCASE("cancel leaves no annotation") {
+        cancelAnnotationPointer(interaction);
+        CHECK(fixture.state.annotations.empty());
+    }
+    SUBCASE("scene changes reject the sampled preview") {
+        markSceneDirty(fixture.state);
+        endAnnotationPointer(fixture.state, interaction, true);
+        CHECK(fixture.state.annotations.empty());
+        CHECK_FALSE(interaction.error.empty());
+    }
+    SUBCASE("release stores exact geometry and handle edits do too") {
+        endAnnotationPointer(fixture.state, interaction, true);
+        REQUIRE(fixture.state.annotations.size() == 1);
+        CHECK(fixture.state.annotations.front().geometry == expected);
+        REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {21,143}));
+        REQUIRE(interaction.sampledPreview);
+        REQUIRE(interaction.editing == fixture.state.annotations.front().objectId);
+        moveAnnotationPointer(fixture.state, interaction, {31,133});
+        REQUIRE(interaction.error.empty());
+        const auto edited = projectAnnotation(interaction.projection, AnnotationShape::rectangle, interaction.start, interaction.end);
+        endAnnotationPointer(fixture.state, interaction, true);
+        CHECK(fixture.state.annotations.front().geometry == edited);
+    }
+}
+
+TEST_CASE("sampled annotation gestures cannot commit narrow occluders missed by the guide")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = tessellatedSurface(160);
+    auto front = surface();
+    for (auto& vertex : front.vertices) {
+        vertex.position[0] = .12345f + vertex.position[0] * .00001f;
+        vertex.position[2] = .01f;
+    }
+    front.bounds = calculateBounds(front.vertices);
+    fixture.state.files.push_back(createUiFileState(fixture.root / "thin.obj", std::move(front), 1));
+    appendDefaultSceneNodesForFiles(fixture.state, 1);
+    AnnotationInteraction interaction;
+    interaction.tool = AnnotationShape::rectangle;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20,140}));
+    REQUIRE(interaction.sampledPreview);
+    moveAnnotationPointer(fixture.state, interaction, {180,60});
+    REQUIRE(interaction.error.empty());
+    endAnnotationPointer(fixture.state, interaction, true);
+    CHECK(fixture.state.annotations.empty());
+    CHECK(interaction.error == "Keep the outline clear of other objects.");
+}
 
 TEST_CASE("annotation overlays offset their handles and input below the main menu")
 {

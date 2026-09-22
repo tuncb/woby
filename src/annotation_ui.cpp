@@ -28,7 +28,7 @@ std::vector<PickPoint> handles(const UiAnnotation& item, const ScenePickPart& ta
 void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, const ScenePickView& view,
     const ScenePickPart* target, const AnnotationGeometry& geometry,
     const AnnotationSettings& settings, const bgfx::VertexLayout& layout, bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform)
+    bgfx::UniformHandle colorUniform, bool sampledPreview = false)
 {
     const auto vp = annotationCompose(view.view, view.projection);
     std::vector<std::array<float, 3>> vertices;
@@ -103,7 +103,9 @@ void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, 
     std::memcpy(buffer.data, vertices.data(), vertices.size() * sizeof(vertices.front()));
     bgfx::setVertexBuffer(0, &buffer);
     bgfx::setUniform(colorUniform, settings.color.data());
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL
+    // Sampled chords can sink into curved surfaces. The temporary drag guide
+    // stays visible; only the final, fully attached outline uses surface depth.
+    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | (sampledPreview ? 0 : BGFX_STATE_DEPTH_TEST_LEQUAL)
         | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA);
     bgfx::submit(viewId, program);
 }
@@ -254,7 +256,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
                 throw std::runtime_error("Start on a visible surface of the selected model.");
             }
             if (initial != target) {
-                projection = annotationProjection(parts, view, target);
+                setAnnotationProjectionTarget(projection, parts, view, target);
             }
             interaction.projection = std::move(projection);
             interaction.preview = {};
@@ -264,6 +266,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
             interaction.start = interaction.end = annotationNdc(view, point);
         }
         interaction.preview.geometry.segments.clear();
+        interaction.sampledPreview = interaction.projection.triangles.size() > 50000;
         interaction.dragging = true;
     } catch (const std::exception& error) { interaction.error = error.what(); }
     return true;
@@ -301,7 +304,9 @@ void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interact
                 (interaction.handle == 0 || interaction.handle == 1 ? interaction.start[1] : interaction.end[1]) = control[1];
             }
         } else { interaction.end = control; }
-        interaction.preview.geometry = projectAnnotation(interaction.projection, interaction.preview.geometry.shape, interaction.start, interaction.end);
+        interaction.preview.geometry = interaction.sampledPreview
+            ? previewAnnotation(interaction.projection, interaction.preview.geometry.shape, interaction.start, interaction.end)
+            : projectAnnotation(interaction.projection, interaction.preview.geometry.shape, interaction.start, interaction.end);
         interaction.error.clear();
     } catch (const std::exception& error) { interaction.error = error.what(); }
 }
@@ -315,6 +320,10 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
     if (!interaction.error.empty() || interaction.preview.geometry.segments.empty()) { return; }
     if (std::hypot(interaction.pointerEnd[0] - interaction.pointerStart[0], interaction.pointerEnd[1] - interaction.pointerStart[1]) < 4 * interaction.view.pixelScale) { return; }
     try {
+        if (interaction.sampledPreview) {
+            interaction.preview.geometry = projectAnnotation(interaction.projection,
+                interaction.preview.geometry.shape, interaction.start, interaction.end);
+        }
         if (interaction.editing) {
             const auto* selected = selectedAnnotation(state);
             if (!selected || selected->objectId != interaction.editing) { throw std::runtime_error("Annotation selection changed. Start again."); }
@@ -369,7 +378,9 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
     }
     float messageBottom = 0;
     if (interaction.tool || interaction.dragging || !interaction.error.empty()) {
-        const char* text = !interaction.error.empty() ? interaction.error.c_str() : "Drag on the surface. Escape cancels.";
+        const char* text = !interaction.error.empty() ? interaction.error.c_str()
+            : interaction.dragging && interaction.sampledPreview ? "Release to attach the outline to the surface. Escape cancels."
+            : "Drag on the surface. Escape cancels.";
         const float margin = uiSize(12), paddingX = uiSize(12), paddingY = uiSize(8);
         const float wrapWidth = std::max(1.0f, high.x - low.x - 2 * (margin + paddingX));
         const auto size = ImGui::CalcTextSize(text, nullptr, false, wrapWidth);
@@ -425,7 +436,7 @@ void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const Sce
         submitLines(viewId, annotationWorldLines(item, parts), view, targetOf(item), item.geometry, item.settings, layout, program, colorUniform);
     }
     if (interaction && interaction->dragging && interaction->error.empty()) {
-        submitLines(viewId, annotationWorldLines(interaction->preview, parts), view, targetOf(interaction->preview), interaction->preview.geometry, interaction->preview.settings, layout, program, colorUniform);
+        submitLines(viewId, annotationWorldLines(interaction->preview, parts), view, targetOf(interaction->preview), interaction->preview.geometry, interaction->preview.settings, layout, program, colorUniform, interaction->sampledPreview);
     }
 }
 } // namespace woby

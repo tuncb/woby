@@ -1,0 +1,127 @@
+# Rectangular annotation performance
+
+Measured on 22 September 2026 with the Visual Studio 2026 `vs2026-vcpkg`
+preset. Timings use `steady_clock`, three runs, and the median. Mesh import and
+fixture construction are outside the annotation timers. The synthetic workload
+averages ten rectangle updates per run. These are CPU timings, not frame times.
+
+## User-supplied map
+
+`uploads_files_2720101_BusGameMap.obj` contains 1,054,542 triangles in 65 groups.
+The benchmark uses a 1920-by-1080 top view with Y up, on the largest group,
+`Ocean_Middle_Medium_Detail.001_Plane.031`. The valid rectangle runs from NDC
+(-0.23, -0.38) to (-0.17, -0.32), approximately 58 by 32 pixels. It crosses
+574 exact surface segments. Results characterize this placement, not every
+possible view or rectangle on the map.
+
+| Stage | Updated Debug median | Updated Release median |
+| --- | ---: | ---: |
+| Mouse-down, unselected model | 3,901.4 ms | 352.487 ms |
+| Sampled drag update | 2.277 ms | 0.166 ms |
+| Exact outline resolution alone | 13.999 ms | 0.921 ms |
+| Release, including exact resolution and attachment validation | 341.706 ms | 32.773 ms |
+
+The exact and sampled timings above are two paths in the updated executable,
+not a comparison against an old executable on this map. Mouse-down remains
+noticeable in Debug; attachment fingerprint validation also contributes to
+release time.
+
+## Synthetic before/after comparison
+
+The preserved baseline executable uses production code from `2f9decb`, plus the
+same synthetic benchmark fixture. Baseline, updated Debug, and updated Release
+runs were sequential, with builds, viewers, and other tests stopped. No cold
+cache or thermal control was applied. These curved grids and overlapping layers
+exercise triangle count and overdraw, not every distribution of CAD/map faces.
+
+| Geometry | Baseline Debug mouse-down | Updated Debug mouse-down | Baseline exact update | Updated Debug drag guide |
+| --- | ---: | ---: | ---: | ---: |
+| 20,000 triangles | 209.986 ms | 73.066 ms | 9.514 ms | 10.531 ms (exact) |
+| 980,000 triangles | 13,157.9 ms | 3,974.8 ms | 83.438 ms | 2.199 ms |
+| 1,000,000 triangles, eight layers | 14,882.2 ms | 3,727.8 ms | 132.981 ms | 6.786 ms |
+
+For the two dense fixtures, this is approximately 3.3–4.0 times faster on
+mouse-down and 20–38 times faster per drag update. The original exact-update
+timer measures the projection call; the new drag timer also includes pointer
+handling. Full exact projection itself is slightly slower with the compact
+representation: 87.263 and 143.932 ms on these fixtures. The responsiveness gain
+comes from avoiding repeated full resolution while dragging, not from making
+that calculation faster.
+
+Updated Release mouse-down times were 333.387 and 366.266 ms for the two dense
+fixtures; sampled drag times were 0.296 and 0.631 ms. There is no preserved
+Release baseline, so these are absolute timings, not Release speedup claims.
+
+The 980,000-face cache's live data payload falls from a calculated 275.5 MB
+with the original records to 124.6 MB with compact records, about 55% less.
+This counts vector elements, excluding capacity slack, allocation overhead,
+temporary sorting buffers, the source mesh, and application/GPU memory.
+
+## Validation
+
+The complete Debug CTest run passed all 556 entries, including its four slow
+tests and two graphics tests. Both configurations compiled without warnings.
+The annotation unit tests also passed in Release. The separate annotation render
+smoke test passed on large translated terrain with both up axes, both shapes,
+and three near planes.
+
+New regression cases cover cache ownership, transparent target selection,
+deterministic point traversal, bounded perspective guides, exact geometry after
+dense-mesh creation and editing, cancellation, scene changes, and narrow
+occluders missed by the guide but rejected on release.
+
+## Changes
+
+- Store transformed vertices once, with compact face references. Only triangles
+  clipped by the viewport need explicit interpolated barycentric records.
+- Build the projection hierarchy with a stable radix sort of Morton keys. Ties
+  retain source order, including coincident faces.
+- Reuse the discovery projection when an unselected model becomes the target.
+  Remove transparent neighbors without transforming the scene again.
+- Traverse the hierarchy directly for point samples, without allocating and
+  sorting a separate candidate list each time.
+- Above 50,000 projected faces, use a temporary guide with 32 samples per side
+  (at most 128 segments per rectangle). On release, resolve the complete outline
+  and validate its attachment before changing scene state.
+
+The guide can miss a narrow obstruction or bridge across detail. It stays visible
+over the model because sampled chords can fall below a curved surface. The
+viewport message says to release to attach the outline. Full validation on
+release still rejects occlusion and disconnected surface layers. Small models
+continue to use exact previews. Saved annotations, source attachment, undo/redo,
+and the `.woby` format retain their existing exact geometry.
+
+## Reproduction
+
+Build and run the opt-in synthetic workload in PowerShell:
+
+```powershell
+cmake --build --preset vs2026-vcpkg
+& build/vs2026-vcpkg/bin/Debug/woby_tests.exe `
+  '--test-case=surface annotation large mesh benchmark' --no-skip
+```
+
+For a local OBJ, use the external workload. It frames the model from above with
+Y up, chooses the largest group, searches for a valid rectangle, then measures
+mouse-down, guide updates, exact resolution, and the complete release operation.
+It verifies that the committed geometry equals the exact result. A model without
+a valid rectangle in this view will fail the workload's placement assertion.
+
+```powershell
+$env:WOBY_ANNOTATION_MODEL = 'C:\path\to\model.obj'
+& build/vs2026-vcpkg/bin/Debug/woby_tests.exe `
+  '--test-case=surface annotation external model benchmark' --no-skip
+```
+
+For optimized measurements, build with `--config Release` and use the executable
+in `bin/Release`. Run benchmarks sequentially with builds and other tests stopped.
+The workloads have no timing assertions and are skipped in ordinary test runs.
+
+## Remaining work
+
+Projection preparation still visits the whole visible mesh on mouse-down.
+Moving this work to a cancellable background job, or retaining a mesh-space
+hierarchy across gestures and camera changes, would address the remaining start
+latency. Permanently simplifying stored outlines could also reduce rendering
+cost with many annotations, but needs a surface-error tolerance and rendering
+that prevents simplified chords from disappearing inside curved models.

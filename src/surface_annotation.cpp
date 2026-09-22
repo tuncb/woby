@@ -52,9 +52,27 @@ struct ProjectionVertexCache {
     const Mesh* mesh = nullptr;
     PickMatrix transform{};
     bool homogeneous = false;
-    std::vector<P4> clip;
+    std::vector<size_t> vertices;
     std::vector<uint8_t> masks;
 };
+P4 clipPosition(const AnnotationProjectionVertex& vertex)
+{
+    return {vertex.clip[0], vertex.clip[1], vertex.clip[2], vertex.clip[3]};
+}
+AnnotationProjectedTriangle projectedTriangle(const AnnotationProjection& projection, size_t index)
+{
+    const auto& face = projection.triangles[index];
+    if (face.clipped) { return projection.clippedTriangles[*face.clipped]; }
+    AnnotationProjectedTriangle result;
+    result.objectId = face.objectId; result.triangle = face.triangle;
+    for (size_t k = 0; k < 3; ++k) {
+        const auto& vertex = projection.vertices[face.vertices[k]];
+        result.clip[k] = clipPosition(vertex);
+        result.localTriangle[k] = vertex.local;
+        result.bary[k][k] = 1;
+    }
+    return result;
+}
 double plane(const P4& p, size_t axis, bool homogeneous)
 {
     switch (axis) {
@@ -73,12 +91,14 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
     const auto& mesh = *part.mesh;
     if (cache.mesh != &mesh || cache.transform != transform || cache.homogeneous != homogeneous) {
         cache.mesh = &mesh; cache.transform = transform; cache.homogeneous = homogeneous;
-        cache.clip.resize(mesh.vertices.size());
+        cache.vertices.resize(mesh.vertices.size());
         cache.masks.assign(mesh.vertices.size(), 0xff);
     }
     const size_t finish = std::min(mesh.indices.size(), part.indexOffset + part.indexCount);
     for (size_t i = part.indexOffset; i + 2 < finish; i += 3) {
-        std::array<ClipVertex, 12> polygon, clipped;
+        AnnotationProjectionFace face;
+        face.objectId = part.objectId;
+        face.triangle = static_cast<uint32_t>((i - part.indexOffset) / 3);
         size_t count = 3;
         uint8_t outside = 0, common = 0x3f;
         for (size_t k = 0; k < 3; ++k) {
@@ -90,19 +110,41 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
                 const auto q = annotationTransform(transform, {p[0], p[1], p[2], 1});
                 mask = 0x80;
                 if (finitePosition(p) && std::all_of(q.begin(), q.end(), [](float v) { return std::isfinite(v); })) {
-                    cache.clip[index] = {q[0], q[1], q[2], q[3]};
+                    cache.vertices[index] = result.vertices.size();
+                    result.vertices.push_back({q, p});
                     mask = 0;
                     for (size_t axis = 0; axis < 6; ++axis) {
-                        if (plane(cache.clip[index], axis, homogeneous) < 0) { mask |= static_cast<uint8_t>(1u << axis); }
+                        if (plane({q[0], q[1], q[2], q[3]}, axis, homogeneous) < 0) { mask |= static_cast<uint8_t>(1u << axis); }
                     }
                 }
             }
             if (mask == 0x80) { count = 0; break; }
-            polygon[k] = {cache.clip[index], {0, 0, 0}};
-            polygon[k].bary[k] = 1;
+            face.vertices[k] = cache.vertices[index];
             outside |= mask; common &= mask;
         }
-        if (common) { continue; }
+        if (common || !count) { continue; }
+        if (!outside) {
+            // The overwhelmingly common case needs no polygon clipping, explicit
+            // barycentrics, or repeated copies of the three source positions.
+            std::array<P2, 3> points;
+            for (size_t k = 0; k < 3; ++k) {
+                const auto p = clipPosition(result.vertices[face.vertices[k]]);
+                if (p[3] <= 0) { count = 0; break; }
+                points[k] = screen(p);
+            }
+            if (!count || std::abs(cross2(sub(points[1], points[0]), sub(points[2], points[0]))) < 1e-15) { continue; }
+            for (size_t axis = 0; axis < 2; ++axis) {
+                face.minimum[axis] = std::min({points[0][axis], points[1][axis], points[2][axis]});
+                face.maximum[axis] = std::max({points[0][axis], points[1][axis], points[2][axis]});
+            }
+            result.triangles.push_back(face);
+            continue;
+        }
+        std::array<ClipVertex, 12> polygon, clipped;
+        for (size_t k = 0; k < 3; ++k) {
+            polygon[k] = {clipPosition(result.vertices[face.vertices[k]]), {0, 0, 0}};
+            polygon[k].bary[k] = 1;
+        }
         for (size_t axis = 0; axis < 6 && count; ++axis) {
             if (!(outside & (1u << axis))) { continue; }
             bool inside = true;
@@ -141,7 +183,10 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
                 const auto p = screen(t.clip[j]);
                 for (size_t axis = 0; axis < 2; ++axis) { t.minimum[axis] = std::min(t.minimum[axis], p[axis]); t.maximum[axis] = std::max(t.maximum[axis], p[axis]); }
             }
-            result.triangles.push_back(t);
+            face.minimum = t.minimum; face.maximum = t.maximum;
+            face.clipped = result.clippedTriangles.size();
+            result.clippedTriangles.push_back(t);
+            result.triangles.push_back(face);
         }
     }
 }
@@ -192,9 +237,20 @@ void finishProjection(AnnotationProjection& projection)
         keys.emplace_back(projectionMortonCoordinate((triangle.minimum[0] + triangle.maximum[0]) * .5)
             | (projectionMortonCoordinate((triangle.minimum[1] + triangle.maximum[1]) * .5) << 1), i);
     }
-    std::sort(keys.begin(), keys.end());
+    // Stable radix sorting preserves source-order ties and avoids comparison
+    // sorting millions of Morton keys for every gesture.
+    std::vector<std::pair<uint32_t, size_t>> scratch(keys.size());
+    for (uint32_t shift = 0; shift < 32; shift += 8) {
+        std::array<size_t, 256> offsets{};
+        for (const auto& key : keys) { ++offsets[(key.first >> shift) & 255]; }
+        size_t begin = 0;
+        for (auto& offset : offsets) { const auto count = offset; offset = begin; begin += count; }
+        for (const auto& key : keys) { scratch[offsets[(key.first >> shift) & 255]++] = key; }
+        keys.swap(scratch);
+    }
     projection.order.resize(projection.triangles.size());
     for (size_t i = 0; i < projection.order.size(); ++i) { projection.order[i] = keys[i].second; }
+    projection.nodes.clear();
     projection.nodes.reserve(projection.order.size() / 2 + 1);
     if (!projection.order.empty()) { buildProjectionNode(projection, 0, projection.order.size()); }
 }
@@ -286,7 +342,7 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
     const auto at = [&](double t) -> P2 { return {start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])}; };
     std::vector<Interval> intervals;
     for (const size_t i : projectionCandidates(projection, start, end)) {
-        const auto& triangle = projection.triangles[i];
+        const auto triangle = projectedTriangle(projection, i);
         const auto a = weights(triangle, start), b = weights(triangle, end);
         double low = 0, high = 1;
         for (size_t k = 0; k < 3; ++k) {
@@ -298,7 +354,7 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
         if (high - low <= 1e-10) { continue; }
         intervals.push_back({i, low, high, depth(triangle, start), depth(triangle, end)});
     }
-    const AnnotationProjectedTriangle* previousTriangle = nullptr;
+    std::optional<AnnotationProjectedTriangle> previousTriangle;
     std::array<float, 3> previousPoint{};
     bool previous = false;
     bool gap = false;
@@ -310,7 +366,7 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
         if (projection.triangles[best->index].objectId != projection.targetId) {
             throw std::runtime_error("Keep the outline clear of other objects.");
         }
-        const auto& triangle = projection.triangles[best->index];
+        const auto triangle = projectedTriangle(projection, best->index);
         const AnnotationSegment segment{triangle.triangle, anchor(triangle, at(low)), anchor(triangle, at(high)), std::nullopt};
         const auto localPoint = [&](const auto& bary) {
             std::array<float, 3> p{};
@@ -337,7 +393,7 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
         if (previous && !gap && !result.segments.empty() && result.segments.back().triangle == segment.triangle) {
             result.segments.back().b = segment.b;
         } else { result.segments.push_back(segment); }
-        previousTriangle = &triangle; previousPoint = localPoint(segment.b); previous = true;
+        previousTriangle = triangle; previousPoint = localPoint(segment.b); previous = true;
         gap = false;
     }
 }
@@ -408,6 +464,27 @@ AnnotationProjection annotationEditProjection(const ScenePickPart& target, const
     finishProjection(result);
     return result;
 }
+void setAnnotationProjectionTarget(AnnotationProjection& projection,
+    std::span<const ScenePickPart> parts, const ScenePickView& view, SceneObjectId target)
+{
+    const auto part = std::find_if(parts.begin(), parts.end(), [target](const auto& p) { return p.objectId == target; });
+    if (!target || part == parts.end() || !part->mesh || (projection.targetId && projection.targetId != target)) {
+        throw std::runtime_error("The annotation target is unavailable.");
+    }
+    projection.targetId = target;
+    projection.definition.projector = annotationCompose(part->model, annotationCompose(view.view, view.projection));
+    projection.definition.fingerprint = annotationFingerprint(*part->mesh, part->indexOffset, part->indexCount);
+    std::vector<SceneObjectId> transparent;
+    for (const auto& p : parts) {
+        if (p.objectId != target && p.opacity < .999f) { transparent.push_back(p.objectId); }
+    }
+    if (transparent.empty()) { return; }
+    std::sort(transparent.begin(), transparent.end());
+    const auto removed = std::erase_if(projection.triangles, [&](const auto& triangle) {
+        return std::binary_search(transparent.begin(), transparent.end(), triangle.objectId);
+    });
+    if (removed) { finishProjection(projection); }
+}
 SceneObjectId pickAnnotationSurface(const AnnotationProjection& projection, std::array<float, 2> point)
 {
     const auto hit = annotationSurfaceHit(projection, point);
@@ -416,17 +493,38 @@ SceneObjectId pickAnnotationSurface(const AnnotationProjection& projection, std:
 std::optional<AnnotationSurfaceHit> annotationSurfaceHit(const AnnotationProjection& projection, std::array<float, 2> point)
 {
     double best = std::numeric_limits<double>::infinity();
+    size_t bestIndex = std::numeric_limits<size_t>::max();
     std::optional<AnnotationSurfaceHit> hit;
-    for (const size_t index : projectionCandidates(projection, {point[0], point[1]}, {point[0], point[1]})) {
-        const auto& triangle = projection.triangles[index];
-        const auto w = weights(triangle, {point[0], point[1]});
-        if (*std::min_element(w.begin(), w.end()) < -1e-9) { continue; }
-        const double z = depth(triangle, {point[0], point[1]});
-        if (z < best) { best = z; hit = AnnotationSurfaceHit{triangle.objectId, triangle.triangle, anchor(triangle, {point[0], point[1]})}; }
-    }
+    // Point queries dominate sampled previews. Traverse directly instead of
+    // allocating and sorting a candidate vector for every sample.
+    const auto visit = [&](const auto& self, size_t nodeIndex) -> void {
+        const auto& node = projection.nodes[nodeIndex];
+        for (size_t axis = 0; axis < 2; ++axis) {
+            if (point[axis] < node.minimum[axis] - 1e-10 || point[axis] > node.maximum[axis] + 1e-10) { return; }
+        }
+        if (node.left) { self(self, node.left); self(self, node.right); return; }
+        for (size_t i = node.begin; i < node.end; ++i) {
+            const size_t index = projection.order[i];
+            const auto& face = projection.triangles[index];
+            // Wider than the barycentric tolerance even for viewport-sized faces.
+            if (point[0] < face.minimum[0] - 1e-8 || point[0] > face.maximum[0] + 1e-8
+                || point[1] < face.minimum[1] - 1e-8 || point[1] > face.maximum[1] + 1e-8) { continue; }
+            const auto triangle = projectedTriangle(projection, index);
+            const auto w = weights(triangle, {point[0], point[1]});
+            if (*std::min_element(w.begin(), w.end()) < -1e-9) { continue; }
+            double z = 0;
+            for (size_t k = 0; k < 3; ++k) { z += w[k] * triangle.clip[k][2] / triangle.clip[k][3]; }
+            if (z < best || (z == best && index < bestIndex)) {
+                best = z; bestIndex = index;
+                hit = AnnotationSurfaceHit{triangle.objectId, triangle.triangle, anchor(triangle, {point[0], point[1]})};
+            }
+        }
+    };
+    if (!projection.nodes.empty()) { visit(visit, 0); }
     return hit;
 }
-AnnotationGeometry projectAnnotation(const AnnotationProjection& projection, AnnotationShape shape,
+namespace {
+AnnotationGeometry annotationDefinition(const AnnotationProjection& projection, AnnotationShape shape,
     std::array<float, 2> start, std::array<float, 2> end)
 {
     for (float value : {start[0], start[1], end[0], end[1]}) {
@@ -438,10 +536,46 @@ AnnotationGeometry projectAnnotation(const AnnotationProjection& projection, Ann
     }
     AnnotationGeometry result = projection.definition;
     result.shape = shape; result.start = start; result.end = end; result.segments.clear();
-    if (shape == AnnotationShape::line) { projectEdge(result, projection, {start[0], start[1]}, {end[0], end[1]}); }
-    else {
-        const std::array<P2, 4> points{P2{start[0], start[1]}, P2{end[0], start[1]}, P2{end[0], end[1]}, P2{start[0], end[1]}};
-        for (size_t k = 0; k < 4; ++k) { projectEdge(result, projection, points[k], points[(k + 1) % 4]); }
+    return result;
+}
+std::vector<P2> outlinePoints(AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end)
+{
+    if (shape == AnnotationShape::line) { return {{start[0], start[1]}, {end[0], end[1]}}; }
+    return {{start[0], start[1]}, {end[0], start[1]}, {end[0], end[1]}, {start[0], end[1]}, {start[0], start[1]}};
+}
+} // namespace
+AnnotationGeometry projectAnnotation(const AnnotationProjection& projection, AnnotationShape shape,
+    std::array<float, 2> start, std::array<float, 2> end)
+{
+    auto result = annotationDefinition(projection, shape, start, end);
+    const auto points = outlinePoints(shape, start, end);
+    for (size_t k = 1; k < points.size(); ++k) { projectEdge(result, projection, points[k - 1], points[k]); }
+    validateAnnotationGeometry(result);
+    return result;
+}
+AnnotationGeometry previewAnnotation(const AnnotationProjection& projection, AnnotationShape shape,
+    std::array<float, 2> start, std::array<float, 2> end)
+{
+    auto result = annotationDefinition(projection, shape, start, end);
+    const auto points = outlinePoints(shape, start, end);
+    for (size_t edge = 1; edge < points.size(); ++edge) {
+        std::optional<AnnotationSurfaceHit> previous;
+        constexpr size_t steps = 32;
+        for (size_t i = 0; i <= steps; ++i) {
+            const double t = static_cast<double>(i) / steps;
+            const auto& a = points[edge - 1]; const auto& b = points[edge];
+            const auto hit = annotationSurfaceHit(projection,
+                {static_cast<float>(a[0] + t * (b[0] - a[0])), static_cast<float>(a[1] + t * (b[1] - a[1]))});
+            if ((!hit || hit->objectId != projection.targetId) && (i == 0 || i == steps)) {
+                throw std::runtime_error("Keep every endpoint or corner on the target surface.");
+            }
+            if (!hit) { continue; }
+            if (hit->objectId != projection.targetId) { throw std::runtime_error("Keep the outline clear of other objects."); }
+            if (previous) {
+                result.segments.push_back({previous->triangle, previous->bary, hit->bary, hit->triangle});
+            }
+            previous = hit;
+        }
     }
     validateAnnotationGeometry(result);
     return result;

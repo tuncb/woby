@@ -19,11 +19,27 @@ struct AnnotationProjectionNode {
     size_t begin = 0, end = 0, left = 0, right = 0;
 };
 
+struct AnnotationProjectionVertex {
+    std::array<float, 4> clip{};
+    std::array<float, 3> local{};
+};
+
+struct AnnotationProjectionFace {
+    SceneObjectId objectId = 0;
+    uint32_t triangle = 0;
+    std::array<size_t, 3> vertices{};
+    std::array<double, 2> minimum{}, maximum{};
+    // Only frustum-clipped faces need explicit interpolated barycentric data.
+    std::optional<size_t> clipped;
+};
+
 // Gesture-owned immutable projection cache. Contains no borrowed mesh pointers.
 struct AnnotationProjection {
     SceneObjectId targetId = 0;
     AnnotationGeometry definition;
-    std::vector<AnnotationProjectedTriangle> triangles;
+    std::vector<AnnotationProjectionVertex> vertices;
+    std::vector<AnnotationProjectionFace> triangles;
+    std::vector<AnnotationProjectedTriangle> clippedTriangles;
     std::vector<size_t> order;
     std::vector<AnnotationProjectionNode> nodes;
 };
@@ -33,11 +49,18 @@ struct AnnotationProjection {
     const ScenePickView& view, SceneObjectId target);
 [[nodiscard]] AnnotationProjection annotationEditProjection(const ScenePickPart& target,
     const AnnotationGeometry& geometry);
+// Reuse a target-discovery projection, removing transparent non-target parts.
+void setAnnotationProjectionTarget(AnnotationProjection& projection,
+    std::span<const ScenePickPart> parts, const ScenePickView& view, SceneObjectId target);
 [[nodiscard]] SceneObjectId pickAnnotationSurface(const AnnotationProjection& projection,
     std::array<float, 2> point);
 // Endpoints/corners must hit the target. Bridges empty gaps between surface
 // fragments; throws for occlusion, disconnected layers, or ambiguous intersections.
 [[nodiscard]] AnnotationGeometry projectAnnotation(const AnnotationProjection& projection,
+    AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end);
+// Bounded, sampled drag guide. Chords may leave the surface or miss narrow
+// obstructions; always resolve with projectAnnotation before committing.
+[[nodiscard]] AnnotationGeometry previewAnnotation(const AnnotationProjection& projection,
     AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end);
 [[nodiscard]] std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count);
 [[nodiscard]] std::array<float, 3> annotationPosition(const Mesh& mesh, size_t offset,

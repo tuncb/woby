@@ -7,6 +7,8 @@ namespace woby {
 struct AnnotationInteraction {
     std::optional<AnnotationShape> tool;
     bool dragging = false;
+    // Runtime-only coarse guide on dense meshes; commit resolves the full edge.
+    bool sampledPreview = false;
     SceneObjectId editing = 0;
     int handle = -1;
     // Editing with handle == -1 translates the entire outline.
