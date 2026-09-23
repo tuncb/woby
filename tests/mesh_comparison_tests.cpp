@@ -229,6 +229,78 @@ TEST_CASE("focused diagnostic framing includes presentation translation and fits
     CHECK_FALSE(woby::findComparison(state, copyId)->diagnosticFocus);
 }
 
+TEST_CASE("diagnostic framing keeps small findings visible independently of model size")
+{
+    for (const float modelSize : {1.0f, 10000.0f}) {
+        woby::UiState state;
+        state.files.push_back(woby::createUiFileState("model.obj",
+            mesh({{0, 0, 0}, {modelSize, 0, 0}, {0, modelSize, 0}}, {0, 1, 2}), 0));
+        woby::appendDefaultSceneNodesForFiles(state, 0);
+        const auto id = woby::createComparison(state);
+        for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+            woby::setComparisonObjects(state, {state.files[0].objectId}, side, true, id);
+        }
+        const std::array<float, 3> translation{30, -40, 50};
+        woby::setComparisonTranslation(state, id, translation);
+        const auto signature = woby::comparisonGeometrySignature(state, id);
+        for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+            for (const auto category : {woby::DiagnosticCategory::holes, woby::DiagnosticCategory::fins,
+                    woby::DiagnosticCategory::boundary, woby::DiagnosticCategory::duplicatePoints}) {
+                auto settings = woby::comparisonSettings(state, id);
+                settings.diagnosticSide = side;
+                settings.diagnosticCategory = category;
+                woby::setComparisonSettings(state, settings, id);
+                for (const float radius : {0.005f, 0.5f}) {
+                    CAPTURE(modelSize);
+                    CAPTURE(side);
+                    CAPTURE(category);
+                    CAPTURE(radius);
+                    // Supply detector output directly to isolate camera framing from detection.
+                    auto result = woby::compareMeshes(square(), square());
+                    auto& surface = side == woby::ComparisonSide::a ? result.original : result.repaired;
+                    const std::vector<woby::DiagnosticEdge> findings{{{-radius, 0, 0}, {radius, 0, 0}}};
+                    surface.holeBounds = findings;
+                    surface.finBounds = findings;
+                    surface.diagnostics.boundaryEdges = findings;
+                    surface.duplicatePointBounds = findings;
+                    woby::selectComparisonDiagnostic(state, result, signature, 0, id);
+                    REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+                    CHECK(state.camera.target == translation);
+                    CHECK(state.camera.distance - radius > state.camera.nearPlane);
+                    for (const float aspect : {0.4f, 1.0f, 2.0f}) {
+                        const float vertical = woby::cameraViewportFov(state.camera, aspect) * 3.14159265f / 360.0f;
+                        const float horizontal = std::atan(std::tan(vertical) * aspect);
+                        const float visibleRadius = state.camera.distance * std::sin(std::min(vertical, horizontal));
+                        CHECK(visibleRadius > radius);
+                        CHECK(radius / visibleRadius > 0.5f);
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("point diagnostic framing retains model context and a visible target")
+{
+    auto state = stateWithFiles(1);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(state, id);
+    settings.diagnosticCategory = woby::DiagnosticCategory::duplicatePoints;
+    woby::setComparisonSettings(state, settings, id);
+    auto result = woby::compareMeshes(square(), {});
+    result.original.duplicatePointBounds = {{{0, 0, 0}, {0, 0, 0}}};
+    woby::selectComparisonDiagnostic(state, result, woby::comparisonGeometrySignature(state, id), 0, id);
+    REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+    CHECK(std::isfinite(state.camera.distance));
+    CHECK(state.camera.distance >= 0.001f);
+    CHECK(state.camera.nearPlane >= 0.0001f);
+    CHECK(state.camera.nearPlane < state.camera.distance);
+    const auto bounds = woby::comparisonDisplayBounds(state, id);
+    REQUIRE(bounds);
+    CHECK(state.camera.distance > bounds->radius * .06f);
+}
+
 TEST_CASE("diagnostic target and category persist while result focus is session only")
 {
     struct Fixture {

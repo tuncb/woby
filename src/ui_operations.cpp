@@ -495,20 +495,25 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
         }
     }
     auto bounds = calculateBounds(points);
-    // Keep enough surrounding surface to understand the defect without allowing
-    // distant, unrelated scene objects to overwhelm a small edge's framing.
-    const auto resultBounds = comparisonDisplayBounds(state, id);
-    const float padding = (settings.diagnosticCategory == DiagnosticCategory::duplicateTriangles
-        || settings.diagnosticCategory == DiagnosticCategory::selfIntersections
-        || settings.diagnosticCategory == DiagnosticCategory::degenerateTriangles) ? 1.2f : 3.0f;
-    bounds.radius = std::max(bounds.radius * padding, resultBounds ? resultBounds->radius * .06f : .001f);
+    // Frame the finding and its local context, independently of the full model's
+    // size. Camera fitting adds its own margin on top of this small padding.
+    bounds.radius *= 1.2f;
+    if (bounds.min == bounds.max) {
+        // Coincident points have no extent to fit; retain some model context.
+        if (const auto resultBounds = comparisonDisplayBounds(state, id)) {
+            bounds.radius = std::max(bounds.radius, resultBounds->radius * .06f);
+        }
+    }
     for (size_t k = 0; k < 3; ++k) {
         bounds.min[k] += comparison->translation[k];
         bounds.max[k] += comparison->translation[k];
         bounds.center[k] += comparison->translation[k];
     }
     comparison->diagnosticFocus = DiagnosticFocus{resultSignature, index, settings.diagnosticSide, settings.diagnosticCategory};
-    frameComparisonBounds(state, bounds);
+    auto camera = frameCameraBounds(bounds, state.upAxis);
+    // The default near plane otherwise forces tiny findings far from the eye.
+    camera.nearPlane = std::min(camera.nearPlane, bounds.radius * 0.1f);
+    state.camera = fitCameraBounds(camera, bounds);
 }
 
 ComparisonMembershipAction comparisonMembershipAction(
