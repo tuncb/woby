@@ -850,13 +850,7 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
     }
     if (fins) {
         const auto& patch = topology.finPatches[topology.fins[selected]];
-        const auto& source = topology.sources[patch.source];
         ImGui::TextWrapped("%zu faces; area %.9g / largest boundary-bearing patch %.9g = %.9g. %zu physical boundary edges; %zu cut edges; %zu split components.", patch.faces.size(), patch.area, patch.denominatorArea, patch.areaRatio, patch.physicalBoundaryEdges.size(), patch.cutBoundaryEdges.size(), patch.splitComponentCount);
-        for (size_t i = 0; i < std::min(size_t{100}, patch.faces.size()); ++i) {
-            const auto& ref = source.faces[patch.faces[i]].reference;
-            ImGui::Text("Triangle %zu, part %llu", ref.triangleId+1, static_cast<unsigned long long>(ref.partId));
-        }
-        if (patch.faces.size() > 100) { ImGui::TextDisabled("Showing first 100 faces."); }
     } else if (holes) {
         const auto& boundary = topology.boundaryRegions[topology.holes[selected]];
         ImGui::TextWrapped("%zu edges; loop diagonal %.9g / component diagonal %.9g = %.9g. Bounds use world axes; display offset is excluded.", boundary.edges.size(), boundary.diagonal, boundary.componentDiagonal, boundary.sizeRatio);

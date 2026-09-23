@@ -813,11 +813,13 @@ TEST_CASE("fin findings use table columns and continuous one based indices on pa
     auto& surface = runtime.result.original;
     surface.topology.sources.resize(1);
     surface.topology.sources[0].source = "defect-source.obj";
+    surface.topology.sources[0].faces.resize(101);
     surface.finBounds.resize(27);
     for (size_t i = 0; i < 27; ++i) {
         woby::TopologyFinPatch patch;
         patch.patch = i + 100;
         patch.boundary = woby::FinBoundaryKind::branched;
+        for (size_t face = 0; face < 101; ++face) { patch.faces.push_back(face); }
         surface.topology.finPatches.push_back(patch);
         surface.topology.fins.push_back(i);
     }
@@ -851,4 +853,7 @@ TEST_CASE("fin findings use table columns and continuous one based indices on pa
     CHECK(contents.find("| 27 | defect-source.obj | 127 | branched |") != std::string::npos);
     CHECK(contents.find("| 1 | defect-source.obj |") == std::string::npos);
     CHECK(contents.find("| 25 | defect-source.obj |") == std::string::npos);
+    CHECK(contents.find("101 faces; area") != std::string::npos);
+    CHECK(contents.find("Triangle 1, part") == std::string::npos);
+    CHECK(contents.find("Showing first 100 faces.") == std::string::npos);
 }
