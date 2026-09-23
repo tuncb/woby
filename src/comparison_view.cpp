@@ -293,7 +293,7 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     const auto roots = comparisonTree(state, side, id);
     size_t triangles = 0;
     for (const auto& root : roots) { triangles += root.triangleCount; }
-    const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_FramePadding,
+    const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_FramePadding,
         "%s (%zu/%zu %s on) %zu triangles", label, summary.enabledPartCount, summary.partCount,
         summary.partCount == 1 ? "part" : "parts", triangles);
     if (ImGui::BeginDragDropTarget()) {

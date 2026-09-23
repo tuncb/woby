@@ -88,6 +88,43 @@ struct ComparisonNameFixture {
 };
 } // namespace
 
+TEST_CASE("analysis input groups start collapsed")
+{
+    ComparisonNameFixture f;
+    const auto addPart = [&](const char* filename, const char* partName, size_t index) {
+        woby::Mesh mesh;
+        mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        mesh.indices = {0, 1, 2};
+        mesh.nodes.push_back({partName, 0, 3});
+        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        f.state.files.push_back(woby::createUiFileState(filename, std::move(mesh), index));
+    };
+    addPart("first.obj", "first-input-part", 0);
+    addPart("second.obj", "second-input-part", 1);
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
+        woby::ComparisonSide::a, true, f.id);
+    woby::setComparisonObjects(f.state, {f.state.files[1].groupSettings[0].objectId},
+        woby::ComparisonSide::b, true, f.id);
+    woby::selectSceneObject(f.state, f.id);
+
+    woby::ComparisonRuntimes runtimes;
+    ImGui::NewFrame();
+    ImGui::SetNextWindowSize(ImVec2(700, 1000));
+    ImGui::Begin("Analysis input groups");
+    ImGui::LogToBuffer(0);
+    woby::drawComparisonPanelContents(f.state, runtimes);
+    const std::string contents = f.context->LogBuffer.c_str();
+    ImGui::LogFinish();
+    ImGui::End();
+    ImGui::EndFrame();
+
+    CHECK(contents.find("Group A") != std::string::npos);
+    CHECK(contents.find("Group B") != std::string::npos);
+    CHECK(contents.find("first-input-part") == std::string::npos);
+    CHECK(contents.find("second-input-part") == std::string::npos);
+}
+
 TEST_CASE("analysis properties distinguish queued calculating failed and inactive results")
 {
     ComparisonNameFixture f;
