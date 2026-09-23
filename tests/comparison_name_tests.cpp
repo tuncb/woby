@@ -786,3 +786,69 @@ TEST_CASE("diagnostic settings popup edits only its analysis and persists withou
     CHECK(loaded.comparisons[0].settings == woby::comparisonSettings(f.state, f.id));
     CHECK(loaded.comparisons[1].settings == originalOther);
 }
+
+TEST_CASE("fin findings use table columns and continuous one based indices on pages of 25")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId},
+        woby::ComparisonSide::a, true, f.id);
+    auto settings = woby::comparisonSettings(f.state, f.id);
+    settings.mode = woby::ComparisonMode::original;
+    settings.diagnosticCategory = woby::DiagnosticCategory::fins;
+    woby::setComparisonSettings(f.state, settings, f.id);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    runtime.ready = true;
+    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(settings, false) | woby::comparisonDiagnosticStage(settings.diagnosticCategory)};
+    for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
+    auto& surface = runtime.result.original;
+    surface.topology.sources.resize(1);
+    surface.topology.sources[0].source = "defect-source.obj";
+    surface.finBounds.resize(27);
+    for (size_t i = 0; i < 27; ++i) {
+        woby::TopologyFinPatch patch;
+        patch.patch = i + 100;
+        patch.boundary = woby::FinBoundaryKind::branched;
+        surface.topology.finPatches.push_back(patch);
+        surface.topology.fins.push_back(i);
+    }
+    const auto frame = [&] {
+        ImGui::GetIO().DisplaySize = ImVec2(1200, 2200);
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(ImVec2(1100, 2100));
+        ImGui::Begin("Defect table");
+        ImGui::LogToBuffer();
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        const std::string contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        ImGui::End();
+        ImGui::EndFrame();
+        return contents;
+    };
+    frame();
+    auto contents = frame();
+    INFO(contents);
+    CHECK(contents.find("Index") != std::string::npos);
+    CHECK(contents.find("Source") != std::string::npos);
+    CHECK(contents.find("Patch") != std::string::npos);
+    CHECK(contents.find("Boundary") != std::string::npos);
+    CHECK(contents.find("| 1 | defect-source.obj | 101 | branched |") != std::string::npos);
+    CHECK(contents.find("| 25 | defect-source.obj | 125 | branched |") != std::string::npos);
+    CHECK(contents.find("| 26 | defect-source.obj |") == std::string::npos);
+    woby::selectComparisonDiagnostic(f.state, runtime.result, runtime.resultSignature, 25, f.id);
+    contents = frame();
+    CHECK(contents.find("| 26 | defect-source.obj | 126 | branched |") != std::string::npos);
+    CHECK(contents.find("| 27 | defect-source.obj | 127 | branched |") != std::string::npos);
+    CHECK(contents.find("| 1 | defect-source.obj |") == std::string::npos);
+    CHECK(contents.find("| 25 | defect-source.obj |") == std::string::npos);
+}

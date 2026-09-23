@@ -22,6 +22,8 @@ namespace woby
 {
 namespace
 {
+constexpr size_t diagnosticPageSize = 25;
+
 enum class ComparisonActivity { idle, queued, calculating, failed };
 
 ComparisonActivity comparisonActivity(const UiState& state, const ComparisonRuntime& runtime, SceneObjectId id)
@@ -630,15 +632,16 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
     if (result.findings.empty()) { return; }
     const auto* comparison = findComparison(state, id);
     const auto selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : size_t{0};
-    constexpr size_t pageSize = 10;
-    const size_t page = selected / pageSize, pages = (result.findings.size() + pageSize - 1) / pageSize;
+    const size_t page = selected / diagnosticPageSize, pages = (result.findings.size() + diagnosticPageSize - 1) / diagnosticPageSize;
     const auto choose = [&](size_t index) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, index, id); };
-    if (ImGui::BeginTable("duplicate_findings", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
+    if (ImGui::BeginTable("duplicate_findings", 4, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Source"); ImGui::TableSetupColumn("Representative"); ImGui::TableSetupColumn("Extra records");
         ImGui::TableHeadersRow();
-        for (size_t i = page*pageSize; i < std::min((page+1)*pageSize, result.findings.size()); ++i) {
+        for (size_t i = page*diagnosticPageSize; i < std::min((page+1)*diagnosticPageSize, result.findings.size()); ++i) {
             const auto& finding = result.findings[i];
             ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("%zu", i+1); ImGui::TableNextColumn();
             if (ImGui::Selectable(finding.source.c_str(), comparison->diagnosticFocus && selected == i, ImGuiSelectableFlags_SpanAllColumns)) { choose(i); }
             ImGui::TableNextColumn(); ImGui::Text("%zu", finding.members.front().id+1);
             ImGui::TableNextColumn(); ImGui::Text("%zu", finding.members.size()-1); ImGui::PopID();
@@ -646,11 +649,11 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
         ImGui::EndTable();
     }
     ImGui::BeginDisabled(page == 0);
-    if (ImGui::Button("Previous page")) { choose((page-1)*pageSize); }
+    if (ImGui::Button("Previous page")) { choose((page-1)*diagnosticPageSize); }
     setLastItemTooltip("Show the previous page and select its first duplicate group.");
     ImGui::EndDisabled(); ImGui::SameLine(); ImGui::Text("%zu / %zu", page+1, pages); ImGui::SameLine();
     ImGui::BeginDisabled(page+1 == pages);
-    if (ImGui::Button("Next page")) { choose((page+1)*pageSize); }
+    if (ImGui::Button("Next page")) { choose((page+1)*diagnosticPageSize); }
     setLastItemTooltip("Show the next page and select its first duplicate group.");
     ImGui::EndDisabled();
     if (comparison->diagnosticFocus && comparison->diagnosticFocus->index < result.findings.size()) {
@@ -691,17 +694,27 @@ void drawIntersectionFindings(UiState& state, const ComparisonRuntime& runtime, 
     if (result.truncated) { ImGui::TextWrapped("Detection limit reached. These findings are incomplete; totals are unknown."); }
     const auto* comparison = findComparison(state, id);
     const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
-    constexpr size_t pageSize = 20;
-    const size_t begin = selected/pageSize*pageSize, end = std::min(begin+pageSize, result.findings.size());
-    for (size_t i = begin; i < end; ++i) {
-        const auto& finding = result.findings[i];
-        const auto label = finding.source + ": triangle " + std::to_string(finding.faces[0].triangleId+1)
-            + " (part " + std::to_string(finding.faces[0].partId) + ") / " + std::to_string(finding.faces[1].triangleId+1)
-            + " (part " + std::to_string(finding.faces[1].partId) + ")##" + std::to_string(i);
-        if (ImGui::Selectable(label.c_str(), comparison->diagnosticFocus && selected == i)) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id); }
+    const size_t begin = selected/diagnosticPageSize*diagnosticPageSize, end = std::min(begin+diagnosticPageSize, result.findings.size());
+    if (ImGui::BeginTable("intersection_findings", 4, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Source"); ImGui::TableSetupColumn("First triangle (part)"); ImGui::TableSetupColumn("Second triangle (part)");
+        ImGui::TableHeadersRow();
+        for (size_t i = begin; i < end; ++i) {
+            const auto& finding = result.findings[i];
+            ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("%zu", i+1); ImGui::TableNextColumn();
+            if (ImGui::Selectable(finding.source.c_str(), comparison->diagnosticFocus && selected == i, ImGuiSelectableFlags_SpanAllColumns)) {
+                selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id);
+            }
+            for (const auto& face : finding.faces) {
+                ImGui::TableNextColumn(); ImGui::Text("%zu (%llu)", face.triangleId+1, static_cast<unsigned long long>(face.partId));
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
     }
     ImGui::BeginDisabled(begin == 0);
-    if (ImGui::Button("Previous pairs")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, begin-pageSize, id); }
+    if (ImGui::Button("Previous pairs")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, begin-diagnosticPageSize, id); }
     ImGui::EndDisabled(); ImGui::SameLine(); ImGui::BeginDisabled(end >= result.findings.size());
     if (ImGui::Button("Next pairs")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, end, id); }
     ImGui::EndDisabled();
@@ -721,15 +734,16 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
     if (result.findings.empty()) { return; }
     const auto* comparison = findComparison(state, id);
     const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
-    constexpr size_t pageSize = 10;
-    const size_t page = selected/pageSize, pages = (result.findings.size()+pageSize-1)/pageSize;
+    const size_t page = selected/diagnosticPageSize, pages = (result.findings.size()+diagnosticPageSize-1)/diagnosticPageSize;
     const auto choose = [&](size_t index) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, index, id); };
-    if (ImGui::BeginTable("degenerate_findings", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
+    if (ImGui::BeginTable("degenerate_findings", 4, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Source"); ImGui::TableSetupColumn("Triangle"); ImGui::TableSetupColumn("Reasons");
         ImGui::TableHeadersRow();
-        for (size_t i = page*pageSize; i < std::min((page+1)*pageSize, result.findings.size()); ++i) {
+        for (size_t i = page*diagnosticPageSize; i < std::min((page+1)*diagnosticPageSize, result.findings.size()); ++i) {
             const auto& finding = result.findings[i];
             ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("%zu", i+1); ImGui::TableNextColumn();
             if (ImGui::Selectable(finding.source.c_str(), comparison->diagnosticFocus && selected == i, ImGuiSelectableFlags_SpanAllColumns)) { choose(i); }
             ImGui::TableNextColumn(); ImGui::Text("%zu", finding.triangleId+1);
             ImGui::TableNextColumn(); ImGui::TextWrapped("%s%s%s", finding.reasons.collapsed ? "Collapsed " : "",
@@ -738,11 +752,11 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
         ImGui::EndTable();
     }
     ImGui::BeginDisabled(page == 0);
-    if (ImGui::Button("Previous page")) { choose((page-1)*pageSize); }
+    if (ImGui::Button("Previous page")) { choose((page-1)*diagnosticPageSize); }
     setLastItemTooltip("Show the previous page and select its first degenerate triangle.");
     ImGui::EndDisabled(); ImGui::SameLine(); ImGui::Text("%zu / %zu", page+1, pages); ImGui::SameLine();
     ImGui::BeginDisabled(page+1 == pages);
-    if (ImGui::Button("Next page")) { choose((page+1)*pageSize); }
+    if (ImGui::Button("Next page")) { choose((page+1)*diagnosticPageSize); }
     setLastItemTooltip("Show the next page and select its first degenerate triangle.");
     ImGui::EndDisabled();
     if (comparison->diagnosticFocus && comparison->diagnosticFocus->index < result.findings.size()) {
@@ -790,35 +804,49 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
     const auto* comparison = findComparison(state, id);
     const auto* focused = focusedComparisonDiagnostic(state, runtime.result, runtime.resultSignature, id);
     const size_t selected = focused ? comparison->diagnosticFocus->index : 0;
-    constexpr size_t pageSize = 10;
-    const size_t page = selected / pageSize;
+    const size_t page = selected / diagnosticPageSize;
     ImGui::PushID("topology_inspection_findings");
     ImGui::BeginDisabled(page == 0);
-    if (ImGui::SmallButton("Previous page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*pageSize, id); }
+    if (ImGui::SmallButton("Previous page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*diagnosticPageSize, id); }
     setLastItemTooltip("Show the previous page and select its first finding.");
     ImGui::EndDisabled(); ImGui::SameLine();
-    ImGui::BeginDisabled((page+1)*pageSize >= count);
-    if (ImGui::SmallButton("Next page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*pageSize, id); }
+    ImGui::BeginDisabled((page+1)*diagnosticPageSize >= count);
+    if (ImGui::SmallButton("Next page")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*diagnosticPageSize, id); }
     setLastItemTooltip("Show the next page and select its first finding.");
     ImGui::EndDisabled();
-    for (size_t i = page*pageSize; i < std::min(count, (page+1)*pageSize); ++i) {
-        std::string label;
-        if (fins) {
-            const auto& patch = topology.finPatches[topology.fins[i]];
-            label = topology.sources[patch.source].source + ": patch " + std::to_string(patch.patch+1) + ", " + finBoundaryKindName(patch.boundary);
-        } else if (holes) {
-            const auto& boundary = topology.boundaryRegions[topology.holes[i]];
-            label = topology.sources[boundary.source].source + ": loop " + std::to_string(topology.holes[i]+1)
-                + ", component " + std::to_string(boundary.component+1);
-        } else {
-            const auto& finding = topology.nonManifoldVertices[i];
-            const auto& source = topology.sources[finding.source];
-            const auto& ref = source.vertices[finding.vertex].references.front();
-            label = source.source + ": point " + std::to_string(ref.pointId+1) + ", part " + std::to_string(ref.partId);
+    if (ImGui::BeginTable("findings", 4, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Source");
+        ImGui::TableSetupColumn(fins ? "Patch" : holes ? "Loop" : "Point", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn(fins ? "Boundary" : holes ? "Component" : "Part");
+        ImGui::TableHeadersRow();
+        for (size_t i = page*diagnosticPageSize; i < std::min(count, (page+1)*diagnosticPageSize); ++i) {
+            ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("%zu", i+1); ImGui::TableNextColumn();
+            const auto sourceIndex = fins ? topology.finPatches[topology.fins[i]].source
+                : holes ? topology.boundaryRegions[topology.holes[i]].source : topology.nonManifoldVertices[i].source;
+            const auto& source = topology.sources[sourceIndex];
+            if (ImGui::Selectable(source.source.c_str(), focused && selected == i, ImGuiSelectableFlags_SpanAllColumns)) {
+                selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id);
+            }
+            ImGui::TableNextColumn();
+            if (fins) {
+                const auto& patch = topology.finPatches[topology.fins[i]];
+                ImGui::Text("%zu", patch.patch+1);
+                ImGui::TableNextColumn(); ImGui::TextUnformatted(finBoundaryKindName(patch.boundary));
+            } else if (holes) {
+                const auto& boundary = topology.boundaryRegions[topology.holes[i]];
+                ImGui::Text("%zu", topology.holes[i]+1);
+                ImGui::TableNextColumn(); ImGui::Text("%zu", boundary.component+1);
+            } else {
+                const auto& finding = topology.nonManifoldVertices[i];
+                const auto& ref = source.vertices[finding.vertex].references.front();
+                ImGui::Text("%zu", ref.pointId+1);
+                ImGui::TableNextColumn(); ImGui::Text("%llu", static_cast<unsigned long long>(ref.partId));
+            }
+            ImGui::PopID();
         }
-        ImGui::PushID(static_cast<int>(i));
-        if (ImGui::Selectable(label.c_str(), focused && selected == i)) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id); }
-        ImGui::PopID();
+        ImGui::EndTable();
     }
     if (fins) {
         const auto& patch = topology.finPatches[topology.fins[selected]];
@@ -866,27 +894,34 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     }
     const auto* comparison = findComparison(state, id);
     const size_t selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : 0;
-    constexpr size_t pageSize = 25;
-    const size_t page = selected / pageSize;
-    ImGui::Text("Edges %zu-%zu of %zu", page*pageSize+1, std::min(findings.size(), (page+1)*pageSize), findings.size());
+    const size_t page = selected / diagnosticPageSize;
+    ImGui::Text("Edges %zu-%zu of %zu", page*diagnosticPageSize+1, std::min(findings.size(), (page+1)*diagnosticPageSize), findings.size());
     ImGui::BeginDisabled(page == 0);
-    if (ImGui::SmallButton("Previous page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*pageSize, id); }
+    if (ImGui::SmallButton("Previous page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page-1)*diagnosticPageSize, id); }
     setLastItemTooltip("Show the previous page and select its first edge.");
     ImGui::EndDisabled(); ImGui::SameLine();
-    ImGui::BeginDisabled((page+1)*pageSize >= findings.size());
-    if (ImGui::SmallButton("Next page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*pageSize, id); }
+    ImGui::BeginDisabled((page+1)*diagnosticPageSize >= findings.size());
+    if (ImGui::SmallButton("Next page##topology")) { selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, (page+1)*diagnosticPageSize, id); }
     setLastItemTooltip("Show the next page and select its first edge.");
     ImGui::EndDisabled();
-    for (size_t i = page*pageSize; i < std::min(findings.size(), (page+1)*pageSize); ++i) {
-        const auto& finding = findings[i];
-        const auto& source = topology.sources[finding.source];
-        const auto& edge = source.edges[finding.edge];
-        ImGui::PushID(static_cast<int>(i));
-        const auto label = source.source + " / edge " + std::to_string(finding.edge+1) + " / " + std::to_string(edge.incidentFaces.size()) + " incident faces";
-        if (ImGui::Selectable(label.c_str(), comparison->diagnosticFocus && comparison->diagnosticFocus->index == i)) {
-            selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id);
+    if (ImGui::BeginTable("topology_findings", 4, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Source"); ImGui::TableSetupColumn("Edge"); ImGui::TableSetupColumn("Incident faces");
+        ImGui::TableHeadersRow();
+        for (size_t i = page*diagnosticPageSize; i < std::min(findings.size(), (page+1)*diagnosticPageSize); ++i) {
+            const auto& finding = findings[i];
+            const auto& source = topology.sources[finding.source];
+            const auto& edge = source.edges[finding.edge];
+            ImGui::PushID(static_cast<int>(i)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::Text("%zu", i+1); ImGui::TableNextColumn();
+            if (ImGui::Selectable(source.source.c_str(), comparison->diagnosticFocus && selected == i, ImGuiSelectableFlags_SpanAllColumns)) {
+                selectComparisonDiagnostic(state, runtime.result, runtime.resultSignature, i, id);
+            }
+            ImGui::TableNextColumn(); ImGui::Text("%zu", finding.edge+1);
+            ImGui::TableNextColumn(); ImGui::Text("%zu", edge.incidentFaces.size());
+            ImGui::PopID();
         }
-        ImGui::PopID();
+        ImGui::EndTable();
     }
     if (!comparison->diagnosticFocus) { return; }
     const auto& finding = findings.at(comparison->diagnosticFocus->index);
