@@ -299,6 +299,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     if (!source) { return invalidSceneObjectId; }
     auto copy = *source;
     copy.diagnosticFocus.reset();
+    copy.pendingDiagnosticFocus.reset();
     copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
     copy.detectorRequests = {};
     copy.objectId = invalidSceneObjectId;
@@ -372,7 +373,26 @@ bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison
         && focus->category == comparison.settings.diagnosticCategory
         && focus->signature == comparisonGeometrySignature(state, comparison.objectId);
 }
+
+bool diagnosticResultSettingsCurrent(const UiComparison& comparison, const MeshComparison& result, const DiagnosticFocus& focus)
+{
+    if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding || focus.category == DiagnosticCategory::nonManifoldVertices || focus.category == DiagnosticCategory::holes || focus.category == DiagnosticCategory::fins) {
+        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.topology.mode != comparison.settings.topologyMode
+            || (focus.category == DiagnosticCategory::fins && surface.topology.inspection.finMaxAreaRatio != comparison.settings.topologyInspection.finMaxAreaRatio)
+            || (focus.category == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != comparison.settings.topologyInspection.holeSizeRatioTolerance)) { return false; }
+    }
+    if (focus.category == DiagnosticCategory::selfIntersections) {
+        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
+        if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != comparison.settings.topologyMode) { return false; }
+    }
+    if (focus.category == DiagnosticCategory::degenerateTriangles) {
+        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
+        if (!sameDegenerateThresholds(surface.degenerates.settings, comparison.settings.degenerates)) { return false; }
+    }
+    return true;
 }
+} // namespace
 
 const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
     const MeshComparison& result, uint64_t resultSignature, SceneObjectId id)
@@ -382,32 +402,35 @@ const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
         || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
     const auto& focus = *comparison->diagnosticFocus;
     if (comparisonDetectorStatus(result, focus.category).phase != IntersectionPhase::complete) { return nullptr; }
-    if (focus.category == DiagnosticCategory::boundary || focus.category == DiagnosticCategory::nonManifold || focus.category == DiagnosticCategory::winding || focus.category == DiagnosticCategory::nonManifoldVertices || focus.category == DiagnosticCategory::holes || focus.category == DiagnosticCategory::fins) {
-        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
-        if (surface.topology.mode != comparison->settings.topologyMode
-            || (focus.category == DiagnosticCategory::fins && surface.topology.inspection.finMaxAreaRatio != comparison->settings.topologyInspection.finMaxAreaRatio)
-            || (focus.category == DiagnosticCategory::holes && surface.topology.inspection.holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance)) { return nullptr; }
-    }
-    if (focus.category == DiagnosticCategory::selfIntersections) {
-        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
-        if (surface.intersections.phase != IntersectionPhase::complete || surface.intersections.mode != comparison->settings.topologyMode) { return nullptr; }
-    }
-    if (focus.category == DiagnosticCategory::degenerateTriangles) {
-        const auto& surface = focus.side == ComparisonSide::a ? result.original : result.repaired;
-        if (!sameDegenerateThresholds(surface.degenerates.settings, comparison->settings.degenerates)) { return nullptr; }
-    }
+    if (!diagnosticResultSettingsCurrent(*comparison, result, focus)) { return nullptr; }
     const auto& edges = comparisonDiagnosticEdges(result, focus.side, focus.category);
     return focus.index < edges.size() ? &edges[focus.index] : nullptr;
 }
 
 void resetComparisonDiagnosticFocus(UiState& state, SceneObjectId id)
 {
-    if (auto* comparison = findComparison(state, id)) { comparison->diagnosticFocus.reset(); }
+    if (auto* comparison = findComparison(state, id)) {
+        comparison->diagnosticFocus.reset();
+        comparison->pendingDiagnosticFocus.reset();
+    }
 }
 
 void validateComparisonDiagnosticFocus(UiState& state, const MeshComparison& result,
     uint64_t resultSignature, SceneObjectId id)
 {
+    if (auto* comparison = findComparison(state, id); comparison && comparison->pendingDiagnosticFocus) {
+        const auto pending = *comparison->pendingDiagnosticFocus;
+        if (!comparison->settings.enabled || pending.signature != comparisonGeometrySignature(state, id)
+            || pending.side != comparison->settings.diagnosticSide || pending.category != comparison->settings.diagnosticCategory) {
+            resetComparisonDiagnosticFocus(state, id);
+            return;
+        }
+        if (resultSignature != pending.signature
+            || comparisonDetectorStatus(result, pending.category).phase != IntersectionPhase::complete
+            || !diagnosticResultSettingsCurrent(*comparison, result, pending)) { return; }
+        comparison->diagnosticFocus = pending;
+        comparison->pendingDiagnosticFocus.reset();
+    }
     if (!focusedComparisonDiagnostic(state, result, resultSignature, id)) {
         resetComparisonDiagnosticFocus(state, id);
     }
@@ -509,6 +532,7 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
         bounds.max[k] += comparison->translation[k];
         bounds.center[k] += comparison->translation[k];
     }
+    comparison->pendingDiagnosticFocus.reset();
     comparison->diagnosticFocus = DiagnosticFocus{resultSignature, index, settings.diagnosticSide, settings.diagnosticCategory};
     auto camera = frameCameraBounds(bounds, state.upAxis);
     // The default near plane otherwise forces tiny findings far from the eye.
@@ -621,7 +645,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
             || normalizedTopologyInspectionSettings(settings.topologyInspection).finMaxAreaRatio != comparison->settings.topologyInspection.finMaxAreaRatio
             || normalizedTopologyInspectionSettings(settings.topologyInspection).holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
-            comparison->diagnosticFocus.reset();
+            resetComparisonDiagnosticFocus(state, id);
         }
         comparison->settings = normalizedComparisonSettings(settings);
         if (comparison->settings.enabled && !wasEnabled) { setPropertiesPaneVisible(state, true); }
@@ -1593,6 +1617,13 @@ void notifySceneEdit(UiState& state)
 void markSceneDirty(UiState& state)
 {
     for (auto& comparison : state.comparisons) {
+        if (comparison.pendingDiagnosticFocus) {
+            const auto& pending = *comparison.pendingDiagnosticFocus;
+            if (!comparison.settings.enabled || pending.signature != comparisonGeometrySignature(state, comparison.objectId)
+                || pending.side != comparison.settings.diagnosticSide || pending.category != comparison.settings.diagnosticCategory) {
+                comparison.pendingDiagnosticFocus.reset();
+            }
+        }
         if (comparison.diagnosticFocus && !diagnosticFocusCurrent(state, comparison)) {
             comparison.diagnosticFocus.reset();
         }

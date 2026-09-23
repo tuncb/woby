@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "comparison_scene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -70,7 +71,7 @@ UiView captureView(const UiState& state)
         const auto selected = std::find(state.selectedSceneObjects.begin(), state.selectedSceneObjects.end(), id);
         const int order = selected == state.selectedSceneObjects.end() ? -1
             : static_cast<int>(selected - state.selectedSceneObjects.begin());
-        view.objects.push_back({id, {settings, comparison, order}});
+        view.objects.push_back({id, {settings, comparison, order, {}}});
     };
     for (const auto& file : state.files) {
         auto settings = appearance(file.fileSettings);
@@ -85,6 +86,11 @@ UiView captureView(const UiState& state)
         SceneGroupSettings settings;
         settings.translation = comparison.translation;
         add(comparison.objectId, settings, comparison.settings);
+        const auto& focus = comparison.diagnosticFocus ? comparison.diagnosticFocus : comparison.pendingDiagnosticFocus;
+        if (focus && focus->signature == comparisonGeometrySignature(state, comparison.objectId)
+            && focus->side == comparison.settings.diagnosticSide && focus->category == comparison.settings.diagnosticCategory) {
+            view.objects.back().settings.diagnosticIndex = focus->index;
+        }
         for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
             for (const auto& part : side == ComparisonSide::a ? comparison.a : comparison.b) {
                 if (findSceneObject(state, part.objectId)) {
@@ -150,6 +156,30 @@ std::vector<ObjectReference> objectReferences(const UiState& state)
 }
 
 } // namespace
+
+ViewNavigation captureViewNavigation(const UiState& state)
+{
+    ViewNavigation navigation{state.camera, state.selectedSceneObjects, {}};
+    for (const auto& comparison : state.comparisons) {
+        const auto& focus = comparison.diagnosticFocus ? comparison.diagnosticFocus : comparison.pendingDiagnosticFocus;
+        navigation.diagnostics.push_back({comparison.objectId, focus ? std::optional<size_t>{focus->index} : std::nullopt});
+    }
+    return navigation;
+}
+
+void restoreViewDiagnostics(UiState& state, const std::vector<ViewDiagnosticSelection>& selections)
+{
+    for (const auto& selection : selections) {
+        auto* comparison = findComparison(state, selection.comparisonId);
+        if (!comparison) { continue; }
+        resetComparisonDiagnosticFocus(state, comparison->objectId);
+        const auto signature = comparisonGeometrySignature(state, comparison->objectId);
+        if (selection.index && comparison->settings.enabled && signature != 0) {
+            comparison->pendingDiagnosticFocus = DiagnosticFocus{signature, *selection.index,
+                comparison->settings.diagnosticSide, comparison->settings.diagnosticCategory};
+        }
+    }
+}
 
 const UiView* findView(const UiState& state, ViewId id)
 {
@@ -222,7 +252,7 @@ void applyView(UiState& state, ViewId id)
 {
     if (!findView(state, id)) { return; }
     const auto beforeDocument = createSceneDocument(state);
-    const ViewNavigation before{state.camera, state.selectedSceneObjects};
+    const auto before = captureViewNavigation(state);
     pruneMissingViewReferences(state);
     const auto& view = *findView(state, id);
     // Validate the camera before mutating any display properties.
@@ -290,7 +320,14 @@ void applyView(UiState& state, ViewId id)
     state.camera = camera;
     state.cameraInput = {};
     state.activeViewId = id;
-    const ViewNavigation after{state.camera, state.selectedSceneObjects};
+    std::vector<ViewDiagnosticSelection> diagnostics;
+    for (const auto& object : view.objects) {
+        if (findComparison(state, object.objectId)) {
+            diagnostics.push_back({object.objectId, object.settings.diagnosticIndex});
+        }
+    }
+    restoreViewDiagnostics(state, diagnostics);
+    const auto after = captureViewNavigation(state);
     const bool contentChanged = !sceneContentEqual(beforeDocument, createSceneDocument(state));
     if (contentChanged || before != after) {
         if (contentChanged) { markSceneDirty(state); }

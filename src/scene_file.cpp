@@ -916,6 +916,11 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     else { throw std::runtime_error("Unknown view object kind."); }
                 } else if (key == "index") { object.index = parseTomlInteger(value); }
                 else if (key == "group_index") { object.groupIndex = parseTomlInteger(value); }
+                else if (key == "diagnostic_index") {
+                    const int index = parseTomlInteger(value);
+                    if (index < 0) { throw std::runtime_error("Invalid view diagnostic index."); }
+                    object.settings.diagnosticIndex = static_cast<size_t>(index);
+                }
                 else if (key == "selection_order") { object.settings.selectionOrder = parseTomlInteger(value); }
                 else if (key.starts_with("analysis_") || key.starts_with("quality_") || key == "topology_mode"
                     || key.starts_with("duplicate_") || key.starts_with("show_duplicate_")
@@ -1221,6 +1226,9 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             stream << "selection_order = " << object.settings.selectionOrder << "\n";
             writeAppearance(stream, object.settings.appearance);
             if (object.kind == ViewObjectKind::comparison) {
+                if (object.settings.diagnosticIndex) {
+                    stream << "diagnostic_index = " << *object.settings.diagnosticIndex << "\n";
+                }
                 writeComparisonSettings(stream, object.settings.comparison);
             }
         }

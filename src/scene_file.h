@@ -110,6 +110,8 @@ struct ViewObjectSettings {
     SceneGroupSettings appearance;
     ComparisonSettings comparison;
     int selectionOrder = -1;
+    // Finding within the saved diagnostic category and side; absent means no focus.
+    std::optional<size_t> diagnosticIndex;
     friend bool operator==(const ViewObjectSettings&, const ViewObjectSettings&) = default;
 };
 

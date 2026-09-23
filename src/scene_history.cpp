@@ -42,6 +42,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.comparisons = state.comparisons;
     for (auto& comparison : content.comparisons) {
         comparison.diagnosticFocus.reset();
+        comparison.pendingDiagnosticFocus.reset();
         comparison.intersectionRequestRevision = 0; comparison.cancelIntersections = false;
         comparison.detectorRequests = {};
     }
@@ -201,6 +202,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
         : (prepared.comparisons.empty() ? invalidSceneObjectId : prepared.comparisons.front().objectId);
     refreshSceneTreeFolderCenters(prepared);
     recalculateSceneBounds(prepared);
+    if (application) { restoreViewDiagnostics(prepared, (redo ? application->after : application->before).diagnostics); }
     updateSceneDirty(prepared, cleanDocument);
     return prepared;
 }

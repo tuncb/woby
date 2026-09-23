@@ -100,7 +100,7 @@ struct UiComparisonPart {
 };
 
 // Navigation refers only to the computed result with this geometry signature.
-// Like selection, it is session-only and excluded from scene files and history.
+// Live focus is session-only; views persist its finding index as a checkpoint.
 struct DiagnosticFocus {
     uint64_t signature = 0;
     size_t index = 0;
@@ -116,6 +116,8 @@ struct UiComparison {
     std::array<float, 3> translation{};
     std::vector<UiComparisonPart> a, b;
     std::optional<DiagnosticFocus> diagnosticFocus;
+    // View selection waiting for matching detector results; never drawn directly.
+    std::optional<DiagnosticFocus> pendingDiagnosticFocus;
     // One-shot inspection commands, excluded from scene files and history.
     uint64_t intersectionRequestRevision = 0;
     bool cancelIntersections = false;
@@ -145,9 +147,16 @@ struct UiView {
     std::vector<UiViewPart> parts;
 };
 
+struct ViewDiagnosticSelection {
+    SceneObjectId comparisonId = invalidSceneObjectId;
+    std::optional<size_t> index;
+    friend bool operator==(const ViewDiagnosticSelection&, const ViewDiagnosticSelection&) = default;
+};
+
 struct ViewNavigation {
     SceneCamera camera;
     std::vector<SceneObjectId> selection;
+    std::vector<ViewDiagnosticSelection> diagnostics;
     friend bool operator==(const ViewNavigation&, const ViewNavigation&) = default;
 };
 

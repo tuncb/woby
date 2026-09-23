@@ -12,6 +12,9 @@ namespace woby {
 struct DiagnosticEdge;
 struct MeshComparison;
 
+[[nodiscard]] ViewNavigation captureViewNavigation(const UiState& state);
+void restoreViewDiagnostics(UiState& state, const std::vector<ViewDiagnosticSelection>& selections);
+
 [[nodiscard]] const UiView* findView(const UiState& state, ViewId id);
 ViewId createView(UiState& state);
 void applyView(UiState& state, ViewId id);

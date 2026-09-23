@@ -1,6 +1,8 @@
 #include "ui_operations.h"
 #include "scene_history.h"
 #include "automation_registry.h"
+#include "comparison_scene.h"
+#include "mesh_comparison.h"
 
 #include <doctest/doctest.h>
 #include <algorithm>
@@ -351,4 +353,138 @@ TEST_CASE("undo file removal restores checkpoint references and pruned folders w
     CHECK(state.views[0].parts == savedParts);
     woby::applyView(state, id);
     CHECK(state.selectedSceneObjects == std::vector<woby::SceneObjectId>{state.files[0].objectId});
+}
+
+TEST_CASE("views restore individual findings and empty selections after save load and undo redo")
+{
+    const ViewDirectory directory;
+    auto state = viewState(directory.root);
+    auto id = state.comparisons[0].objectId;
+    const auto result = woby::compareMeshes(state.files[0].mesh, state.files[1].mesh);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::selectComparisonDiagnostic(state, result, signature, 1, id);
+    REQUIRE(state.comparisons[0].diagnosticFocus);
+    const auto selected = woby::createView(state);
+    woby::resetComparisonDiagnosticFocus(state, id);
+    const auto empty = woby::createView(state);
+    woby::applyView(state, selected);
+    CHECK_FALSE(state.comparisons[0].diagnosticFocus);
+    REQUIRE(state.comparisons[0].pendingDiagnosticFocus);
+    woby::validateComparisonDiagnosticFocus(state, {}, 0, id);
+    REQUIRE(state.comparisons[0].pendingDiagnosticFocus);
+    woby::validateComparisonDiagnosticFocus(state, result, signature, id);
+    REQUIRE(state.comparisons[0].diagnosticFocus);
+    CHECK(state.comparisons[0].diagnosticFocus->index == 1);
+
+    const auto clean = woby::createSceneDocument(state);
+    woby::SceneHistory history;
+    woby::resetSceneHistory(history, state);
+    // Equal cameras isolate selection-only view changes.
+    state.camera = woby::findView(state, empty)->scene.camera;
+    woby::applyView(state, empty);
+    CHECK_FALSE(state.comparisons[0].diagnosticFocus);
+    CHECK_FALSE(state.comparisons[0].pendingDiagnosticFocus);
+    REQUIRE(woby::recordSceneHistory(history, state));
+    step(history, state, clean);
+    woby::validateComparisonDiagnosticFocus(state, result, woby::comparisonGeometrySignature(state, id), id);
+    REQUIRE(state.comparisons[0].diagnosticFocus);
+    CHECK(state.comparisons[0].diagnosticFocus->index == 1);
+    step(history, state, clean, true);
+    CHECK_FALSE(state.comparisons[0].diagnosticFocus);
+    CHECK_FALSE(state.comparisons[0].pendingDiagnosticFocus);
+
+    const auto path = directory.root / "findings.woby";
+    const auto document = woby::createSceneDocument(state);
+    woby::writeSceneDocument(path, document);
+    const auto read = woby::readSceneDocument(path);
+    CHECK(read.views == document.views);
+    auto loaded = woby::prepareSceneReplacement(state, state.files, read);
+    id = loaded.comparisons[0].objectId;
+    woby::applyView(loaded, loaded.views[0].id);
+    woby::validateComparisonDiagnosticFocus(loaded, result, woby::comparisonGeometrySignature(loaded, id), id);
+    REQUIRE(loaded.comparisons[0].diagnosticFocus);
+    CHECK(loaded.comparisons[0].diagnosticFocus->index == 1);
+    woby::applyView(loaded, loaded.views[1].id);
+    CHECK_FALSE(loaded.comparisons[0].diagnosticFocus);
+    CHECK_FALSE(loaded.comparisons[0].pendingDiagnosticFocus);
+}
+
+TEST_CASE("view finding updates are independent and invalid restored findings are discarded")
+{
+    auto state = viewState();
+    const auto id = state.comparisons[0].objectId;
+    const auto result = woby::compareMeshes(state.files[0].mesh, state.files[1].mesh);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::selectComparisonDiagnostic(state, result, signature, 0, id);
+    REQUIRE(state.comparisons[0].diagnosticFocus);
+    const auto first = woby::createView(state);
+    const auto second = woby::createView(state);
+    woby::selectComparisonDiagnostic(state, result, signature, 2, id);
+    woby::updateView(state, second);
+    woby::applyView(state, first);
+    woby::validateComparisonDiagnosticFocus(state, result, signature, id);
+    REQUIRE(state.comparisons[0].diagnosticFocus);
+    CHECK(state.comparisons[0].diagnosticFocus->index == 0);
+    woby::applyView(state, second);
+    SUBCASE("updated finding") {
+        woby::validateComparisonDiagnosticFocus(state, result, signature, id);
+        REQUIRE(state.comparisons[0].diagnosticFocus);
+        CHECK(state.comparisons[0].diagnosticFocus->index == 2);
+    }
+    SUBCASE("finding no longer exists") {
+        auto shortened = result;
+        shortened.original.diagnostics.boundaryEdges.resize(1);
+        woby::validateComparisonDiagnosticFocus(state, shortened, signature, id);
+        CHECK_FALSE(state.comparisons[0].diagnosticFocus);
+        CHECK_FALSE(state.comparisons[0].pendingDiagnosticFocus);
+    }
+    SUBCASE("geometry changes while waiting") {
+        woby::setGroupTranslation(state.files[0].groupSettings[0], {9, 0, 0});
+        woby::markSceneDirty(state);
+        CHECK_FALSE(state.comparisons[0].pendingDiagnosticFocus);
+    }
+    SUBCASE("full result cancels pending selection") {
+        woby::frameComparison(state, id);
+        CHECK_FALSE(state.comparisons[0].pendingDiagnosticFocus);
+    }
+}
+
+TEST_CASE("view findings retain their comparison and side while waiting for matching detectors")
+{
+    auto state = viewState();
+    const auto id = state.comparisons[0].objectId;
+    auto settings = woby::comparisonSettings(state, id);
+    settings.diagnosticSide = woby::ComparisonSide::b;
+    woby::setComparisonSettings(state, settings, id);
+    const auto result = woby::compareMeshes(state.files[0].mesh, state.files[1].mesh);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::selectComparisonDiagnostic(state, result, signature, 2, id);
+    REQUIRE(state.comparisons[0].diagnosticFocus);
+    const auto other = woby::duplicateComparison(state, id);
+    woby::selectComparisonDiagnostic(state, result, woby::comparisonGeometrySignature(state, other), 0, other);
+    const auto view = woby::createView(state);
+    woby::resetComparisonDiagnosticFocus(state, id);
+    woby::resetComparisonDiagnosticFocus(state, other);
+    woby::applyView(state, view);
+
+    auto stale = result;
+    SUBCASE("detector still computing") {
+        stale.detectors[static_cast<size_t>(woby::DiagnosticCategory::boundary)].phase = woby::IntersectionPhase::running;
+    }
+    SUBCASE("detector results use different settings") {
+        stale.repaired.topology.mode = woby::TopologyMode::exactPosition;
+    }
+    woby::validateComparisonDiagnosticFocus(state, stale, signature, id);
+    CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+    REQUIRE(woby::findComparison(state, id)->pendingDiagnosticFocus);
+    const auto revision = state.sceneEditRevision;
+    woby::updateView(state, view); // Saving while results load must retain the finding.
+    CHECK(state.sceneEditRevision == revision);
+    woby::validateComparisonDiagnosticFocus(state, result, signature, id);
+    woby::validateComparisonDiagnosticFocus(state, result, woby::comparisonGeometrySignature(state, other), other);
+    REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+    REQUIRE(woby::findComparison(state, other)->diagnosticFocus);
+    CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 2);
+    CHECK(woby::findComparison(state, id)->diagnosticFocus->side == woby::ComparisonSide::b);
+    CHECK(woby::findComparison(state, other)->diagnosticFocus->index == 0);
 }
