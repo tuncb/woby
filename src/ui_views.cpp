@@ -8,7 +8,15 @@
 
 namespace woby {
 
-void drawViews(UiState& state, ViewNameEdit& edit)
+float viewListHeight(float preferredHeight, float automaticHeight,
+    float minimumHeight, float availableHeight)
+{
+    const float maximum = std::max(1.0f, availableHeight);
+    return std::clamp(preferredHeight > 0.0f ? preferredHeight : automaticHeight,
+        std::min(minimumHeight, maximum), maximum);
+}
+
+void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float reservedHeight)
 {
     if (edit.generation != state.sceneGeneration || (edit.id && !findView(state, edit.id))) {
         edit = {};
@@ -32,7 +40,15 @@ void drawViews(UiState& state, ViewNameEdit& edit)
     }
     if (open) {
         const float rows = static_cast<float>(std::clamp(state.views.size(), size_t{1}, size_t{5}));
-        const float height = rows * (button + ImGui::GetStyle().ItemSpacing.y) + ImGui::GetStyle().WindowPadding.y;
+        const float automaticHeight = rows * (button + ImGui::GetStyle().ItemSpacing.y)
+            + ImGui::GetStyle().WindowPadding.y;
+        constexpr float dividerHeight = 8.0f;
+        const float minimumHeight = button + ImGui::GetStyle().ItemSpacing.y
+            + ImGui::GetStyle().WindowPadding.y;
+        const float availableHeight = ImGui::GetContentRegionAvail().y - reservedHeight
+            - dividerHeight - ImGui::GetStyle().ItemSpacing.y;
+        const float height = viewListHeight(layout.preferredHeight, automaticHeight,
+            minimumHeight, availableHeight);
         if (ImGui::BeginChild("view_rows", ImVec2(0, height))) {
             if (state.views.empty()) { ImGui::TextDisabled("Use + to save the current view."); }
             const auto beginRename = [&](ViewId id) {
@@ -90,6 +106,27 @@ void drawViews(UiState& state, ViewNameEdit& edit)
             }
         }
         ImGui::EndChild();
+        ImGui::InvisibleButton("views_objects_divider", ImVec2(-1.0f, dividerHeight));
+        const bool hovered = ImGui::IsItemHovered();
+        const bool active = ImGui::IsItemActive();
+        const ImVec2 dividerMin = ImGui::GetItemRectMin();
+        const ImVec2 dividerMax = ImGui::GetItemRectMax();
+        const float dividerY = (dividerMin.y + dividerMax.y) * 0.5f;
+        ImGui::GetWindowDrawList()->AddLine(
+            ImVec2(dividerMin.x, dividerY), ImVec2(dividerMax.x, dividerY),
+            ImGui::GetColorU32(active ? ImGuiCol_SeparatorActive
+                : hovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
+        if (hovered || active) { ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS); }
+        if (hovered) {
+            ImGui::SetTooltip("Drag to resize Views and Objects. Double-click to reset.");
+            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                layout.preferredHeight = 0.0f;
+            }
+        }
+        if (active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            layout.preferredHeight = viewListHeight(height + ImGui::GetIO().MouseDelta.y,
+                automaticHeight, minimumHeight, availableHeight);
+        }
     }
     ImGui::PopID();
 }

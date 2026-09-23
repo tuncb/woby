@@ -12,6 +12,13 @@ struct ViewNameEdit {
     bool focus = false;
 };
 
-void drawViews(UiState& state, ViewNameEdit& edit);
+// The divider position is window layout state, separate from the saved scene.
+struct ViewListLayout {
+    float preferredHeight = 0.0f; // Zero follows the list's automatic height.
+};
+
+[[nodiscard]] float viewListHeight(float preferredHeight, float automaticHeight,
+    float minimumHeight, float availableHeight);
+void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float reservedHeight);
 
 } // namespace woby

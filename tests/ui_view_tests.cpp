@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "ui_views.h"
 #include "scene_history.h"
 #include "automation_registry.h"
 #include "comparison_scene.h"
@@ -30,6 +31,15 @@ woby::UiFileState viewFile(const std::filesystem::path& root = ".")
     mesh.nodes.push_back({"part", 0, 3});
     mesh.bounds = woby::calculateBounds(mesh.vertices);
     return woby::createUiFileState(root / "same.obj", std::move(mesh), 0);
+}
+
+TEST_CASE("view list sizing reserves space for objects and follows content until resized")
+{
+    CHECK(woby::viewListHeight(0.0f, 120.0f, 40.0f, 300.0f) == 120.0f);
+    CHECK(woby::viewListHeight(200.0f, 120.0f, 40.0f, 300.0f) == 200.0f);
+    CHECK(woby::viewListHeight(400.0f, 120.0f, 40.0f, 300.0f) == 300.0f);
+    CHECK(woby::viewListHeight(10.0f, 120.0f, 40.0f, 300.0f) == 40.0f);
+    CHECK(woby::viewListHeight(0.0f, 120.0f, 40.0f, 25.0f) == 25.0f);
 }
 
 woby::UiState viewState(const std::filesystem::path& root = ".")

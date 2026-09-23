@@ -5,6 +5,8 @@ in the left pane has a + button to capture the current state. Click a row to app
 its checkpoint, double-click or use F2/context-menu Rename to rename it, use Save
 on the row to replace its checkpoint, and use Delete to remove the view. Row Save
 updates the document in memory; Save scene / Save scene as writes the views to disk.
+Drag the divider below the Views list to give Views or Objects more room.
+Double-click the divider to return Views to its automatic height.
 
 A view stores camera, up axis, grid/origin/dimensions toggles, vertex sizes, object
 visibility, colors, opacity, render modes, local transforms, analysis display

@@ -2218,6 +2218,7 @@ int main(int argc, char** argv)
         woby::ComparisonRuntimes comparison;
         woby::ComparisonNameEdit comparisonNameEdit;
         woby::ViewNameEdit viewNameEdit;
+        woby::ViewListLayout viewListLayout;
         std::vector<LoadedModelRuntime> runtimes;
         std::optional<std::filesystem::path> currentScenePath;
         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
@@ -3073,7 +3074,9 @@ int main(int argc, char** argv)
 
                     ImGui::BeginDisabled(fileActionsDisabled()
                         || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
-                    woby::drawViews(ui, viewNameEdit);
+                    woby::drawViews(ui, viewNameEdit, viewListLayout,
+                        statusHeight + ImGui::GetFrameHeight() * 2.0f
+                            + ImGui::GetStyle().ItemSpacing.y * 3.0f);
                     ImGui::EndDisabled();
 
                     const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
