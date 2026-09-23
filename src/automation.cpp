@@ -1114,8 +1114,7 @@ void printCommandLineHelp()
         "scene open/new and quit default to --on-dirty error. --save-path requires\n"
         "--on-dirty save; --overwrite requires an explicit save destination.\n"
         "Screenshot waits for visible analyses and PNG writing; incomplete/failed\n"
-        "analyses fail capture. Existing PNGs are overwritten. CLI paths may be relative.\n"
-        "\nSee README.md, doc/ctl-commands.md, and doc/automation.md for examples and details.\n");
+        "analyses fail capture. Existing PNGs are overwritten. CLI paths may be relative.\n");
 }
 
 } // namespace woby

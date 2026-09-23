@@ -3,6 +3,7 @@
 ## Completeness rules
 
 - Add unit tests for new features and behavioral changes unless you need to change implementation structure to make it testable, do not add tests in this case but report it to the user.
+- Do not write tests for document content.
 
 - Run unit tests and make sure they compile without warnings and all tests pass.
 
