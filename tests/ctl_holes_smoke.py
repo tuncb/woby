@@ -83,6 +83,12 @@ def main():
                 assert holes["count"] == 1 and holes["findings"][0]["sizeRatio"] == .25, holes
                 assert holes["loopCount"] == 4 and holes["findings"][0]["edgeCount"] == 4
                 assert filtered["diagnostics"] == initial["diagnostics"]
+                focused = ctl("analysis", "focus", analysis, "--side", "a",
+                              "--detector", "holes", "--index", "1")
+                assert focused["index"] == focused["count"] == 1, focused
+                vertex = ctl("analysis", "focus", analysis, "--side", "a",
+                             "--detector", "non_manifold_vertices", "--index", "1")
+                assert vertex["index"] == vertex["count"] == 1, vertex
                 ctl("analysis", "set", analysis, "--show-holes", "false", "--show-non-manifold-vertices", "false")
                 assert result() == filtered
                 ctl("analysis", "set", analysis, "--show-holes", "true", "--show-non-manifold-vertices", "true")
@@ -92,14 +98,14 @@ def main():
                     ctl("screenshot", output / "holes-and-vertices.png")
                 ctl("analysis", "set", analysis, "--holes", "false", "--non-manifold-vertices", "false")
                 disabled = result()["detectors"]
-                assert disabled["holes"]["status"] == "disabled" and disabled["holes"]["count"] is None
-                assert disabled["non_manifold_vertices"]["status"] == "disabled"
+                assert disabled["holes"]["status"] == "complete" and disabled["holes"]["count"] == 1
+                assert disabled["non_manifold_vertices"]["status"] == "complete"
                 ctl("analysis", "set", analysis, "--holes", "true", "--non-manifold-vertices", "true")
                 assert result() == filtered
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved, "--overwrite")
                 text = saved.read_text(encoding="utf-8")
-                assert 'version = 15' in text and 'analysis_hole_size_ratio_tolerance = 0.25' in text
+                assert 'version = 16' in text and 'analysis_hole_size_ratio_tolerance = 0.25' in text
                 ctl("scene", "open", saved)
                 objects = ctl("objects")["objects"]
                 analysis = next(item["id"] for item in objects if item["kind"] == "analysis")

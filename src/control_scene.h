@@ -16,6 +16,9 @@ nlohmann::json applyControlAnnotationOperation(UiState& state, const SceneDocume
     const ControlOperation& command, const ObjectIdFormatter& formatId);
 // Summarizes an immutable measurement snapshot; no renderer or timing dependencies.
 nlohmann::json controlComparisonResults(const MeshComparison& result, double tolerance);
+// Uses the same finding focus and camera framing as the Diagnostics list.
+nlohmann::json controlFocusComparisonDiagnostic(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, const ControlOperation& command);
 // Main-thread adapter for logical operations; runtime/file operations are dispatched elsewhere.
 nlohmann::json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocument,
     const ControlOperation& command, const ObjectIdFormatter& formatId, float minPaneWidth, float maxPaneWidth);

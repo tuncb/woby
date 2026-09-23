@@ -1,4 +1,5 @@
 #include "control_scene.h"
+#include "comparison_scene.h"
 #include "ui_operations.h"
 #include "utf8_path.h"
 
@@ -537,7 +538,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::importersList: case A::importersAdd: case A::importersScan: case A::importersForget: case A::performance:
     case A::annotationList: case A::annotationGet: case A::annotationCreate: case A::annotationSet:
     case A::annotationReshape: case A::annotationMove: case A::annotationDelete:
-    case A::comparisonResults: case A::sceneUndo: case A::sceneRedo:
+    case A::comparisonResults: case A::comparisonFocus: case A::sceneUndo: case A::sceneRedo:
         throw std::invalid_argument("Command requires a runtime adapter.");
     case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:
     case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap: case A::comparisonEnable: case A::comparisonRun: case A::comparisonCancel:
@@ -553,6 +554,45 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
     }
     return controlSceneInfo(state);
+}
+
+Json controlFocusComparisonDiagnostic(UiState& state, const MeshComparison& result,
+    uint64_t resultSignature, const ControlOperation& command)
+{
+    if (command.action != ControlAction::comparisonFocus || !command.side || !command.detector || !command.index) {
+        throw std::invalid_argument("Expected an analysis.focus command.");
+    }
+    const auto* comparison = findComparison(state, command.objectId);
+    if (!comparison || !comparison->settings.enabled) {
+        throw std::invalid_argument("analysis.focus requires a visible analysis ID.");
+    }
+    if (resultSignature == 0 || resultSignature != comparisonGeometrySignature(state, command.objectId)) {
+        throw std::invalid_argument("Analysis findings are out of date.");
+    }
+    const auto detector = std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), *command.detector);
+    if (detector == diagnosticCategoryKeys.end()) { throw std::invalid_argument("Unknown detector."); }
+    const auto category = static_cast<DiagnosticCategory>(detector - diagnosticCategoryKeys.begin());
+    const auto side = *command.side == "a" ? ComparisonSide::a : ComparisonSide::b;
+    if (comparisonDetectorStatus(result, category).phase != IntersectionPhase::complete) {
+        throw std::invalid_argument("Detector findings are not current; run the detector first.");
+    }
+    const auto& findings = comparisonDiagnosticEdges(result, side, category);
+    if (*command.index == 0 || *command.index > findings.size()) {
+        throw std::invalid_argument("Finding index is outside the selected detector's results.");
+    }
+    auto settings = comparison->settings;
+    if (settings.diagnosticSide != side || settings.diagnosticCategory != category) {
+        settings.diagnosticSide = side;
+        settings.diagnosticCategory = category;
+        setComparisonSettings(state, settings, command.objectId);
+    }
+    selectComparisonDiagnostic(state, result, resultSignature,
+        static_cast<size_t>(*command.index - 1), command.objectId);
+    const auto* focused = findComparison(state, command.objectId);
+    if (!focused->diagnosticFocus) { throw std::invalid_argument("Detector findings are out of date."); }
+    return {{"target", command.target}, {"side", *command.side}, {"detector", *command.detector},
+        {"index", focused->diagnosticFocus->index + 1}, {"count", findings.size()},
+        {"camera", controlCameraInfo(state)}};
 }
 
 namespace {

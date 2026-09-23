@@ -85,6 +85,8 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonRun, "analysis.run", "analysis run", "target", {"detector"}, {"detector"}, false, true},
         {ControlAction::comparisonCancel, "analysis.cancel", "analysis cancel", "target", {"detector"}, {"detector"}, false, true},
         {ControlAction::comparisonResults, "analysis.results", "analysis results", "target", {}, {}},
+        {ControlAction::comparisonFocus, "analysis.focus", "analysis focus", "target",
+            {"side", "detector", "index"}, {"side", "detector", "index"}, false, true},
     };
     return methods;
 }
@@ -309,6 +311,13 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         throw std::invalid_argument("topologyMode must be automatic, original_index, or exact_position.");
     }
     if (command.side && *command.side != "a" && *command.side != "b") { throw std::invalid_argument("side must be a or b."); }
+    if (params.contains("index")) {
+        const auto& value = params["index"];
+        if (!value.is_number_integer() || (value.is_number_unsigned() ? value.get<uint64_t>() == 0 : value.get<int64_t>() <= 0)) {
+            throw std::invalid_argument("index must be a positive integer.");
+        }
+        command.index = value.get<uint64_t>();
+    }
     if (command.factor && *command.factor <= 0) { throw std::invalid_argument("factor must be positive."); }
     if (command.distance && *command.distance <= 0) { throw std::invalid_argument("distance must be positive."); }
     if (command.action == ControlAction::vertexSize
@@ -341,6 +350,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
                 : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
+                : name == "index" ? " POSITIVE_INTEGER"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
         if (!required) { result += "]"; }
@@ -364,7 +374,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
-    FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object)
+    FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object) FIELD(index)
     FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance) FIELD(fins) FIELD(showFins) FIELD(finMaxAreaRatio)
     FIELD(autoUpdateBoundaries) FIELD(autoUpdateNonManifold) FIELD(autoUpdateWinding)
     FIELD(detector) FIELD(autoUpdateSelfIntersections) FIELD(selfIntersections) FIELD(showSelfIntersections)
@@ -386,7 +396,7 @@ Json controlCapabilities()
         Json parameters = Json::object();
         if (!method.positional.empty()) { parameters[method.positional] = {{"type", "string"}, {"required", true}}; }
         for (const auto& name : method.options) {
-            parameters[name] = {{"type", booleanOption(name) ? "boolean" : vectorOption(name) ? (vectorSize(name) == 2 ? "number[2]" : "number[3]") : stringOption(name) ? "string" : "number"},
+            parameters[name] = {{"type", booleanOption(name) ? "boolean" : vectorOption(name) ? (vectorSize(name) == 2 ? "number[2]" : "number[3]") : stringOption(name) ? "string" : name == "index" ? "integer" : "number"},
                 {"required", std::find(method.required.begin(), method.required.end(), name) != method.required.end()},
                 {"cliOption", cliOption(name)}};
         }
@@ -463,6 +473,15 @@ bool parseExtendedControlArguments(int argc, char** argv, ControlArguments& argu
             params[name] = Json::array();
             for (size_t component = 0; component < count; ++component) { params[name].push_back(cliNumber(words[++index])); }
         } else if (stringOption(name)) { params[name] = words[++index]; }
+        else if (name == "index") {
+            const auto& value = words[++index];
+            uint64_t parsed = 0;
+            const auto converted = std::from_chars(value.data(), value.data() + value.size(), parsed);
+            if (converted.ec != std::errc{} || converted.ptr != value.data() + value.size() || parsed == 0) {
+                throw std::runtime_error("--index expects a positive integer.");
+            }
+            params[name] = parsed;
+        }
         else { params[name] = cliNumber(words[++index]); }
     }
     arguments.operation = parseControlOperation(*selected, params);

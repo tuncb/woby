@@ -84,6 +84,7 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"analysis", "enable", "object", "--side", "a", "--object", "source", "--enabled", "false"},
         {"analysis", "run", "object", "--detector", "self_intersections"},
         {"analysis", "cancel", "object", "--detector", "self_intersections"},
+        {"analysis", "focus", "object", "--side", "a", "--detector", "holes", "--index", "2"},
         {"analysis", "clear", "object", "--side", "a"}, {"analysis", "swap", "object"}, {"analysis", "results", "object"},
     };
     CHECK(commands.size() == woby::controlMethods().size());
@@ -162,6 +163,12 @@ TEST_CASE("ctl rejects ambiguous incomplete conflicting and nonfinite edit param
         {"analysis", "enable", "object", "--side", "a", "--enabled", "yes"},
         {"analysis", "enable", "object", "--side", "a", "--enabled", "false", "--enabled", "true"},
         {"analysis", "enable", "scene", "--side", "a", "--enabled", "true"},
+        {"analysis", "focus", "object", "--side", "a", "--detector", "holes"},
+        {"analysis", "focus", "object", "--side", "c", "--detector", "holes", "--index", "1"},
+        {"analysis", "focus", "object", "--side", "a", "--detector", "holes", "--index", "0"},
+        {"analysis", "focus", "object", "--side", "a", "--detector", "holes", "--index", "1.5"},
+        {"analysis", "focus", "object", "--side", "a", "--detector", "holes", "--index", "-1"},
+        {"analysis", "focus", "object", "--side", "a", "--detector", "unknown", "--index", "1"},
         {"status", "--remember"}, {"stats", "extra"},
         {"scene", "undo", "extra"}, {"scene", "redo", "--steps", "2"}, {"scene", "undo", "--on-dirty", "discard"}}) {
         CAPTURE(words);
@@ -555,6 +562,116 @@ TEST_CASE("ctl analysis enable supports whole sides and validates inputs before 
     CHECK(disabled["object"]["a"][1]["missing"] == true);
     run(state, clean, "analysis.enable", {{"side", "a"}, {"enabled", true}}, id);
     CHECK(woby::createSceneDocument(state) == clean);
+}
+
+TEST_CASE("ctl analysis focus selects an exact finding in every category on either side")
+{
+    auto state = scene();
+    const auto id = woby::createComparison(state);
+    const auto file = state.files[0].objectId;
+    woby::setComparisonObjects(state, {file}, woby::ComparisonSide::a, true, id);
+    woby::setComparisonObjects(state, {file}, woby::ComparisonSide::b, true, id);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::MeshComparison result;
+    const woby::DiagnosticEdge first{{1, 0, 0}, {2, 0, 0}};
+    const woby::DiagnosticEdge second{{3, 0, 0}, {4, 0, 0}};
+    for (auto* surface : {&result.original, &result.repaired}) {
+        surface->diagnostics.boundaryEdges = {first, second};
+        surface->diagnostics.nonManifoldEdges = {first, second};
+        surface->diagnostics.inconsistentWindingEdges = {first, second};
+        surface->nonManifoldVertexBounds = {first, second};
+        surface->holeBounds = {first, second};
+        surface->finBounds = {first, second};
+        surface->duplicatePointBounds = {first, second};
+        surface->duplicateTriangleBounds = {first, second};
+        surface->degenerateBounds = {first, second};
+        surface->intersectionBounds = {first, second};
+        surface->intersections.phase = woby::IntersectionPhase::complete;
+    }
+    for (auto& detector : result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
+    const auto clean = woby::createSceneDocument(state);
+    for (const auto side : {"a", "b"}) {
+        for (const auto key : woby::diagnosticCategoryKeys) {
+            const auto command = parse({"analysis", "focus", formatId(id), "--side", side,
+                "--detector", key, "--index", "2"}).operation;
+            auto focused = command;
+            focused.objectId = id;
+            const auto firstResponse = woby::controlFocusComparisonDiagnostic(state, result, signature, focused);
+            CHECK(firstResponse["index"] == 2);
+            CHECK(firstResponse["count"] == 2);
+            CHECK(firstResponse["side"] == side);
+            CHECK(firstResponse["detector"] == key);
+            CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 1);
+            CHECK(woby::focusedComparisonDiagnostic(state, result, signature, id) != nullptr);
+            CHECK(firstResponse["camera"] == woby::controlCameraInfo(state));
+            focused.index = 1;
+            CHECK(woby::controlFocusComparisonDiagnostic(state, result, signature, focused)["index"] == 1);
+            CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 0);
+        }
+    }
+    CHECK(woby::createSceneDocument(state) != clean);
+}
+
+TEST_CASE("ctl analysis focus rejects unavailable and out-of-range findings without moving the camera")
+{
+    auto state = scene();
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::MeshComparison result;
+    auto command = parse({"analysis", "focus", formatId(id), "--side", "a",
+        "--detector", "holes", "--index", "1"}).operation;
+    command.objectId = id;
+    const auto before = state.camera;
+    CHECK_THROWS(woby::controlFocusComparisonDiagnostic(state, result, signature, command));
+    CHECK(state.camera == before);
+    CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+    result.detectors[static_cast<size_t>(woby::DiagnosticCategory::holes)].phase = woby::IntersectionPhase::complete;
+    CHECK_THROWS(woby::controlFocusComparisonDiagnostic(state, result, signature, command));
+    result.original.holeBounds = {{{1, 0, 0}, {2, 0, 0}}};
+    command.index = 2;
+    CHECK_THROWS(woby::controlFocusComparisonDiagnostic(state, result, signature, command));
+    command.index = 1;
+    CHECK_THROWS(woby::controlFocusComparisonDiagnostic(state, result, signature + 1, command));
+    CHECK(state.camera == before);
+    CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+}
+
+TEST_CASE("ctl analysis focus requires a one-based integer index in CLI and RPC")
+{
+    const auto* method = woby::findControlMethod("analysis.focus");
+    REQUIRE(method);
+    for (const Json& bad : {Json(0), Json(-1), Json(1.0), Json("1"), Json(nullptr)}) {
+        CHECK_THROWS(woby::parseControlOperation(*method,
+            {{"target", "1"}, {"side", "a"}, {"detector", "holes"}, {"index", bad}}));
+    }
+    CHECK_THROWS(parse({"analysis", "focus", "1", "--side", "a", "--detector", "holes",
+        "--index", "18446744073709551616"}));
+    const auto parsed = parse({"analysis", "focus", "1", "--side", "a", "--detector", "holes",
+        "--index", "101"});
+    CHECK(parsed.operation.index == 101);
+    CHECK(woby::controlOperationParams(parsed.operation)["index"] == 101);
+}
+
+TEST_CASE("ctl analysis focus selects findings beyond the JSON listing limit directly")
+{
+    auto state = scene();
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    woby::MeshComparison result;
+    for (size_t i = 0; i < 101; ++i) {
+        const float x = static_cast<float>(i);
+        result.original.holeBounds.push_back({{x, 0, 0}, {x + 1, 0, 0}});
+    }
+    result.detectors[static_cast<size_t>(woby::DiagnosticCategory::holes)].phase = woby::IntersectionPhase::complete;
+    auto command = parse({"analysis", "focus", formatId(id), "--side", "a",
+        "--detector", "holes", "--index", "101"}).operation;
+    command.objectId = id;
+    const auto response = woby::controlFocusComparisonDiagnostic(state, result, signature, command);
+    CHECK(response["index"] == 101);
+    CHECK(response["count"] == 101);
+    CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 100);
 }
 
 TEST_CASE("ctl analysis invalid inputs never partially mutate the scene")

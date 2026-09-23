@@ -90,6 +90,9 @@ def main():
                 assert [f["triangleId"] for f in patch["faces"]] == [5], patch
                 assert patch["area"] == patch["denominatorArea"] == 6, patch
                 assert patch["areaRatio"] == 1 and patch["boundaryKind"] == "open", patch
+                focused = ctl("analysis", "focus", analysis, "--side", "a",
+                              "--detector", "fins", "--index", "1")
+                assert focused["index"] == focused["count"] == 1, focused
                 if output:
                     ctl("camera", "view", "isometric")
                     ctl("camera", "frame", "--object", analysis)
@@ -117,7 +120,7 @@ def main():
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved, "--overwrite")
                 text = saved.read_text(encoding="utf-8")
-                assert 'version = 15' in text and 'analysis_fins_enabled = false' in text
+                assert 'version = 16' in text and 'analysis_fins_enabled = false' in text
                 assert 'analysis_fin_max_area_ratio = 1' in text
                 ctl("scene", "open", saved)
                 objects = ctl("objects")["objects"]
@@ -128,6 +131,9 @@ def main():
                 ctl("analysis", "set", analysis, "--fins", "true")
                 ctl("analysis", "add", analysis, "--side", "b", "--object", source)
                 assert complete("bToA")["count"] == 1
+                focused_b = ctl("analysis", "focus", analysis, "--side", "b",
+                                "--detector", "fins", "--index", "1")
+                assert focused_b["side"] == "b" and focused_b["index"] == 1, focused_b
                 ctl("analysis", "clear", analysis, "--side", "a")
                 assert complete("bToA")["count"] == 1
                 ctl("analysis", "set", analysis, "--visible", "false")

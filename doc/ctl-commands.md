@@ -185,6 +185,19 @@ Manual run/cancel requests do not change these saved preferences.
 | `analysis clear ANALYSIS_ID --side a\|b` | `analysis.clear` | Clear the entire side, including missing references. |
 | `analysis swap ANALYSIS_ID` | `analysis.swap` | Swap the A/B input lists. |
 | `analysis results ANALYSIS_ID` | `analysis.results` | Wait for fresh diagnostics and, with two inputs, both directed distance summaries. Works for hidden analyses and in every display mode. |
+| `analysis focus ANALYSIS_ID --side a\|b --detector KEY --index N` | `analysis.focus` | Focus and frame the one-based finding index on the selected side. Returns the selected `index`, full `count`, and camera state. Requires a visible analysis and current detector results. |
+
+`analysis focus` accepts every detector key in `analysis.results`, including
+holes and fins. The index is one-based and follows the order of each detector's
+`findings` array. It can select findings beyond the first 100 returned by
+`analysis results --json`, so use the returned `count` or the Diagnostics table
+to see how many are available. Indexes refer to the current result and may
+change after recomputation. For example:
+
+```powershell
+woby.exe ctl --instance review analysis focus ANALYSIS_ID --side a --detector holes --index 7 --json
+woby.exe ctl --instance review analysis focus ANALYSIS_ID --side b --detector fins --index 2 --json
+```
 
 Exact source-duplicate controls are available through `analysis set`:
 `--duplicate-points BOOL`, `--duplicate-triangles BOOL`,

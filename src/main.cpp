@@ -3294,6 +3294,21 @@ int main(int argc, char** argv)
                                 comparison.objects[payload.objectId].fullResultsRequested = true;
                                 automationComparison.emplace(std::move(pending));
                                 return;
+                            } else if (payload.action == A::comparisonFocus) {
+                                const auto found = comparison.objects.find(payload.objectId);
+                                if (found == comparison.objects.end() || !payload.detector) {
+                                    throw std::invalid_argument("Analysis findings are not ready; run the detector first.");
+                                }
+                                const auto detector = std::find(woby::diagnosticCategoryKeys.begin(),
+                                    woby::diagnosticCategoryKeys.end(), *payload.detector);
+                                if (detector == woby::diagnosticCategoryKeys.end()
+                                    || !woby::comparisonDetectorReady(found->second, ui, payload.objectId,
+                                        static_cast<woby::DiagnosticCategory>(detector - woby::diagnosticCategoryKeys.begin()))) {
+                                    throw std::invalid_argument("Detector findings are not current; run the detector first.");
+                                }
+                                result = woby::controlFocusComparisonDiagnostic(ui, found->second.result,
+                                    found->second.resultSignature, payload);
+                                woby::updateSceneDirty(ui, cleanSceneDocument);
                             } else if (payload.action == A::status) {
                                 result = woby::automationInstanceInfo(*automation);
                                 result.update({{"path", currentScenePath ? Json(woby::pathToUtf8(*currentScenePath)) : Json(nullptr)},
