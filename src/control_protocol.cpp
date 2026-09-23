@@ -76,7 +76,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
@@ -84,6 +84,11 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonSwap, "analysis.swap", "analysis swap", "target", {}, {}, false, true},
         {ControlAction::comparisonRun, "analysis.run", "analysis run", "target", {"detector"}, {"detector"}, false, true},
         {ControlAction::comparisonCancel, "analysis.cancel", "analysis cancel", "target", {"detector"}, {"detector"}, false, true},
+        {ControlAction::comparisonFindings, "analysis.findings", "analysis findings", "target",
+            {"side", "detector", "collection", "offset", "limit", "revision"}, {"side", "detector"}},
+        {ControlAction::comparisonExport, "analysis.export", "analysis export", "target", {"path"}, {"path"}},
+        {ControlAction::comparisonExportStatus, "analysis.export-status", "analysis export-status", {}, {}, {}},
+        {ControlAction::comparisonExportCancel, "analysis.export-cancel", "analysis export-cancel", {}, {}, {}},
         {ControlAction::comparisonResults, "analysis.results", "analysis results", "target", {}, {}},
         {ControlAction::comparisonFocus, "analysis.focus", "analysis focus", "target",
             {"side", "detector", "index"}, {"side", "detector", "index"}, false, true},
@@ -113,7 +118,11 @@ bool booleanOption(const std::string& name)
 }
 bool stringOption(const std::string& name)
 {
-    return name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
+    return name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
+}
+bool integerOption(const std::string& name)
+{
+    return name == "index" || name == "offset" || name == "limit" || name == "intersectionPairLimit" || name == "intersectionCandidateLimit";
 }
 size_t vectorSize(const std::string& name) { return name == "start" || name == "end" || name == "delta" ? 2u : 3u; }
 bool vectorOption(const std::string& name)
@@ -122,6 +131,8 @@ bool vectorOption(const std::string& name)
 }
 std::string cliOption(const std::string& name)
 {
+    if (name == "intersectionPairLimit") { return "--intersection-pair-limit"; }
+    if (name == "intersectionCandidateLimit") { return "--intersection-candidate-limit"; }
     if (name == "rotationDegrees") { return "--rotation-degrees"; }
     if (name == "yawDegrees") { return "--yaw-degrees"; }
     if (name == "pitchDegrees") { return "--pitch-degrees"; }
@@ -247,7 +258,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         const auto& value = params[name];
         if (booleanOption(name) && !value.is_boolean()) { throw std::invalid_argument(name + " must be a boolean."); }
         if (stringOption(name) && (!value.is_string() || (name != "comments" && value.get_ref<const std::string&>().empty())
-            || value.get_ref<const std::string&>().size() > (name == "comments" ? 8192u : 511u)
+            || value.get_ref<const std::string&>().size() > ((name == "comments" || name == "path") ? 8192u : 511u)
             || value.get_ref<const std::string&>().find('\0') != std::string::npos)) {
             throw std::invalid_argument(name + (name == "comments" ? " must be a string of at most 8192 bytes without NUL characters."
                 : " must be a nonempty string of at most 511 bytes without NUL characters."));
@@ -290,7 +301,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
     STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
-    STRING_FIELD(shape) STRING_FIELD(comments)
+    STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
 #undef STRING_FIELD
     if (command.shape && *command.shape != "line" && *command.shape != "rectangle") { throw std::invalid_argument("shape must be line or rectangle."); }
     if (command.aspect && (*command.aspect < .1f || *command.aspect > 10)) { throw std::invalid_argument("aspect must be between 0.1 and 10."); }
@@ -311,6 +322,18 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         throw std::invalid_argument("topologyMode must be automatic, original_index, or exact_position.");
     }
     if (command.side && *command.side != "a" && *command.side != "b") { throw std::invalid_argument("side must be a or b."); }
+#define INTEGER_FIELD(field, maximum) if (params.contains(#field)) { \
+        const auto& v = params[#field]; \
+        if (!v.is_number_integer() || (!v.is_number_unsigned() && v.get<int64_t>() < 0) || v.get<uint64_t>() > maximum) { \
+            throw std::invalid_argument(#field " must be a nonnegative integer within its documented range."); \
+        } command.field = v.get<uint64_t>(); }
+    INTEGER_FIELD(offset, std::numeric_limits<size_t>::max())
+    INTEGER_FIELD(limit, 100)
+    INTEGER_FIELD(intersectionPairLimit, 2147483647)
+    INTEGER_FIELD(intersectionCandidateLimit, 2147483647)
+#undef INTEGER_FIELD
+    if (command.limit && !*command.limit) { throw std::invalid_argument("limit must be from 1 to 100."); }
+    if (command.collection && (command.collection->empty() || command.collection->front() != '/')) { throw std::invalid_argument("collection must start with /."); }
     if (params.contains("index")) {
         const auto& value = params["index"];
         if (!value.is_number_integer() || (value.is_number_unsigned() ? value.get<uint64_t>() == 0 : value.get<int64_t>() <= 0)) {
@@ -350,7 +373,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
                 : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
-                : name == "index" ? " POSITIVE_INTEGER"
+                : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
         if (!required) { result += "]"; }
@@ -374,6 +397,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
+    FIELD(offset) FIELD(limit) FIELD(collection) FIELD(revision) FIELD(intersectionPairLimit) FIELD(intersectionCandidateLimit)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object) FIELD(index)
     FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance) FIELD(fins) FIELD(showFins) FIELD(finMaxAreaRatio)
     FIELD(autoUpdateBoundaries) FIELD(autoUpdateNonManifold) FIELD(autoUpdateWinding)
@@ -396,7 +420,7 @@ Json controlCapabilities()
         Json parameters = Json::object();
         if (!method.positional.empty()) { parameters[method.positional] = {{"type", "string"}, {"required", true}}; }
         for (const auto& name : method.options) {
-            parameters[name] = {{"type", booleanOption(name) ? "boolean" : vectorOption(name) ? (vectorSize(name) == 2 ? "number[2]" : "number[3]") : stringOption(name) ? "string" : name == "index" ? "integer" : "number"},
+            parameters[name] = {{"type", booleanOption(name) ? "boolean" : vectorOption(name) ? (vectorSize(name) == 2 ? "number[2]" : "number[3]") : stringOption(name) ? "string" : integerOption(name) ? "integer" : "number"},
                 {"required", std::find(method.required.begin(), method.required.end(), name) != method.required.end()},
                 {"cliOption", cliOption(name)}};
         }
@@ -404,7 +428,7 @@ Json controlCapabilities()
             {"positional", method.positional}, {"parameters", parameters}, {"options", method.options},
             {"requiredOptions", method.required}, {"requiresValues", method.requiresValues}, {"mutating", method.mutating}});
     }
-    return {{"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis", "annotation"}},
+    return {{"analysisResults", {{"defaultListingLimit", 100}, {"pageLimit", {1, 100}}, {"offsetBase", 0}, {"collectionIndexBase", 0}, {"defaultCollection", "/findings"}, {"intersectionPairLimitDefault", 10000}, {"intersectionCandidateLimitDefault", 1000000}, {"intersectionBudgetRange", {0, 2147483647}}, {"zeroBudgetMeansUnlimited", true}, {"exportOverwrites", false}, {"concurrentExports", 1}}}, {"apiVersion", 1}, {"methods", methods}, {"objectKinds", {"folder", "file", "group", "analysis", "annotation"}},
         {"analysisTransformFields", {"translation"}},
         {"cameraPersistent", false}, {"screenshot", {{"width", 1920}, {"height", 1800}, {"overwrite", true}}},
         {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "analysis", "annotation"}},
@@ -472,13 +496,14 @@ bool parseExtendedControlArguments(int argc, char** argv, ControlArguments& argu
         } else if (count > 1) {
             params[name] = Json::array();
             for (size_t component = 0; component < count; ++component) { params[name].push_back(cliNumber(words[++index])); }
-        } else if (stringOption(name)) { params[name] = words[++index]; }
-        else if (name == "index") {
+        } else if (name == "path") { params[name] = pathToUtf8(std::filesystem::absolute(pathFromUtf8(words[++index])).lexically_normal()); }
+        else if (stringOption(name)) { params[name] = words[++index]; }
+        else if (integerOption(name)) {
             const auto& value = words[++index];
             uint64_t parsed = 0;
             const auto converted = std::from_chars(value.data(), value.data() + value.size(), parsed);
-            if (converted.ec != std::errc{} || converted.ptr != value.data() + value.size() || parsed == 0) {
-                throw std::runtime_error("--index expects a positive integer.");
+            if (converted.ec != std::errc{} || converted.ptr != value.data() + value.size() || (name == "index" && parsed == 0)) {
+                throw std::runtime_error(word + " expects an integer (index starts at 1; offsets and budgets allow 0).");
             }
             params[name] = parsed;
         }

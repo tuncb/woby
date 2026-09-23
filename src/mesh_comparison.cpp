@@ -627,6 +627,8 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
     settings.topologyInspection = normalizedTopologyInspectionSettings(settings.topologyInspection);
     settings.topologyMode = normalizedTopologyMode(settings.topologyMode);
+    settings.intersections.limits.pairs = std::min(settings.intersections.limits.pairs, size_t{2147483647});
+    settings.intersections.limits.candidateTests = std::min(settings.intersections.limits.candidateTests, size_t{2147483647});
     return settings;
 }
 
@@ -935,7 +937,7 @@ bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mod
     return true;
 }
 
-MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode)
+MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode, IntersectionLimits intersectionLimits)
 {
     checkCanceled(stop);
     MeshComparison result;
@@ -949,7 +951,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
         if (mesh.vertices.empty() && mesh.indices.empty()) {
             if (stages & comparisonIntersections) {
                 surface.intersections.phase = IntersectionPhase::complete;
-                surface.intersections.hasResult = true; surface.intersections.mode = topologyMode;
+                surface.intersections.hasResult = true; surface.intersections.mode = topologyMode; surface.intersections.limits = intersectionLimits;
             }
             return;
         }
@@ -966,7 +968,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
         }
         if (stages & comparisonIntersections) {
             if (!(stages & comparisonTopology)) { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
-            surface.intersections = inspectIntersections(surface.topology, {true, true}, stop);
+            surface.intersections = inspectIntersections(surface.topology, {true, true}, stop, intersectionLimits);
             for (const auto& finding : surface.intersections.findings) {
                 checkCanceled(stop);
                 DiagnosticEdge bounds{finding.geometry[0], finding.geometry[0]};

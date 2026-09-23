@@ -615,7 +615,8 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
 {
     if (auto* comparison = findComparison(state, id)) {
         const bool wasEnabled = comparison->settings.enabled;
-        if (settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
+        if (settings.intersections.limits != comparison->settings.intersections.limits
+            || settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
             || normalizedTopologyMode(settings.topologyMode) != comparison->settings.topologyMode
             || normalizedTopologyInspectionSettings(settings.topologyInspection).finMaxAreaRatio != comparison->settings.topologyInspection.finMaxAreaRatio
             || normalizedTopologyInspectionSettings(settings.topologyInspection).holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance

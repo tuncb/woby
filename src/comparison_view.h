@@ -36,6 +36,7 @@ struct ComparisonGpuSurface
 };
 
 struct IntersectionRuntime {
+    IntersectionLimits limits;
     std::stop_source stop;
     std::future<MeshComparison> worker;
     uint64_t workerSignature = 0, revision = 0, workerRevision = 0, consumedRequest = 0;
@@ -60,7 +61,7 @@ struct ComparisonRuntime
     std::shared_ptr<const std::array<Mesh, 2>> inputs;
     bool fullResultsRequested = false;
     uint64_t attemptedSignature = 0;
-    uint64_t resultSignature = 0;
+    uint64_t resultSignature = 0, resultsRevision = 0;
     bool ready = false;
     MeshComparison result;
     ComparisonGpuSurface originalGpu, repairedGpu;

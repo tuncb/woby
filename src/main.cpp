@@ -33,6 +33,7 @@
 #include "utf8_path.h"
 #include "automation.h"
 #include "control_scene.h"
+#include "analysis_results.h"
 #include "control_importers.h"
 
 #include <SDL3/SDL.h>
@@ -330,6 +331,8 @@ struct AutomationAppendRuntime {
 };
 
 struct AutomationComparisonRuntime {
+    std::filesystem::path exportPath;
+    woby::IntersectionLimits intersectionLimits;
     woby::AutomationCommandId id = 0;
     std::string target;
     double tolerance = 0;
@@ -2295,6 +2298,7 @@ int main(int argc, char** argv)
         std::optional<woby::AutomationCommandId> automationOpenCommandId;
         std::optional<AutomationAppendRuntime> automationAppend;
         std::optional<AutomationComparisonRuntime> automationComparison;
+        woby::AnalysisExportRuntime analysisExport;
         const woby::ObjectIdFormatter formatObjectId = [&](woby::SceneObjectId id) { return woby::automationObjectId(*automation, id); };
         auto completeAppend = [&]() {
             if (!automationAppend) { return; }
@@ -3201,19 +3205,27 @@ int main(int argc, char** argv)
                     || !woby::findComparison(ui, pending.objectId)
                     || pending.signature != woby::comparisonGeometrySignature(ui, pending.objectId)
                     || !woby::sameTopologyInspectionFilters(pending.topologyInspection, woby::comparisonSettings(ui, pending.objectId).topologyInspection)
+                    || pending.intersectionLimits != woby::comparisonSettings(ui, pending.objectId).intersections.limits
                     || pending.topologyMode != woby::comparisonSettings(ui, pending.objectId).topologyMode
                     || !woby::sameDegenerateThresholds(pending.degenerates, woby::comparisonSettings(ui, pending.objectId).degenerates)
                     || pending.stages != woby::requestedComparisonStages(woby::comparisonSettings(ui, pending.objectId), both, true);
                 const bool ready = !changed && it != comparison.objects.end()
-                    && woby::comparisonResultsReady(it->second, ui, pending.objectId, true);
+                    && woby::comparisonResultsReady(it->second, ui, pending.objectId, true)
+                    && (pending.exportPath.empty() || (!it->second.intersection.requested
+                        && it->second.result.original.intersections.phase != woby::IntersectionPhase::queued
+                        && it->second.result.original.intersections.phase != woby::IntersectionPhase::running));
                 const bool failed = it != comparison.objects.end() && !it->second.error.empty()
                     && it->second.attemptedSignature == pending.signature;
                 if (changed || ready || failed) {
                     try {
                         if (changed) { throw std::runtime_error("Analysis inputs or detectors changed while results were being requested; retry analysis.results."); }
                         if (!ready) { throw std::runtime_error(it->second.error); }
-                        auto result = woby::controlComparisonResults(it->second.result, pending.tolerance);
+                        auto result = woby::controlComparisonResults(it->second.result, pending.tolerance, pending.exportPath.empty());
                         result["target"] = pending.target;
+                        if (!pending.exportPath.empty()) {
+                            woby::startAnalysisExport(analysisExport, it->second.result, std::move(result), pending.target, pending.exportPath);
+                            result = {{"export", woby::analysisExportStatus(analysisExport)}};
+                        }
                         woby::completeAutomationCommand(*automation, pending.id, woby::AutomationControlResult{std::move(result)});
                     } catch (const std::exception& error) {
                         woby::completeAutomationCommand(*automation, pending.id, woby::AutomationCommandError{error.what()});
@@ -3261,7 +3273,7 @@ int main(int argc, char** argv)
                                 }
                             }
                             if (busy && payload.action != A::comparisonCancel
-                                && (woby::controlMethod(payload.action).mutating || payload.action == A::comparisonResults)) {
+                                && (woby::controlMethod(payload.action).mutating || (payload.action == A::comparisonResults || payload.action == A::comparisonExport))) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{"Scene is busy loading, capturing, displaying a dialog, or editing a widget.", -32014});
                                 return;
@@ -3271,7 +3283,22 @@ int main(int argc, char** argv)
                                 const bool redo = payload.action == A::sceneRedo;
                                 const bool applied = runSceneHistory(redo);
                                 result = {{"action", redo ? "redo" : "undo"}, {"applied", applied}, {"dirty", ui.isDirty}};
-                            } else if (payload.action == A::comparisonResults) {
+                            } else if (payload.action == A::comparisonExportStatus || payload.action == A::comparisonExportCancel) {
+                                if (payload.action == A::comparisonExportCancel) { woby::cancelAnalysisExport(analysisExport); }
+                                result = {{"export", woby::analysisExportStatus(analysisExport)}};
+                            } else if (payload.action == A::comparisonFindings) {
+                                const auto found = comparison.objects.find(payload.objectId);
+                                const auto category = static_cast<woby::DiagnosticCategory>(std::find(woby::diagnosticCategoryKeys.begin(),
+                                    woby::diagnosticCategoryKeys.end(), *payload.detector) - woby::diagnosticCategoryKeys.begin());
+                                if (found == comparison.objects.end() || !woby::comparisonDetectorReady(found->second, ui, payload.objectId, category)) {
+                                    throw std::invalid_argument("Detector results are not current; run analysis run first.");
+                                }
+                                const auto revision = std::to_string(found->second.resultsRevision);
+                                if (payload.revision && *payload.revision != revision) { throw std::invalid_argument("Results changed; restart pagination without --revision."); }
+                                result = woby::analysisResultPage(found->second.result, *payload.side == "a" ? woby::ComparisonSide::a : woby::ComparisonSide::b,
+                                    *payload.detector, payload.collection.value_or("/findings"), static_cast<size_t>(payload.offset.value_or(0)), static_cast<size_t>(payload.limit.value_or(100)));
+                                result["revision"] = revision; result["target"] = payload.target;
+                            } else if (payload.action == A::comparisonResults || payload.action == A::comparisonExport) {
                                 const auto* source = woby::findComparison(ui, payload.objectId);
                                 if (!source) { throw std::invalid_argument("analysis.results requires an analysis ID."); }
                                 if (!woby::canInspectComparison(ui, payload.objectId)) {
@@ -3280,6 +3307,11 @@ int main(int argc, char** argv)
                                 if (automationComparison) { throw std::runtime_error("Another analysis.results request is still computing."); }
                                 AutomationComparisonRuntime pending;
                                 pending.id = command->id;
+                                if (payload.action == A::comparisonExport) {
+                                    if (woby::analysisExportStatus(analysisExport).value("state", "idle") == "running") { throw std::invalid_argument("An export is already running."); }
+                                    pending.exportPath = payload.path;
+                                }
+                                pending.intersectionLimits = source->settings.intersections.limits;
                                 pending.target = payload.target;
                                 pending.objectId = payload.objectId;
                                 pending.tolerance = source->settings.tolerance;
@@ -3719,6 +3751,7 @@ int main(int argc, char** argv)
         if (updateRuntime.worker.joinable()) { updateRuntime.worker.join(); }
         automation.reset();
         automationComparison.reset();
+        woby::stopAnalysisExport(analysisExport);
         backgroundLoad.cancelRequested.store(true);
         if (backgroundLoad.worker.joinable()) {
             backgroundLoad.worker.join();

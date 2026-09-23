@@ -181,7 +181,7 @@ MeshIntersections inspectIntersections(const MeshTopology& topology, Intersectio
 {
     MeshIntersections result; result.settings = settings; result.mode = topology.mode;
     canceled(stop);
-    result.phase = IntersectionPhase::complete; result.hasResult = true;
+    result.phase = IntersectionPhase::complete; result.hasResult = true; result.limits = limits;
     result.availableSources = topology.availableSources; result.unavailableSources = topology.unavailableSources;
     result.excludedCollapsedFaces = topology.excludedCollapsedFaces;
     std::set<std::tuple<uint64_t, size_t, uint64_t>> affected;
@@ -208,11 +208,11 @@ MeshIntersections inspectIntersections(const MeshTopology& topology, Intersectio
                     canceled(stop);
                     const size_t b = tree.order[i];
                     if (b <= a || !overlaps(tree.boxes[a], tree.boxes[b])) { continue; }
-                    if (result.candidateTests >= limits.candidateTests) { result.truncated = true; break; }
+                    if (limits.candidateTests && result.candidateTests >= limits.candidateTests) { result.truncated = true; result.truncationReason = "candidate_limit"; break; }
                     ++result.candidateTests;
                     const auto ap = positions(source, a), bp = positions(source, b);
                     if (!trianglesSelfIntersect(ap, bp, source.faces[a].vertices, source.faces[b].vertices)) { continue; }
-                    if (result.findings.size() >= limits.pairs) { result.truncated = true; break; }
+                    if (limits.pairs && result.findings.size() >= limits.pairs) { result.truncated = true; result.truncationReason = "pair_limit"; break; }
                     IntersectionFinding finding;
                     finding.faces = {source.faces[a].reference, source.faces[b].reference};
                     finding.source = source.source; finding.provenance = source.provenance; finding.mode = source.mode;

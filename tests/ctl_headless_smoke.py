@@ -117,7 +117,9 @@ def main():
 
         help_result = run(executable, "--headless", "--help", env=env)
         assert help_result.returncode == 0, help_result.stderr
-        for text in ("--headless", "ready=true", "camera frame", "screenshot", "GPU readback", "not a ctl option"):
+        for text in ("--headless", "ready=true", "camera frame", "screenshot", "GPU readback", "not a ctl option",
+                     "analysis findings", "--collection", "--revision", "analysis export-status",
+                     "analysis export-cancel", "--intersection-pair-limit", "--intersection-candidate-limit", "0 explicitly means unlimited"):
             assert text in help_result.stdout, text
         invalid = run(executable, "--headless", "--unknown-option", env=env)
         assert invalid.returncode == 1 and invalid.stderr and not invalid.stdout
@@ -173,7 +175,7 @@ def main():
 
             other_id = ctl("model", "add", second)["addedIds"][0]
             ctl("transform", "set", other_id, "--translation", 0, 0, .2)
-            ctl("analysis", "create", "--name", "Headless comparison", "--a", file_id, "--b", other_id)
+            analysis_id = ctl("analysis", "create", "--name", "Headless comparison", "--a", file_id, "--b", other_id)["target"]
             ctl("camera", "view", "isometric")
             ctl("camera", "frame")
             # Capture waits for computations and uploads; no analysis.results warm-up.
@@ -184,6 +186,28 @@ def main():
             red, green, blue = panel.split()
             light = ImageChops.darker(red, ImageChops.darker(green, blue))
             assert sum(light.histogram()[151:]) > 300, "Missing export text"
+            page = ctl("analysis", "findings", analysis_id, "--side", "a", "--detector", "boundary_edges", "--limit", 2)
+            assert page["total"] == 4 and len(page["items"]) == 2 and page["nextOffset"] == 2
+            tail = ctl("analysis", "findings", analysis_id, "--side", "a", "--detector", "boundary_edges",
+                       "--offset", page["nextOffset"], "--revision", page["revision"])
+            assert len(tail["items"]) == 2 and tail["nextOffset"] is None
+            nested = ctl("analysis", "findings", analysis_id, "--side", "a", "--detector", "boundary_edges",
+                         "--collection", "/findings/3/endpoints/0/sourcePoints", "--revision", page["revision"])
+            assert nested["total"] >= 1 and nested["items"][0]["pointId"] > 0
+            ctl("analysis", "findings", analysis_id, "--side", "a", "--detector", "boundary_edges", "--revision", "stale", code=-32602)
+            exported = root / "full diagnostics.json"
+            ctl("analysis", "export", analysis_id, "--path", exported.name)
+            deadline = time.monotonic() + 15
+            while (job := ctl("analysis", "export-status")["export"])["state"] == "running":
+                assert time.monotonic() < deadline
+                time.sleep(.025)
+            assert job["state"] == "complete", job
+            full = json.loads(exported.read_text(encoding="utf-8"))
+            assert full["allRetainedResults"] and not full["detectionComplete"]  # manual intersections unchecked
+            assert len(full["aToB"]["detectors"]["boundary_edges"]["findings"]) == 4
+            assert not full["aToB"]["detectors"]["boundary_edges"]["findingsTruncated"]
+            assert ctl("analysis", "export-cancel")["export"]["state"] == "complete"
+            ctl("analysis", "export", analysis_id, "--path", exported, code=-32004)
             ctl("quit", code=-32011)
             assert viewer.poll() is None
             ctl("scene", "save-as", scene)

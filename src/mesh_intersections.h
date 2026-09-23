@@ -4,8 +4,14 @@
 
 namespace woby {
 
+// Zero explicitly opts out of that budget. Defaults keep interactive checks bounded.
+struct IntersectionLimits {
+    size_t pairs = 10000, candidateTests = 1000000;
+    friend bool operator==(const IntersectionLimits&, const IntersectionLimits&) = default;
+};
 struct IntersectionSettings {
     bool autoUpdate = false, show = true;
+    IntersectionLimits limits;
     friend bool operator==(const IntersectionSettings&, const IntersectionSettings&) = default;
 };
 struct IntersectionFinding {
@@ -14,9 +20,6 @@ struct IntersectionFinding {
     SourceProvenance provenance = SourceProvenance::importerVertices;
     TopologyMode mode = TopologyMode::originalIndex;
     std::array<std::array<float, 3>, 6> geometry{};
-};
-struct IntersectionLimits {
-    size_t pairs = 10000, candidateTests = 1000000;
 };
 enum class IntersectionPhase { notChecked, queued, running, complete, outdated, canceled, failed };
 struct MeshIntersections {
@@ -28,6 +31,8 @@ struct MeshIntersections {
     size_t availableSources = 0, unavailableSources = 0, excludedCollapsedFaces = 0;
     size_t candidateTests = 0, affectedFaces = 0;
     bool truncated = false;
+    IntersectionLimits limits;
+    std::string truncationReason;
     std::vector<IntersectionFinding> findings;
 };
 

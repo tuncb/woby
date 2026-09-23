@@ -89,6 +89,8 @@ add_executable(woby
     src/comparison_view.cpp
     src/control_importers.cpp
     src/control_importers.h
+    src/analysis_results.cpp
+    src/analysis_results.h
     src/control_scene.cpp
     src/control_annotation.cpp
     src/control_scene.h
@@ -376,6 +378,8 @@ if(BUILD_TESTING)
         tests/mesh_comparison_tests.cpp
         src/control_importers.cpp
         src/control_importers.h
+        src/analysis_results.cpp
+        src/analysis_results.h
         src/control_scene.cpp
         src/control_annotation.cpp
         src/control_scene.h
@@ -443,6 +447,7 @@ if(BUILD_TESTING)
         src/ui_layout.h
         tests/scene_history_tests.cpp
         tests/scene_lifecycle_tests.cpp
+        tests/analysis_results_tests.cpp
         tests/control_tests.cpp
         tests/importer_tests.cpp
         tests/automation_tests.cpp

@@ -20,7 +20,7 @@ enum class ControlAction {
     modelAdd, modelRemove, folderAdd, importersList, importersAdd, importersScan,
     importersForget, stats, performance, pane,
     comparisonCreate, comparisonDelete, comparisonSet, comparisonAdd, comparisonRemove,
-    comparisonClear, comparisonSwap, comparisonResults, comparisonFocus, comparisonEnable, comparisonRun, comparisonCancel,
+    comparisonClear, comparisonSwap, comparisonFindings, comparisonExport, comparisonExportStatus, comparisonExportCancel, comparisonResults, comparisonFocus, comparisonEnable, comparisonRun, comparisonCancel,
     annotationList, annotationGet, annotationCreate, annotationSet, annotationReshape, annotationMove, annotationDelete,
 };
 
@@ -44,7 +44,8 @@ struct ControlOperation {
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;
     std::optional<float> tolerance, colorRange;
     std::optional<std::string> qualityMetric, topologyMode, detector;
-    std::optional<uint64_t> index;
+    std::optional<uint64_t> index, offset, limit, intersectionPairLimit, intersectionCandidateLimit;
+    std::optional<std::string> collection, revision;
     std::optional<bool> duplicatePoints, duplicateTriangles, showDuplicatePoints, showDuplicateTriangles;
     std::optional<bool> nonManifoldVertices, showNonManifoldVertices, holes, showHoles, fins, showFins;
     std::optional<float> holeSizeRatioTolerance, finMaxAreaRatio;

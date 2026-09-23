@@ -85,6 +85,9 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"analysis", "run", "object", "--detector", "self_intersections"},
         {"analysis", "cancel", "object", "--detector", "self_intersections"},
         {"analysis", "focus", "object", "--side", "a", "--detector", "holes", "--index", "2"},
+        {"analysis", "findings", "object", "--side", "a", "--detector", "holes", "--offset", "100", "--limit", "20"},
+        {"analysis", "export", "object", "--path", path},
+        {"analysis", "export-status"}, {"analysis", "export-cancel"},
         {"analysis", "clear", "object", "--side", "a"}, {"analysis", "swap", "object"}, {"analysis", "results", "object"},
     };
     CHECK(commands.size() == woby::controlMethods().size());
@@ -672,6 +675,41 @@ TEST_CASE("ctl analysis focus selects findings beyond the JSON listing limit dir
     CHECK(response["index"] == 101);
     CHECK(response["count"] == 101);
     CHECK(woby::findComparison(state, id)->diagnosticFocus->index == 100);
+}
+
+TEST_CASE("ctl result pagination export and intersection budgets validate and advertise their options")
+{
+    const auto page = parse({"analysis", "findings", "analysis", "--side", "b", "--detector", "holes",
+        "--collection", "/findings/100/vertices", "--offset", "0", "--limit", "23", "--revision", "7"}).operation;
+    CHECK(page.action == woby::ControlAction::comparisonFindings);
+    const auto params = woby::controlOperationParams(page);
+    CHECK(params["offset"] == 0); CHECK(params["limit"] == 23); CHECK(params["revision"] == "7");
+    CHECK(params["collection"] == "/findings/100/vertices");
+    for (const auto& bad : {Json{{"limit", 0}}, Json{{"limit", 101}}, Json{{"offset", -1}}, Json{{"limit", 1.5}},
+        Json{{"offset", "100"}}, Json{{"collection", "findings"}}, Json{{"side", "c"}}, Json{{"detector", "typo"}}}) {
+        auto invalid = Json{{"target", "analysis"}, {"side", "a"}, {"detector", "holes"}};
+        invalid.update(bad);
+        CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("analysis.findings"), invalid));
+    }
+    CHECK_THROWS(parse({"analysis", "findings", "analysis", "--side", "a", "--detector", "holes", "--offset", "1.5"}));
+    auto state = scene(); const auto id = woby::createComparison(state);
+    const auto clean = woby::createSceneDocument(state);
+    (void)run(state, clean, "analysis.set", {{"intersectionPairLimit", 0}, {"intersectionCandidateLimit", 1500000}}, id);
+    CHECK(woby::comparisonSettings(state, id).intersections.limits == woby::IntersectionLimits{0, 1500000});
+    for (const auto& value : {Json(-1), Json(1.5), Json("2"), Json(true), Json(uint64_t{2147483648})}) {
+        CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("analysis.set"), {{"target", "analysis"}, {"intersectionPairLimit", value}}));
+    }
+    const auto budget = parse({"analysis", "set", "analysis", "--intersection-pair-limit", "0", "--intersection-candidate-limit", "2147483647"}).operation;
+    CHECK(woby::controlOperationParams(budget)["intersectionPairLimit"] == 0);
+    CHECK(woby::controlOperationParams(budget)["intersectionCandidateLimit"] == 2147483647);
+    CHECK(parse({"analysis", "export-status"}).operation.action == woby::ControlAction::comparisonExportStatus);
+    CHECK(parse({"analysis", "export-cancel"}).operation.action == woby::ControlAction::comparisonExportCancel);
+    CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("analysis.export"), {{"target", "analysis"}, {"path", "relative.json"}}));
+    const auto capabilities = woby::controlCapabilities();
+    CHECK(capabilities["analysisResults"]["zeroBudgetMeansUnlimited"] == true);
+    CHECK(woby::controlMethodUsage(*woby::findControlMethod("analysis.findings")).find("--collection ARRAY_PATH") != std::string::npos);
+    CHECK(woby::controlMethodUsage(*woby::findControlMethod("analysis.export")).find("--path PATH") != std::string::npos);
+    CHECK(woby::controlMethodUsage(*woby::findControlMethod("analysis.set")).find("--intersection-pair-limit") != std::string::npos);
 }
 
 TEST_CASE("ctl analysis invalid inputs never partially mutate the scene")

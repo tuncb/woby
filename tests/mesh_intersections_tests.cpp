@@ -156,6 +156,10 @@ TEST_CASE("intersection BVH agrees with analytic layered triangles and bounds de
     CHECK(std::string(intersectionStatus(limited)) == "partial");
     const auto workLimit = inspectIntersections(topology, {true,true}, {}, {10000,2});
     CHECK(workLimit.candidateTests == 2); CHECK(workLimit.truncated);
+    CHECK(limited.truncationReason == "pair_limit"); CHECK(workLimit.truncationReason == "candidate_limit");
+    const auto unlimited = inspectIntersections(topology, {true,true}, {}, {0,0});
+    CHECK_FALSE(unlimited.truncated); CHECK(unlimited.findings.size() == expected.size());
+
 }
 
 TEST_CASE("exact intersection clipping agrees with an independent integer separating axis oracle")
@@ -242,6 +246,7 @@ TEST_CASE("intersection scene CLI navigation and reports preserve settings")
     CHECK(controlOperationParams(command)["selfIntersections"] == true); command.objectId = id;
     (void)applyControlSceneOperation(state,createSceneDocument(state),command,[](auto value){return std::to_string(value);},200,800);
     auto settings = comparisonSettings(state,id); CHECK(settings.intersections.autoUpdate); CHECK_FALSE(settings.intersections.show);
+    settings.intersections.limits = {12345, 0};
     settings.diagnosticCategory = DiagnosticCategory::selfIntersections; setComparisonSettings(state,settings,id);
     setComparisonTranslation(state,id,{100,0,0});
     const auto signature = comparisonGeometrySignature(state,id);
@@ -267,9 +272,14 @@ TEST_CASE("intersection scene CLI navigation and reports preserve settings")
         "[[views.objects]]\nkind = \"analysis\"\nindex = 0\nself_intersections_enabled = true\nshow_self_intersections = false\n"));
     REQUIRE(views.views.size() == 1); REQUIRE(views.views[0].objects.size() == 1);
     CHECK(views.views[0].objects[0].settings.comparison.intersections == IntersectionSettings{true,false});
+    views.views[0].objects[0].settings.comparison.intersections.limits = {0, 123456};
     views.views[0].objects[0].settings.comparison.diagnosticCategory = DiagnosticCategory::selfIntersections;
     writeSceneDocument(fixture.root/"views.woby",views);
     CHECK(readSceneDocument(fixture.root/"views.woby").views[0].objects[0].settings.comparison == views.views[0].objects[0].settings.comparison);
+    for (const auto* value : {"-1", "1.5", "2147483648", "true"}) {
+        const auto invalid = fixture.write("invalid-budget.woby", std::string("version = 15\n[[analyses]]\nname = \"budget\"\nintersection_pair_limit = ") + value + "\n");
+        CHECK_THROWS((void)readSceneDocument(invalid));
+    }
     std::string report;
     for (const auto& line : comparisonReportLines("test","crossing.obj","",settings,result,{})) { report += line; }
     CHECK(report.find("self-intersections: 1 pairs; 2 known affected faces (complete)") != std::string::npos);
@@ -306,6 +316,33 @@ struct WorkflowFixture {
         return false;
     }
 };
+}
+
+TEST_CASE("changed intersection budgets invalidate only intersections and reach worker results")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.intersections.autoUpdate = true; settings.intersections.limits = {1, 7};
+    setComparisonSettings(f.state, settings, f.id);
+    REQUIRE(f.until([&]{ return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::selfIntersections); }));
+    CHECK(runtime.result.original.intersections.limits == IntersectionLimits{1, 7});
+    const auto revision = runtime.resultsRevision;
+    const auto otherStages = runtime.cache.completed & ~comparisonIntersections;
+    settings.intersections.limits = {0, 0}; setComparisonSettings(f.state, settings, f.id);
+    CHECK_FALSE(comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::selfIntersections));
+    REQUIRE(f.until([&]{ return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::selfIntersections); }));
+    CHECK(runtime.result.original.intersections.limits == IntersectionLimits{0, 0});
+    CHECK(runtime.resultsRevision > revision);
+    CHECK((runtime.cache.completed & otherStages) == otherStages);
+    CHECK_FALSE(runtime.result.original.intersections.truncated);
+    settings.intersections.autoUpdate = false; settings.intersections.limits = {2, 3};
+    setComparisonSettings(f.state, settings, f.id); updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK_FALSE(comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::selfIntersections));
+    CHECK_FALSE(runtime.intersection.worker.valid());
+    requestComparisonIntersections(f.state, f.id);
+    REQUIRE(f.until([&]{ return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::selfIntersections); }));
+    CHECK(runtime.result.original.intersections.limits == IntersectionLimits{2, 3});
 }
 
 TEST_CASE("manual intersection requests are transient and CLI actions validate detector names")

@@ -104,7 +104,7 @@ bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature);
 bool resetComparisonDegenerateCache(ComparisonCacheStatus& cache, DegenerateSettings settings);
 bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mode);
 [[nodiscard]] MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired,
-    uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::automatic);
+    uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::automatic, IntersectionLimits intersectionLimits = {});
 // Rejects stale worker results; moves only the stages produced by that worker.
 bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache, MeshComparison update,
     uint64_t signature, uint32_t stages);

@@ -229,6 +229,15 @@ float parseTomlFloat(std::string_view value)
     return result;
 }
 
+size_t parseIntersectionBudget(std::string_view value)
+{
+    const auto text = trim(value);
+    size_t used = 0;
+    const auto budget = std::stoll(text, &used);
+    if (budget < 0 || budget > 2147483647 || used != text.size()) { throw std::runtime_error("Intersection budgets must be integers from 0 to 2147483647 (0 means unlimited)."); }
+    return static_cast<size_t>(budget);
+}
+
 int parseTomlInteger(std::string_view value)
 {
     const std::string text = trim(value);
@@ -481,6 +490,8 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "topology_mode") { record.settings.topologyMode = parseTopologyMode(parseTomlString(value));
     } else if (key == "analysis_show_winding") { record.settings.showWinding = parseTomlBool(value);
     } else if ((key == "self_intersections_enabled" || key == "self_intersections_auto_update")) { record.settings.intersections.autoUpdate = parseTomlBool(value);
+    } else if (key == "intersection_pair_limit") { record.settings.intersections.limits.pairs = parseIntersectionBudget(value);
+    } else if (key == "intersection_candidate_limit") { record.settings.intersections.limits.candidateTests = parseIntersectionBudget(value);
     } else if (key == "show_self_intersections") { record.settings.intersections.show = parseTomlBool(value);
     } else if (key == "degenerate_triangles_enabled") { record.settings.degenerates.enabled = parseTomlBool(value);
     } else if (key == "show_degenerate_triangles") { record.settings.degenerates.show = parseTomlBool(value);
@@ -560,6 +571,8 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "topology_mode = \"" << topologyModeName(comparison.topologyMode) << "\"\n";
     stream << "analysis_show_winding = " << (comparison.showWinding ? "true" : "false") << "\n";
     stream << "self_intersections_auto_update = " << (comparison.intersections.autoUpdate ? "true" : "false") << "\n";
+    stream << "intersection_pair_limit = " << comparison.intersections.limits.pairs << "\n";
+    stream << "intersection_candidate_limit = " << comparison.intersections.limits.candidateTests << "\n";
     stream << "show_self_intersections = " << (comparison.intersections.show ? "true" : "false") << "\n";
     stream << "degenerate_triangles_enabled = " << (comparison.degenerates.enabled ? "true" : "false") << "\n";
     stream << "show_degenerate_triangles = " << (comparison.degenerates.show ? "true" : "false") << "\n";
@@ -908,6 +921,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     || key.starts_with("duplicate_") || key.starts_with("show_duplicate_")
                     || key == "degenerate_triangles_enabled" || key == "show_degenerate_triangles"
                     || key == "needle_threshold_ratio" || key == "cap_min_angle_degrees"
+                    || key == "intersection_pair_limit" || key == "intersection_candidate_limit"
                     || key == "self_intersections_enabled" || key == "self_intersections_auto_update" || key == "show_self_intersections"
                     || key == "diagnostic_category" || key == "diagnostic_side") {
                     SceneComparisonRecord comparison;

@@ -649,8 +649,8 @@ Findings contain two source/part/generated triangle references, source provenanc
 and resolved topology mode. Triangle IDs are one-based; pairs are deterministic.
 
 JSON returns the first 100 retained pairs. `findingsTruncated` describes omitted
-findings; `detectionTruncated` indicates detection stopped at the 10,000-pair or
-1,000,000-candidate limit. Partial/unavailable results have null exact totals.
+findings; `detectionTruncated` indicates detection stopped at the configured pair or
+candidate limit (defaults: 10,000 pairs / 1,000,000 candidates). Partial/unavailable results have null exact totals.
 Unchecked, queued, running, outdated, canceled, and failed states have null totals
 and no current findings. `previousCount` is a previous known pair count, if one
 exists; it does not describe current geometry. UI navigation covers all current
@@ -667,6 +667,88 @@ and edges are excluded. Duplicate faces are included even with matching vertex I
 Source transforms apply; display offsets do not. Collapsed faces are excluded.
 STL original-index mode is unavailable. No proximity epsilon is used.
 
+
+## Complete diagnostic data, pagination, and export
+
+`analysis results` keeps its bounded summary format. `analysis findings` (RPC
+`analysis.findings`) reads one current detector and side without recomputing it:
+
+```powershell
+woby ctl --instance review analysis findings ANALYSIS_ID --side a --detector duplicate_points --offset 100 --limit 100 --json
+woby ctl --instance review analysis findings ANALYSIS_ID --side a --detector duplicate_points --collection /findings/100/members --offset 100 --limit 100 --json
+woby ctl --instance review analysis findings ANALYSIS_ID --side a --detector holes --collection /findings/0/vertices/120/pointReferences --json
+```
+
+`collection` defaults to `/findings`. Offsets and every index in a collection path
+are **zero-based**; `analysis focus --index` remains one-based. The response includes
+`items`, `total`, `nextOffset` (null at the end), detector `metadata`, and `revision`.
+Pass `--revision TEXT` from the first page on subsequent requests to reject changed
+results. Restart pagination if it is rejected. Pages contain 1–100 entries (default
+100); nested arrays in each entry retain the summary bounds and can be paged by
+extending the collection path. An offset beyond the end returns an empty page.
+
+Accessible collections include `/sources`, `/affectedFaces`, `/boundaryRegions`,
+and `/findings`. Nested paths follow the JSON field names: `members`,
+`incidentFaces`, `pointReferences`, `endpoints/0/sourcePoints`, `vertices`,
+`vertices/0/pointReferences`, `edgeIds`, `incidentFacesByEdge`, `faces`,
+`physicalBoundaryEdgeIds`, and `cutBoundaryEdgeIds`. Select a detector that has the
+requested collection. Run `analysis run ANALYSIS_ID --detector KEY` first when its
+results are not current. Finding order matches the summary and focus commands.
+
+```powershell
+woby ctl --instance review analysis export ANALYSIS_ID --path D:\exports\results.json --json
+woby ctl --instance review analysis export-status --json
+woby ctl --instance review analysis export-cancel --json
+```
+
+RPC methods are `analysis.export` (`target`, `path`), `analysis.export-status`, and
+`analysis.export-cancel` (no method-specific parameters). Export waits for fresh
+results using the same rules as `analysis results`, then returns a background job
+status. It does not initiate detectors with automatic updates disabled. Status
+returns an `export` object with `state` (`running`, `complete`, `canceled`, or `failed`)
+and `entriesWritten` counting
+both findings and nested entries. Before any export it reports `idle`. The outer `state` belongs to the automation
+command itself; use `export.state` to track the export job. Poll status
+until terminal; cancellation is cooperative and may race with successful completion.
+
+Only one export can run per viewer, and status retains the latest job. Export
+captures diagnostic data once, so later edits do not change the file. Capturing the
+snapshot requires memory proportional to the retained diagnostics; writing then
+streams entries without constructing a complete JSON document in memory. Render
+buffers and distance sample arrays are not copied for export.
+
+The final file is ordinary JSON with the results summary and complete retained
+arrays on both sides. `allRetainedResults: true` means there was no listing cap;
+`detectionComplete` remains false if any populated side has an incomplete detector.
+Per-detector statuses, exact/known counts, and detection truncation are preserved.
+Unchecked or canceled detectors do not become complete through export.
+
+The destination parent must already exist. CLI paths may be relative; RPC paths
+must be absolute. Export never overwrites an existing destination. It writes in a
+reserved sibling directory and publishes only on success using a same-filesystem
+no-overwrite rename on Windows, or a hard link on other platforms (which require
+hard-link support). Cancellation or
+failure removes temporary output. Viewer shutdown cancels and waits for the job.
+The large file is outside the 8 MiB automation response history; only the small job
+status is retained there.
+
+### Self-intersection computation budgets
+
+`analysis set` accepts `--intersection-pair-limit N` and
+`--intersection-candidate-limit N` (RPC `intersectionPairLimit` and
+`intersectionCandidateLimit`). Defaults remain 10,000 retained pairs and 1,000,000
+candidate tests **per side**, shared across its source files. Each value accepts
+0–2,147,483,647; **0 disables that budget**. These settings persist in `.woby` files
+and saved views, and are also editable through the self-intersection settings icon.
+Changing them invalidates current intersection results; automatic checks rerun,
+while manual checks require `analysis run ... --detector self_intersections`.
+
+Results report the actual `pairLimit` and `candidateLimit` used, plus
+`truncationReason` (`pair_limit`, `candidate_limit`, or null). When a budget stops
+detection, `detectionTruncated` is true, exact totals are null, and known counts
+refer only to retained results. Exporting or paging does not resume detection.
+Unlimited dense intersections can take quadratic time and storage; cancel with
+`analysis cancel ANALYSIS_ID --detector self_intersections`.
 
 ## Fin candidates
 
