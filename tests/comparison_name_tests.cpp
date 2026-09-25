@@ -4,6 +4,7 @@
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
 #include "ui_popup_controls.h"
+#include "ui_views.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
@@ -18,10 +19,14 @@ struct ComparisonNameFixture {
     ImGuiContext* context = ImGui::CreateContext();
     woby::UiState state;
     woby::ComparisonNameEdit edit;
+    woby::ViewNameEdit viewEdit;
+    woby::ViewListLayout viewLayout;
     woby::SceneObjectId id = woby::createComparison(state);
     ImVec2 row;
+    ImVec2 viewRow;
+    bool showViews = false;
 
-    ComparisonNameFixture()
+    explicit ComparisonNameFixture(bool withViews = false) : showViews(withViews)
     {
         ImGui::SetCurrentContext(context);
         auto& io = ImGui::GetIO();
@@ -50,6 +55,15 @@ struct ComparisonNameFixture {
         const auto origin = ImGui::GetCursorScreenPos();
         row = ImVec2(origin.x + 100, origin.y + ImGui::GetStyle().ItemSpacing.y
             + ImGui::GetTextLineHeightWithSpacing() + woby::renderModeButtonSize() * 0.5f);
+        if (showViews) {
+            woby::drawViews(state, viewEdit, viewLayout, 80.0f);
+            for (auto* window : context->Windows) {
+                if (std::string(window->Name).find("view_rows") == std::string::npos) { continue; }
+                viewRow = ImVec2(window->Pos.x + 50.0f,
+                    window->Pos.y + ImGui::GetStyle().WindowPadding.y + woby::renderModeButtonSize() * 0.5f);
+                break;
+            }
+        }
         woby::drawComparisonObjects(state, edit);
         ImGui::End();
         ImGui::EndFrame();
@@ -354,6 +368,21 @@ TEST_CASE("analysis scene F2 edits locally and commits on Enter or focus loss")
     CHECK(woby::findComparison(f.state, f.id)->name == "Inspection result");
     CHECK(f.state.sceneEditRevision == revision + 1);
     CHECK(woby::createSceneDocument(f.state).comparisons[0].name == "Inspection result");
+}
+
+TEST_CASE("F2 renames the focused view even when an analysis is selected")
+{
+    ComparisonNameFixture f(true);
+    const auto first = woby::createView(f.state);
+    woby::createView(f.state);
+    f.frame();
+    REQUIRE(f.viewRow.x > 0.0f);
+    f.click(f.viewRow);
+    REQUIRE(f.state.activeViewId == first);
+    REQUIRE(woby::sceneObjectSelected(f.state, f.id));
+    f.key(ImGuiKey_F2);
+    CHECK(f.viewEdit.id == first);
+    CHECK(f.edit.objectId == woby::invalidSceneObjectId);
 }
 
 TEST_CASE("analysis scene Escape and unchanged names do not create edits")

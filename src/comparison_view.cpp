@@ -2065,7 +2065,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
             selectSceneObject(state, id);
         }
     };
-    const bool sceneFocused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+    const bool sceneFocused = ImGui::IsWindowFocused();
     const bool canStartRename = sceneFocused && !ImGui::GetIO().WantTextInput
         && !ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
     if (canStartRename && edit.objectId == invalidSceneObjectId && state.selectedSceneObjects.size() == 1
