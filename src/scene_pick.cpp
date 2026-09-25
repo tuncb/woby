@@ -124,6 +124,19 @@ bool intersectsBounds(const Bounds& bounds, const Point& origin, const Point& di
     return true;
 }
 
+bool intersectsPickBlock(const MeshAnnotationBlock& block, const Point& origin, const Point& direction)
+{
+    Bounds bounds;
+    for (size_t axis = 0; axis < 3; ++axis) {
+        const double scale = std::max({1.0, std::abs(double{block.minimum[axis]}),
+            std::abs(double{block.maximum[axis]})});
+        const float padding = static_cast<float>(scale * 1e-6);
+        bounds.min[axis] = block.minimum[axis] - padding;
+        bounds.max[axis] = block.maximum[axis] + padding;
+    }
+    return intersectsBounds(bounds, origin, direction);
+}
+
 std::optional<double> triangleHit(const Point& origin, const Point& direction, const std::array<Point, 3>& p)
 {
     const auto a = subtract(p[1], p[0]), b = subtract(p[2], p[0]);
@@ -327,7 +340,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             const auto& mesh = *part.mesh;
             const size_t begin = std::min(part.indexOffset, mesh.indices.size());
             const size_t finish = begin + std::min(part.indexCount, mesh.indices.size() - begin);
-            for (size_t i = begin; i + 2 < finish; i += 3) {
+            const auto visitTriangle = [&](size_t i) {
                 std::array<Point, 3> triangle;
                 bool valid = true;
                 for (size_t k = 0; k < 3; ++k) {
@@ -336,7 +349,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                     const auto& p = mesh.vertices[index].position;
                     triangle[k] = {p[0], p[1], p[2]};
                 }
-                if (!valid) { continue; }
+                if (!valid) { return; }
                 if (testSurface) {
                     if (const auto t = triangleHit(origin, direction, triangle)) {
                         const auto p = clip({origin[0] + *t * direction[0], origin[1] + *t * direction[1], origin[2] + *t * direction[2]});
@@ -355,6 +368,24 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                         }
                     }
                 }
+            };
+            bool useBlocks = testSurface && !part.edges && !part.vertices && mesh.annotationCache
+                && mesh.annotationCache->vertexCount == mesh.vertices.size()
+                && mesh.annotationCache->indexCount == mesh.indices.size()
+                && mesh.annotationCache->vertexData == mesh.vertices.data()
+                && mesh.annotationCache->indexData == mesh.indices.data();
+            if (useBlocks) {
+                useBlocks = std::any_of(mesh.nodes.begin(), mesh.nodes.end(), [&](const auto& node) {
+                    return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount;
+                });
+            }
+            if (useBlocks) {
+                for (const auto& block : mesh.annotationCache->blocks) {
+                    if (block.begin < begin || block.end > finish || !intersectsPickBlock(block, origin, direction)) { continue; }
+                    for (size_t i = block.begin; i + 2 < block.end; i += 3) { visitTriangle(i); }
+                }
+            } else {
+                for (size_t i = begin; i + 2 < finish; i += 3) { visitTriangle(i); }
             }
         }
         for (const auto& line : part.diagnosticEdges) {

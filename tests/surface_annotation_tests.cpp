@@ -149,6 +149,24 @@ TEST_CASE("large mesh annotation cache preserves the source fingerprint")
     const auto gesture = annotationGestureProjection(std::array{part}, view(), 1, {0, 0});
     CHECK(gesture.definition.fingerprint == annotationFingerprint(copy, 0, copy.indices.size()));
 }
+TEST_CASE("cached surface picking agrees with a full triangle scan")
+{
+    auto mesh = tessellatedSurface(160);
+    prepareAnnotationMeshCache(mesh);
+    REQUIRE(mesh.annotationCache);
+    const auto cache = mesh.annotationCache;
+    ScenePickPart part;
+    part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size();
+    part.solid = true; part.bounds = mesh.bounds;
+    bx::mtxIdentity(part.model.data());
+    for (const PickPoint point : {PickPoint{0, 0}, {20, 150}, {100, 100}, {199, 199}, {200, 100}}) {
+        const auto cached = pickSceneObject(std::array{part}, view(), point);
+        mesh.annotationCache.reset();
+        const auto scanned = pickSceneObject(std::array{part}, view(), point);
+        CHECK(cached == scanned);
+        mesh.annotationCache = cache;
+    }
+}
 // Independently tessellated siblings with no identical seam vertices. The right
 // part has its own local origin; it touches the left only after its transform.
 void siblingSurface(Fixture& fixture, float gap = 0, float depthJump = 0)
@@ -1789,23 +1807,26 @@ TEST_CASE("annotation navigation overlay external scene benchmark" * doctest::sk
     state.selectedSceneObjects = {state.annotations.front().objectId};
     fixture.pointerAllowed = false;
     for (int run = 0; run < 3; ++run) {
-        double navigationMs = 0, settleMs = 0;
-        for (int step = 0; step < 6; ++step) {
-            orbitUiCamera(state, 1, 0);
-            fixture.pickView = scenePickView(state.camera, state.upAxis, state.sceneBounds, 1920, 1080, false, 1);
-            const auto start = std::chrono::steady_clock::now();
-            fixture.frame();
-            // Input events need not arrive every render frame during a drag.
-            fixture.frame();
-            navigationMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-            fixture.pointerAllowed = true;
-            const auto settle = std::chrono::steady_clock::now();
-            fixture.frame();
-            settleMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - settle).count();
-            fixture.pointerAllowed = false;
+        for (int axis = 0; axis < 2; ++axis) {
+            double navigationMs = 0, settleMs = 0;
+            for (int step = 0; step < 6; ++step) {
+                orbitUiCamera(state, axis == 0 ? 1.0f : 0.0f, axis == 1 ? 1.0f : 0.0f);
+                fixture.pickView = scenePickView(state.camera, state.upAxis, state.sceneBounds, 1920, 1080, false, 1);
+                const auto start = std::chrono::steady_clock::now();
+                fixture.frame();
+                // Input events need not arrive every render frame during a drag.
+                fixture.frame();
+                navigationMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+                fixture.pointerAllowed = true;
+                const auto settle = std::chrono::steady_clock::now();
+                fixture.frame();
+                settleMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - settle).count();
+                fixture.pointerAllowed = false;
+            }
+            std::cout << "Annotation overlay axis=" << (axis == 0 ? "horizontal" : "vertical")
+                << " navigation_ms_per_frame=" << navigationMs / 12
+                << " settled_visibility_ms=" << settleMs / 6 << std::endl;
         }
-        std::cout << "Annotation overlay navigation_ms_per_frame=" << navigationMs / 12
-            << " settled_visibility_ms=" << settleMs / 6 << std::endl;
     }
 }
 

@@ -1,5 +1,21 @@
 # Rectangular annotation performance
 
+## Selected annotation rotation in `zoom_slow.woby` (25 September 2026)
+
+The supplied scene contains one selected rectangle with 509 segments on the
+1,054,542-triangle map. Repeating the selected-handle overlay benchmark on the
+saved camera reproduced a 3.6–3.7 second Debug stall when navigation settled.
+Each of four handle visibility checks scanned the whole model. During active
+camera interaction the overlay itself remained below 0.13 ms per frame; the
+settled pick was the expensive step.
+
+Surface-only scene picking now uses the model's existing source-space blocks to
+skip triangles that cannot meet a handle ray. A regression test compares cached
+and full-scan picks, including viewport-boundary points. Three runs of six
+horizontal steps followed by six vertical steps measured 29–36 ms for each settled
+visibility update in Debug. Navigation overlay work remained below 0.13 ms per
+frame. These timings isolate overlay CPU work, not full viewer FPS or GPU work.
+
 ## Gesture-local projection (25 September 2026)
 
 On `uploads_files_2720101_BusGameMap.obj` (1,054,542 triangles, 65 groups),
