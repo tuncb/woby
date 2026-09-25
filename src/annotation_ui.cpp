@@ -30,20 +30,24 @@ void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, 
     bgfx::UniformHandle colorUniform, bool sampledPreview = false)
 {
     std::vector<const ScenePickPart*> sources;
+    std::vector<PickMatrix> sourceTransforms;
+    const auto vp = annotationCompose(view.view, view.projection);
     for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
-        sources.push_back(annotationSourcePart(item, parts, static_cast<uint32_t>(i)));
+        const auto* source = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
+        sources.push_back(source);
+        sourceTransforms.push_back(source ? annotationCompose(source->model, vp) : PickMatrix{});
     }
     const auto& geometry = item.geometry;
     const auto& settings = item.settings;
-    const auto vp = annotationCompose(view.view, view.projection);
     std::vector<std::array<float, 3>> vertices;
+    vertices.reserve(lines.size() * 6);
     size_t segmentIndex = 0;
     for (const auto& line : lines) {
         const auto& segment = geometry.segments[segmentIndex++];
         const auto* target = sources[segment.source];
         double slopeX = 0, slopeY = 0;
         if (target && target->mesh && !segment.endTriangle) {
-            const auto transform = annotationCompose(target->model, vp);
+            const auto& transform = sourceTransforms[segment.source];
             std::array<std::array<float, 4>, 3> corners;
             for (size_t k = 0; k < 3; ++k) {
                 const auto index = target->mesh->indices[target->indexOffset + static_cast<size_t>(segment.triangle) * 3 + k];
@@ -306,13 +310,13 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
         } else {
             const auto allowed = comparisonObjectParts(state, state.selectedSceneObjects);
             const SceneObjectId initial = allowed.size() == 1 ? allowed.front() : 0;
-            auto projection = annotationProjection(parts, view, initial);
+            auto projection = annotationGestureProjection(parts, view, initial, annotationNdc(view, point));
             const auto target = pickAnnotationSurface(projection, annotationNdc(view, point));
             if (!target || (!allowed.empty() && std::find(allowed.begin(), allowed.end(), target) == allowed.end())) {
                 throw std::runtime_error("Start on a visible surface of the selected model.");
             }
             const auto targets = annotationGroupTargets(state, target);
-            if (targets.size() > 1) { projection = annotationProjection(parts, view, target, targets); }
+            if (targets.size() > 1) { setAnnotationProjectionTargets(projection, parts, view, target, targets); }
             else if (initial != target) { setAnnotationProjectionTarget(projection, parts, view, target); }
             interaction.projection = std::move(projection);
             interaction.preview = {};
@@ -323,7 +327,8 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
             interaction.start = interaction.end = annotationNdc(view, point);
         }
         interaction.preview.geometry.segments.clear();
-        interaction.sampledPreview = interaction.projection.triangles.size() > 50000;
+        interaction.sampledPreview = interaction.projection.blocks.size() >= 200
+            || interaction.projection.triangles.size() > 50000;
         interaction.dragging = true;
     } catch (const std::exception& error) { interaction.error = error.what(); }
     return true;
@@ -361,7 +366,11 @@ void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interact
                 (interaction.handle == 0 || interaction.handle == 3 ? interaction.start[0] : interaction.end[0]) = control[0];
                 (interaction.handle == 0 || interaction.handle == 1 ? interaction.start[1] : interaction.end[1]) = control[1];
             }
-        } else { interaction.end = control; }
+        } else {
+            interaction.end = control;
+            expandAnnotationGestureProjection(interaction.projection, scenePickParts(state), interaction.view,
+                interaction.start, interaction.end);
+        }
         interaction.preview.geometry = interaction.sampledPreview
             ? previewAnnotation(interaction.projection, interaction.preview.geometry.shape, interaction.start, interaction.end)
             : projectAnnotation(interaction.projection, interaction.preview.geometry.shape, interaction.start, interaction.end);

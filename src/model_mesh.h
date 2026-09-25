@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,19 @@ struct MeshNode {
     uint32_t indexCount = 0;
 };
 
+struct MeshAnnotationBlock {
+    size_t begin = 0, end = 0;
+    std::array<float, 3> minimum{}, maximum{};
+};
+
+struct MeshAnnotationCache {
+    size_t vertexCount = 0, indexCount = 0;
+    const Vertex* vertexData = nullptr;
+    const uint32_t* indexData = nullptr;
+    std::vector<MeshAnnotationBlock> blocks;
+    std::vector<std::string> fingerprints;
+};
+
 struct Mesh {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -35,6 +49,8 @@ struct Mesh {
     Bounds bounds;
     std::shared_ptr<const SourceMeshData> sourceData;
     std::shared_ptr<const DuplicateInput> duplicateInput;
+    // Derived geometry index, built once on import for large models.
+    std::shared_ptr<const MeshAnnotationCache> annotationCache;
 };
 
 [[nodiscard]] bool empty(const Mesh& mesh) noexcept;

@@ -518,6 +518,7 @@ UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t
     file.path = std::move(modelPath);
     file.importerId = std::move(importerId);
     file.mesh = std::move(mesh);
+    prepareAnnotationMeshCache(file.mesh);
     file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex);
     file.fileSettings.center = file.mesh.bounds.center;
     return file;

@@ -3,6 +3,7 @@
 
 #include <bx/math.h>
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -54,6 +55,8 @@ struct ProjectionVertexCache {
     bool homogeneous = false;
     std::vector<size_t> vertices;
     std::vector<uint8_t> masks;
+    std::vector<uint32_t> stamps;
+    uint32_t generation = 0;
 };
 P4 clipPosition(const AnnotationProjectionVertex& vertex)
 {
@@ -85,17 +88,26 @@ double plane(const P4& p, size_t axis, bool homogeneous)
     }
 }
 void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
-    const PickMatrix& transform, bool homogeneous, ProjectionVertexCache& cache)
+    const PickMatrix& transform, bool homogeneous, ProjectionVertexCache& cache,
+    size_t rangeBegin = 0, size_t rangeEnd = std::numeric_limits<size_t>::max())
 {
     if (!part.mesh || part.opacity <= 0) { return; }
     const auto& mesh = *part.mesh;
     if (cache.mesh != &mesh || cache.transform != transform || cache.homogeneous != homogeneous) {
+        if (cache.mesh != &mesh || cache.vertices.size() != mesh.vertices.size()) {
+            cache.vertices.resize(mesh.vertices.size());
+            cache.masks.resize(mesh.vertices.size());
+            cache.stamps.assign(mesh.vertices.size(), 0);
+            cache.generation = 0;
+        }
         cache.mesh = &mesh; cache.transform = transform; cache.homogeneous = homogeneous;
-        cache.vertices.resize(mesh.vertices.size());
-        cache.masks.assign(mesh.vertices.size(), 0xff);
+        if (++cache.generation == 0) {
+            cache.stamps.assign(mesh.vertices.size(), 0);
+            cache.generation = 1;
+        }
     }
-    const size_t finish = std::min(mesh.indices.size(), part.indexOffset + part.indexCount);
-    for (size_t i = part.indexOffset; i + 2 < finish; i += 3) {
+    const size_t finish = std::min({mesh.indices.size(), part.indexOffset + part.indexCount, rangeEnd});
+    for (size_t i = std::max(part.indexOffset, rangeBegin); i + 2 < finish; i += 3) {
         AnnotationProjectionFace face;
         face.objectId = part.objectId;
         face.triangle = static_cast<uint32_t>((i - part.indexOffset) / 3);
@@ -105,7 +117,8 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
             const auto index = mesh.indices[i + k];
             if (index >= mesh.vertices.size()) { count = 0; break; }
             auto& mask = cache.masks[index];
-            if (mask == 0xff) {
+            if (cache.stamps[index] != cache.generation) {
+                cache.stamps[index] = cache.generation;
                 const auto& p = mesh.vertices[index].position;
                 const auto q = annotationTransform(transform, {p[0], p[1], p[2], 1});
                 mask = 0x80;
@@ -189,6 +202,85 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
             result.triangles.push_back(face);
         }
     }
+}
+void appendProjectionBlocks(std::vector<AnnotationProjectionBlock>& blocks, const ScenePickPart& part)
+{
+    if (!part.mesh || part.opacity <= 0) { return; }
+    const auto& mesh = *part.mesh;
+    const size_t end = std::min(mesh.indices.size(), part.indexOffset + part.indexCount);
+    if (mesh.annotationCache && mesh.annotationCache->vertexCount == mesh.vertices.size()
+        && mesh.annotationCache->indexCount == mesh.indices.size()
+        && mesh.annotationCache->vertexData == mesh.vertices.data()
+        && mesh.annotationCache->indexData == mesh.indices.data()) {
+        bool aligned = false;
+        for (const auto& node : mesh.nodes) {
+            if (node.indexOffset == part.indexOffset && node.indexCount == part.indexCount) { aligned = true; break; }
+        }
+        if (aligned) {
+            for (const auto& cached : mesh.annotationCache->blocks) {
+                if (cached.begin < part.indexOffset || cached.end > end) { continue; }
+                blocks.push_back({part.objectId, cached.begin, cached.end, cached.minimum, cached.maximum});
+            }
+            return;
+        }
+    }
+    constexpr size_t blockIndices = 256 * 3;
+    for (size_t begin = part.indexOffset; begin + 2 < end; begin += blockIndices) {
+        AnnotationProjectionBlock block;
+        block.objectId = part.objectId;
+        block.begin = begin;
+        block.end = std::min(end, begin + blockIndices);
+        block.minimum.fill(std::numeric_limits<float>::infinity());
+        block.maximum.fill(-std::numeric_limits<float>::infinity());
+        for (size_t i = begin; i < block.end; ++i) {
+            const auto index = mesh.indices[i];
+            if (index >= mesh.vertices.size()) { continue; }
+            const auto& p = mesh.vertices[index].position;
+            if (!finitePosition(p)) { continue; }
+            for (size_t axis = 0; axis < 3; ++axis) {
+                block.minimum[axis] = std::min(block.minimum[axis], p[axis]);
+                block.maximum[axis] = std::max(block.maximum[axis], p[axis]);
+            }
+        }
+        if (std::isfinite(block.minimum[0])) { blocks.push_back(block); }
+    }
+}
+void finishProjection(AnnotationProjection& projection);
+bool blockIntersectsRegion(const AnnotationProjectionBlock& block, const PickMatrix& transform,
+    const std::array<float, 4>& region)
+{
+    bool outsideLeft = true, outsideRight = true, outsideBottom = true, outsideTop = true;
+    for (size_t corner = 0; corner < 8; ++corner) {
+        std::array<float, 4> p{};
+        for (size_t axis = 0; axis < 3; ++axis) {
+            p[axis] = (corner & (size_t{1} << axis)) ? block.maximum[axis] : block.minimum[axis];
+        }
+        p[3] = 1;
+        const auto q = annotationTransform(transform, p);
+        outsideLeft &= q[0] < region[0] * q[3];
+        outsideRight &= q[0] > region[2] * q[3];
+        outsideBottom &= q[1] < region[1] * q[3];
+        outsideTop &= q[1] > region[3] * q[3];
+    }
+    return !(outsideLeft || outsideRight || outsideBottom || outsideTop);
+}
+void appendGestureRegion(AnnotationProjection& projection, std::span<const ScenePickPart> parts,
+    const ScenePickView& view)
+{
+    projection.vertices.clear(); projection.triangles.clear(); projection.clippedTriangles.clear();
+    projection.order.clear(); projection.nodes.clear();
+    const auto vp = annotationCompose(view.view, view.projection);
+    ProjectionVertexCache cache;
+    for (const auto& part : parts) {
+        if (!part.mesh || (!part.solid && !annotationHasTarget(projection, part.objectId))
+            || (projection.targetId && part.opacity < .999f && !annotationHasTarget(projection, part.objectId))) { continue; }
+        const auto transform = annotationCompose(part.model, vp);
+        for (const auto& block : projection.blocks) {
+            if (block.objectId != part.objectId || !blockIntersectsRegion(block, transform, *projection.region)) { continue; }
+            appendProjection(projection, part, transform, view.homogeneousDepth, cache, block.begin, block.end);
+        }
+    }
+    finishProjection(projection);
 }
 size_t buildProjectionNode(AnnotationProjection& projection, size_t begin, size_t end)
 {
@@ -431,10 +523,71 @@ std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count)
     hashCombine(hash, count);
     const size_t end = std::min(mesh.indices.size(), offset + count);
     for (size_t i = offset; i < end; ++i) {
-        hashCombine(hash, mesh.indices[i]);
-        if (mesh.indices[i] < mesh.vertices.size()) { hashArray3(hash, mesh.vertices[mesh.indices[i]].position); }
+        const auto index = mesh.indices[i];
+        // Preserve the saved fingerprint format while avoiding four function
+        // calls per index in Debug builds.
+        hash ^= uint64_t{index} + 0x9e3779b97f4a7c15ull + (hash << 6u) + (hash >> 2u);
+        if (index < mesh.vertices.size()) {
+            for (const float value : mesh.vertices[index].position) {
+                hash ^= uint64_t{std::bit_cast<uint32_t>(value)} + 0x9e3779b97f4a7c15ull
+                    + (hash << 6u) + (hash >> 2u);
+            }
+        }
     }
     return std::to_string(hash);
+}
+void prepareAnnotationMeshCache(Mesh& mesh)
+{
+    mesh.annotationCache.reset();
+    if (mesh.indices.size() < 50000 * 3 || mesh.nodes.empty()) { return; }
+    auto cache = std::make_shared<MeshAnnotationCache>();
+    cache->vertexCount = mesh.vertices.size();
+    cache->indexCount = mesh.indices.size();
+    cache->vertexData = mesh.vertices.data();
+    cache->indexData = mesh.indices.data();
+    cache->fingerprints.reserve(mesh.nodes.size());
+    constexpr size_t blockIndices = 256 * 3;
+    for (const auto& node : mesh.nodes) {
+        const size_t end = std::min(mesh.indices.size(), size_t{node.indexOffset} + node.indexCount);
+        uint64_t hash = 1469598103934665603ull;
+        hashCombine(hash, node.indexCount);
+        for (size_t begin = node.indexOffset; begin < end; begin += blockIndices) {
+            MeshAnnotationBlock block;
+            block.begin = begin;
+            block.end = std::min(end, begin + blockIndices);
+            block.minimum.fill(std::numeric_limits<float>::infinity());
+            block.maximum.fill(-std::numeric_limits<float>::infinity());
+            for (size_t i = begin; i < block.end; ++i) {
+                const auto index = mesh.indices[i];
+                hashCombine(hash, index);
+                if (index >= mesh.vertices.size()) { continue; }
+                const auto& p = mesh.vertices[index].position;
+                hashArray3(hash, p);
+                if (!finitePosition(p)) { continue; }
+                for (size_t axis = 0; axis < 3; ++axis) {
+                    block.minimum[axis] = std::min(block.minimum[axis], p[axis]);
+                    block.maximum[axis] = std::max(block.maximum[axis], p[axis]);
+                }
+            }
+            if (std::isfinite(block.minimum[0])) { cache->blocks.push_back(block); }
+        }
+        cache->fingerprints.push_back(std::to_string(hash));
+    }
+    mesh.annotationCache = std::move(cache);
+}
+std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count)
+{
+    if (mesh.annotationCache && mesh.annotationCache->vertexCount == mesh.vertices.size()
+        && mesh.annotationCache->indexCount == mesh.indices.size()
+        && mesh.annotationCache->vertexData == mesh.vertices.data()
+        && mesh.annotationCache->indexData == mesh.indices.data()) {
+        for (size_t i = 0; i < mesh.nodes.size(); ++i) {
+            if (mesh.nodes[i].indexOffset == offset && mesh.nodes[i].indexCount == count) {
+                return mesh.annotationCache->fingerprints[i];
+            }
+        }
+    }
+    return annotationFingerprint(mesh, offset, count);
 }
 AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
     const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets)
@@ -481,6 +634,78 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
     }
     finishProjection(result);
     return result;
+}
+AnnotationProjection annotationGestureProjection(std::span<const ScenePickPart> parts,
+    const ScenePickView& view, SceneObjectId target, std::array<float, 2> point)
+{
+    AnnotationProjection result;
+    result.targetId = target;
+    result.definition.homogeneousDepth = view.homogeneousDepth;
+    result.region = {point[0] - .02f, point[1] - .02f, point[0] + .02f, point[1] + .02f};
+    const auto vp = annotationCompose(view.view, view.projection);
+    for (const auto& part : parts) {
+        if (!part.mesh) { continue; }
+        if (part.objectId == target) {
+            result.definition.projector = annotationCompose(part.model, vp);
+            result.definition.fingerprint = gestureFingerprint(*part.mesh, part.indexOffset, part.indexCount);
+        }
+        appendProjectionBlocks(result.blocks, part);
+    }
+    appendGestureRegion(result, parts, view);
+    return result;
+}
+void expandAnnotationGestureProjection(AnnotationProjection& projection,
+    std::span<const ScenePickPart> parts, const ScenePickView& view,
+    std::array<float, 2> start, std::array<float, 2> end)
+{
+    if (!projection.region) { return; }
+    const auto lowX = std::min(start[0], end[0]), lowY = std::min(start[1], end[1]);
+    const auto highX = std::max(start[0], end[0]), highY = std::max(start[1], end[1]);
+    const auto& old = *projection.region;
+    if (lowX >= old[0] && lowY >= old[1] && highX <= old[2] && highY <= old[3]) { return; }
+    const float marginX = std::max(.015f, (highX - lowX) * .2f);
+    const float marginY = std::max(.015f, (highY - lowY) * .2f);
+    projection.region = {std::min(old[0], lowX - marginX), std::min(old[1], lowY - marginY),
+        std::max(old[2], highX + marginX), std::max(old[3], highY + marginY)};
+    appendGestureRegion(projection, parts, view);
+}
+void setAnnotationProjectionTargets(AnnotationProjection& projection,
+    std::span<const ScenePickPart> parts, const ScenePickView& view,
+    SceneObjectId target, std::span<const SceneObjectId> targets)
+{
+    if (!projection.region) { throw std::runtime_error("Target selection requires a drawing gesture."); }
+    const auto primary = std::find_if(parts.begin(), parts.end(), [target](const auto& p) { return p.objectId == target; });
+    if (!target || primary == parts.end() || !primary->mesh) { throw std::runtime_error("The annotation target is unavailable."); }
+    projection.targetId = target;
+    projection.targetIds.clear();
+    if (targets.size() > 1) {
+        projection.targetIds.push_back(target);
+        for (const auto id : targets) {
+            if (id != target && std::find(projection.targetIds.begin(), projection.targetIds.end(), id) == projection.targetIds.end()
+                && std::any_of(parts.begin(), parts.end(), [id](const auto& p) { return p.objectId == id && p.mesh && p.opacity > 0; })) {
+                projection.targetIds.push_back(id);
+            }
+        }
+        if (projection.targetIds.size() == 1) { projection.targetIds.clear(); }
+    }
+    const auto vp = annotationCompose(view.view, view.projection);
+    projection.definition.projector = annotationCompose(primary->model, vp);
+    projection.definition.fingerprint = gestureFingerprint(*primary->mesh, primary->indexOffset, primary->indexCount);
+    projection.definition.sources.clear();
+    if (!projection.targetIds.empty()) {
+        projection.definition.sources.resize(projection.targetIds.size());
+        PickMatrix inverse;
+        bx::mtxInverse(inverse.data(), primary->model.data());
+        for (size_t i = 0; i < projection.targetIds.size(); ++i) {
+            const auto source = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == projection.targetIds[i]; });
+            auto& entry = projection.definition.sources[i];
+            entry.projector = annotationCompose(source->model, vp);
+            entry.fingerprint = i == 0 ? projection.definition.fingerprint
+                : gestureFingerprint(*source->mesh, source->indexOffset, source->indexCount);
+            if (i != 0) { entry.toPrimary = annotationCompose(source->model, inverse); }
+        }
+    }
+    appendGestureRegion(projection, parts, view);
 }
 AnnotationProjection annotationEditProjection(const ScenePickPart& target, const AnnotationGeometry& geometry)
 {
@@ -548,7 +773,9 @@ void setAnnotationProjectionTarget(AnnotationProjection& projection,
     }
     projection.targetId = target;
     projection.definition.projector = annotationCompose(part->model, annotationCompose(view.view, view.projection));
-    projection.definition.fingerprint = annotationFingerprint(*part->mesh, part->indexOffset, part->indexCount);
+    projection.definition.fingerprint = projection.region
+        ? gestureFingerprint(*part->mesh, part->indexOffset, part->indexCount)
+        : annotationFingerprint(*part->mesh, part->indexOffset, part->indexCount);
     std::vector<SceneObjectId> transparent;
     for (const auto& p : parts) {
         if (p.objectId != target && p.opacity < .999f) { transparent.push_back(p.objectId); }
@@ -782,6 +1009,7 @@ std::vector<DiagnosticEdge> annotationWorldLines(const UiAnnotation& item, std::
 {
     std::vector<DiagnosticEdge> lines;
     if (!item.settings.visible || !item.targetValid || item.settings.color[3] <= 0) { return lines; }
+    lines.reserve(item.geometry.segments.size());
     std::vector<const ScenePickPart*> sources;
     // Keep the outline complete: hiding a participating source hides the annotation.
     for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {

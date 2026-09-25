@@ -33,6 +33,12 @@ struct AnnotationProjectionFace {
     std::optional<size_t> clipped;
 };
 
+struct AnnotationProjectionBlock {
+    SceneObjectId objectId = 0;
+    size_t begin = 0, end = 0;
+    std::array<float, 3> minimum{}, maximum{};
+};
+
 // Gesture-owned immutable projection cache. Contains no borrowed mesh pointers.
 struct AnnotationProjection {
     SceneObjectId targetId = 0;
@@ -43,11 +49,22 @@ struct AnnotationProjection {
     std::vector<AnnotationProjectedTriangle> clippedTriangles;
     std::vector<size_t> order;
     std::vector<AnnotationProjectionNode> nodes;
+    // Gesture-local source-space bounds. They contain values, never mesh pointers.
+    std::vector<AnnotationProjectionBlock> blocks;
+    std::optional<std::array<float, 4>> region;
 };
 
 [[nodiscard]] std::array<float, 2> annotationNdc(const ScenePickView& view, PickPoint point);
 [[nodiscard]] AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
     const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets = {});
+[[nodiscard]] AnnotationProjection annotationGestureProjection(std::span<const ScenePickPart> parts,
+    const ScenePickView& view, SceneObjectId target, std::array<float, 2> point);
+void expandAnnotationGestureProjection(AnnotationProjection& projection,
+    std::span<const ScenePickPart> parts, const ScenePickView& view,
+    std::array<float, 2> start, std::array<float, 2> end);
+void setAnnotationProjectionTargets(AnnotationProjection& projection,
+    std::span<const ScenePickPart> parts, const ScenePickView& view,
+    SceneObjectId target, std::span<const SceneObjectId> targets);
 [[nodiscard]] std::vector<SceneObjectId> annotationGroupTargets(const UiState& state, SceneObjectId target);
 [[nodiscard]] bool annotationHasTarget(const UiAnnotation& item, SceneObjectId target);
 [[nodiscard]] bool annotationHasTarget(const AnnotationProjection& projection, SceneObjectId target);
@@ -74,6 +91,7 @@ void setAnnotationProjectionTarget(AnnotationProjection& projection,
 [[nodiscard]] AnnotationGeometry previewAnnotation(const AnnotationProjection& projection,
     AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end);
 [[nodiscard]] std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count);
+void prepareAnnotationMeshCache(Mesh& mesh);
 [[nodiscard]] std::array<float, 3> annotationPosition(const Mesh& mesh, size_t offset,
     uint32_t triangle, const std::array<float, 3>& bary);
 // Model-local endpoints, or four corners in outline order, shared by handles and Properties.

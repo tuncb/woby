@@ -107,6 +107,48 @@ struct Fixture {
     { return projectAnnotation(projection(), shape, {-.8f, -.4f}, {.8f, .4f}); }
     SceneObjectId add(AnnotationShape shape = AnnotationShape::line) { return createAnnotation(state, target(), geometry(shape)); }
 };
+TEST_CASE("drawing projection grows from the pointer to the full rectangle")
+{
+    Fixture fixture;
+    fixture.state.files[0].mesh = tessellatedSurface(36);
+    const auto parts = scenePickParts(fixture.state);
+    const auto full = annotationProjection(parts, view(), fixture.target());
+    const std::array<float, 2> start{-.62f, -.43f}, end{.57f, .48f};
+    auto gesture = annotationGestureProjection(parts, view(), fixture.target(), start);
+    CHECK(gesture.triangles.size() < full.triangles.size());
+    CHECK(pickAnnotationSurface(gesture, start) == fixture.target());
+    for (int step = 1; step <= 10; ++step) {
+        const float t = static_cast<float>(step) / 10;
+        const std::array<float, 2> current{start[0] + t * (end[0] - start[0]),
+            start[1] + t * (end[1] - start[1])};
+        expandAnnotationGestureProjection(gesture, parts, view(), start, current);
+        CHECK(projectAnnotation(gesture, AnnotationShape::rectangle, start, current)
+            == projectAnnotation(full, AnnotationShape::rectangle, start, current));
+    }
+    const auto expected = projectAnnotation(full, AnnotationShape::rectangle, start, end);
+    const auto actual = projectAnnotation(gesture, AnnotationShape::rectangle, start, end);
+    CHECK(actual == expected);
+    const auto count = gesture.triangles.size();
+    expandAnnotationGestureProjection(gesture, parts, view(), start, end);
+    CHECK(gesture.triangles.size() == count);
+}
+TEST_CASE("large mesh annotation cache preserves the source fingerprint")
+{
+    auto mesh = tessellatedSurface(160);
+    const auto expected = annotationFingerprint(mesh, mesh.nodes[0].indexOffset, mesh.nodes[0].indexCount);
+    prepareAnnotationMeshCache(mesh);
+    REQUIRE(mesh.annotationCache);
+    REQUIRE(mesh.annotationCache->fingerprints.size() == 1);
+    CHECK(mesh.annotationCache->fingerprints[0] == expected);
+    CHECK(mesh.annotationCache->blocks.size() > 1);
+    auto copy = mesh;
+    copy.vertices[0].position[2] += .1f;
+    ScenePickPart part;
+    part.objectId = 1; part.mesh = &copy; part.indexCount = copy.indices.size(); part.solid = true;
+    bx::mtxIdentity(part.model.data());
+    const auto gesture = annotationGestureProjection(std::array{part}, view(), 1, {0, 0});
+    CHECK(gesture.definition.fingerprint == annotationFingerprint(copy, 0, copy.indices.size()));
+}
 // Independently tessellated siblings with no identical seam vertices. The right
 // part has its own local origin; it touches the left only after its transform.
 void siblingSurface(Fixture& fixture, float gap = 0, float depthJump = 0)
@@ -1275,6 +1317,11 @@ TEST_CASE("surface annotation projection handles perspective and near clipping")
     bx::mtxProj(perspective.projection.data(), 60, 1, .1f, 10, false);
     const auto projection = annotationProjection(scenePickParts(fixture.state), perspective, fixture.target());
     const auto geometry = projectAnnotation(projection, AnnotationShape::rectangle, {-.25f,-.2f}, {.25f,.2f});
+    auto gesture = annotationGestureProjection(scenePickParts(fixture.state), perspective,
+        fixture.target(), {-.25f, -.2f});
+    expandAnnotationGestureProjection(gesture, scenePickParts(fixture.state), perspective,
+        {-.25f, -.2f}, {.25f, .2f});
+    CHECK(projectAnnotation(gesture, AnnotationShape::rectangle, {-.25f,-.2f}, {.25f,.2f}) == geometry);
     REQUIRE(geometry.segments.size() >= 4);
     const auto& mesh = fixture.state.files[0].mesh;
     for (const auto& segment : geometry.segments) {
@@ -1423,7 +1470,7 @@ TEST_CASE("surface annotation external model benchmark" * doctest::skip())
         return {(point[0] + 1) * static_cast<float>(modelView.width) * .5f,
             (1 - point[1]) * static_cast<float>(modelView.height) * .5f};
     };
-    std::vector<double> setupTimes, dragTimes, exactTimes, commitTimes;
+    std::vector<double> setupTimes, dragTimes, firstDragTimes, steadyDragTimes, exactTimes, commitTimes;
     size_t segments = 0, faces = 0;
     for (size_t run = 0; run < 3; ++run) {
         AnnotationInteraction interaction;
@@ -1432,7 +1479,9 @@ TEST_CASE("surface annotation external model benchmark" * doctest::skip())
         REQUIRE(beginAnnotationPointer(fixture.state, interaction, modelView, pointer(start)));
         REQUIRE(interaction.dragging);
         const auto ready = std::chrono::steady_clock::now();
-        for (size_t i = 0; i < 10; ++i) { moveAnnotationPointer(fixture.state, interaction, pointer(end)); }
+        moveAnnotationPointer(fixture.state, interaction, pointer(end));
+        const auto firstMoved = std::chrono::steady_clock::now();
+        for (size_t i = 1; i < 10; ++i) { moveAnnotationPointer(fixture.state, interaction, pointer(end)); }
         const auto moved = std::chrono::steady_clock::now();
         REQUIRE(interaction.error.empty());
         const auto exact = projectAnnotation(interaction.projection, AnnotationShape::rectangle, interaction.start, interaction.end);
@@ -1446,14 +1495,19 @@ TEST_CASE("surface annotation external model benchmark" * doctest::skip())
         segments = exact.segments.size();
         setupTimes.push_back(std::chrono::duration<double,std::milli>(ready-begin).count());
         dragTimes.push_back(std::chrono::duration<double,std::milli>(moved-ready).count() / 10);
+        firstDragTimes.push_back(std::chrono::duration<double,std::milli>(firstMoved-ready).count());
+        steadyDragTimes.push_back(std::chrono::duration<double,std::milli>(moved-firstMoved).count() / 9);
         exactTimes.push_back(std::chrono::duration<double,std::milli>(resolved-moved).count());
         commitTimes.push_back(std::chrono::duration<double,std::milli>(done-resolved).count());
         deleteAnnotation(fixture.state, fixture.state.annotations.front().objectId);
     }
-    for (auto* times : {&setupTimes, &dragTimes, &exactTimes, &commitTimes}) { std::sort(times->begin(), times->end()); }
+    for (auto* times : {&setupTimes, &dragTimes, &firstDragTimes, &steadyDragTimes, &exactTimes, &commitTimes}) {
+        std::sort(times->begin(), times->end());
+    }
     std::cout << "External annotation benchmark: triangles=" << mesh.indices.size() / 3 << " groups=" << mesh.nodes.size()
         << " projected_faces=" << faces << " target=" << largest->name << " start=" << start[0] << ',' << start[1]
         << " end=" << end[0] << ',' << end[1] << " setup_ms=" << setupTimes[1] << " drag_ms=" << dragTimes[1]
+        << " first_drag_ms=" << firstDragTimes[1] << " steady_drag_ms=" << steadyDragTimes[1]
         << " exact_ms=" << exactTimes[1] << " commit_ms=" << commitTimes[1] << " segments=" << segments << '\n';
 }
 

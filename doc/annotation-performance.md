@@ -1,5 +1,37 @@
 # Rectangular annotation performance
 
+## Gesture-local projection (25 September 2026)
+
+On `uploads_files_2720101_BusGameMap.obj` (1,054,542 triangles, 65 groups),
+the 1920-by-1080 top-view benchmark found the same 574-segment rectangle at
+NDC (-0.23, -0.38) to (-0.17, -0.32). Model import and the search for that
+placement are outside the timers. The figures below are medians of three runs
+on this placement; they do not represent every camera view or rectangle.
+
+| Stage | Previous Debug | Current Debug | Previous Release | Current Release |
+| --- | ---: | ---: | ---: | ---: |
+| Mouse-down to active gesture | 3,901.4 ms | 91.5 ms | 352.5 ms | 12.1 ms |
+| Release and attach | 341.7 ms | 165.7 ms | 32.8 ms | 32.2 ms |
+
+The first drag update expanded the projection region in 116.7 ms in Debug and
+13.1 ms in Release. Nine repeated updates at the same pointer position then
+averaged 2.63 ms and 0.18 ms respectively. These are different stages of one
+drag, so the previous average over ten updates would hide the initial pause.
+Exact outline resolution measured 13.8 ms and 0.93 ms respectively. The
+committed geometry matched the full projection, segment for segment. These are
+CPU operation timings, not viewer frame times.
+
+Large models now build source-space blocks and source fingerprints when loaded.
+Mouse-down projects only blocks around the pointer. The projection grows as the
+rectangle grows; bounds checks are conservative, so relevant triangles are
+still considered. The sampled guide remains temporary, and release resolves
+the outline exactly and rechecks the current source geometry. Caching moves
+some work into model load, which is outside this benchmark. Debug source
+fingerprint validation is faster because its hash loop avoids repeated
+function calls while retaining the saved fingerprint format. Vertex-cache
+generation stamps avoid clearing a whole-mesh array for each part, and line
+submission reuses each source transform.
+
 ## Camera navigation investigation (23 September 2026)
 
 The supplied `slow_rectangle.woby` contains one visible rectangle with 761
