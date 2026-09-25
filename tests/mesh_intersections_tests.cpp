@@ -107,6 +107,30 @@ TEST_CASE("exact intersection decisions survive permutations scales and near col
     CHECK(exactTriangleCollapsed(Triangle{{{0,0,0},{tiny,tiny,0},{2*tiny,2*tiny,0}}}));
 }
 
+TEST_CASE("shared vertex filter agrees with analytic plane section")
+{
+    // Triangle B meets the XY plane in a segment from the shared origin to
+    // the crossing of its opposite edge. That segment overlaps A beyond the
+    // origin exactly when the crossing points into A's positive quadrant.
+    std::mt19937 random(61432);
+    for (size_t trial = 0; trial < 1000; ++trial) {
+        Triangle b{};
+        for (size_t i = 1; i < 3; ++i) {
+            b[i][0] = static_cast<double>(static_cast<int>(random()%9)-4);
+            b[i][1] = static_cast<double>(static_cast<int>(random()%9)-4);
+            b[i][2] = static_cast<double>(1+random()%4) * (random()%2 ? 1 : -1);
+        }
+        bool expected = false;
+        if (b[1][2]*b[2][2] < 0 && !exactTriangleCollapsed(b)) {
+            const double x = b[1][0]*std::abs(b[2][2]) + b[2][0]*std::abs(b[1][2]);
+            const double y = b[1][1]*std::abs(b[2][2]) + b[2][1]*std::abs(b[1][2]);
+            expected = x >= 0 && y >= 0 && (x > 0 || y > 0);
+        }
+        CAPTURE(trial);
+        CHECK(hit(base,b,{0,3,4}) == expected);
+    }
+}
+
 TEST_CASE("intersection source scope topology capabilities transforms and cancellation")
 {
     const auto source = crossingSource();

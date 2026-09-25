@@ -5,6 +5,7 @@
 #include <cmath>
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <tuple>
@@ -15,6 +16,145 @@ using Exact = boost::multiprecision::cpp_rational;
 using Point = std::array<Exact, 3>;
 using Triangle = std::array<Point, 3>;
 using Position = std::array<double, 3>;
+using Points = std::array<Position, 3>;
+// A sign is returned only when roundoff cannot change it. Uncertain cases
+// continue through the exact rational predicate below.
+std::optional<int> sign2d(const Position& a, const Position& b, const Position& c, size_t x, size_t y)
+{
+    const double ax = a[x]-c[x], ay = a[y]-c[y];
+    const double bx = b[x]-c[x], by = b[y]-c[y];
+    const double p = ax*by, q = ay*bx, determinant = p-q;
+    const double permanent = std::abs(p)+std::abs(q);
+    const auto valid = [](double value) { return value == 0 || std::isnormal(value); };
+    if (!valid(ax) || !valid(ay) || !valid(bx) || !valid(by)
+        || !valid(p) || !valid(q) || !std::isfinite(permanent)
+        || (p == 0 && ax != 0 && by != 0) || (q == 0 && ay != 0 && bx != 0)) { return std::nullopt; }
+    const double bound = permanent * 1e-14;
+    if (!std::isfinite(bound) || std::abs(determinant) <= bound) { return std::nullopt; }
+    return determinant > 0 ? 1 : -1;
+}
+std::optional<int> sign3d(const Position& a, const Position& b, const Position& c, const Position& d)
+{
+    const double ax = a[0]-d[0], ay = a[1]-d[1], az = a[2]-d[2];
+    const double bx = b[0]-d[0], by = b[1]-d[1], bz = b[2]-d[2];
+    const double cx = c[0]-d[0], cy = c[1]-d[1], cz = c[2]-d[2];
+    const double p0 = by*cz, p1 = bz*cy, p2 = bz*cx, p3 = bx*cz, p4 = bx*cy, p5 = by*cx;
+    const double q0 = p0-p1, q1 = p2-p3, q2 = p4-p5;
+    const double t0 = ax*q0, t1 = ay*q1, t2 = az*q2;
+    const double determinant = t0+t1+t2;
+    const double permanent = std::abs(ax)*(std::abs(p0)+std::abs(p1))
+        + std::abs(ay)*(std::abs(p2)+std::abs(p3)) + std::abs(az)*(std::abs(p4)+std::abs(p5));
+    const auto valid = [](double value) { return value == 0 || std::isnormal(value); };
+    for (double value : {ax,ay,az,bx,by,bz,cx,cy,cz,p0,p1,p2,p3,p4,p5,q0,q1,q2,t0,t1,t2}) {
+        if (!valid(value)) { return std::nullopt; }
+    }
+    if ((p0 == 0 && by != 0 && cz != 0) || (p1 == 0 && bz != 0 && cy != 0)
+        || (p2 == 0 && bz != 0 && cx != 0) || (p3 == 0 && bx != 0 && cz != 0)
+        || (p4 == 0 && bx != 0 && cy != 0) || (p5 == 0 && by != 0 && cx != 0)
+        || (t0 == 0 && ax != 0 && q0 != 0) || (t1 == 0 && ay != 0 && q1 != 0)
+        || (t2 == 0 && az != 0 && q2 != 0)) { return std::nullopt; }
+    if (!std::isfinite(permanent)) { return std::nullopt; }
+    const double bound = permanent * 1e-13;
+    if (!std::isfinite(bound) || std::abs(determinant) <= bound) { return std::nullopt; }
+    return determinant > 0 ? 1 : -1;
+}
+bool projectedApart(const Points& a, const Points& b, size_t x, size_t y)
+{
+    for (size_t side = 0; side < 2; ++side) {
+        const auto& outer = side ? b : a;
+        const auto& inner = side ? a : b;
+        for (size_t i = 0; i < 3; ++i) {
+            const auto first = sign2d(outer[i], outer[(i+1)%3], inner[0], x, y);
+            if (!first) { continue; }
+            bool apart = true;
+            for (size_t j = 1; j < 3; ++j) {
+                if (sign2d(outer[i], outer[(i+1)%3], inner[j], x, y) != first) { apart = false; break; }
+            }
+            if (!apart) { continue; }
+            const auto opposite = sign2d(outer[i], outer[(i+1)%3], outer[(i+2)%3], x, y);
+            if (opposite && *opposite != *first) { return true; }
+        }
+    }
+    return false;
+}
+bool planeApart(const Points& a, const Points& b)
+{
+    std::optional<int> side;
+    for (const auto& p : b) {
+        const auto sign = sign3d(a[0], a[1], a[2], p);
+        if (!sign) { return false; }
+        if (side && sign != side) { return false; }
+        side = sign;
+    }
+    return true;
+}
+bool onlySharedVertex(const Points& a, const Points& b, size_t aShared, size_t bShared)
+{
+    // The shared vertex is on both planes. If the other two vertices lie
+    // strictly on one side, the planes can meet only at that vertex.
+    const auto oneSideOfPlane = [](const Points& outer, const Points& inner, size_t shared) {
+        const auto first = sign3d(outer[0], outer[1], outer[2], inner[(shared+1)%3]);
+        const auto second = sign3d(outer[0], outer[1], outer[2], inner[(shared+2)%3]);
+        return first && second && first == second;
+    };
+    if (oneSideOfPlane(a,b,bShared) || oneSideOfPlane(b,a,aShared)) { return true; }
+    // A projected separating edge through the common vertex proves that the
+    // interiors are apart; the only possible contact is the shared vertex.
+    const auto oneSideOfEdge = [](const Points& outer, const Points& inner,
+        size_t outerShared, size_t innerShared, size_t x, size_t y) {
+        for (size_t edge = 0; edge < 2; ++edge) {
+            const size_t other = (outerShared+edge+1)%3;
+            const size_t opposite = (outerShared+(edge == 0 ? 2 : 1))%3;
+            const auto inside = sign2d(outer[outerShared], outer[other], outer[opposite], x, y);
+            const auto first = sign2d(outer[outerShared], outer[other], inner[(innerShared+1)%3], x, y);
+            const auto second = sign2d(outer[outerShared], outer[other], inner[(innerShared+2)%3], x, y);
+            if (inside && first && second && first == second && *first != *inside) { return true; }
+        }
+        return false;
+    };
+    for (size_t axis = 0; axis < 3; ++axis) {
+        const size_t x = (axis+1)%3, y = (axis+2)%3;
+        if (oneSideOfEdge(a,b,aShared,bShared,x,y)
+            || oneSideOfEdge(b,a,bShared,aShared,x,y)) { return true; }
+    }
+    return false;
+}
+bool definitelyDisjoint(const Points& a, const Points& b,
+    const std::array<size_t, 3>& aIds, const std::array<size_t, 3>& bIds)
+{
+    size_t shared = 0, aOther = 0, bOther = 0, aShared = 0, bShared = 0;
+    for (size_t i = 0; i < 3; ++i) {
+        bool found = false;
+        for (size_t j = 0; j < 3; ++j) { found |= aIds[i] == bIds[j] && a[i] == b[j]; }
+        if (found) { ++shared; aShared = i; } else { aOther = i; }
+    }
+    if (shared == 1) {
+        for (size_t j = 0; j < 3; ++j) {
+            if (bIds[j] == aIds[aShared] && b[j] == a[aShared]) { bShared = j; break; }
+        }
+        if (onlySharedVertex(a,b,aShared,bShared)) { return true; }
+    }
+    if (shared == 2) {
+        for (size_t j = 0; j < 3; ++j) {
+            bool found = false;
+            for (size_t i = 0; i < 3; ++i) { found |= bIds[j] == aIds[i] && b[j] == a[i]; }
+            if (!found) { bOther = j; break; }
+        }
+        const size_t first = (aOther+1)%3, second = (aOther+2)%3;
+        for (size_t axis = 0; axis < 3; ++axis) {
+            const size_t x = (axis+1)%3, y = (axis+2)%3;
+            const auto as = sign2d(a[first], a[second], a[aOther], x, y);
+            const auto bs = sign2d(a[first], a[second], b[bOther], x, y);
+            if (as && bs && *as != *bs) { return true; }
+        }
+        if (sign3d(a[0], a[1], a[2], b[bOther])) { return true; }
+    }
+    if (shared == 0 && (planeApart(a,b) || planeApart(b,a))) { return true; }
+    for (size_t axis = 0; axis < 3; ++axis) {
+        if (projectedApart(a,b,(axis+1)%3,(axis+2)%3)) { return true; }
+    }
+    return false;
+}
 void canceled(const std::stop_token& stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
@@ -165,6 +305,12 @@ bool exactTriangleCollapsed(const std::array<Position, 3>& points)
 bool trianglesSelfIntersect(const std::array<Position, 3>& aPoints, const std::array<Position, 3>& bPoints,
     const std::array<size_t, 3>& aIds, const std::array<size_t, 3>& bIds)
 {
+    for (const auto* points : {&aPoints, &bPoints}) {
+        for (const auto& point : *points) { for (const auto coordinate : point) {
+            if (!std::isfinite(coordinate)) { throw std::invalid_argument("Non-finite intersection coordinate."); }
+        } }
+    }
+    if (definitelyDisjoint(aPoints, bPoints, aIds, bIds)) { return false; }
     const auto a = exact(aPoints), b = exact(bPoints);
     const auto an = normal(a), bn = normal(b);
     if (zero(an) || zero(bn)) { return false; }
@@ -208,6 +354,9 @@ MeshIntersections inspectIntersections(const MeshTopology& topology, Intersectio
         canceled(stop);
         if (!source.available || source.faces.empty()) { continue; }
         Tree tree;
+        tree.boxes.reserve(source.faces.size());
+        tree.order.reserve(source.faces.size());
+        tree.nodes.reserve(source.faces.size()/4);
         for (size_t f = 0; f < source.faces.size(); ++f) {
             canceled(stop);
             const auto p = positions(source, f);
@@ -216,8 +365,10 @@ MeshIntersections inspectIntersections(const MeshTopology& topology, Intersectio
             tree.boxes.push_back(box); tree.order.push_back(f);
         }
         buildNode(tree, 0, tree.order.size(), stop);
+        std::vector<size_t> queue;
+        queue.reserve(64);
         for (size_t a = 0; a < source.faces.size() && !result.truncated; ++a) {
-            std::vector<size_t> queue{0};
+            queue.clear(); queue.push_back(0);
             while (!queue.empty() && !result.truncated) {
                 canceled(stop);
                 const auto& node = tree.nodes[queue.back()]; queue.pop_back();

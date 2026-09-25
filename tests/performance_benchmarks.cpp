@@ -1,5 +1,6 @@
 #include "mesh_comparison.h"
 #include "obj_mesh.h"
+#include "mesh_intersections.h"
 
 #include <algorithm>
 #include <chrono>
@@ -54,7 +55,7 @@ struct TemporaryDirectory {
     }
 };
 
-int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, bool expanded)
+int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, bool expanded, bool intersections)
 {
     auto mesh = woby::loadObjMesh(path);
     auto input = std::make_shared<woby::DuplicateInput>();
@@ -79,6 +80,20 @@ int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, boo
             index = static_cast<uint32_t>(mesh.vertices.size());
             mesh.vertices.push_back(vertex);
         }
+    }
+    if (intersections) {
+        const auto topology = woby::buildMeshTopology(mesh.duplicateInput->sources);
+        size_t faces = 0;
+        for (const auto& item : topology.sources) { faces += item.faces.size(); }
+        std::cout << "topology_faces=" << faces << "\nrun,milliseconds,candidates,findings,truncated\n";
+        for (size_t run = 0; run < repetitions; ++run) {
+            const auto start = Clock::now();
+            const auto result = woby::inspectIntersections(topology);
+            const double milliseconds = std::chrono::duration<double, std::milli>(Clock::now() - start).count();
+            std::cout << run << ',' << milliseconds << ',' << result.candidateTests << ','
+                      << result.findings.size() << ',' << result.truncated << std::endl;
+        }
+        return 0;
     }
     const auto stages = woby::requestedComparisonStages({}, false);
     std::cout << "triangles=" << mesh.indices.size() / 3 << " source_points=" << mesh.sourceData->points.size()
@@ -113,11 +128,11 @@ int main(int argc, char** argv)
 {
     try {
         const std::string workload = argc > 1 ? argv[1] : "distance";
-        if (workload == "detectors" || workload == "detectors-expanded") {
+        if (workload == "detectors" || workload == "detectors-expanded" || workload == "intersections") {
             if (argc < 3) { throw std::invalid_argument("Expected detectors model.obj [repetitions]."); }
             const size_t repetitions = argc > 3 ? std::stoul(argv[3]) : 3u;
             if (!repetitions || repetitions > 100) { throw std::invalid_argument("Expected repetitions 1..100."); }
-            return detectorBenchmark(argv[2], repetitions, workload == "detectors-expanded");
+            return detectorBenchmark(argv[2], repetitions, workload == "detectors-expanded", workload == "intersections");
         }
         const auto width = argc > 2 ? static_cast<uint32_t>(std::stoul(argv[2])) : 200u;
         const auto repetitions = argc > 3 ? std::stoul(argv[3]) : 3u;

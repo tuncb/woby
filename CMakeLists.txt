@@ -73,6 +73,14 @@ endif()
 woby_enable_project_warnings(woby_automation)
 woby_enable_precompiled_headers(woby_automation <nlohmann/json.hpp>)
 
+if(MSVC)
+    # Keep large detector runs responsive in Debug. Its optimized source cannot
+    # use the Debug PCH, which is compiled with runtime checks enabled.
+    set_source_files_properties(src/mesh_intersections.cpp PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+        VS_SETTINGS "Optimization=MaxSpeed;InlineFunctionExpansion=AnySuitable;BasicRuntimeChecks=Default")
+endif()
+
 add_executable(woby
     src/console.cpp
     src/console.h
