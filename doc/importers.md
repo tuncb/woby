@@ -95,7 +95,7 @@ Missing normals are generated; missing texture coordinates become zero. Position
 must be finite and have absolute components no greater than 1e9. Supplied normals
 must be finite and nonzero; woby normalizes them. UVs must be finite.
 All indices must reference valid vertices. The combined input vertex/index buffers
-are limited to 256 MiB; internal copies and GPU expansion consume additional memory.
+are limited to 4 GiB; internal copies and GPU expansion consume additional memory.
 
 Groups must partition the entire index buffer consecutively, with nonempty ranges
 aligned to triangles, and unique nonempty names. The limits are 100,000 groups and

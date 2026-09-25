@@ -241,7 +241,7 @@ bool hasImporterForPath(const std::filesystem::path& path)
 
 Mesh copyImportedMesh(const WobyImportResult& result)
 {
-    constexpr uint64_t maxBytes = 256u * 1024u * 1024u;
+    constexpr uint64_t maxBytes = 4ull * 1024u * 1024u * 1024u;
     const uint64_t bytes = uint64_t(result.vertex_count) * sizeof(WobyImportVertex)
         + uint64_t(result.index_count) * sizeof(uint32_t);
     if (result.struct_size < sizeof(WobyImportResult) || (result.flags & ~3u) != 0u
