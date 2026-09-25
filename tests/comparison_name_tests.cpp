@@ -24,6 +24,7 @@ struct ComparisonNameFixture {
     woby::SceneObjectId id = woby::createComparison(state);
     ImVec2 row;
     ImVec2 viewRow;
+    std::string viewContents;
     bool showViews = false;
 
     explicit ComparisonNameFixture(bool withViews = false) : showViews(withViews)
@@ -56,7 +57,10 @@ struct ComparisonNameFixture {
         row = ImVec2(origin.x + 100, origin.y + ImGui::GetStyle().ItemSpacing.y
             + ImGui::GetTextLineHeightWithSpacing() + woby::renderModeButtonSize() * 0.5f);
         if (showViews) {
+            ImGui::LogToBuffer();
             woby::drawViews(state, viewEdit, viewLayout, 80.0f);
+            viewContents = context->LogBuffer.c_str();
+            ImGui::LogFinish();
             for (auto* window : context->Windows) {
                 if (std::string(window->Name).find("view_rows") == std::string::npos) { continue; }
                 viewRow = ImVec2(window->Pos.x + 50.0f,
@@ -385,6 +389,19 @@ TEST_CASE("F2 renames the focused view even when an analysis is selected")
     CHECK(f.edit.objectId == woby::invalidSceneObjectId);
 }
 
+TEST_CASE("view context menu includes Rename Duplicate and Delete")
+{
+    ComparisonNameFixture f(true);
+    woby::createView(f.state);
+    f.frame();
+    REQUIRE(f.viewRow.x > 0.0f);
+    f.click(f.viewRow, ImGuiMouseButton_Right);
+    f.frame();
+    CHECK(f.viewContents.find("Rename") != std::string::npos);
+    CHECK(f.viewContents.find("Duplicate") != std::string::npos);
+    CHECK(f.viewContents.find("Delete view") != std::string::npos);
+}
+
 TEST_CASE("analysis scene Escape and unchanged names do not create edits")
 {
     ComparisonNameFixture f;
@@ -466,8 +483,8 @@ TEST_CASE("analysis scene context menu Rename starts the inline editor")
     const auto* popup = f.context->OpenPopupStack.back().Window;
     REQUIRE(popup);
     const auto start = popup->DC.CursorStartPos;
-    f.click(ImVec2(start.x + 30, start.y + ImGui::GetTextLineHeightWithSpacing()
-        + ImGui::GetTextLineHeight() * 0.5f));
+    f.click(ImVec2(start.x + 30, start.y + 2 * ImGui::GetTextLineHeightWithSpacing()
+        + ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight() * 0.5f));
     f.frame();
     REQUIRE(f.edit.objectId == f.id);
     f.frame();

@@ -29,8 +29,15 @@ struct AnnotationInteraction {
     std::optional<PickPoint> overlayEdgePoint;
     bool overlayEdgeHit = false;
 };
+// ImGui editing state remains outside the logical scene.
+struct AnnotationNameEdit {
+    SceneObjectId objectId = invalidSceneObjectId;
+    uint64_t generation = 0;
+    std::string text;
+    bool focus = false;
+};
 void drawAnnotationTools(const UiState& state, AnnotationInteraction& interaction, bool disabled);
-void drawAnnotationObjects(UiState& state);
+void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit);
 void drawAnnotationInspector(UiState& state);
 // True consumes the left-button gesture, including invalid placement attempts.
 bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction,

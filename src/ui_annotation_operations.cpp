@@ -132,6 +132,28 @@ SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationG
     markSceneDirty(state);
     return id;
 }
+SceneObjectId duplicateAnnotation(UiState& state, SceneObjectId id)
+{
+    const auto* source = findAnnotation(state, id);
+    if (!source) { return 0; }
+    auto copy = *source;
+    copy.objectId = 0;
+    copy.settings.name += " copy";
+    state.annotations.push_back(std::move(copy));
+    assignSceneObjectIds(state);
+    const auto created = state.annotations.back().objectId;
+    selectSceneObject(state, created);
+    markSceneDirty(state);
+    return created;
+}
+void renameAnnotation(UiState& state, SceneObjectId id, const std::string& name)
+{
+    const auto* item = findAnnotation(state, id);
+    if (!item) { return; }
+    auto settings = item->settings;
+    settings.name = name;
+    setAnnotationSettings(state, id, std::move(settings));
+}
 void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings settings)
 {
     settings = normalizedAnnotationSettings(std::move(settings));

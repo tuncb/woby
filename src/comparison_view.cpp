@@ -2116,8 +2116,9 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
             if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectSceneObject(state, id, false, true); }
             if (ImGui::BeginPopupContextItem("comparison_object")) {
                 if (ImGui::MenuItem("Properties")) { selectSceneObject(state, id); }
-                if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
                 if (ImGui::MenuItem("Frame result", nullptr, false, canInspectComparison(state, id))) { frameComparison(state, id); }
+                ImGui::Separator();
+                if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
                 if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
                 if (ImGui::MenuItem("Delete analysis")) { removeComparison(state, id); changed = true; }
                 ImGui::EndPopup();

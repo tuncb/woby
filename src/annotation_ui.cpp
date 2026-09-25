@@ -144,35 +144,83 @@ void drawAnnotationTools(const UiState& state, AnnotationInteraction& interactio
     }
     ImGui::EndDisabled();
 }
-void drawAnnotationObjects(UiState& state)
+void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
 {
+    if (edit.generation != state.sceneGeneration
+        || (edit.objectId != invalidSceneObjectId && !findAnnotation(state, edit.objectId))) {
+        edit = {};
+        edit.generation = state.sceneGeneration;
+    }
+    const auto beginRename = [&](SceneObjectId id) {
+        if (const auto* item = findAnnotation(state, id)) {
+            edit.objectId = id;
+            edit.text = item->settings.name;
+            edit.focus = true;
+            selectSceneObject(state, id);
+        }
+    };
+    const bool canStartRename = ImGui::IsWindowFocused() && !ImGui::GetIO().WantTextInput
+        && !ImGui::IsAnyItemActive() && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId);
+    if (canStartRename && edit.objectId == invalidSceneObjectId && state.selectedSceneObjects.size() == 1
+        && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
+        beginRename(state.selectedSceneObjects.front());
+    }
     ImGui::SeparatorText("Annotations");
     SceneObjectId remove = 0;
+    SceneObjectId duplicate = 0;
     for (const auto& item : state.annotations) {
-        ImGui::PushID(std::to_string(item.objectId).c_str());
+        const auto id = item.objectId;
+        ImGui::PushID(std::to_string(id).c_str());
         const float removeX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         auto style = item.settings;
         if (drawVisibilityButton("visible", style.visible, item.settings.name.c_str())) {
             style.visible = !style.visible;
-            setAnnotationSettings(state, item.objectId, style);
+            setAnnotationSettings(state, id, style);
         }
         ImGui::SameLine();
         const bool missing = !item.targetValid || !findSceneObject(state, item.targetId);
         const std::string label = item.settings.name + (missing ? " [needs reattachment]" : "") + "##annotation";
         const float nameWidth = std::max(1.0f, removeX - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
-        const bool selected = sceneObjectSelected(state, item.objectId);
-        if (drawSceneItemButton(label.c_str(), nameWidth, selected)) { selectSceneObject(state, item.objectId, ImGui::GetIO().KeyCtrl); }
-        if (selected) { drawSceneItemOutline(); }
-        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s%s", item.settings.name.c_str(), missing ? " [needs reattachment]" : ""); }
-        if (ImGui::BeginPopupContextItem("annotation_context")) {
-            if (ImGui::MenuItem("Delete annotation")) { remove = item.objectId; }
-            ImGui::EndPopup();
+        if (edit.objectId == id) {
+            const bool focusing = edit.focus;
+            if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
+            ImGui::SetNextItemWidth(nameWidth);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x,
+                std::max(0.0f, (renderModeButtonSize() - ImGui::GetTextLineHeight()) * 0.5f)));
+            const bool entered = ImGui::InputText("##annotation_name_edit", &edit.text,
+                ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
+            ImGui::PopStyleVar();
+            if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) { edit.objectId = invalidSceneObjectId; }
+            else if (entered || (!focusing && ImGui::IsItemDeactivated())) {
+                renameAnnotation(state, id, edit.text);
+                edit.objectId = invalidSceneObjectId;
+            }
+        } else {
+            const bool selected = sceneObjectSelected(state, id);
+            if (drawSceneItemButton(label.c_str(), nameWidth, selected)) {
+                selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
+            }
+            if (selected) { drawSceneItemOutline(); }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s%s\nSelect this annotation. Double-click to rename.",
+                    item.settings.name.c_str(), missing ? " [needs reattachment]" : "");
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)
+                    && !ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) { beginRename(id); }
+            }
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) { selectSceneObject(state, id, false, true); }
+            if (ImGui::BeginPopupContextItem("annotation_context")) {
+                if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
+                if (ImGui::MenuItem("Duplicate")) { duplicate = id; }
+                if (ImGui::MenuItem("Delete annotation")) { remove = id; }
+                ImGui::EndPopup();
+            }
         }
         ImGui::SameLine(removeX, 0.0f);
-        if (drawRemoveButton("remove", "Remove annotation from scene")) { remove = item.objectId; }
+        if (drawRemoveButton("remove", "Remove annotation from scene")) { remove = id; }
         ImGui::PopID();
     }
     if (remove) { deleteAnnotation(state, remove); }
+    else if (duplicate) { duplicateAnnotation(state, duplicate); }
 }
 void drawAnnotationInspector(UiState& state)
 {

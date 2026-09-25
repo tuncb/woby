@@ -65,7 +65,7 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
                 const auto id = view.id;
                 ImGui::PushID(std::to_string(id).c_str());
                 const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - button * 2 - spacing * 2);
-                bool removed = false;
+                bool changed = false;
                 if (edit.id == id) {
                     const bool focusing = edit.focus;
                     if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
@@ -87,22 +87,24 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
                     }
                     if (ImGui::BeginPopupContextItem("view_menu")) {
                         if (ImGui::MenuItem("Restore view")) { applyView(state, id); }
-                        if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
                         if (ImGui::MenuItem("Save current state to view")) { updateView(state, id); }
-                        if (ImGui::MenuItem("Delete view")) { removeView(state, id); removed = true; }
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("Rename", "F2")) { beginRename(id); }
+                        if (ImGui::MenuItem("Duplicate")) { duplicateView(state, id); changed = true; }
+                        if (ImGui::MenuItem("Delete view")) { removeView(state, id); changed = true; }
                         ImGui::EndPopup();
                     }
                 }
-                if (!removed) {
+                if (!changed) {
                     ImGui::SameLine();
                     if (drawRenderModeIconButton("save", "\xef\x83\x87",
                         "Save current state to this view. Save the .woby file to keep it on disk.",
                         RenderModeState::off, false)) { updateView(state, id); }
                     ImGui::SameLine();
-                    if (drawRemoveButton("delete", "Delete view")) { removeView(state, id); removed = true; }
+                    if (drawRemoveButton("delete", "Delete view")) { removeView(state, id); changed = true; }
                 }
                 ImGui::PopID();
-                if (removed) { break; }
+                if (changed) { break; }
             }
         }
         ImGui::EndChild();

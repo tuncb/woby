@@ -153,6 +153,28 @@ TEST_CASE("view names updates deletion and no-op operations are independent scen
     CHECK(state.sceneEditRevision == revision);
 }
 
+TEST_CASE("duplicating a view preserves its checkpoint and name independently")
+{
+    auto state = viewState();
+    const auto original = woby::createView(state);
+    const auto revision = state.sceneEditRevision;
+    const auto copy = woby::duplicateView(state, original);
+    REQUIRE(copy != 0);
+    REQUIRE(copy != original);
+    REQUIRE(woby::findView(state, copy));
+    CHECK(woby::findView(state, copy)->name == "View 1 copy");
+    CHECK(woby::findView(state, copy)->scene == woby::findView(state, original)->scene);
+    CHECK(woby::findView(state, copy)->objects == woby::findView(state, original)->objects);
+    CHECK(woby::findView(state, copy)->parts == woby::findView(state, original)->parts);
+    CHECK(state.sceneEditRevision == revision + 1);
+    woby::renameView(state, copy, "Copy only");
+    CHECK(woby::findView(state, original)->name == "View 1");
+    CHECK(woby::sceneViewRecords(state).size() == 2);
+    const auto unchanged = state.sceneEditRevision;
+    CHECK(woby::duplicateView(state, 0) == 0);
+    CHECK(state.sceneEditRevision == unchanged);
+}
+
 TEST_CASE("views persist with document references across fresh IDs and duplicate object names")
 {
     const ViewDirectory directory;

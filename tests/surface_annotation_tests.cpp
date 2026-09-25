@@ -147,6 +147,7 @@ struct AnnotationUiFixture {
     ImGuiContext* context = ImGui::CreateContext();
     Fixture scene;
     AnnotationInteraction interaction;
+    AnnotationNameEdit nameEdit;
     ScenePickView pickView = view();
     ImVec2 lineButton{}, rectangleButton{}, dimensions{};
     bool pointerAllowed = true, captureMouse = false, disabled = false;
@@ -181,7 +182,7 @@ struct AnnotationUiFixture {
         dimensions = ImGui::GetItemRectMin();
         if (showObjects) {
             ImGui::LogToBuffer();
-            drawAnnotationObjects(scene.state);
+            drawAnnotationObjects(scene.state, nameEdit);
             objectContents = ImGui::GetCurrentContext()->LogBuffer.c_str();
             ImGui::LogFinish();
             const auto removeLow = ImGui::GetItemRectMin(), removeHigh = ImGui::GetItemRectMax();
@@ -211,6 +212,12 @@ struct AnnotationUiFixture {
         auto& io = ImGui::GetIO(); io.AddMousePosEvent(p.x,p.y); frame();
         io.AddMouseButtonEvent(button,true); frame(); io.AddMouseButtonEvent(button,false); frame();
     }
+    void key(ImGuiKey value)
+    {
+        auto& io = ImGui::GetIO(); io.AddKeyEvent(value, true); frame();
+        io.AddKeyEvent(value, false); frame(); frame();
+    }
+    void type(const char* value) { ImGui::GetIO().AddInputCharactersUTF8(value); frame(); }
     ImGuiMouseCursor cursor(ImVec2 p)
     {
         ImGui::GetIO().AddMousePosEvent(p.x,p.y); frame(); frame();
@@ -424,6 +431,39 @@ TEST_CASE("annotation row eye toggles visibility and X deletes long named items 
     REQUIRE(findAnnotation(fixture.scene.state, id));
     CHECK(findAnnotation(fixture.scene.state, id)->settings.name == settings.name);
 }
+TEST_CASE("annotation rename and duplicate preserve independent saved objects")
+{
+    Fixture fixture;
+    const auto original = fixture.add();
+    auto settings = findAnnotation(fixture.state, original)->settings;
+    settings.note = "Review this edge";
+    setAnnotationSettings(fixture.state, original, settings);
+    const auto revision = fixture.state.sceneEditRevision;
+    renameAnnotation(fixture.state, original, "Inspection edge");
+    CHECK(findAnnotation(fixture.state, original)->settings.name == "Inspection edge");
+    CHECK(fixture.state.sceneEditRevision == revision + 1);
+    const auto copy = duplicateAnnotation(fixture.state, original);
+    REQUIRE(copy != 0);
+    REQUIRE(copy != original);
+    const auto* copied = findAnnotation(fixture.state, copy);
+    REQUIRE(copied);
+    CHECK(copied->settings.name == "Inspection edge copy");
+    CHECK(copied->settings.note == settings.note);
+    CHECK(copied->geometry == findAnnotation(fixture.state, original)->geometry);
+    CHECK(copied->targetId == findAnnotation(fixture.state, original)->targetId);
+    CHECK(fixture.state.selectedSceneObjects == std::vector<SceneObjectId>{copy});
+    renameAnnotation(fixture.state, copy, "");
+    CHECK(findAnnotation(fixture.state, copy)->settings.name == "Annotation");
+    CHECK(findAnnotation(fixture.state, original)->settings.name == "Inspection edge");
+    const auto document = createSceneDocument(fixture.state);
+    REQUIRE(document.annotations.size() == 2);
+    CHECK(document.annotations[0].settings.name == "Inspection edge");
+    CHECK(document.annotations[1].settings.name == "Annotation");
+    const auto unchanged = fixture.state.sceneEditRevision;
+    renameAnnotation(fixture.state, 0, "Missing");
+    CHECK(duplicateAnnotation(fixture.state, 0) == 0);
+    CHECK(fixture.state.sceneEditRevision == unchanged);
+}
 TEST_CASE("annotation Properties retains visibility and comments without a delete button")
 {
     AnnotationUiFixture fixture;
@@ -432,15 +472,55 @@ TEST_CASE("annotation Properties retains visibility and comments without a delet
     CHECK(fixture.inspectorContents.find("Comments") != std::string::npos);
     CHECK(fixture.inspectorContents.find("Delete annotation") == std::string::npos);
 }
-TEST_CASE("annotation context menu omits Properties and Frame annotation")
+TEST_CASE("annotation F2 renames inline and Escape cancels edits")
 {
     AnnotationUiFixture fixture;
-    fixture.scene.add(); fixture.showObjects = true; fixture.frame(); fixture.frame();
+    const auto id = fixture.scene.add();
+    fixture.showObjects = true; fixture.frame(); fixture.frame();
+    fixture.click({100, fixture.removeButton.y});
+    const auto original = findAnnotation(fixture.scene.state, id)->settings.name;
+    const auto revision = fixture.scene.state.sceneEditRevision;
+    fixture.key(ImGuiKey_F2);
+    REQUIRE(fixture.nameEdit.objectId == id);
+    fixture.type("Inspection line");
+    CHECK(findAnnotation(fixture.scene.state, id)->settings.name == original);
+    fixture.key(ImGuiKey_Escape);
+    CHECK(fixture.nameEdit.objectId == invalidSceneObjectId);
+    CHECK(findAnnotation(fixture.scene.state, id)->settings.name == original);
+    CHECK(fixture.scene.state.sceneEditRevision == revision);
+    fixture.key(ImGuiKey_F2);
+    REQUIRE(fixture.nameEdit.objectId == id);
+    fixture.type("Inspection line");
+    fixture.key(ImGuiKey_Enter);
+    CHECK(fixture.nameEdit.objectId == invalidSceneObjectId);
+    CHECK(findAnnotation(fixture.scene.state, id)->settings.name == "Inspection line");
+    CHECK(fixture.scene.state.sceneEditRevision == revision + 1);
+}
+TEST_CASE("annotation context menu shares Rename Duplicate and Delete actions")
+{
+    AnnotationUiFixture fixture;
+    const auto id = fixture.scene.add(); fixture.showObjects = true; fixture.frame(); fixture.frame();
     fixture.click({100,fixture.removeButton.y}, ImGuiMouseButton_Right);
     fixture.frame();
+    CHECK(fixture.objectContents.find("Rename") != std::string::npos);
+    CHECK(fixture.objectContents.find("Duplicate") != std::string::npos);
     CHECK(fixture.objectContents.find("Delete annotation") != std::string::npos);
     CHECK(fixture.objectContents.find("Properties") == std::string::npos);
     CHECK(fixture.objectContents.find("Frame annotation") == std::string::npos);
+    REQUIRE_FALSE(fixture.context->OpenPopupStack.empty());
+    const auto* popup = fixture.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    const auto start = popup->DC.CursorStartPos;
+    SUBCASE("Rename opens inline editor") {
+        fixture.click({start.x + 30, start.y + ImGui::GetTextLineHeight() * 0.5f});
+        CHECK(fixture.nameEdit.objectId == id);
+    }
+    SUBCASE("Duplicate creates another annotation") {
+        fixture.click({start.x + 30, start.y + ImGui::GetTextLineHeightWithSpacing()
+            + ImGui::GetTextLineHeight() * 0.5f});
+        REQUIRE(fixture.scene.state.annotations.size() == 2);
+        CHECK(fixture.scene.state.annotations.back().settings.name == "Surface line 1 copy");
+    }
 }
 TEST_CASE("annotation messages wrap at the top without overlapping the grid readout")
 {

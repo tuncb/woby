@@ -202,6 +202,19 @@ ViewId createView(UiState& state)
     return state.activeViewId;
 }
 
+ViewId duplicateView(UiState& state, ViewId id)
+{
+    const auto* source = findView(state, id);
+    if (!source) { return 0; }
+    auto copy = *source;
+    copy.id = allocateViewId(state);
+    copy.name += " copy";
+    const auto created = copy.id;
+    state.views.push_back(std::move(copy));
+    markSceneDirty(state);
+    return created;
+}
+
 void updateView(UiState& state, ViewId id)
 {
     auto* view = mutableView(state, id);

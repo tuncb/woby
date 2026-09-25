@@ -2217,6 +2217,7 @@ int main(int argc, char** argv)
         woby::UiState ui;
         woby::ComparisonRuntimes comparison;
         woby::ComparisonNameEdit comparisonNameEdit;
+        woby::AnnotationNameEdit annotationNameEdit;
         woby::ViewNameEdit viewNameEdit;
         woby::ViewListLayout viewListLayout;
         std::vector<LoadedModelRuntime> runtimes;
@@ -3103,7 +3104,7 @@ int main(int argc, char** argv)
                                 ImGui::PopID();
                             }
                             woby::drawComparisonObjects(ui, comparisonNameEdit);
-                            woby::drawAnnotationObjects(ui);
+                            woby::drawAnnotationObjects(ui, annotationNameEdit);
                             canvasSelectionPath.clear();
                             if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
                                 const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);

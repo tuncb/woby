@@ -17,6 +17,7 @@ void restoreViewDiagnostics(UiState& state, const std::vector<ViewDiagnosticSele
 
 [[nodiscard]] const UiView* findView(const UiState& state, ViewId id);
 ViewId createView(UiState& state);
+ViewId duplicateView(UiState& state, ViewId id);
 void applyView(UiState& state, ViewId id);
 void updateView(UiState& state, ViewId id);
 void renameView(UiState& state, ViewId id, const std::string& name);
@@ -250,6 +251,8 @@ void navigateUiCamera(UiState& state, const CameraNavigation& navigation);
 [[nodiscard]] std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const UiAnnotation& item);
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry,
     std::vector<SceneObjectId> targets = {});
+SceneObjectId duplicateAnnotation(UiState& state, SceneObjectId id);
+void renameAnnotation(UiState& state, SceneObjectId id, const std::string& name);
 void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings settings);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry);
 void deleteAnnotation(UiState& state, SceneObjectId id);
