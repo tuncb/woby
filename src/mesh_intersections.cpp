@@ -15,7 +15,7 @@ using Exact = boost::multiprecision::cpp_rational;
 using Point = std::array<Exact, 3>;
 using Triangle = std::array<Point, 3>;
 using Position = std::array<double, 3>;
-void canceled(std::stop_token stop)
+void canceled(const std::stop_token& stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
 }
@@ -124,6 +124,25 @@ bool exactTriangleCollapsed(const std::array<Position, 3>& points)
     for (const auto& p : points) { for (const auto v : p) {
         if (!std::isfinite(v)) { throw std::invalid_argument("Non-finite intersection coordinate."); }
     } }
+    // A conservative floating-point filter proves nonzero projected area in
+    // ordinary cases. Each product has two rounded differences and a multiply;
+    // 16 eps exceeds their combined error plus the final subtraction. Keep the
+    // interval/rational path for cancellation, subnormals and overflow.
+    constexpr double minimum = std::numeric_limits<double>::min();
+    for (size_t k = 0; k < 3; ++k) {
+        const size_t j = (k+1)%3;
+        const double x = points[1][k]-points[0][k], y = points[2][j]-points[0][j];
+        const double u = points[1][j]-points[0][j], v = points[2][k]-points[0][k];
+        const double a = x*y, b = u*v, determinant = a-b;
+        const double sum = std::abs(a) + std::abs(b);
+        const auto normalOrZero = [](double value) { return value == 0 || std::abs(value) >= minimum; };
+        if (normalOrZero(x) && normalOrZero(y) && normalOrZero(u) && normalOrZero(v)
+            && (std::abs(a) >= minimum || x == 0 || y == 0)
+            && (std::abs(b) >= minimum || u == 0 || v == 0)
+            && std::isfinite(sum) && std::abs(determinant) > std::max(minimum, sum * (16 * std::numeric_limits<double>::epsilon()))) {
+            return false;
+        }
+    }
     constexpr double infinity = std::numeric_limits<double>::infinity();
     using Interval = std::array<double, 2>;
     const auto difference = [](double a, double b) -> Interval {

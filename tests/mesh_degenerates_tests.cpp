@@ -340,3 +340,23 @@ TEST_CASE("degenerate scene migration and bounded JSON retain exact totals")
     json = controlComparisonResults(result, .05)["aToB"]["detectors"]["degenerate_tris"];
     CHECK(json["count"].is_null()); CHECK(json["findings"].empty()); CHECK(json["reasonCounts"]["collapsed"] == 0);
 }
+
+TEST_CASE("parallel degenerates retain ordered source instances and suppress repeated part ranges")
+{
+    auto source = sourceFor(Points{{{0,0,0},{1,0,0},{2,0,0}}});
+    auto data = std::make_shared<SourceMeshData>(*source.data);
+    data->indices.clear();
+    for (size_t i = 0; i < 5000; ++i) { data->indices.insert(data->indices.end(), {0,1,2}); }
+    source.data = data; source.parts[0].indexCount = data->indices.size();
+    source.parts.push_back(source.parts.front());
+    auto instance = source.parts.front(); instance.partId = 3; instance.transform[12] = 10;
+    source.parts.push_back(instance);
+    const auto result = inspectDegenerates({source}, {});
+    CHECK(result.collapsedCount == 10000);
+    REQUIRE(result.findings.size() == 10000);
+    for (size_t i = 0; i < result.findings.size(); ++i) {
+        CHECK(result.findings[i].triangleId == i/2);
+        CHECK(result.findings[i].partId == 2+i%2);
+        CHECK(result.findings[i].geometry[0][0] == (i%2 ? 10 : 0));
+    }
+}

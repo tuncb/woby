@@ -53,6 +53,58 @@ struct TemporaryDirectory {
         std::filesystem::remove_all(path, ignored);
     }
 };
+
+int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, bool expanded)
+{
+    auto mesh = woby::loadObjMesh(path);
+    auto input = std::make_shared<woby::DuplicateInput>();
+    woby::DuplicateSource source;
+    source.fileId = 1;
+    source.name = path.filename().string();
+    source.data = mesh.sourceData;
+    source.wholeFile = true;
+    for (size_t i = 0; i < mesh.nodes.size(); ++i) {
+        const auto& node = mesh.nodes[i];
+        source.parts.push_back({i + 1, node.indexOffset, node.indexCount, source.unusedPointTransform});
+    }
+    input->sources.push_back(std::move(source));
+    mesh.duplicateInput = std::move(input);
+    if (expanded) {
+        // Match the flat world-space snapshot assembled by comparisonWorldMesh.
+        const auto vertices = std::move(mesh.vertices);
+        mesh.vertices.reserve(mesh.indices.size());
+        for (auto& index : mesh.indices) {
+            woby::Vertex vertex;
+            vertex.position = vertices[index].position;
+            index = static_cast<uint32_t>(mesh.vertices.size());
+            mesh.vertices.push_back(vertex);
+        }
+    }
+    const auto stages = woby::requestedComparisonStages({}, false);
+    std::cout << "triangles=" << mesh.indices.size() / 3 << " source_points=" << mesh.sourceData->points.size()
+              << " parts=" << mesh.nodes.size() << "\nrun,stage,milliseconds,counts\n";
+    for (size_t run = 0; run < repetitions; ++run) {
+        double total = 0;
+        for (uint32_t remaining = stages; remaining;) {
+            const auto stage = woby::nextComparisonStage(remaining);
+            const auto start = Clock::now();
+            const std::stop_source cancellation;
+            const auto result = woby::computeComparisonStages(mesh, {}, stage, cancellation.get_token());
+            const double milliseconds = std::chrono::duration<double, std::milli>(Clock::now() - start).count();
+            total += milliseconds;
+            std::cout << run << ',' << stage << ',' << milliseconds;
+            for (size_t category = 0; category < woby::backgroundDetectorCount; ++category) {
+                if (stage & woby::comparisonDiagnosticStage(static_cast<woby::DiagnosticCategory>(category))) {
+                    std::cout << ',' << result.detectors[category].knownCounts[0];
+                }
+            }
+            std::cout << std::endl;
+            remaining &= ~stage;
+        }
+        std::cout << run << ",total," << total << std::endl;
+    }
+    return 0;
+}
 }
 
 // Deliberately separate from unit tests: no wall-clock assertions. Build Release
@@ -61,6 +113,12 @@ int main(int argc, char** argv)
 {
     try {
         const std::string workload = argc > 1 ? argv[1] : "distance";
+        if (workload == "detectors" || workload == "detectors-expanded") {
+            if (argc < 3) { throw std::invalid_argument("Expected detectors model.obj [repetitions]."); }
+            const size_t repetitions = argc > 3 ? std::stoul(argv[3]) : 3u;
+            if (!repetitions || repetitions > 100) { throw std::invalid_argument("Expected repetitions 1..100."); }
+            return detectorBenchmark(argv[2], repetitions, workload == "detectors-expanded");
+        }
         const auto width = argc > 2 ? static_cast<uint32_t>(std::stoul(argv[2])) : 200u;
         const auto repetitions = argc > 3 ? std::stoul(argv[3]) : 3u;
         if (width == 0 || width > 2000 || repetitions == 0 || repetitions > 100) {

@@ -732,3 +732,66 @@ TEST_CASE("fin patches classify pinched boundaries and retain duplicate face inc
     CHECK(duplicate.sources[0].faces.size() == 6); CHECK(duplicate.nonManifoldEdges.size() == 1);
     CHECK(duplicate.fins.empty());
 }
+
+TEST_CASE("topology incidence survives copied and moved result snapshots")
+{
+    auto original = buildMeshTopology({sourceFor()});
+    auto copy = original;
+    REQUIRE(copy.sources[0].incidence == original.sources[0].incidence);
+    const auto expected = jsonFor(original, "boundary_edges");
+    original = {};
+    auto moved = std::move(copy);
+    CHECK(jsonFor(moved, "boundary_edges") == expected);
+    const auto& source = moved.sources[0];
+    REQUIRE(source.vertices[0].faces.size() == 2);
+    CHECK(source.vertices[0].faces[1] == 1);
+    CHECK(source.vertices[0].link[0] == std::array<size_t,2>{1,2});
+    for (size_t e = 0; e < source.edges.size(); ++e) {
+        for (const auto& use : source.edges[e].incidentFaces) {
+            const auto& face = source.faces[use.face];
+            CHECK(std::find(face.edges.begin(), face.edges.end(), e) != face.edges.end());
+        }
+    }
+}
+
+TEST_CASE("automatic detector batches preserve independent stage results and disabled stages")
+{
+    const auto input = meshFor(sourceFor({{0,0,0},{1,0,0},{1,1,0},{0,1,0},{0,0,0}},
+        {0,1,2, 0,2,3, 2,1,0, 0,0,1}));
+    const auto stages = requestedComparisonStages({}, false);
+    CHECK(nextComparisonStage(stages) == comparisonSource);
+    CHECK(nextComparisonStage(stages & ~comparisonSource) == comparisonDetectors);
+    CHECK(nextComparisonStage(comparisonTopology | comparisonDegenerates | comparisonDistance)
+        == (comparisonTopology | comparisonDegenerates));
+    const auto batch = computeComparisonStages(input, {}, comparisonDetectors);
+    for (size_t category = 0; category < backgroundDetectorCount; ++category) {
+        const auto detector = static_cast<DiagnosticCategory>(category);
+        const auto single = computeComparisonStages(input, {}, comparisonDiagnosticStage(detector));
+        CHECK(batch.detectors[category].knownCounts == single.detectors[category].knownCounts);
+        CHECK(batch.detectors[category].phase == IntersectionPhase::complete);
+    }
+    const auto partial = computeComparisonStages(input, {}, comparisonDuplicatePoints | comparisonDegenerates);
+    CHECK(partial.detectors[static_cast<size_t>(DiagnosticCategory::boundary)].phase == IntersectionPhase::notChecked);
+    CHECK(partial.detectors[static_cast<size_t>(DiagnosticCategory::duplicateTriangles)].phase == IntersectionPhase::notChecked);
+}
+
+TEST_CASE("exact position topology retains large welded provenance sets without duplicate references")
+{
+    std::vector<Point> points;
+    std::vector<uint32_t> indices;
+    for (uint32_t i = 0; i < 5000; ++i) {
+        points.insert(points.end(), {{0,0,0},{1,0,0},{0,1,0}});
+        indices.insert(indices.end(), {i*3,i*3+1,i*3+2});
+    }
+    auto source = sourceFor(std::move(points), std::move(indices));
+    source.parts.push_back(source.parts.front());
+    const auto result = buildMeshTopology({source}, TopologyMode::exactPosition);
+    REQUIRE(result.sources[0].vertices.size() == 3);
+    CHECK(result.sources[0].faces.size() == 5000);
+    CHECK(result.nonManifoldEdges.size() == 3);
+    for (size_t v = 0; v < 3; ++v) {
+        const auto& references = result.sources[0].vertices[v].references;
+        REQUIRE(references.size() == 5000);
+        for (size_t i = 0; i < references.size(); ++i) { CHECK(references[i].pointId == i*3+v); }
+    }
+}

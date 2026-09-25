@@ -21,14 +21,15 @@ inline unsigned analysisWorkerLimit()
 }
 
 template <typename Function>
-void parallelAnalysisBatches(size_t count, size_t batchSize, std::stop_token stop, const Function& function)
+void parallelAnalysisBatches(size_t count, size_t batchSize, std::stop_token stop, const Function& function,
+    size_t minimumParallelCount = 4096)
 {
     if (batchSize == 0) { throw std::invalid_argument("Analysis batch size must be positive."); }
     const auto checkCanceled = [&] {
         if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     };
     checkCanceled();
-    if (count < 4096 || analysisWorkerLimit() == 0) {
+    if (count < minimumParallelCount || analysisWorkerLimit() == 0) {
         for (size_t begin = 0; begin < count;) {
             checkCanceled();
             const size_t end = begin + std::min(batchSize, count - begin);

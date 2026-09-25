@@ -1193,6 +1193,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.result = {}; runtime.result.original.intersections = std::move(a); runtime.result.repaired.intersections = std::move(b);
         runtime.result.detectors = std::move(detectors);
         runtime.inputs.reset(); runtime.uploadedStages = runtime.failedStages = 0;
+        runtime.retryDetectorsSeparately = false;
         runtime.resultSignature = runtime.attemptedSignature = 0; runtime.error.clear();
         resetComparisonDiagnosticFocus(state, id);
     }
@@ -1248,6 +1249,17 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         for (size_t i = 0; i < backgroundDetectorCount; ++i) { any |= workerParticipates(i); }
         if (!any) { runtime.stop.request_stop(); }
     }
+    const auto requeueCanceledWorker = [&] {
+        // A threshold/mode edit can stop a batch containing other detectors.
+        // Retry its remaining participants; explicit cancellations/new requests
+        // have already changed phase/revision and must not be overwritten.
+        for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+            if (workerParticipates(i)) {
+                runtime.result.detectors[i].phase = IntersectionPhase::queued;
+                queuedStages |= comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i));
+            }
+        }
+    };
     if (comparison->intersectionRequestRevision != job.consumedRequest) {
         job.consumedRequest = comparison->intersectionRequestRevision;
         if (job.consumedRequest != 0) {
@@ -1278,14 +1290,22 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
                     }
                     if (!runtime.failedStages) { runtime.error.clear(); }
                 }
-            }
+            } else { requeueCanceledWorker(); }
         } catch (const std::exception& error) {
             if (!runtime.stop.stop_requested() && wanted == runtime.workerSignature) {
-                runtime.error = error.what(); runtime.failedStages |= runtime.workerStages;
-                for (size_t i = 0; i < backgroundDetectorCount; ++i) {
-                    if (workerParticipates(i)) { runtime.result.detectors[i].phase = IntersectionPhase::failed; runtime.result.detectors[i].error = error.what(); }
+                const auto detectors = runtime.workerStages & comparisonDetectors;
+                if (detectors && (detectors & (detectors - 1))) {
+                    // Identify the failing stage without discarding independent
+                    // results or labeling every detector in the batch failed.
+                    runtime.retryDetectorsSeparately = true;
+                    requeueCanceledWorker();
+                } else {
+                    runtime.error = error.what(); runtime.failedStages |= runtime.workerStages;
+                    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                        if (workerParticipates(i)) { runtime.result.detectors[i].phase = IntersectionPhase::failed; runtime.result.detectors[i].error = error.what(); }
+                    }
                 }
-            } else { runtime.attemptedSignature = 0; }
+            } else { runtime.attemptedSignature = 0; requeueCanceledWorker(); }
         }
     }
     if (job.worker.valid() && job.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
@@ -1332,6 +1352,61 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         fins.knownCounts = {runtime.result.original.topology.fins.size(), runtime.result.repaired.topology.fins.size()};
     }
     const bool active = settings.enabled || runtime.fullResultsRequested || job.requested || queuedStages;
+    // Begin CPU work before staging the previous result on the GPU.
+    // Source upload and detector computation use independent snapshots.
+    const auto schedule = [&] {
+        const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) && enabledComparisonPartCount(state, ComparisonSide::b, id);
+        const auto requested = requestedComparisonStages(settings, both, runtime.fullResultsRequested) & ~(comparisonDetectors | comparisonIntersections);
+        const auto missing = (requested & ~runtime.cache.completed & ~runtime.failedStages) | queuedStages;
+        if (!wanted || !allowStart || !active || (!missing && !job.requested)) { return; }
+        try {
+            if (!runtime.inputs) {
+                auto inputs = std::make_shared<std::array<Mesh, 2>>();
+                if (enabledComparisonPartCount(state, ComparisonSide::a, id)) { (*inputs)[0] = comparisonWorldMesh(state, ComparisonSide::a, id); }
+                if (enabledComparisonPartCount(state, ComparisonSide::b, id)) { (*inputs)[1] = comparisonWorldMesh(state, ComparisonSide::b, id); }
+                runtime.inputs = std::move(inputs);
+            }
+            if (missing && !runtime.worker.valid()) {
+                runtime.attemptedSignature = runtime.workerSignature = wanted;
+                auto stages = nextComparisonStage(missing);
+                if (runtime.retryDetectorsSeparately && (stages & comparisonDetectors)) {
+                    stages &= (~stages + 1); // Retry only the first requested stage.
+                }
+                runtime.attemptedStages = runtime.workerStages = stages;
+                runtime.workerDetectors = 0;
+                for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                    auto& status = runtime.result.detectors[i];
+                    if (status.phase == IntersectionPhase::queued && (comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i)) & runtime.workerStages)) {
+                        status.phase = IntersectionPhase::running;
+                        runtime.workerDetectors |= 1u << i;
+                        runtime.workerDetectorRequests[i] = runtime.consumedDetectorRequests[i];
+                    }
+                }
+                runtime.stop = std::stop_source{};
+                runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, stage = runtime.workerStages,
+                    degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.stop.get_token()] {
+                    return computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode);
+                });
+            } else if (job.requested && !runtime.worker.valid() && !job.worker.valid()) {
+                job.requested = false; job.workerSignature = wanted; job.workerRevision = job.revision;
+                job.stop = std::stop_source{}; job.started = std::chrono::steady_clock::now(); phase(IntersectionPhase::running);
+                job.worker = std::async(std::launch::async, [inputs = runtime.inputs, mode = settings.topologyMode, limits = settings.intersections.limits, stop = job.stop.get_token()] {
+                    return computeComparisonStages((*inputs)[0], (*inputs)[1], comparisonIntersections, stop, {}, mode, limits);
+                });
+            }
+        } catch (const std::exception& error) {
+            if (job.requested) { job.requested = false; phase(IntersectionPhase::failed, error.what()); }
+            else {
+                runtime.error = error.what(); runtime.failedStages |= missing;
+                for (auto& status : runtime.result.detectors) {
+                    if (status.phase == IntersectionPhase::queued || status.phase == IntersectionPhase::running) {
+                        status.phase = IntersectionPhase::failed; status.error = error.what();
+                    }
+                }
+            }
+        }
+    };
+    schedule();
     if (wanted && active) {
         const auto pending = runtime.cache.completed & ~runtime.uploadedStages & ~runtime.failedStages;
         for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints, comparisonDuplicateTriangles,
@@ -1368,52 +1443,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         }
     }
     runtime.ready = wanted && settings.enabled && (runtime.cache.completed & comparisonSource) && (runtime.uploadedStages & comparisonSource);
-    const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) && enabledComparisonPartCount(state, ComparisonSide::b, id);
-    const auto requested = requestedComparisonStages(settings, both, runtime.fullResultsRequested) & ~(comparisonDetectors | comparisonIntersections);
-    const auto missing = (requested & ~runtime.cache.completed & ~runtime.failedStages) | queuedStages;
-    if (!wanted || !allowStart || !active || (!missing && !job.requested)) { return; }
-    try {
-        if (!runtime.inputs) {
-            auto inputs = std::make_shared<std::array<Mesh, 2>>();
-            if (enabledComparisonPartCount(state, ComparisonSide::a, id)) { (*inputs)[0] = comparisonWorldMesh(state, ComparisonSide::a, id); }
-            if (enabledComparisonPartCount(state, ComparisonSide::b, id)) { (*inputs)[1] = comparisonWorldMesh(state, ComparisonSide::b, id); }
-            runtime.inputs = std::move(inputs);
-        }
-        if (missing && !runtime.worker.valid()) {
-            runtime.attemptedSignature = runtime.workerSignature = wanted;
-            runtime.attemptedStages = runtime.workerStages = nextComparisonStage(missing);
-            runtime.workerDetectors = 0;
-            for (size_t i = 0; i < backgroundDetectorCount; ++i) {
-                auto& status = runtime.result.detectors[i];
-                if (status.phase == IntersectionPhase::queued && (comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i)) & runtime.workerStages)) {
-                    status.phase = IntersectionPhase::running;
-                    runtime.workerDetectors |= 1u << i;
-                    runtime.workerDetectorRequests[i] = runtime.consumedDetectorRequests[i];
-                }
-            }
-            runtime.stop = std::stop_source{};
-            runtime.worker = std::async(std::launch::async, [inputs = runtime.inputs, stage = runtime.workerStages,
-                degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.stop.get_token()] {
-                return computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode);
-            });
-        } else if (job.requested && !runtime.worker.valid() && !job.worker.valid()) {
-            job.requested = false; job.workerSignature = wanted; job.workerRevision = job.revision;
-            job.stop = std::stop_source{}; job.started = std::chrono::steady_clock::now(); phase(IntersectionPhase::running);
-            job.worker = std::async(std::launch::async, [inputs = runtime.inputs, mode = settings.topologyMode, limits = settings.intersections.limits, stop = job.stop.get_token()] {
-                return computeComparisonStages((*inputs)[0], (*inputs)[1], comparisonIntersections, stop, {}, mode, limits);
-            });
-        }
-    } catch (const std::exception& error) {
-        if (job.requested) { job.requested = false; phase(IntersectionPhase::failed, error.what()); }
-        else {
-            runtime.error = error.what(); runtime.failedStages |= missing;
-            for (auto& status : runtime.result.detectors) {
-                if (status.phase == IntersectionPhase::queued || status.phase == IntersectionPhase::running) {
-                    status.phase = IntersectionPhase::failed; status.error = error.what();
-                }
-            }
-        }
-    }
+
 }
 
 static void destroyComparisonRuntime(ComparisonRuntime &runtime)

@@ -1,4 +1,5 @@
 #include "mesh_duplicates.h"
+#include "analysis_index.h"
 #include "mesh_comparison.h"
 #include "comparison_scene.h"
 #include "comparison_report.h"
@@ -381,4 +382,42 @@ TEST_CASE("duplicate Run toggles retain cached findings but hide disabled JSON r
     CHECK(run() == 0);
     CHECK(result.original.duplicates.points.findings.data() == points);
     CHECK(controlComparisonResults(result, .05)["aToB"]["detectors"]["duplicate_points"]["count"] == 1);
+}
+
+TEST_CASE("analysis index preserves insertion IDs through growth and signed zero")
+{
+    woby::AnalysisIndex<double, 3> index;
+    for (size_t i = 0; i < 10000; ++i) {
+        const std::array<double, 3> key = {static_cast<double>(i), -0.0, static_cast<double>(i%7)};
+        CHECK(woby::analysisIndex(index, key) == i);
+    }
+    for (size_t i = 10000; i-- > 0;) {
+        const std::array<double, 3> key = {static_cast<double>(i), 0.0, static_cast<double>(i%7)};
+        CHECK(woby::analysisIndex(index, key) == i);
+    }
+    CHECK(index.keys.size() == 10000);
+    CHECK(woby::analysisIndex(index, std::array<double, 3>{std::numeric_limits<double>::denorm_min(),0,0}) == 10000);
+}
+
+TEST_CASE("duplicate buckets retain dense repeated faces and transformed overlapping selections")
+{
+    auto data = triangle();
+    data->indices.clear();
+    for (size_t i = 0; i < 5000; ++i) {
+        if (i%2) { data->indices.insert(data->indices.end(), {2,1,0}); }
+        else { data->indices.insert(data->indices.end(), {0,1,2}); }
+    }
+    auto input = inputFor(data);
+    auto part = input.sources[0].parts[0]; part.transform[12] = 10;
+    input.sources[0].parts.push_back(part);
+    const auto result = woby::inspectDuplicates(input);
+    CHECK(result.triangles.duplicateCount == 4999);
+    REQUIRE(result.triangles.findings.size() == 1);
+    const auto& finding = result.triangles.findings[0];
+    REQUIRE(finding.members.size() == 5000);
+    CHECK(finding.geometry.size() == 6);
+    for (size_t i = 0; i < finding.members.size(); ++i) {
+        CHECK(finding.members[i].id == i);
+        CHECK(finding.members[i].reversed == (i%2 != 0));
+    }
 }

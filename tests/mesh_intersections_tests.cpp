@@ -12,6 +12,7 @@
 #include "ui_operations.h"
 
 #include <doctest/doctest.h>
+#include <boost/multiprecision/cpp_int.hpp>
 #include <nlohmann/json.hpp>
 #include <algorithm>
 #include <cmath>
@@ -712,4 +713,77 @@ TEST_CASE("fin lifecycle filters cached patches and hides stale canceled and fai
     REQUIRE(f.until([&] { return comparisonResultsReady(runtime,f.state,f.id); }));
     CHECK(comparisonDetectorStatus(runtime.result,DiagnosticCategory::fins).phase == IntersectionPhase::outdated);
     CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
+}
+
+TEST_CASE("fast collapse filter agrees with rational determinants over floating point scales")
+{
+    using Exact = boost::multiprecision::cpp_rational;
+    std::mt19937 random(9341);
+    for (const int exponent : {-1074,-530,-100,0,100,510,1000}) {
+        for (size_t trial = 0; trial < 40; ++trial) {
+            Triangle triangle;
+            for (auto& p : triangle) {
+                for (auto& coordinate : p) { coordinate = std::scalbn(static_cast<double>(static_cast<int>(random()%17)-8), exponent); }
+            }
+            if (trial%3 == 0) {
+                for (size_t k = 0; k < 3; ++k) { triangle[2][k] = triangle[0][k] + 2*(triangle[1][k]-triangle[0][k]); }
+            }
+            if (trial%3 == 1) { triangle[2][0] = std::nextafter(triangle[2][0], std::numeric_limits<double>::infinity()); }
+            std::array<Exact,3> a, b;
+            for (size_t k = 0; k < 3; ++k) {
+                a[k] = Exact(triangle[1][k])-Exact(triangle[0][k]);
+                b[k] = Exact(triangle[2][k])-Exact(triangle[0][k]);
+            }
+            const bool collapsed = a[0]*b[1] == a[1]*b[0] && a[1]*b[2] == a[2]*b[1] && a[2]*b[0] == a[0]*b[2];
+            CHECK(woby::exactTriangleCollapsed(triangle) == collapsed);
+        }
+    }
+}
+
+TEST_CASE("detector batch retries unaffected work after threshold edits or a stage failure")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    runtime.workerSignature = runtime.cache.signature;
+    runtime.workerStages = comparisonDetectors;
+    runtime.workerDetectors = (1u << backgroundDetectorCount)-1;
+    runtime.workerDetectorRequests = runtime.consumedDetectorRequests;
+    runtime.stop = std::stop_source{};
+    for (auto& status : runtime.result.detectors) { status.phase = IntersectionPhase::running; }
+    std::promise<MeshComparison> pending;
+    runtime.worker = pending.get_future();
+    SUBCASE("threshold edit") {
+        auto settings = comparisonSettings(f.state, f.id);
+        settings.degenerates.needleThresholdRatio += 1;
+        setComparisonSettings(f.state, settings, f.id);
+        updateComparisonRuntimes(f.runtimes, f.state);
+        REQUIRE(runtime.stop.stop_requested());
+        pending.set_exception(std::make_exception_ptr(std::runtime_error("Analysis canceled.")));
+    }
+    SUBCASE("topology mode edit with explicit cancellation") {
+        requestComparisonDetector(f.state, f.id, DiagnosticCategory::duplicatePoints, true);
+        auto settings = comparisonSettings(f.state, f.id); settings.topologyMode = TopologyMode::exactPosition;
+        setComparisonSettings(f.state, settings, f.id);
+        updateComparisonRuntimes(f.runtimes, f.state);
+        REQUIRE(runtime.stop.stop_requested());
+        pending.set_value({}); // Even a worker that finishes after cancellation must be ignored.
+    }
+    SUBCASE("failed batch is isolated into individual stages") {
+        pending.set_exception(std::make_exception_ptr(std::runtime_error("Injected batch failure.")));
+        updateComparisonRuntimes(f.runtimes, f.state);
+        CHECK(runtime.retryDetectorsSeparately);
+        CHECK(runtime.workerStages == comparisonTopology);
+    }
+    REQUIRE(f.until([&] {
+        if (runtime.worker.valid()) { return false; }
+        return std::all_of(runtime.result.detectors.begin(), runtime.result.detectors.end(), [](const auto& status) {
+            return status.phase == IntersectionPhase::complete || status.phase == IntersectionPhase::canceled;
+        });
+    }));
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        const auto expected = findComparison(f.state, f.id)->detectorRequests[i].cancel
+            ? IntersectionPhase::canceled : IntersectionPhase::complete;
+        CHECK(runtime.result.detectors[i].phase == expected);
+    }
 }

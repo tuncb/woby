@@ -1,4 +1,5 @@
 #include "mesh_degenerates.h"
+#include "parallel_work.h"
 
 #include <algorithm>
 #include <cmath>
@@ -10,7 +11,7 @@
 
 namespace woby {
 namespace {
-void canceled(std::stop_token stop)
+void canceled(const std::stop_token& stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
 }
@@ -108,8 +109,15 @@ MeshDegenerates inspectDegenerates(const std::vector<DuplicateSource>& sources, 
             canceled(stop);
             if (index >= data.points.size()) { throw std::invalid_argument("Invalid source point index."); }
         }
-        std::set<std::pair<uint64_t, size_t>> visited;
+        std::set<uint64_t> partIds, repeatedPartIds;
         for (const auto& part : source.parts) {
+            if (!partIds.insert(part.partId).second) { repeatedPartIds.insert(part.partId); }
+        }
+        std::set<std::pair<uint64_t, size_t>> visited;
+        std::vector<std::array<size_t, 2>> work;
+        work.reserve(data.indices.size() / 3);
+        for (size_t partIndex = 0; partIndex < source.parts.size(); ++partIndex) {
+            const auto& part = source.parts[partIndex];
             canceled(stop);
             if (part.firstIndex%3 || part.indexCount%3 || part.firstIndex > data.indices.size()
                 || part.indexCount > data.indices.size()-part.firstIndex) { throw std::invalid_argument("Invalid source part range."); }
@@ -118,7 +126,18 @@ MeshDegenerates inspectDegenerates(const std::vector<DuplicateSource>& sources, 
             }
             for (size_t i = part.firstIndex; i < part.firstIndex+part.indexCount; i += 3) {
                 canceled(stop);
-                if (!visited.emplace(part.partId, i/3).second) { continue; }
+                if (repeatedPartIds.contains(part.partId) && !visited.emplace(part.partId, i/3).second) { continue; }
+                work.push_back({partIndex, i});
+            }
+        }
+        constexpr size_t batchSize = 1024;
+        std::vector<std::vector<DegenerateFinding>> batches((work.size() + batchSize - 1) / batchSize);
+        parallelAnalysisBatches(work.size(), batchSize, stop, [&](size_t begin, size_t end) {
+            auto& findings = batches[begin / batchSize];
+            for (size_t item = begin; item < end; ++item) {
+                canceled(stop);
+                const auto& part = source.parts[work[item][0]];
+                const auto i = work[item][1];
                 std::array<Point, 3> points{};
                 DegenerateFinding finding;
                 for (size_t j = 0; j < 3; ++j) {
@@ -138,7 +157,15 @@ MeshDegenerates inspectDegenerates(const std::vector<DuplicateSource>& sources, 
                 if (!reasons.collapsed && !reasons.needle && !reasons.cap) { continue; }
                 finding.fileId = source.fileId; finding.partId = part.partId; finding.triangleId = i/3;
                 finding.source = source.name; finding.provenance = data.provenance;
-                result.collapsedCount += reasons.collapsed; result.needleCount += reasons.needle; result.capCount += reasons.cap;
+                findings.push_back(std::move(finding));
+            }
+        });
+        for (auto& batch : batches) {
+            for (auto& finding : batch) {
+                canceled(stop);
+                result.collapsedCount += finding.reasons.collapsed;
+                result.needleCount += finding.reasons.needle;
+                result.capCount += finding.reasons.cap;
                 result.findings.push_back(std::move(finding));
             }
         }

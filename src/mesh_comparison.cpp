@@ -1,11 +1,11 @@
 #include "mesh_comparison.h"
 #include "comparison_settings.h"
 #include "parallel_work.h"
+#include "analysis_index.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <map>
 #include <stdexcept>
 #include <utility>
 
@@ -19,7 +19,7 @@ namespace
 {
 using Point = std::array<double, 3>;
 using Triangle = std::array<Point, 3>;
-void checkCanceled(std::stop_token stop)
+void checkCanceled(const std::stop_token& stop)
 {
     if (stop.stop_requested())
         throw std::runtime_error("Analysis canceled.");
@@ -39,7 +39,6 @@ std::vector<T> copyWithCancellation(const std::vector<T>& values, std::stop_toke
     return result;
 }
 
-MeshDiagnostics inspectTriangles(const std::vector<Triangle>& triangles, std::stop_token stop);
 Point toPoint(const std::array<float, 3> &p)
 {
     return {p[0], p[1], p[2]};
@@ -675,64 +674,87 @@ double pointTriangleDistance(const std::array<float, 3> &p, const std::array<flo
 
 namespace
 {
-MeshDiagnostics inspectTriangles(const std::vector<Triangle>& triangles, std::stop_token stop)
+MeshDiagnostics inspectTriangles(const Mesh& mesh, std::stop_token stop)
 {
     checkCanceled(stop);
-    MeshDiagnostics result;
-    // Match geometric positions, so duplicated OBJ/STL seam vertices do not
-    // masquerade as open edges. Nearby, unequal positions remain separate.
-    std::map<Point, size_t> vertexIds;
-    std::vector<Point> positions;
-    struct EdgeUse
-    {
-        size_t count = 0;
-        int orientation = 0;
-    };
-    std::map<std::pair<size_t, size_t>, EdgeUse> edges;
-    std::map<std::array<size_t, 3>, size_t> faces;
-    for (const auto &t : triangles)
-    {
-        checkCanceled(stop);
-        if (degenerate(t))
-        {
-            ++result.degenerateTriangles;
-            continue;
-        }
-        std::array<size_t, 3> ids;
-        for (size_t k = 0; k < 3; ++k)
-        {
-            const auto [it, inserted] = vertexIds.emplace(t[k], positions.size());
-            if (inserted)
-                positions.push_back(t[k]);
-            ids[k] = it->second;
-        }
-        auto canonical = ids;
-        std::sort(canonical.begin(), canonical.end());
-        if (++faces[canonical] > 1)
-            ++result.duplicateTriangles;
-        for (size_t k = 0; k < 3; ++k)
-        {
-            const size_t a = ids[k], b = ids[(k + 1) % 3];
-            auto &edge = edges[std::minmax(a, b)];
-            ++edge.count;
-            edge.orientation += a < b ? 1 : -1;
-        }
+    if (mesh.indices.empty() || mesh.indices.size() % 3 != 0) {
+        throw std::runtime_error("Analysis needs nonempty triangular meshes.");
     }
-    for (const auto &[indices, use] : edges)
-    {
+    MeshDiagnostics result;
+    // Preserve first-use geometric IDs, including OBJ/STL seams and signed zero.
+    AnalysisIndex<double, 3> vertexIds;
+    reserveAnalysisIndex(vertexIds, mesh.vertices.size());
+    constexpr size_t missing = std::numeric_limits<size_t>::max();
+    std::vector<size_t> remap(mesh.vertices.size(), missing);
+    std::vector<std::array<size_t, 3>> faces;
+    faces.reserve(mesh.indices.size() / 3);
+    for (size_t i = 0; i < mesh.indices.size(); i += 3) {
         checkCanceled(stop);
-        DiagnosticEdge edge;
-        for (size_t k = 0; k < 3; ++k)
-        {
-            edge.a[k] = static_cast<float>(positions[indices.first][k]);
-            edge.b[k] = static_cast<float>(positions[indices.second][k]);
+        Triangle triangle;
+        for (size_t k = 0; k < 3; ++k) {
+            const auto index = mesh.indices[i+k];
+            if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) {
+                throw std::runtime_error("Mesh contains an invalid vertex or triangle index.");
+            }
+            triangle[k] = toPoint(mesh.vertices[index].position);
         }
-        if (use.count == 1)
-            result.boundaryEdges.push_back(edge);
-        if (use.count > 2)
-            result.nonManifoldEdges.push_back(edge);
-        if (use.count == 2 && use.orientation != 0)
-            result.inconsistentWindingEdges.push_back(edge);
+        if (degenerate(triangle)) { ++result.degenerateTriangles; continue; }
+        std::array<size_t, 3> ids;
+        for (size_t k = 0; k < 3; ++k) {
+            auto& id = remap[mesh.indices[i+k]];
+            if (id == missing) { id = analysisIndex(vertexIds, triangle[k]); }
+            ids[k] = id;
+        }
+        faces.push_back(ids);
+    }
+    std::vector<size_t> edgeStarts(vertexIds.keys.size()+1), faceStarts(vertexIds.keys.size()+1);
+    for (const auto& face : faces) {
+        checkCanceled(stop);
+        ++faceStarts[*std::min_element(face.begin(), face.end())+1];
+        for (size_t k = 0; k < 3; ++k) { ++edgeStarts[std::min(face[k], face[(k+1)%3])+1]; }
+    }
+    for (size_t i = 1; i < edgeStarts.size(); ++i) {
+        edgeStarts[i] += edgeStarts[i-1]; faceStarts[i] += faceStarts[i-1];
+    }
+    auto edgeCursor = edgeStarts, faceCursor = faceStarts;
+    std::vector<std::array<size_t, 2>> edges(faces.size()*3), canonicalFaces(faces.size());
+    for (auto face : faces) {
+        checkCanceled(stop);
+        for (size_t k = 0; k < 3; ++k) {
+            const auto a = face[k], b = face[(k+1)%3];
+            edges[edgeCursor[std::min(a,b)]++] = {std::max(a,b), a < b ? 1u : 0u};
+        }
+        std::sort(face.begin(), face.end());
+        canonicalFaces[faceCursor[face[0]]++] = {face[1],face[2]};
+    }
+    for (size_t a = 0; a < vertexIds.keys.size(); ++a) {
+        checkCanceled(stop);
+        const auto firstFace = canonicalFaces.begin() + static_cast<ptrdiff_t>(faceStarts[a]);
+        const auto lastFace = canonicalFaces.begin() + static_cast<ptrdiff_t>(faceStarts[a+1]);
+        std::sort(firstFace, lastFace);
+        for (auto face = firstFace; face != lastFace; ++face) {
+            if (face != firstFace && *face == *(face-1)) { ++result.duplicateTriangles; }
+        }
+        std::sort(edges.begin() + static_cast<ptrdiff_t>(edgeStarts[a]), edges.begin() + static_cast<ptrdiff_t>(edgeStarts[a+1]));
+        for (size_t begin = edgeStarts[a]; begin < edgeStarts[a+1];) {
+            checkCanceled(stop);
+            const auto b = edges[begin][0];
+            size_t end = begin+1;
+            while (end < edgeStarts[a+1] && edges[end][0] == b) { ++end; }
+            const auto count = end-begin;
+            const bool winding = count == 2 && edges[begin][1] == edges[begin+1][1];
+            if (count != 2 || winding) {
+                DiagnosticEdge edge;
+                for (size_t k = 0; k < 3; ++k) {
+                    edge.a[k] = static_cast<float>(vertexIds.keys[a][k]);
+                    edge.b[k] = static_cast<float>(vertexIds.keys[b][k]);
+                }
+                if (count == 1) { result.boundaryEdges.push_back(edge); }
+                if (count > 2) { result.nonManifoldEdges.push_back(edge); }
+                if (winding) { result.inconsistentWindingEdges.push_back(edge); }
+            }
+            begin = end;
+        }
     }
     return result;
 }
@@ -755,7 +777,7 @@ void validateComparisonMeshSize(size_t vertexCount, size_t triangleCount)
 
 MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop)
 {
-    return inspectTriangles(meshTriangles(mesh, stop), stop);
+    return inspectTriangles(mesh, stop);
 }
 
 static void completeComparisonDetectors(MeshComparison& result, uint32_t stages)
@@ -892,9 +914,11 @@ uint32_t comparisonDiagnosticStage(DiagnosticCategory category)
 }
 uint32_t nextComparisonStage(uint32_t missing)
 {
-    // Publish inexpensive findings before distance/quality and expensive checks.
-    for (const auto stage : {comparisonSource, comparisonTopology, comparisonDuplicatePoints,
-        comparisonDuplicateTriangles, comparisonDegenerates, comparisonQuality, comparisonDistance}) {
+    // Publish the source first, then run the requested automatic detectors as a
+    // bounded parallel batch before distance/quality and expensive checks.
+    if (missing & comparisonSource) { return comparisonSource; }
+    if (missing & comparisonDetectors) { return missing & comparisonDetectors; }
+    for (const auto stage : {comparisonQuality, comparisonDistance}) {
         if (missing & stage) { return stage; }
     }
     return 0;
@@ -962,40 +986,54 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             surface.source.nodes = copyWithCancellation(mesh.nodes, stop);
             surface.source.bounds = mesh.bounds;
         }
-        if (stages & comparisonTopology) {
-            surface.diagnostics = inspectMesh(mesh, stop);
-            inspectSurfaceTopology(surface, mesh, topologyMode, stop);
-        }
-        if (stages & comparisonIntersections) {
-            if (!(stages & comparisonTopology)) { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
-            surface.intersections = inspectIntersections(surface.topology, {true, true}, stop, intersectionLimits);
-            for (const auto& finding : surface.intersections.findings) {
-                checkCanceled(stop);
-                DiagnosticEdge bounds{finding.geometry[0], finding.geometry[0]};
-                for (const auto& p : finding.geometry) {
-                    for (size_t k = 0; k < 3; ++k) { bounds.a[k] = std::min(bounds.a[k], p[k]); bounds.b[k] = std::max(bounds.b[k], p[k]); }
+        std::vector<uint32_t> tasks;
+        if (stages & (comparisonTopology | comparisonIntersections)) { tasks.push_back(comparisonTopology); }
+        if (stages & comparisonDegenerates) { tasks.push_back(comparisonDegenerates); }
+        if (stages & (comparisonDuplicatePoints | comparisonDuplicateTriangles)) { tasks.push_back(comparisonDuplicatePoints); }
+        parallelAnalysisBatches(tasks.size(), 1, stop, [&](size_t begin, size_t) {
+            if (tasks[begin] == comparisonTopology) {
+                if (stages & comparisonTopology) {
+                    parallelAnalysisBatches(2, 1, stop, [&](size_t begin, size_t) {
+                        if (begin == 0) { surface.diagnostics = inspectMesh(mesh, stop); }
+                        else { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
+                    }, mesh.indices.size() >= 12288 ? 2 : 4096);
                 }
-                surface.intersectionBounds.push_back(bounds);
-                for (size_t i = 0; i < 6; i += 3) {
-                    for (size_t k = 0; k < 3; ++k) { surface.intersectionEdges.push_back({finding.geometry[i+k], finding.geometry[i+(k+1)%3]}); }
+                if (stages & comparisonIntersections) {
+                    if (!(stages & comparisonTopology)) { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
+                    surface.intersections = inspectIntersections(surface.topology, {true, true}, stop, intersectionLimits);
+                    for (const auto& finding : surface.intersections.findings) {
+                        checkCanceled(stop);
+                        DiagnosticEdge bounds{finding.geometry[0], finding.geometry[0]};
+                        for (const auto& p : finding.geometry) {
+                            for (size_t k = 0; k < 3; ++k) { bounds.a[k] = std::min(bounds.a[k], p[k]); bounds.b[k] = std::max(bounds.b[k], p[k]); }
+                        }
+                        surface.intersectionBounds.push_back(bounds);
+                        for (size_t i = 0; i < 6; i += 3) {
+                            for (size_t k = 0; k < 3; ++k) { surface.intersectionEdges.push_back({finding.geometry[i+k], finding.geometry[i+(k+1)%3]}); }
+                        }
+                    }
+                }
+            } else if (tasks[begin] == comparisonDegenerates) {
+                auto settings = degenerates; settings.enabled = true;
+                inspectSurfaceDegenerates(surface, mesh, settings, stop);
+            } else {
+                if (stages & (comparisonDuplicatePoints | comparisonDuplicateTriangles)) {
+                    DuplicateInput input;
+                    if (mesh.duplicateInput) { input = *mesh.duplicateInput; }
+                    input.settings.points = (stages & comparisonDuplicatePoints) != 0;
+                    input.settings.triangles = (stages & comparisonDuplicateTriangles) != 0;
+                    if (mesh.duplicateInput) { surface.duplicates = inspectDuplicates(input, stop); }
+                    else {
+                        surface.duplicates.points.unavailableSources = 1;
+                        surface.duplicates.triangles.unavailableSources = 1;
+                    }
+                    if (stages & comparisonDuplicatePoints) { surface.duplicatePointBounds = duplicateBounds(surface.duplicates.points, stop); }
+                    if (stages & comparisonDuplicateTriangles) { surface.duplicateTriangleBounds = duplicateBounds(surface.duplicates.triangles, stop); }
                 }
             }
-        }
-        if (stages & comparisonDegenerates) { degenerates.enabled = true; inspectSurfaceDegenerates(surface, mesh, degenerates, stop); }
+        }, mesh.indices.size() >= 12288 ? 2 : 4096);
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
-        if (stages & (comparisonDuplicatePoints | comparisonDuplicateTriangles)) {
-            DuplicateInput input;
-            if (mesh.duplicateInput) { input = *mesh.duplicateInput; }
-            input.settings.points = (stages & comparisonDuplicatePoints) != 0;
-            input.settings.triangles = (stages & comparisonDuplicateTriangles) != 0;
-            if (mesh.duplicateInput) { surface.duplicates = inspectDuplicates(input, stop); }
-            else {
-                surface.duplicates.points.unavailableSources = 1;
-                surface.duplicates.triangles.unavailableSources = 1;
-            }
-            if (stages & comparisonDuplicatePoints) { surface.duplicatePointBounds = duplicateBounds(surface.duplicates.points, stop); }
-            if (stages & comparisonDuplicateTriangles) { surface.duplicateTriangleBounds = duplicateBounds(surface.duplicates.triangles, stop); }
-        }
+
     };
     inspect(original, result.original);
     inspect(repaired, result.repaired);

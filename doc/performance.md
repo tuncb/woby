@@ -1,5 +1,8 @@
 # Performance engineering
 
+For the later million-triangle detector benchmark and optimizations, see
+[automatic detector performance](detector-performance.md).
+
 Measured on 13 September 2026. This pass changes import, GPU preparation, scene
 queries, and CPU analysis. The measurements below come from executable workloads
 and a real viewer; the later architecture proposals are not implemented.

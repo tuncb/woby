@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mesh_duplicates.h"
+#include <span>
 
 namespace woby {
 
@@ -32,9 +33,9 @@ struct TopologyPointReference {
 struct TopologyVertex {
     std::array<double, 3> position{};
     std::vector<TopologyPointReference> references;
-    std::vector<size_t> faces, edges, boundaryEdges;
+    std::span<const size_t> faces, edges, boundaryEdges;
     // One link edge per incident triangle, including parallel links from duplicate faces.
-    std::vector<std::array<size_t, 2>> link;
+    std::span<const std::array<size_t, 2>> link;
 };
 struct TopologyFace {
     TopologyFaceReference reference;
@@ -44,8 +45,15 @@ struct TopologyFace {
 struct TopologyEdgeUse { size_t face = 0; bool forward = false; };
 struct TopologyEdge {
     std::array<size_t, 2> vertices{};
-    std::vector<TopologyEdgeUse> incidentFaces;
+    std::span<const TopologyEdgeUse> incidentFaces;
     bool windingConflict = false, orientationContradiction = false;
+};
+// Immutable incidence storage is shared when a result snapshot is copied. The
+// spans in vertices/edges remain valid across copies, moves and cache publication.
+struct TopologyIncidence {
+    std::vector<size_t> vertexFaces, vertexEdges, boundaryEdges;
+    std::vector<std::array<size_t, 2>> vertexLinks;
+    std::vector<TopologyEdgeUse> edgeUses;
 };
 struct SourceTopology {
     uint64_t fileId = 0;
@@ -58,6 +66,7 @@ struct SourceTopology {
     std::vector<TopologyFace> faces;
     std::vector<TopologyEdge> edges;
     std::vector<std::vector<size_t>> components;
+    std::shared_ptr<const TopologyIncidence> incidence;
 };
 struct TopologyEdgeFinding { size_t source = 0, edge = 0; };
 struct TopologyVertexFinding { size_t source = 0, vertex = 0, linkComponents = 0; };
