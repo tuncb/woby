@@ -8,7 +8,7 @@
 #include <limits>
 #include <stdexcept>
 #include <utility>
-#include <unordered_map>
+#include <boost/unordered/unordered_flat_map.hpp>
 #include <tuple>
 
 #include <bx/math.h>
@@ -745,7 +745,7 @@ SceneDocument createSceneDocument(const UiState& state)
     document.annotations = sceneAnnotationRecords(state);
     // History snapshots use this mapping too. Resolve each part once instead
     // of scanning every file/group for every analysis member on every edit.
-    std::unordered_map<SceneObjectId, std::pair<int, int>> partLocations;
+    boost::unordered_flat_map<SceneObjectId, std::pair<int, int>> partLocations;
     if (!state.comparisons.empty()) {
         size_t count = 0;
         for (const auto& file : state.files) { count += std::min(file.groupSettings.size(), file.mesh.nodes.size()); }

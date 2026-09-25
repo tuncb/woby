@@ -24,6 +24,13 @@
     { "name": "libarchive", "default-features": false },
     { "name": "openssl", "platform": "!windows" },
     "boost-multiprecision",
+    "boost-unordered",
     "doctest"
-  ]
+  ],
+  "features": {
+    "hash-benchmarks": {
+      "description": "Compare standard, Woby, Boost and unordered_dense hash tables",
+      "dependencies": ["unordered-dense"]
+    }
+  }
 }

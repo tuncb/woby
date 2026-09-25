@@ -3,7 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <type_traits>
-#include <unordered_set>
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 
 namespace woby {
 namespace {
@@ -106,8 +107,21 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
 {
     std::vector<SceneObjectId> targets;
     const bool parts = isPartAppearanceProperty(property);
+    // A large selection must not rescan every scene object for each selected ID.
+    // Small selections retain direct lookup without building a scene index.
+    const auto objects = state.selectedSceneObjects.size() > 8 ? sceneObjects(state) : std::vector<SceneObjectInfo>{};
+    boost::unordered_flat_map<SceneObjectId, const SceneObjectInfo*> byId;
+    byId.reserve(objects.size());
+    for (const auto& object : objects) { byId.emplace(object.id, &object); }
     for (const auto id : state.selectedSceneObjects) {
-        const auto object = findSceneObject(state, id);
+        std::optional<SceneObjectInfo> single;
+        const SceneObjectInfo* object = nullptr;
+        if (state.selectedSceneObjects.size() > 8) {
+            if (const auto found = byId.find(id); found != byId.end()) { object = found->second; }
+        } else {
+            single = findSceneObject(state, id);
+            if (single) { object = &*single; }
+        }
         if (!object || object->kind == SceneObjectKind::comparison || object->kind == SceneObjectKind::annotation) { return {}; }
         if (object->kind == SceneObjectKind::folder && (parts || property == UiObjectProperty::vertexSize)) {
             if (const auto* folder = findFolderNode(state.sceneNodes, id)) {
@@ -126,7 +140,8 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     }
     // Preserve the first target's displayed value while removing overlapping
     // parent/child selections and repeated tree occurrences.
-    std::unordered_set<SceneObjectId> seen;
+    boost::unordered_flat_set<SceneObjectId> seen;
+    seen.reserve(targets.size());
     std::erase_if(targets, [&](SceneObjectId id) { return !seen.insert(id).second; });
     return targets;
 }
@@ -180,8 +195,36 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
 UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty property)
 {
     UiPropertyValue result;
-    for (const auto id : propertyTargets(state, property)) {
-        const auto value = objectProperty(state, id, property);
+    const auto targets = propertyTargets(state, property);
+    std::vector<std::optional<float>> values;
+    if (targets.size() > 8) {
+        // Resolve a whole selection in one traversal. Preserve target order for
+        // the displayed value, including overlapping parent/child selections.
+        boost::unordered_flat_map<SceneObjectId, size_t> locations;
+        locations.reserve(targets.size());
+        for (size_t i = 0; i < targets.size(); ++i) { locations.emplace(targets[i], i); }
+        values.resize(targets.size());
+        const auto include = [&](SceneObjectId id, std::optional<float> value) {
+            if (id == invalidSceneObjectId) { return; }
+            if (const auto found = locations.find(id); found != locations.end() && !values[found->second]) {
+                values[found->second] = value;
+            }
+        };
+        for (const auto& file : state.files) {
+            include(file.objectId, property == UiObjectProperty::vertexSize
+                ? std::optional<float>{file.vertexSizeScale} : propertyValue(file.fileSettings, property));
+            for (const auto& part : file.groupSettings) { include(part.objectId, propertyValue(part, property)); }
+        }
+        const auto folders = [&](auto&& self, const std::vector<UiSceneNode>& nodes) -> void {
+            for (const auto& node : nodes) {
+                if (node.kind == UiSceneNodeKind::folder) { include(node.objectId, propertyValue(node.settings, property)); }
+                self(self, node.children);
+            }
+        };
+        folders(folders, state.sceneNodes);
+    }
+    for (size_t i = 0; i < targets.size(); ++i) {
+        const auto value = values.empty() ? objectProperty(state, targets[i], property) : values[i];
         if (!value) { return {}; }
         if (result.available) { result.mixed = result.mixed || result.value != *value; }
         else { result.value = *value; result.available = true; }
@@ -275,8 +318,8 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
     if (group == UiPropertyGroup::appearance) {
         const auto partTargets = propertyTargets(state, UiObjectProperty::red);
         const auto vertexTargets = propertyTargets(state, UiObjectProperty::vertexSize);
-        const std::unordered_set<SceneObjectId> parts(partTargets.begin(), partTargets.end());
-        const std::unordered_set<SceneObjectId> vertices(vertexTargets.begin(), vertexTargets.end());
+        const boost::unordered_flat_set<SceneObjectId> parts(partTargets.begin(), partTargets.end());
+        const boost::unordered_flat_set<SceneObjectId> vertices(vertexTargets.begin(), vertexTargets.end());
         size_t colorIndex = 0;
         for (auto& file : state.files) {
             if (vertices.contains(file.objectId)) { setFileVertexSizeScale(file, 1.0f); }

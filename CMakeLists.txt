@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
 
+option(WOBY_BUILD_HASH_BENCHMARKS "Build opt-in hash table and scene query benchmarks" OFF)
+if(WOBY_BUILD_HASH_BENCHMARKS)
+    list(APPEND VCPKG_MANIFEST_FEATURES hash-benchmarks)
+endif()
+
 project(woby_obj_viewer VERSION 0.20.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -29,7 +34,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
-find_package(Boost CONFIG REQUIRED COMPONENTS multiprecision)
+find_package(Boost CONFIG REQUIRED COMPONENTS multiprecision unordered)
 find_package(CURL REQUIRED)
 find_package(LibArchive REQUIRED)
 include(cmake/WobyUpdateDependencies.cmake)
@@ -194,6 +199,7 @@ target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby PRIVATE
     Boost::multiprecision
+    Boost::unordered
     woby_update
     woby_automation
     SDL3::SDL3
@@ -316,6 +322,13 @@ set(woby_runtime_targets woby woby-update-helper)
 include(CTest)
 
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
+if(WOBY_BUILD_HASH_BENCHMARKS)
+    find_package(unordered_dense CONFIG REQUIRED)
+    add_executable(woby_hash_benchmarks tests/hash_table_benchmarks.cpp)
+    target_include_directories(woby_hash_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(woby_hash_benchmarks PRIVATE Boost::unordered unordered_dense::unordered_dense)
+    woby_enable_project_warnings(woby_hash_benchmarks)
+endif()
 if(WOBY_BUILD_BENCHMARKS)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp
@@ -326,6 +339,34 @@ if(WOBY_BUILD_BENCHMARKS)
     target_link_libraries(woby_benchmarks PRIVATE meshoptimizer::meshoptimizer Threads::Threads Boost::multiprecision)
     woby_enable_project_warnings(woby_benchmarks)
     list(APPEND woby_runtime_targets woby_benchmarks)
+    if(WOBY_BUILD_HASH_BENCHMARKS)
+        # Compile the real detector algorithms against alternate index adapters.
+        # Generated copies keep experimental container code out of production.
+        set(hash_probe_directory "${CMAKE_CURRENT_BINARY_DIR}/hash-probe")
+        file(MAKE_DIRECTORY "${hash_probe_directory}")
+        set(hash_probe_sources)
+        foreach(source IN ITEMS mesh_comparison mesh_duplicates mesh_topology)
+            set(input "${CMAKE_CURRENT_SOURCE_DIR}/src/${source}.cpp")
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${input}")
+            file(READ "${input}" contents)
+            string(REPLACE "\"analysis_index.h\"" "\"benchmark_analysis_index.h\"" contents "${contents}")
+            file(CONFIGURE OUTPUT "${hash_probe_directory}/${source}.cpp" CONTENT "${contents}" @ONLY)
+            list(APPEND hash_probe_sources "${hash_probe_directory}/${source}.cpp")
+        endforeach()
+        foreach(backend IN ITEMS boost ankerl)
+            set(target "woby_benchmarks_${backend}")
+            add_executable(${target} tests/performance_benchmarks.cpp ${hash_probe_sources}
+                src/model_mesh.cpp src/obj_mesh.cpp src/mesh_degenerates.cpp
+                src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
+            target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+            target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+            target_compile_definitions(${target} PRIVATE "WOBY_BENCHMARK_${backend}=1")
+            target_link_libraries(${target} PRIVATE meshoptimizer::meshoptimizer Threads::Threads
+                Boost::multiprecision Boost::unordered unordered_dense::unordered_dense)
+            woby_enable_project_warnings(${target})
+            list(APPEND woby_runtime_targets ${target})
+        endforeach()
+    endif()
 endif()
 
 if(BUILD_TESTING)
@@ -475,11 +516,15 @@ if(BUILD_TESTING)
         tests/ui_view_tests.cpp
     )
 
+    if(WOBY_BUILD_HASH_BENCHMARKS)
+        target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
+    endif()
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(woby_tests PRIVATE
         Boost::multiprecision
+        Boost::unordered
         woby_update
         ${woby_archive_target}
         woby_automation

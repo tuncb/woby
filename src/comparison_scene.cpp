@@ -8,8 +8,8 @@
 
 #include <algorithm>
 #include <stdexcept>
-#include <set>
-#include <unordered_map>
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 #include <utility>
 
 namespace woby
@@ -56,7 +56,8 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
 {
     const auto members = comparisonMemberIds(state, side, id);
     if (members.empty()) { return; }
-    std::set<std::pair<size_t, size_t>> visited;
+    boost::unordered_flat_set<std::pair<size_t, size_t>> visited;
+    visited.reserve(members.size());
     const auto part = [&](size_t fileIndex, size_t groupIndex, const float* parent) {
         if (fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[fileIndex];
@@ -104,7 +105,8 @@ std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonS
 {
     const auto members = comparisonMemberIds(state, side, id, false);
     const auto enabled = comparisonMemberIds(state, side, id);
-    std::set<std::pair<size_t, size_t>> visited;
+    boost::unordered_flat_set<std::pair<size_t, size_t>> visited;
+    visited.reserve(members.size());
     const auto build = [&](auto&& self, const UiSceneNode& source) -> ComparisonTreeNode {
         ComparisonTreeNode result;
         result.objectId = source.objectId;
@@ -218,7 +220,7 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
     result.vertices.reserve(triangleCount * 3);
     result.indices.reserve(triangleCount * 3);
     auto duplicateInput = std::make_shared<DuplicateInput>();
-    std::unordered_map<SceneObjectId, size_t> sourceIndices;
+    boost::unordered_flat_map<SceneObjectId, size_t> sourceIndices;
     sourceIndices.reserve(state.files.size());
     duplicateInput->settings = comparison->settings.duplicates;
     visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {

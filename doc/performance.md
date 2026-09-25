@@ -2,6 +2,8 @@
 
 For the later million-triangle detector benchmark and optimizations, see
 [automatic detector performance](detector-performance.md).
+For standard, custom and library hash-table comparisons and scene-query changes,
+see [hash table performance](hash-table-performance.md).
 
 Measured on 13 September 2026. This pass changes import, GPU preparation, scene
 queries, and CPU analysis. The measurements below come from executable workloads

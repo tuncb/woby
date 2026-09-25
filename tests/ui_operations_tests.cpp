@@ -300,6 +300,101 @@ TEST_CASE("parent appearance aggregates and edits contained parts including nest
     }
 }
 
+TEST_CASE("large property selections preserve first target values and reject missing targets")
+{
+    using P = woby::UiObjectProperty;
+    woby::UiState state;
+    woby::Mesh mesh;
+    for (size_t i = 0; i < 40; ++i) { mesh.nodes.push_back({"part", 0, 0}); }
+    // This test never saves or loads paths.
+    state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    auto& parts = state.files[0].groupSettings;
+    for (size_t i = 0; i < parts.size(); ++i) {
+        parts[i].color[0] = static_cast<float>(i) / 40.0f;
+        parts[i].translation[0] = static_cast<float>(i);
+    }
+    state.selectedSceneObjects = {parts.back().objectId, state.files[0].objectId};
+    for (auto it = parts.rbegin(); it != parts.rend(); ++it) { state.selectedSceneObjects.push_back(it->objectId); }
+    const auto selected = state.selectedSceneObjects;
+    const auto revision = state.sceneEditRevision;
+    auto red = woby::selectedObjectProperty(state, P::red);
+    CHECK(red.available);
+    CHECK(red.mixed);
+    CHECK(red.value == parts.back().color[0]);
+    auto translation = woby::selectedObjectProperty(state, P::translationX);
+    CHECK(translation.available);
+    CHECK(translation.mixed);
+    CHECK(translation.value == parts.back().translation[0]);
+    CHECK(state.sceneEditRevision == revision);
+    CHECK(state.selectedSceneObjects == selected);
+
+    woby::setSelectedObjectProperty(state, P::red, .25f);
+    for (const auto& part : parts) { CHECK(part.color[0] == .25f); }
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::red).mixed);
+    // Querying again must see edits and changed selection immediately.
+    parts.front().color[0] = .75f;
+    state.selectedSceneObjects = {state.files[0].objectId};
+    CHECK(woby::selectedObjectProperty(state, P::red).value == .75f);
+    CHECK(woby::selectedObjectProperty(state, P::red).mixed);
+    state.selectedSceneObjects = selected;
+    state.selectedSceneObjects.push_back(state.nextObjectId + 50);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::red).available);
+    woby::setSelectedObjectProperty(state, P::red, .5f);
+    CHECK(parts.front().color[0] == .75f);
+    CHECK(parts.back().color[0] == .25f);
+}
+
+TEST_CASE("large property queries retain folder and file vertex size semantics")
+{
+    using P = woby::UiObjectProperty;
+    auto state = parentAppearanceScene();
+    // Trigger the large-selection lookup with repeated valid IDs, and the bulk
+    // property traversal with distinct folder targets.
+    for (size_t i = 0; i < 12; ++i) {
+        woby::UiSceneNode folder;
+        folder.name = "empty";
+        folder.settings.opacity = static_cast<float>(i) / 12.0f;
+        state.sceneNodes.push_back(std::move(folder));
+    }
+    woby::assignSceneObjectIds(state);
+    state.selectedSceneObjects.clear();
+    for (auto it = state.sceneNodes.rbegin(); it != state.sceneNodes.rend(); ++it) {
+        if (it->kind == woby::UiSceneNodeKind::folder) { state.selectedSceneObjects.push_back(it->objectId); }
+    }
+    const auto opacity = woby::selectedObjectProperty(state, P::opacity);
+    CHECK(opacity.available);
+    CHECK(opacity.mixed);
+    CHECK(opacity.value == state.sceneNodes.back().settings.opacity);
+    state.files[0].vertexSizeScale = 3;
+    state.files[1].vertexSizeScale = 7;
+    state.selectedSceneObjects.assign(12, state.sceneNodes[0].objectId);
+    const auto size = woby::selectedObjectProperty(state, P::vertexSize);
+    CHECK(size.available);
+    CHECK(size.mixed);
+    CHECK(size.value == 3);
+    state.selectedSceneObjects.assign(12, state.sceneNodes.back().objectId);
+    CHECK_FALSE(woby::selectedObjectProperty(state, P::red).available);
+
+    for (size_t i = 0; i < 9; ++i) {
+        woby::UiFileState file;
+        file.vertexSizeScale = static_cast<float>(i + 4);
+        state.files.push_back(std::move(file));
+    }
+    woby::assignSceneObjectIds(state);
+    state.selectedSceneObjects.clear();
+    for (auto it = state.files.rbegin(); it != state.files.rend(); ++it) {
+        state.selectedSceneObjects.push_back(it->objectId);
+    }
+    const auto fileSize = woby::selectedObjectProperty(state, P::vertexSize);
+    CHECK(fileSize.available);
+    CHECK(fileSize.mixed);
+    CHECK(fileSize.value == state.files.back().vertexSizeScale);
+    woby::setSelectedObjectProperty(state, P::vertexSize, 6);
+    for (const auto& file : state.files) { CHECK(file.vertexSizeScale == 6); }
+    CHECK(state.files[0].groupSettings[0].vertexSizeScale == 1);
+}
+
 TEST_CASE("folder vertex multipliers and appearance resets preserve unrelated properties")
 {
     using P = woby::UiObjectProperty;

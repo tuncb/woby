@@ -1141,11 +1141,15 @@ TEST_CASE("analysis supports implicit scene trees and deduplicates repeated part
 {
     auto state = stateWithFiles(1);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true);
+    const auto signature = woby::comparisonGeometrySignature(state);
     state.sceneNodes[0].children.push_back(state.sceneNodes[0].children[0]);
+    CHECK(woby::comparisonGeometrySignature(state) == signature);
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
     state.sceneNodes[0].children.clear();
+    CHECK(woby::comparisonGeometrySignature(state) == signature);
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
     state.sceneNodes.clear();
+    CHECK(woby::comparisonGeometrySignature(state) == signature);
     CHECK(woby::comparisonObjectParts(state, {state.files[0].objectId}).size() == 1);
     CHECK(woby::comparisonWorldMesh(state, woby::ComparisonSide::a).indices.size() == 6);
 }

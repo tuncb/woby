@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include <unordered_map>
-#include <unordered_set>
+#include <boost/unordered/unordered_flat_map.hpp>
+#include <boost/unordered/unordered_flat_set.hpp>
 
 namespace woby {
 namespace {
@@ -250,8 +250,10 @@ void removeView(UiState& state, ViewId id)
 void pruneMissingViewReferences(UiState& state)
 {
     if (state.views.empty()) { return; }
-    std::unordered_set<SceneObjectId> live;
-    for (const auto& object : sceneObjects(state)) { live.insert(object.id); }
+    const auto objects = sceneObjects(state);
+    boost::unordered_flat_set<SceneObjectId> live;
+    live.reserve(objects.size());
+    for (const auto& object : objects) { live.insert(object.id); }
     for (auto& view : state.views) {
         std::erase_if(view.objects, [&](const auto& object) { return !live.contains(object.objectId); });
         std::erase_if(view.parts, [&](const auto& part) {
@@ -353,15 +355,18 @@ std::vector<SceneViewRecord> sceneViewRecords(const UiState& state)
 {
     if (state.views.empty()) { return {}; }
     const auto references = objectReferences(state);
-    std::unordered_map<SceneObjectId, SceneViewObjectRecord> byId;
-    for (const auto& reference : references) { byId.emplace(reference.id, reference.record); }
+    // The source vector is stable throughout this function. Index references
+    // instead of copying the large settings record into every hash bucket.
+    boost::unordered_flat_map<SceneObjectId, const SceneViewObjectRecord*> byId;
+    byId.reserve(references.size());
+    for (const auto& reference : references) { byId.emplace(reference.id, &reference.record); }
     std::vector<SceneViewRecord> records;
     for (const auto& view : state.views) {
         SceneViewRecord record{view.name, view.scene, {}, {}};
         for (const auto& object : view.objects) {
             const auto found = byId.find(object.objectId);
             if (found == byId.end()) { continue; }
-            auto item = found->second;
+            auto item = *found->second;
             item.settings = object.settings;
             record.objects.push_back(std::move(item));
         }
@@ -369,8 +374,8 @@ std::vector<SceneViewRecord> sceneViewRecords(const UiState& state)
             const auto comparison = byId.find(part.comparisonId);
             const auto group = byId.find(part.partId);
             if (comparison == byId.end() || group == byId.end()) { continue; }
-            record.parts.push_back({comparison->second.index, group->second.index,
-                group->second.groupIndex, part.side, part.enabled});
+            record.parts.push_back({comparison->second->index, group->second->index,
+                group->second->groupIndex, part.side, part.enabled});
         }
         records.push_back(std::move(record));
     }

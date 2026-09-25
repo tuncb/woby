@@ -6,7 +6,7 @@
 #include <cmath>
 #include <string>
 #include <stdexcept>
-#include <unordered_map>
+#include <boost/unordered/unordered_flat_map.hpp>
 #include <utility>
 
 namespace woby {
@@ -680,7 +680,7 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
     if (member) {
         const auto existing = comparisonMemberIds(state, side, comparison->objectId, false);
         const auto objectsByOrder = sceneObjects(state);
-        std::unordered_map<SceneObjectId, const SceneObjectInfo*> objectLookup;
+        boost::unordered_flat_map<SceneObjectId, const SceneObjectInfo*> objectLookup;
         objectLookup.reserve(objectsByOrder.size());
         for (const auto& object : objectsByOrder) { objectLookup.emplace(object.id, &object); }
         for (const auto part : parts) {
