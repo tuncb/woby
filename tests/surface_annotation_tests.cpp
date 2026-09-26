@@ -6,6 +6,7 @@
 #include "automation_registry.h"
 #include "control_scene.h"
 #include "obj_mesh.h"
+#include "camera.h"
 #include <nlohmann/json.hpp>
 
 #include <bx/math.h>
@@ -107,6 +108,84 @@ struct Fixture {
     { return projectAnnotation(projection(), shape, {-.8f, -.4f}, {.8f, .4f}); }
     SceneObjectId add(AnnotationShape shape = AnnotationShape::line) { return createAnnotation(state, target(), geometry(shape)); }
 };
+TEST_CASE("annotations retain projection precision with a distant camera and tiny near plane")
+{
+    Fixture fixture;
+    SceneCamera camera;
+    // Camera values from singular_projector.woby.
+    camera.target = {920.996521f, 2694.68408f, 22564.8379f};
+    camera.yawRadians = -.400796115f;
+    camera.pitchRadians = 1.57079637f;
+    camera.distance = 44366.6055f;
+    camera.nearPlane = .00131279614f;
+    bool homogeneous = false;
+    SUBCASE("zero to one depth") {}
+    SUBCASE("homogeneous depth") { homogeneous = true; }
+    SUBCASE("further zoomed out") { camera.distance *= 2; }
+    SUBCASE("multiple source parts") {
+        auto& mesh = fixture.state.files[0].mesh;
+        mesh.nodes = {{"left", 0, 6}, {"right", 6, 6}};
+        fixture.state.files[0] = createUiFileState(fixture.root / "model.obj", mesh, 0);
+        fixture.state.sceneNodes.clear();
+        appendDefaultSceneNodesForFiles(fixture.state, 0);
+    }
+    auto& mesh = fixture.state.files[0].mesh;
+    for (auto& vertex : mesh.vertices) {
+        const auto p = vertex.position;
+        vertex.position = {camera.target[0] + p[0] * 60000, camera.target[1],
+            camera.target[2] + p[1] * 60000};
+    }
+    mesh.bounds = calculateBounds(mesh.vertices);
+    auto distant = view();
+    distant.homogeneousDepth = homogeneous;
+    bx::mtxLookAt(distant.view.data(), cameraEye(camera, SceneUpAxis::y), cameraLookAt(camera), cameraUp(camera, SceneUpAxis::y));
+    bx::mtxProj(distant.projection.data(), 60, 1, camera.nearPlane, cameraFarPlane(camera, mesh.bounds), homogeneous);
+    const auto parts = scenePickParts(fixture.state);
+    const std::array<float, 2> start{-.2f, -.2f}, end{.2f, .2f};
+    auto projection = annotationGestureProjection(parts, distant, fixture.target(), start);
+    setAnnotationProjectionTargets(projection, parts, distant, fixture.target(), annotationGroupTargets(fixture.state, fixture.target()));
+    expandAnnotationGestureProjection(projection, parts, distant, start, end);
+    CHECK_NOTHROW((void)previewAnnotation(projection, AnnotationShape::rectangle, start, end));
+    const auto geometry = projectAnnotation(projection, AnnotationShape::rectangle, start, end);
+    const auto id = createAnnotation(fixture.state, projection.targetId, geometry, projection.targetIds);
+    REQUIRE(findAnnotation(fixture.state, id));
+    std::filesystem::create_directories(fixture.root);
+    const auto path = fixture.root / "distant.woby";
+    const auto document = createSceneDocument(fixture.state);
+    writeSceneDocument(path, document);
+    const auto read = readSceneDocument(path);
+    REQUIRE(read.annotations == document.annotations);
+    const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, read);
+    REQUIRE(restored.annotations.size() == 1);
+    CHECK_NOTHROW((void)projectAnnotation(annotationEditProjection(scenePickParts(restored), restored.annotations[0]),
+        AnnotationShape::rectangle, {-.1f, -.1f}, {.1f, .1f}));
+}
+TEST_CASE("distant annotation projection distinguishes overlapping surface depths")
+{
+    Fixture fixture;
+    auto front = surface();
+    for (auto& vertex : front.vertices) {
+        vertex.position = {vertex.position[0] * 30000, vertex.position[1] * 30000, 0};
+    }
+    front.bounds = calculateBounds(front.vertices);
+    auto back = front;
+    for (auto& vertex : back.vertices) { vertex.position[2] = 100; }
+    back.bounds = calculateBounds(back.vertices);
+    fixture.state = {};
+    fixture.state.files.push_back(createUiFileState(fixture.root / "back.obj", back, 0));
+    fixture.state.files.push_back(createUiFileState(fixture.root / "front.obj", front, 1));
+    appendDefaultSceneNodesForFiles(fixture.state, 0);
+    auto distant = view();
+    bx::mtxLookAt(distant.view.data(), bx::Vec3(0, 0, -44366.6055f), bx::Vec3(0, 0, 0));
+    bx::mtxProj(distant.projection.data(), 60, 1, .00131279614f, 200000, false);
+    const auto parts = scenePickParts(fixture.state);
+    const auto frontId = fixture.state.files[1].groupSettings[0].objectId;
+    const auto projection = annotationProjection(parts, distant, frontId);
+    CHECK(pickAnnotationSurface(projection, {0, 0}) == frontId);
+    CHECK_NOTHROW((void)projectAnnotation(projection, AnnotationShape::rectangle, {-.2f, -.2f}, {.2f, .2f}));
+    CHECK_THROWS((void)projectAnnotation(annotationProjection(parts, distant, fixture.target()),
+        AnnotationShape::rectangle, {-.2f, -.2f}, {.2f, .2f}));
+}
 TEST_CASE("drawing projection grows from the pointer to the full rectangle")
 {
     Fixture fixture;
@@ -1346,7 +1425,7 @@ TEST_CASE("surface annotation projection handles perspective and near clipping")
         for (const auto& bary : {segment.a, segment.b}) {
             const auto local = annotationPosition(mesh, 0, segment.triangle, bary);
             const auto clip = annotationTransform(geometry.projector, {local[0],local[1],local[2],1});
-            const float x = clip[0] / clip[3], y = clip[1] / clip[3];
+            const double x = clip[0] / clip[3], y = clip[1] / clip[3];
             CHECK((std::abs(std::abs(x)-.25f) < 1e-5f || std::abs(std::abs(y)-.2f) < 1e-5f));
         }
     }

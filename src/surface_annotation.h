@@ -20,7 +20,7 @@ struct AnnotationProjectionNode {
 };
 
 struct AnnotationProjectionVertex {
-    std::array<float, 4> clip{};
+    std::array<double, 4> clip{};
     std::array<float, 3> local{};
 };
 
@@ -70,7 +70,7 @@ void setAnnotationProjectionTargets(AnnotationProjection& projection,
 [[nodiscard]] bool annotationHasTarget(const AnnotationProjection& projection, SceneObjectId target);
 [[nodiscard]] const ScenePickPart* annotationSourcePart(const UiAnnotation& item,
     std::span<const ScenePickPart> parts, uint32_t source);
-[[nodiscard]] const PickMatrix& annotationSourceProjector(const AnnotationGeometry& geometry, uint32_t source);
+[[nodiscard]] const AnnotationProjector& annotationSourceProjector(const AnnotationGeometry& geometry, uint32_t source);
 [[nodiscard]] uint32_t annotationSourceIndex(const AnnotationProjection& projection, SceneObjectId target);
 [[nodiscard]] AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> parts, const UiAnnotation& item);
 [[nodiscard]] std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnotation& item,
@@ -98,6 +98,7 @@ void prepareAnnotationMeshCache(Mesh& mesh);
 [[nodiscard]] std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh,
     size_t offset, const AnnotationGeometry& geometry);
 [[nodiscard]] std::array<float, 4> annotationTransform(const PickMatrix& matrix, const std::array<float, 4>& point);
+[[nodiscard]] std::array<double, 4> annotationTransform(const AnnotationProjector& matrix, const std::array<float, 4>& point);
 [[nodiscard]] PickMatrix annotationCompose(const PickMatrix& first, const PickMatrix& second);
 struct AnnotationSurfaceHit {
     SceneObjectId objectId = 0;

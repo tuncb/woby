@@ -12,6 +12,7 @@
 #include <string_view>
 #include <random>
 #include <system_error>
+#include <type_traits>
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -217,11 +218,15 @@ const char* sceneNodeKindName(SceneNodeKind kind)
     return "folder";
 }
 
-float parseTomlFloat(std::string_view value)
+template<typename T = float>
+T parseTomlFloat(std::string_view value)
 {
     const std::string text = trim(value);
     size_t parsedCount = 0;
-    const float result = std::stof(text, &parsedCount);
+    const T result = [&] {
+        if constexpr (std::is_same_v<T, double>) { return std::stod(text, &parsedCount); }
+        else { return std::stof(text, &parsedCount); }
+    }();
     if (!trim(std::string_view(text).substr(parsedCount)).empty()) {
         throw std::runtime_error("Expected TOML float value.");
     }
@@ -263,20 +268,21 @@ bool parseTomlBool(std::string_view value)
     throw std::runtime_error("Expected TOML boolean value.");
 }
 
-std::vector<float> parseTomlFloatArray(std::string_view value)
+template<typename T = float>
+std::vector<T> parseTomlFloatArray(std::string_view value)
 {
     const std::string text = trim(value);
     if (text.size() < 2u || text.front() != '[' || text.back() != ']') {
         throw std::runtime_error("Expected TOML float array.");
     }
 
-    std::vector<float> values;
+    std::vector<T> values;
     std::string item;
     std::istringstream stream{std::string(text.substr(1u, text.size() - 2u))};
     while (std::getline(stream, item, ',')) {
         const std::string trimmedItem = trim(item);
         if (!trimmedItem.empty()) {
-            values.push_back(parseTomlFloat(trimmedItem));
+            values.push_back(parseTomlFloat<T>(trimmedItem));
         }
     }
 
@@ -306,6 +312,10 @@ std::array<float, 4> parseTomlFloat4(std::string_view value)
 void writeTomlFloat(std::ostream& stream, float value)
 {
     stream << std::setprecision(9) << value;
+}
+void writeTomlFloat(std::ostream& stream, double value)
+{
+    stream << std::setprecision(17) << value;
 }
 
 void writeTomlFloat3(std::ostream& stream, const std::array<float, 3>& value)
@@ -849,7 +859,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     else if (shape == "rectangle") { item.geometry.shape = AnnotationShape::rectangle; }
                     else { throw std::runtime_error("Unknown annotation shape."); }
                 } else if (key == "projector") {
-                    const auto values = parseTomlFloatArray(value);
+                    const auto values = parseTomlFloatArray<double>(value);
                     if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation projector values."); }
                     std::copy(values.begin(), values.end(), item.geometry.projector.begin());
                 } else if (key == "start" || key == "end") {
@@ -865,11 +875,14 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "file_index") { target.fileIndex = parseTomlInteger(value); }
                 else if (key == "group_index") { target.groupIndex = parseTomlInteger(value); }
                 else if (key == "fingerprint") { source.fingerprint = parseTomlString(value); }
-                else if (key == "projector" || key == "to_primary") {
+                else if (key == "projector") {
+                    const auto values = parseTomlFloatArray<double>(value);
+                    if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation source transform values."); }
+                    std::copy(values.begin(), values.end(), source.projector.begin());
+                } else if (key == "to_primary") {
                     const auto values = parseTomlFloatArray(value);
                     if (values.size() != 16) { throw std::runtime_error("Expected 16 annotation source transform values."); }
-                    auto& matrix = key == "projector" ? source.projector : source.toPrimary;
-                    std::copy(values.begin(), values.end(), matrix.begin());
+                    std::copy(values.begin(), values.end(), source.toPrimary.begin());
                 }
             } else if (section == Section::annotationSegment) {
                 auto& segment = document.annotations.back().geometry.segments.back();

@@ -306,7 +306,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
             const auto local = annotationPosition(*target->mesh, target->indexOffset, hit->triangle, hit->bary);
             const auto clip = annotationTransform(annotationSourceProjector(selected->geometry, source), {local[0], local[1], local[2], 1});
             if (clip[3] <= 0) { return false; }
-            interaction.grabControl = {clip[0] / clip[3], clip[1] / clip[3]};
+            interaction.grabControl = {static_cast<float>(clip[0] / clip[3]), static_cast<float>(clip[1] / clip[3])};
         } else {
             const auto allowed = comparisonObjectParts(state, state.selectedSceneObjects);
             const SceneObjectId initial = allowed.size() == 1 ? allowed.front() : 0;
@@ -353,7 +353,7 @@ void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interact
             const auto clip = annotationTransform(annotationSourceProjector(interaction.projection.definition,
                 annotationSourceIndex(interaction.projection, hit->objectId)), {p[0], p[1], p[2], 1});
             if (clip[3] <= 0) { throw std::runtime_error("Keep the handle in its original drawing view."); }
-            control = {clip[0] / clip[3], clip[1] / clip[3]};
+            control = {static_cast<float>(clip[0] / clip[3]), static_cast<float>(clip[1] / clip[3])};
             if (interaction.handle < 0) {
                 for (size_t axis = 0; axis < 2; ++axis) {
                     const float delta = control[axis] - interaction.grabControl[axis];

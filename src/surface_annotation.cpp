@@ -13,6 +13,40 @@ namespace {
 using P2 = std::array<double, 2>;
 using P3 = std::array<double, 3>;
 using P4 = std::array<double, 4>;
+template<typename First, typename Second>
+AnnotationProjector composeProjector(const First& first, const Second& second)
+{
+    AnnotationProjector result{};
+    for (size_t column = 0; column < 4; ++column) {
+        for (size_t row = 0; row < 4; ++row) {
+            for (size_t k = 0; k < 4; ++k) {
+                result[column * 4 + row] += static_cast<double>(second[k * 4 + row]) * first[column * 4 + k];
+            }
+        }
+    }
+    return result;
+}
+bool invertibleProjector(const AnnotationProjector& matrix)
+{
+    // Test rank in double precision. A float inverse would discard the same
+    // small depth offset that the double projector is intended to preserve.
+    // The column-major storage is the transpose here, which has the same rank.
+    auto rows = matrix;
+    for (size_t column = 0; column < 4; ++column) {
+        size_t pivot = column;
+        for (size_t row = column + 1; row < 4; ++row) {
+            if (std::abs(rows[row * 4 + column]) > std::abs(rows[pivot * 4 + column])) { pivot = row; }
+        }
+        const double divisor = rows[pivot * 4 + column];
+        if (divisor == 0 || !std::isfinite(divisor)) { return false; }
+        for (size_t k = column; k < 4; ++k) { std::swap(rows[column * 4 + k], rows[pivot * 4 + k]); }
+        for (size_t row = column + 1; row < 4; ++row) {
+            const double factor = rows[row * 4 + column] / divisor;
+            for (size_t k = column + 1; k < 4; ++k) { rows[row * 4 + k] -= factor * rows[column * 4 + k]; }
+        }
+    }
+    return true;
+}
 double cross2(P2 a, P2 b) { return a[0] * b[1] - a[1] * b[0]; }
 P2 sub(P2 a, P2 b) { return {a[0] - b[0], a[1] - b[1]}; }
 P2 screen(const P4& p) { return {p[0] / p[3], p[1] / p[3]}; }
@@ -51,7 +85,7 @@ struct ClipVertex { P4 clip; P3 bary; };
 // the same transform. No borrowed mesh pointer survives projection creation.
 struct ProjectionVertexCache {
     const Mesh* mesh = nullptr;
-    PickMatrix transform{};
+    AnnotationProjector transform{};
     bool homogeneous = false;
     std::vector<size_t> vertices;
     std::vector<uint8_t> masks;
@@ -88,7 +122,7 @@ double plane(const P4& p, size_t axis, bool homogeneous)
     }
 }
 void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
-    const PickMatrix& transform, bool homogeneous, ProjectionVertexCache& cache,
+    const AnnotationProjector& transform, bool homogeneous, ProjectionVertexCache& cache,
     size_t rangeBegin = 0, size_t rangeEnd = std::numeric_limits<size_t>::max())
 {
     if (!part.mesh || part.opacity <= 0) { return; }
@@ -122,7 +156,7 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
                 const auto& p = mesh.vertices[index].position;
                 const auto q = annotationTransform(transform, {p[0], p[1], p[2], 1});
                 mask = 0x80;
-                if (finitePosition(p) && std::all_of(q.begin(), q.end(), [](float v) { return std::isfinite(v); })) {
+                if (finitePosition(p) && std::all_of(q.begin(), q.end(), [](double v) { return std::isfinite(v); })) {
                     cache.vertices[index] = result.vertices.size();
                     result.vertices.push_back({q, p});
                     mask = 0;
@@ -246,7 +280,7 @@ void appendProjectionBlocks(std::vector<AnnotationProjectionBlock>& blocks, cons
     }
 }
 void finishProjection(AnnotationProjection& projection);
-bool blockIntersectsRegion(const AnnotationProjectionBlock& block, const PickMatrix& transform,
+bool blockIntersectsRegion(const AnnotationProjectionBlock& block, const AnnotationProjector& transform,
     const std::array<float, 4>& region)
 {
     bool outsideLeft = true, outsideRight = true, outsideBottom = true, outsideTop = true;
@@ -269,12 +303,12 @@ void appendGestureRegion(AnnotationProjection& projection, std::span<const Scene
 {
     projection.vertices.clear(); projection.triangles.clear(); projection.clippedTriangles.clear();
     projection.order.clear(); projection.nodes.clear();
-    const auto vp = annotationCompose(view.view, view.projection);
+    const auto vp = composeProjector(view.view, view.projection);
     ProjectionVertexCache cache;
     for (const auto& part : parts) {
         if (!part.mesh || (!part.solid && !annotationHasTarget(projection, part.objectId))
             || (projection.targetId && part.opacity < .999f && !annotationHasTarget(projection, part.objectId))) { continue; }
-        const auto transform = annotationCompose(part.model, vp);
+        const auto transform = composeProjector(part.model, vp);
         for (const auto& block : projection.blocks) {
             if (block.objectId != part.objectId || !blockIntersectsRegion(block, transform, *projection.region)) { continue; }
             appendProjection(projection, part, transform, view.homogeneousDepth, cache, block.begin, block.end);
@@ -513,6 +547,14 @@ std::array<float, 4> annotationTransform(const PickMatrix& m, const std::array<f
     }
     return result;
 }
+std::array<double, 4> annotationTransform(const AnnotationProjector& m, const std::array<float, 4>& p)
+{
+    std::array<double, 4> result{};
+    for (size_t row = 0; row < 4; ++row) {
+        for (size_t k = 0; k < 4; ++k) { result[row] += m[k * 4 + row] * p[k]; }
+    }
+    return result;
+}
 std::array<float, 2> annotationNdc(const ScenePickView& view, PickPoint p)
 {
     return {2 * p[0] / static_cast<float>(view.width) - 1, 1 - 2 * p[1] / static_cast<float>(view.height)};
@@ -605,7 +647,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
         if (result.targetIds.size() == 1) { result.targetIds.clear(); }
     }
     result.definition.homogeneousDepth = view.homogeneousDepth;
-    const auto vp = annotationCompose(view.view, view.projection);
+    const auto vp = composeProjector(view.view, view.projection);
     ProjectionVertexCache cache;
     if (!result.targetIds.empty()) {
         result.definition.sources.resize(result.targetIds.size());
@@ -615,7 +657,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
         bx::mtxInverse(inverse.data(), primary->model.data());
         for (size_t i = 0; i < result.targetIds.size(); ++i) {
             const auto source = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == result.targetIds[i]; });
-            result.definition.sources[i] = {annotationCompose(source->model, vp),
+            result.definition.sources[i] = {composeProjector(source->model, vp),
                 annotationFingerprint(*source->mesh, source->indexOffset, source->indexCount)};
             if (i != 0) { result.definition.sources[i].toPrimary = annotationCompose(source->model, inverse); }
         }
@@ -625,7 +667,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
         // Once a target is chosen, only opaque neighbors occlude its outline.
         if (!part.mesh || (!part.solid && !annotationHasTarget(result, part.objectId))
             || (target != 0 && part.opacity < .999f && !annotationHasTarget(result, part.objectId))) { continue; }
-        const auto transform = annotationCompose(part.model, vp);
+        const auto transform = composeProjector(part.model, vp);
         if (part.objectId == target) {
             result.definition.projector = transform;
             result.definition.fingerprint = annotationFingerprint(*part.mesh, part.indexOffset, part.indexCount);
@@ -642,11 +684,11 @@ AnnotationProjection annotationGestureProjection(std::span<const ScenePickPart> 
     result.targetId = target;
     result.definition.homogeneousDepth = view.homogeneousDepth;
     result.region = {point[0] - .02f, point[1] - .02f, point[0] + .02f, point[1] + .02f};
-    const auto vp = annotationCompose(view.view, view.projection);
+    const auto vp = composeProjector(view.view, view.projection);
     for (const auto& part : parts) {
         if (!part.mesh) { continue; }
         if (part.objectId == target) {
-            result.definition.projector = annotationCompose(part.model, vp);
+            result.definition.projector = composeProjector(part.model, vp);
             result.definition.fingerprint = gestureFingerprint(*part.mesh, part.indexOffset, part.indexCount);
         }
         appendProjectionBlocks(result.blocks, part);
@@ -688,8 +730,8 @@ void setAnnotationProjectionTargets(AnnotationProjection& projection,
         }
         if (projection.targetIds.size() == 1) { projection.targetIds.clear(); }
     }
-    const auto vp = annotationCompose(view.view, view.projection);
-    projection.definition.projector = annotationCompose(primary->model, vp);
+    const auto vp = composeProjector(view.view, view.projection);
+    projection.definition.projector = composeProjector(primary->model, vp);
     projection.definition.fingerprint = gestureFingerprint(*primary->mesh, primary->indexOffset, primary->indexCount);
     projection.definition.sources.clear();
     if (!projection.targetIds.empty()) {
@@ -699,7 +741,7 @@ void setAnnotationProjectionTargets(AnnotationProjection& projection,
         for (size_t i = 0; i < projection.targetIds.size(); ++i) {
             const auto source = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == projection.targetIds[i]; });
             auto& entry = projection.definition.sources[i];
-            entry.projector = annotationCompose(source->model, vp);
+            entry.projector = composeProjector(source->model, vp);
             entry.fingerprint = i == 0 ? projection.definition.fingerprint
                 : gestureFingerprint(*source->mesh, source->indexOffset, source->indexCount);
             if (i != 0) { entry.toPrimary = annotationCompose(source->model, inverse); }
@@ -742,7 +784,7 @@ const ScenePickPart* annotationSourcePart(const UiAnnotation& item, std::span<co
     const auto found = std::find_if(parts.begin(), parts.end(), [id](const auto& p) { return p.objectId == id; });
     return found == parts.end() ? nullptr : &*found;
 }
-const PickMatrix& annotationSourceProjector(const AnnotationGeometry& geometry, uint32_t source)
+const AnnotationProjector& annotationSourceProjector(const AnnotationGeometry& geometry, uint32_t source)
 {
     return geometry.sources.empty() ? geometry.projector : geometry.sources.at(source).projector;
 }
@@ -772,7 +814,7 @@ void setAnnotationProjectionTarget(AnnotationProjection& projection,
         throw std::runtime_error("The annotation target is unavailable.");
     }
     projection.targetId = target;
-    projection.definition.projector = annotationCompose(part->model, annotationCompose(view.view, view.projection));
+    projection.definition.projector = composeProjector(part->model, composeProjector(view.view, view.projection));
     projection.definition.fingerprint = projection.region
         ? gestureFingerprint(*part->mesh, part->indexOffset, part->indexCount)
         : annotationFingerprint(*part->mesh, part->indexOffset, part->indexCount);
@@ -907,18 +949,17 @@ void validateAnnotationGeometry(const AnnotationGeometry& geometry)
     if (geometry.fingerprint.empty() || geometry.segments.empty() || geometry.segments.size() > 1000000) { throw std::runtime_error("Invalid annotation surface data."); }
     for (auto v : geometry.projector) { if (!std::isfinite(v)) { throw std::runtime_error("Invalid annotation projector."); } }
     PickMatrix inverse;
-    bx::mtxInverse(inverse.data(), geometry.projector.data());
-    for (auto v : inverse) { if (!std::isfinite(v)) { throw std::runtime_error("Singular annotation projector."); } }
+    if (!invertibleProjector(geometry.projector)) { throw std::runtime_error("Singular annotation projector."); }
     if (!geometry.sources.empty()) {
         if (geometry.sources.size() > 100000 || geometry.sources.front().projector != geometry.projector
             || geometry.sources.front().fingerprint != geometry.fingerprint) { throw std::runtime_error("Invalid annotation sources."); }
         for (const auto& source : geometry.sources) {
             if (source.fingerprint.empty()) { throw std::runtime_error("Invalid annotation source fingerprint."); }
-            for (const auto& matrix : {source.projector, source.toPrimary}) {
-                for (const auto v : matrix) { if (!std::isfinite(v)) { throw std::runtime_error("Invalid annotation source transform."); } }
-                bx::mtxInverse(inverse.data(), matrix.data());
-                for (const auto v : inverse) { if (!std::isfinite(v)) { throw std::runtime_error("Singular annotation source transform."); } }
-            }
+            for (const auto v : source.projector) { if (!std::isfinite(v)) { throw std::runtime_error("Invalid annotation source transform."); } }
+            if (!invertibleProjector(source.projector)) { throw std::runtime_error("Singular annotation source transform."); }
+            for (const auto v : source.toPrimary) { if (!std::isfinite(v)) { throw std::runtime_error("Invalid annotation source transform."); } }
+            bx::mtxInverse(inverse.data(), source.toPrimary.data());
+            for (const auto v : inverse) { if (!std::isfinite(v)) { throw std::runtime_error("Singular annotation source transform."); } }
         }
     }
     for (auto point : {geometry.start, geometry.end}) {
@@ -950,7 +991,7 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
     }
     std::vector<std::array<float, 3>> result;
     for (const auto& control : controls) {
-        float best = std::numeric_limits<float>::max();
+        double best = std::numeric_limits<double>::max();
         std::optional<std::array<float, 3>> nearest;
         for (const auto& segment : geometry.segments) {
             size_t endpoint = 0;
@@ -959,7 +1000,7 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
                 const auto local = annotationPosition(mesh, offset, triangle, bary);
                 const auto clip = annotationTransform(geometry.projector, {local[0], local[1], local[2], 1});
                 if (clip[3] <= 0) { continue; }
-                const float x = clip[0] / clip[3] - control[0], y = clip[1] / clip[3] - control[1];
+                const double x = clip[0] / clip[3] - control[0], y = clip[1] / clip[3] - control[1];
                 if (x * x + y * y < best) { best = x * x + y * y; nearest = local; }
             }
         }

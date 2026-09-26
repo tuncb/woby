@@ -10,6 +10,9 @@ namespace woby {
 
 enum class AnnotationShape { line, rectangle };
 
+// Preserve the near-plane offset when composing distant camera transforms.
+using AnnotationProjector = std::array<double, 16>;
+
 // Surface segments use one triangle. Bridges anchor their end on a second
 // source-part triangle, spanning the empty space between two surface rims.
 struct AnnotationSegment {
@@ -30,7 +33,7 @@ struct AnnotationSettings {
 };
 
 struct AnnotationSource {
-    std::array<float, 16> projector{};
+    AnnotationProjector projector{};
     std::string fingerprint;
     // Frozen source-local to primary-local transform, independent of camera depth
     // precision. Used when validating joins again during editing.
@@ -41,7 +44,7 @@ struct AnnotationSource {
 struct AnnotationGeometry {
     AnnotationShape shape = AnnotationShape::line;
     // Frozen source-local to clip transform and normalized drawing coordinates.
-    std::array<float, 16> projector{};
+    AnnotationProjector projector{};
     std::array<float, 2> start{}, end{};
     bool homogeneousDepth = false;
     std::string fingerprint;
