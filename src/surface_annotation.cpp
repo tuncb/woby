@@ -458,7 +458,33 @@ std::vector<VisibleInterval> visibleIntervals(std::span<const Interval> interval
     }
     return result;
 }
-void projectEdge(AnnotationGeometry& result, const AnnotationProjection& projection, P2 start, P2 end)
+struct OutlineJoins {
+    std::optional<std::array<float, 3>> firstPoint, previousPoint;
+};
+bool touchingAnnotationPoints(const std::array<float, 3>& a, const std::array<float, 3>& b)
+{
+    // Split seams and T-junctions need not share vertices. Compare in one space.
+    float scale = 1e-10f;
+    for (size_t axis = 0; axis < 3; ++axis) { scale = std::max({scale, std::abs(a[axis]), std::abs(b[axis])}); }
+    for (size_t axis = 0; axis < 3; ++axis) {
+        if (std::abs(a[axis] - b[axis]) > scale * 4e-6f + 1e-8f) { return false; }
+    }
+    return true;
+}
+void appendAnnotationBridge(AnnotationGeometry& result, const AnnotationSegment& next)
+{
+    const auto& rim = result.segments.back();
+    result.segments.push_back({rim.endTriangle.value_or(rim.triangle), rim.b, next.a, next.triangle,
+        rim.endSource.value_or(rim.source), next.source});
+}
+bool nearerAnnotationControl(double distance, double depth, double bestDistance, double bestDepth)
+{
+    // At a depth transition both anchors project onto the same control. Prefer
+    // the frontmost one despite barycentric rounding, independent of edge order.
+    if (distance <= 1e-12 && bestDistance <= 1e-12) { return depth < bestDepth; }
+    return distance < bestDistance;
+}
+void projectEdge(AnnotationGeometry& result, OutlineJoins& joins, const AnnotationProjection& projection, P2 start, P2 end)
 {
     for (const auto& point : {start, end}) {
         if (!annotationHasTarget(projection, pickAnnotationSurface(projection, {static_cast<float>(point[0]), static_cast<float>(point[1])}))) {
@@ -480,7 +506,6 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
         if (high - low <= 1e-10) { continue; }
         intervals.push_back({i, low, high, depth(triangle, start), depth(triangle, end)});
     }
-    std::array<float, 3> previousPoint{};
     bool previous = false;
     bool gap = false;
     for (const auto& visible : visibleIntervals(intervals)) {
@@ -504,28 +529,17 @@ void projectEdge(AnnotationGeometry& result, const AnnotationProjection& project
             return p;
         };
         const auto currentPoint = localPoint(segment.a);
-        if (gap && previous) {
-            const auto& rim = result.segments.back();
-            result.segments.push_back({rim.triangle, rim.b, segment.a, segment.triangle, rim.source, segment.source});
-        } else if (previous) {
-            // Touching surfaces need not share vertices (split seams and
-            // T-junctions are common). Compare the actual join in one space.
-            bool continuous = true;
-            float scale = 1e-10f;
-            for (size_t axis = 0; axis < 3; ++axis) {
-                scale = std::max({scale, std::abs(currentPoint[axis]), std::abs(previousPoint[axis])});
-            }
-            for (size_t axis = 0; axis < 3; ++axis) {
-                continuous &= std::abs(previousPoint[axis] - currentPoint[axis]) <= scale * 4e-6f + 1e-8f;
-            }
-            if (!continuous) { throw std::runtime_error("The outline jumps between separate surface layers."); }
+        if (joins.previousPoint && (gap || !touchingAnnotationPoints(*joins.previousPoint, currentPoint))) {
+            // Depth transitions, empty gaps, and corners all keep both surface attachments.
+            appendAnnotationBridge(result, segment);
         }
+        if (!joins.firstPoint) { joins.firstPoint = currentPoint; }
         // Merge surface fragments only within one face, never across a bridge.
         if (previous && !gap && !result.segments.empty() && !result.segments.back().endTriangle
             && result.segments.back().source == segment.source && result.segments.back().triangle == segment.triangle) {
             result.segments.back().b = segment.b;
         } else { result.segments.push_back(segment); }
-        previousPoint = localPoint(segment.b); previous = true;
+        joins.previousPoint = localPoint(segment.b); previous = true;
         gap = false;
     }
 }
@@ -893,7 +907,12 @@ AnnotationGeometry projectAnnotation(const AnnotationProjection& projection, Ann
 {
     auto result = annotationDefinition(projection, shape, start, end);
     const auto points = outlinePoints(shape, start, end);
-    for (size_t k = 1; k < points.size(); ++k) { projectEdge(result, projection, points[k - 1], points[k]); }
+    OutlineJoins joins;
+    for (size_t k = 1; k < points.size(); ++k) { projectEdge(result, joins, projection, points[k - 1], points[k]); }
+    if (shape == AnnotationShape::rectangle && joins.firstPoint && joins.previousPoint
+        && !touchingAnnotationPoints(*joins.previousPoint, *joins.firstPoint)) {
+        appendAnnotationBridge(result, result.segments.front());
+    }
     validateAnnotationGeometry(result);
     return result;
 }
@@ -992,6 +1011,7 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
     std::vector<std::array<float, 3>> result;
     for (const auto& control : controls) {
         double best = std::numeric_limits<double>::max();
+        double bestDepth = std::numeric_limits<double>::infinity();
         std::optional<std::array<float, 3>> nearest;
         for (const auto& segment : geometry.segments) {
             size_t endpoint = 0;
@@ -1001,7 +1021,10 @@ std::vector<std::array<float, 3>> annotationControlPositions(const Mesh& mesh, s
                 const auto clip = annotationTransform(geometry.projector, {local[0], local[1], local[2], 1});
                 if (clip[3] <= 0) { continue; }
                 const double x = clip[0] / clip[3] - control[0], y = clip[1] / clip[3] - control[1];
-                if (x * x + y * y < best) { best = x * x + y * y; nearest = local; }
+                const double z = clip[2] / clip[3];
+                if (nearerAnnotationControl(x*x + y*y, z, best, bestDepth)) {
+                    best = x*x + y*y; bestDepth = z; nearest = local;
+                }
             }
         }
         if (!nearest) { return {}; }
@@ -1024,6 +1047,7 @@ std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnota
     const size_t count = geometry.shape == AnnotationShape::line ? 2 : 4;
     for (size_t c = 0; c < count; ++c) {
         double best = std::numeric_limits<double>::infinity();
+        double bestDepth = std::numeric_limits<double>::infinity();
         std::optional<std::array<float, 3>> nearest;
         for (const auto& segment : geometry.segments) {
             for (size_t k = 0; k < 2; ++k) {
@@ -1034,8 +1058,10 @@ std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnota
                 const auto clip = annotationTransform(annotationSourceProjector(geometry, source), {local[0], local[1], local[2], 1});
                 if (clip[3] <= 0) { continue; }
                 const double x = clip[0] / clip[3] - controls[c][0], y = clip[1] / clip[3] - controls[c][1];
-                if (x*x + y*y < best) {
+                const double z = clip[2] / clip[3];
+                if (nearerAnnotationControl(x*x + y*y, z, best, bestDepth)) {
                     best = x*x + y*y;
+                    bestDepth = z;
                     const auto world = annotationTransform(part->model, {local[0], local[1], local[2], 1});
                     nearest = {world[0] / world[3], world[1] / world[3], world[2] / world[3]};
                 }

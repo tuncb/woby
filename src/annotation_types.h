@@ -14,7 +14,7 @@ enum class AnnotationShape { line, rectangle };
 using AnnotationProjector = std::array<double, 16>;
 
 // Surface segments use one triangle. Bridges anchor their end on a second
-// source-part triangle, spanning the empty space between two surface rims.
+// source-part triangle, spanning gaps or depth transitions between surfaces.
 struct AnnotationSegment {
     uint32_t triangle = 0;
     std::array<float, 3> a{}, b{};

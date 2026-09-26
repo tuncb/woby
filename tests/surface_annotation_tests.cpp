@@ -266,11 +266,12 @@ void siblingSurface(Fixture& fixture, float gap = 0, float depthJump = 0)
     fixture.state.files[0].groupSettings[1].translation = {-2,0,-.3f};
     clearSceneDirty(fixture.state);
 }
-SceneObjectId drawSiblingAnnotation(Fixture& fixture, AnnotationShape shape = AnnotationShape::line)
+SceneObjectId drawSiblingAnnotation(Fixture& fixture, AnnotationShape shape = AnnotationShape::line, bool sampledPreview = false)
 {
     AnnotationInteraction interaction; interaction.tool = shape;
     REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20,140}));
     REQUIRE(interaction.dragging);
+    interaction.sampledPreview = sampledPreview;
     moveAnnotationPointer(fixture.state, interaction, {180,60});
     REQUIRE(interaction.error.empty());
     endAnnotationPointer(fixture.state, interaction, true);
@@ -1009,19 +1010,114 @@ TEST_CASE("surface rectangle keeps four projected sides on curved geometry")
         CHECK((std::abs(std::abs(x) - .8f) < 1e-5f || std::abs(std::abs(y) - .4f) < 1e-5f));
     }
 }
-TEST_CASE("surface annotation rejects unsupported controls and depth jumps")
+TEST_CASE("surface annotation rejects endpoints outside the model")
 {
     Fixture fixture;
-    SUBCASE("endpoint outside model") { fixture.state.files[0].mesh.indices.erase(fixture.state.files[0].mesh.indices.begin() + 6, fixture.state.files[0].mesh.indices.end()); }
-    SUBCASE("disconnected rear layer") {
-        auto& mesh = fixture.state.files[0].mesh;
-        mesh.vertices.push_back(mesh.vertices[2]); mesh.vertices.push_back(mesh.vertices[3]);
-        mesh.vertices[6].position[2] = .8f; mesh.vertices[7].position[2] = .8f;
-        mesh.vertices[4].position[2] = .8f; mesh.vertices[5].position[2] = .8f;
-        mesh.indices = {0, 2, 3, 0, 3, 1, 6, 4, 5, 6, 5, 7};
-    }
+    fixture.state.files[0].mesh.indices.erase(fixture.state.files[0].mesh.indices.begin() + 6, fixture.state.files[0].mesh.indices.end());
     CHECK_THROWS(fixture.geometry());
     CHECK_THROWS(fixture.geometry(AnnotationShape::rectangle));
+}
+TEST_CASE("surface annotations bridge foreground edges onto rear layers")
+{
+    Fixture fixture;
+    auto& mesh = fixture.state.files[0].mesh;
+    for (auto& vertex : mesh.vertices) { vertex.position[2] = .8f; }
+    for (size_t i = 0; i < 4; ++i) {
+        auto vertex = mesh.vertices[i]; vertex.position[2] = .2f;
+        mesh.vertices.push_back(vertex);
+    }
+    mesh.indices.insert(mesh.indices.end(), {6,8,9,6,9,7});
+    auto drawingView = view();
+    SUBCASE("overlapping layers") {}
+    SUBCASE("adjacent layers without overlap") { mesh.indices.erase(mesh.indices.begin(), mesh.indices.begin() + 6); }
+    SUBCASE("perspective layers") {
+        bx::mtxLookAt(drawingView.view.data(), bx::Vec3(0,0,-3), bx::Vec3(0,0,0));
+        bx::mtxProj(drawingView.projection.data(), 45, 1, .1f, 10, false);
+    }
+    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    mesh.bounds = calculateBounds(mesh.vertices);
+    for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
+        for (const bool reversed : {false, true}) {
+            const std::array<float, 2> a{-.3f,-.2f}, b{.3f,.2f};
+            const auto projection = annotationProjection(scenePickParts(fixture.state), drawingView, fixture.target());
+            const auto geometry = projectAnnotation(projection, shape, reversed ? b : a, reversed ? a : b);
+            CHECK(geometry == projectAnnotation(projection, shape, reversed ? b : a, reversed ? a : b));
+            const auto id = createAnnotation(fixture.state, fixture.target(), geometry);
+            const auto lines = annotationWorldLines(*findAnnotation(fixture.state, id), scenePickParts(fixture.state));
+            REQUIRE(lines.size() == geometry.segments.size());
+            size_t bridges = 0;
+            for (size_t i = 0; i < lines.size(); ++i) {
+                if (i) { nearPoint(lines[i-1].b, lines[i].a); }
+                if (geometry.segments[i].endTriangle) {
+                    ++bridges;
+                    CHECK(lines[i].a[0] == doctest::Approx(0));
+                    CHECK(lines[i].b[0] == doctest::Approx(0));
+                    const auto ca = annotationTransform(geometry.projector, {lines[i].a[0],lines[i].a[1],lines[i].a[2],1});
+                    const auto cb = annotationTransform(geometry.projector, {lines[i].b[0],lines[i].b[1],lines[i].b[2],1});
+                    CHECK(ca[0] / ca[3] == doctest::Approx(cb[0] / cb[3]));
+                    CHECK(ca[1] / ca[3] == doctest::Approx(cb[1] / cb[3]));
+                    CHECK(std::abs(lines[i].a[2] - lines[i].b[2]) == doctest::Approx(.6));
+                }
+            }
+            CHECK(bridges == (shape == AnnotationShape::line ? 1u : 2u));
+            if (shape == AnnotationShape::rectangle) { nearPoint(lines.back().b, lines.front().a); }
+            const auto edited = projectAnnotation(annotationEditProjection(scenePickParts(fixture.state),
+                *findAnnotation(fixture.state, id)), shape, {-.25f,-.15f}, {.25f,.15f});
+            CHECK(std::count_if(edited.segments.begin(), edited.segments.end(), [](const auto& s) {
+                return s.endTriangle.has_value();
+            }) == (shape == AnnotationShape::line ? 1 : 2));
+            deleteAnnotation(fixture.state, id);
+        }
+    }
+}
+TEST_CASE("rectangle depth transitions at corners close and use foreground handles")
+{
+    Fixture fixture; siblingSurface(fixture, 0, .2f);
+    SUBCASE("separate source parts") {}
+    SUBCASE("single mesh") {
+        auto mesh = fixture.state.files[0].mesh;
+        for (size_t i = 4; i < mesh.vertices.size(); ++i) {
+            mesh.vertices[i].position[0] -= 2; mesh.vertices[i].position[2] -= .3f;
+        }
+        mesh.nodes = {{"surface",0,12}};
+        mesh.bounds = calculateBounds(mesh.vertices);
+        fixture.state = {};
+        fixture.state.files.push_back(createUiFileState(fixture.root / "corners.obj", mesh, 0));
+        appendDefaultSceneNodesForFiles(fixture.state, 0);
+    }
+    const auto parts = scenePickParts(fixture.state);
+    const auto projection = annotationProjection(parts, view(), fixture.target(), annotationGroupTargets(fixture.state, fixture.target()));
+    for (const auto a : {std::array<float, 2>{0,-.4f}, {0,.4f}, {.8f,-.4f}, {.8f,.4f}}) {
+        const std::array<float, 2> b{.8f - a[0], -a[1]};
+        const auto geometry = projectAnnotation(projection, AnnotationShape::rectangle, a, b);
+        const auto id = createAnnotation(fixture.state, fixture.target(), geometry, projection.targetIds);
+        const auto& item = *findAnnotation(fixture.state, id);
+        const auto lines = annotationWorldLines(item, parts);
+        REQUIRE_FALSE(lines.empty());
+        size_t bridges = 0;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            nearPoint(lines[i].b, lines[(i + 1) % lines.size()].a);
+            if (geometry.segments[i].endTriangle) {
+                ++bridges;
+                CHECK(lines[i].a[0] == doctest::Approx(0));
+                CHECK(lines[i].b[0] == doctest::Approx(0));
+                CHECK(std::abs(lines[i].a[2] - lines[i].b[2]) == doctest::Approx(.2));
+            }
+        }
+        CHECK(bridges == 2);
+        const std::array<std::array<float, 2>, 4> controls{a, {b[0],a[1]}, b, {a[0],b[1]}};
+        const auto positions = annotationControlWorldPositions(item, parts);
+        REQUIRE(positions.size() == controls.size());
+        for (size_t i = 0; i < controls.size(); ++i) {
+            nearPoint(positions[i], {controls[i][0], controls[i][1], controls[i][0] == 0 ? .5f : .7f});
+        }
+        if (fixture.state.files[0].mesh.nodes.size() == 1) {
+            const auto local = annotationControlPositions(fixture.state.files[0].mesh, 0, geometry);
+            REQUIRE(local.size() == positions.size());
+            for (size_t i = 0; i < local.size(); ++i) { nearPoint(local[i], positions[i]); }
+        }
+        deleteAnnotation(fixture.state, id);
+    }
 }
 TEST_CASE("duplicate vertices at exact mesh seams do not break surface annotations")
 {
@@ -1029,7 +1125,8 @@ TEST_CASE("duplicate vertices at exact mesh seams do not break surface annotatio
     auto& mesh = fixture.state.files[0].mesh;
     mesh.vertices.push_back(mesh.vertices[2]); mesh.vertices.push_back(mesh.vertices[3]);
     mesh.indices = {0, 2, 3, 0, 3, 1, 6, 4, 5, 6, 5, 7};
-    CHECK_NOTHROW(fixture.geometry());
+    const auto geometry = fixture.geometry();
+    CHECK(std::none_of(geometry.segments.begin(), geometry.segments.end(), [](const auto& s) { return s.endTriangle.has_value(); }));
 }
 TEST_CASE("surface annotations bridge holes with surface anchored endpoints")
 {
@@ -1954,9 +2051,12 @@ TEST_CASE("annotations cross touching transformed siblings without matching seam
         nearPoint(controls[shape == AnnotationShape::line ? 1 : 2], {.8f,.4f,.5f});
     }
 }
-TEST_CASE("sibling gap bridges retain separate endpoint attachments after transforms")
+TEST_CASE("sibling bridges retain separate endpoint attachments after transforms")
 {
-    Fixture fixture; siblingSurface(fixture, .2f);
+    Fixture fixture;
+    float depthJump = 0;
+    SUBCASE("empty gap") { siblingSurface(fixture, .2f); }
+    SUBCASE("depth transition") { depthJump = .2f; siblingSurface(fixture, 0, depthJump); }
     const auto id = drawSiblingAnnotation(fixture);
     const auto item = *findAnnotation(fixture.state, id);
     const auto before = annotationWorldLines(item, scenePickParts(fixture.state));
@@ -1975,28 +2075,31 @@ TEST_CASE("sibling gap bridges retain separate endpoint attachments after transf
     CHECK(annotationWorldLines(item, scenePickParts(fixture.state)).empty());
     const auto hiddenControls = annotationVertices(fixture.state, item);
     REQUIRE(hiddenControls.size() == 2);
-    nearPoint(hiddenControls.back(), {.8f,.4f,2.5f});
+    nearPoint(hiddenControls.back(), {.8f,.4f,2.5f + depthJump});
 }
-TEST_CASE("group annotations still reject depth jumps and unrelated foreground objects")
+TEST_CASE("group annotations still reject unrelated foreground objects")
 {
     Fixture fixture;
-    SUBCASE("different sibling layer") { siblingSurface(fixture, 0, .2f); }
-    SUBCASE("unrelated object covers the middle") {
-        siblingSurface(fixture);
-        auto blocker = surface();
-        for (auto& vertex : blocker.vertices) { vertex.position[0] *= .1f; vertex.position[2] = .1f; }
-        fixture.state.files.push_back(createUiFileState(fixture.root / "blocker.obj", blocker, 1));
-        appendDefaultSceneNodesForFiles(fixture.state, 1);
-    }
+    siblingSurface(fixture, 0, .2f);
+    auto blocker = surface();
+    for (auto& vertex : blocker.vertices) { vertex.position[0] *= .1f; vertex.position[2] = .1f; }
+    fixture.state.files.push_back(createUiFileState(fixture.root / "blocker.obj", blocker, 1));
+    appendDefaultSceneNodesForFiles(fixture.state, 1);
     const auto projection = annotationProjection(scenePickParts(fixture.state), view(), fixture.target(),
         annotationGroupTargets(fixture.state, fixture.target()));
-    CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f}));
-    CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f}));
+    CHECK_THROWS_WITH((void)projectAnnotation(projection, AnnotationShape::line, {-.8f,-.4f}, {.8f,.4f}), "Keep the outline clear of other objects.");
+    CHECK_THROWS_WITH((void)projectAnnotation(projection, AnnotationShape::rectangle, {-.8f,-.4f}, {.8f,.4f}), "Keep the outline clear of other objects.");
 }
 TEST_CASE("multi source annotation editing save load and undo preserve attachments")
 {
-    Fixture fixture; siblingSurface(fixture, .15f);
-    const auto id = drawSiblingAnnotation(fixture, AnnotationShape::rectangle);
+    Fixture fixture;
+    bool sampledPreview = false;
+    SUBCASE("empty gap") { siblingSurface(fixture, .15f); }
+    SUBCASE("depth transition") { siblingSurface(fixture, 0, .2f); }
+    SUBCASE("depth transition with sampled preview") { siblingSurface(fixture, 0, .2f); sampledPreview = true; }
+    const auto id = drawSiblingAnnotation(fixture, AnnotationShape::rectangle, sampledPreview);
+    CHECK(std::count_if(fixture.state.annotations[0].geometry.segments.begin(), fixture.state.annotations[0].geometry.segments.end(),
+        [](const auto& s) { return s.endTriangle.has_value(); }) == 2);
     const auto clean = createSceneDocument(fixture.state);
     SceneHistory history; resetSceneHistory(history, fixture.state);
     const auto original = *findAnnotation(fixture.state, id);

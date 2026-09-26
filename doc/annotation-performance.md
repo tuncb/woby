@@ -180,7 +180,8 @@ occluders missed by the guide but rejected on release.
 The guide can miss a narrow obstruction or bridge across detail. It stays visible
 over the model because sampled chords can fall below a curved surface. The
 viewport message says to release to attach the outline. Full validation on
-release still rejects occlusion and disconnected surface layers. Small models
+release still rejects occlusion by unrelated objects; depth transitions within the
+target model or group use bridges anchored to both surfaces. Small models
 continue to use exact previews. Saved annotations, source attachment, undo/redo,
 and the `.woby` format retain their existing exact geometry.
 

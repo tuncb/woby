@@ -57,8 +57,11 @@ is RGBA. `sourceIds` lists every source part, with null entries for missing sour
 return an empty vertex array while retaining their comments and settings.
 
 Creation accepts touching sibling surfaces without requiring shared mesh vertices,
-and bridges empty gaps between surface fragments. It still rejects disconnected
-surface layer jumps and opaque occlusion by objects outside the group. Move and
+and bridges empty gaps and depth transitions between surfaces within the target
+model or group. Each straight 3D bridge stays attached to both surfaces; it may
+become visible after rotating the view and stretches if its source parts move apart.
+Rectangle corners at depth transitions use the frontmost attached surface for their
+handles. Opaque occlusion by objects outside the group is still rejected. Move and
 reshape require an unlocked annotation with all of its original source parts visible
 and unchanged. Every endpoint or rectangle corner
 must lie on the source surface in its original projection; edges may bridge holes.

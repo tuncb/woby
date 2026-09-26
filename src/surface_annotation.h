@@ -82,8 +82,8 @@ void setAnnotationProjectionTarget(AnnotationProjection& projection,
     std::span<const ScenePickPart> parts, const ScenePickView& view, SceneObjectId target);
 [[nodiscard]] SceneObjectId pickAnnotationSurface(const AnnotationProjection& projection,
     std::array<float, 2> point);
-// Endpoints/corners must hit the target. Bridges empty gaps between surface
-// fragments; throws for occlusion, disconnected layers, or ambiguous intersections.
+// Endpoints/corners must hit the target. Bridges empty gaps and depth transitions
+// between target surfaces; throws when an unrelated object obstructs the outline.
 [[nodiscard]] AnnotationGeometry projectAnnotation(const AnnotationProjection& projection,
     AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end);
 // Bounded, sampled drag guide. Chords may leave the surface or miss narrow
