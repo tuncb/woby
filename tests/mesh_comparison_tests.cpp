@@ -1225,30 +1225,68 @@ TEST_CASE("mesh diagnostics honor cancellation")
     CHECK_THROWS_WITH((void)woby::inspectMesh(square(), stop.get_token()), "Analysis canceled.");
 }
 
-TEST_CASE("large analysis and diagnostics stop during background processing")
+TEST_CASE("background analysis and diagnostics handle cancellation racing with completion")
 {
-    const auto input = largeGrid(500);
+    enum class CancelWhen { beforeStart, duringProcessing, afterCompletion };
+    auto cancelWhen = CancelWhen::duringProcessing;
+    SUBCASE("cancellation before processing") { cancelWhen = CancelWhen::beforeStart; }
+    SUBCASE("cancellation during processing") { cancelWhen = CancelWhen::duringProcessing; }
+    SUBCASE("cancellation after completion") { cancelWhen = CancelWhen::afterCompletion; }
+    const uint32_t width = cancelWhen == CancelWhen::afterCompletion ? 8 : 500;
+    const auto input = largeGrid(width);
     for (const bool diagnosticsOnly : {true, false})
     {
         INFO("diagnostics only: ", diagnosticsOnly);
         std::stop_source stop;
+        std::promise<void> start;
+        auto started = start.get_future();
+        woby::MeshDiagnostics diagnostics;
+        woby::MeshComparison comparison;
         auto worker = std::async(std::launch::async, [&] {
+            started.wait();
             try
             {
-                if (diagnosticsOnly) { (void)woby::inspectMesh(input, stop.get_token()); }
-                else { (void)woby::compareMeshes(input, input, stop.get_token()); }
+                if (diagnosticsOnly) { diagnostics = woby::inspectMesh(input, stop.get_token()); }
+                else { comparison = woby::compareMeshes(input, input, stop.get_token()); }
                 return std::string{};
             }
             catch (const std::exception& error) { return std::string(error.what()); }
         });
-        // Give the worker time to enter a long stage, then cancel. The generous
-        // deadline tests responsiveness without depending on exact stage timings.
-        (void)worker.wait_for(std::chrono::milliseconds(20));
+        if (cancelWhen == CancelWhen::beforeStart) { stop.request_stop(); }
+        start.set_value();
+        if (cancelWhen == CancelWhen::afterCompletion) { worker.wait(); }
+        else if (cancelWhen == CancelWhen::duringProcessing) {
+            // Exercise cancellation during a large job, but allow a fast worker
+            // to finish before the request. A timeout does not exclude that race.
+            (void)worker.wait_for(std::chrono::milliseconds(20));
+        }
         stop.request_stop();
         CHECK(worker.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
-        CHECK(worker.get() == "Analysis canceled.");
+        const auto error = worker.get();
+        if (cancelWhen == CancelWhen::beforeStart || !error.empty()) {
+            CHECK(error == "Analysis canceled.");
+            CHECK(cancelWhen != CancelWhen::afterCompletion);
+        } else {
+            // Completion is valid only with a complete, correct result.
+            for (const auto* result : diagnosticsOnly
+                ? std::vector<const woby::MeshDiagnostics*>{&diagnostics}
+                : std::vector<const woby::MeshDiagnostics*>{&comparison.original.diagnostics, &comparison.repaired.diagnostics}) {
+                CHECK(result->boundaryEdges.size() == 4 * width);
+                CHECK(result->nonManifoldEdges.empty());
+                CHECK(result->inconsistentWindingEdges.empty());
+                CHECK(result->degenerateTriangles == 0);
+                CHECK(result->duplicateTriangles == 0);
+            }
+            if (!diagnosticsOnly) {
+                for (const auto* surface : {&comparison.original, &comparison.repaired}) {
+                    CHECK(surface->distances.size() == 8 * width * width);
+                    CHECK(surface->sampled.indices.size() == 24 * width * width);
+                    CHECK(surface->maximum == doctest::Approx(0));
+                }
+            }
+        }
     }
-    CHECK(input.indices.size() == 500 * 500 * 6);
+    CHECK(input.indices.size() == width * width * 6);
     CHECK(input.vertices.front().position == std::array<float, 3>{0, 0, 0});
 }
 
