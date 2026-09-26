@@ -5,7 +5,7 @@ if(WOBY_BUILD_HASH_BENCHMARKS)
     list(APPEND VCPKG_MANIFEST_FEATURES hash-benchmarks)
 endif()
 
-project(woby_obj_viewer VERSION 0.21.1 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.21.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
