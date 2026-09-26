@@ -570,6 +570,12 @@ if(BUILD_TESTING)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example-plugins"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example-plugins")
     woby_enable_project_warnings(woby_off_importer)
+    if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
+        add_test(NAME woby_portable_importers COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/portable_importers_smoke.py" "$<TARGET_FILE:woby>"
+            "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets" "$<TARGET_FILE:woby_off_importer>")
+        set_tests_properties(woby_portable_importers PROPERTIES TIMEOUT 180 LABELS graphics)
+    endif()
     add_dependencies(woby_tests woby woby_importer_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
     target_compile_definitions(woby_tests PRIVATE
         WOBY_TEST_APP="$<TARGET_FILE:woby>"

@@ -47,7 +47,7 @@ def assert_no_windows(pid):
 
 def run(executable, *args, **kwargs):
     return subprocess.run([str(executable), *map(str, args)], capture_output=True,
-                          text=True, timeout=75, **kwargs)
+                          text=True, encoding="utf-8", timeout=75, **kwargs)
 
 
 @contextmanager

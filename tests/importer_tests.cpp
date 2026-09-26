@@ -44,6 +44,17 @@ void writeFile(const std::filesystem::path& path, const std::string& contents = 
     stream << contents;
 }
 
+std::filesystem::path installPortableImporter(const std::filesystem::path& folder,
+    const std::filesystem::path& library = WOBY_TEST_IMPORTER)
+{
+    std::filesystem::create_directories(folder);
+    const auto destination = folder / library.filename();
+    std::filesystem::copy_file(library, destination);
+    writeFile(folder / "importer.json", nlohmann::json{{"schema", 1},
+        {"library", woby::pathToUtf8(library.filename())}}.dump());
+    return destination;
+}
+
 } // namespace
 
 TEST_CASE("DLL importer registration validates ABI exports conflicts and deduplicates paths")
@@ -192,6 +203,140 @@ TEST_CASE("Plugin folders scan sorted immediate libraries only")
     REQUIRE(found.size() == 2u);
     CHECK(found[0] == a);
     CHECK(found[1] == b);
+}
+
+TEST_CASE("Portable importers load only manifest entries and remain relocatable")
+{
+    ImporterTestScope scope;
+    const auto deployment = scope.root / "deployment";
+    const auto folder = deployment / "importers";
+    CHECK(woby::loadPortableImporters(folder).empty());
+    CHECK_FALSE(std::filesystem::exists(folder));
+    const auto package = folder / woby::pathFromUtf8("caf\xc3\xa9 importer");
+    const auto library = installPortableImporter(package);
+    writeFile(package / "dependency.dll", "not an importer");
+    writeFile(folder / "loose.dll", "not an importer");
+    // Neither a package without a manifest nor a deeper nested package is scanned.
+    std::filesystem::create_directories(folder / "unregistered");
+    installPortableImporter(folder / "unregistered" / "nested", WOBY_TEST_BAD_IMPORTER);
+    CHECK(woby::loadPortableImporters(folder).empty());
+    REQUIRE(woby::loadedImporters().size() == 1u);
+    CHECK(woby::loadedImporters()[0].path == std::filesystem::canonical(library));
+    CHECK(woby::loadPortableImporters(folder).empty());
+    CHECK(woby::loadedImporters().size() == 1u);
+    woby::unloadImporters();
+    const auto moved = scope.root / "moved deployment";
+    std::filesystem::rename(deployment, moved);
+    CHECK(woby::loadPortableImporters(moved / "importers").empty());
+    REQUIRE(woby::loadedImporters().size() == 1u);
+    CHECK(woby::loadedImporters()[0].path == std::filesystem::canonical(
+        moved / "importers" / package.filename() / library.filename()));
+}
+
+TEST_CASE("Portable importer failures are isolated and conflicts use sorted package order")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "importers";
+    installPortableImporter(folder / "00-bad-abi", WOBY_TEST_BAD_IMPORTER);
+    installPortableImporter(folder / "10-first");
+    installPortableImporter(folder / "20-conflict", WOBY_TEST_CONFLICT_IMPORTER);
+    installPortableImporter(folder / "30-independent", WOBY_TEST_OFF_IMPORTER);
+    const auto errors = woby::loadPortableImporters(folder);
+    REQUIRE(errors.size() == 2u);
+    CHECK(errors[0].find("00-bad-abi") != std::string::npos);
+    CHECK(errors[1].find("extension already registered") != std::string::npos);
+    REQUIRE(woby::loadedImporters().size() == 2u);
+    CHECK(woby::loadedImporters()[0].id == "org.woby.test");
+    CHECK(woby::loadedImporters()[1].id == "org.woby.example.off");
+}
+
+TEST_CASE("Explicit importer registrations keep precedence over portable packages")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "importers";
+    const auto explicitLibrary = installPortableImporter(scope.root / "explicit", WOBY_TEST_CONFLICT_IMPORTER);
+    installPortableImporter(folder / "automatic");
+    woby::loadImporter(explicitLibrary);
+    CHECK(woby::loadPortableImporters(folder).size() == 1u);
+    REQUIRE(woby::loadedImporters().size() == 1u);
+    CHECK(woby::loadedImporters()[0].id == "org.woby.conflict");
+}
+
+TEST_CASE("Portable manifests reject malformed metadata and paths outside their package")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "importers";
+    const auto package = folder / "bad";
+    const auto library = installPortableImporter(package);
+    nlohmann::json manifest{{"schema", 1}, {"library", woby::pathToUtf8(library.filename())}};
+    SUBCASE("unsupported schema") { manifest["schema"] = 2; }
+    SUBCASE("missing schema") { manifest.erase("schema"); }
+    SUBCASE("fractional schema") { manifest["schema"] = 1.0; }
+    SUBCASE("missing library") { manifest.erase("library"); }
+    SUBCASE("wrong type") { manifest["library"] = 42; }
+    SUBCASE("empty path") { manifest["library"] = ""; }
+    SUBCASE("absolute path") { manifest["library"] = woby::pathToUtf8(library); }
+    SUBCASE("drive relative path") { manifest["library"] = "C:plugin.dll"; }
+    SUBCASE("backslash escape") { manifest["library"] = "..\\plugin.dll"; }
+    SUBCASE("parent escape") { manifest["library"] = "../bad/" + woby::pathToUtf8(library.filename()); }
+    SUBCASE("embedded null") { manifest["library"] = std::string("plugin\0.dll", 11); }
+    SUBCASE("missing library file") { manifest["library"] = "missing.dll"; }
+    SUBCASE("directory") { manifest["library"] = "."; }
+    auto contents = manifest.dump();
+    SUBCASE("malformed JSON") { contents = "{"; }
+    SUBCASE("oversized manifest") { contents = std::string(65537, ' '); }
+    writeFile(package / "importer.json", contents);
+    installPortableImporter(folder / "good", WOBY_TEST_OFF_IMPORTER);
+    const auto errors = woby::loadPortableImporters(folder);
+    REQUIRE(errors.size() == 1u);
+    CHECK(errors[0].find("importer.json") != std::string::npos);
+    REQUIRE(woby::loadedImporters().size() == 1u);
+    CHECK(woby::loadedImporters()[0].id == "org.woby.example.off");
+}
+
+TEST_CASE("Portable manifests support libraries in package subdirectories")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "importers";
+    const auto package = folder / "nested";
+    const auto library = installPortableImporter(package / "bin");
+    writeFile(package / "importer.json", nlohmann::json{{"schema", 1},
+        {"library", "bin/" + woby::pathToUtf8(library.filename())}}.dump());
+    CHECK(woby::loadPortableImporters(folder).empty());
+    REQUIRE(woby::loadedImporters().size() == 1u);
+    CHECK(woby::loadedImporters()[0].path == std::filesystem::canonical(library));
+}
+
+TEST_CASE("Portable manifests reject library links escaping their package")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "importers";
+    const auto package = folder / "linked";
+    std::filesystem::create_directories(package);
+    const auto outside = installPortableImporter(scope.root / "outside");
+    const auto link = package / outside.filename();
+    std::error_code error;
+    std::filesystem::create_symlink(outside, link, error);
+    if (error) {
+        MESSAGE("Library link test unavailable: ", error.message());
+        return;
+    }
+    writeFile(package / "importer.json", nlohmann::json{{"schema", 1},
+        {"library", woby::pathToUtf8(link.filename())}}.dump());
+    const auto errors = woby::loadPortableImporters(folder);
+    REQUIRE(errors.size() == 1u);
+    CHECK(errors[0].find("inside its package") != std::string::npos);
+    CHECK(woby::loadedImporters().empty());
+}
+
+TEST_CASE("Portable importer folder errors are reported without throwing")
+{
+    ImporterTestScope scope;
+    const auto folder = scope.root / "importers";
+    writeFile(folder);
+    const auto errors = woby::loadPortableImporters(folder);
+    REQUIRE(errors.size() == 1u);
+    CHECK(errors[0].find("importers") != std::string::npos);
 }
 
 TEST_CASE("Importer settings round trip Unicode spaces and removals")

@@ -57,7 +57,7 @@ def collect_manifest(root, platform, version):
         name = path.relative_to(root).as_posix()
         if name == MANIFEST:
             continue
-        if not valid_path(name) or name.lower().split("/")[0] == ".woby-update" or name.lower() in seen:
+        if not valid_path(name) or name.lower().split("/")[0] in (".woby-update", "importers") or name.lower() in seen:
             raise ValueError("Invalid, reserved, or duplicate package path: " + name)
         if not path.is_file():
             raise ValueError("Package contains a special file")
@@ -124,7 +124,7 @@ def verify_archive(path, platform, version):
     expected = {MANIFEST}
     for file in manifest["files"]:
         name = file["path"]
-        if name in expected or not valid_path(name) or name.lower().split("/")[0] == ".woby-update":
+        if name in expected or not valid_path(name) or name.lower().split("/")[0] in (".woby-update", "importers"):
             raise ValueError("Invalid manifest ownership")
         expected.add(name)
         if len(contents[name]) != file["size"] or hashlib.sha256(contents[name]).hexdigest() != file["sha256"]:

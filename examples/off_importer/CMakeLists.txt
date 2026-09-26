@@ -5,3 +5,5 @@ target_compile_features(woby_off_importer PRIVATE cxx_std_20)
 target_compile_definitions(woby_off_importer PRIVATE WOBY_IMPORTER_BUILD)
 target_include_directories(woby_off_importer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
 set_target_properties(woby_off_importer PROPERTIES PREFIX "")
+file(GENERATE OUTPUT "$<TARGET_FILE_DIR:woby_off_importer>/importer.json"
+    CONTENT "{\n  \"schema\": 1,\n  \"library\": \"$<TARGET_FILE_NAME:woby_off_importer>\"\n}\n")

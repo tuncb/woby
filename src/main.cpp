@@ -198,7 +198,7 @@ std::filesystem::path assetRoot()
         return std::filesystem::current_path() / "assets";
     }
 
-    return std::filesystem::path(basePath) / "assets";
+    return woby::pathFromUtf8(basePath) / "assets";
 }
 
 void loadAppFont(const std::filesystem::path& assets)
@@ -210,11 +210,11 @@ void loadAppFont(const std::filesystem::path& assets)
 
     ImGuiIO& io = ImGui::GetIO();
     const auto textPath = assets / "fonts" / "Lato-Regular.ttf";
-    ImFont* font = io.Fonts->AddFontFromFileTTF(textPath.string().c_str(), appFontSize);
+    ImFont* font = io.Fonts->AddFontFromFileTTF(woby::pathToUtf8(textPath).c_str(), appFontSize);
     if (!font) { throw std::runtime_error("Failed to load UI font: " + textPath.string()); }
     ImFontConfig icons;
     icons.MergeMode = true;
-    if (!io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), appFontSize, &icons, appFontGlyphRanges)) {
+    if (!io.Fonts->AddFontFromFileTTF(woby::pathToUtf8(fontPath).c_str(), appFontSize, &icons, appFontGlyphRanges)) {
         throw std::runtime_error("Failed to load icon font: " + fontPath.string());
     }
 
@@ -2147,6 +2147,10 @@ int main(int argc, char** argv)
         } else {
             reportImporterError("Importer settings directory is unavailable; registrations are session-only.");
         }
+        try {
+            const auto folder = woby::updateExecutablePath().parent_path() / "importers";
+            for (const auto& error : woby::loadPortableImporters(folder)) { reportImporterError(error); }
+        } catch (const std::exception& error) { reportImporterError(error.what()); }
 
         SDL_Window* rawWindow = headless ? nullptr
             : SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);

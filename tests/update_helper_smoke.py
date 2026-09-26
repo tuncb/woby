@@ -122,6 +122,16 @@ def main():
             (root / "my-scene.woby").write_text("user scene")
             (root / "plugins").mkdir()
             (root / "plugins/custom.dll").write_text("user plugin")
+            importer_files = {
+                "importers/custom/importer.json": '{"schema":1,"library":"custom.dll"}',
+                "importers/custom/custom.dll": "user importer",
+                "importers/custom/dependency.dll": "user dependency",
+                "importers/custom/data/settings.json": "user settings",
+            }
+            for name, content in importer_files.items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content)
             job = root / ".woby-update/job-0123456789abcdef0123456789abcdef"
             shutil.copytree(template, job / "package")
             if probe_restart:
@@ -165,6 +175,8 @@ def main():
             assert (root / "obsolete.dat").exists() != success
             assert (root / "my-scene.woby").read_text() == "user scene"
             assert (root / "plugins/custom.dll").read_text() == "user plugin"
+            for name, content in importer_files.items():
+                assert (root / name).read_text() == content, (scenario, name)
             # Wait for startup before launching another helper that takes the
             # exclusive lock; otherwise the recovery probe could block startup.
             if success and restart:

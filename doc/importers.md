@@ -5,7 +5,59 @@ a model file and returns triangles and named groups. woby owns the copied geomet
 scene settings, GPU resources, and rendering. The DLL must implement the woby API;
 an arbitrary third-party format library needs a small adapter.
 
-## Loading plugins
+## Portable importer packages
+
+Create an `importers` folder beside the woby executable. Put each importer in its
+own immediate subfolder with an `importer.json` manifest:
+
+```text
+woby.exe
+importers/
+  off/
+    importer.json
+    woby_off_importer.dll
+    dependency.dll
+    data/
+```
+
+The manifest is UTF-8 JSON:
+
+```json
+{
+  "schema": 1,
+  "library": "woby_off_importer.dll"
+}
+```
+
+`schema` must be the integer `1`. `library` names the entry library relative to
+the manifest's folder, using forward slashes (for example `bin/off.dll`). Absolute
+paths, parent traversal, and links resolving outside that package are rejected.
+The library must exist; manifests are limited to 64 KiB. The DLL API supplies the
+importer's ID, name, version, and extensions, so the manifest does not duplicate them.
+On Linux or macOS, use the corresponding `.so` or `.dylib` filename.
+
+woby scans these package folders on every viewer launch, before loading models or
+scenes, regardless of the working directory. Only the declared library is loaded;
+companion libraries and data files are left alone. Windows resolves DLL dependencies
+beside the entry DLL; other platforms need their usual loader search paths/rpaths.
+Loose libraries, folders without manifests, and deeper nested packages are not
+automatically scanned. A missing `importers` folder is allowed and is not created
+automatically. No `--remember` registration is needed, and packages keep working
+when the whole installation moves.
+
+Loading order is explicit CLI options, remembered registrations, then portable
+packages sorted by folder path. Earlier registrations win ID/extension conflicts.
+Invalid manifests or libraries produce startup diagnostics and do not stop other
+packages from loading. Restart woby after adding or replacing a package. To remove
+an automatic importer, close woby and remove its package folder; `importers forget`
+only removes remembered registrations.
+
+The portable `importers/` directory belongs to the user. Automatic updates and
+rollback preserve its manifests, libraries, dependencies, and data. Release
+packaging and the updater reject manifests claiming that directory, and recovery
+rejects journals that would modify it. Bundled application files must live elsewhere.
+
+## Explicit loading and remembered registrations
 
 Both command-line options may appear any number of times:
 
@@ -20,6 +72,8 @@ loaded. Each plugin folder is scanned non-recursively, in sorted path order, for
 `.dll` files on Windows, `.so` files on Linux, and `.dylib`/`.so` files on macOS.
 Use a dedicated importer folder; dependencies can live beside the importer but
 will be reported as missing the importer export if included in a folder scan.
+These explicit scans retain their existing loose-library behavior; use portable
+packages above to select an entry library without scanning its dependencies.
 Loading the same physical file more than once has no effect. Duplicate importer
 IDs and extension conflicts are reported, with the earlier registration retained.
 OBJ, STL, and the `.woby` scene extension are reserved.
@@ -137,6 +191,10 @@ It can also be built independently without woby's dependencies:
 cmake -S examples/off_importer -B build/off-importer -G "Visual Studio 18 2026" -A x64
 cmake --build build/off-importer --config Debug
 ```
+
+Both builds generate `importer.json` beside the example library. Copy that manifest
+and the library into `<woby executable folder>/importers/off/`, then launch woby
+normally to load OFF files automatically.
 
 The SDK avoids cross-DLL CRT ownership problems described by
 [Microsoft](https://learn.microsoft.com/en-us/cpp/c-runtime-library/potential-errors-passing-crt-objects-across-dll-boundaries).

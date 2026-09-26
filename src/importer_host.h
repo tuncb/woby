@@ -34,6 +34,9 @@ void loadImporter(const std::filesystem::path& path);
 void unloadImporters();
 [[nodiscard]] std::vector<ImporterInfo> loadedImporters();
 [[nodiscard]] std::vector<std::filesystem::path> discoverImporterFiles(const std::filesystem::path& folder);
+// Load importer.json from sorted immediate package folders. Missing folders are optional;
+// failures are returned per package so other importers can still load.
+[[nodiscard]] std::vector<std::string> loadPortableImporters(const std::filesystem::path& folder);
 [[nodiscard]] bool hasImporterForPath(const std::filesystem::path& path);
 [[nodiscard]] ImportedModel importModel(
     const std::filesystem::path& path,

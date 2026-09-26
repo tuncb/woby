@@ -1055,6 +1055,8 @@ void printCommandLineHelp()
         "  --version                  Print the application version.\n"
         "  --help | -h                Print this help.\n"
         "Folder inputs may be repeated and combined with --file and --scene.\n"
+        "Portable importers: importers/<package>/importer.json beside the executable.\n"
+        "Manifests use {\"schema\":1,\"library\":\"plugin.dll\"}; loaded after explicit registrations.\n"
         "\nDiscovery, lifecycle, capture, and recovery:\n"
         "  woby ctl instances [--json]\n"
         "  woby ctl --instance ID screenshot PATH [--timeout SECONDS] [--json]\n"

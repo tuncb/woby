@@ -1,5 +1,6 @@
 #include "importer_host.h"
 #include "utf8_path.h"
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -80,6 +81,34 @@ bool supports(const ImporterInfo& info, const std::filesystem::path& path)
     const std::string extension = lowercase(utf8(path.extension()));
     return extension.size() > 1u
         && std::find(info.extensions.begin(), info.extensions.end(), extension.substr(1u)) != info.extensions.end();
+}
+
+std::filesystem::path importerManifestLibrary(const std::filesystem::path& manifest)
+{
+    if (!std::filesystem::is_regular_file(manifest) || std::filesystem::file_size(manifest) > 64u * 1024u) {
+        throw std::runtime_error("Importer manifest must be a file of at most 64 KiB.");
+    }
+    std::ifstream stream(manifest, std::ios::binary);
+    const auto data = nlohmann::json::parse(stream);
+    if (!data.at("schema").is_number_integer() || data.at("schema") != 1) {
+        throw std::runtime_error("Unsupported importer manifest schema.");
+    }
+    const auto library = data.at("library").get<std::string>();
+    const auto relative = pathFromUtf8(library);
+    if (library.empty() || relative.has_root_path()
+        || library.find_first_of("\\:") != std::string::npos
+        || std::any_of(library.begin(), library.end(), [](unsigned char c) { return c < 32; })
+        || std::any_of(relative.begin(), relative.end(), [](const auto& part) { return part == ".."; })) {
+        throw std::runtime_error("Importer library must be a relative path inside its package, using forward slashes.");
+    }
+    const auto root = std::filesystem::canonical(manifest.parent_path());
+    const auto path = std::filesystem::canonical(root / relative);
+    const auto contained = path.lexically_relative(root);
+    if (contained.empty() || contained.is_absolute() || *contained.begin() == ".."
+        || !std::filesystem::is_regular_file(path)) {
+        throw std::runtime_error("Importer library must be a file inside its package.");
+    }
+    return path;
 }
 
 struct CallbackContext {
@@ -230,6 +259,31 @@ std::vector<std::filesystem::path> discoverImporterFiles(const std::filesystem::
     }
     std::sort(result.begin(), result.end());
     return result;
+}
+
+std::vector<std::string> loadPortableImporters(const std::filesystem::path& folder)
+{
+    std::vector<std::string> errors;
+    std::vector<std::filesystem::path> packages;
+    try {
+        if (!std::filesystem::exists(folder)) { return errors; }
+        for (const auto& entry : std::filesystem::directory_iterator(folder)) {
+            packages.push_back(entry.path());
+        }
+    } catch (const std::exception& error) {
+        errors.push_back(utf8(folder) + ": " + error.what());
+    }
+    std::sort(packages.begin(), packages.end());
+    for (const auto& package : packages) {
+        const auto manifest = package / "importer.json";
+        try {
+            if (!std::filesystem::is_directory(package) || !std::filesystem::exists(manifest)) { continue; }
+            loadImporter(importerManifestLibrary(manifest));
+        } catch (const std::exception& error) {
+            errors.push_back(utf8(manifest) + ": " + error.what());
+        }
+    }
+    return errors;
 }
 
 bool hasImporterForPath(const std::filesystem::path& path)

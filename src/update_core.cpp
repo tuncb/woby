@@ -20,6 +20,11 @@ bool validDigest(const std::string& value)
     return value.size() == 64 && value.find_first_not_of("0123456789abcdef") == std::string::npos;
 }
 
+bool userImporterPath(const std::string& foldedPath)
+{
+    return foldedPath == "importers" || foldedPath.starts_with("importers/");
+}
+
 void validateFileSet(const std::vector<PackageFile>& files)
 {
     std::set<std::string> names;
@@ -29,6 +34,7 @@ void validateFileSet(const std::vector<PackageFile>& files)
         const auto name = folded(file.path);
         if (!validPackagePath(file.path) || name == packageManifestName
             || name == ".woby-update" || name.starts_with(".woby-update/")
+            || userImporterPath(name)
             || !validDigest(file.sha256) || file.size > 512ull * 1024 * 1024
             || !names.insert(name).second) {
             throw std::runtime_error("Invalid or duplicate package file: " + file.path);
@@ -242,7 +248,9 @@ void recoverUpdateTransaction(const std::filesystem::path& root, const std::file
     // Validate every path before performing any recovery operation.
     for (const auto& file : files) {
         const auto name = file.at("path").get<std::string>();
-        if (folded(name).starts_with(".woby-update")) { throw std::runtime_error("Invalid recovery path."); }
+        if (folded(name).starts_with(".woby-update") || userImporterPath(folded(name))) {
+            throw std::runtime_error("Invalid recovery path.");
+        }
         requireUpdatePath(root, name);
         requireUpdatePath(job, "backup/" + name);
     }

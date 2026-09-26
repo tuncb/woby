@@ -165,6 +165,9 @@ TEST_CASE("updater validates manifest ownership before file operations")
     auto manifest = makePackage(*root, "1.0.0");
     SUBCASE("duplicate case") { auto file = manifest["files"][0]; file["path"] = "ASSETS/fonts/RobotoMonoNerdFont-Regular.ttf"; manifest["files"].push_back(file); }
     SUBCASE("reserved") { manifest["files"][0]["path"] = ".woby-update/status.json"; }
+    SUBCASE("user importers") { manifest["files"][0]["path"] = "importers/off/importer.json"; }
+    SUBCASE("user importers case insensitive") { manifest["files"][0]["path"] = "IMPORTERS/off/plugin.dll"; }
+    SUBCASE("user importers root") { manifest["files"][0]["path"] = "importers"; }
     SUBCASE("parent escape") { manifest["files"][0]["path"] = "../outside"; }
     SUBCASE("wrong platform") { manifest["platform"] = "unsupported"; }
     SUBCASE("wrong schema") { manifest["schema"] = 99; }
@@ -179,6 +182,12 @@ TEST_CASE("updater transaction replaces managed files and can recover repeatedly
     makePackage(*root, "1.0.0", {{"obsolete.dll", "old runtime"}});
     writeFile(*root / "user/scene.woby", "user scene");
     writeFile(*root / "plugins/custom.dll", "user plugin");
+    const std::map<std::string, std::string> importerFiles{
+        {"importers/off/importer.json", R"({"schema":1,"library":"off.dll"})"},
+        {"importers/off/off.dll", "user importer"},
+        {"importers/off/dependency.dll", "user dependency"},
+        {"importers/off/data/config.json", "user settings"}};
+    for (const auto& [path, content] : importerFiles) { writeFile(*root / path, content); }
     const auto job = jobDirectory(*root);
     makePackage(job / "package", "1.1.0", {{"new.dll", "new runtime"}});
     woby::applyUpdateTransaction(*root, job);
@@ -187,12 +196,44 @@ TEST_CASE("updater transaction replaces managed files and can recover repeatedly
     CHECK(readFile(*root / "new.dll") == "new runtime");
     CHECK(readFile(*root / "user/scene.woby") == "user scene");
     CHECK(readFile(*root / "plugins/custom.dll") == "user plugin");
+    for (const auto& [path, content] : importerFiles) { CHECK(readFile(*root / path) == content); }
     woby::recoverUpdateTransaction(*root, job);
     woby::recoverUpdateTransaction(*root, job);
     CHECK(woby::readPackageManifest(*root).version == "1.0.0");
     CHECK(readFile(*root / "obsolete.dll") == "old runtime");
     CHECK_FALSE(fs::exists(*root / "new.dll"));
     CHECK(readFile(*root / "user/scene.woby") == "user scene");
+    for (const auto& [path, content] : importerFiles) { CHECK(readFile(*root / path) == content); }
+}
+
+TEST_CASE("updater refuses ownership of portable importers in old and new manifests")
+{
+    const auto root = temporaryDirectory();
+    const auto job = jobDirectory(*root);
+    makePackage(*root, "1.0.0");
+    makePackage(job / "package", "1.1.0");
+    SUBCASE("old manifest") { makePackage(*root, "1.0.0", {{"importers/custom/plugin.dll", "user library"}}); }
+    SUBCASE("new manifest") { makePackage(job / "package", "1.1.0", {{"importers/custom/plugin.dll", "release library"}}); }
+    writeFile(*root / "importers/custom/plugin.dll", "user library");
+    CHECK_THROWS(woby::applyUpdateTransaction(*root, job));
+    CHECK_FALSE(fs::exists(job / "journal.json"));
+    CHECK(readFile(*root / "importers/custom/plugin.dll") == "user library");
+}
+
+TEST_CASE("updater rejects recovery journals touching portable importers before any changes")
+{
+    const auto root = temporaryDirectory();
+    makePackage(*root, "1.0.0");
+    const auto job = jobDirectory(*root);
+    const std::string library = "IMPORTERS/custom/plugin.dll";
+    writeFile(*root / library, "user library");
+    woby::writeUpdateJson(job / "backup-complete.json", {{"complete", true}});
+    woby::writeUpdateJson(job / "journal.json", {{"schema", 1}, {"root", woby::pathToUtf8(*root)},
+        {"files", json::array({{{"path", library}, {"existed", false}},
+            {{"path", woby::updateExecutableName()}, {"existed", false}}})}});
+    CHECK_THROWS(woby::recoverUpdateTransaction(*root, job));
+    CHECK(readFile(*root / library) == "user library");
+    CHECK(readFile(*root / woby::updateExecutableName()) == "binary 1.0.0");
 }
 
 TEST_CASE("updater refuses collisions corrupt packages and downgrades without starting transaction")

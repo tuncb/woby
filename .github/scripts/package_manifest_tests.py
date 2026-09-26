@@ -57,6 +57,20 @@ def test_manifest_and_archive_validation():
         expect_error(package.verify_archive, archive, 'windows-x64', '1.2.3')
         write_zip(unlisted=True)
         expect_error(package.verify_archive, archive, 'windows-x64', '1.2.3')
+        for reserved in ('importers', 'importers/off/importer.json', 'IMPORTERS/off/plugin.dll'):
+            path = root / reserved
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes((root / manifest['files'][0]['path']).read_bytes())
+            expect_error(package.collect_manifest, root, 'windows-x64', '1.2.3')
+            # Even a correctly hashed, listed entry cannot claim user importer files.
+            entry = dict(manifest['files'][0], path=reserved)
+            manifest['files'].append(entry)
+            names.append(reserved)
+            write_zip()
+            expect_error(package.verify_archive, archive, 'windows-x64', '1.2.3')
+            names.pop()
+            manifest['files'].pop()
+            path.unlink()
         (root / 'assets/shaders/dx11/vs_mesh.bin').unlink()
         expect_error(package.collect_manifest, root, 'windows-x64', '1.2.3')
 
