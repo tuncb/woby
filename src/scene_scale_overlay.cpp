@@ -29,7 +29,9 @@ void drawSceneScaleOverlay(ImDrawList& draw, const UiState& state,
     const ImVec2 low{origin.x + pad, origin.y + pad};
     const ImVec2 high{origin.x + width - pad, origin.y + height - pad};
     draw.PushClipRect(origin, {origin.x + width, origin.y + height}, true);
-    std::vector<LabelRect> labels;
+    // Grid readout, up to three stacked dimensions, and three edge labels.
+    std::array<LabelRect, 7> labels;
+    size_t labelCount = 0;
     const auto textSize = [&](const char* text) {
         return ImGui::GetFont()->CalcTextSizeA(fontSize, 100000, 0, text);
     };
@@ -39,8 +41,9 @@ void drawSceneScaleOverlay(ImDrawList& draw, const UiState& state,
         const float x = std::clamp(center.x - size.x * .5f, low.x + pad, high.x - size.x - pad);
         const float y = std::clamp(center.y - size.y * .5f, low.y + pad, high.y - size.y - pad);
         const LabelRect rect{{x - pad, y - pad}, {x + size.x + pad, y + size.y + pad}};
-        if (std::any_of(labels.begin(), labels.end(), [&](const auto& other) { return overlap(rect, other); })) { return false; }
-        labels.push_back(rect);
+        const auto used = std::span(labels).first(labelCount);
+        if (std::any_of(used.begin(), used.end(), [&](const auto& other) { return overlap(rect, other); })) { return false; }
+        labels[labelCount++] = rect;
         draw.AddRectFilled(rect.low, rect.high, backdrop, pad * .5f);
         draw.AddText(ImGui::GetFont(), fontSize, {x, y}, color, text);
         return true;

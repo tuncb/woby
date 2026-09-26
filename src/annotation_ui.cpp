@@ -25,21 +25,24 @@ std::vector<PickPoint> handles(const UiAnnotation& item, std::span<const ScenePi
     }
     return result;
 }
-void submitLines(bgfx::ViewId viewId, const std::vector<DiagnosticEdge>& lines, const ScenePickView& view,
+void submitLines(bgfx::ViewId viewId, const ScenePickView& view,
     const UiAnnotation& item, std::span<const ScenePickPart> parts, const bgfx::VertexLayout& layout, bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform, bool sampledPreview = false)
+    bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch, bool sampledPreview = false)
 {
-    std::vector<const ScenePickPart*> sources;
-    std::vector<PickMatrix> sourceTransforms;
+    auto& sources = scratch.annotationSources;
+    auto& lines = scratch.annotationLines;
+    annotationWorldLines(item, parts, lines, sources);
+    if (lines.empty()) { return; }
+    auto& sourceTransforms = scratch.annotationTransforms;
+    sourceTransforms.clear();
     const auto vp = annotationCompose(view.view, view.projection);
-    for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
-        const auto* source = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
-        sources.push_back(source);
-        sourceTransforms.push_back(source ? annotationCompose(source->model, vp) : PickMatrix{});
+    for (const auto* source : sources) {
+        sourceTransforms.push_back(annotationCompose(source->model, vp));
     }
     const auto& geometry = item.geometry;
     const auto& settings = item.settings;
-    std::vector<std::array<float, 3>> vertices;
+    auto& vertices = scratch.positions;
+    vertices.clear();
     vertices.reserve(lines.size() * 6);
     size_t segmentIndex = 0;
     for (const auto& line : lines) {
@@ -492,16 +495,18 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
 }
 void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const ScenePickView& view,
     const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+    SceneRenderScratch& scratch,
     const AnnotationInteraction* interaction)
 {
     if (state.annotations.empty() && (!interaction || !interaction->dragging)) { return; }
-    const auto parts = scenePickParts(state);
+    auto& parts = scratch.parts;
+    scenePickParts(state, parts);
     for (const auto& item : state.annotations) {
         if (interaction && interaction->dragging && interaction->editing == item.objectId && interaction->error.empty()) { continue; }
-        submitLines(viewId, annotationWorldLines(item, parts), view, item, parts, layout, program, colorUniform);
+        submitLines(viewId, view, item, parts, layout, program, colorUniform, scratch);
     }
     if (interaction && interaction->dragging && interaction->error.empty()) {
-        submitLines(viewId, annotationWorldLines(interaction->preview, parts), view, interaction->preview, parts, layout, program, colorUniform, interaction->sampledPreview);
+        submitLines(viewId, view, interaction->preview, parts, layout, program, colorUniform, scratch, interaction->sampledPreview);
     }
 }
 } // namespace woby

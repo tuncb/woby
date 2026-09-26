@@ -485,18 +485,27 @@ std::string appWindowTitle(
     return title;
 }
 
+struct WindowTitleCache {
+    std::optional<std::filesystem::path> path;
+    bool dirty = false;
+    bool initialized = false;
+};
+
 void updateAppWindowTitle(
     SDL_Window* window,
     const std::optional<std::filesystem::path>& currentScenePath,
     bool isDirty,
-    const std::string& instanceId)
+    const std::string& instanceId, WindowTitleCache& cache)
 {
-    if (window) {
+    if (window && (!cache.initialized || cache.path != currentScenePath || cache.dirty != isDirty)) {
         SDL_SetWindowTitle(window, appWindowTitle(currentScenePath, isDirty, instanceId).c_str());
+        cache.path = currentScenePath;
+        cache.dirty = isDirty;
+        cache.initialized = true;
     }
 }
 
-void drawClippedTextItem(const char* id, const char* text, float width, bool selected)
+void drawClippedTextItem(const char* id, const char* text, float width, bool selected, const char* prefix = "")
 {
     const float itemWidth = std::max(width, 1.0f);
     const float itemHeight = ImGui::GetFrameHeight();
@@ -509,8 +518,14 @@ void drawClippedTextItem(const char* id, const char* text, float width, bool sel
         ImGui::GetWindowDrawList()->AddRectFilled(itemMin, itemMax,
             ImGui::GetColorU32(selected ? ImGuiCol_Header : ImGuiCol_HeaderHovered));
     }
-    const ImVec2 textPosition(itemMin.x, itemMin.y + style.FramePadding.y);
+    ImVec2 textPosition(itemMin.x, itemMin.y + style.FramePadding.y);
     const ImVec4 clipRect(itemMin.x, itemMin.y, itemMax.x, itemMax.y);
+
+    if (*prefix) {
+        ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(), ImGui::GetFontSize(), textPosition,
+            ImGui::GetColorU32(ImGuiCol_Text), prefix, nullptr, 0.0f, &clipRect);
+        textPosition.x += ImGui::CalcTextSize(prefix).x;
+    }
 
     ImGui::GetWindowDrawList()->AddText(
         ImGui::GetFont(),
@@ -733,12 +748,6 @@ void pushRenderModeControlHeight()
         ImVec2(style.FramePadding.x, paddingY));
 }
 
-std::string meshCountLine(size_t vertexCount, size_t triangleCount)
-{
-    return "Vertices: " + std::to_string(vertexCount)
-        + "  Triangles: " + std::to_string(triangleCount);
-}
-
 void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     bool treeNode)
 {
@@ -748,7 +757,9 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     // Ordinary clicks select on release so source drags keep the comparison inspector visible.
     // TreeNodeEx does not activate labels with Ctrl held, so Ctrl-clicks must be
     // handled on mouse-down instead of waiting for IsItemDeactivated().
-    const auto selectionKey = ImGui::GetID(("source_click_" + std::to_string(id)).c_str());
+    char selectionLabel[48];
+    std::snprintf(selectionLabel, sizeof(selectionLabel), "source_click_%llu", static_cast<unsigned long long>(id));
+    const auto selectionKey = ImGui::GetID(selectionLabel);
     auto* storage = ImGui::GetStateStorage();
     if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
         const bool select = !treeNode || !ImGui::IsItemToggledOpen();
@@ -822,12 +833,12 @@ void drawGroupControls(
     ImGui::SameLine();
     const bool memberA = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::a);
     const bool memberB = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::b);
-    const std::string badge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
-    const std::string displayName = badge + node.name;
-    drawClippedTextItem("##name", displayName.c_str(), ImGui::GetContentRegionAvail().x,
-        woby::sceneObjectSelected(state, settings.objectId));
-    const std::string tooltip = node.name + "\n" + meshCountLine(range.pointIndexCount, node.indexCount / 3u);
-    setLastItemTooltip(tooltip.c_str());
+    const char* badge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
+    drawClippedTextItem("##name", node.name.c_str(), ImGui::GetContentRegionAvail().x,
+        woby::sceneObjectSelected(state, settings.objectId), badge);
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("%s\nVertices: %u  Triangles: %u", node.name.c_str(), range.pointIndexCount, node.indexCount / 3u);
+    }
     drawSceneItemInteraction(state, settings.objectId, false);
     ImGui::PopID();
 }
@@ -877,7 +888,6 @@ void drawSceneTreeNode(
         const float rowStartX = ImGui::GetCursorPosX();
         const float removeControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         const float analysisControlStartX = removeControlStartX - renderModeButtonSize() - style.ItemSpacing.x;
-        const std::string label = node.name + "##file_" + std::to_string(node.fileIndex);
         const size_t fileGroupCount = woby::countSceneNodeGroups(state, node);
         const size_t fileVisibleCount = woby::countVisibleSceneNodeGroups(state, node);
         if (drawTriStateVisibilityButton(
@@ -888,11 +898,6 @@ void drawSceneTreeNode(
             woby::setSceneNodeSubtreeVisible(state, node, fileVisibleCount != fileGroupCount);
         }
         ImGui::SameLine();
-        const std::string tooltipText = file.path.string()
-            + "\n"
-            + meshCountLine(
-                file.mesh.vertices.size(),
-                file.mesh.indices.size() / 3u);
         // Reserve both action buttons' columns for drawing and hit testing.
         const ImVec2 labelClipMin = ImGui::GetWindowDrawList()->GetClipRectMin();
         ImVec2 labelClipMax = ImGui::GetWindowDrawList()->GetClipRectMax();
@@ -903,8 +908,11 @@ void drawSceneTreeNode(
             | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
             | (woby::sceneObjectSelected(state, node.objectId) ? ImGuiTreeNodeFlags_Selected : 0);
         if (std::find(revealPath.begin(), revealPath.end(), node.objectId) != revealPath.end()) { ImGui::SetNextItemOpen(true); }
-        const bool fileTreeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
-        setLastItemTooltip(tooltipText.c_str());
+        const bool fileTreeOpen = ImGui::TreeNodeEx("file", flags, "%s", node.name.c_str());
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s\nVertices: %zu  Triangles: %zu", file.path.string().c_str(),
+                file.mesh.vertices.size(), file.mesh.indices.size() / 3u);
+        }
         drawSceneItemInteraction(state, node.objectId, true);
         ImGui::PopClipRect();
         ImGui::SameLine(analysisControlStartX, 0.0f);
@@ -2362,6 +2370,8 @@ int main(int argc, char** argv)
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
         woby::SceneDimensionsCache dimensionsCache;
+        woby::SceneRenderScratch renderScratch;
+        WindowTitleCache windowTitleCache;
         woby::ScenePointerGesture scenePointer;
         woby::AnnotationInteraction annotationInteraction;
         std::optional<woby::ScenePickView> presentedPickView;
@@ -2734,7 +2744,7 @@ int main(int argc, char** argv)
 
             recordFrameStage(frameTimings, woby::FrameStage::pendingIo, stageStart);
 
-            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
+            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId, windowTitleCache);
 
             const auto now = std::chrono::steady_clock::now();
             const float deltaSeconds = std::chrono::duration<float>(now - previousFrame).count();
@@ -3184,7 +3194,7 @@ int main(int argc, char** argv)
             }
 
             woby::recalculateSceneBounds(ui);
-            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
+            updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId, windowTitleCache);
             // Both UI and CTL use the same restoration and failure-consumption path.
             const auto runSceneHistory = [&](bool redo) {
                 woby::finishSceneHistoryInteraction(sceneHistory);
@@ -3192,7 +3202,7 @@ int main(int argc, char** argv)
                     const bool applied = applySceneHistory(sceneHistory, ui, cleanSceneDocument, runtimes, layout, pointLayout, redo);
                     if (applied) {
                         setToastMessage(toast, redo ? "Redid scene edit" : "Undid scene edit");
-                        updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId);
+                        updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId, windowTitleCache);
                     }
                     return applied;
                 } catch (const std::exception& error) {
@@ -3646,18 +3656,19 @@ int main(int argc, char** argv)
                         sceneViewportWidth,
                         sceneViewportHeight);
                 }
-                woby::submitComparisonScenes(sceneView, ui, comparison, colorProgram, colorUniform);
+                woby::submitComparisonScenes(sceneView, ui, comparison, colorProgram, colorUniform, renderScratch);
                 recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
                 submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
-                woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, annotationProgram, colorUniform, &annotationInteraction);
+                woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, annotationProgram, colorUniform, renderScratch, &annotationInteraction);
                 const float annotationMessageBottom = woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
                     static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
                     scenePointerAvailable && !cameraInteractionActive, static_cast<float>(viewport.y) / currentPickView.pixelScale);
                 if (!ui.selectedSceneObjects.empty()) {
-                    auto selectedParts = woby::scenePickParts(ui);
+                    auto& selectedParts = renderScratch.parts;
+                    woby::scenePickParts(ui, selectedParts);
                     woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
-                    woby::submitSceneSelection(helperView, selectedParts, helperLayout, colorProgram, colorUniform);
+                    woby::submitSceneSelection(helperView, selectedParts, helperLayout, colorProgram, colorUniform, renderScratch);
                     if (ui.showDimensions) {
                         woby::updateSceneDimensions(dimensionsCache, selectedParts, ui.sceneGeneration, ui.sceneEditRevision);
                     }

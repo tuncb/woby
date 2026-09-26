@@ -11,6 +11,17 @@
 
 namespace woby {
 
+// CPU scratch owned by the viewport/export runtime, never by logical UiState.
+// Rebuilt on each submission; stale borrowed pointers are never read across frames.
+struct SceneRenderScratch {
+    std::vector<ScenePickPart> parts;
+    std::vector<std::array<float, 3>> positions;
+    std::vector<std::array<float, 3>> focusPoints;
+    std::vector<const ScenePickPart*> annotationSources;
+    std::vector<PickMatrix> annotationTransforms;
+    std::vector<DiagnosticEdge> annotationLines;
+};
+
 struct GpuNodeRange {
     uint32_t triangleIndexOffset = 0;
     uint32_t triangleIndexCount = 0;
@@ -80,6 +91,7 @@ void submitSceneHelpers(
     bgfx::UniformHandle colorUniform);
 
 void submitSceneSelection(bgfx::ViewId viewId, std::span<const ScenePickPart> parts,
-    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform);
+    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+    SceneRenderScratch& scratch);
 
 } // namespace woby

@@ -1,6 +1,7 @@
 #include "scene_pick.h"
 #include "scene_viewport.h"
 #include "ui_operations.h"
+#include "allocation_probe.h"
 
 #include <doctest/doctest.h>
 
@@ -367,4 +368,87 @@ TEST_CASE("click threshold preserves gestures modifiers and canceled presses")
     woby::beginScenePointer(gesture, {10, 10}, false, false);
     // A release far away is a drag even without an intervening motion event.
     CHECK_FALSE(woby::endScenePointer(gesture, {30, 30}, true));
+}
+
+TEST_CASE("render scratch reuses selection storage and replaces stale scene parts")
+{
+    auto state = scene();
+    woby::selectSceneObject(state, state.files[0].objectId);
+    std::vector<woby::ScenePickPart> parts;
+    std::vector<std::array<float, 3>> lines;
+    const auto prepare = [&] {
+        woby::scenePickParts(state, parts);
+        woby::sceneSelectionLines(parts, lines);
+    };
+    prepare();
+    REQUIRE(parts.size() == 1);
+    REQUIRE(lines.size() == 24);
+    const auto* partStorage = parts.data();
+    const auto* lineStorage = lines.data();
+    const auto original = lines;
+#if defined(_MSC_VER) && defined(_DEBUG)
+    const auto allocations = woby::test::countAllocations([&] {
+        for (int frame = 0; frame < 100; ++frame) { prepare(); }
+    });
+    CHECK(allocations == 0);
+#endif
+    CHECK(parts.data() == partStorage);
+    CHECK(lines.data() == lineStorage);
+    state.files[0].groupSettings[0].translation[0] = 4;
+    prepare();
+    CHECK(lines.front()[0] == doctest::Approx(original.front()[0] + 4));
+    state.files[0].fileSettings.visible = false;
+    prepare();
+    CHECK(parts.empty());
+    CHECK(lines.empty());
+    woby::scenePickParts(state, parts, true);
+    REQUIRE(parts.size() == 1);
+    CHECK(parts.front().selected);
+    state.files.clear();
+    state.sceneNodes.clear();
+    prepare();
+    CHECK(parts.empty());
+    CHECK(lines.empty());
+    auto replacement = scene();
+    woby::selectSceneObject(replacement, replacement.files[0].objectId);
+    woby::scenePickParts(replacement, parts);
+    woby::sceneSelectionLines(parts, lines);
+    REQUIRE(parts.size() == 1);
+    CHECK(parts.front().mesh == &replacement.files[0].mesh);
+    CHECK(lines == original);
+    CHECK(parts.data() == partStorage);
+    CHECK(lines.data() == lineStorage);
+}
+
+TEST_CASE("scene object queries only materialize matching metadata")
+{
+    auto state = scene();
+    state.files[0].mesh.nodes[0].name = std::string(200, 'p');
+    woby::UiSceneNode folder;
+    folder.kind = woby::UiSceneNodeKind::folder;
+    folder.name = std::string(200, 'f');
+    folder.children = std::move(state.sceneNodes);
+    state.sceneNodes.push_back(std::move(folder));
+    woby::assignSceneObjectIds(state);
+    const auto objects = woby::sceneObjects(state);
+    REQUIRE(objects.size() == 3);
+    for (const auto& expected : objects) {
+        const auto found = woby::findSceneObject(state, expected.id);
+        REQUIRE(found);
+        CHECK(found->kind == expected.kind);
+        CHECK(found->name == expected.name);
+        CHECK(found->path == expected.path);
+        CHECK(found->fileId == expected.fileId);
+    }
+    CHECK_FALSE(woby::findSceneObject(state, woby::invalidSceneObjectId));
+    CHECK_FALSE(woby::findSceneObject(state, state.nextObjectId));
+#if defined(_MSC_VER) && defined(_DEBUG)
+    const auto allocations = woby::test::countAllocations([&] {
+        for (int frame = 0; frame < 100; ++frame) {
+            (void)woby::findSceneObject(state, state.nextObjectId);
+            woby::recalculateSceneBounds(state);
+        }
+    });
+    CHECK(allocations == 0);
+#endif
 }

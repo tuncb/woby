@@ -1,4 +1,5 @@
 #include "surface_annotation.h"
+#include "allocation_probe.h"
 #include "annotation_ui.h"
 #include "scene_scale_overlay.h"
 #include "ui_operations.h"
@@ -2163,4 +2164,57 @@ TEST_CASE("annotation CLI creates and reshapes across sibling surfaces")
     const auto moved = annotationCommand(fixture, "annotation.move", {{"delta", {0,.05}}}, id);
     CHECK(moved["object"]["targetValid"] == true);
     CHECK(fixture.state.annotations[0].geometry.start[1] == doctest::Approx(-.05));
+}
+
+TEST_CASE("annotation render scratch reuses lines and clears hidden or missing sources")
+{
+    Fixture fixture;
+    siblingSurface(fixture, .2f);
+    const auto id = drawSiblingAnnotation(fixture);
+    auto item = *findAnnotation(fixture.state, id);
+    std::vector<ScenePickPart> parts;
+    std::vector<DiagnosticEdge> lines;
+    std::vector<const ScenePickPart*> sources;
+    const auto prepare = [&] {
+        scenePickParts(fixture.state, parts);
+        annotationWorldLines(item, parts, lines, sources);
+    };
+    prepare();
+    REQUIRE_FALSE(lines.empty());
+    REQUIRE(sources.size() == 2);
+    const auto original = lines;
+    const auto* storage = lines.data();
+#if defined(_MSC_VER) && defined(_DEBUG)
+    const auto allocations = woby::test::countAllocations([&] {
+        for (int frame = 0; frame < 100; ++frame) { prepare(); }
+    });
+    CHECK(allocations == 0);
+#endif
+    fixture.state.files[0].groupSettings[1].translation[2] += 2;
+    prepare();
+    REQUIRE(lines.size() == original.size());
+    for (size_t i = 0; i < lines.size(); ++i) {
+        const auto& segment = item.geometry.segments[i];
+        nearPoint(lines[i].a, {original[i].a[0], original[i].a[1], original[i].a[2] + (segment.source == 1 ? 2.0f : 0.0f)});
+        nearPoint(lines[i].b, {original[i].b[0], original[i].b[1], original[i].b[2] + (segment.endSource.value_or(segment.source) == 1 ? 2.0f : 0.0f)});
+    }
+    item.settings.visible = false;
+    prepare();
+    CHECK(lines.empty());
+    CHECK(sources.empty());
+    item.settings.visible = true;
+    prepare();
+    CHECK_FALSE(lines.empty());
+    fixture.state.files[0].groupSettings[1].visible = false;
+    prepare();
+    CHECK(lines.empty());
+    CHECK(sources.empty());
+    fixture.state.files[0].groupSettings[1].visible = true;
+    prepare();
+    CHECK_FALSE(lines.empty());
+    CHECK(lines.data() == storage);
+    item.targetIds[1] = invalidSceneObjectId;
+    prepare();
+    CHECK(lines.empty());
+    CHECK(sources.empty());
 }

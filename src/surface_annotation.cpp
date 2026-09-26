@@ -1049,15 +1049,24 @@ std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnota
 std::vector<DiagnosticEdge> annotationWorldLines(const UiAnnotation& item, std::span<const ScenePickPart> parts)
 {
     std::vector<DiagnosticEdge> lines;
-    if (!item.settings.visible || !item.targetValid || item.settings.color[3] <= 0) { return lines; }
-    lines.reserve(item.geometry.segments.size());
     std::vector<const ScenePickPart*> sources;
+    annotationWorldLines(item, parts, lines, sources);
+    return lines;
+}
+
+void annotationWorldLines(const UiAnnotation& item, std::span<const ScenePickPart> parts,
+    std::vector<DiagnosticEdge>& lines, std::vector<const ScenePickPart*>& sources)
+{
+    lines.clear();
+    sources.clear();
+    if (!item.settings.visible || !item.targetValid || item.settings.color[3] <= 0) { return; }
     // Keep the outline complete: hiding a participating source hides the annotation.
     for (size_t i = 0; i < std::max(size_t{1}, item.targetIds.size()); ++i) {
         const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
-        if (!part || !part->mesh || part->opacity <= 0) { return lines; }
+        if (!part || !part->mesh || part->opacity <= 0) { sources.clear(); return; }
         sources.push_back(part);
     }
+    lines.reserve(item.geometry.segments.size());
     for (const auto& segment : item.geometry.segments) {
         DiagnosticEdge edge;
         size_t k = 0;
@@ -1072,7 +1081,6 @@ std::vector<DiagnosticEdge> annotationWorldLines(const UiAnnotation& item, std::
         }
         lines.push_back(edge);
     }
-    return lines;
 }
 void appendAnnotationPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
     std::vector<std::vector<DiagnosticEdge>>& storage)

@@ -48,6 +48,8 @@ struct ScenePickView {
 [[nodiscard]] ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis,
     const Bounds& bounds, uint32_t width, uint32_t height, bool homogeneousDepth, float pixelScale);
 [[nodiscard]] std::vector<ScenePickPart> scenePickParts(const UiState& state, bool includeHidden = false);
+// Replace contents while retaining capacity. Borrowed parts must be rebuilt before reuse.
+void scenePickParts(const UiState& state, std::vector<ScenePickPart>& parts, bool includeHidden = false);
 [[nodiscard]] std::vector<SceneObjectId> sceneSelectionPath(const UiState& state, SceneObjectId id);
 void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiComparison& comparison,
     const ComparisonSettings& settings, const MeshComparison& result, bool selected);
@@ -56,5 +58,6 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
 [[nodiscard]] SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts,
     const ScenePickView& view, PickPoint point);
 [[nodiscard]] std::vector<std::array<float, 3>> sceneSelectionLines(std::span<const ScenePickPart> parts);
+void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::array<float, 3>>& lines);
 
 } // namespace woby

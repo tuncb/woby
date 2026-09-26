@@ -17,6 +17,7 @@ namespace woby {
 struct ComparisonRuntimes;
 
 struct SceneScreenshotRuntime {
+    SceneRenderScratch renderScratch;
     ScreenshotSettings options;
     uint16_t width = 0;
     uint16_t height = 0;

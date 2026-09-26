@@ -372,11 +372,11 @@ void submitSceneScreenshotCapture(
             sceneWidth,
             screenshot.height);
     }
-    if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform); }
+    if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform, screenshot.renderScratch); }
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
         submitSceneAnnotations(screenshotHelperView, ui, scenePickView(camera, ui.upAxis, sceneBounds,
-            sceneWidth, screenshot.height, homogeneousDepth, 1), helperLayout, annotationProgram, colorUniform);
+            sceneWidth, screenshot.height, homogeneousDepth, 1), helperLayout, annotationProgram, colorUniform, screenshot.renderScratch);
     }
     if (annotations || scaleOverlay) {
         // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.

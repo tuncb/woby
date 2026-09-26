@@ -1420,6 +1420,7 @@ bool sceneNodeTransformIsDefault(const UiSceneNodeSettings& settings)
 void recalculateSceneBounds(UiState& state)
 {
     state.sceneBounds = combineBounds(state.files, state.sceneNodes);
+    if (state.comparisons.empty()) { return; }
     std::vector<Vertex> corners;
     if (countVisibleSceneGroups(state) != 0) {
         corners.resize(2);

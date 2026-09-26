@@ -75,15 +75,20 @@ std::optional<SceneDimensions> sceneDimensions(std::span<const ScenePickPart> pa
 const std::optional<SceneDimensions>& updateSceneDimensions(SceneDimensionsCache& cache,
     std::span<const ScenePickPart> parts, uint64_t generation, uint64_t revision)
 {
-    std::vector<DimensionPartKey> keys;
+    bool changed = cache.generation != generation || cache.revision != revision;
+    size_t index = 0;
     for (const auto& part : parts) {
         if (!measurable(part)) { continue; }
-        keys.push_back({part.mesh->vertices.data(), part.mesh->indices.data(), part.mesh->vertices.size(),
-            part.mesh->indices.size(), part.indexOffset, part.indexCount, part.model});
+        const DimensionPartKey key{part.mesh->vertices.data(), part.mesh->indices.data(), part.mesh->vertices.size(),
+            part.mesh->indices.size(), part.indexOffset, part.indexCount, part.model};
+        if (index == cache.keys.size()) { cache.keys.push_back(key); changed = true; }
+        else if (cache.keys[index] != key) { cache.keys[index] = key; changed = true; }
+        ++index;
     }
-    if (cache.keys != keys || cache.generation != generation || cache.revision != revision) {
+    changed = changed || index != cache.keys.size();
+    cache.keys.resize(index);
+    if (changed) {
         cache.dimensions = sceneDimensions(parts);
-        cache.keys = std::move(keys);
         cache.generation = generation;
         cache.revision = revision;
     }

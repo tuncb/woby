@@ -242,6 +242,13 @@ ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis, const
 std::vector<ScenePickPart> scenePickParts(const UiState& state, bool includeHidden)
 {
     std::vector<ScenePickPart> result;
+    scenePickParts(state, result, includeHidden);
+    return result;
+}
+
+void scenePickParts(const UiState& state, std::vector<ScenePickPart>& result, bool includeHidden)
+{
+    result.clear();
     if (!state.sceneNodes.empty()) {
         for (const auto& node : state.sceneNodes) { appendNode(result, state, node, identity(), 1, false, includeHidden); }
     } else {
@@ -255,7 +262,6 @@ std::vector<ScenePickPart> scenePickParts(const UiState& state, bool includeHidd
             }
         }
     }
-    return result;
 }
 
 void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiComparison& comparison,
@@ -423,6 +429,13 @@ std::vector<SceneObjectId> sceneSelectionPath(const UiState& state, SceneObjectI
 std::vector<std::array<float, 3>> sceneSelectionLines(std::span<const ScenePickPart> parts)
 {
     std::vector<std::array<float, 3>> lines;
+    sceneSelectionLines(parts, lines);
+    return lines;
+}
+
+void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::array<float, 3>>& lines)
+{
+    lines.clear();
     for (const auto& part : parts) {
         if (!part.selected || !part.mesh || part.indexCount == 0) { continue; }
         auto bounds = part.bounds;
@@ -456,6 +469,5 @@ std::vector<std::array<float, 3>> sceneSelectionLines(std::span<const ScenePickP
             }
         }
     }
-    return lines;
 }
 } // namespace woby

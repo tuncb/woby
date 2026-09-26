@@ -1,4 +1,5 @@
 #include "scene_dimensions.h"
+#include "allocation_probe.h"
 #include "scene_history.h"
 #include "ui_operations.h"
 
@@ -225,4 +226,32 @@ TEST_CASE("dimension display persists and participates in dirty tracking undo an
     { std::ofstream invalid(path); invalid << "version = 6\nshow_dimensions = 12\n"; }
     CHECK_THROWS((void)woby::readSceneDocument(path));
     std::filesystem::remove(path);
+}
+
+TEST_CASE("dimension cache reuses keys on unchanged and shrinking selections")
+{
+    auto state = dimensionScene();
+    auto parts = woby::scenePickParts(state);
+    parts.push_back(parts.front());
+    woby::SceneDimensionsCache cache;
+    const auto update = [&] { return woby::updateSceneDimensions(cache, parts, 1, 2); };
+    REQUIRE(update());
+    const auto* storage = cache.keys.data();
+#if defined(_MSC_VER) && defined(_DEBUG)
+    const auto allocations = woby::test::countAllocations([&] {
+        for (int frame = 0; frame < 100; ++frame) { (void)update(); }
+    });
+    CHECK(allocations == 0);
+#endif
+    parts.pop_back();
+    REQUIRE(update());
+    CHECK(cache.keys.size() == 1);
+    CHECK(cache.dimensions->objectAxes);
+    parts.front().model[0] = 2;
+    REQUIRE(update());
+    CHECK(cache.dimensions->lengths[0] == doctest::Approx(8));
+    parts.clear();
+    CHECK_FALSE(update());
+    CHECK(cache.keys.empty());
+    CHECK(cache.keys.data() == storage);
 }

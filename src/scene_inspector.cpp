@@ -137,7 +137,8 @@ void renderModeField(UiState& state, const char* label, const char* icon, UiObje
 
 void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
 {
-    const auto parts = scenePickParts(state);
+    auto& parts = dimensionsCache.parts;
+    scenePickParts(state, parts);
     const auto& dimensions = updateSceneDimensions(dimensionsCache, parts, state.sceneGeneration, state.sceneEditRevision);
     if (dimensions) {
         ImGui::Text("Size  X:%.3g  Y:%.3g  Z:%.3g",

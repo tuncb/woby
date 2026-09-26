@@ -18,9 +18,7 @@ struct PointSpriteVertex {
     std::array<float, 2> corner{};
 };
 
-struct HelperLineVertex {
-    std::array<float, 3> position{};
-};
+using HelperLineVertex = std::array<float, 3>;
 
 uint32_t sceneBufferBytes(size_t count, size_t elementBytes)
 {
@@ -247,37 +245,13 @@ void submitPointSpriteRange(
     bgfx::submit(viewId, program);
 }
 
-void appendHelperLine(
-    std::vector<HelperLineVertex>& vertices,
-    const std::array<float, 3>& start,
-    const std::array<float, 3>& end)
-{
-    vertices.push_back({start});
-    vertices.push_back({end});
-}
-
-void submitHelperLines(
+void submitHelperBuffer(
     bgfx::ViewId viewId,
-    const std::vector<HelperLineVertex>& vertices,
-    const bgfx::VertexLayout& layout,
+    const bgfx::TransientVertexBuffer& vertexBuffer,
     bgfx::ProgramHandle program,
     bgfx::UniformHandle colorUniform,
     const std::array<float, 4>& color)
 {
-    if (vertices.empty() || vertices.size() % 2u != 0u) {
-        return;
-    }
-
-    bgfx::TransientVertexBuffer vertexBuffer;
-    const auto vertexCount = static_cast<uint32_t>(vertices.size());
-    if (bgfx::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) {
-        return;
-    }
-    bgfx::allocTransientVertexBuffer(&vertexBuffer, vertexCount, layout);
-
-    auto* destination = reinterpret_cast<HelperLineVertex*>(vertexBuffer.data);
-    std::copy(vertices.begin(), vertices.end(), destination);
-
     float model[16];
     bx::mtxIdentity(model);
     bgfx::setTransform(model);
@@ -285,6 +259,20 @@ void submitHelperLines(
     bgfx::setVertexBuffer(0, &vertexBuffer);
     bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, BGFX_STATE_PT_LINES));
     bgfx::submit(viewId, program);
+}
+
+void submitHelperLines(bgfx::ViewId viewId, std::span<const HelperLineVertex> vertices,
+    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program,
+    bgfx::UniformHandle colorUniform, const std::array<float, 4>& color)
+{
+    if (vertices.empty() || vertices.size() % 2u != 0u) { return; }
+    const auto count = sceneBufferBytes(vertices.size(), sizeof(HelperLineVertex)) / sizeof(HelperLineVertex);
+    const auto vertexCount = static_cast<uint32_t>(count);
+    if (bgfx::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) { return; }
+    bgfx::TransientVertexBuffer buffer;
+    bgfx::allocTransientVertexBuffer(&buffer, vertexCount, layout);
+    std::copy(vertices.begin(), vertices.end(), reinterpret_cast<HelperLineVertex*>(buffer.data));
+    submitHelperBuffer(viewId, buffer, program, colorUniform, color);
 }
 
 } // namespace
@@ -754,13 +742,11 @@ void submitSceneFiles(
 }
 
 void submitSceneSelection(bgfx::ViewId viewId, std::span<const ScenePickPart> parts,
-    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform)
+    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+    SceneRenderScratch& scratch)
 {
-    const auto positions = sceneSelectionLines(parts);
-    std::vector<HelperLineVertex> lines;
-    lines.reserve(positions.size());
-    for (const auto& p : positions) { lines.push_back({p}); }
-    submitHelperLines(viewId, lines, layout, program, colorUniform, {1.0f, .78f, .15f, 1.0f});
+    sceneSelectionLines(parts, scratch.positions);
+    submitHelperLines(viewId, scratch.positions, layout, program, colorUniform, {1.0f, .78f, .15f, 1.0f});
 }
 
 void submitSceneHelpers(
@@ -776,36 +762,41 @@ void submitSceneHelpers(
     const float snappedExtent = grid.extent;
 
     if (state.showGrid) {
-        std::vector<HelperLineVertex> gridLines;
-        gridLines.reserve(static_cast<size_t>(lineRadius * 4 + 2) * 2u);
-        for (int line = -lineRadius; line <= lineRadius; ++line) {
-            const float offset = static_cast<float>(line) * spacing;
-            if (state.upAxis == SceneUpAxis::y) {
-                appendHelperLine(gridLines, {offset, 0.0f, -snappedExtent}, {offset, 0.0f, snappedExtent});
-                appendHelperLine(gridLines, {-snappedExtent, 0.0f, offset}, {snappedExtent, 0.0f, offset});
-            } else {
-                appendHelperLine(gridLines, {offset, -snappedExtent, 0.0f}, {offset, snappedExtent, 0.0f});
-                appendHelperLine(gridLines, {-snappedExtent, offset, 0.0f}, {snappedExtent, offset, 0.0f});
+        const auto count = static_cast<uint32_t>((lineRadius * 2 + 1) * 4);
+        if (bgfx::getAvailTransientVertexBuffer(count, layout) >= count) {
+            bgfx::TransientVertexBuffer buffer;
+            bgfx::allocTransientVertexBuffer(&buffer, count, layout);
+            auto* vertex = reinterpret_cast<HelperLineVertex*>(buffer.data);
+            for (int line = -lineRadius; line <= lineRadius; ++line) {
+                const float offset = static_cast<float>(line) * spacing;
+                if (state.upAxis == SceneUpAxis::y) {
+                    *vertex++ = {offset, 0.0f, -snappedExtent};
+                    *vertex++ = {offset, 0.0f, snappedExtent};
+                    *vertex++ = {-snappedExtent, 0.0f, offset};
+                    *vertex++ = {snappedExtent, 0.0f, offset};
+                } else {
+                    *vertex++ = {offset, -snappedExtent, 0.0f};
+                    *vertex++ = {offset, snappedExtent, 0.0f};
+                    *vertex++ = {-snappedExtent, offset, 0.0f};
+                    *vertex++ = {snappedExtent, offset, 0.0f};
+                }
             }
+            submitHelperBuffer(viewId, buffer, program, colorUniform, {0.72f, 0.74f, 0.78f, 0.42f});
         }
-        submitHelperLines(viewId, gridLines, layout, program, colorUniform, {0.72f, 0.74f, 0.78f, 0.42f});
     }
 
     if (state.showOrigin) {
         const float axisLength = std::max(spacing * 2.0f, snappedExtent * 0.18f);
 
-        std::vector<HelperLineVertex> axisLine;
-        axisLine.reserve(2u);
+        std::array<HelperLineVertex, 2> axisLine{};
 
-        appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {axisLength, 0.0f, 0.0f});
+        axisLine[1] = {axisLength, 0.0f, 0.0f};
         submitHelperLines(viewId, axisLine, layout, program, colorUniform, {1.0f, 0.20f, 0.20f, 1.0f});
 
-        axisLine.clear();
-        appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {0.0f, axisLength, 0.0f});
+        axisLine[1] = {0.0f, axisLength, 0.0f};
         submitHelperLines(viewId, axisLine, layout, program, colorUniform, {0.20f, 0.85f, 0.35f, 1.0f});
 
-        axisLine.clear();
-        appendHelperLine(axisLine, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, axisLength});
+        axisLine[1] = {0.0f, 0.0f, axisLength};
         submitHelperLines(viewId, axisLine, layout, program, colorUniform, {0.30f, 0.55f, 1.0f, 1.0f});
     }
 }

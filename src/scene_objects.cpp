@@ -34,14 +34,15 @@ void assignNodeIds(UiState& state, UiSceneNode& node)
 }
 
 template <typename Visitor>
-bool visitFolders(const std::vector<UiSceneNode>& nodes, const Visitor& visitor)
+bool visitFolders(const std::vector<UiSceneNode>& nodes, const Visitor& visitor, SceneObjectId filter)
 {
     for (const auto& node : nodes) {
         if (node.kind == UiSceneNodeKind::folder && node.objectId != invalidSceneObjectId
+            && (filter == invalidSceneObjectId || node.objectId == filter)
             && visitor(SceneObjectInfo{node.objectId, SceneObjectKind::folder, node.name, {}, invalidSceneObjectId})) {
             return true;
         }
-        if (visitFolders(node.children, visitor)) {
+        if (visitFolders(node.children, visitor, filter)) {
             return true;
         }
     }
@@ -49,28 +50,32 @@ bool visitFolders(const std::vector<UiSceneNode>& nodes, const Visitor& visitor)
 }
 
 template <typename Visitor>
-void visitObjects(const UiState& state, const Visitor& visitor)
+void visitObjects(const UiState& state, const Visitor& visitor, SceneObjectId filter = invalidSceneObjectId)
 {
+    // Filter IDs before constructing owning names/paths for inspector queries.
+    const auto wanted = [filter](SceneObjectId id) {
+        return id != invalidSceneObjectId && (filter == invalidSceneObjectId || filter == id);
+    };
     for (const auto& item : state.annotations) {
-        if (item.objectId != 0 && visitor(SceneObjectInfo{item.objectId, SceneObjectKind::annotation, item.settings.name, {}, 0})) { return; }
+        if (wanted(item.objectId) && visitor(SceneObjectInfo{item.objectId, SceneObjectKind::annotation, item.settings.name, {}, 0})) { return; }
     }
     for (const auto& comparison : state.comparisons) {
-        if (comparison.objectId != invalidSceneObjectId
+        if (wanted(comparison.objectId)
             && visitor(SceneObjectInfo{comparison.objectId, SceneObjectKind::comparison,
                 comparison.name, {}, invalidSceneObjectId})) { return; }
     }
-    if (visitFolders(state.sceneNodes, visitor)) {
+    if (visitFolders(state.sceneNodes, visitor, filter)) {
         return;
     }
     for (const auto& file : state.files) {
-        const auto filename = file.path.filename().u8string();
-        if (file.objectId != invalidSceneObjectId
-            && visitor(SceneObjectInfo{file.objectId, SceneObjectKind::file, std::string(filename.begin(), filename.end()), file.path, invalidSceneObjectId})) {
-            return;
+        if (wanted(file.objectId)) {
+            const auto filename = file.path.filename().u8string();
+            if (visitor(SceneObjectInfo{file.objectId, SceneObjectKind::file,
+                    std::string(filename.begin(), filename.end()), file.path, invalidSceneObjectId})) { return; }
         }
         for (size_t index = 0; index < file.groupSettings.size() && index < file.mesh.nodes.size(); ++index) {
             const auto id = file.groupSettings[index].objectId;
-            if (id != invalidSceneObjectId
+            if (wanted(id)
                 && visitor(SceneObjectInfo{id, SceneObjectKind::group, file.mesh.nodes[index].name, {}, file.objectId})) {
                 return;
             }
@@ -118,12 +123,9 @@ std::optional<SceneObjectInfo> findSceneObject(const UiState& state, SceneObject
     std::optional<SceneObjectInfo> result;
     if (id != invalidSceneObjectId) {
         visitObjects(state, [&](const SceneObjectInfo& object) {
-            if (object.id != id) {
-                return false;
-            }
             result = object;
             return true;
-        });
+        }, id);
     }
     return result;
 }

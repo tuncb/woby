@@ -52,5 +52,6 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
 // Requires the annotation vertex shader, which consumes projected NDC positions.
 void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const ScenePickView& view,
     const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+    SceneRenderScratch& scratch,
     const AnnotationInteraction* interaction = nullptr);
 } // namespace woby

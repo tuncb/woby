@@ -30,6 +30,7 @@ struct SceneDimensionsCache {
     uint64_t generation = 0, revision = 0;
     std::vector<DimensionPartKey> keys;
     std::optional<SceneDimensions> dimensions;
+    std::vector<ScenePickPart> parts;
 };
 const std::optional<SceneDimensions>& updateSceneDimensions(SceneDimensionsCache& cache,
     std::span<const ScenePickPart> parts, uint64_t generation, uint64_t revision);

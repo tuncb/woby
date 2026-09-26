@@ -1950,7 +1950,7 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
 }
 
 void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
-    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform)
+    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch)
 {
     for (const auto& comparison : state.comparisons) {
         const auto it = runtimes.objects.find(comparison.objectId);
@@ -1969,7 +1969,10 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
         const auto* edge = focusedComparisonDiagnostic(state, it->second.result,
             it->second.resultSignature, comparison.objectId);
         if (!edge) { continue; }
-        std::vector<std::array<float, 3>> points, faceFill;
+        auto& points = scratch.focusPoints;
+        auto& faceFill = scratch.positions;
+        points.clear();
+        faceFill.clear();
         const auto& focus = *comparison.diagnosticFocus;
         const bool duplicatePoints = focus.category == DiagnosticCategory::duplicatePoints;
         const bool duplicateTriangles = focus.category == DiagnosticCategory::duplicateTriangles;
@@ -2043,8 +2046,7 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
         }
         // Portable thick lines: bgfx line primitives are only one pixel wide on
         // some backends and would merge into the yellow object-selection outline.
-        std::vector<std::array<float, 3>> triangles;
-        triangles = std::move(faceFill);
+        auto& triangles = faceFill;
         triangles.reserve(triangles.size() + points.size()*3);
         const auto direction = bx::sub(cameraEye(state.camera, state.upAxis), cameraLookAt(state.camera));
         const float halfWidth = state.camera.distance * .0025f;

@@ -109,6 +109,9 @@ struct AnnotationSurfaceHit {
     std::array<float, 2> point);
 [[nodiscard]] std::vector<DiagnosticEdge> annotationWorldLines(const UiAnnotation& item,
     std::span<const ScenePickPart> parts);
+// Both outputs are replaced and retain capacity; sources borrow from parts.
+void annotationWorldLines(const UiAnnotation& item, std::span<const ScenePickPart> parts,
+    std::vector<DiagnosticEdge>& lines, std::vector<const ScenePickPart*>& sources);
 void appendAnnotationPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
     std::vector<std::vector<DiagnosticEdge>>& storage);
 [[nodiscard]] bool annotationEdgeHit(const UiAnnotation& item, std::span<const ScenePickPart> parts,
