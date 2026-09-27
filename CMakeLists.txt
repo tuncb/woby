@@ -648,4 +648,9 @@ if(WOBY_BUILD_OBJ_BENCHMARKS)
     include(cmake/WobyMappingBenchmarks.cmake)
 endif()
 
+option(WOBY_BUILD_VERTEX_BENCHMARKS "Build vertex marker GPU research benchmark" OFF)
+if(WOBY_BUILD_VERTEX_BENCHMARKS)
+    include(cmake/WobyVertexBenchmarks.cmake)
+endif()
+
 woby_stage_runtime_dlls("${WOBY_RUNTIME_DIRECTORY}" ${woby_runtime_targets})
