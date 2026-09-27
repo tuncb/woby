@@ -1,0 +1,5413 @@
+{
+  "date": "2026-09-27",
+  "woby_commit": "0602f0415adf105290f93851be5451b22dedd0ed",
+  "fast_obj_commit": "d620667f10a548dee94dbc8c144bb22f79162176",
+  "tinyobjloader_commit": "45636bdcef1a4fec140346b90c0b50bf0bc3e23b",
+  "machine": {
+    "cpu": "AMD Ryzen 7 5800H",
+    "physical_cores": 8,
+    "logical_threads": 16,
+    "visible_memory_KiB": 66957372,
+    "disk": "SKHynix HFS001TDE9X084N NVMe",
+    "os": "Windows",
+    "compiler": "MSVC v145 / Visual Studio 2026"
+  },
+  "configuration": "Release /O2 NDEBUG; tinyobj /arch:AVX2; competitors C++17; woby/RapidOBJ C++20",
+  "notes": [
+    "Raw timing/counter/validation values retained; warning text abbreviated to 256 characters.",
+    "Three successful repetitions per main variant; one traditional tinyobj control per model.",
+    "Initial traditional tinyobj 256 MiB input-limit failures retained and excluded from summaries.",
+    "Traditional control rerun with 16 GiB limit; uncompleted second-round attempt excluded.",
+    "Pre-read input per round, no cache flush, fresh sequential processes, no concurrent tests/builds/viewer.",
+    "Parser timings exclude triangulation, validation and returned-result destruction; woby includes triangulation and finalization.",
+    "Summary stage values are seconds; per-run stage values use milliseconds."
+  ],
+  "summary": [
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "rapid",
+      "n": 3,
+      "median_s": 6.5129314,
+      "min_s": 4.6108615,
+      "max_s": 7.282457999999999,
+      "peak_ws_gib": 8.271289825439453,
+      "peak_commit_gib": 9.826873779296875,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "rapid-cached",
+      "n": 3,
+      "median_s": 5.61557,
+      "min_s": 5.4358795,
+      "max_s": 8.3136459,
+      "peak_ws_gib": 8.271656036376953,
+      "peak_commit_gib": 9.827140808105469,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "fast",
+      "n": 3,
+      "median_s": 19.766564600000002,
+      "min_s": 19.454065699999997,
+      "max_s": 22.5047739,
+      "peak_ws_gib": 5.891517639160156,
+      "peak_commit_gib": 7.263954162597656,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "tiny-opt",
+      "n": 3,
+      "median_s": 33.8846029,
+      "min_s": 32.6976024,
+      "max_s": 38.251933599999994,
+      "peak_ws_gib": 27.674579620361328,
+      "peak_commit_gib": 26.222820281982422,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "tiny-typed",
+      "n": 3,
+      "median_s": 29.5750824,
+      "min_s": 26.7728934,
+      "max_s": 37.991786,
+      "peak_ws_gib": 23.861846923828125,
+      "peak_commit_gib": 23.161365509033203,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "tiny-typed-cache",
+      "n": 3,
+      "median_s": 29.3360094,
+      "min_s": 27.9677435,
+      "max_s": 29.6249967,
+      "peak_ws_gib": 23.86190414428711,
+      "peak_commit_gib": 22.402915954589844,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "woby",
+      "n": 3,
+      "median_s": 41.2468136,
+      "min_s": 38.288158300000006,
+      "max_s": 45.1504125,
+      "peak_ws_gib": 9.966510772705078,
+      "peak_commit_gib": 10.738700866699219,
+      "geometry": null,
+      "vertices": 38414328,
+      "stages_s": {
+        "bounds": 0.4792631,
+        "compact": 9.130235,
+        "normals": 1.9420468000000002,
+        "parse": 6.221698,
+        "source_copy": 0.4075078,
+        "triangulate": 0.2527219,
+        "vertex_map": 22.697962
+      }
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "rapid",
+      "n": 3,
+      "median_s": 0.8350921,
+      "min_s": 0.745524,
+      "max_s": 1.0542871,
+      "peak_ws_gib": 1.6202163696289062,
+      "peak_commit_gib": 1.948944091796875,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "rapid-cached",
+      "n": 3,
+      "median_s": 0.7819398,
+      "min_s": 0.72056,
+      "max_s": 0.9459462,
+      "peak_ws_gib": 1.6202125549316406,
+      "peak_commit_gib": 1.9490013122558594,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "fast",
+      "n": 3,
+      "median_s": 2.7231584,
+      "min_s": 2.6879387,
+      "max_s": 2.8188068,
+      "peak_ws_gib": 1.0438613891601562,
+      "peak_commit_gib": 1.3266868591308594,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "tiny-opt",
+      "n": 3,
+      "median_s": 5.2788734,
+      "min_s": 4.9679193999999995,
+      "max_s": 5.3526723,
+      "peak_ws_gib": 5.291584014892578,
+      "peak_commit_gib": 5.631679534912109,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "tiny-typed",
+      "n": 3,
+      "median_s": 4.6812746,
+      "min_s": 4.5695948,
+      "max_s": 4.8744,
+      "peak_ws_gib": 4.2930755615234375,
+      "peak_commit_gib": 4.7849578857421875,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "tiny-typed-cache",
+      "n": 3,
+      "median_s": 4.804031299999999,
+      "min_s": 4.6264849,
+      "max_s": 4.823007400000001,
+      "peak_ws_gib": 4.293094635009766,
+      "peak_commit_gib": 4.650600433349609,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "woby",
+      "n": 3,
+      "median_s": 8.4485801,
+      "min_s": 7.7392094,
+      "max_s": 9.297746,
+      "peak_ws_gib": 2.180950164794922,
+      "peak_commit_gib": 2.1816177368164062,
+      "geometry": null,
+      "vertices": 8933524,
+      "stages_s": {
+        "bounds": 0.1079391,
+        "compact": 2.0899687,
+        "normals": 0.5364137,
+        "parse": 0.7447595,
+        "source_copy": 0.1118191,
+        "triangulate": 0.0647229,
+        "vertex_map": 4.8025047999999995
+      }
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "rapid",
+      "n": 3,
+      "median_s": 0.6307136000000001,
+      "min_s": 0.6285637000000001,
+      "max_s": 1.0443263,
+      "peak_ws_gib": 1.169464111328125,
+      "peak_commit_gib": 1.4464187622070312,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "rapid-cached",
+      "n": 3,
+      "median_s": 0.6690436999999999,
+      "min_s": 0.6027218000000001,
+      "max_s": 0.823794,
+      "peak_ws_gib": 1.1692161560058594,
+      "peak_commit_gib": 1.4463272094726562,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "fast",
+      "n": 3,
+      "median_s": 2.2604117,
+      "min_s": 2.167387,
+      "max_s": 2.4254252999999997,
+      "peak_ws_gib": 1.0192184448242188,
+      "peak_commit_gib": 1.2921867370605469,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "tiny-opt",
+      "n": 3,
+      "median_s": 4.349595,
+      "min_s": 4.2064798,
+      "max_s": 5.0386234000000005,
+      "peak_ws_gib": 4.009407043457031,
+      "peak_commit_gib": 4.022029876708984,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "tiny-typed",
+      "n": 3,
+      "median_s": 4.2239678000000005,
+      "min_s": 3.7827944000000002,
+      "max_s": 4.8769794,
+      "peak_ws_gib": 3.302318572998047,
+      "peak_commit_gib": 3.3136558532714844,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "tiny-typed-cache",
+      "n": 3,
+      "median_s": 3.9686644,
+      "min_s": 3.8696938,
+      "max_s": 5.1389763,
+      "peak_ws_gib": 3.3024749755859375,
+      "peak_commit_gib": 3.3138198852539062,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "woby",
+      "n": 3,
+      "median_s": 7.0821765999999995,
+      "min_s": 6.3613491,
+      "max_s": 8.508327,
+      "peak_ws_gib": 1.9039649963378906,
+      "peak_commit_gib": 2.0078163146972656,
+      "geometry": null,
+      "vertices": 10624089,
+      "stages_s": {
+        "bounds": 0.1337064,
+        "compact": 2.3750084,
+        "normals": 0.0563313,
+        "parse": 0.6922434,
+        "source_copy": 0.0676403,
+        "triangulate": 0.0429159,
+        "vertex_map": 3.4735489999999998
+      }
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "rapid",
+      "n": 3,
+      "median_s": 0.8382921999999999,
+      "min_s": 0.8185312,
+      "max_s": 1.5226929,
+      "peak_ws_gib": 1.1277656555175781,
+      "peak_commit_gib": 1.2313041687011719,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "rapid-cached",
+      "n": 3,
+      "median_s": 0.7741323999999999,
+      "min_s": 0.750478,
+      "max_s": 0.8383657,
+      "peak_ws_gib": 1.1275787353515625,
+      "peak_commit_gib": 1.2311668395996094,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "fast",
+      "n": 3,
+      "median_s": 2.9091372,
+      "min_s": 2.8925652,
+      "max_s": 2.913358,
+      "peak_ws_gib": 0.7669677734375,
+      "peak_commit_gib": 0.9659080505371094,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "tiny-opt",
+      "n": 3,
+      "median_s": 4.9772433000000005,
+      "min_s": 4.753623800000001,
+      "max_s": 5.6802564,
+      "peak_ws_gib": 3.967609405517578,
+      "peak_commit_gib": 3.6606979370117188,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "tiny-typed",
+      "n": 3,
+      "median_s": 4.614406600000001,
+      "min_s": 4.5897593,
+      "max_s": 5.0621517,
+      "peak_ws_gib": 3.387359619140625,
+      "peak_commit_gib": 3.0785484313964844,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "tiny-typed-cache",
+      "n": 3,
+      "median_s": 4.5313651,
+      "min_s": 4.4470143,
+      "max_s": 4.5688379999999995,
+      "peak_ws_gib": 3.387432098388672,
+      "peak_commit_gib": 3.0783958435058594,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "woby",
+      "n": 3,
+      "median_s": 5.8055373,
+      "min_s": 5.6451429,
+      "max_s": 5.9957709,
+      "peak_ws_gib": 1.6801338195800781,
+      "peak_commit_gib": 1.8590278625488281,
+      "geometry": null,
+      "vertices": 8785228,
+      "stages_s": {
+        "bounds": 0.10748959999999999,
+        "compact": 1.8715776000000002,
+        "normals": 0.0487019,
+        "parse": 0.8032915,
+        "source_copy": 0.0707392,
+        "triangulate": 0.0376218,
+        "vertex_map": 2.7816305000000003
+      }
+    },
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "backend": "tiny",
+      "n": 1,
+      "median_s": 160.2920732,
+      "min_s": 160.2920732,
+      "max_s": 160.2920732,
+      "peak_ws_gib": 20.48857879638672,
+      "peak_commit_gib": 15.856101989746094,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "backend": "tiny",
+      "n": 1,
+      "median_s": 23.4213173,
+      "min_s": 23.4213173,
+      "max_s": 23.4213173,
+      "peak_ws_gib": 3.8354873657226562,
+      "peak_commit_gib": 3.221477508544922,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "powerplant.obj",
+      "backend": "tiny",
+      "n": 1,
+      "median_s": 23.1836051,
+      "min_s": 23.1836051,
+      "max_s": 23.1836051,
+      "peak_ws_gib": 1.6292610168457031,
+      "peak_commit_gib": 0.9875869750976562,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "vertices": null,
+      "stages_s": {}
+    },
+    {
+      "model": "san-miguel.obj",
+      "backend": "tiny",
+      "n": 1,
+      "median_s": 20.954614499999998,
+      "min_s": 20.954614499999998,
+      "max_s": 20.954614499999998,
+      "peak_ws_gib": 1.7157478332519531,
+      "peak_commit_gib": 0.6899261474609375,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "vertices": null,
+      "stages_s": {}
+    }
+  ],
+  "runs": [
+    {
+      "backend": "rapid",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 7282.458,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 10551197696,
+      "peak_working_set_bytes": 8881049600,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 1,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 11.225815899902955,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 8313.6459,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 10551414784,
+      "peak_working_set_bytes": 8881758208,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 1,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 11.911268300027587,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 19766.5646,
+      "materials": 1,
+      "ok": true,
+      "peak_commit_bytes": 7799623680,
+      "peak_working_set_bytes": 6326091776,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 1,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 22.01487069996074,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 7108991827,
+      "error": "input stream too large (7108991827 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.03427549998741597,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 33884.6029,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 28156542976,
+      "peak_working_set_bytes": 29715353600,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 39.06107190006878,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 26772.8934,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 24869326848,
+      "peak_working_set_bytes": 25621463040,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 29.29678440000862,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 29336.0094,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 24054947840,
+      "peak_working_set_bytes": 25621749760,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 31.66735219990369,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "woby",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "hardware_threads": 16,
+      "load_ms": 38288.1583,
+      "ok": true,
+      "peak_commit_bytes": 11530342400,
+      "peak_working_set_bytes": 10701422592,
+      "positions": 37890645,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "stages": {
+        "bounds_ms": 479.2631,
+        "compact_ms": 8342.525,
+        "normals_ms": 1878.366,
+        "parse_ms": 6221.698,
+        "source_copy_ms": 403.0027,
+        "triangulate_ms": 243.06,
+        "vertex_map_ms": 20438.1447
+      },
+      "triangles": 75771986,
+      "vertices": 38414328,
+      "round": 1,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 38.54474069993012,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 1054.2871,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 2092560384,
+      "peak_working_set_bytes": 1739493376,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 1,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 1.5761332999682054,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 781.9398,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 2092572672,
+      "peak_working_set_bytes": 1739735040,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 1,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.3861050000414252,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 2723.1584,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1424932864,
+      "peak_working_set_bytes": 1120837632,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 1,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 3.2578321000328287,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 815866103,
+      "error": "input stream too large (815866103 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.02302269998472184,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 4967.9194,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 6046924800,
+      "peak_working_set_bytes": 5681909760,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 6.080258099944331,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 4874.4,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 5137809408,
+      "peak_working_set_bytes": 4609781760,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 5.424534599995241,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 4626.4849,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 4972761088,
+      "peak_working_set_bytes": 4609601536,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 5.217440500040539,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "woby",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "hardware_threads": 16,
+      "load_ms": 9297.746,
+      "ok": true,
+      "peak_commit_bytes": 2343108608,
+      "peak_working_set_bytes": 2341859328,
+      "positions": 8933524,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "stages": {
+        "bounds_ms": 107.2022,
+        "compact_ms": 2309.6967,
+        "normals_ms": 614.5063,
+        "parse_ms": 761.7984,
+        "source_copy_ms": 111.8191,
+        "triangulate_ms": 64.7229,
+        "vertex_map_ms": 5252.2892
+      },
+      "triangles": 17866836,
+      "vertices": 8933524,
+      "round": 1,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 9.393853100016713,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 1044.3263,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1553096704,
+      "peak_working_set_bytes": 1255763968,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 1,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 1.4592134000267833,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 823.794,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1552961536,
+      "peak_working_set_bytes": 1255436288,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 1,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.2467455000150949,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 2425.4253,
+      "materials": 56,
+      "ok": true,
+      "peak_commit_bytes": 1387233280,
+      "peak_working_set_bytes": 1094234112,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 1,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 2.804920200025663,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 817891724,
+      "error": "input stream too large (817891724 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.02392220008186996,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 5038.6234,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 4318924800,
+      "peak_working_set_bytes": 4305068032,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 5.928726100013591,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 4876.9794,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3558359040,
+      "peak_working_set_bytes": 3545616384,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 5.524530399939977,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 5138.9763,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3558187008,
+      "peak_working_set_bytes": 3546030080,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 5.775581300025806,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "woby",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "hardware_threads": 16,
+      "load_ms": 8508.327,
+      "ok": true,
+      "peak_commit_bytes": 2155876352,
+      "peak_working_set_bytes": 2044366848,
+      "positions": 5984083,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "stages": {
+        "bounds_ms": 131.5395,
+        "compact_ms": 2375.0084,
+        "normals_ms": 60.7368,
+        "parse_ms": 1363.341,
+        "source_copy_ms": 135.7266,
+        "triangulate_ms": 75.7705,
+        "vertex_map_ms": 4319.5984
+      },
+      "triangles": 12759246,
+      "vertices": 10624089,
+      "round": 1,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 8.578218600014225,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 1522.6929,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1321848832,
+      "peak_working_set_bytes": 1210929152,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 1,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 1.8667352000484243,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 838.3657,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1321955328,
+      "peak_working_set_bytes": 1210642432,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 1,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.182729299995117,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 2909.1372,
+      "materials": 287,
+      "ok": true,
+      "peak_commit_bytes": 1038839808,
+      "peak_working_set_bytes": 824127488,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 1,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 3.316862800042145,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 1143041382,
+      "error": "input stream too large (1143041382 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.024149500066414475,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 4753.6238,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3930644480,
+      "peak_working_set_bytes": 4259876864,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 5.4415425000479445,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 4614.4066,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3305566208,
+      "peak_working_set_bytes": 3637547008,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 5.025464000063948,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 4531.3651,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3305369600,
+      "peak_working_set_bytes": 3637227520,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 4.899394400068559,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "woby",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "hardware_threads": 16,
+      "load_ms": 5645.1429,
+      "ok": true,
+      "peak_commit_bytes": 1995988992,
+      "peak_working_set_bytes": 1803997184,
+      "positions": 5933233,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "stages": {
+        "bounds_ms": 104.5921,
+        "compact_ms": 1738.9331,
+        "normals_ms": 54.389,
+        "parse_ms": 803.2915,
+        "source_copy_ms": 72.0773,
+        "triangulate_ms": 39.0297,
+        "vertex_map_ms": 2755.3564
+      },
+      "triangles": 9980699,
+      "vertices": 8785228,
+      "round": 1,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 5.704283999977633,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 5615.57,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 10551812096,
+      "peak_working_set_bytes": 8880828416,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 2,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 8.488982000038959,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 22504.7739,
+      "materials": 1,
+      "ok": true,
+      "peak_commit_bytes": 7798120448,
+      "peak_working_set_bytes": 6324699136,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 2,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 24.967348500038497,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 7108991827,
+      "error": "input stream too large (7108991827 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 2,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.02200200001243502,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 38251.9336,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 28156338176,
+      "peak_working_set_bytes": 29715210240,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 44.044209900079295,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 29575.0824,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 24885301248,
+      "peak_working_set_bytes": 25621573632,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 32.94617080001626,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 29624.9967,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 24054439936,
+      "peak_working_set_bytes": 25621524480,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 32.4857548000291,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "woby",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "hardware_threads": 16,
+      "load_ms": 45150.4125,
+      "ok": true,
+      "peak_commit_bytes": 11530592256,
+      "peak_working_set_bytes": 10701463552,
+      "positions": 37890645,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "stages": {
+        "bounds_ms": 462.7936,
+        "compact_ms": 11295.8555,
+        "normals_ms": 2313.4136,
+        "parse_ms": 6807.1093,
+        "source_copy_ms": 407.5078,
+        "triangulate_ms": 252.7219,
+        "vertex_map_ms": 23299.3825
+      },
+      "triangles": 75771986,
+      "vertices": 38414328,
+      "round": 2,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 45.4089753999142,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 6512.9314,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 10551934976,
+      "peak_working_set_bytes": 8881229824,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 2,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 9.038729800027795,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 945.9462,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 2092724224,
+      "peak_working_set_bytes": 1739673600,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 2,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.664426099974662,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 2818.8068,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1424519168,
+      "peak_working_set_bytes": 1121136640,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 2,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 3.334645500057377,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 815866103,
+      "error": "input stream too large (815866103 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 2,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.015599399921484292,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 5352.6723,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 6046969856,
+      "peak_working_set_bytes": 5681664000,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 6.488671200000681,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 4569.5948,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 4973023232,
+      "peak_working_set_bytes": 4609654784,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 5.120156100019813,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 4823.0074,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 4993544192,
+      "peak_working_set_bytes": 4609675264,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 5.394214199972339,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "woby",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "hardware_threads": 16,
+      "load_ms": 7739.2094,
+      "ok": true,
+      "peak_commit_bytes": 2342477824,
+      "peak_working_set_bytes": 2341646336,
+      "positions": 8933524,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "stages": {
+        "bounds_ms": 111.8452,
+        "compact_ms": 1704.2568,
+        "normals_ms": 521.5856,
+        "parse_ms": 744.7595,
+        "source_copy_ms": 122.0587,
+        "triangulate_ms": 67.5668,
+        "vertex_map_ms": 4409.975
+      },
+      "triangles": 17866836,
+      "vertices": 8933524,
+      "round": 2,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 7.80460629996378,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 835.0921,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 2093137920,
+      "peak_working_set_bytes": 1739825152,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 2,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 1.3693987999577075,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 669.0437,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1553022976,
+      "peak_working_set_bytes": 1255530496,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 2,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.0584422999527305,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 2260.4117,
+      "materials": 56,
+      "ok": true,
+      "peak_commit_bytes": 1387474944,
+      "peak_working_set_bytes": 1094377472,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 2,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 2.631438700016588,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 817891724,
+      "error": "input stream too large (817891724 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 2,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.017163800075650215,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 4206.4798,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 4318580736,
+      "peak_working_set_bytes": 4304973824,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 5.006678199977614,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 4223.9678,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3557408768,
+      "peak_working_set_bytes": 3545976832,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 4.657305400003679,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 3968.6644,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3558105088,
+      "peak_working_set_bytes": 3545710592,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 4.377763299969956,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "woby",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "hardware_threads": 16,
+      "load_ms": 6361.3491,
+      "ok": true,
+      "peak_commit_bytes": 2156097536,
+      "peak_working_set_bytes": 2044461056,
+      "positions": 5984083,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "stages": {
+        "bounds_ms": 141.7874,
+        "compact_ms": 1860.2093,
+        "normals_ms": 52.3943,
+        "parse_ms": 687.3799,
+        "source_copy_ms": 67.6403,
+        "triangulate_ms": 42.9159,
+        "vertex_map_ms": 3465.6079
+      },
+      "triangles": 12759246,
+      "vertices": 10624089,
+      "round": 2,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 6.416044400073588,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 628.5637,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1553080320,
+      "peak_working_set_bytes": 1255587840,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 2,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 0.9988655999768525,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 750.478,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1322143744,
+      "peak_working_set_bytes": 1211203584,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 2,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.082126000081189,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 2913.358,
+      "materials": 287,
+      "ok": true,
+      "peak_commit_bytes": 1037135872,
+      "peak_working_set_bytes": 823435264,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 2,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 3.2208135999972,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 1143041382,
+      "error": "input stream too large (1143041382 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 2,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.01769909996073693,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 5680.2564,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3930435584,
+      "peak_working_set_bytes": 4260188160,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 6.396623999928124,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 5062.1517,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3305459712,
+      "peak_working_set_bytes": 3637116928,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 5.524537999997847,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 4568.838,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3305586688,
+      "peak_working_set_bytes": 3636924416,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 2,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 4.989665000000969,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "woby",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "hardware_threads": 16,
+      "load_ms": 5995.7709,
+      "ok": true,
+      "peak_commit_bytes": 1996386304,
+      "peak_working_set_bytes": 1804120064,
+      "positions": 5933233,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "stages": {
+        "bounds_ms": 107.4896,
+        "compact_ms": 1986.0896,
+        "normals_ms": 48.7019,
+        "parse_ms": 809.9001,
+        "source_copy_ms": 70.7392,
+        "triangulate_ms": 36.2463,
+        "vertex_map_ms": 2848.4914
+      },
+      "triangles": 9980699,
+      "vertices": 8785228,
+      "round": 2,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 6.053551500081085,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 838.2922,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1322102784,
+      "peak_working_set_bytes": 1210691584,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 2,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 1.1893963000038639,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 19454.0657,
+      "materials": 1,
+      "ok": true,
+      "peak_commit_bytes": 7799611392,
+      "peak_working_set_bytes": 6325968896,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 3,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 21.66340019996278,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 7108991827,
+      "error": "input stream too large (7108991827 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 3,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.0163258999818936,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 32697.6024,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 28156538880,
+      "peak_working_set_bytes": 29715439616,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 38.5030936000403,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 37991.786,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 24054730752,
+      "peak_working_set_bytes": 25621389312,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 41.81482259999029,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 27967.7435,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 24511627264,
+      "peak_working_set_bytes": 25621446656,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 30.531012099934742,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 213,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "woby",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "hardware_threads": 16,
+      "load_ms": 41246.8136,
+      "ok": true,
+      "peak_commit_bytes": 11530661888,
+      "peak_working_set_bytes": 10701459456,
+      "positions": 37890645,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "stages": {
+        "bounds_ms": 484.371,
+        "compact_ms": 9130.235,
+        "normals_ms": 1942.0468,
+        "parse_ms": 5774.167,
+        "source_copy_ms": 595.2429,
+        "triangulate_ms": 326.3107,
+        "vertex_map_ms": 22697.962
+      },
+      "triangles": 75771986,
+      "vertices": 38414328,
+      "round": 3,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 41.46679810003843,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 4610.8615,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 10551525376,
+      "peak_working_set_bytes": 8881295360,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 3,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 7.244985800003633,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 5435.8795,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 10552152064,
+      "peak_working_set_bytes": 8881623040,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 3,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 8.062160899979062,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 2687.9387,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1423990784,
+      "peak_working_set_bytes": 1120595968,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 3,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 3.219878999982029,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 815866103,
+      "error": "input stream too large (815866103 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 3,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.017304500099271536,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 5278.8734,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 6046986240,
+      "peak_working_set_bytes": 5681795072,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 6.439463799935766,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 4681.2746,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 5367513088,
+      "peak_working_set_bytes": 4609531904,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 5.336424799985252,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 4804.0313,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 5273448448,
+      "peak_working_set_bytes": 4609691648,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 5.601323300041258,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "woby",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "hardware_threads": 16,
+      "load_ms": 8448.5801,
+      "ok": true,
+      "peak_commit_bytes": 2342494208,
+      "peak_working_set_bytes": 2341777408,
+      "positions": 8933524,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "stages": {
+        "bounds_ms": 107.9391,
+        "compact_ms": 2089.9687,
+        "normals_ms": 536.4137,
+        "parse_ms": 689.8593,
+        "source_copy_ms": 105.4171,
+        "triangulate_ms": 57.2355,
+        "vertex_map_ms": 4802.5048
+      },
+      "triangles": 17866836,
+      "vertices": 8933524,
+      "round": 3,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 8.517002300010063,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 745.524,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 2092662784,
+      "peak_working_set_bytes": 1739694080,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 3,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 1.3149341999087483,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 720.56,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 2093211648,
+      "peak_working_set_bytes": 1739689984,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 1,
+      "round": 3,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.2427859000163153,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 2167.387,
+      "materials": 56,
+      "ok": true,
+      "peak_commit_bytes": 1388244992,
+      "peak_working_set_bytes": 1095069696,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 3,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 2.543268199893646,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 817891724,
+      "error": "input stream too large (817891724 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 3,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.017206900054588914,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 4349.595,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 4318621696,
+      "peak_working_set_bytes": 4305100800,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 5.179997100029141,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 3782.7944,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3558010880,
+      "peak_working_set_bytes": 3545837568,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 4.230824199970812,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 3869.6938,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3558363136,
+      "peak_working_set_bytes": 3546005504,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 4.373832800076343,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 2947,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0' "
+    },
+    {
+      "backend": "woby",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "hardware_threads": 16,
+      "load_ms": 7082.1766,
+      "ok": true,
+      "peak_commit_bytes": 2154811392,
+      "peak_working_set_bytes": 2043953152,
+      "positions": 5984083,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "stages": {
+        "bounds_ms": 133.7064,
+        "compact_ms": 2540.5987,
+        "normals_ms": 56.3313,
+        "parse_ms": 692.2434,
+        "source_copy_ms": 65.2189,
+        "triangulate_ms": 40.9566,
+        "vertex_map_ms": 3473.549
+      },
+      "triangles": 12759246,
+      "vertices": 10624089,
+      "round": 3,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 7.154530400061049,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 630.7136,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1552973824,
+      "peak_working_set_bytes": 1255702528,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 3,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 0.9953785999678075,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 602.7218,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1552982016,
+      "peak_working_set_bytes": 1255223296,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 21,
+      "round": 3,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 0.9699682000791654,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "fast",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 2892.5652,
+      "materials": 287,
+      "ok": true,
+      "peak_commit_bytes": 1036910592,
+      "peak_working_set_bytes": 823525376,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 3,
+      "variant": "fast",
+      "returncode": 0,
+      "process_seconds": 3.2750343999359757,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 1143041382,
+      "error": "input stream too large (1143041382 bytes exceeds limit 268435456 bytes)\n",
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "hardware_threads": 16,
+      "ok": false,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "round": 3,
+      "variant": "tiny",
+      "returncode": 1,
+      "process_seconds": 0.019014199962839484,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny-opt",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 4977.2433,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3930988544,
+      "peak_working_set_bytes": 4260372480,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-opt",
+      "returncode": 0,
+      "process_seconds": 5.666569499997422,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "tiny-typed",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 4589.7593,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3305709568,
+      "peak_working_set_bytes": 3637149696,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed",
+      "returncode": 0,
+      "process_seconds": 5.089401600067504,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "tiny-typed-cache",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": true,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 4447.0143,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3305402368,
+      "peak_working_set_bytes": 3637227520,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 3,
+      "variant": "tiny-typed-cache",
+      "returncode": 0,
+      "process_seconds": 4.832183700054884,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 73379,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fou"
+    },
+    {
+      "backend": "woby",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "hardware_threads": 16,
+      "load_ms": 5805.5373,
+      "ok": true,
+      "peak_commit_bytes": 1996115968,
+      "peak_working_set_bytes": 1804029952,
+      "positions": 5933233,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "stages": {
+        "bounds_ms": 111.7907,
+        "compact_ms": 1871.5776,
+        "normals_ms": 42.181,
+        "parse_ms": 787.0024,
+        "source_copy_ms": 69.5327,
+        "triangulate_ms": 37.6218,
+        "vertex_map_ms": 2781.6305
+      },
+      "triangles": 9980699,
+      "vertices": 8785228,
+      "round": 3,
+      "variant": "woby",
+      "returncode": 0,
+      "process_seconds": 5.8678148000035435,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 818.5312,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1322229760,
+      "peak_working_set_bytes": 1211150336,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 3,
+      "variant": "rapid",
+      "returncode": 0,
+      "process_seconds": 1.1576534999767318,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "rapid",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 774.1324,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1321836544,
+      "peak_working_set_bytes": 1210728448,
+      "rapid_io": "cached",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "round": 3,
+      "variant": "rapid-cached",
+      "returncode": 0,
+      "process_seconds": 1.1062444999115542,
+      "stderr": "",
+      "sweep": "comparison",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 7108991827,
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 227315958,
+        "faces": 75771986,
+        "index_hash": 18271265137871214715,
+        "maximum": [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        "minimum": [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -16972850.17102866,
+          44837817.86271931,
+          -150620867.93976188
+        ],
+        "positions": 37890645,
+        "texcoords": 38414285,
+        "triangles": 75771986
+      },
+      "hardware_threads": 16,
+      "load_ms": 160292.0732,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 17025359872,
+      "peak_working_set_bytes": 21999443968,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 0,
+      "process_seconds": 165.1054677000502,
+      "stderr": "",
+      "sweep": "traditional_control",
+      "warning_characters": 214,
+      "warning_excerpt": "Material file [ 20190810_BearTrap_Ground_Model.mtl ] not found in a path : D:\\temp\\obj_tests/\\\nFailed to load material file(s). Use default material.\nmaterial [ '20190810_BearTrap_Ground_Model' ] not found in .mtl\n"
+    },
+    {
+      "backend": "tiny",
+      "bytes": 815866103,
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 53600508,
+        "faces": 17866836,
+        "index_hash": 15749870750918601795,
+        "maximum": [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        "minimum": [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        "normals": 0,
+        "polygons": 0,
+        "position_sum": [
+          -1875.5415559262037,
+          -15515.458133384585,
+          6650.073768123984
+        ],
+        "positions": 8933524,
+        "texcoords": 0,
+        "triangles": 17866836
+      },
+      "hardware_threads": 16,
+      "load_ms": 23421.3173,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 3459035136,
+      "peak_working_set_bytes": 4118323200,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 1,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 0,
+      "process_seconds": 24.586692200042307,
+      "stderr": "",
+      "sweep": "traditional_control",
+      "warning_characters": 0,
+      "warning_excerpt": ""
+    },
+    {
+      "backend": "tiny",
+      "bytes": 817891724,
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 38277738,
+        "faces": 12759246,
+        "index_hash": 4245543490225356968,
+        "maximum": [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        "minimum": [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        "normals": 794066,
+        "polygons": 0,
+        "position_sum": [
+          -14769342696.312265,
+          331057580478.53906,
+          159345124270.01352
+        ],
+        "positions": 5984083,
+        "texcoords": 0,
+        "triangles": 12759246
+      },
+      "hardware_threads": 16,
+      "load_ms": 23183.6051,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 1060413440,
+      "peak_working_set_bytes": 1749405696,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 21,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 0,
+      "process_seconds": 23.99320660007652,
+      "stderr": "",
+      "sweep": "traditional_control",
+      "warning_characters": 2948,
+      "warning_excerpt": "Material file [ powerPlant.mtl ] not found in a path : D:\\temp\\obj_tests/\\\nFailed to load material file(s). Use default material.\nmaterial [ 'sec1_material_1' ] not found in .mtl\nmaterial [ 'sec1_material_0' ] not found in .mtl\nmaterial [ 'sec2_material_0'"
+    },
+    {
+      "backend": "tiny",
+      "bytes": 1143041382,
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "float_cache": false,
+      "geometry": {
+        "corners": 29845469,
+        "faces": 9932385,
+        "index_hash": 581631252349144337,
+        "maximum": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "minimum": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "normals": 6721532,
+        "polygons": 48308,
+        "position_sum": [
+          87727980.69139385,
+          21013559.61869107,
+          23802452.4371751
+        ],
+        "positions": 5933233,
+        "texcoords": 2221669,
+        "triangles": 9980699
+      },
+      "hardware_threads": 16,
+      "load_ms": 20954.6145,
+      "materials": 0,
+      "ok": true,
+      "peak_commit_bytes": 740802560,
+      "peak_working_set_bytes": 1842270208,
+      "rapid_io": "native",
+      "requested_threads": -1,
+      "shapes": 2203,
+      "simd": "AVX2",
+      "round": 1,
+      "variant": "tiny",
+      "returncode": 0,
+      "process_seconds": 21.627954500028864,
+      "stderr": "",
+      "sweep": "traditional_control",
+      "warning_characters": 73380,
+      "warning_excerpt": "Material file [ san-miguel.mtl ] not found in a path : D:\\temp\\obj_tests/\\\nFailed to load material file(s). Use default material.\nmaterial [ 'material_287' ] not found in .mtl\nmaterial [ 'material_033' ] not found in .mtl\nmaterial [ 'material_035' ] not fo"
+    }
+  ]
+}

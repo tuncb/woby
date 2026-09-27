@@ -1,5 +1,9 @@
 # Performance engineering
 
+For large-model OBJ parsing, allocation, threading, and comparisons with
+fast_obj and optimized tinyobjloader, see
+[large OBJ loading](obj-loading-performance.md).
+
 For the later million-triangle detector benchmark and optimizations, see
 [automatic detector performance](detector-performance.md).
 For standard, custom and library hash-table comparisons and scene-query changes,
