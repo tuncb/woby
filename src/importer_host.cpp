@@ -8,7 +8,6 @@
 #include <exception>
 #include <fstream>
 #include <iomanip>
-#include <limits>
 #include <memory>
 #include <mutex>
 #include <sstream>
@@ -362,20 +361,6 @@ Mesh copyImportedMesh(const WobyImportResult& result)
         throw std::runtime_error("Importer groups do not cover all triangles.");
     }
     captureSourceMesh(mesh, SourceProvenance::importerVertices);
-    // Remove unused vertices before the existing optimizer (which allocates its
-    // remap table using index count). Keep triangle and group order unchanged.
-    std::vector<uint32_t> remap(mesh.vertices.size(), std::numeric_limits<uint32_t>::max());
-    std::vector<Vertex> usedVertices;
-    usedVertices.reserve(std::min(mesh.vertices.size(), mesh.indices.size()));
-    for (auto& index : mesh.indices) {
-        auto& mapped = remap[index];
-        if (mapped == std::numeric_limits<uint32_t>::max()) {
-            mapped = static_cast<uint32_t>(usedVertices.size());
-            usedVertices.push_back(mesh.vertices[index]);
-        }
-        index = mapped;
-    }
-    mesh.vertices = std::move(usedVertices);
     finalizeMesh(mesh, (result.flags & WOBY_IMPORT_HAS_NORMALS) == 0u);
     return mesh;
 }

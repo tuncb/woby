@@ -1,5 +1,9 @@
 # Performance engineering
 
+Vertex compaction has since been removed from the application and the CPU
+benchmark. Compaction results below are historical; see the
+[compaction removal measurements](obj-compaction-performance.md).
+
 For large-model OBJ parsing, allocation, threading, and comparisons with
 fast_obj and optimized tinyobjloader, see
 [large OBJ loading](obj-loading-performance.md).
@@ -195,7 +199,6 @@ cmake --build --preset vs2026-vcpkg
 ctest --test-dir build/vs2026-vcpkg -C Debug --parallel 2 --output-on-failure
 cmake --build build/vs2026-vcpkg --config Release --target woby woby_benchmarks --parallel 2
 build/vs2026-vcpkg/bin/Release/woby_benchmarks.exe obj 400 5
-build/vs2026-vcpkg/bin/Release/woby_benchmarks.exe compact 800 5
 build/vs2026-vcpkg/bin/Release/woby_benchmarks.exe distance 200 3
 build/vs2026-vcpkg/bin/Release/woby_benchmarks.exe quality 200 5
 build/vs2026-vcpkg/bin/Release/woby_benchmarks.exe distance 707 3

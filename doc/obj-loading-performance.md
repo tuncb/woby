@@ -1,5 +1,11 @@
 # Large OBJ loading investigation
 
+**Current status:** the application no longer performs final vertex compaction
+or depends on meshoptimizer. The measurements and pipeline description below
+describe the earlier implementation. The OBJ loader benchmark now measures the
+current pipeline without a `compact_ms` stage. See the
+[compaction measurements](obj-compaction-performance.md) for the removal decision.
+
 Measured on 27 September 2026 against woby commit
 `0602f0415adf105290f93851be5451b22dedd0ed` (0.21.3). The added opt-in benchmark
 targets instrument generated copies of the production sources. The application's
@@ -105,6 +111,11 @@ vertex construction and compaction would be a much larger opportunity, but that
 speedup has not been implemented or measured here. Timing ranges are substantial;
 three repetitions do not provide a statistical confidence interval or control
 CPU thermals and unrelated operating-system activity.
+
+The follow-up [compaction on/off experiment](obj-compaction-performance.md)
+measures duplicate removal, CPU memory, synchronized GPU upload, GPU memory and
+rendering on these models plus BusGameMap. It separates removal of duplicate
+vertex values from the incidental shrinking of unused CPU vector capacity.
 
 ## What woby currently does
 

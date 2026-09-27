@@ -194,6 +194,41 @@ TEST_CASE("OBJ capacity estimates preserve seam vertices and reuse references ac
     CHECK(back.texcoord == std::array<float, 2>{0.25f, 0.75f});
 }
 
+TEST_CASE("OBJ loader retains identical values with distinct source indices and reuses identical tuples")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "identical-values.obj";
+    const char* secondFace = "f 4/4/2 2/2/1 3/3/1\n";
+    SUBCASE("supplied normals") {}
+    SUBCASE("partially missing normals") { secondFace = "f 4/4 2/2/1 3/3/1\n"; }
+    const std::string text = std::string(
+        "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 0\n"
+        "vt 0 0\nvt 1 0\nvt 0 1\nvt 0 0\nvn 0 0 1\nvn 0 0 1\n"
+        "g first\nf 1/1/1 2/2/1 3/3/1\ng duplicate\n")
+        + secondFace + "g repeated\nf 1/1/1 2/2/1 3/3/1\n";
+    writeText(path, text.c_str());
+
+    const auto mesh = woby::loadObjMesh(path);
+
+    REQUIRE(mesh.vertices.size() == 4u);
+    CHECK(mesh.indices == std::vector<uint32_t>{0, 1, 2, 3, 1, 2, 0, 1, 2});
+    CHECK(mesh.vertices[0].position == mesh.vertices[3].position);
+    CHECK(mesh.vertices[0].normal == mesh.vertices[3].normal);
+    CHECK(mesh.vertices[0].texcoord == mesh.vertices[3].texcoord);
+    CHECK(mesh.vertices[0].normal == std::array<float, 3>{0, 0, 1});
+    CHECK(mesh.vertices[0].texcoord == std::array<float, 2>{0, 1});
+    REQUIRE(mesh.nodes.size() == 3u);
+    CHECK(mesh.nodes[1].name == "duplicate");
+    CHECK(mesh.nodes[2].name == "repeated");
+    for (size_t i = 0; i < mesh.nodes.size(); ++i) {
+        CHECK(mesh.nodes[i].indexOffset == i * 3u);
+        CHECK(mesh.nodes[i].indexCount == 3u);
+    }
+    REQUIRE(mesh.sourceData);
+    CHECK(mesh.sourceData->points.size() == 4u);
+    CHECK(mesh.sourceData->indices == mesh.indices);
+}
+
 TEST_CASE("OBJ loader triangulates polygons while preserving area and winding")
 {
     const ObjTestDirectory fixture;

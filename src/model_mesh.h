@@ -62,7 +62,6 @@ struct Mesh {
     const std::array<float, 3>& c);
 void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
 [[nodiscard]] Bounds calculateBounds(const std::vector<Vertex>& vertices);
-void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices);
 void captureSourceMesh(Mesh& mesh, SourceProvenance provenance);
 void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals);
 

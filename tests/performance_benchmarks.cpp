@@ -157,15 +157,10 @@ int main(int argc, char** argv)
         std::vector<double> times;
         double checksum = 0;
         for (size_t run = 0; run < repetitions; ++run) {
-            // Input copies belong outside the compaction timer.
-            auto compactInput = workload == "compact" ? a : woby::Mesh{};
             const auto start = Clock::now();
             if (workload == "obj") {
                 const auto loaded = woby::loadObjMesh(path);
                 checksum += static_cast<double>(loaded.vertices.size());
-            } else if (workload == "compact") {
-                woby::compactMesh(compactInput.vertices, compactInput.indices);
-                checksum += static_cast<double>(compactInput.vertices.size());
             } else if (workload == "distance") {
                 const auto result = woby::computeComparisonStages(a, b, woby::comparisonDistance);
                 checksum += result.original.mean + result.repaired.mean;
@@ -173,7 +168,7 @@ int main(int argc, char** argv)
                 const auto result = woby::inspectSurfaceMeshQuality(a);
                 checksum += static_cast<double>(result.triangles.size());
             } else {
-                throw std::invalid_argument("Workload must be obj, compact, distance, or quality.");
+                throw std::invalid_argument("Workload must be obj, distance, or quality.");
             }
             times.push_back(std::chrono::duration<double, std::milli>(Clock::now() - start).count());
         }

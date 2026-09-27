@@ -1,10 +1,7 @@
 #include "model_mesh.h"
 
-#include <meshoptimizer.h>
-
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -140,45 +137,6 @@ Bounds calculateBounds(const std::vector<Vertex>& vertices)
     return bounds;
 }
 
-void compactMesh(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
-{
-    if (vertices.empty() || indices.empty()) {
-        return;
-    }
-
-    static_assert(sizeof(uint32_t) == sizeof(unsigned int));
-
-    // The remap is indexed by source vertex, including unreferenced vertices.
-    std::vector<uint32_t> remap(vertices.size());
-    const size_t vertexCount = meshopt_generateVertexRemap(
-        remap.data(),
-        reinterpret_cast<const unsigned int*>(indices.data()),
-        indices.size(),
-        vertices.data(),
-        vertices.size(),
-        sizeof(Vertex));
-
-    std::vector<Vertex> remappedVertices(vertexCount);
-
-    meshopt_remapIndexBuffer(
-        reinterpret_cast<unsigned int*>(indices.data()),
-        reinterpret_cast<const unsigned int*>(indices.data()),
-        indices.size(),
-        remap.data());
-
-    meshopt_remapVertexBuffer(
-        remappedVertices.data(),
-        vertices.data(),
-        vertices.size(),
-        sizeof(Vertex),
-        remap.data());
-
-    vertices = std::move(remappedVertices);
-    // generateVertexRemap assigns IDs in first index-use order. With triangle
-    // order unchanged, another vertex-fetch pass repeats that order and copies
-    // the entire mesh. Keep source triangle order for annotations/provenance.
-}
-
 void captureSourceMesh(Mesh& mesh, SourceProvenance provenance)
 {
     auto data = std::make_shared<SourceMeshData>();
@@ -202,7 +160,6 @@ void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals)
     }
 
     mesh.bounds = calculateBounds(mesh.vertices);
-    compactMesh(mesh.vertices, mesh.indices);
 }
 
 } // namespace woby

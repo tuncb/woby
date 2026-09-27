@@ -131,15 +131,16 @@ TEST_CASE("DLL importer supports case insensitive discovery and owns copied mesh
     auto model = woby::loadModel(path);
     CHECK_THROWS_WITH_AS((void)woby::loadModel("model.obj", "org.woby.test"), doctest::Contains("no longer supports"), std::runtime_error);
     CHECK(model.importerId == "org.woby.test");
-    CHECK(model.mesh.vertices.size() == 3u);
-    CHECK(model.mesh.indices.size() == 3u);
+    REQUIRE(model.mesh.vertices.size() == 4u);
+    CHECK(model.mesh.vertices[3].position == std::array<float, 3>{9, 9, 9});
+    CHECK(model.mesh.indices == std::vector<uint32_t>{0, 1, 2});
     REQUIRE(model.mesh.nodes.size() == 1u);
     CHECK(model.mesh.nodes[0].name == "triangle");
-    CHECK(model.mesh.bounds.max[0] == 1.0f);
+    CHECK(model.mesh.bounds.max == std::array<float, 3>{9, 9, 9});
     for (const auto& vertex : model.mesh.vertices) { CHECK(woby::validNormal(vertex.normal)); }
     woby::unloadImporters();
     CHECK_FALSE(woby::isModelPath(path));
-    CHECK(model.mesh.vertices.size() == 3u);
+    CHECK(model.mesh.vertices.size() == 4u);
     CHECK_THROWS_WITH_AS((void)woby::loadModel(path, "org.woby.test"), doctest::Contains("Required importer is not loaded"), std::runtime_error);
 }
 

@@ -147,7 +147,7 @@ TEST_CASE("source duplicates retain each part transform without multiplying sour
     CHECK(woby::inspectDuplicates(input).triangles.duplicateCount == 0);
 }
 
-TEST_CASE("OBJ source duplicates survive seams compaction and include unused records")
+TEST_CASE("OBJ source duplicates survive seams and include unused records")
 {
     Fixture fixture;
     const auto path = fixture.write("seams.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 0\n"
@@ -165,15 +165,21 @@ TEST_CASE("OBJ source duplicates survive seams compaction and include unused rec
     CHECK(woby::inspectDuplicates(inputFor(polygon.sourceData)).triangles.duplicateCount == 0);
 }
 
-TEST_CASE("STL source corner records survive compaction")
+TEST_CASE("ASCII STL retains separate render and source corners for identical triangles")
 {
     Fixture fixture;
     const auto mesh = woby::loadStlMesh(fixture.write("sample.stl", "solid test\n"
         "facet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\n"
         "facet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid test\n"));
     REQUIRE(mesh.sourceData);
-    CHECK(mesh.vertices.size() == 3);
+    REQUIRE(mesh.vertices.size() == 6);
+    CHECK(mesh.indices == std::vector<uint32_t>{0, 1, 2, 3, 4, 5});
+    for (size_t i = 0; i < 3; ++i) {
+        CHECK(mesh.vertices[i].position == mesh.vertices[i + 3].position);
+        CHECK(mesh.vertices[i].normal == mesh.vertices[i + 3].normal);
+    }
     CHECK(mesh.sourceData->points.size() == 6);
+    CHECK(mesh.sourceData->indices == mesh.indices);
     const auto result = woby::inspectDuplicates(inputFor(mesh.sourceData));
     CHECK(result.points.informationalCount == 3);
     CHECK(std::string(woby::duplicateStatus(result.triangles)) == "unavailable");
@@ -184,7 +190,7 @@ TEST_CASE("importer duplicate records are owned before buffers are released")
     std::vector<WobyImportVertex> vertices(4);
     vertices[1].position[0] = 1;
     vertices[2].position[1] = 1;
-    std::vector<uint32_t> indices = {0,1,2, 2,1,0};
+    std::vector<uint32_t> indices = {2,1,0, 0,1,2};
     WobyImportResult imported{};
     imported.struct_size = sizeof(imported);
     imported.vertex_count = static_cast<uint32_t>(vertices.size());
@@ -192,6 +198,8 @@ TEST_CASE("importer duplicate records are owned before buffers are released")
     imported.vertices = vertices.data(); imported.indices = indices.data();
     const auto mesh = woby::copyImportedMesh(imported);
     vertices.clear(); indices.clear();
+    CHECK(mesh.vertices.size() == 4);
+    CHECK(mesh.indices == std::vector<uint32_t>{2, 1, 0, 0, 1, 2});
     REQUIRE(mesh.sourceData);
     CHECK(mesh.sourceData->provenance == woby::SourceProvenance::importerVertices);
     CHECK(mesh.sourceData->points.size() == 4);

@@ -27,7 +27,7 @@ def main():
             reference = geometry
         data = json.loads(subprocess.check_output([exe, "woby", model], cwd=root, text=True))
         assert data["triangles"] == 3 and data["positions"] == 4, data
-        assert set(data["stages"]) == {"parse_ms", "triangulate_ms", "source_copy_ms", "vertex_map_ms", "normals_ms", "bounds_ms", "compact_ms"}, data
+        assert set(data["stages"]) == {"parse_ms", "triangulate_ms", "source_copy_ms", "vertex_map_ms", "normals_ms", "bounds_ms"}, data
         for backend, path in (("unknown", model), ("rapid", "relative.obj")):
             failed = subprocess.run([exe, backend, path], cwd=root, capture_output=True, text=True)
             assert failed.returncode != 0 and not json.loads(failed.stdout)["ok"], failed

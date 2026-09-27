@@ -28,7 +28,6 @@ include(cmake/WobyRuntimeFiles.cmake)
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(bgfx CONFIG REQUIRED)
-find_package(meshoptimizer CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
@@ -206,7 +205,6 @@ target_link_libraries(woby PRIVATE
     ${CMAKE_DL_LIBS}
     bgfx::bgfx
     Threads::Threads
-    meshoptimizer::meshoptimizer
     imgui::imgui
     spdlog::spdlog
 )
@@ -336,7 +334,7 @@ if(WOBY_BUILD_BENCHMARKS)
         src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
-    target_link_libraries(woby_benchmarks PRIVATE meshoptimizer::meshoptimizer Threads::Threads Boost::multiprecision)
+    target_link_libraries(woby_benchmarks PRIVATE Threads::Threads Boost::multiprecision)
     woby_enable_project_warnings(woby_benchmarks)
     list(APPEND woby_runtime_targets woby_benchmarks)
     if(WOBY_BUILD_HASH_BENCHMARKS)
@@ -361,7 +359,7 @@ if(WOBY_BUILD_BENCHMARKS)
             target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/tests")
             target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
             target_compile_definitions(${target} PRIVATE "WOBY_BENCHMARK_${backend}=1")
-            target_link_libraries(${target} PRIVATE meshoptimizer::meshoptimizer Threads::Threads
+            target_link_libraries(${target} PRIVATE Threads::Threads
                 Boost::multiprecision Boost::unordered unordered_dense::unordered_dense)
             woby_enable_project_warnings(${target})
             list(APPEND woby_runtime_targets ${target})
@@ -533,7 +531,6 @@ if(BUILD_TESTING)
         ${CMAKE_DL_LIBS}
         bgfx::bgfx
         Threads::Threads
-        meshoptimizer::meshoptimizer
         spdlog::spdlog
     )
 

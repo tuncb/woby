@@ -17,6 +17,19 @@
 
 namespace {
 
+struct StlTestDirectory {
+    std::filesystem::path path;
+    StlTestDirectory()
+    {
+        const auto prefix = "woby_stl_corners_" + std::to_string(std::random_device{}());
+        for (size_t attempt = 0;; ++attempt) {
+            path = std::filesystem::absolute(std::filesystem::temp_directory_path()) / (prefix + "_" + std::to_string(attempt));
+            if (std::filesystem::create_directory(path)) { break; }
+        }
+    }
+    ~StlTestDirectory() { std::error_code ignored; std::filesystem::remove_all(path, ignored); }
+};
+
 void writeFloat32Le(std::ofstream& stream, float value)
 {
     uint32_t bits = 0;
@@ -188,6 +201,37 @@ TEST_CASE("binary STL loader uses exact binary size detection")
     CHECK(mesh.vertices[2].normal[2] == doctest::Approx(1.0f));
 
     std::filesystem::remove(path);
+}
+
+TEST_CASE("binary STL retains separate corners for identical triangles")
+{
+    const StlTestDirectory fixture;
+    const auto path = fixture.path / "duplicate-triangles.stl";
+    writeBinaryTriangleStl(path, "duplicate triangles");
+    {
+        std::fstream file(path, std::ios::binary | std::ios::in | std::ios::out);
+        std::array<char, 50> triangle{};
+        file.seekg(84);
+        file.read(triangle.data(), static_cast<std::streamsize>(triangle.size()));
+        file.seekp(80);
+        file.put(2); // Triangle count, little endian; remaining bytes are zero.
+        file.seekp(0, std::ios::end);
+        file.write(triangle.data(), static_cast<std::streamsize>(triangle.size()));
+        REQUIRE(file.good());
+    }
+
+    const auto mesh = woby::loadStlMesh(path);
+
+    REQUIRE(mesh.vertices.size() == 6u);
+    CHECK(mesh.indices == std::vector<uint32_t>{0, 1, 2, 3, 4, 5});
+    REQUIRE(mesh.sourceData);
+    CHECK(mesh.sourceData->points.size() == 6u);
+    CHECK(mesh.sourceData->indices == mesh.indices);
+    for (size_t i = 0; i < 3u; ++i) {
+        CHECK(mesh.vertices[i].position == mesh.vertices[i + 3u].position);
+        CHECK(mesh.vertices[i].normal == std::array<float, 3>{0, 0, 1});
+        CHECK(mesh.vertices[i + 3u].normal == mesh.vertices[i].normal);
+    }
 }
 
 TEST_CASE("model loader dispatches STL by extension")

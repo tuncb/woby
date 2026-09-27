@@ -91,22 +91,30 @@ TEST_CASE("smooth normal generation fills missing vertex normals")
     }
 }
 
-TEST_CASE("mesh compaction removes duplicate vertices and remaps indices")
+TEST_CASE("mesh finalization retains duplicate vertices and triangle indices")
 {
-    std::vector<woby::Vertex> vertices = {
+    woby::Mesh mesh;
+    mesh.vertices = {
         vertex(0.0f, 0.0f, 0.0f),
         vertex(1.0f, 0.0f, 0.0f),
         vertex(0.0f, 1.0f, 0.0f),
         vertex(0.0f, 0.0f, 0.0f),
     };
-    std::vector<uint32_t> indices = {0u, 1u, 2u, 3u, 1u, 2u};
+    mesh.indices = {0u, 1u, 2u, 3u, 1u, 2u};
+    const auto positions = mesh.vertices;
+    bool generateNormals = false;
+    SUBCASE("supplied normals") {
+        for (auto& item : mesh.vertices) { item.normal = {0, 0, 1}; }
+    }
+    SUBCASE("generated normals") { generateNormals = true; }
 
-    woby::compactMesh(vertices, indices);
+    woby::finalizeMesh(mesh, generateNormals);
 
-    CHECK(vertices.size() == 3u);
-    REQUIRE(indices.size() == 6u);
-    for (const uint32_t index : indices) {
-        CHECK(index < vertices.size());
+    REQUIRE(mesh.vertices.size() == 4u);
+    CHECK(mesh.indices == std::vector<uint32_t>{0u, 1u, 2u, 3u, 1u, 2u});
+    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+        CHECK(mesh.vertices[i].position == positions[i].position);
+        CHECK(mesh.vertices[i].normal == std::array<float, 3>{0, 0, 1});
     }
 }
 
@@ -136,22 +144,31 @@ TEST_CASE("finalizing a mesh rejects empty input and fills derived data")
     }
 }
 
-TEST_CASE("compaction preserves corners and first use order with sparse source vertices")
+TEST_CASE("mesh finalization retains sparse vertex IDs and unreferenced vertices")
 {
-    std::vector<woby::Vertex> vertices(40);
-    vertices[30] = vertex(0, 1, 0);
-    vertices[25] = vertex(1, 0, 0);
-    vertices[15] = vertex(0, 0, 0);
-    vertices[39] = vertices[30];
-    const auto source = vertices;
-    std::vector<uint32_t> indices = {30, 25, 15, 39, 15, 25};
-    const auto original = indices;
-    woby::compactMesh(vertices, indices);
-    REQUIRE(vertices.size() == 3);
-    CHECK(indices == std::vector<uint32_t>{0, 1, 2, 0, 2, 1});
-    for (size_t i = 0; i < indices.size(); ++i) {
-        CHECK(vertices[indices[i]].position == source[original[i]].position);
-        CHECK(vertices[indices[i]].normal == source[original[i]].normal);
+    woby::Mesh mesh;
+    mesh.vertices.resize(40);
+    mesh.vertices[30] = vertex(0, 1, 0);
+    mesh.vertices[25] = vertex(1, 0, 0);
+    mesh.vertices[15] = vertex(0, 0, 0);
+    mesh.vertices[39] = mesh.vertices[30];
+    mesh.vertices[0] = vertex(-2, -3, -4);
+    mesh.indices = {30, 25, 15, 39, 15, 25};
+    const auto source = mesh.vertices;
+    woby::captureSourceMesh(mesh, woby::SourceProvenance::importerVertices);
+    const auto provenance = mesh.sourceData;
+
+    woby::finalizeMesh(mesh, false);
+
+    REQUIRE(mesh.vertices.size() == source.size());
+    CHECK(mesh.indices == std::vector<uint32_t>{30, 25, 15, 39, 15, 25});
+    CHECK(mesh.sourceData == provenance);
+    CHECK(mesh.sourceData->indices == mesh.indices);
+    CHECK(mesh.bounds.min == std::array<float, 3>{-2, -3, -4});
+    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+        CHECK(mesh.vertices[i].position == source[i].position);
+        CHECK(mesh.vertices[i].normal == source[i].normal);
+        CHECK(mesh.vertices[i].texcoord == source[i].texcoord);
     }
 }
 
