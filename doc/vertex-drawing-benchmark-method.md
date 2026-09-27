@@ -1,4 +1,9 @@
-# Vertex drawing experiment
+# Vertex drawing experiment (archived)
+
+The experiment source was removed when the shader path became the production
+renderer. These instructions describe commit `0cb4419`; use that revision to
+reproduce the historical benchmark. No expanded-geometry fallback remains in
+the application.
 
 This opt-in executable compares production expanded markers (`current`),
 four shader-generated vertices per marker instance (`shader`), and six generated
@@ -7,7 +12,7 @@ behavior or its saved scenes. The two experiments upload the production compact
 point-ID list and read XYZ from the existing 32-byte mesh vertex buffer.
 
 The measured findings and limitations are in
-[`doc/vertex-drawing-performance.md`](../../doc/vertex-drawing-performance.md).
+[performance results](vertex-drawing-performance.md).
 
 Build and validate on Windows:
 

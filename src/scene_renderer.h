@@ -29,16 +29,13 @@ struct GpuNodeRange {
     uint32_t lineIndexCount = 0;
     uint32_t pointIndexOffset = 0;
     uint32_t pointIndexCount = 0;
-    uint32_t pointSpriteIndexOffset = 0;
-    uint32_t pointSpriteIndexCount = 0;
 };
 
 struct GpuMesh {
     bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle pointSpriteVertexBuffer = BGFX_INVALID_HANDLE;
     bgfx::IndexBufferHandle triangleIndexBuffer = BGFX_INVALID_HANDLE;
     bgfx::IndexBufferHandle lineIndexBuffer = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle pointSpriteIndexBuffer = BGFX_INVALID_HANDLE;
+    bgfx::IndexBufferHandle pointIdBuffer = BGFX_INVALID_HANDLE;
     std::vector<GpuNodeRange> nodeRanges;
     std::vector<uint32_t> pointVertexIndices;
 };
@@ -53,21 +50,21 @@ enum GpuMeshFeature : uint8_t { gpuMeshEdges = 1, gpuMeshPoints = 2 };
 [[nodiscard]] uint8_t requestedGpuMeshFeatures(const UiFileState& file);
 
 [[nodiscard]] bgfx::VertexLayout meshVertexLayout();
-[[nodiscard]] bgfx::VertexLayout pointSpriteVertexLayout();
 [[nodiscard]] bgfx::VertexLayout helperLineVertexLayout();
 
 [[nodiscard]] GpuMesh createGpuMesh(
     const Mesh& mesh,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     uint8_t features = 0);
 // Optional display buffers are retained once built; drawing never allocates.
-void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
-    const bgfx::VertexLayout& pointSpriteLayout, uint8_t features);
+void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh, uint8_t features);
 void destroyGpuMesh(GpuMesh& mesh);
 void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 
 [[nodiscard]] uint32_t vertexPointSize(float masterSize, float groupScale);
+// Two vec4 uniforms; split the ID offset to preserve all 32 bits in float storage.
+[[nodiscard]] std::array<float, 8> pointSpriteParameters(
+    float pointSize, uint32_t viewWidth, uint32_t viewHeight, uint32_t pointOffset);
 
 void submitSceneFiles(
     bgfx::ViewId viewId,

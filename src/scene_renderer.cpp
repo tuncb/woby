@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -13,10 +14,8 @@
 namespace woby {
 namespace {
 
-struct PointSpriteVertex {
-    std::array<float, 3> position{};
-    std::array<float, 2> corner{};
-};
+// point_sprite.vert.sc reads each mesh vertex as two vec4 records.
+static_assert(sizeof(Vertex) == 32 && offsetof(Vertex, position) == 0);
 
 using HelperLineVertex = std::array<float, 3>;
 
@@ -104,41 +103,6 @@ uint32_t appendPointIndicesForRange(
     return static_cast<uint32_t>(pointIndices.size()) - pointOffset;
 }
 
-void buildPointSprites(
-    const Mesh& mesh,
-    const std::vector<uint32_t>& pointIndices,
-    std::vector<PointSpriteVertex>& vertices,
-    std::vector<uint32_t>& indices)
-{
-    constexpr std::array<std::array<float, 2>, 4> corners = {{
-        {-0.5f, -0.5f},
-        {0.5f, -0.5f},
-        {0.5f, 0.5f},
-        {-0.5f, 0.5f},
-    }};
-
-    vertices.reserve(pointIndices.size() * corners.size());
-    indices.reserve(pointIndices.size() * 6u);
-
-    for (uint32_t pointIndex : pointIndices) {
-        const uint32_t vertexBase = static_cast<uint32_t>(vertices.size());
-        const auto& sourceVertex = mesh.vertices[pointIndex];
-        for (const auto& corner : corners) {
-            PointSpriteVertex vertex;
-            vertex.position = sourceVertex.position;
-            vertex.corner = corner;
-            vertices.push_back(vertex);
-        }
-
-        indices.push_back(vertexBase + 0u);
-        indices.push_back(vertexBase + 1u);
-        indices.push_back(vertexBase + 2u);
-        indices.push_back(vertexBase + 0u);
-        indices.push_back(vertexBase + 2u);
-        indices.push_back(vertexBase + 3u);
-    }
-}
-
 uint64_t renderState(
     uint64_t depthTest,
     bool writeDepth,
@@ -223,25 +187,21 @@ void submitPointSpriteRange(
     uint32_t indexOffset,
     uint32_t indexCount)
 {
-    if (!bgfx::isValid(mesh.pointSpriteVertexBuffer)
-        || !bgfx::isValid(mesh.pointSpriteIndexBuffer)
+    if (!bgfx::isValid(mesh.vertexBuffer)
+        || !bgfx::isValid(mesh.pointIdBuffer)
         || indexCount == 0) {
         return;
     }
 
-    const std::array<float, 4> pointParams = {
-        pointSize,
-        static_cast<float>(std::max(viewWidth, 1u)),
-        static_cast<float>(std::max(viewHeight, 1u)),
-        0.0f,
-    };
-
+    const auto pointParams = pointSpriteParameters(pointSize, viewWidth, viewHeight, indexOffset);
     bgfx::setTransform(model);
     bgfx::setUniform(colorUniform, color.data());
-    bgfx::setUniform(pointParamsUniform, pointParams.data());
-    bgfx::setVertexBuffer(0, mesh.pointSpriteVertexBuffer);
-    bgfx::setIndexBuffer(mesh.pointSpriteIndexBuffer, indexOffset, indexCount);
-    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, 0u));
+    bgfx::setUniform(pointParamsUniform, pointParams.data(), 2);
+    bgfx::setBuffer(0, mesh.vertexBuffer, bgfx::Access::Read);
+    bgfx::setBuffer(1, mesh.pointIdBuffer, bgfx::Access::Read);
+    bgfx::setVertexCount(4);
+    bgfx::setInstanceCount(indexCount);
+    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, BGFX_STATE_PT_TRISTRIP));
     bgfx::submit(viewId, program);
 }
 
@@ -289,17 +249,6 @@ bgfx::VertexLayout meshVertexLayout()
     return layout;
 }
 
-bgfx::VertexLayout pointSpriteVertexLayout()
-{
-    bgfx::VertexLayout layout;
-    layout
-        .begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-        .end();
-    return layout;
-}
-
 bgfx::VertexLayout helperLineVertexLayout()
 {
     bgfx::VertexLayout layout;
@@ -325,7 +274,6 @@ uint8_t requestedGpuMeshFeatures(const UiFileState& file)
 GpuMesh createGpuMesh(
     const Mesh& mesh,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     uint8_t features)
 {
     GpuMesh gpuMesh;
@@ -339,7 +287,7 @@ GpuMesh createGpuMesh(
     }
     gpuMesh.nodeRanges.reserve(mesh.nodes.size());
     // Keep compact CPU point ranges for picking and geometry tooltips, even
-    // when the much larger GPU point sprites have not been requested yet.
+    // when the compact GPU point-ID buffer has not been requested yet.
     gpuMesh.pointVertexIndices.reserve(mesh.vertices.size());
     std::vector<size_t> vertexGroups(mesh.vertices.size(), mesh.nodes.size());
     for (size_t nodeIndex = 0; nodeIndex < mesh.nodes.size(); ++nodeIndex) {
@@ -362,7 +310,7 @@ GpuMesh createGpuMesh(
     try {
         gpuMesh.vertexBuffer = bgfx::createVertexBuffer(
             bgfx::copy(mesh.vertices.data(), vertexBytes),
-            meshLayout);
+            meshLayout, BGFX_BUFFER_COMPUTE_READ);
 
         gpuMesh.triangleIndexBuffer = bgfx::createIndexBuffer(
             bgfx::copy(mesh.indices.data(), indexBytes),
@@ -370,7 +318,7 @@ GpuMesh createGpuMesh(
         if (!bgfx::isValid(gpuMesh.vertexBuffer) || !bgfx::isValid(gpuMesh.triangleIndexBuffer)) {
             throw std::runtime_error("Failed to allocate scene GPU buffers.");
         }
-        prepareGpuMeshFeatures(gpuMesh, mesh, pointSpriteLayout, features);
+        prepareGpuMeshFeatures(gpuMesh, mesh, features);
     } catch (...) {
         destroyGpuMesh(gpuMesh);
         throw;
@@ -379,7 +327,7 @@ GpuMesh createGpuMesh(
 }
 
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
-    const bgfx::VertexLayout& pointSpriteLayout, uint8_t features)
+    uint8_t features)
 {
     if ((features & gpuMeshEdges) && !bgfx::isValid(gpuMesh.lineIndexBuffer)) {
         (void)sceneBufferBytes(mesh.indices.size(), 2 * sizeof(uint32_t));
@@ -388,42 +336,23 @@ void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
             BGFX_BUFFER_INDEX32);
         if (!bgfx::isValid(gpuMesh.lineIndexBuffer)) { throw std::runtime_error("Failed to allocate scene edge buffer."); }
     }
-    if ((features & gpuMeshPoints) && !bgfx::isValid(gpuMesh.pointSpriteVertexBuffer)) {
+    if ((features & gpuMeshPoints) && !bgfx::isValid(gpuMesh.pointIdBuffer)) {
         const auto& pointIndices = gpuMesh.pointVertexIndices;
         if (pointIndices.empty()) { return; }
-        (void)sceneBufferBytes(pointIndices.size(), 4 * sizeof(PointSpriteVertex));
-        (void)sceneBufferBytes(pointIndices.size(), 6 * sizeof(uint32_t));
-        auto ranges = gpuMesh.nodeRanges;
-        for (auto& range : ranges) {
-            range.pointSpriteIndexOffset = range.pointIndexOffset * 6u;
-            range.pointSpriteIndexCount = range.pointIndexCount * 6u;
+        // copy owns the asynchronous upload; CPU IDs remain available for picking.
+        gpuMesh.pointIdBuffer = bgfx::createIndexBuffer(
+            bgfx::copy(pointIndices.data(), sceneBufferBytes(pointIndices.size(), sizeof(uint32_t))),
+            BGFX_BUFFER_INDEX32 | BGFX_BUFFER_COMPUTE_READ);
+        if (!bgfx::isValid(gpuMesh.pointIdBuffer)) {
+            throw std::runtime_error("Failed to allocate scene point-ID buffer.");
         }
-        std::vector<PointSpriteVertex> pointSpriteVertices;
-        std::vector<uint32_t> pointSpriteIndices;
-        buildPointSprites(mesh, pointIndices, pointSpriteVertices, pointSpriteIndices);
-        auto vertices = bgfx::VertexBufferHandle{bgfx::kInvalidHandle};
-        auto indices = bgfx::IndexBufferHandle{bgfx::kInvalidHandle};
-        try {
-            vertices = bgfx::createVertexBuffer(ownedBuffer(std::move(pointSpriteVertices)), pointSpriteLayout);
-            indices = bgfx::createIndexBuffer(ownedBuffer(std::move(pointSpriteIndices)), BGFX_BUFFER_INDEX32);
-            if (!bgfx::isValid(vertices) || !bgfx::isValid(indices)) {
-                throw std::runtime_error("Failed to allocate scene point buffers.");
-            }
-        } catch (...) {
-            if (bgfx::isValid(vertices)) { bgfx::destroy(vertices); }
-            if (bgfx::isValid(indices)) { bgfx::destroy(indices); }
-            throw;
-        }
-        gpuMesh.pointSpriteVertexBuffer = vertices;
-        gpuMesh.pointSpriteIndexBuffer = indices;
-        gpuMesh.nodeRanges = std::move(ranges);
     }
 }
 
 void destroyGpuMesh(GpuMesh& mesh)
 {
-    if (bgfx::isValid(mesh.pointSpriteIndexBuffer)) {
-        bgfx::destroy(mesh.pointSpriteIndexBuffer);
+    if (bgfx::isValid(mesh.pointIdBuffer)) {
+        bgfx::destroy(mesh.pointIdBuffer);
     }
     if (bgfx::isValid(mesh.lineIndexBuffer)) {
         bgfx::destroy(mesh.lineIndexBuffer);
@@ -434,15 +363,11 @@ void destroyGpuMesh(GpuMesh& mesh)
     if (bgfx::isValid(mesh.vertexBuffer)) {
         bgfx::destroy(mesh.vertexBuffer);
     }
-    if (bgfx::isValid(mesh.pointSpriteVertexBuffer)) {
-        bgfx::destroy(mesh.pointSpriteVertexBuffer);
-    }
 
-    mesh.pointSpriteIndexBuffer = BGFX_INVALID_HANDLE;
+    mesh.pointIdBuffer = BGFX_INVALID_HANDLE;
     mesh.lineIndexBuffer = BGFX_INVALID_HANDLE;
     mesh.triangleIndexBuffer = BGFX_INVALID_HANDLE;
     mesh.vertexBuffer = BGFX_INVALID_HANDLE;
-    mesh.pointSpriteVertexBuffer = BGFX_INVALID_HANDLE;
     mesh.nodeRanges.clear();
     mesh.pointVertexIndices.clear();
 }
@@ -453,6 +378,14 @@ void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes)
         destroyGpuMesh(runtime.gpuMesh);
     }
     runtimes.clear();
+}
+
+std::array<float, 8> pointSpriteParameters(
+    float pointSize, uint32_t viewWidth, uint32_t viewHeight, uint32_t pointOffset)
+{
+    return {pointSize, static_cast<float>(std::max(viewWidth, 1u)),
+        static_cast<float>(std::max(viewHeight, 1u)), 0.0f,
+        static_cast<float>(pointOffset & 0xffffu), static_cast<float>(pointOffset >> 16u), 0.0f, 0.0f};
 }
 
 uint32_t vertexPointSize(float masterSize, float groupScale)
@@ -540,8 +473,8 @@ void submitGroupRange(
             static_cast<float>(pointSize),
             sceneViewportWidth,
             viewportHeight,
-            range.pointSpriteIndexOffset,
-            range.pointSpriteIndexCount);
+            range.pointIndexOffset,
+            range.pointIndexCount);
     }
 }
 

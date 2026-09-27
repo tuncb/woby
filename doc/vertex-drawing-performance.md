@@ -1,5 +1,10 @@
 # Vertex marker shader performance
 
+Historical research: the shader approach is now the only production vertex-marker
+path. Unsupported renderers fail during startup. The benchmark source and old
+expanded-geometry path have been removed; the measurements below describe
+commit `0cb4419` and its baseline.
+
 Measured on 27 September 2026 against production source `b9fc2dc`, using the
 five OBJ models in `D:\temp\obj_tests`. The shader approach substantially reduces
 first-enable latency and buffer payload. Steady drawing is workload-dependent:
@@ -154,7 +159,7 @@ passed, including six analysis unit tests and the graphics contract for both
 variants; the Release graphics contract also passed. No production renderer
 behavior changed, and no document-content tests were added.
 
-The [benchmark README](../tests/vertex_drawing/README.md) gives build commands,
+The [benchmark README](vertex-drawing-benchmark-method.md) gives build commands,
 timing definitions, and reproduction instructions. The checked-in
 [result archive](vertex-drawing-performance-results.json) contains all 45 run
 records, both aggregate comparisons, memory counters, image hashes, and all

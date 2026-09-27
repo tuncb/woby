@@ -1,5 +1,10 @@
 # Vertex marker data and shader generation
 
+Historical research: the shader approach is now the only production vertex-marker
+path. Unsupported renderers fail during startup. The benchmark source and old
+expanded-geometry path have been removed; the measurements below describe
+commit `0cb4419` and its baseline.
+
 Source audit at `b9fc2dc`, 27 September 2026. This concerns the circular markers
 enabled by **Show vertices**. It does not replace import, the solid mesh, or
 diagnostic point/cross rendering. Application rendering code is unchanged.

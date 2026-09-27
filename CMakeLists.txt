@@ -110,6 +110,8 @@ add_executable(woby
     src/background_load.h
     src/bgfx_helpers.cpp
     src/bgfx_helpers.h
+    src/renderer_startup.cpp
+    src/renderer_startup.h
     src/camera.cpp
     src/camera.h
     src/scene_viewport.h
@@ -375,7 +377,9 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_headless_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_headless_camera COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_camera_smoke.py" "$<TARGET_FILE:woby>" --headless)
-        set_tests_properties(woby_headless woby_headless_camera PROPERTIES TIMEOUT 180 LABELS graphics)
+        add_test(NAME woby_vertex_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_vertex_render_smoke.py" "$<TARGET_FILE:woby>")
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -481,6 +485,8 @@ if(BUILD_TESTING)
         src/scene_file.h
         src/scene_objects.cpp
         src/scene_objects.h
+        src/bgfx_helpers.cpp
+        src/bgfx_helpers.h
         src/scene_renderer.cpp
         src/scene_renderer.h
         src/stl_mesh.cpp
@@ -646,11 +652,6 @@ option(WOBY_BUILD_OBJ_BENCHMARKS "Build pinned OBJ loader comparisons" OFF)
 if(WOBY_BUILD_OBJ_BENCHMARKS)
     include(cmake/WobyObjBenchmarks.cmake)
     include(cmake/WobyMappingBenchmarks.cmake)
-endif()
-
-option(WOBY_BUILD_VERTEX_BENCHMARKS "Build vertex marker GPU research benchmark" OFF)
-if(WOBY_BUILD_VERTEX_BENCHMARKS)
-    include(cmake/WobyVertexBenchmarks.cmake)
 endif()
 
 woby_stage_runtime_dlls("${WOBY_RUNTIME_DIRECTORY}" ${woby_runtime_targets})

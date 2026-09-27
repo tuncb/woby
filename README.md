@@ -25,6 +25,13 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Getting started
 
+Graphics requirements: Direct3D feature level 11_0 / Shader Model 5.0 or newer,
+Metal, Vulkan, OpenGL 4.3 / GLSL 4.30, or OpenGL ES 3.1 / GLSL ES 3.10, with
+instancing and shader-readable buffers. OpenGL ES devices must also expose at
+least two vertex-stage storage buffers. Woby checks these requirements at startup
+and reports an error before loading models if the renderer is unsupported.
+Vertex markers are generated in the shader; there is no legacy rendering fallback.
+
 The main menu stays available above the scene and panes:
 
 - **File**: New scene, Open scene, Save, Save as, Add models, Add model folder, Export PNG, and Exit.

@@ -87,7 +87,7 @@ namespace woby {
 # Exact production CPU range construction, excluding graphics API calls.
 text = (root / "src/scene_renderer.cpp").read_text()
 start = text.index("uint32_t appendPointIndicesForRange(")
-end = text.index("void buildPointSprites(", start)
+end = text.index("uint64_t renderState(", start)
 helper = text[start:end]
 start = text.index("    GpuMesh gpuMesh;", text.index("GpuMesh createGpuMesh("))
 end = text.index("    try {", start)

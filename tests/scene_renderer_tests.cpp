@@ -1,6 +1,8 @@
 #include "scene_renderer.h"
+#include "bgfx_helpers.h"
 
 #include <doctest/doctest.h>
+#include <limits>
 
 namespace {
 
@@ -35,17 +37,16 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
     mesh.nodes = {{"first", 0, 6}, {"empty", 6, 0}, {"shared", 6, 6}, {"overlap", 0, 3}};
 
     for (int iteration = 0; iteration < 2; ++iteration) {
-        fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout(), woby::pointSpriteVertexLayout());
+        fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout());
         CHECK(bgfx::isValid(fixture.mesh.vertexBuffer));
         CHECK(bgfx::isValid(fixture.mesh.triangleIndexBuffer));
         CHECK_FALSE(bgfx::isValid(fixture.mesh.lineIndexBuffer));
-        CHECK_FALSE(bgfx::isValid(fixture.mesh.pointSpriteVertexBuffer));
+        CHECK_FALSE(bgfx::isValid(fixture.mesh.pointIdBuffer));
         CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 3, 1, 7, 6, 1});
         REQUIRE(fixture.mesh.nodeRanges.size() == 4);
         CHECK(fixture.mesh.nodeRanges[0].pointIndexCount == 3);
-        woby::prepareGpuMeshFeatures(fixture.mesh, mesh, woby::pointSpriteVertexLayout(), woby::gpuMeshPoints);
-        CHECK(bgfx::isValid(fixture.mesh.pointSpriteVertexBuffer));
-        CHECK(bgfx::isValid(fixture.mesh.pointSpriteIndexBuffer));
+        woby::prepareGpuMeshFeatures(fixture.mesh, mesh, woby::gpuMeshPoints);
+        CHECK(bgfx::isValid(fixture.mesh.pointIdBuffer));
         CHECK_FALSE(bgfx::isValid(fixture.mesh.lineIndexBuffer));
         CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 3, 1, 7, 6, 1});
         REQUIRE(fixture.mesh.nodeRanges.size() == 4u);
@@ -55,25 +56,93 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
             const auto& range = fixture.mesh.nodeRanges[i];
             CHECK(range.pointIndexOffset == offsets[i]);
             CHECK(range.pointIndexCount == counts[i]);
-            CHECK(range.pointSpriteIndexOffset == offsets[i] * 6u);
-            CHECK(range.pointSpriteIndexCount == counts[i] * 6u);
             CHECK(range.triangleIndexOffset == mesh.nodes[i].indexOffset);
             CHECK(range.triangleIndexCount == mesh.nodes[i].indexCount);
             CHECK(range.lineIndexOffset == mesh.nodes[i].indexOffset * 2u);
             CHECK(range.lineIndexCount == mesh.nodes[i].indexCount * 2u);
         }
-        const auto points = fixture.mesh.pointSpriteVertexBuffer.idx;
-        woby::prepareGpuMeshFeatures(fixture.mesh, mesh, woby::pointSpriteVertexLayout(),
+        const auto points = fixture.mesh.pointIdBuffer.idx;
+        woby::prepareGpuMeshFeatures(fixture.mesh, mesh,
             woby::gpuMeshEdges | woby::gpuMeshPoints);
         REQUIRE(bgfx::isValid(fixture.mesh.lineIndexBuffer));
         const auto lines = fixture.mesh.lineIndexBuffer.idx;
-        woby::prepareGpuMeshFeatures(fixture.mesh, mesh, woby::pointSpriteVertexLayout(), 0);
-        woby::prepareGpuMeshFeatures(fixture.mesh, mesh, woby::pointSpriteVertexLayout(),
+        woby::prepareGpuMeshFeatures(fixture.mesh, mesh, 0);
+        woby::prepareGpuMeshFeatures(fixture.mesh, mesh,
             woby::gpuMeshEdges | woby::gpuMeshPoints);
-        CHECK(fixture.mesh.pointSpriteVertexBuffer.idx == points);
+        CHECK(fixture.mesh.pointIdBuffer.idx == points);
         CHECK(fixture.mesh.lineIndexBuffer.idx == lines);
         woby::destroyGpuMesh(fixture.mesh);
+        CHECK_FALSE(bgfx::isValid(fixture.mesh.pointIdBuffer));
+        CHECK(fixture.mesh.pointVertexIndices.empty());
+        CHECK(fixture.mesh.nodeRanges.empty());
     }
+}
+
+TEST_CASE("Point uniforms preserve large offsets and pixel sizing")
+{
+    for (const uint32_t offset : {0u, 65535u, 65536u, 16777217u, 38414391u,
+                                 std::numeric_limits<uint32_t>::max()}) {
+        const auto params = woby::pointSpriteParameters(40.0f, 1280, 720, offset);
+        CHECK(params[0] == 40.0f);
+        CHECK(params[1] == 1280.0f);
+        CHECK(params[2] == 720.0f);
+        const auto restored = static_cast<uint32_t>(params[4])
+            + static_cast<uint32_t>(params[5]) * 65536u;
+        CHECK(restored == offset);
+    }
+    const auto minimized = woby::pointSpriteParameters(1.0f, 0, 0, 0);
+    CHECK(minimized[1] == 1.0f);
+    CHECK(minimized[2] == 1.0f);
+}
+
+TEST_CASE("Renderer requirements reject missing shader features at startup")
+{
+    bgfx::Caps caps{};
+    caps.supported = BGFX_CAPS_COMPUTE | BGFX_CAPS_VERTEX_ID | BGFX_CAPS_INSTANCING
+        | BGFX_CAPS_INDEX32 | BGFX_CAPS_PRIMITIVE_ID;
+    caps.limits.maxComputeBindings = 2;
+    for (const auto renderer : {bgfx::RendererType::Direct3D11, bgfx::RendererType::Direct3D12,
+             bgfx::RendererType::Metal, bgfx::RendererType::Vulkan,
+             bgfx::RendererType::OpenGL, bgfx::RendererType::OpenGLES}) {
+        caps.rendererType = renderer;
+        CHECK(woby::unsupportedRendererReason(caps) == nullptr);
+        CHECK_NOTHROW(woby::validateRendererCapabilities(caps));
+        for (const auto feature : {BGFX_CAPS_COMPUTE, BGFX_CAPS_VERTEX_ID,
+                                  BGFX_CAPS_INSTANCING, BGFX_CAPS_INDEX32}) {
+            auto missing = caps;
+            missing.supported &= ~feature;
+            CHECK(woby::unsupportedRendererReason(missing) != nullptr);
+            CHECK_THROWS_WITH_AS(woby::validateRendererCapabilities(missing),
+                doctest::Contains("cannot run Woby"), std::runtime_error);
+        }
+        for (const uint32_t bindings : {0u, 1u}) {
+            auto missing = caps;
+            missing.limits.maxComputeBindings = bindings;
+            CHECK_THROWS_WITH_AS(woby::validateRendererCapabilities(missing),
+                doctest::Contains("two shader storage buffer bindings"), std::runtime_error);
+        }
+    }
+    // D3D10 devices can advertise compute and instancing without Shader Model 5.
+    caps.rendererType = bgfx::RendererType::Direct3D11;
+    caps.supported &= ~BGFX_CAPS_PRIMITIVE_ID;
+    CHECK_THROWS_WITH_AS(woby::validateRendererCapabilities(caps),
+        doctest::Contains("feature level 11_0"), std::runtime_error);
+    caps.rendererType = bgfx::RendererType::Noop;
+    CHECK(woby::unsupportedRendererReason(caps) != nullptr);
+}
+
+TEST_CASE("OpenGL requirements check versions and vertex-stage storage limits")
+{
+    CHECK(woby::unsupportedOpenGlReason(false, {4, 3, 8, 8}) == nullptr);
+    CHECK(woby::unsupportedOpenGlReason(false, {4, 6, 8, 8}) == nullptr);
+    CHECK(woby::unsupportedOpenGlReason(false, {4, 1, 8, 8}) != nullptr);
+    CHECK(woby::unsupportedOpenGlReason(false, {4, 2, 8, 8}) != nullptr);
+    CHECK(woby::unsupportedOpenGlReason(true, {3, 0, 8, 8}) != nullptr);
+    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 2, 2}) == nullptr);
+    CHECK(woby::unsupportedOpenGlReason(true, {3, 2, 8, 8}) == nullptr);
+    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 0, 8}) != nullptr);
+    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 1, 8}) != nullptr);
+    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 8, 1}) != nullptr);
 }
 
 TEST_CASE("GPU display demand follows visible file and part settings")
@@ -103,10 +172,10 @@ TEST_CASE("GPU uploads reject invalid indices and ranges before allocating")
     mesh.vertices.resize(3);
     mesh.indices = {0, 1, 99};
     mesh.nodes = {{"part", 0, 3}};
-    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout(), woby::pointSpriteVertexLayout()),
+    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene contains an invalid vertex index.");
     mesh.indices[2] = 2;
     mesh.nodes[0].indexCount = 6;
-    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout(), woby::pointSpriteVertexLayout()),
+    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
         "Scene contains an invalid triangle range.");
 }

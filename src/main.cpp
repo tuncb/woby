@@ -1,4 +1,5 @@
 #include "bgfx_helpers.h"
+#include "renderer_startup.h"
 #include "background_load.h"
 #include "camera.h"
 #include "scene_viewport.h"
@@ -250,7 +251,6 @@ using woby::findHoveredVertex;
 using woby::hoverPickSignature;
 using woby::helperLineVertexLayout;
 using woby::meshVertexLayout;
-using woby::pointSpriteVertexLayout;
 using woby::requestSceneScreenshotCapture;
 using woby::submitSceneFiles;
 using woby::submitSceneHelpers;
@@ -1123,7 +1123,6 @@ void appendSceneNodesForResolvedInputs(
 LoadedModelFileWithRuntime loadModelFile(
     const std::filesystem::path& modelPath,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     size_t firstColorIndex,
     const woby::SceneFileRecord* sceneRecord = nullptr)
 {
@@ -1140,7 +1139,7 @@ LoadedModelFileWithRuntime loadModelFile(
         }
 
         const auto gpuStart = woby::PerformanceClock::now();
-        loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout, pointSpriteLayout,
+        loaded.runtime.gpuMesh = createGpuMesh(loaded.file.mesh, meshLayout,
             woby::requestedGpuMeshFeatures(loaded.file));
         const double gpuMilliseconds = elapsedMilliseconds(gpuStart);
 
@@ -1168,7 +1167,6 @@ LoadedModelFileWithRuntime loadModelFile(
 std::vector<LoadedModelFile> loadModelFiles(
     const std::vector<std::filesystem::path>& modelPaths,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     std::vector<LoadedModelRuntime>& runtimes,
     size_t firstColorIndex = 0)
 {
@@ -1180,7 +1178,7 @@ std::vector<LoadedModelFile> loadModelFiles(
 
     try {
         for (const auto& modelPath : modelPaths) {
-            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex);
+            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, colorIndex);
             colorIndex += loaded.file.groupSettings.size();
             files.push_back(std::move(loaded.file));
             runtimes.push_back(std::move(loaded.runtime));
@@ -1201,7 +1199,6 @@ std::vector<LoadedModelFile> loadModelFiles(
 void appendInitialModelFiles(
     const ResolvedModelInputs& modelInputs,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes)
 {
@@ -1214,7 +1211,6 @@ void appendInitialModelFiles(
     std::vector<LoadedModelFile> loadedFiles = loadModelFiles(
         modelInputs.paths,
         meshLayout,
-        pointSpriteLayout,
         loadedRuntimes,
         woby::totalGroupCount(state));
 
@@ -1253,7 +1249,7 @@ void removeModelFile(
 
 bool applySceneHistory(woby::SceneHistory& history, woby::UiState& state,
     const woby::SceneDocument& cleanDocument, std::vector<LoadedModelRuntime>& runtimes,
-    const bgfx::VertexLayout& layout, const bgfx::VertexLayout& pointLayout, bool redo)
+    const bgfx::VertexLayout& layout, bool redo)
 {
     auto prepared = woby::loadSceneHistoryStep(history, state, cleanDocument, redo);
     if (!prepared) { return false; }
@@ -1266,7 +1262,7 @@ bool applySceneHistory(woby::SceneHistory& history, woby::UiState& state,
                 if (state.files[old].objectId == file.objectId) { reuse[index] = old; break; }
             }
             if (reuse[index] == woby::invalidSceneNodeIndex) {
-                staged[index].gpuMesh = createGpuMesh(file.mesh, layout, pointLayout,
+                staged[index].gpuMesh = createGpuMesh(file.mesh, layout,
                     woby::requestedGpuMeshFeatures(file));
             }
         }
@@ -1404,7 +1400,6 @@ std::vector<LoadedModelFile> loadSceneFiles(
     const std::filesystem::path& scenePath,
     const woby::SceneDocument& document,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     std::vector<LoadedModelRuntime>& runtimes)
 {
     std::vector<LoadedModelFile> loadedFiles;
@@ -1416,7 +1411,7 @@ std::vector<LoadedModelFile> loadSceneFiles(
     try {
         for (const auto& record : document.files) {
             const std::filesystem::path modelPath = woby::sceneAbsolutePath(scenePath, record.path);
-            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, pointSpriteLayout, colorIndex, &record);
+            LoadedModelFileWithRuntime loaded = loadModelFile(modelPath, meshLayout, colorIndex, &record);
             colorIndex += loaded.file.groupSettings.size();
             loadedRuntimes.push_back(std::move(loaded.runtime));
             loadedFiles.push_back(std::move(loaded.file));
@@ -1433,7 +1428,6 @@ std::vector<LoadedModelFile> loadSceneFiles(
 void loadScene(
     const std::filesystem::path& scenePath,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes)
 {
@@ -1448,7 +1442,6 @@ void loadScene(
         scenePath,
         document,
         meshLayout,
-        pointSpriteLayout,
         loadedRuntimes);
     const double filesMilliseconds = elapsedMilliseconds(filesStart);
 
@@ -1491,7 +1484,6 @@ void resetSceneToUntitled(
 void loadSceneFromPath(
     const std::filesystem::path& requestedScenePath,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
@@ -1499,7 +1491,7 @@ void loadSceneFromPath(
 {
     const auto start = woby::PerformanceClock::now();
     const std::filesystem::path scenePath = normalizedPath(requestedScenePath);
-    loadScene(scenePath, meshLayout, pointSpriteLayout, state, runtimes);
+    loadScene(scenePath, meshLayout, state, runtimes);
     currentScenePath = scenePath;
     cleanSceneDocument = woby::createSceneDocument(state);
     woby::clearSceneDirty(state);
@@ -1792,7 +1784,6 @@ void commitGpuFinalize(
 std::optional<std::string> processGpuFinalizeStep(
     GpuFinalizeRuntime& finalize,
     const bgfx::VertexLayout& meshLayout,
-    const bgfx::VertexLayout& pointSpriteLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
@@ -1823,7 +1814,7 @@ std::optional<std::string> processGpuFinalizeStep(
         ++finalize.nextFileIndex;
         try {
             LoadedModelRuntime runtime;
-            runtime.gpuMesh = createGpuMesh(file.mesh, meshLayout, pointSpriteLayout,
+            runtime.gpuMesh = createGpuMesh(file.mesh, meshLayout,
                 woby::requestedGpuMeshFeatures(file));
             finalize.finalizedRuntimes.push_back(std::move(runtime));
             finalize.finalizedFiles.push_back(std::move(file));
@@ -2212,6 +2203,8 @@ int main(int argc, char** argv)
                 : "bgfx::init failed.");
         }
         bgfxInitialized = true;
+        // Fail before importing any model or creating shader-dependent resources.
+        woby::validateRendererStartup();
         if (headless) { woby::validateSceneScreenshotRenderer(); }
 
         bgfx::setViewClear(clearView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
@@ -2224,7 +2217,6 @@ int main(int argc, char** argv)
         const auto modelInputs = resolveModelInputs(commandLine);
         woby::logDuration("startup_resolve_model_paths", elapsedMilliseconds(modelPathsStart));
         const auto layout = meshVertexLayout();
-        const auto pointLayout = pointSpriteVertexLayout();
         const auto helperLayout = helperLineVertexLayout();
         woby::UiState ui;
         woby::ComparisonRuntimes comparison;
@@ -2241,14 +2233,13 @@ int main(int argc, char** argv)
             loadSceneFromPath(
                 commandLine.scenePath.value(),
                 layout,
-                pointLayout,
                 ui,
                 runtimes,
                 currentScenePath,
                 cleanSceneDocument);
-            appendInitialModelFiles(modelInputs, layout, pointLayout, ui, runtimes);
+            appendInitialModelFiles(modelInputs, layout, ui, runtimes);
         } else {
-            ui.files = loadModelFiles(modelInputs.paths, layout, pointLayout, runtimes);
+            ui.files = loadModelFiles(modelInputs.paths, layout, runtimes);
             appendSceneNodesForResolvedInputs(ui, modelInputs, 0u);
             woby::recalculateSceneBounds(ui);
             woby::frameCameraToScene(ui);
@@ -2264,7 +2255,7 @@ int main(int argc, char** argv)
         bgfx::ProgramHandle annotationProgram = woby::loadProgram(assets, "vs_annotation.bin", "fs_color.bin");
         bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
         bgfx::UniformHandle colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
-        bgfx::UniformHandle pointParamsUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4);
+        bgfx::UniformHandle pointParamsUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4, 2);
         comparison.program = woby::loadProgram(assets, "vs_comparison.bin", "fs_comparison.bin");
         comparison.parameters = bgfx::createUniform("u_comparison", bgfx::UniformType::Vec4);
         woby::logDuration("startup_shaders", elapsedMilliseconds(shaderStart));
@@ -2600,7 +2591,6 @@ int main(int argc, char** argv)
             const auto finalized = processGpuFinalizeStep(
                 gpuFinalize,
                 layout,
-                pointLayout,
                 ui,
                 runtimes,
                 currentScenePath,
@@ -3199,7 +3189,7 @@ int main(int argc, char** argv)
             const auto runSceneHistory = [&](bool redo) {
                 woby::finishSceneHistoryInteraction(sceneHistory);
                 try {
-                    const bool applied = applySceneHistory(sceneHistory, ui, cleanSceneDocument, runtimes, layout, pointLayout, redo);
+                    const bool applied = applySceneHistory(sceneHistory, ui, cleanSceneDocument, runtimes, layout, redo);
                     if (applied) {
                         setToastMessage(toast, redo ? "Redid scene edit" : "Undid scene edit");
                         updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId, windowTitleCache);
@@ -3538,7 +3528,7 @@ int main(int argc, char** argv)
                 if (runtime.requestedFeatures == features) { continue; }
                 runtime.requestedFeatures = features;
                 try {
-                    woby::prepareGpuMeshFeatures(runtime.gpuMesh, files[i].mesh, pointLayout, features);
+                    woby::prepareGpuMeshFeatures(runtime.gpuMesh, files[i].mesh, features);
                 } catch (const std::exception& error) {
                     setToastMessage(toast, std::string("Display buffer upload failed: ") + error.what());
                 }
