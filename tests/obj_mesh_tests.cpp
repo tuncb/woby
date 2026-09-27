@@ -138,9 +138,13 @@ TEST_CASE("OBJ dense indexing grows across many seams without merging source ide
 {
     const ObjTestDirectory fixture;
     const auto path = fixture.path / "many-seams.obj";
+    bool sparse = false;
+    SUBCASE("primary positions and secondary seams") {}
+    SUBCASE("primary lookup retains many unused source positions") { sparse = true; }
     {
         std::ofstream file(path);
         file << "v 0 0 0\nv 1 0 0\nv 0 1 0\n";
+        if (sparse) { for (int i = 0; i < 1000; ++i) { file << "v 99 99 99\n"; } }
         for (unsigned i = 0; i < 80; ++i) { file << "vn " << i << " 0 1\n"; }
         for (unsigned i = 1; i <= 80; ++i) {
             file << "o seam" << i << "\nf 1//" << i << " 2//" << i << " 3//" << i << '\n';
@@ -151,7 +155,7 @@ TEST_CASE("OBJ dense indexing grows across many seams without merging source ide
     REQUIRE(loaded.vertices.size() == 240);
     REQUIRE(loaded.indices.size() == 243);
     REQUIRE(loaded.sourceData);
-    CHECK(loaded.sourceData->points.size() == 3);
+    CHECK(loaded.sourceData->points.size() == (sparse ? 1003u : 3u));
     REQUIRE(loaded.sourceData->indices.size() == loaded.indices.size());
     for (size_t i = 0; i < loaded.indices.size(); ++i) {
         CHECK(loaded.sourceData->indices[i] == i % 3);
@@ -401,6 +405,41 @@ TEST_CASE("OBJ loader supports Unicode filenames")
     writeText(path, "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n");
     const auto mesh = woby::loadObjMesh(path);
     CHECK(mesh.indices.size() == 3u);
+}
+
+TEST_CASE("OBJ position lookup preserves first use across shapes and unused positions")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "first-use.obj";
+    std::string attributes;
+    std::string faces = "g first\nf 4 2 3\ng second\nf 3 2 4\n";
+    bool sparse = false;
+    SUBCASE("position-only direct lookup") {}
+    SUBCASE("unused attributes prevent the position-only shortcut") {
+        attributes = "vn 0 0 1\nvt 0 0\n";
+    }
+    SUBCASE("normal tuples share their primary position entry") {
+        attributes = "vn 0 0 1\n";
+        faces = "g first\nf 4//1 2//1 3//1\ng second\nf 3//1 2//1 4//1\n";
+    }
+    SUBCASE("position-only lookup retains many unused source positions") { sparse = true; }
+    std::string text = "v 99 99 99\nv 1 0 0\nv 0 1 0\nv 0 0 0\n";
+    if (sparse) { for (int i = 0; i < 100; ++i) { text += "v 99 99 99\n"; } }
+    text += attributes + faces;
+    writeText(path, text.c_str());
+    const auto mesh = woby::loadObjMesh(path);
+    REQUIRE(mesh.sourceData);
+    CHECK(sizeof(mesh.sourceData->points[0]) == 3 * sizeof(float));
+    CHECK(mesh.sourceData->points.size() == (sparse ? 104u : 4u));
+    CHECK(mesh.sourceData->indices == std::vector<uint32_t>{3,1,2,2,1,3});
+    CHECK(mesh.indices == std::vector<uint32_t>{0,1,2,2,1,0});
+    REQUIRE(mesh.vertices.size() == 3);
+    CHECK(mesh.vertices[0].position == std::array<float,3>{0,0,0});
+    CHECK(mesh.vertices[1].position == std::array<float,3>{1,0,0});
+    CHECK(mesh.vertices[2].position == std::array<float,3>{0,1,0});
+    REQUIRE(mesh.nodes.size() == 2);
+    CHECK(mesh.nodes[1].indexOffset == 3);
+    CHECK(mesh.nodes[1].indexCount == 3);
 }
 
 TEST_CASE("OBJ errors preserve Unicode filenames")

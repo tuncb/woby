@@ -13,16 +13,15 @@ def replace(text, old, new):
 
 for mode in ("baseline", "hybrid", "adaptive"):
     text = (root / "src/obj_mesh.cpp").read_text()
-    text = '#include "mapping_probe.h"\n' + text
-    if mode != "baseline":
+    text = '#include "mapping_probe.h"\n#include <bit>\n' + text
+    if mode == "baseline":
         start = text.index("struct VertexIndexTable {")
         end = text.index("rapidobj::Result parseObj", start)
-        text = text[:start] + (root / "tests/vertex_mapping/hybrid.h").read_text() + "\n" + text[end:]
-        text = replace(text, "reserveIndexTable(vertexMap, vertexCapacity);", """
-    vertexMap.primary.assign(source->points.size(), emptyBucket);
-    vertexMap.direct = MODE_DIRECT && attrib.normals.empty() && attrib.texcoords.empty();
-    if (!vertexMap.direct) { vertexMap.keys.reserve(vertexCapacity); }
-""".replace("MODE_DIRECT", "true" if mode == "adaptive" else "false"))
+        text = text[:start] + (root / "tests/vertex_mapping/legacy.h").read_text() + "\n" + text[end:]
+        text = replace(text, "reserveIndexTable(vertexMap, source->points.size(), indexCount,\n        attrib.normals.empty() && attrib.texcoords.empty());",
+                       "reserveIndexTable(vertexMap, vertexCapacity);")
+    elif mode == "hybrid":
+        text = replace(text, "attrib.normals.empty() && attrib.texcoords.empty()", "false")
     text = replace(text, "auto result = parseObj(path);", 'mapping_probe::start();\n    auto result = parseObj(path);\n    mapping_probe::mark("parse_ms");')
     text = replace(text, "const auto& attrib = result.attributes;", 'mapping_probe::mark("triangulate_ms");\n    const auto& attrib = result.attributes;')
     text = replace(text, "VertexIndexTable vertexMap;", 'mapping_probe::mark("source_copy_ms");\n    VertexIndexTable vertexMap;')

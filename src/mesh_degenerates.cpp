@@ -141,7 +141,7 @@ MeshDegenerates inspectDegenerates(const std::vector<DuplicateSource>& sources, 
                 std::array<Point, 3> points{};
                 DegenerateFinding finding;
                 for (size_t j = 0; j < 3; ++j) {
-                    const auto& p = data.points[data.indices[i+j]];
+                    const auto p = promoteSourcePoint(data.points[data.indices[i+j]]);
                     const auto& m = part.transform;
                     for (size_t k = 0; k < 3; ++k) {
                         const double value = m[k]*p[0] + m[k+4]*p[1] + m[k+8]*p[2] + m[k+12];

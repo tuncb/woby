@@ -22,6 +22,16 @@ uint64_t hashBytes(uint64_t hash, const void* data, size_t bytes) {
 template<typename T> uint64_t hashVector(const std::vector<T>& values) {
     return hashBytes(14695981039346656037ull, values.data(), values.size()*sizeof(T));
 }
+uint64_t hashSourcePoints(const woby::SourceMeshData& source) {
+    uint64_t hash = 14695981039346656037ull;
+    // Canonical double encoding permits comparison with the historical runs.
+    // Only three coordinates are promoted at a time, after measured stages.
+    for (const auto& point : source.points) {
+        const auto promoted = woby::promoteSourcePoint(point);
+        hash = hashBytes(hash, promoted.data(), sizeof(promoted));
+    }
+    return hash;
+}
 }
 #ifdef _WIN32
 int wmain(int argc, wchar_t** argv) {
@@ -68,7 +78,7 @@ int main(int argc, char** argv) {
         output["stages"] = stages;
         // Full ordered byte fingerprints after all measured stages, not in load timing.
         Json hashes = {{"vertices", hashVector(mesh.vertices)}, {"indices", hashVector(mesh.indices)},
-            {"source_points", hashVector(mesh.sourceData->points)}, {"source_indices", hashVector(mesh.sourceData->indices)},
+            {"source_points", hashSourcePoints(*mesh.sourceData)}, {"source_indices", hashVector(mesh.sourceData->indices)},
             {"point_indices", hashVector(points.pointVertexIndices)}};
         uint64_t nodes = 14695981039346656037ull;
         for (const auto& node : mesh.nodes) {

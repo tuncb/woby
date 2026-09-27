@@ -11,11 +11,13 @@ def main():
     parser.add_argument("--models", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--rounds", type=int, default=3)
+    parser.add_argument("--variants", nargs="+", choices=("baseline", "hybrid", "adaptive"),
+                        default=["baseline", "hybrid", "adaptive"])
     args = parser.parse_args()
     models = sorted(args.models.resolve().glob("*.obj"))
     assert models and args.rounds > 0
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    modes = ["baseline", "hybrid", "adaptive"]
+    modes = args.variants
     with args.output.open("x", encoding="utf-8") as output:
         for iteration in range(args.rounds):
             for model in models:
@@ -24,7 +26,8 @@ def main():
                     while source.read(8 * 1024 * 1024):
                         pass
                 reference = None
-                for mode in modes[iteration % 3:] + modes[:iteration % 3]:
+                shift = iteration % len(modes)
+                for mode in modes[shift:] + modes[:shift]:
                     print(f"round={iteration+1} model={model.name} variant={mode}", flush=True)
                     row = run(args.bin.resolve(), mode, model, args.bin.resolve())
                     row["round"] = iteration + 1

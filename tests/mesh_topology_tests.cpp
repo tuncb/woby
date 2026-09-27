@@ -35,7 +35,10 @@ DuplicateSource sourceFor(std::vector<Point> points = {{0,0,0}, {1,0,0}, {1,1,0}
     std::vector<uint32_t> indices = {0,1,2, 0,2,3})
 {
     auto data = std::make_shared<SourceMeshData>();
-    data->points = std::move(points); data->indices = std::move(indices);
+    for (const auto& point : points) {
+        data->points.push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
+    }
+    data->indices = std::move(indices);
     data->provenance = SourceProvenance::objPositions;
     SourcePartInstance part;
     part.partId = 2; part.indexCount = data->indices.size();
@@ -84,10 +87,10 @@ TEST_CASE("topology distinguishes original IDs exact positions signed zero and n
     CHECK(welded.boundaries.size() == 4);
     CHECK(welded.sources[0].vertices[0].references.size() == 2);
     auto near = source;
-    auto data = std::make_shared<SourceMeshData>(*near.data); data->points[3][0] = 1e-16; near.data = data;
+    auto data = std::make_shared<SourceMeshData>(*near.data); data->points[3][0] = 1e-16f; near.data = data;
     CHECK(buildMeshTopology({near}, TopologyMode::exactPosition).boundaries.size() == 6);
-    // Differences below float resolution stay distinct in the topology snapshot.
-    data->points[3] = {1+1e-12, 0, 0};
+    // Adjacent representable source coordinates remain distinct.
+    data->points[3] = {std::nextafter(1.0f, 2.0f), 0, 0};
     CHECK(buildMeshTopology({near}, TopologyMode::exactPosition).sources[0].vertices.size() == 5);
 }
 
@@ -106,6 +109,21 @@ TEST_CASE("topology defaults for STL are explicit and unavailable is not a clean
     CHECK(result.availableSources == 1); CHECK(result.unavailableSources == 1);
     obj.data.reset();
     CHECK(buildMeshTopology({obj}).unavailableSources == 1);
+}
+
+TEST_CASE("topology promotes source floats before large translations")
+{
+    auto source = sourceFor({{0,0,0}, {1,0,0}, {0,1,0}}, {0,1,2});
+    source.parts[0].transform[12] = 16777216.0f;
+    const auto topology = buildMeshTopology({source}, TopologyMode::exactPosition);
+    REQUIRE(topology.sources.size() == 1);
+    const auto& vertices = topology.sources[0].vertices;
+    REQUIRE(vertices.size() == 3);
+    CHECK(vertices[0].position[0] == 16777216.0);
+    CHECK(vertices[1].position[0] == 16777217.0);
+    CHECK(topology.excludedCollapsedFaces == 0);
+    CHECK(topology.boundaries.size() == 3);
+    CHECK(source.data->points[1][0] == 1.0f);
 }
 
 TEST_CASE("topology never welds files and partitions original IDs by transformed instance")
@@ -171,12 +189,14 @@ TEST_CASE("topology validates input cancellation and bounds JSON without losing 
 {
     auto source = sourceFor(); auto data = std::make_shared<SourceMeshData>(*source.data); source.data = data;
     data->indices[0] = 999; CHECK_THROWS((void)buildMeshTopology({source})); data->indices[0] = 0;
-    data->points[0][0] = std::numeric_limits<double>::infinity(); CHECK_THROWS((void)buildMeshTopology({source})); data->points[0][0] = 0;
+    data->points[0][0] = std::numeric_limits<float>::infinity(); CHECK_THROWS((void)buildMeshTopology({source})); data->points[0][0] = 0;
     source.parts[0].indexCount = 999; CHECK_THROWS((void)buildMeshTopology({source})); source.parts[0].indexCount = 6;
     source.parts[0].transform[0] = std::numeric_limits<float>::quiet_NaN(); CHECK_THROWS((void)buildMeshTopology({source}));
     std::stop_source stop; stop.request_stop(); CHECK_THROWS((void)buildMeshTopology({}, {}, stop.get_token()));
     data->indices.clear(); for (size_t i = 0; i < 120; ++i) { data->indices.insert(data->indices.end(), {0,1,2}); }
-    source = sourceFor(data->points, data->indices);
+    std::vector<Point> sourcePoints;
+    for (const auto& point : data->points) { sourcePoints.push_back(promoteSourcePoint(point)); }
+    source = sourceFor(std::move(sourcePoints), data->indices);
     const auto json = jsonFor(buildMeshTopology({source}), "non_manifold_edges");
     CHECK(json["count"] == 3); CHECK(json["findings"][0]["incidentFaceCount"] == 120);
     CHECK(json["findings"][0]["incidentFaces"].size() == 100); CHECK(json["findings"][0]["incidentFacesTruncated"] == true);
@@ -690,20 +710,20 @@ TEST_CASE("fin settings navigate persist validate and control picking reports an
 }
 
 
-TEST_CASE("unrepresentable fin areas do not fail shared topology or claim clean results")
+TEST_CASE("fin analysis promotes tiny source coordinates before transforming them")
 {
     auto source = threeFinSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
-    for (auto& point : data->points) { for (auto& axis : point) { axis *= 1e-200; } }
+    for (auto& point : data->points) { for (auto& axis : point) { axis *= 1e-30f; } }
     source.data = data;
+    for (auto& part : source.parts) { part.transform[0] = part.transform[5] = part.transform[10] = 1e-30f; }
     const auto topology = buildMeshTopology({source});
-    CHECK(topologyStatus(topology) == std::string("complete")); CHECK(topology.nonManifoldEdges.size() == 1);
-    CHECK(topology.excludedCollapsedFaces == 0); CHECK(topology.unavailableFinAreaSources == 1);
-    const auto json = jsonFor(topology,"fins"); CHECK(json["status"] == "unavailable"); CHECK(json["count"].is_null());
-    auto normal = threeFinSource(); normal.fileId = 2;
-    const auto mixed = jsonFor(buildMeshTopology({source,normal}),"fins");
-    CHECK(mixed["status"] == "partial"); CHECK(mixed["knownCount"] == 3); CHECK(mixed["count"].is_null());
+    CHECK(topologyStatus(topology) == std::string("complete"));
+    CHECK(topology.nonManifoldEdges.size() == 1);
+    CHECK(topology.excludedCollapsedFaces == 0);
+    CHECK(topology.unavailableFinAreaSources == 0);
+    CHECK(topology.fins.size() == buildMeshTopology({threeFinSource()}).fins.size());
+    for (const auto& patch : topology.finPatches) { CHECK(patch.area > 0); }
 }
-
 
 TEST_CASE("fin patches classify pinched boundaries and retain duplicate face incidence")
 {

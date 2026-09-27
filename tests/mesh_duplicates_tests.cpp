@@ -62,7 +62,7 @@ woby::UiState scene(const std::filesystem::path& path)
 TEST_CASE("source duplicate points use exact coordinates signed zero and source scopes")
 {
     auto data = triangle();
-    data->points.insert(data->points.end(), {{-0.0,0,0}, {0,0,0}, {1e-15,0,0}});
+    data->points.insert(data->points.end(), {{-0.0,0,0}, {0,0,0}, {1e-15f,0,0}});
     auto input = inputFor(data);
     auto result = woby::inspectDuplicates(input);
     CHECK(result.points.duplicateCount == 2);
@@ -80,6 +80,24 @@ TEST_CASE("source duplicate points use exact coordinates signed zero and source 
     CHECK(result.points.duplicateCount == 4);
     REQUIRE(result.points.findings.size() == 2);
     CHECK(result.points.findings[0].fileId != result.points.findings[1].fileId);
+}
+
+TEST_CASE("duplicate display transforms promote source floats before cancellation")
+{
+    auto data = triangle();
+    data->points[0] = {16777216.0f, 1.0f, 0};
+    data->points.push_back(data->points[0]);
+    auto input = inputFor(data);
+    // x' = x + y - 2^24: float arithmetic would lose y before subtraction.
+    auto transform = input.sources[0].parts[0].transform;
+    transform[4] = 1;
+    transform[12] = -16777216.0f;
+    input.sources[0].parts[0].transform = transform;
+    input.sources[0].unusedPointTransform = transform;
+    const auto result = woby::inspectDuplicates(input);
+    REQUIRE(result.points.findings.size() == 1);
+    REQUIRE(result.points.findings[0].geometry.size() == 1);
+    CHECK(result.points.findings[0].geometry[0][0] == 1.0f);
 }
 
 TEST_CASE("source duplicate triangles include all permutations and repeated collapsed faces")
@@ -116,7 +134,7 @@ TEST_CASE("source duplicate status distinguishes STL unsupported disabled and in
     CHECK(std::string(woby::duplicateStatus(woby::inspectDuplicates(input).triangles)) == "partial");
     input.settings.triangles = false;
     CHECK(std::string(woby::duplicateStatus(woby::inspectDuplicates(input).triangles)) == "disabled");
-    data->points[0][0] = std::numeric_limits<double>::quiet_NaN();
+    data->points[0][0] = std::numeric_limits<float>::quiet_NaN();
     CHECK_THROWS((void)woby::inspectDuplicates(input));
     data->points[0][0] = 0;
     data->indices[0] = 900;

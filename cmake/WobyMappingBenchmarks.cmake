@@ -5,7 +5,7 @@ endif()
 set(mapping_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/vertex_mapping")
 set(mapping_dir "${CMAKE_CURRENT_BINARY_DIR}/mapping-probe")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${mapping_tests}/generate.py" "${mapping_tests}/hybrid.h"
+    "${mapping_tests}/generate.py" "${mapping_tests}/legacy.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/obj_mesh.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/model_mesh.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/surface_annotation.cpp"

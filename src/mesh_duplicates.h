@@ -13,12 +13,18 @@ namespace woby {
 enum class SourceProvenance { objPositions, stlCorners, importerVertices };
 
 // Captured before render optimization. Triangle IDs refer to generated triangles,
-// not original polygons. Promoting importer floats does not recover precision.
+// not original polygons. Keep importer float precision in storage; promote only
+// the points being processed by analysis, before performing any arithmetic.
 struct SourceMeshData {
     SourceProvenance provenance = SourceProvenance::importerVertices;
-    std::vector<std::array<double, 3>> points;
+    std::vector<std::array<float, 3>> points;
     std::vector<uint32_t> indices;
 };
+
+[[nodiscard]] inline std::array<double, 3> promoteSourcePoint(const std::array<float, 3>& point)
+{
+    return {point[0], point[1], point[2]};
+}
 
 struct DuplicateSettings {
     bool points = true, triangles = true;

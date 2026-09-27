@@ -4,7 +4,6 @@
 #include <rapidobj/rapidobj.hpp>
 
 #include <algorithm>
-#include <bit>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -25,11 +24,14 @@ struct IndexKey {
     }
 };
 
-// Dense keys and 32-bit bucket references avoid an allocation and pointer chase
-// for every vertex. Entries never move logically and preserve first-use IDs.
+// First-use IDs are global across shapes. Most corners hit the primary entry
+// for their source position; only alternate normal/UV tuples need hashing.
 struct VertexIndexTable {
     std::vector<IndexKey> keys;
-    std::vector<uint32_t> buckets;
+    std::vector<uint32_t> primary, buckets;
+    size_t secondaryCount = 0;
+    bool direct = false;
+    uint32_t next = 0;
 };
 constexpr uint32_t emptyBucket = std::numeric_limits<uint32_t>::max();
 
@@ -43,37 +45,55 @@ size_t indexHash(const IndexKey& key)
     return static_cast<size_t>(hash ^ (hash >> 33));
 }
 
-void reserveIndexTable(VertexIndexTable& table, size_t capacity)
+void growSecondary(VertexIndexTable& table)
 {
-    table.keys.reserve(capacity);
-    table.buckets.assign(std::bit_ceil(std::max(size_t{16}, capacity + capacity / 2)), emptyBucket);
-    const size_t mask = table.buckets.size() - 1;
-    for (size_t i = 0; i < table.keys.size(); ++i) {
-        size_t bucket = indexHash(table.keys[i]) & mask;
-        while (table.buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & mask; }
-        table.buckets[bucket] = static_cast<uint32_t>(i);
+    std::vector<uint32_t> buckets(std::max(size_t{16}, table.buckets.size() * 2), emptyBucket);
+    for (const auto id : table.buckets) {
+        if (id == emptyBucket) { continue; }
+        size_t bucket = indexHash(table.keys[id]) & (buckets.size() - 1);
+        while (buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & (buckets.size() - 1); }
+        buckets[bucket] = id;
     }
+    table.buckets = std::move(buckets);
 }
 
 uint32_t vertexIndex(VertexIndexTable& table, const IndexKey& key)
 {
-    size_t mask = table.buckets.size() - 1;
-    size_t bucket = indexHash(key) & mask;
+    auto& primary = table.primary[static_cast<size_t>(key.vertex)];
+    if (table.direct) {
+        if (primary == emptyBucket) { primary = table.next++; }
+        return primary;
+    }
+    if (primary == emptyBucket) {
+        primary = static_cast<uint32_t>(table.keys.size());
+        table.keys.push_back(key);
+        return primary;
+    }
+    if (table.keys[primary] == key) { return primary; }
+    if (table.buckets.empty()) { growSecondary(table); }
+    size_t bucket = indexHash(key) & (table.buckets.size() - 1);
     while (table.buckets[bucket] != emptyBucket) {
-        const auto index = table.buckets[bucket];
-        if (table.keys[index] == key) { return index; }
-        bucket = (bucket + 1) & mask;
+        const auto id = table.buckets[bucket];
+        if (table.keys[id] == key) { return id; }
+        bucket = (bucket + 1) & (table.buckets.size() - 1);
     }
-    if (table.keys.size() >= table.buckets.size() * 3 / 4) {
-        reserveIndexTable(table, table.buckets.size());
-        mask = table.buckets.size() - 1;
-        bucket = indexHash(key) & mask;
-        while (table.buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & mask; }
+    if (table.secondaryCount >= table.buckets.size() * 3 / 4) {
+        growSecondary(table);
+        bucket = indexHash(key) & (table.buckets.size() - 1);
+        while (table.buckets[bucket] != emptyBucket) { bucket = (bucket + 1) & (table.buckets.size() - 1); }
     }
-    const auto index = static_cast<uint32_t>(table.keys.size());
+    const auto id = static_cast<uint32_t>(table.keys.size());
     table.keys.push_back(key);
-    table.buckets[bucket] = index;
-    return index;
+    table.buckets[bucket] = id;
+    ++table.secondaryCount;
+    return id;
+}
+
+void reserveIndexTable(VertexIndexTable& table, size_t positions, size_t corners, bool positionOnly)
+{
+    table.primary.assign(positions, emptyBucket);
+    table.direct = positionOnly;
+    if (!table.direct) { table.keys.reserve(std::min(positions, corners)); }
 }
 
 rapidobj::Result parseObj(const std::filesystem::path& path)
@@ -145,7 +165,8 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     mesh.vertices.reserve(vertexCapacity);
     mesh.nodes.reserve(shapes.size());
     source->indices.reserve(indexCount);
-    reserveIndexTable(vertexMap, vertexCapacity);
+    reserveIndexTable(vertexMap, source->points.size(), indexCount,
+        attrib.normals.empty() && attrib.texcoords.empty());
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
         const auto& shape = shapes[shapeIndex];

@@ -1,5 +1,13 @@
 # OBJ vertex mapping and CPU-to-GPU layout
 
+**Implementation status:** the adaptive lookup described here has now been
+adopted by the production OBJ loader. Every source position has a primary entry,
+including positions unused by faces; there is no sparse-position fallback. Source
+coordinates are now stored as floats and promoted when analysis processes them.
+The measurements and data layouts below preserve the original experiment,
+before those production changes. See the
+[implementation and validation results](vertex-mapping-implementation.md).
+
 Investigation dated 2026-09-27, production base `1b5862a`, using all five OBJ
 files in `D:/temp/obj_tests`. Only optional benchmark and documentation files
 were added; the application loader and renderer are unchanged.

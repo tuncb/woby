@@ -35,7 +35,10 @@ bool hit(const Triangle& a, const Triangle& b, std::array<size_t, 3> bIds = {3,4
 DuplicateSource sourceFor(std::vector<Point> points, std::vector<uint32_t> indices)
 {
     auto data = std::make_shared<SourceMeshData>();
-    data->points = std::move(points); data->indices = std::move(indices); data->provenance = SourceProvenance::objPositions;
+    for (const auto& point : points) {
+        data->points.push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
+    }
+    data->indices = std::move(indices); data->provenance = SourceProvenance::objPositions;
     SourcePartInstance part; part.partId = 2; part.indexCount = data->indices.size();
     part.transform = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
     return {1,"test.obj",data,true,{part}};
