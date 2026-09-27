@@ -29,6 +29,16 @@ struct HoverPickCache {
     std::optional<HoveredVertex> hoveredVertex;
 };
 
+// Runtime debounce state, outside the persisted logical scene.
+struct HoverNavigationState {
+    SceneCamera camera;
+    SceneUpAxis upAxis = SceneUpAxis::z;
+    double resumeAtSeconds = 0;
+};
+
+[[nodiscard]] bool hoverNavigationPaused(HoverNavigationState& state, const SceneCamera& camera,
+    SceneUpAxis upAxis, const CameraInput& input, double nowSeconds);
+
 [[nodiscard]] uint64_t hoverPickSignature(
     const std::vector<UiFileState>& files,
     const std::vector<UiSceneNode>& sceneNodes,

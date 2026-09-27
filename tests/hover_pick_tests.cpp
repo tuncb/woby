@@ -80,6 +80,40 @@ std::optional<woby::HoveredVertex> pick(
 
 } // namespace
 
+TEST_CASE("hover navigation pauses across wheel zoom steps and resumes after idle")
+{
+    woby::SceneCamera camera;
+    woby::HoverNavigationState navigation{camera, woby::SceneUpAxis::z};
+    CHECK_FALSE(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 1.0));
+    woby::dollyCamera(camera, -.12f);
+    CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 1.01));
+    CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 1.10));
+    woby::dollyCamera(camera, -.12f);
+    CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 1.11));
+    CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 1.25));
+    CHECK_FALSE(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 1.27));
+}
+
+TEST_CASE("hover navigation covers keyboard translation rotation and held mouse drags")
+{
+    woby::SceneCamera camera;
+    woby::HoverNavigationState navigation{camera, woby::SceneUpAxis::z};
+    woby::moveCameraLocal(camera, .1f, 0, .2f);
+    CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 2.0));
+    woby::orbitCamera(camera, 1, 1);
+    CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 2.1));
+    CHECK_FALSE(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, 2.3));
+    double time = 3;
+    for (const auto input : {woby::CameraInput{true, false, false}, {false, true, false}, {false, false, true}}) {
+        CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, input, time));
+        CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, input, time + 1));
+        CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, time + 1.1));
+        CHECK_FALSE(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::z, {}, time + 1.2));
+        time += 2;
+    }
+    CHECK(woby::hoverNavigationPaused(navigation, camera, woby::SceneUpAxis::y, {}, time));
+}
+
 TEST_CASE("hover picking chooses the frontmost nearby vertex")
 {
     std::vector<woby::UiFileState> files = {pointFile()};

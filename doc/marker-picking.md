@@ -24,8 +24,11 @@ The pinned D3D11 backend may still block internally during readback; no explicit
 application wait is introduced into the frame loop.
 
 Runtime resources live in `GpuMarkerPicker`, outside `UiState`. The picker is
-enabled while the pointer is available over a viewport with vertex markers,
-including during camera movement. Other rendering and screenshot exports use
+enabled while the pointer is available over a viewport with vertex markers.
+Hover picking pauses during camera navigation (including wheel zoom and keyboard
+movement) and resumes after 150 ms without movement. Active orbit, roll, and pan
+drags keep it paused. Both GPU and CPU picking use this gate; queued coordinate
+results are invalidated while paused. Other rendering and screenshot exports use
 their original shaders. Comparison rendering clears the ID attachment when it
 covers a marker. Screenshot views are separate from the picking passes.
 

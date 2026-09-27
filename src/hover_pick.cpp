@@ -8,6 +8,18 @@
 #include <cmath>
 
 namespace woby {
+
+bool hoverNavigationPaused(HoverNavigationState& state, const SceneCamera& camera,
+    SceneUpAxis upAxis, const CameraInput& input, double nowSeconds)
+{
+    const bool moving = input.orbiting || input.rolling || input.panning
+        || state.camera != camera || state.upAxis != upAxis;
+    if (moving) { state.resumeAtSeconds = nowSeconds + 0.15; }
+    state.camera = camera;
+    state.upAxis = upAxis;
+    return nowSeconds < state.resumeAtSeconds;
+}
+
 namespace {
 
 constexpr float vertexHoverMinRadius = 3.0f;

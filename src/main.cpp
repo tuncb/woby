@@ -2364,6 +2364,7 @@ int main(int argc, char** argv)
         woby::FrameTimings lastFrameTimings;
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
+        woby::HoverNavigationState hoverNavigation{camera, ui.upAxis};
         woby::SceneDimensionsCache dimensionsCache;
         woby::SceneRenderScratch renderScratch;
         WindowTitleCache windowTitleCache;
@@ -3593,9 +3594,12 @@ int main(int argc, char** argv)
                     woby::setCameraRolling(ui, false);
                     woby::setCameraPanning(ui, false);
                 }
+                const bool navigationPaused = woby::hoverNavigationPaused(hoverNavigation, camera, ui.upAxis,
+                    cameraInput, std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count());
                 const bool hoverPickingEnabled = mouseInsideViewport
                     && !ImGui::GetIO().WantCaptureMouse
-                    && scenePointerAvailable;
+                    && scenePointerAvailable
+                    && !navigationPaused;
                 const bool markersVisible = std::any_of(files.begin(), files.end(), [](const auto& file) {
                     return (woby::requestedGpuMeshFeatures(file) & woby::gpuMeshPoints) != 0;
                 });
