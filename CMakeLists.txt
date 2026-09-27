@@ -645,6 +645,7 @@ endif()
 option(WOBY_BUILD_OBJ_BENCHMARKS "Build pinned OBJ loader comparisons" OFF)
 if(WOBY_BUILD_OBJ_BENCHMARKS)
     include(cmake/WobyObjBenchmarks.cmake)
+    include(cmake/WobyMappingBenchmarks.cmake)
 endif()
 
 woby_stage_runtime_dlls("${WOBY_RUNTIME_DIRECTORY}" ${woby_runtime_targets})

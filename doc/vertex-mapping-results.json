@@ -1,0 +1,4125 @@
+{
+  "metadata": {
+    "date": "2026-09-27",
+    "production_commit": "1b5862a9b643bf76d5e86fca8de67d717125f517",
+    "cpu": "AMD Ryzen 7 5800H, 8 cores / 16 threads",
+    "ram_GiB": 64,
+    "configuration": "MSVC VS 2026, vs2026-vcpkg preset, Release /O2 /Ob2 /DNDEBUG",
+    "method": "Fresh serial processes; 3 rounds; variant order rotates; native RapidOBJ I/O; no cache eviction; validation outside measured stages",
+    "gpu": "Not measured in this sweep; historical GPU measurements in obj-compaction-results.json"
+  },
+  "summary": [
+    {
+      "model": "BearTrap",
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "variants": {
+        "baseline": {
+          "runs": 3,
+          "load_ms": 29638.039,
+          "mapping_ms": 20605.5608,
+          "cpu_ready_ms": 36807.2521,
+          "load_range_ms": [
+            29425.7803,
+            30934.808
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 3157.1666,
+            "bounds_ms": 489.0276,
+            "gpu_index_validate_ms": 125.1373,
+            "group_state_ms": 2815.6686,
+            "map_allocate_ms": 76.9128,
+            "map_loop_ms": 20528.648,
+            "metadata_and_finalize_ms": 0.0059,
+            "normal_check_ms": 0.0005,
+            "normal_generate_ms": 1939.0941,
+            "parse_ms": 5344.4995,
+            "point_allocate_ms": 54.0695,
+            "point_ranges_ms": 1034.617,
+            "source_copy_ms": 692.9152,
+            "temporary_release_ms": 304.3824,
+            "triangulate_ms": 296.5465
+          },
+          "peak_working_set_bytes": 10482905088,
+          "peak_commit_bytes": 11359821824,
+          "map": {
+            "bucket_bytes": 268435456,
+            "key_capacity_bytes": 682031604,
+            "normal_count": 0,
+            "position_count": 37890645,
+            "uv_count": 38414285
+          }
+        },
+        "hybrid": {
+          "runs": 3,
+          "load_ms": 18070.0208,
+          "mapping_ms": 8903.5733,
+          "cpu_ready_ms": 25313.5605,
+          "load_range_ms": [
+            17538.0981,
+            19109.3934
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 3143.9456,
+            "bounds_ms": 484.5175,
+            "gpu_index_validate_ms": 126.0076,
+            "group_state_ms": 2839.7751,
+            "map_allocate_ms": 42.706,
+            "map_loop_ms": 8860.8673,
+            "metadata_and_finalize_ms": 0.0063,
+            "normal_check_ms": 0.0004,
+            "normal_generate_ms": 1970.797,
+            "parse_ms": 5475.3962,
+            "point_allocate_ms": 55.1333,
+            "point_ranges_ms": 1037.7114,
+            "source_copy_ms": 671.2731,
+            "temporary_release_ms": 298.8445,
+            "triangulate_ms": 280.5392
+          },
+          "peak_working_set_bytes": 10370756608,
+          "peak_commit_bytes": 11247390720,
+          "map": {
+            "bucket_bytes": 4194304,
+            "direct": false,
+            "key_capacity_bytes": 682031604,
+            "normal_count": 0,
+            "position_count": 37890645,
+            "primary_bytes": 151562580,
+            "secondary_entries": 523746,
+            "uv_count": 38414285
+          }
+        },
+        "adaptive": {
+          "runs": 3,
+          "load_ms": 17773.9721,
+          "mapping_ms": 8762.504700000001,
+          "cpu_ready_ms": 25102.1988,
+          "load_range_ms": [
+            17304.1241,
+            20502.0324
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 3197.8671,
+            "bounds_ms": 485.1718,
+            "gpu_index_validate_ms": 124.5106,
+            "group_state_ms": 2847.133,
+            "map_allocate_ms": 45.217,
+            "map_loop_ms": 8719.0727,
+            "metadata_and_finalize_ms": 0.0065,
+            "normal_check_ms": 0.0004,
+            "normal_generate_ms": 1891.5622,
+            "parse_ms": 5357.8286,
+            "point_allocate_ms": 54.3557,
+            "point_ranges_ms": 1036.9182,
+            "source_copy_ms": 665.9388,
+            "temporary_release_ms": 279.7622,
+            "triangulate_ms": 304.084
+          },
+          "peak_working_set_bytes": 10370838528,
+          "peak_commit_bytes": 11247566848,
+          "map": {
+            "bucket_bytes": 4194304,
+            "direct": false,
+            "key_capacity_bytes": 682031604,
+            "normal_count": 0,
+            "position_count": 37890645,
+            "primary_bytes": 151562580,
+            "secondary_entries": 523746,
+            "uv_count": 38414285
+          }
+        }
+      }
+    },
+    {
+      "model": "Bennu",
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "variants": {
+        "baseline": {
+          "runs": 3,
+          "load_ms": 6020.3662,
+          "mapping_ms": 4404.4876,
+          "cpu_ready_ms": 8809.921900000001,
+          "load_range_ms": [
+            5984.3545,
+            6279.8796
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 1169.8116,
+            "bounds_ms": 112.7572,
+            "gpu_index_validate_ms": 29.1034,
+            "group_state_ms": 1233.6952,
+            "map_allocate_ms": 19.3847,
+            "map_loop_ms": 4385.4579,
+            "metadata_and_finalize_ms": 0.0056,
+            "normal_check_ms": 0.0003,
+            "normal_generate_ms": 507.2092,
+            "parse_ms": 701.0367,
+            "point_allocate_ms": 12.6646,
+            "point_ranges_ms": 348.858,
+            "source_copy_ms": 165.5619,
+            "temporary_release_ms": 54.0544,
+            "triangulate_ms": 60.0414
+          },
+          "peak_working_set_bytes": 2019962880,
+          "peak_commit_bytes": 2092666880,
+          "map": {
+            "bucket_bytes": 67108864,
+            "key_capacity_bytes": 107202288,
+            "normal_count": 0,
+            "position_count": 8933524,
+            "uv_count": 0
+          }
+        },
+        "hybrid": {
+          "runs": 3,
+          "load_ms": 3004.5219,
+          "mapping_ms": 1411.4114,
+          "cpu_ready_ms": 5786.9474,
+          "load_range_ms": [
+            2939.5484,
+            3324.6232
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 1188.4189,
+            "bounds_ms": 113.6368,
+            "gpu_index_validate_ms": 29.3781,
+            "group_state_ms": 1224.1428,
+            "map_allocate_ms": 10.4275,
+            "map_loop_ms": 1400.2268,
+            "metadata_and_finalize_ms": 0.0055,
+            "normal_check_ms": 0.0003,
+            "normal_generate_ms": 504.1851,
+            "parse_ms": 687.8596,
+            "point_allocate_ms": 12.6423,
+            "point_ranges_ms": 349.2975,
+            "source_copy_ms": 163.8486,
+            "temporary_release_ms": 52.4978,
+            "triangulate_ms": 57.575
+          },
+          "peak_working_set_bytes": 1988526080,
+          "peak_commit_bytes": 2093289472,
+          "map": {
+            "bucket_bytes": 0,
+            "direct": false,
+            "key_capacity_bytes": 107202288,
+            "normal_count": 0,
+            "position_count": 8933524,
+            "primary_bytes": 35734096,
+            "secondary_entries": 0,
+            "uv_count": 0
+          }
+        },
+        "adaptive": {
+          "runs": 3,
+          "load_ms": 2778.334,
+          "mapping_ms": 1055.2221,
+          "cpu_ready_ms": 5547.2046,
+          "load_range_ms": [
+            2644.5973,
+            2982.7617
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 1164.7327,
+            "bounds_ms": 114.3778,
+            "gpu_index_validate_ms": 29.148,
+            "group_state_ms": 1224.8196,
+            "map_allocate_ms": 10.2763,
+            "map_loop_ms": 1044.9458,
+            "metadata_and_finalize_ms": 0.0064,
+            "normal_check_ms": 0.0003,
+            "normal_generate_ms": 517.3244,
+            "parse_ms": 688.4209,
+            "point_allocate_ms": 12.8286,
+            "point_ranges_ms": 350.1506,
+            "source_copy_ms": 156.8803,
+            "temporary_release_ms": 48.1871,
+            "triangulate_ms": 60.3299
+          },
+          "peak_working_set_bytes": 1881305088,
+          "peak_commit_bytes": 2092802048,
+          "map": {
+            "bucket_bytes": 0,
+            "direct": true,
+            "key_capacity_bytes": 0,
+            "normal_count": 0,
+            "position_count": 8933524,
+            "primary_bytes": 35734096,
+            "secondary_entries": 0,
+            "uv_count": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "Powerplant",
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "variants": {
+        "baseline": {
+          "runs": 3,
+          "load_ms": 4333.4495,
+          "mapping_ms": 3282.4658,
+          "cpu_ready_ms": 5482.9947999999995,
+          "load_range_ms": [
+            4203.6552,
+            4623.5963
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 549.9893,
+            "bounds_ms": 138.5049,
+            "gpu_index_validate_ms": 20.9392,
+            "group_state_ms": 473.4886,
+            "map_allocate_ms": 18.7412,
+            "map_loop_ms": 3263.7581,
+            "metadata_and_finalize_ms": 0.0063,
+            "normal_check_ms": 36.4064,
+            "normal_generate_ms": 0.0035,
+            "parse_ms": 609.6725,
+            "point_allocate_ms": 15.4541,
+            "point_ranges_ms": 85.1987,
+            "source_copy_ms": 108.6957,
+            "temporary_release_ms": 44.3703,
+            "triangulate_ms": 53.2796
+          },
+          "peak_working_set_bytes": 1806229504,
+          "peak_commit_bytes": 2058158080,
+          "map": {
+            "bucket_bytes": 67108864,
+            "key_capacity_bytes": 161570232,
+            "normal_count": 794066,
+            "position_count": 5984083,
+            "uv_count": 0
+          }
+        },
+        "hybrid": {
+          "runs": 3,
+          "load_ms": 3357.8612,
+          "mapping_ms": 2368.2381,
+          "cpu_ready_ms": 4473.4444,
+          "load_range_ms": [
+            3335.0505,
+            3739.4004
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 518.9485,
+            "bounds_ms": 138.1671,
+            "gpu_index_validate_ms": 20.5473,
+            "group_state_ms": 464.7635,
+            "map_allocate_ms": 6.8717,
+            "map_loop_ms": 2361.1189,
+            "metadata_and_finalize_ms": 0.006,
+            "normal_check_ms": 37.1188,
+            "normal_generate_ms": 0.0064,
+            "parse_ms": 617.661,
+            "point_allocate_ms": 15.2147,
+            "point_ranges_ms": 82.5894,
+            "source_copy_ms": 105.4883,
+            "temporary_release_ms": 43.3105,
+            "triangulate_ms": 41.3794
+          },
+          "peak_working_set_bytes": 1797730304,
+          "peak_commit_bytes": 2049691648,
+          "map": {
+            "bucket_bytes": 33554432,
+            "direct": false,
+            "key_capacity_bytes": 161570232,
+            "normal_count": 794066,
+            "position_count": 5984083,
+            "primary_bytes": 23936332,
+            "secondary_entries": 4969544,
+            "uv_count": 0
+          }
+        },
+        "adaptive": {
+          "runs": 3,
+          "load_ms": 3398.7597,
+          "mapping_ms": 2414.5703999999996,
+          "cpu_ready_ms": 4513.0996,
+          "load_range_ms": [
+            3324.5275,
+            3852.6315
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 520.9919,
+            "bounds_ms": 138.3293,
+            "gpu_index_validate_ms": 21.1465,
+            "group_state_ms": 468.2188,
+            "map_allocate_ms": 6.7904,
+            "map_loop_ms": 2407.1719,
+            "metadata_and_finalize_ms": 0.0055,
+            "normal_check_ms": 36.1324,
+            "normal_generate_ms": 0.0031,
+            "parse_ms": 601.1309,
+            "point_allocate_ms": 15.4642,
+            "point_ranges_ms": 83.8349,
+            "source_copy_ms": 104.5865,
+            "temporary_release_ms": 43.356,
+            "triangulate_ms": 52.3867
+          },
+          "peak_working_set_bytes": 1797894144,
+          "peak_commit_bytes": 2050170880,
+          "map": {
+            "bucket_bytes": 33554432,
+            "direct": false,
+            "key_capacity_bytes": 161570232,
+            "normal_count": 794066,
+            "position_count": 5984083,
+            "primary_bytes": 23936332,
+            "secondary_entries": 4969544,
+            "uv_count": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "San Miguel",
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "variants": {
+        "baseline": {
+          "runs": 3,
+          "load_ms": 3864.7575,
+          "mapping_ms": 2700.1174,
+          "cpu_ready_ms": 4821.5782,
+          "load_range_ms": [
+            3856.1025,
+            4512.2844
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 413.2931,
+            "bounds_ms": 113.4993,
+            "gpu_index_validate_ms": 16.2649,
+            "group_state_ms": 365.3943,
+            "map_allocate_ms": 18.5663,
+            "map_loop_ms": 2681.6201,
+            "metadata_and_finalize_ms": 0.0058,
+            "normal_check_ms": 26.8698,
+            "normal_generate_ms": 0.0037,
+            "parse_ms": 839.1158,
+            "point_allocate_ms": 12.942,
+            "point_ranges_ms": 149.0278,
+            "source_copy_ms": 104.2894,
+            "temporary_release_ms": 64.3155,
+            "triangulate_ms": 35.2042
+          },
+          "peak_working_set_bytes": 1762119680,
+          "peak_commit_bytes": 1963630592,
+          "map": {
+            "bucket_bytes": 67108864,
+            "key_capacity_bytes": 160197276,
+            "normal_count": 6721532,
+            "position_count": 5933233,
+            "uv_count": 2221669
+          }
+        },
+        "hybrid": {
+          "runs": 3,
+          "load_ms": 3055.2349,
+          "mapping_ms": 1737.273,
+          "cpu_ready_ms": 4154.1855,
+          "load_range_ms": [
+            2918.7335,
+            3568.529
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 429.6201,
+            "bounds_ms": 114.4172,
+            "gpu_index_validate_ms": 16.2565,
+            "group_state_ms": 383.9215,
+            "map_allocate_ms": 7.5571,
+            "map_loop_ms": 1729.7159,
+            "metadata_and_finalize_ms": 0.0058,
+            "normal_check_ms": 27.3775,
+            "normal_generate_ms": 0.0039,
+            "parse_ms": 863.0165,
+            "point_allocate_ms": 12.6487,
+            "point_ranges_ms": 147.9797,
+            "source_copy_ms": 107.6336,
+            "temporary_release_ms": 63.6115,
+            "triangulate_ms": 37.0039
+          },
+          "peak_working_set_bytes": 1735622656,
+          "peak_commit_bytes": 1937010688,
+          "map": {
+            "bucket_bytes": 16777216,
+            "direct": false,
+            "key_capacity_bytes": 160197276,
+            "normal_count": 6721532,
+            "position_count": 5933233,
+            "primary_bytes": 23732932,
+            "secondary_entries": 3088160,
+            "uv_count": 2221669
+          }
+        },
+        "adaptive": {
+          "runs": 3,
+          "load_ms": 2895.5553,
+          "mapping_ms": 1734.7506,
+          "cpu_ready_ms": 3851.6530000000002,
+          "load_range_ms": [
+            2835.9213,
+            3566.8319
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 414.57,
+            "bounds_ms": 114.5854,
+            "gpu_index_validate_ms": 16.2688,
+            "group_state_ms": 367.0479,
+            "map_allocate_ms": 6.8592,
+            "map_loop_ms": 1727.8914,
+            "metadata_and_finalize_ms": 0.0055,
+            "normal_check_ms": 26.7985,
+            "normal_generate_ms": 0.0035,
+            "parse_ms": 845.2752,
+            "point_allocate_ms": 12.7217,
+            "point_ranges_ms": 148.8908,
+            "source_copy_ms": 105.401,
+            "temporary_release_ms": 61.8785,
+            "triangulate_ms": 35.3354
+          },
+          "peak_working_set_bytes": 1735557120,
+          "peak_commit_bytes": 1937039360,
+          "map": {
+            "bucket_bytes": 16777216,
+            "direct": false,
+            "key_capacity_bytes": 160197276,
+            "normal_count": 6721532,
+            "position_count": 5933233,
+            "primary_bytes": 23732932,
+            "secondary_entries": 3088160,
+            "uv_count": 2221669
+          }
+        }
+      }
+    },
+    {
+      "model": "BusGameMap",
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "variants": {
+        "baseline": {
+          "runs": 3,
+          "load_ms": 327.3253,
+          "mapping_ms": 182.64360000000002,
+          "cpu_ready_ms": 422.25210000000004,
+          "load_range_ms": [
+            314.9336,
+            391.794
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 44.2051,
+            "bounds_ms": 7.3768,
+            "gpu_index_validate_ms": 2.1231,
+            "group_state_ms": 41.276,
+            "map_allocate_ms": 1.3188,
+            "map_loop_ms": 181.3248,
+            "metadata_and_finalize_ms": 0.0058,
+            "normal_check_ms": 2.1906,
+            "normal_generate_ms": 0.0037,
+            "parse_ms": 105.1278,
+            "point_allocate_ms": 0.9138,
+            "point_ranges_ms": 6.8388,
+            "source_copy_ms": 9.8437,
+            "temporary_release_ms": 6.0508,
+            "triangulate_ms": 9.3343
+          },
+          "peak_working_set_bytes": 147648512,
+          "peak_commit_bytes": 158117888,
+          "map": {
+            "bucket_bytes": 4194304,
+            "key_capacity_bytes": 9646068,
+            "normal_count": 110180,
+            "position_count": 535893,
+            "uv_count": 490283
+          }
+        },
+        "hybrid": {
+          "runs": 3,
+          "load_ms": 184.3806,
+          "mapping_ms": 63.512800000000006,
+          "cpu_ready_ms": 293.2023,
+          "load_range_ms": [
+            170.6281,
+            216.2281
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 45.8647,
+            "bounds_ms": 7.0933,
+            "gpu_index_validate_ms": 1.7104,
+            "group_state_ms": 38.9688,
+            "map_allocate_ms": 0.7265,
+            "map_loop_ms": 62.7897,
+            "metadata_and_finalize_ms": 0.0036,
+            "normal_check_ms": 1.6244,
+            "normal_generate_ms": 0.0015,
+            "parse_ms": 88.4302,
+            "point_allocate_ms": 0.9263,
+            "point_ranges_ms": 6.8529,
+            "source_copy_ms": 9.8677,
+            "temporary_release_ms": 4.491,
+            "triangulate_ms": 9.0321
+          },
+          "peak_working_set_bytes": 145612800,
+          "peak_commit_bytes": 154853376,
+          "map": {
+            "bucket_bytes": 65536,
+            "direct": false,
+            "key_capacity_bytes": 9646068,
+            "normal_count": 110180,
+            "position_count": 535893,
+            "primary_bytes": 2143572,
+            "secondary_entries": 11604,
+            "uv_count": 490283
+          }
+        },
+        "adaptive": {
+          "runs": 3,
+          "load_ms": 198.5836,
+          "mapping_ms": 62.44199999999999,
+          "cpu_ready_ms": 291.0461,
+          "load_range_ms": [
+            163.6625,
+            234.1365
+          ],
+          "stages_ms": {
+            "annotation_cache_ms": 44.8031,
+            "bounds_ms": 7.114,
+            "gpu_index_validate_ms": 1.74,
+            "group_state_ms": 38.4821,
+            "map_allocate_ms": 0.7058,
+            "map_loop_ms": 61.7362,
+            "metadata_and_finalize_ms": 0.0041,
+            "normal_check_ms": 1.5966,
+            "normal_generate_ms": 0.0015,
+            "parse_ms": 105.5652,
+            "point_allocate_ms": 0.9288,
+            "point_ranges_ms": 7.1269,
+            "source_copy_ms": 9.7438,
+            "temporary_release_ms": 4.3385,
+            "triangulate_ms": 7.8681
+          },
+          "peak_working_set_bytes": 145596416,
+          "peak_commit_bytes": 154787840,
+          "map": {
+            "bucket_bytes": 65536,
+            "direct": false,
+            "key_capacity_bytes": 9646068,
+            "normal_count": 110180,
+            "position_count": 535893,
+            "primary_bytes": 2143572,
+            "secondary_entries": 11604,
+            "uv_count": 490283
+          }
+        }
+      }
+    }
+  ],
+  "runs": [
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 30934.808,
+      "load_peak_commit_bytes": 11359821824,
+      "load_peak_working_set_bytes": 10482905088,
+      "map": {
+        "bucket_bytes": 268435456,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3211.2628,
+        "bounds_ms": 489.0276,
+        "gpu_index_validate_ms": 126.625,
+        "group_state_ms": 2881.3074,
+        "map_allocate_ms": 76.9128,
+        "map_loop_ms": 20528.648,
+        "metadata_and_finalize_ms": 0.0059,
+        "normal_check_ms": 0.0005,
+        "normal_generate_ms": 1846.5165,
+        "parse_ms": 6623.3632,
+        "point_allocate_ms": 56.4458,
+        "point_ranges_ms": 1050.029,
+        "source_copy_ms": 677.2065,
+        "temporary_release_ms": 416.6276,
+        "triangulate_ms": 276.4764
+      },
+      "variant": "baseline",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 17538.0981,
+      "load_peak_commit_bytes": 11247390720,
+      "load_peak_working_set_bytes": 10370736128,
+      "map": {
+        "bucket_bytes": 4194304,
+        "direct": false,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "primary_bytes": 151562580,
+        "secondary_entries": 523746,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3143.2355,
+        "bounds_ms": 484.5175,
+        "gpu_index_validate_ms": 124.1659,
+        "group_state_ms": 2805.9721,
+        "map_allocate_ms": 44.1955,
+        "map_loop_ms": 8989.7469,
+        "metadata_and_finalize_ms": 0.0062,
+        "normal_check_ms": 0.0004,
+        "normal_generate_ms": 1826.0874,
+        "parse_ms": 4882.0985,
+        "point_allocate_ms": 54.9468,
+        "point_ranges_ms": 1037.3777,
+        "source_copy_ms": 685.1083,
+        "temporary_release_ms": 340.9838,
+        "triangulate_ms": 285.3295
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 17304.1241,
+      "load_peak_commit_bytes": 11247566848,
+      "load_peak_working_set_bytes": 10370891776,
+      "map": {
+        "bucket_bytes": 4194304,
+        "direct": false,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "primary_bytes": 151562580,
+        "secondary_entries": 523746,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3174.1055,
+        "bounds_ms": 500.0664,
+        "gpu_index_validate_ms": 125.4685,
+        "group_state_ms": 2839.7592,
+        "map_allocate_ms": 43.432,
+        "map_loop_ms": 8719.0727,
+        "metadata_and_finalize_ms": 0.0065,
+        "normal_check_ms": 0.0004,
+        "normal_generate_ms": 1891.5622,
+        "parse_ms": 4926.214,
+        "point_allocate_ms": 55.78,
+        "point_ranges_ms": 1036.9182,
+        "source_copy_ms": 665.5056,
+        "temporary_release_ms": 292.0338,
+        "triangulate_ms": 266.1998
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 6279.8796,
+      "load_peak_commit_bytes": 2092670976,
+      "load_peak_working_set_bytes": 2019983360,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 107202288,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1175.8655,
+        "bounds_ms": 112.7572,
+        "gpu_index_validate_ms": 29.1034,
+        "group_state_ms": 1271.3987,
+        "map_allocate_ms": 19.0297,
+        "map_loop_ms": 4385.4579,
+        "metadata_and_finalize_ms": 0.0061,
+        "normal_check_ms": 0.0002,
+        "normal_generate_ms": 507.2092,
+        "parse_ms": 985.233,
+        "point_allocate_ms": 12.8458,
+        "point_ranges_ms": 348.858,
+        "source_copy_ms": 157.9571,
+        "temporary_release_ms": 54.2455,
+        "triangulate_ms": 57.9572
+      },
+      "variant": "baseline",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 2939.5484,
+      "load_peak_commit_bytes": 2093289472,
+      "load_peak_working_set_bytes": 1988526080,
+      "map": {
+        "bucket_bytes": 0,
+        "direct": false,
+        "key_capacity_bytes": 107202288,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "primary_bytes": 35734096,
+        "secondary_entries": 0,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1188.4189,
+        "bounds_ms": 113.2844,
+        "gpu_index_validate_ms": 29.3781,
+        "group_state_ms": 1239.7949,
+        "map_allocate_ms": 10.3416,
+        "map_loop_ms": 1390.8102,
+        "metadata_and_finalize_ms": 0.0055,
+        "normal_check_ms": 0.0002,
+        "normal_generate_ms": 508.6278,
+        "parse_ms": 642.4015,
+        "point_allocate_ms": 12.9273,
+        "point_ranges_ms": 352.7768,
+        "source_copy_ms": 163.8486,
+        "temporary_release_ms": 52.631,
+        "triangulate_ms": 57.575
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 2778.334,
+      "load_peak_commit_bytes": 2092802048,
+      "load_peak_working_set_bytes": 1881305088,
+      "map": {
+        "bucket_bytes": 0,
+        "direct": true,
+        "key_capacity_bytes": 0,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "primary_bytes": 35734096,
+        "secondary_entries": 0,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1164.7327,
+        "bounds_ms": 112.9935,
+        "gpu_index_validate_ms": 28.8511,
+        "group_state_ms": 1218.1006,
+        "map_allocate_ms": 11.5203,
+        "map_loop_ms": 1110.7152,
+        "metadata_and_finalize_ms": 0.0064,
+        "normal_check_ms": 0.0003,
+        "normal_generate_ms": 604.2315,
+        "parse_ms": 664.807,
+        "point_allocate_ms": 12.5579,
+        "point_ranges_ms": 344.6283,
+        "source_copy_ms": 163.4222,
+        "temporary_release_ms": 50.2825,
+        "triangulate_ms": 60.3299
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 4623.5963,
+      "load_peak_commit_bytes": 2059079680,
+      "load_peak_working_set_bytes": 1806843904,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 549.9893,
+        "bounds_ms": 139.9539,
+        "gpu_index_validate_ms": 21.3239,
+        "group_state_ms": 473.4886,
+        "map_allocate_ms": 18.7077,
+        "map_loop_ms": 3263.7581,
+        "metadata_and_finalize_ms": 0.0064,
+        "normal_check_ms": 36.6264,
+        "normal_generate_ms": 0.0062,
+        "parse_ms": 953.0715,
+        "point_allocate_ms": 15.4541,
+        "point_ranges_ms": 85.1987,
+        "source_copy_ms": 113.7524,
+        "temporary_release_ms": 44.4069,
+        "triangulate_ms": 53.2796
+      },
+      "variant": "baseline",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3335.0505,
+      "load_peak_commit_bytes": 2049675264,
+      "load_peak_working_set_bytes": 1797730304,
+      "map": {
+        "bucket_bytes": 33554432,
+        "direct": false,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "primary_bytes": 23936332,
+        "secondary_entries": 4969544,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 518.2877,
+        "bounds_ms": 138.3895,
+        "gpu_index_validate_ms": 20.4602,
+        "group_state_ms": 462.6867,
+        "map_allocate_ms": 6.6755,
+        "map_loop_ms": 2374.5591,
+        "metadata_and_finalize_ms": 0.0045,
+        "normal_check_ms": 41.3307,
+        "normal_generate_ms": 0.0064,
+        "parse_ms": 585.8047,
+        "point_allocate_ms": 15.1452,
+        "point_ranges_ms": 82.3607,
+        "source_copy_ms": 103.7451,
+        "temporary_release_ms": 43.3105,
+        "triangulate_ms": 41.1989
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3324.5275,
+      "load_peak_commit_bytes": 2050392064,
+      "load_peak_working_set_bytes": 1797894144,
+      "map": {
+        "bucket_bytes": 33554432,
+        "direct": false,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "primary_bytes": 23936332,
+        "secondary_entries": 4969544,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 518.3937,
+        "bounds_ms": 138.856,
+        "gpu_index_validate_ms": 20.6884,
+        "group_state_ms": 464.2835,
+        "map_allocate_ms": 6.7904,
+        "map_loop_ms": 2351.4593,
+        "metadata_and_finalize_ms": 0.005,
+        "normal_check_ms": 35.7226,
+        "normal_generate_ms": 0.0031,
+        "parse_ms": 601.1309,
+        "point_allocate_ms": 15.2186,
+        "point_ranges_ms": 83.8349,
+        "source_copy_ms": 104.5865,
+        "temporary_release_ms": 43.6177,
+        "triangulate_ms": 42.3308
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 4512.2844,
+      "load_peak_commit_bytes": 1964384256,
+      "load_peak_working_set_bytes": 1762856960,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 417.4153,
+        "bounds_ms": 114.2825,
+        "gpu_index_validate_ms": 16.2589,
+        "group_state_ms": 377.0952,
+        "map_allocate_ms": 18.4973,
+        "map_loop_ms": 2681.6201,
+        "metadata_and_finalize_ms": 0.0065,
+        "normal_check_ms": 26.8698,
+        "normal_generate_ms": 0.0037,
+        "parse_ms": 1466.7645,
+        "point_allocate_ms": 12.55,
+        "point_ranges_ms": 150.4698,
+        "source_copy_ms": 104.2894,
+        "temporary_release_ms": 65.4886,
+        "triangulate_ms": 34.4374
+      },
+      "variant": "baseline",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 2918.7335,
+      "load_peak_commit_bytes": 1936695296,
+      "load_peak_working_set_bytes": 1735438336,
+      "map": {
+        "bucket_bytes": 16777216,
+        "direct": false,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "primary_bytes": 23732932,
+        "secondary_entries": 3088160,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 413.8226,
+        "bounds_ms": 114.4172,
+        "gpu_index_validate_ms": 16.5513,
+        "group_state_ms": 365.8129,
+        "map_allocate_ms": 10.3113,
+        "map_loop_ms": 1703.6658,
+        "metadata_and_finalize_ms": 0.0043,
+        "normal_check_ms": 27.3775,
+        "normal_generate_ms": 0.0039,
+        "parse_ms": 855.9365,
+        "point_allocate_ms": 13.1241,
+        "point_ranges_ms": 146.4405,
+        "source_copy_ms": 108.1119,
+        "temporary_release_ms": 63.6115,
+        "triangulate_ms": 35.2676
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 2835.9213,
+      "load_peak_commit_bytes": 1936936960,
+      "load_peak_working_set_bytes": 1735565312,
+      "map": {
+        "bucket_bytes": 16777216,
+        "direct": false,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "primary_bytes": 23732932,
+        "secondary_entries": 3088160,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 418.2966,
+        "bounds_ms": 114.5854,
+        "gpu_index_validate_ms": 16.2688,
+        "group_state_ms": 367.077,
+        "map_allocate_ms": 6.8592,
+        "map_loop_ms": 1727.8914,
+        "metadata_and_finalize_ms": 0.0073,
+        "normal_check_ms": 27.0639,
+        "normal_generate_ms": 0.0047,
+        "parse_ms": 754.1777,
+        "point_allocate_ms": 12.6255,
+        "point_ranges_ms": 148.8908,
+        "source_copy_ms": 108.2092,
+        "temporary_release_ms": 61.7621,
+        "triangulate_ms": 35.3354
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 314.9336,
+      "load_peak_commit_bytes": 158117888,
+      "load_peak_working_set_bytes": 147787776,
+      "map": {
+        "bucket_bytes": 4194304,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 44.2051,
+        "bounds_ms": 7.5103,
+        "gpu_index_validate_ms": 1.7249,
+        "group_state_ms": 38.428,
+        "map_allocate_ms": 1.2383,
+        "map_loop_ms": 174.4171,
+        "metadata_and_finalize_ms": 0.0052,
+        "normal_check_ms": 2.1906,
+        "normal_generate_ms": 0.0037,
+        "parse_ms": 105.1278,
+        "point_allocate_ms": 0.8723,
+        "point_ranges_ms": 6.8388,
+        "source_copy_ms": 9.8437,
+        "temporary_release_ms": 6.0508,
+        "triangulate_ms": 8.5146
+      },
+      "variant": "baseline",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 170.6281,
+      "load_peak_commit_bytes": 154853376,
+      "load_peak_working_set_bytes": 145518592,
+      "map": {
+        "bucket_bytes": 65536,
+        "direct": false,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "primary_bytes": 2143572,
+        "secondary_entries": 11604,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 44.9907,
+        "bounds_ms": 6.2894,
+        "gpu_index_validate_ms": 1.6904,
+        "group_state_ms": 38.4918,
+        "map_allocate_ms": 0.7231,
+        "map_loop_ms": 62.7897,
+        "metadata_and_finalize_ms": 0.0053,
+        "normal_check_ms": 2.6304,
+        "normal_generate_ms": 0.0051,
+        "parse_ms": 75.359,
+        "point_allocate_ms": 0.9263,
+        "point_ranges_ms": 6.6419,
+        "source_copy_ms": 10.2398,
+        "temporary_release_ms": 4.2773,
+        "triangulate_ms": 8.2873
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 163.6625,
+      "load_peak_commit_bytes": 154787840,
+      "load_peak_working_set_bytes": 145813504,
+      "map": {
+        "bucket_bytes": 65536,
+        "direct": false,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "primary_bytes": 2143572,
+        "secondary_entries": 11604,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 43.4707,
+        "bounds_ms": 7.114,
+        "gpu_index_validate_ms": 1.74,
+        "group_state_ms": 38.33,
+        "map_allocate_ms": 0.6806,
+        "map_loop_ms": 61.4929,
+        "metadata_and_finalize_ms": 0.0016,
+        "normal_check_ms": 1.5966,
+        "normal_generate_ms": 0.0015,
+        "parse_ms": 70.9688,
+        "point_allocate_ms": 0.8707,
+        "point_ranges_ms": 7.1269,
+        "source_copy_ms": 9.7438,
+        "temporary_release_ms": 4.2568,
+        "triangulate_ms": 7.7879
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 1
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 19109.3934,
+      "load_peak_commit_bytes": 11247280128,
+      "load_peak_working_set_bytes": 10370756608,
+      "map": {
+        "bucket_bytes": 4194304,
+        "direct": false,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "primary_bytes": 151562580,
+        "secondary_entries": 523746,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3149.9025,
+        "bounds_ms": 483.9741,
+        "gpu_index_validate_ms": 129.1927,
+        "group_state_ms": 2839.7751,
+        "map_allocate_ms": 42.4899,
+        "map_loop_ms": 8727.2029,
+        "metadata_and_finalize_ms": 0.0063,
+        "normal_check_ms": 0.0005,
+        "normal_generate_ms": 2018.676,
+        "parse_ms": 6628.8364,
+        "point_allocate_ms": 56.0794,
+        "point_ranges_ms": 1043.3186,
+        "source_copy_ms": 664.9639,
+        "temporary_release_ms": 298.8445,
+        "triangulate_ms": 244.3685
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 17773.9721,
+      "load_peak_commit_bytes": 11247616000,
+      "load_peak_working_set_bytes": 10370838528,
+      "map": {
+        "bucket_bytes": 4194304,
+        "direct": false,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "primary_bytes": 151562580,
+        "secondary_entries": 523746,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3197.8671,
+        "bounds_ms": 481.726,
+        "gpu_index_validate_ms": 124.5106,
+        "group_state_ms": 2911.2282,
+        "map_allocate_ms": 45.217,
+        "map_loop_ms": 8706.2563,
+        "metadata_and_finalize_ms": 0.0067,
+        "normal_check_ms": 0.0004,
+        "normal_generate_ms": 1936.0181,
+        "parse_ms": 5357.8286,
+        "point_allocate_ms": 54.3557,
+        "point_ranges_ms": 1040.2651,
+        "source_copy_ms": 665.9388,
+        "temporary_release_ms": 276.87,
+        "triangulate_ms": 304.084
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 29638.039,
+      "load_peak_commit_bytes": 11359531008,
+      "load_peak_working_set_bytes": 10482769920,
+      "map": {
+        "bucket_bytes": 268435456,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3157.1666,
+        "bounds_ms": 482.5773,
+        "gpu_index_validate_ms": 122.9885,
+        "group_state_ms": 2805.2523,
+        "map_allocate_ms": 76.6371,
+        "map_loop_ms": 20375.0018,
+        "metadata_and_finalize_ms": 0.0058,
+        "normal_check_ms": 0.0004,
+        "normal_generate_ms": 1939.0941,
+        "parse_ms": 5344.4995,
+        "point_allocate_ms": 54.0695,
+        "point_ranges_ms": 1029.7362,
+        "source_copy_ms": 705.0651,
+        "temporary_release_ms": 304.3824,
+        "triangulate_ms": 410.7488
+      },
+      "variant": "baseline",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3324.6232,
+      "load_peak_commit_bytes": 2092572672,
+      "load_peak_working_set_bytes": 1988476928,
+      "map": {
+        "bucket_bytes": 0,
+        "direct": false,
+        "key_capacity_bytes": 107202288,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "primary_bytes": 35734096,
+        "secondary_entries": 0,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1219.0739,
+        "bounds_ms": 113.6368,
+        "gpu_index_validate_ms": 31.3952,
+        "group_state_ms": 1221.2613,
+        "map_allocate_ms": 10.4275,
+        "map_loop_ms": 1408.4907,
+        "metadata_and_finalize_ms": 0.005,
+        "normal_check_ms": 0.0003,
+        "normal_generate_ms": 504.1851,
+        "parse_ms": 1021.6823,
+        "point_allocate_ms": 12.6423,
+        "point_ranges_ms": 345.767,
+        "source_copy_ms": 158.002,
+        "temporary_release_ms": 51.2606,
+        "triangulate_ms": 56.9011
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 2644.5973,
+      "load_peak_commit_bytes": 2092535808,
+      "load_peak_working_set_bytes": 1881276416,
+      "map": {
+        "bucket_bytes": 0,
+        "direct": true,
+        "key_capacity_bytes": 0,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "primary_bytes": 35734096,
+        "secondary_entries": 0,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1162.7208,
+        "bounds_ms": 115.672,
+        "gpu_index_validate_ms": 29.148,
+        "group_state_ms": 1230.3583,
+        "map_allocate_ms": 10.2763,
+        "map_loop_ms": 1044.9458,
+        "metadata_and_finalize_ms": 0.0061,
+        "normal_check_ms": 0.0003,
+        "normal_generate_ms": 507.0772,
+        "parse_ms": 688.4209,
+        "point_allocate_ms": 12.8286,
+        "point_ranges_ms": 350.1506,
+        "source_copy_ms": 156.8803,
+        "temporary_release_ms": 48.1871,
+        "triangulate_ms": 73.1081
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 6020.3662,
+      "load_peak_commit_bytes": 2092556288,
+      "load_peak_working_set_bytes": 2019844096,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 107202288,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1160.5353,
+        "bounds_ms": 110.8172,
+        "gpu_index_validate_ms": 29.5789,
+        "group_state_ms": 1233.6952,
+        "map_allocate_ms": 20.7026,
+        "map_loop_ms": 4391.7062,
+        "metadata_and_finalize_ms": 0.0056,
+        "normal_check_ms": 0.0003,
+        "normal_generate_ms": 516.3597,
+        "parse_ms": 696.3191,
+        "point_allocate_ms": 12.6646,
+        "point_ranges_ms": 353.0817,
+        "source_copy_ms": 169.9583,
+        "temporary_release_ms": 54.0544,
+        "triangulate_ms": 60.4208
+      },
+      "variant": "baseline",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3739.4004,
+      "load_peak_commit_bytes": 2051227648,
+      "load_peak_working_set_bytes": 1797967872,
+      "map": {
+        "bucket_bytes": 33554432,
+        "direct": false,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "primary_bytes": 23936332,
+        "secondary_entries": 4969544,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 518.9485,
+        "bounds_ms": 138.1671,
+        "gpu_index_validate_ms": 20.5473,
+        "group_state_ms": 477.7537,
+        "map_allocate_ms": 6.8717,
+        "map_loop_ms": 2360.0185,
+        "metadata_and_finalize_ms": 0.006,
+        "normal_check_ms": 37.1188,
+        "normal_generate_ms": 0.0071,
+        "parse_ms": 1007.7405,
+        "point_allocate_ms": 15.2713,
+        "point_ranges_ms": 82.5894,
+        "source_copy_ms": 105.4883,
+        "temporary_release_ms": 42.5784,
+        "triangulate_ms": 41.3794
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3398.7597,
+      "load_peak_commit_bytes": 2049703936,
+      "load_peak_working_set_bytes": 1797615616,
+      "map": {
+        "bucket_bytes": 33554432,
+        "direct": false,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "primary_bytes": 23936332,
+        "secondary_entries": 4969544,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 520.9919,
+        "bounds_ms": 137.717,
+        "gpu_index_validate_ms": 21.7309,
+        "group_state_ms": 469.7125,
+        "map_allocate_ms": 7.3985,
+        "map_loop_ms": 2407.1719,
+        "metadata_and_finalize_ms": 0.0055,
+        "normal_check_ms": 36.5174,
+        "normal_generate_ms": 0.0031,
+        "parse_ms": 599.8505,
+        "point_allocate_ms": 16.5918,
+        "point_ranges_ms": 85.3128,
+        "source_copy_ms": 105.3648,
+        "temporary_release_ms": 43.356,
+        "triangulate_ms": 61.3503
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 4333.4495,
+      "load_peak_commit_bytes": 2057887744,
+      "load_peak_working_set_bytes": 1806090240,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 550.9667,
+        "bounds_ms": 138.5049,
+        "gpu_index_validate_ms": 20.728,
+        "group_state_ms": 474.7468,
+        "map_allocate_ms": 18.7412,
+        "map_loop_ms": 3326.8692,
+        "metadata_and_finalize_ms": 0.0063,
+        "normal_check_ms": 35.6405,
+        "normal_generate_ms": 0.0035,
+        "parse_ms": 609.6725,
+        "point_allocate_ms": 15.2606,
+        "point_ranges_ms": 87.8432,
+        "source_copy_ms": 106.3219,
+        "temporary_release_ms": 44.3703,
+        "triangulate_ms": 53.2963
+      },
+      "variant": "baseline",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3568.529,
+      "load_peak_commit_bytes": 1937010688,
+      "load_peak_working_set_bytes": 1735622656,
+      "map": {
+        "bucket_bytes": 16777216,
+        "direct": false,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "primary_bytes": 23732932,
+        "secondary_entries": 3088160,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 429.6201,
+        "bounds_ms": 113.4278,
+        "gpu_index_validate_ms": 16.0909,
+        "group_state_ms": 383.9215,
+        "map_allocate_ms": 7.5571,
+        "map_loop_ms": 1729.7159,
+        "metadata_and_finalize_ms": 0.0059,
+        "normal_check_ms": 26.4822,
+        "normal_generate_ms": 0.0032,
+        "parse_ms": 1477.3522,
+        "point_allocate_ms": 12.4935,
+        "point_ranges_ms": 147.9797,
+        "source_copy_ms": 107.6336,
+        "temporary_release_ms": 62.9366,
+        "triangulate_ms": 43.3891
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 2895.5553,
+      "load_peak_commit_bytes": 1937076224,
+      "load_peak_working_set_bytes": 1735557120,
+      "map": {
+        "bucket_bytes": 16777216,
+        "direct": false,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "primary_bytes": 23732932,
+        "secondary_entries": 3088160,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 412.9862,
+        "bounds_ms": 114.5039,
+        "gpu_index_validate_ms": 16.5559,
+        "group_state_ms": 367.0479,
+        "map_allocate_ms": 6.797,
+        "map_loop_ms": 1702.53,
+        "metadata_and_finalize_ms": 0.0055,
+        "normal_check_ms": 26.5934,
+        "normal_generate_ms": 0.0024,
+        "parse_ms": 845.2752,
+        "point_allocate_ms": 12.7217,
+        "point_ranges_ms": 146.786,
+        "source_copy_ms": 102.8894,
+        "temporary_release_ms": 61.8785,
+        "triangulate_ms": 35.0542
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3856.1025,
+      "load_peak_commit_bytes": 1963630592,
+      "load_peak_working_set_bytes": 1761976320,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 412.9741,
+        "bounds_ms": 113.4993,
+        "gpu_index_validate_ms": 16.2649,
+        "group_state_ms": 365.3943,
+        "map_allocate_ms": 18.5663,
+        "map_loop_ms": 2655.609,
+        "metadata_and_finalize_ms": 0.003,
+        "normal_check_ms": 26.7991,
+        "normal_generate_ms": 0.0032,
+        "parse_ms": 839.1158,
+        "point_allocate_ms": 14.0951,
+        "point_ranges_ms": 148.6139,
+        "source_copy_ms": 103.7573,
+        "temporary_release_ms": 63.5227,
+        "triangulate_ms": 35.2042
+      },
+      "variant": "baseline",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 216.2281,
+      "load_peak_commit_bytes": 154972160,
+      "load_peak_working_set_bytes": 145612800,
+      "map": {
+        "bucket_bytes": 65536,
+        "direct": false,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "primary_bytes": 2143572,
+        "secondary_entries": 11604,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 45.8647,
+        "bounds_ms": 7.1147,
+        "gpu_index_validate_ms": 1.981,
+        "group_state_ms": 40.3599,
+        "map_allocate_ms": 0.8031,
+        "map_loop_ms": 76.0533,
+        "metadata_and_finalize_ms": 0.002,
+        "normal_check_ms": 1.6244,
+        "normal_generate_ms": 0.0014,
+        "parse_ms": 107.2677,
+        "point_allocate_ms": 0.9327,
+        "point_ranges_ms": 7.1292,
+        "source_copy_ms": 9.7439,
+        "temporary_release_ms": 4.565,
+        "triangulate_ms": 9.0321
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 234.1365,
+      "load_peak_commit_bytes": 155770880,
+      "load_peak_working_set_bytes": 145551360,
+      "map": {
+        "bucket_bytes": 65536,
+        "direct": false,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "primary_bytes": 2143572,
+        "secondary_entries": 11604,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 74.3309,
+        "bounds_ms": 6.3542,
+        "gpu_index_validate_ms": 3.6603,
+        "group_state_ms": 47.1994,
+        "map_allocate_ms": 1.1846,
+        "map_loop_ms": 84.7406,
+        "metadata_and_finalize_ms": 0.0072,
+        "normal_check_ms": 2.375,
+        "normal_generate_ms": 0.0063,
+        "parse_ms": 109.728,
+        "point_allocate_ms": 1.281,
+        "point_ranges_ms": 8.4255,
+        "source_copy_ms": 10.554,
+        "temporary_release_ms": 7.0162,
+        "triangulate_ms": 12.1438
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 391.794,
+      "load_peak_commit_bytes": 157659136,
+      "load_peak_working_set_bytes": 147648512,
+      "map": {
+        "bucket_bytes": 4194304,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 72.8895,
+        "bounds_ms": 7.0357,
+        "gpu_index_validate_ms": 3.2308,
+        "group_state_ms": 48.6241,
+        "map_allocate_ms": 2.2121,
+        "map_loop_ms": 256.7375,
+        "metadata_and_finalize_ms": 0.0058,
+        "normal_check_ms": 2.8708,
+        "normal_generate_ms": 0.0067,
+        "parse_ms": 91.6546,
+        "point_allocate_ms": 0.9138,
+        "point_ranges_ms": 9.4083,
+        "source_copy_ms": 11.0277,
+        "temporary_release_ms": 7.3194,
+        "triangulate_ms": 12.8942
+      },
+      "variant": "baseline",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 2
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 20502.0324,
+      "load_peak_commit_bytes": 11247394816,
+      "load_peak_working_set_bytes": 10370674688,
+      "map": {
+        "bucket_bytes": 4194304,
+        "direct": false,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "primary_bytes": 151562580,
+        "secondary_entries": 523746,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3340.4559,
+        "bounds_ms": 485.1718,
+        "gpu_index_validate_ms": 121.9886,
+        "group_state_ms": 2847.133,
+        "map_allocate_ms": 49.726,
+        "map_loop_ms": 9473.9327,
+        "metadata_and_finalize_ms": 0.0063,
+        "normal_check_ms": 0.0005,
+        "normal_generate_ms": 1858.7016,
+        "parse_ms": 7348.5441,
+        "point_allocate_ms": 53.818,
+        "point_ranges_ms": 1028.4945,
+        "source_copy_ms": 696.9502,
+        "temporary_release_ms": 279.7622,
+        "triangulate_ms": 309.2109
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 29425.7803,
+      "load_peak_commit_bytes": 11360034816,
+      "load_peak_working_set_bytes": 10482933760,
+      "map": {
+        "bucket_bytes": 268435456,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3141.7074,
+        "bounds_ms": 490.1815,
+        "gpu_index_validate_ms": 125.1373,
+        "group_state_ms": 2815.6686,
+        "map_allocate_ms": 79.8086,
+        "map_loop_ms": 20546.9704,
+        "metadata_and_finalize_ms": 0.0062,
+        "normal_check_ms": 0.0005,
+        "normal_generate_ms": 1940.5731,
+        "parse_ms": 5100.2351,
+        "point_allocate_ms": 54.0325,
+        "point_ranges_ms": 1034.617,
+        "source_copy_ms": 692.9152,
+        "temporary_release_ms": 278.5149,
+        "triangulate_ms": 296.5465
+      },
+      "variant": "baseline",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 295985,
+      "bounds": [
+        [
+          -4.335326194763184,
+          -3.151315927505493,
+          -5.054183006286621
+        ],
+        [
+          4.296329021453857,
+          5.688043117523193,
+          -3.1008379459381104
+        ],
+        [
+          -0.019498586654663086,
+          1.26836359500885,
+          -4.077510356903076
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 6143191717182930512,
+        "nodes": 10907482230260101428,
+        "point_indices": 9708681784759209522,
+        "source_indices": 5352715077685606653,
+        "source_points": 11344306803733441765,
+        "vertices": 15207385455291524808
+      },
+      "index_bytes": 909263832,
+      "indices": 227315958,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 18070.0208,
+      "load_peak_commit_bytes": 11247570944,
+      "load_peak_working_set_bytes": 10370822144,
+      "map": {
+        "bucket_bytes": 4194304,
+        "direct": false,
+        "key_capacity_bytes": 682031604,
+        "normal_count": 0,
+        "position_count": 37890645,
+        "primary_bytes": 151562580,
+        "secondary_entries": 523746,
+        "uv_count": 38414285
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 38414391,
+      "radius": 4.697473049163818,
+      "source_index_bytes": 909263832,
+      "source_point_bytes": 909375480,
+      "stages": {
+        "annotation_cache_ms": 3143.9456,
+        "bounds_ms": 495.0869,
+        "gpu_index_validate_ms": 126.0076,
+        "group_state_ms": 2880.7418,
+        "map_allocate_ms": 42.706,
+        "map_loop_ms": 8860.8673,
+        "metadata_and_finalize_ms": 0.0069,
+        "normal_check_ms": 0.0004,
+        "normal_generate_ms": 1970.797,
+        "parse_ms": 5475.3962,
+        "point_allocate_ms": 55.1333,
+        "point_ranges_ms": 1037.7114,
+        "source_copy_ms": 671.2731,
+        "temporary_release_ms": 273.3213,
+        "triangulate_ms": 280.5392
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 1229260512,
+      "vertex_capacity_bytes": 1818750944,
+      "vertices": 38414391,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 2982.7617,
+      "load_peak_commit_bytes": 2092826624,
+      "load_peak_working_set_bytes": 1881419776,
+      "map": {
+        "bucket_bytes": 0,
+        "direct": true,
+        "key_capacity_bytes": 0,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "primary_bytes": 35734096,
+        "secondary_entries": 0,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1165.1081,
+        "bounds_ms": 114.3778,
+        "gpu_index_validate_ms": 34.3424,
+        "group_state_ms": 1224.8196,
+        "map_allocate_ms": 10.029,
+        "map_loop_ms": 1044.2962,
+        "metadata_and_finalize_ms": 0.0066,
+        "normal_check_ms": 0.0003,
+        "normal_generate_ms": 517.3244,
+        "parse_ms": 1036.9727,
+        "point_allocate_ms": 13.1314,
+        "point_ranges_ms": 352.1867,
+        "source_copy_ms": 155.3326,
+        "temporary_release_ms": 47.4533,
+        "triangulate_ms": 56.9457
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 5984.3545,
+      "load_peak_commit_bytes": 2092666880,
+      "load_peak_working_set_bytes": 2019962880,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 107202288,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1169.8116,
+        "bounds_ms": 114.2599,
+        "gpu_index_validate_ms": 28.9975,
+        "group_state_ms": 1229.9614,
+        "map_allocate_ms": 19.3847,
+        "map_loop_ms": 4369.7562,
+        "metadata_and_finalize_ms": 0.0052,
+        "normal_check_ms": 0.0003,
+        "normal_generate_ms": 500.8487,
+        "parse_ms": 701.0367,
+        "point_allocate_ms": 12.5342,
+        "point_ranges_ms": 348.1191,
+        "source_copy_ms": 165.5619,
+        "temporary_release_ms": 53.4371,
+        "triangulate_ms": 60.0414
+      },
+      "variant": "baseline",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 69793,
+      "bounds": [
+        [
+          -0.2813194990158081,
+          -0.2648639678955078,
+          -0.24481745064258575
+        ],
+        [
+          0.2862125039100647,
+          0.2809501588344574,
+          0.2546621263027191
+        ],
+        [
+          0.002446502447128296,
+          0.008043095469474792,
+          0.004922337830066681
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "groups": 1,
+      "hashes": {
+        "indices": 11706345905724341680,
+        "nodes": 791853956943727013,
+        "point_indices": 14854755799661305445,
+        "source_indices": 1720403767877417426,
+        "source_points": 14595604859946291717,
+        "vertices": 3580176174875509525
+      },
+      "index_bytes": 214402032,
+      "indices": 53600508,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3004.5219,
+      "load_peak_commit_bytes": 2093883392,
+      "load_peak_working_set_bytes": 1988632576,
+      "map": {
+        "bucket_bytes": 0,
+        "direct": false,
+        "key_capacity_bytes": 107202288,
+        "normal_count": 0,
+        "position_count": 8933524,
+        "primary_bytes": 35734096,
+        "secondary_entries": 0,
+        "uv_count": 0
+      },
+      "nodes": 1,
+      "ok": true,
+      "point_entries": 8933524,
+      "radius": 0.2930543124675751,
+      "source_index_bytes": 214402032,
+      "source_point_bytes": 214404576,
+      "stages": {
+        "annotation_cache_ms": 1167.5086,
+        "bounds_ms": 114.604,
+        "gpu_index_validate_ms": 28.9833,
+        "group_state_ms": 1224.1428,
+        "map_allocate_ms": 11.1846,
+        "map_loop_ms": 1400.2268,
+        "metadata_and_finalize_ms": 0.0059,
+        "normal_check_ms": 0.0004,
+        "normal_generate_ms": 501.808,
+        "parse_ms": 687.8596,
+        "point_allocate_ms": 12.4933,
+        "point_ranges_ms": 349.2975,
+        "source_copy_ms": 178.1647,
+        "temporary_release_ms": 52.4978,
+        "triangulate_ms": 58.1479
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 285872768,
+      "vertex_capacity_bytes": 285872768,
+      "vertices": 8933524,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3852.6315,
+      "load_peak_commit_bytes": 2050170880,
+      "load_peak_working_set_bytes": 1797926912,
+      "map": {
+        "bucket_bytes": 33554432,
+        "direct": false,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "primary_bytes": 23936332,
+        "secondary_entries": 4969544,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 525.4215,
+        "bounds_ms": 138.3293,
+        "gpu_index_validate_ms": 21.1465,
+        "group_state_ms": 468.2188,
+        "map_allocate_ms": 6.7353,
+        "map_loop_ms": 2443.071,
+        "metadata_and_finalize_ms": 0.0055,
+        "normal_check_ms": 36.1324,
+        "normal_generate_ms": 0.0023,
+        "parse_ms": 1028.2089,
+        "point_allocate_ms": 15.4642,
+        "point_ranges_ms": 82.2443,
+        "source_copy_ms": 104.4068,
+        "temporary_release_ms": 43.3293,
+        "triangulate_ms": 52.3867
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 4203.6552,
+      "load_peak_commit_bytes": 2058158080,
+      "load_peak_working_set_bytes": 1806229504,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 528.9869,
+        "bounds_ms": 137.7837,
+        "gpu_index_validate_ms": 20.9392,
+        "group_state_ms": 463.1394,
+        "map_allocate_ms": 21.0752,
+        "map_loop_ms": 3206.8152,
+        "metadata_and_finalize_ms": 0.0054,
+        "normal_check_ms": 36.4064,
+        "normal_generate_ms": 0.0033,
+        "parse_ms": 607.6274,
+        "point_allocate_ms": 15.5382,
+        "point_ranges_ms": 83.2077,
+        "source_copy_ms": 108.6957,
+        "temporary_release_ms": 43.401,
+        "triangulate_ms": 41.8184
+      },
+      "variant": "baseline",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 49854,
+      "bounds": [
+        [
+          -205000.0,
+          0.0,
+          -25646.599609375
+        ],
+        [
+          406335.0,
+          249000.0,
+          160098.0
+        ],
+        [
+          100667.5,
+          124500.0,
+          67225.703125
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\powerplant.obj",
+      "groups": 21,
+      "hashes": {
+        "indices": 6744046513637525893,
+        "nodes": 15112065787385262390,
+        "point_indices": 5407995903826406720,
+        "source_indices": 17051777411420185432,
+        "source_points": 12015819737261152547,
+        "vertices": 4885155226668719484
+      },
+      "index_bytes": 153110952,
+      "indices": 38277738,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3357.8612,
+      "load_peak_commit_bytes": 2049691648,
+      "load_peak_working_set_bytes": 1797525504,
+      "map": {
+        "bucket_bytes": 33554432,
+        "direct": false,
+        "key_capacity_bytes": 161570232,
+        "normal_count": 794066,
+        "position_count": 5984083,
+        "primary_bytes": 23936332,
+        "secondary_entries": 4969544,
+        "uv_count": 0
+      },
+      "nodes": 21,
+      "ok": true,
+      "point_entries": 10953627,
+      "radius": 333880.625,
+      "source_index_bytes": 153110952,
+      "source_point_bytes": 143617992,
+      "stages": {
+        "annotation_cache_ms": 531.0252,
+        "bounds_ms": 137.4125,
+        "gpu_index_validate_ms": 21.1499,
+        "group_state_ms": 464.7635,
+        "map_allocate_ms": 7.1192,
+        "map_loop_ms": 2361.1189,
+        "metadata_and_finalize_ms": 0.0068,
+        "normal_check_ms": 35.7682,
+        "normal_generate_ms": 0.0044,
+        "parse_ms": 617.661,
+        "point_allocate_ms": 15.2147,
+        "point_ranges_ms": 83.4299,
+        "source_copy_ms": 113.0751,
+        "temporary_release_ms": 43.5075,
+        "triangulate_ms": 42.1629
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 350516064,
+      "vertex_capacity_bytes": 430853952,
+      "vertices": 10953627,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3566.8319,
+      "load_peak_commit_bytes": 1937039360,
+      "load_peak_working_set_bytes": 1735528448,
+      "map": {
+        "bucket_bytes": 16777216,
+        "direct": false,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "primary_bytes": 23732932,
+        "secondary_entries": 3088160,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 414.57,
+        "bounds_ms": 114.7791,
+        "gpu_index_validate_ms": 16.1839,
+        "group_state_ms": 365.3458,
+        "map_allocate_ms": 11.1886,
+        "map_loop_ms": 1757.7079,
+        "metadata_and_finalize_ms": 0.0052,
+        "normal_check_ms": 26.7985,
+        "normal_generate_ms": 0.0035,
+        "parse_ms": 1450.9432,
+        "point_allocate_ms": 12.8534,
+        "point_ranges_ms": 152.5459,
+        "source_copy_ms": 105.401,
+        "temporary_release_ms": 62.2754,
+        "triangulate_ms": 37.7059
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3864.7575,
+      "load_peak_commit_bytes": 1963597824,
+      "load_peak_working_set_bytes": 1762119680,
+      "map": {
+        "bucket_bytes": 67108864,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 413.2931,
+        "bounds_ms": 112.3324,
+        "gpu_index_validate_ms": 16.3022,
+        "group_state_ms": 365.2556,
+        "map_allocate_ms": 19.2051,
+        "map_loop_ms": 2685.4188,
+        "metadata_and_finalize_ms": 0.0058,
+        "normal_check_ms": 27.1536,
+        "normal_generate_ms": 0.0047,
+        "parse_ms": 803.6187,
+        "point_allocate_ms": 12.942,
+        "point_ranges_ms": 149.0278,
+        "source_copy_ms": 108.6872,
+        "temporary_release_ms": 64.3155,
+        "triangulate_ms": 43.9926
+      },
+      "variant": "baseline",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 40200,
+      "bounds": [
+        [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "groups": 2203,
+      "hashes": {
+        "indices": 12014824283465635346,
+        "nodes": 8941171404524653868,
+        "point_indices": 17376983371103076539,
+        "source_indices": 11420607498642634072,
+        "source_points": 7793321591466925910,
+        "vertices": 4693803306713205206
+      },
+      "index_bytes": 119768388,
+      "indices": 29942097,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 3055.2349,
+      "load_peak_commit_bytes": 1937166336,
+      "load_peak_working_set_bytes": 1735839744,
+      "map": {
+        "bucket_bytes": 16777216,
+        "direct": false,
+        "key_capacity_bytes": 160197276,
+        "normal_count": 6721532,
+        "position_count": 5933233,
+        "primary_bytes": 23732932,
+        "secondary_entries": 3088160,
+        "uv_count": 2221669
+      },
+      "nodes": 2203,
+      "ok": true,
+      "point_entries": 9021669,
+      "radius": 37.739410400390625,
+      "source_index_bytes": 119768388,
+      "source_point_bytes": 142397592,
+      "stages": {
+        "annotation_cache_ms": 529.5282,
+        "bounds_ms": 115.9716,
+        "gpu_index_validate_ms": 16.2565,
+        "group_state_ms": 390.4425,
+        "map_allocate_ms": 6.7432,
+        "map_loop_ms": 1821.5919,
+        "metadata_and_finalize_ms": 0.0058,
+        "normal_check_ms": 32.1639,
+        "normal_generate_ms": 0.0088,
+        "parse_ms": 863.0165,
+        "point_allocate_ms": 12.6487,
+        "point_ranges_ms": 150.0747,
+        "source_copy_ms": 104.3944,
+        "temporary_release_ms": 74.3083,
+        "triangulate_ms": 37.0039
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 288684512,
+      "vertex_capacity_bytes": 427192736,
+      "vertices": 9021391,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 198.5836,
+      "load_peak_commit_bytes": 154169344,
+      "load_peak_working_set_bytes": 145596416,
+      "map": {
+        "bucket_bytes": 65536,
+        "direct": false,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "primary_bytes": 2143572,
+        "secondary_entries": 11604,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 44.8031,
+        "bounds_ms": 7.239,
+        "gpu_index_validate_ms": 1.6966,
+        "group_state_ms": 38.4821,
+        "map_allocate_ms": 0.7058,
+        "map_loop_ms": 61.7362,
+        "metadata_and_finalize_ms": 0.0041,
+        "normal_check_ms": 1.589,
+        "normal_generate_ms": 0.001,
+        "parse_ms": 105.5652,
+        "point_allocate_ms": 0.9288,
+        "point_ranges_ms": 6.5519,
+        "source_copy_ms": 9.5153,
+        "temporary_release_ms": 4.3385,
+        "triangulate_ms": 7.8681
+      },
+      "variant": "adaptive",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 327.3253,
+      "load_peak_commit_bytes": 158720000,
+      "load_peak_working_set_bytes": 147517440,
+      "map": {
+        "bucket_bytes": 4194304,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 43.8873,
+        "bounds_ms": 7.3768,
+        "gpu_index_validate_ms": 2.1231,
+        "group_state_ms": 41.276,
+        "map_allocate_ms": 1.3188,
+        "map_loop_ms": 181.3248,
+        "metadata_and_finalize_ms": 0.0059,
+        "normal_check_ms": 1.7978,
+        "normal_generate_ms": 0.0026,
+        "parse_ms": 111.6929,
+        "point_allocate_ms": 0.9458,
+        "point_ranges_ms": 6.6946,
+        "source_copy_ms": 9.7835,
+        "temporary_release_ms": 4.6616,
+        "triangulate_ms": 9.3343
+      },
+      "variant": "baseline",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 3
+    },
+    {
+      "annotation_blocks": 4156,
+      "bounds": [
+        [
+          -45115.2265625,
+          -316.0398864746094,
+          -24610.796875
+        ],
+        [
+          45549.078125,
+          7254.85986328125,
+          51610.79296875
+        ],
+        [
+          216.92578125,
+          3469.409912109375,
+          13499.998046875
+        ]
+      ],
+      "file": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "groups": 65,
+      "hashes": {
+        "indices": 6999224528410096395,
+        "nodes": 12934692858191302496,
+        "point_indices": 4187722218632921459,
+        "source_indices": 4355919630469513381,
+        "source_points": 12768388593014020683,
+        "vertices": 4872792321054883698
+      },
+      "index_bytes": 12654504,
+      "indices": 3163626,
+      "layout": [
+        32,
+        0,
+        12,
+        24
+      ],
+      "load_ms": 184.3806,
+      "load_peak_commit_bytes": 154820608,
+      "load_peak_working_set_bytes": 145682432,
+      "map": {
+        "bucket_bytes": 65536,
+        "direct": false,
+        "key_capacity_bytes": 9646068,
+        "normal_count": 110180,
+        "position_count": 535893,
+        "primary_bytes": 2143572,
+        "secondary_entries": 11604,
+        "uv_count": 490283
+      },
+      "nodes": 65,
+      "ok": true,
+      "point_entries": 547469,
+      "radius": 59293.75390625,
+      "source_index_bytes": 12654504,
+      "source_point_bytes": 12861432,
+      "stages": {
+        "annotation_cache_ms": 60.3637,
+        "bounds_ms": 7.0933,
+        "gpu_index_validate_ms": 1.7104,
+        "group_state_ms": 38.9688,
+        "map_allocate_ms": 0.7265,
+        "map_loop_ms": 61.5444,
+        "metadata_and_finalize_ms": 0.0036,
+        "normal_check_ms": 1.6015,
+        "normal_generate_ms": 0.0015,
+        "parse_ms": 88.4302,
+        "point_allocate_ms": 0.9259,
+        "point_ranges_ms": 6.8529,
+        "source_copy_ms": 9.8677,
+        "temporary_release_ms": 4.491,
+        "triangulate_ms": 10.5975
+      },
+      "variant": "hybrid",
+      "vertex_bytes": 17519008,
+      "vertex_capacity_bytes": 25722848,
+      "vertices": 547469,
+      "round": 3
+    }
+  ]
+}
