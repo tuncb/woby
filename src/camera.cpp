@@ -222,9 +222,31 @@ bx::Vec3 cameraUp(const SceneCamera& camera, SceneUpAxis upAxis)
     return toVec3(rolledUpDirection(camera, upAxis));
 }
 
-float cameraFarPlane(const SceneCamera& camera, const Bounds& bounds)
+CameraDepthRange cameraDepthRange(const SceneCamera& camera, const Bounds& bounds, SceneUpAxis upAxis)
 {
-    return std::max(camera.distance + bounds.radius * 4.0f, 10.0f);
+    const auto direction = viewDirection(camera, upAxis); // Target to eye.
+    const double length = std::hypot(direction[0], direction[1], direction[2]);
+    // Compute relative to the target in double precision instead of subtracting
+    // rounded world-space eye coordinates on large, translated models.
+    double centerDepth = camera.distance;
+    for (size_t axis = 0; axis < 3; ++axis) {
+        centerDepth += (static_cast<double>(camera.target[axis]) - bounds.center[axis]) * direction[axis] / length;
+    }
+    const double radius = bounds.radius;
+    const double front = centerDepth - radius;
+    const double automaticNear = front > 0 ? std::min(centerDepth * 0.01, front * 0.5) : 0;
+    const double nearPlane = std::max(static_cast<double>(camera.nearPlane), automaticNear);
+    const double padding = std::max({radius * 0.05, std::abs(centerDepth) * 0.00001, 0.0001});
+    // Preserve the previous generous helper extent, but also cover scenes that
+    // are far beyond the camera target after keyboard movement or look-at.
+    const double farPlane = std::max({static_cast<double>(camera.distance) + radius * 4.0,
+        centerDepth + radius + padding, nearPlane * 2.0, 10.0});
+    return {static_cast<float>(nearPlane), static_cast<float>(farPlane)};
+}
+
+float cameraFarPlane(const SceneCamera& camera, const Bounds& bounds, SceneUpAxis upAxis)
+{
+    return cameraDepthRange(camera, bounds, upAxis).farPlane;
 }
 
 void orbitCamera(SceneCamera& camera, float deltaX, float deltaY, SceneUpAxis upAxis)

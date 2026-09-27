@@ -108,7 +108,7 @@ void appendNode(std::vector<ScenePickPart>& parts, const UiState& state, const U
 
 bool intersectsBounds(const Bounds& bounds, const Point& origin, const Point& direction)
 {
-    double near = 0, far = 1;
+    double near = 0, far = std::numeric_limits<double>::infinity();
     for (size_t axis = 0; axis < 3; ++axis) {
         if (direction[axis] == 0) {
             if (origin[axis] < bounds.min[axis] || origin[axis] > bounds.max[axis]) { return false; }
@@ -150,7 +150,7 @@ std::optional<double> triangleHit(const Point& origin, const Point& direction, c
     const auto q = cross(s, a);
     const double v = dot(direction, q) / determinant;
     const double t = dot(b, q) / determinant;
-    if (u < -1e-9 || v < -1e-9 || u + v > 1.0 + 1e-9 || t < 0 || t > 1) { return {}; }
+    if (u < -1e-9 || v < -1e-9 || u + v > 1.0 + 1e-9 || t < 0) { return {}; }
     return t;
 }
 
@@ -233,9 +233,10 @@ ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis, const
     result.homogeneousDepth = homogeneousDepth;
     result.pixelScale = pixelScale;
     const float aspect = static_cast<float>(result.width) / static_cast<float>(result.height);
+    const auto depth = cameraDepthRange(camera, bounds, upAxis);
     bx::mtxLookAt(result.view.data(), cameraEye(camera, upAxis), cameraLookAt(camera), cameraUp(camera, upAxis));
     bx::mtxProj(result.projection.data(), cameraViewportFov(camera, aspect), aspect,
-        camera.nearPlane, cameraFarPlane(camera, bounds), homogeneousDepth);
+        depth.nearPlane, depth.farPlane, homogeneousDepth);
     return result;
 }
 
@@ -329,14 +330,17 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
     bx::mtxInverse(inverse.data(), viewProjection.data());
     const double x = 2.0 * point[0] / view.width - 1.0, y = 1.0 - 2.0 * point[1] / view.height;
     const auto near = position(inverse, {x, y, view.homogeneousDepth ? -1.0 : 0.0});
-    const auto far = position(inverse, {x, y, 1.0});
+    // With a very large far/near ratio, float projection coefficients can put
+    // the far endpoint at infinity. Use an interior point to define the ray,
+    // then check each hit against the renderer's clip volume.
+    const auto middle = position(inverse, {x, y, view.homogeneousDepth ? 0.0 : 0.5});
     double depthBuffer = 1.0;
     SceneObjectId hit = invalidSceneObjectId;
     for (const auto& part : parts) {
         if (part.objectId == invalidSceneObjectId || part.opacity <= 0) { continue; }
         const auto mvp = compose(part.model, viewProjection);
         bx::mtxInverse(inverse.data(), part.model.data());
-        const auto origin = position(inverse, near), end = position(inverse, far);
+        const auto origin = position(inverse, near), end = position(inverse, middle);
         const auto direction = subtract(end, origin);
         const bool testSurface = part.solid && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
         if (!testSurface && !part.edges && !part.vertices && part.diagnosticEdges.empty()) { continue; }
@@ -359,7 +363,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                 if (testSurface) {
                     if (const auto t = triangleHit(origin, direction, triangle)) {
                         const auto p = clip({origin[0] + *t * direction[0], origin[1] + *t * direction[1], origin[2] + *t * direction[2]});
-                        if (p[3] > 0 && std::isfinite(p[2] / p[3])) { closest(surfaceDepth, p[2] / p[3]); }
+                        if (inside(p, view.homogeneousDepth)) { closest(surfaceDepth, p[2] / p[3]); }
                     }
                 }
                 if (part.edges || part.vertices) {

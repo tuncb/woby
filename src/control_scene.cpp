@@ -250,12 +250,14 @@ Json controlCameraInfo(const UiState& state)
     const auto& camera = state.camera;
     const auto eye = cameraEye(camera, state.upAxis);
     const auto up = cameraUp(camera, state.upAxis);
+    const auto depth = cameraDepthRange(camera, state.sceneBounds, state.upAxis);
     constexpr float radiansToDegrees = 57.29577951308232f;
     return {{"target", camera.target}, {"eye", {eye.x, eye.y, eye.z}}, {"up", {up.x, up.y, up.z}},
         {"yawDegrees", camera.yawRadians * radiansToDegrees}, {"pitchDegrees", camera.pitchRadians * radiansToDegrees},
         {"rollDegrees", camera.rollRadians * radiansToDegrees}, {"distance", camera.distance},
         {"verticalFovDegrees", camera.verticalFovDegrees}, {"nearPlane", camera.nearPlane},
-        {"farPlane", cameraFarPlane(camera, state.sceneBounds)}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"}};
+        {"effectiveNearPlane", depth.nearPlane}, {"farPlane", depth.farPlane},
+        {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"}};
 }
 
 Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)

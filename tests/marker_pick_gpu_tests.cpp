@@ -159,7 +159,25 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     for (int i = 0; i < 12; ++i) { render(); }
     CHECK_FALSE(picker.coordinates);
 
-    front.fileSettings.visible = false; ++state.sceneEditRevision;
+    // Keep marker lookup consistent with the adaptive projection on a large
+    // scene whose geometry lies beyond the old target-based far plane.
+    front.fileSettings.visible = false;
+    auto& rear = state.files[0];
+    for (auto& vertex : rear.mesh.vertices) {
+        vertex.position[0] *= 100000; vertex.position[1] *= 100000;
+    }
+    rear.mesh.bounds = woby::calculateBounds(rear.mesh.vertices);
+    woby::destroyGpuMesh(fixture.runtimes[0].gpuMesh);
+    fixture.runtimes[0].gpuMesh = woby::createGpuMesh(rear.mesh, woby::meshVertexLayout(), woby::gpuMeshPoints);
+    woby::recalculateSceneBounds(state);
+    woby::lookAtUiCamera(state, {0, 0, 1000000}, {0, 0, 999999});
+    ++state.sceneEditRevision;
+    CHECK(woby::cameraDepthRange(state.camera, state.sceneBounds, state.upAxis).nearPlane > 1000);
+    for (int i = 0; i < 12; ++i) { render(); }
+    REQUIRE(picker.coordinates);
+    CHECK(picker.coordinates->localPosition == std::array<float, 3>{0, 0, 0});
+
+    ++state.sceneEditRevision;
     render(); // Cancel a hit while its ID is still in flight.
     CHECK_FALSE(woby::beginGpuMarkerPicking(picker, assets, state, viewport, {48, 40}, false, samples));
     ++state.sceneGeneration;

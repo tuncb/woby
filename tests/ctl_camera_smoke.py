@@ -24,7 +24,7 @@ def main():
     executable = Path(sys.argv[1]).resolve()
     instance = "camera-" + uuid.uuid4().hex[:12]
     with tempfile.TemporaryDirectory(prefix="woby-camera-") as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
         model = root / "triangle.obj"
         model.write_text("o triangle\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n", encoding="utf-8")
         startup = None
@@ -128,9 +128,31 @@ def main():
                 assert ctl("camera", "get")["camera"] == framed
                 ctl("camera", "look-at", "--eye", 0, 0, 0, "--target", 0, 0, 0, code=-32602)
                 assert ctl("camera", "get")["camera"] == framed
+
+                # Large geometry beyond a nearby target was outside the old far
+                # plane. Check the real projection, then navigate very close.
+                ctl("scene", "new", "--on-dirty", "discard")
+                large = root / "large-depth.obj"
+                large.write_text("v -100000 -100000 0\nv 100000 -100000 0\nv 0 100000 0\nf 1 2 3\n", encoding="utf-8")
+                ctl("model", "add", large)
+                group_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "group")
+                ctl("color", "set", group_id, "--rgb", 1, 0, 0)
+                for control in ("grid", "origin", "dimensions"):
+                    ctl(control, "set", "--visible", "false")
+                ctl("up-axis", "set", "y")
+                ctl("camera", "set", "--near-plane", .01)
+                ctl("camera", "look-at", "--eye", 0, 0, 1000000, "--target", 0, 0, 999999)
+                distant = ctl("camera", "get")["camera"]
+                assert distant["effectiveNearPlane"] > 1000, distant
+                assert distant["farPlane"] > 1000000, distant
+                red_bounds(capture("large-distant"))
+                ctl("camera", "look-at", "--eye", 0, 0, .02, "--target", 0, 0, 0)
+                close = ctl("camera", "get")["camera"]
+                assert close["effectiveNearPlane"] == close["nearPlane"], close
+                red_bounds(capture("large-close"))
                 ctl("quit", "--on-dirty", "discard")
                 assert viewer.wait(timeout=15) == 0
-                print("Camera smoke passed: visible scene pixels, zoom, pan, roll, look-at, exact restored captures, persistence, object framing, and errors.")
+                print("Camera smoke passed: pixels, zoom, pan, roll, look-at, restored captures, persistence, object framing, large depth range, close geometry, and errors.")
             finally:
                 if viewer.poll() is None:
                     viewer.kill()

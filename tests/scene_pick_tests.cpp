@@ -6,6 +6,7 @@
 #include <doctest/doctest.h>
 
 #include <limits>
+#include <cmath>
 
 namespace {
 woby::Mesh triangle(float z = .4f)
@@ -41,6 +42,129 @@ woby::SceneObjectId pick(const woby::UiState& state, woby::PickPoint point = {50
 {
     return woby::pickSceneObject(woby::scenePickParts(state), view(), point);
 }
+}
+
+TEST_CASE("camera depth range improves large fitted views without changing saved camera settings")
+{
+    woby::Bounds bounds;
+    bounds.center = {-500000, 800000, 1000000};
+    bounds.radius = 925742.0f / 2.7f;
+    auto camera = woby::fitCameraBounds({}, bounds);
+    const auto original = camera;
+    for (const float zoom : {1.0f, 4.0f}) {
+        camera.distance = original.distance * zoom;
+        const auto depth = woby::cameraDepthRange(camera, bounds);
+        CHECK(depth.nearPlane == doctest::Approx(camera.distance * .01f));
+        CHECK(depth.nearPlane > 9000);
+        CHECK(depth.nearPlane < camera.distance - bounds.radius);
+        CHECK(depth.farPlane > camera.distance + bounds.radius);
+        CHECK(camera.nearPlane == original.nearPlane);
+        CHECK(depth.farPlane / depth.nearPlane < 300);
+    }
+}
+
+TEST_CASE("camera depth range retreats for close geometry and honors explicit near clipping")
+{
+    woby::Bounds bounds; bounds.radius = 10;
+    woby::SceneCamera camera; camera.distance = 10.1f; camera.nearPlane = .0001f;
+    auto depth = woby::cameraDepthRange(camera, bounds);
+    CHECK(depth.nearPlane == doctest::Approx((camera.distance - bounds.radius) * .5f));
+    camera.distance = 10.0001f;
+    CHECK(woby::cameraDepthRange(camera, bounds).nearPlane == camera.nearPlane);
+    camera.distance = 2;
+    CHECK(woby::cameraDepthRange(camera, bounds).nearPlane == camera.nearPlane);
+    camera.distance = 30; camera.nearPlane = 8;
+    depth = woby::cameraDepthRange(camera, bounds);
+    CHECK(depth.nearPlane == 8);
+    CHECK(depth.farPlane > depth.nearPlane);
+    bounds.center = {100, 0, 0}; // Entire sphere behind the eye.
+    camera.nearPlane = .1f;
+    CHECK(woby::cameraDepthRange(camera, bounds).nearPlane == camera.nearPlane);
+}
+
+TEST_CASE("camera far plane covers geometry beyond an off center target for both up axes")
+{
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        auto camera = woby::cameraLookingAt({}, {0, 0, 10}, {0, 0, 9}, up);
+        woby::Bounds bounds; bounds.center = {0, 0, -1000000}; bounds.radius = 100;
+        const auto depth = woby::cameraDepthRange(camera, bounds, up);
+        CHECK(depth.nearPlane == doctest::Approx(10000.1f));
+        CHECK(depth.farPlane > 1000110);
+        CHECK(woby::cameraFarPlane(camera, bounds, up) == depth.farPlane);
+        // Previously distance + 4 * radius put the far plane at just 401.
+        CHECK(depth.farPlane > 2000 * (camera.distance + 4 * bounds.radius));
+    }
+}
+
+TEST_CASE("scene projection retains all bounding corners across scales axes and depth conventions")
+{
+    for (const float scale : {.001f, 1.0f, 1000000.0f}) {
+        std::vector<woby::Vertex> corners;
+        for (int i = 0; i < 8; ++i) {
+            woby::Vertex vertex;
+            vertex.position = {(4 + ((i & 1) ? 1.0f : -1.0f)) * scale,
+                (-3 + ((i & 2) ? 1.0f : -1.0f)) * scale, (2 + ((i & 4) ? 1.0f : -1.0f)) * scale};
+            corners.push_back(vertex);
+        }
+        const auto bounds = woby::calculateBounds(corners);
+        for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+            woby::SceneCamera camera; camera.nearPlane = .0001f;
+            camera = woby::cameraWithView(woby::fitCameraBounds(camera, bounds), woby::CameraView::isometric);
+            woby::moveCameraLocal(camera, .1f * scale, -.2f * scale, -.3f * scale, up);
+            const auto saved = camera;
+            for (const bool homogeneous : {false, true}) {
+                const auto view = woby::scenePickView(camera, up, bounds, 320, 240, homogeneous, 1);
+                const auto depth = woby::cameraDepthRange(camera, bounds, up);
+                std::array<float, 16> expected;
+                bx::mtxProj(expected.data(), woby::cameraViewportFov(camera, 320.0f/240.0f), 320.0f/240.0f,
+                    depth.nearPlane, depth.farPlane, homogeneous);
+                CHECK(view.projection == expected);
+                for (const auto& vertex : corners) {
+                    std::array<double, 4> position = {vertex.position[0], vertex.position[1], vertex.position[2], 1};
+                    for (const auto* matrix : {&view.view, &view.projection}) {
+                        std::array<double, 4> next{};
+                        for (size_t row = 0; row < 4; ++row) {
+                            for (size_t column = 0; column < 4; ++column) { next[row] += (*matrix)[column * 4 + row] * position[column]; }
+                        }
+                        position = next;
+                    }
+                    REQUIRE(position[3] > 0);
+                    CHECK(position[2] / position[3] >= (homogeneous ? -1.0 : 0.0));
+                    CHECK(position[2] / position[3] <= 1.0);
+                }
+                CHECK(camera == saved);
+            }
+        }
+    }
+}
+
+TEST_CASE("scene picking reaches distant geometry beyond a nearby camera target and still works close up")
+{
+    auto mesh = triangle(0);
+    for (auto& vertex : mesh.vertices) {
+        vertex.position[0] *= 100000;
+        vertex.position[1] *= 100000;
+    }
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    woby::UiState state;
+    state.files.push_back(woby::createUiFileState("pick.obj", std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::assignSceneObjectIds(state);
+    woby::recalculateSceneBounds(state);
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        for (const float distance : {1000000.0f, .02f}) {
+            woby::SceneCamera camera; camera.nearPlane = .01f;
+            camera = woby::cameraLookingAt(camera, {0, 0, distance},
+                {0, 0, distance > 1 ? distance - 1 : 0}, up);
+            for (const bool homogeneous : {false, true}) {
+                CAPTURE(up);
+                CAPTURE(distance);
+                CAPTURE(homogeneous);
+                const auto view = woby::scenePickView(camera, up, state.sceneBounds, 320, 240, homogeneous, 1);
+                CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {160, 120}) == state.files[0].groupSettings[0].objectId);
+            }
+        }
+    }
 }
 
 TEST_CASE("hiding an inspected object removes viewport highlighting without clearing selection")

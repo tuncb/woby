@@ -339,20 +339,10 @@ void submitSceneScreenshotCapture(
     bgfx::touch(screenshotSceneView);
     bgfx::touch(screenshotHelperView);
 
-    float view[16];
-    float projection[16];
-    bx::mtxLookAt(
-        view,
-        cameraEye(camera, ui.upAxis),
-        cameraLookAt(camera),
-        cameraUp(camera, ui.upAxis));
-    bx::mtxProj(
-        projection,
-        cameraViewportFov(camera, static_cast<float>(sceneWidth) / static_cast<float>(screenshot.height)),
-        static_cast<float>(sceneWidth) / static_cast<float>(screenshot.height),
-        camera.nearPlane,
-        cameraFarPlane(camera, sceneBounds),
-        homogeneousDepth);
+    const auto captureView = scenePickView(camera, ui.upAxis, sceneBounds,
+        sceneWidth, screenshot.height, homogeneousDepth, 1);
+    const auto* view = captureView.view.data();
+    const auto* projection = captureView.projection.data();
     bgfx::setViewTransform(screenshotSceneView, view, projection);
     bgfx::setViewTransform(screenshotHelperView, view, projection);
 
@@ -375,8 +365,8 @@ void submitSceneScreenshotCapture(
     if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform, screenshot.renderScratch); }
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
-        submitSceneAnnotations(screenshotHelperView, ui, scenePickView(camera, ui.upAxis, sceneBounds,
-            sceneWidth, screenshot.height, homogeneousDepth, 1), helperLayout, annotationProgram, colorUniform, screenshot.renderScratch);
+        submitSceneAnnotations(screenshotHelperView, ui, captureView,
+            helperLayout, annotationProgram, colorUniform, screenshot.renderScratch);
     }
     if (annotations || scaleOverlay) {
         // Export runs before ImGui::Render/EndFrame refreshes PlatformIO.Textures.

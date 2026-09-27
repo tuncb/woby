@@ -57,7 +57,16 @@ struct CameraPlacement {
 [[nodiscard]] bx::Vec3 cameraUp(
     const SceneCamera& camera,
     SceneUpAxis upAxis = SceneUpAxis::z);
-[[nodiscard]] float cameraFarPlane(const SceneCamera& camera, const Bounds& bounds);
+struct CameraDepthRange {
+    float nearPlane = 0.1f;
+    float farPlane = 10.0f;
+};
+// The persisted near plane is a minimum. Raise it only into known empty space
+// before the scene's bounding sphere; retain close geometry when inside it.
+[[nodiscard]] CameraDepthRange cameraDepthRange(const SceneCamera& camera, const Bounds& bounds,
+    SceneUpAxis upAxis = SceneUpAxis::z);
+[[nodiscard]] float cameraFarPlane(const SceneCamera& camera, const Bounds& bounds,
+    SceneUpAxis upAxis = SceneUpAxis::z);
 
 void orbitCamera(
     SceneCamera& camera,
