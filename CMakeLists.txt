@@ -122,6 +122,10 @@ add_executable(woby
     src/file_discovery.h
     src/hash_utils.cpp
     src/hash_utils.h
+    src/marker_pick.cpp
+    src/marker_pick.h
+    src/marker_pick_logic.cpp
+    src/marker_pick_logic.h
     src/hover_pick.cpp
     src/hover_pick.h
     src/surface_annotation.cpp
@@ -229,6 +233,67 @@ woby_enable_enum_switch_warnings(woby)
 woby_enable_precompiled_headers(woby)
 
 include(cmake/BgfxShaders.cmake)
+
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/point.vert.sc"
+    TYPE vertex OUTPUT_NAME vs_marker_point
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/point.frag.sc"
+    TYPE fragment OUTPUT_NAME fs_marker_point
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/mesh.frag.sc"
+    TYPE fragment OUTPUT_NAME fs_marker_mesh
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/line.frag.sc"
+    TYPE fragment OUTPUT_NAME fs_marker_line
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/comparison.frag.sc"
+    TYPE fragment OUTPUT_NAME fs_marker_comparison
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/screen.vert.sc"
+    TYPE vertex OUTPUT_NAME vs_marker_screen
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/highlight.vert.sc"
+    TYPE vertex OUTPUT_NAME vs_marker_highlight
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/composite.frag.sc"
+    TYPE fragment OUTPUT_NAME fs_marker_composite
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/lookup_single.sc"
+    TYPE compute OUTPUT_NAME cs_marker_lookup_single
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/highlight_single.frag.sc"
+    TYPE fragment OUTPUT_NAME fs_marker_highlight_single
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/lookup_msaa.sc"
+    TYPE compute OUTPUT_NAME cs_marker_lookup_msaa
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
+woby_compile_bgfx_shader(woby
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/highlight_msaa.frag.sc"
+    TYPE fragment OUTPUT_NAME fs_marker_highlight_msaa
+    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
+)
 
 woby_compile_bgfx_shader(woby
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.vert.sc"
@@ -451,6 +516,10 @@ if(BUILD_TESTING)
         src/file_discovery.h
         src/hash_utils.cpp
         src/hash_utils.h
+        src/marker_pick.cpp
+        src/marker_pick.h
+        src/marker_pick_logic.cpp
+        src/marker_pick_logic.h
         src/hover_pick.cpp
         src/hover_pick.h
         src/surface_annotation.cpp
@@ -508,6 +577,7 @@ if(BUILD_TESTING)
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp
+        tests/marker_pick_tests.cpp
         tests/hover_pick_tests.cpp
         tests/surface_annotation_tests.cpp
         tests/scene_pick_tests.cpp
@@ -522,6 +592,9 @@ if(BUILD_TESTING)
 
     if(WOBY_BUILD_HASH_BENCHMARKS)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
+    endif()
+    if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
+        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp)
     endif()
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")

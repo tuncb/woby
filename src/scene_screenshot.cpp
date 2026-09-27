@@ -21,10 +21,10 @@
 namespace woby {
 namespace {
 
-constexpr bgfx::ViewId screenshotSceneView = 3;
-constexpr bgfx::ViewId screenshotHelperView = 4;
-constexpr bgfx::ViewId screenshotAnnotationView = 5;
-constexpr bgfx::ViewId screenshotReadbackView = 6;
+constexpr bgfx::ViewId screenshotSceneView = 16;
+constexpr bgfx::ViewId screenshotHelperView = 17;
+constexpr bgfx::ViewId screenshotAnnotationView = 18;
+constexpr bgfx::ViewId screenshotReadbackView = 19;
 
 std::string fileDisplayName(const std::filesystem::path& path)
 {

@@ -1,4 +1,5 @@
 #include "scene_renderer.h"
+#include "marker_pick.h"
 #include "scene_dimensions.h"
 
 #include <bx/math.h>
@@ -135,7 +136,8 @@ void submitTriangleRange(
     const float* model,
     const std::array<float, 4>& color,
     uint32_t indexOffset,
-    uint32_t indexCount)
+    uint32_t indexCount,
+    bool markerIds)
 {
     if (!bgfx::isValid(mesh.vertexBuffer) || !bgfx::isValid(mesh.triangleIndexBuffer) || indexCount == 0) {
         return;
@@ -145,7 +147,7 @@ void submitTriangleRange(
     bgfx::setUniform(colorUniform, color.data());
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
-    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LESS, true, color, 0u));
+    setMarkerRenderState(renderState(BGFX_STATE_DEPTH_TEST_LESS, true, color, 0u), markerIds);
     bgfx::submit(viewId, program);
 }
 
@@ -159,7 +161,8 @@ void submitColorRange(
     const std::array<float, 4>& color,
     uint64_t primitiveState,
     uint32_t indexOffset,
-    uint32_t indexCount)
+    uint32_t indexCount,
+    bool markerIds)
 {
     if (!bgfx::isValid(mesh.vertexBuffer) || !bgfx::isValid(indexBuffer) || indexCount == 0) {
         return;
@@ -169,7 +172,7 @@ void submitColorRange(
     bgfx::setUniform(colorUniform, color.data());
     bgfx::setVertexBuffer(0, mesh.vertexBuffer);
     bgfx::setIndexBuffer(indexBuffer, indexOffset, indexCount);
-    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, primitiveState));
+    setMarkerRenderState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, primitiveState), markerIds);
     bgfx::submit(viewId, program);
 }
 
@@ -185,7 +188,8 @@ void submitPointSpriteRange(
     uint32_t viewWidth,
     uint32_t viewHeight,
     uint32_t indexOffset,
-    uint32_t indexCount)
+    uint32_t indexCount,
+    bool markerIds)
 {
     if (!bgfx::isValid(mesh.vertexBuffer)
         || !bgfx::isValid(mesh.pointIdBuffer)
@@ -201,7 +205,7 @@ void submitPointSpriteRange(
     bgfx::setBuffer(1, mesh.pointIdBuffer, bgfx::Access::Read);
     bgfx::setVertexCount(4);
     bgfx::setInstanceCount(indexCount);
-    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, BGFX_STATE_PT_TRISTRIP));
+    setMarkerRenderState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, BGFX_STATE_PT_TRISTRIP), markerIds);
     bgfx::submit(viewId, program);
 }
 
@@ -412,7 +416,8 @@ void submitGroupRange(
     bgfx::UniformHandle colorUniform,
     bgfx::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
-    uint32_t viewportHeight)
+    uint32_t viewportHeight,
+    MarkerDrawContext* markers)
 {
     if (fileIndex >= files.size() || fileIndex >= runtimes.size()) {
         return;
@@ -443,7 +448,7 @@ void submitGroupRange(
             model,
             groupColor(settings, 1.0f, opacityScale),
             range.triangleIndexOffset,
-            range.triangleIndexCount);
+            range.triangleIndexCount, markers != nullptr);
     }
     if (settings.showTriangles) {
         submitColorRange(
@@ -456,12 +461,21 @@ void submitGroupRange(
             groupColor(settings, 1.25f, opacityScale),
             BGFX_STATE_PT_LINES,
             range.lineIndexOffset,
-            range.lineIndexCount);
+            range.lineIndexCount, markers != nullptr);
     }
     if (settings.showVertices) {
         const uint32_t pointSize = vertexPointSize(
             masterVertexPointSize,
             file.vertexSizeScale * settings.vertexSizeScale);
+        if (markers) {
+            MarkerDraw draw;
+            std::copy_n(model, 16, draw.model.begin());
+            draw.fileIndex = fileIndex; draw.fileId = file.objectId;
+            draw.pointOffset = range.pointIndexOffset; draw.count = range.pointIndexCount;
+            const auto id = appendMarkerDraw(markers->list, draw, static_cast<float>(pointSize));
+            const std::array<float, 4> base = {static_cast<float>(id & 65535u), static_cast<float>(id >> 16u), 0, 0};
+            bgfx::setUniform(markers->baseUniform, base.data());
+        }
         submitPointSpriteRange(
             viewId,
             gpuMesh,
@@ -474,7 +488,7 @@ void submitGroupRange(
             sceneViewportWidth,
             viewportHeight,
             range.pointIndexOffset,
-            range.pointIndexCount);
+            range.pointIndexCount, markers != nullptr);
     }
 }
 
@@ -493,7 +507,8 @@ void submitSceneNode(
     bgfx::UniformHandle colorUniform,
     bgfx::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
-    uint32_t viewportHeight)
+    uint32_t viewportHeight,
+    MarkerDrawContext* markers)
 {
     (void)sceneNodes;
     if (node.kind == UiSceneNodeKind::folder) {
@@ -522,7 +537,7 @@ void submitSceneNode(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight);
+                viewportHeight, markers);
         }
         return;
     }
@@ -560,7 +575,7 @@ void submitSceneNode(
                     colorUniform,
                     pointParamsUniform,
                     sceneViewportWidth,
-                    viewportHeight);
+                    viewportHeight, markers);
             }
             return;
         }
@@ -581,7 +596,7 @@ void submitSceneNode(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight);
+                viewportHeight, markers);
         }
         return;
     }
@@ -601,7 +616,7 @@ void submitSceneNode(
         colorUniform,
         pointParamsUniform,
         sceneViewportWidth,
-        viewportHeight);
+        viewportHeight, markers);
 }
 
 void submitSceneFiles(
@@ -616,7 +631,8 @@ void submitSceneFiles(
     bgfx::UniformHandle colorUniform,
     bgfx::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
-    uint32_t viewportHeight)
+    uint32_t viewportHeight,
+    MarkerDrawContext* markers)
 {
     float identity[16];
     bx::mtxIdentity(identity);
@@ -637,7 +653,7 @@ void submitSceneFiles(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight);
+                viewportHeight, markers);
         }
         return;
     }
@@ -669,7 +685,7 @@ void submitSceneFiles(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight);
+                viewportHeight, markers);
         }
     }
 }

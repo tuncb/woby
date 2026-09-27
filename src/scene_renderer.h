@@ -11,6 +11,8 @@
 
 namespace woby {
 
+struct MarkerDrawContext;
+
 // CPU scratch owned by the viewport/export runtime, never by logical UiState.
 // Rebuilt on each submission; stale borrowed pointers are never read across frames.
 struct SceneRenderScratch {
@@ -78,7 +80,8 @@ void submitSceneFiles(
     bgfx::UniformHandle colorUniform,
     bgfx::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
-    uint32_t viewportHeight);
+    uint32_t viewportHeight,
+    MarkerDrawContext* markers = nullptr);
 
 void submitSceneHelpers(
     bgfx::ViewId viewId,

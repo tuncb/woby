@@ -98,7 +98,8 @@ void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit);
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
-    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch);
+    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch,
+    bgfx::ProgramHandle markerProgram = BGFX_INVALID_HANDLE);
 void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
     const ComparisonRuntimes& runtimes);
 // False while any visible, valid comparison is queued/computing. Errors are reported to the caller.

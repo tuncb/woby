@@ -7,6 +7,7 @@
 #include "console.h"
 #include "file_discovery.h"
 #include "hover_pick.h"
+#include "marker_pick.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
 #include "imgui_bgfx.h"
@@ -87,7 +88,7 @@ using woby::setLastItemTooltip;
 constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
 constexpr bgfx::ViewId clearView = 0;
 constexpr bgfx::ViewId sceneView = 1;
-constexpr bgfx::ViewId helperView = 2;
+constexpr bgfx::ViewId helperView = 5;
 constexpr bgfx::ViewId imguiView = 255;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float viewerPaneBackgroundRed = 0.20f;
@@ -2025,7 +2026,7 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
 }
 
 void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex,
-    const woby::SceneViewport& viewport, uint32_t drawableWidth)
+    const woby::SceneViewport& viewport, uint32_t drawableWidth, bool asynchronous)
 {
     if (!hoveredVertex.has_value()) {
         return;
@@ -2050,6 +2051,7 @@ void drawHoveredVertexOverlay(const std::optional<HoveredVertex>& hoveredVertex,
                 | ImGuiWindowFlags_NoSavedSettings
                 | ImGuiWindowFlags_NoFocusOnAppearing
                 | ImGuiWindowFlags_NoInputs)) {
+        if (asynchronous) { ImGui::TextUnformatted("Coordinates (asynchronous)"); }
         const auto& local = hoveredVertex->localPosition;
         const auto& transformed = hoveredVertex->transformedPosition;
         ImGui::Text(
@@ -2077,6 +2079,8 @@ int main(int argc, char** argv)
         [](const char* argument) { return std::string_view(argument) == "--headless"; });
     bool sdlInitialized = false;
     bool bgfxInitialized = false;
+    // Readback memory must outlive bgfx shutdown, including exception paths.
+    woby::GpuMarkerPicker markerPicker;
     woby::AutomationOwner automation(nullptr, &woby::stopAutomation);
 
     try {
@@ -3591,9 +3595,20 @@ int main(int argc, char** argv)
                 }
                 const bool hoverPickingEnabled = mouseInsideViewport
                     && !ImGui::GetIO().WantCaptureMouse
-                    && !cameraInteractionActive
-                    && !dialogOpen;
-                if (!hoverPickingEnabled) {
+                    && scenePointerAvailable;
+                const bool markersVisible = std::any_of(files.begin(), files.end(), [](const auto& file) {
+                    return (woby::requestedGpuMeshFeatures(file) & woby::gpuMeshPoints) != 0;
+                });
+                bool gpuHover = false;
+                try {
+                    gpuHover = woby::beginGpuMarkerPicking(markerPicker, assets, ui, viewport, mouse,
+                        hoverPickingEnabled && markersVisible);
+                } catch (const std::exception& error) {
+                    woby::destroyGpuMarkerPicker(markerPicker);
+                    markerPicker.unavailable = true;
+                    spdlog::warn("GPU hover picking unavailable: {}", error.what());
+                }
+                if (!hoverPickingEnabled || gpuHover) {
                     hoverPickCache.hoveredVertex.reset();
                     hoverPickCache.valid = false;
                 } else {
@@ -3627,7 +3642,7 @@ int main(int argc, char** argv)
                         hoverPickCache.valid = true;
                     }
                 }
-                hoveredVertex = hoverPickCache.hoveredVertex;
+                hoveredVertex = gpuHover ? markerPicker.coordinates : hoverPickCache.hoveredVertex;
                 recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
                 bgfx::setViewMode(sceneView, bgfx::ViewMode::Sequential);
@@ -3638,15 +3653,19 @@ int main(int argc, char** argv)
                         ui.sceneNodes,
                         runtimes,
                         masterVertexPointSize,
-                        meshProgram,
-                        colorProgram,
-                        pointSpriteProgram,
+                        gpuHover ? markerPicker.mesh : meshProgram,
+                        gpuHover ? markerPicker.line : colorProgram,
+                        gpuHover ? markerPicker.point : pointSpriteProgram,
                         colorUniform,
                         pointParamsUniform,
                         sceneViewportWidth,
-                        sceneViewportHeight);
+                        sceneViewportHeight,
+                        gpuHover ? &markerPicker.context : nullptr);
                 }
-                woby::submitComparisonScenes(sceneView, ui, comparison, colorProgram, colorUniform, renderScratch);
+                woby::submitComparisonScenes(sceneView, ui, comparison,
+                    gpuHover ? markerPicker.line : colorProgram, colorUniform, renderScratch,
+                    gpuHover ? markerPicker.comparison : bgfx::ProgramHandle{bgfx::kInvalidHandle});
+                woby::submitGpuMarkerPicking(markerPicker, viewport);
                 recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
                 submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
@@ -3670,7 +3689,7 @@ int main(int argc, char** argv)
                         currentPickView, {static_cast<float>(viewport.x) * pixelScale, static_cast<float>(viewport.y) * pixelScale}, pixelScale, ImGui::GetFontSize());
                 }
                 drawToastMessage(toast, viewport, width, std::max(annotationMessageBottom, static_cast<float>(viewport.y) / currentPickView.pixelScale));
-                drawHoveredVertexOverlay(hoveredVertex, viewport, width);
+                drawHoveredVertexOverlay(hoveredVertex, viewport, width, gpuHover);
                 recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
 
             }
@@ -3713,6 +3732,7 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);
 
             const uint32_t frameNumber = bgfx::frame();
+            woby::pollGpuMarkerPicking(markerPicker, frameNumber, ui, runtimes);
             try {
                 const std::optional<std::string> screenshotStatus = completeSceneScreenshotReadback(
                     sceneScreenshot,
@@ -3772,6 +3792,7 @@ int main(int argc, char** argv)
         if (!headless) { ImGui_ImplSDL3_Shutdown(); }
         ImGui::DestroyContext();
 
+        woby::destroyGpuMarkerPicker(markerPicker);
         bgfx::destroy(pointParamsUniform);
         woby::destroyComparisonRuntimes(comparison);
         bgfx::destroy(colorUniform);

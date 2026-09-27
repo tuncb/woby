@@ -1,0 +1,1019 @@
+{
+  "models": [
+    {
+      "model": "20190810_BearTrap_Ground_Model.obj",
+      "metadata": {
+        "compact_ids": true,
+        "rgba32f_caps": 65097,
+        "shader_setup_ms": 1.8727,
+        "skipped_requests": 0,
+        "spatial_index_build_ms": 0,
+        "spatial_index_bytes": 0,
+        "target_allocations": [
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0048,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 10552320,
+            "height": 687,
+            "id_payload_bytes": 3517440,
+            "samples": 1,
+            "submit_ms": 0.0114,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0147,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 104532480,
+            "height": 1047,
+            "id_payload_bytes": 32163840,
+            "samples": 4,
+            "submit_ms": 0.0124,
+            "width": 1920
+          },
+          {
+            "all_target_payload_bytes": 28757820,
+            "height": 687,
+            "id_payload_bytes": 8848560,
+            "samples": 4,
+            "submit_ms": 0.0142,
+            "width": 805
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0109,
+            "width": 1280
+          }
+        ],
+        "validated_requests": 140
+      },
+      "cases": [
+        {
+          "name": "fit_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 31155570,
+          "max_sample_id": 34474953
+        },
+        {
+          "name": "far_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 9276119,
+          "max_sample_id": 35774299
+        },
+        {
+          "name": "near_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 5228970,
+          "max_sample_id": 5503527
+        },
+        {
+          "name": "zoom_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 5232286,
+          "max_sample_id": 34506516
+        },
+        {
+          "name": "orbit_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 38077813,
+          "max_sample_id": 38302517
+        },
+        {
+          "name": "pan_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 13663732,
+          "max_sample_id": 31124858
+        },
+        {
+          "name": "solid_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 31155570,
+          "max_sample_id": 34474953
+        },
+        {
+          "name": "alpha_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 31157414,
+          "max_sample_id": 36332711
+        },
+        {
+          "name": "single_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 31155983,
+          "max_sample_id": 34474812
+        },
+        {
+          "name": "large_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 31398143,
+          "max_sample_id": 34505926
+        },
+        {
+          "name": "1080p_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 31155983,
+          "max_sample_id": 31157408
+        },
+        {
+          "name": "pane_id_async",
+          "requests": 10,
+          "hits": 9,
+          "max_winner_id": 36681299,
+          "max_sample_id": 36683957
+        },
+        {
+          "name": "hidden_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "zero_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        }
+      ],
+      "raw": "D:\\woby\\build\\marker-qa-compact\\20190810_BearTrap_Ground_Model-1.marker.json"
+    },
+    {
+      "model": "bennu_OLA_v21_PTM_very-high.obj",
+      "metadata": {
+        "compact_ids": true,
+        "rgba32f_caps": 65097,
+        "shader_setup_ms": 1.6239,
+        "skipped_requests": 0,
+        "spatial_index_build_ms": 0,
+        "spatial_index_bytes": 0,
+        "target_allocations": [
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0048,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 10552320,
+            "height": 687,
+            "id_payload_bytes": 3517440,
+            "samples": 1,
+            "submit_ms": 0.0101,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0098,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 104532480,
+            "height": 1047,
+            "id_payload_bytes": 32163840,
+            "samples": 4,
+            "submit_ms": 0.0128,
+            "width": 1920
+          },
+          {
+            "all_target_payload_bytes": 28757820,
+            "height": 687,
+            "id_payload_bytes": 8848560,
+            "samples": 4,
+            "submit_ms": 0.0131,
+            "width": 805
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0103,
+            "width": 1280
+          }
+        ],
+        "validated_requests": 140
+      },
+      "cases": [
+        {
+          "name": "fit_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 6571393,
+          "max_sample_id": 8923817
+        },
+        {
+          "name": "far_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 7747811,
+          "max_sample_id": 8923491
+        },
+        {
+          "name": "near_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 2515011,
+          "max_sample_id": 8923817
+        },
+        {
+          "name": "zoom_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 2515012,
+          "max_sample_id": 8923817
+        },
+        {
+          "name": "orbit_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 7501315,
+          "max_sample_id": 8923817
+        },
+        {
+          "name": "pan_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 2777974,
+          "max_sample_id": 8923817
+        },
+        {
+          "name": "solid_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 6571393,
+          "max_sample_id": 8923817
+        },
+        {
+          "name": "alpha_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 8923817,
+          "max_sample_id": 8923824
+        },
+        {
+          "name": "single_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 6571393,
+          "max_sample_id": 8923817
+        },
+        {
+          "name": "large_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 8174458,
+          "max_sample_id": 8174458
+        },
+        {
+          "name": "1080p_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 5682413,
+          "max_sample_id": 8921619
+        },
+        {
+          "name": "pane_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 5681329,
+          "max_sample_id": 8917607
+        },
+        {
+          "name": "hidden_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "zero_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        }
+      ],
+      "raw": "D:\\woby\\build\\marker-qa-compact\\bennu_OLA_v21_PTM_very-high-1.marker.json"
+    },
+    {
+      "model": "powerplant.obj",
+      "metadata": {
+        "compact_ids": true,
+        "rgba32f_caps": 65097,
+        "shader_setup_ms": 1.6748,
+        "skipped_requests": 0,
+        "spatial_index_build_ms": 0,
+        "spatial_index_bytes": 0,
+        "target_allocations": [
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0048,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 10552320,
+            "height": 687,
+            "id_payload_bytes": 3517440,
+            "samples": 1,
+            "submit_ms": 0.0103,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0114,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 104532480,
+            "height": 1047,
+            "id_payload_bytes": 32163840,
+            "samples": 4,
+            "submit_ms": 0.0142,
+            "width": 1920
+          },
+          {
+            "all_target_payload_bytes": 28757820,
+            "height": 687,
+            "id_payload_bytes": 8848560,
+            "samples": 4,
+            "submit_ms": 0.0136,
+            "width": 805
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0119,
+            "width": 1280
+          }
+        ],
+        "validated_requests": 140
+      },
+      "cases": [
+        {
+          "name": "fit_id_async",
+          "requests": 10,
+          "hits": 4,
+          "max_winner_id": 10939793,
+          "max_sample_id": 10953479
+        },
+        {
+          "name": "far_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "near_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "zoom_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "orbit_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "pan_id_async",
+          "requests": 10,
+          "hits": 4,
+          "max_winner_id": 5204633,
+          "max_sample_id": 10760523
+        },
+        {
+          "name": "solid_id_async",
+          "requests": 10,
+          "hits": 4,
+          "max_winner_id": 10939793,
+          "max_sample_id": 10953479
+        },
+        {
+          "name": "alpha_id_async",
+          "requests": 10,
+          "hits": 4,
+          "max_winner_id": 10939817,
+          "max_sample_id": 10953479
+        },
+        {
+          "name": "single_id_async",
+          "requests": 10,
+          "hits": 4,
+          "max_winner_id": 10939814,
+          "max_sample_id": 10953479
+        },
+        {
+          "name": "large_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "1080p_id_async",
+          "requests": 10,
+          "hits": 4,
+          "max_winner_id": 10939721,
+          "max_sample_id": 10948004
+        },
+        {
+          "name": "pane_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 10949900,
+          "max_sample_id": 10953361
+        },
+        {
+          "name": "hidden_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "zero_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        }
+      ],
+      "raw": "D:\\woby\\build\\marker-qa-compact\\powerplant-1.marker.json"
+    },
+    {
+      "model": "san-miguel.obj",
+      "metadata": {
+        "compact_ids": true,
+        "rgba32f_caps": 65097,
+        "shader_setup_ms": 2.105,
+        "skipped_requests": 0,
+        "spatial_index_build_ms": 0,
+        "spatial_index_bytes": 0,
+        "target_allocations": [
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0069,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 10552320,
+            "height": 687,
+            "id_payload_bytes": 3517440,
+            "samples": 1,
+            "submit_ms": 0.0125,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0205,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 104532480,
+            "height": 1047,
+            "id_payload_bytes": 32163840,
+            "samples": 4,
+            "submit_ms": 0.018,
+            "width": 1920
+          },
+          {
+            "all_target_payload_bytes": 28757820,
+            "height": 687,
+            "id_payload_bytes": 8848560,
+            "samples": 4,
+            "submit_ms": 0.0204,
+            "width": 805
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.022,
+            "width": 1280
+          }
+        ],
+        "validated_requests": 140
+      },
+      "cases": [
+        {
+          "name": "fit_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 7705224,
+          "max_sample_id": 7713631
+        },
+        {
+          "name": "far_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 7615122,
+          "max_sample_id": 7714008
+        },
+        {
+          "name": "near_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 2544928,
+          "max_sample_id": 3496242
+        },
+        {
+          "name": "zoom_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 2544928,
+          "max_sample_id": 7704842
+        },
+        {
+          "name": "orbit_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 7022789,
+          "max_sample_id": 7683011
+        },
+        {
+          "name": "pan_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 3496392,
+          "max_sample_id": 6230261
+        },
+        {
+          "name": "solid_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 7705224,
+          "max_sample_id": 7713631
+        },
+        {
+          "name": "alpha_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 7718208,
+          "max_sample_id": 7912025
+        },
+        {
+          "name": "single_id_async",
+          "requests": 10,
+          "hits": 6,
+          "max_winner_id": 7705224,
+          "max_sample_id": 7713631
+        },
+        {
+          "name": "large_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 2282884,
+          "max_sample_id": 7704880
+        },
+        {
+          "name": "1080p_id_async",
+          "requests": 10,
+          "hits": 3,
+          "max_winner_id": 7705191,
+          "max_sample_id": 7717981
+        },
+        {
+          "name": "pane_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 7713978,
+          "max_sample_id": 8822402
+        },
+        {
+          "name": "hidden_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "zero_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        }
+      ],
+      "raw": "D:\\woby\\build\\marker-qa-compact\\san-miguel-1.marker.json"
+    },
+    {
+      "model": "uploads_files_2720101_BusGameMap.obj",
+      "metadata": {
+        "compact_ids": true,
+        "rgba32f_caps": 65097,
+        "shader_setup_ms": 2.5168,
+        "skipped_requests": 0,
+        "spatial_index_build_ms": 0,
+        "spatial_index_bytes": 0,
+        "target_allocations": [
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0083,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 10552320,
+            "height": 687,
+            "id_payload_bytes": 3517440,
+            "samples": 1,
+            "submit_ms": 0.0129,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0135,
+            "width": 1280
+          },
+          {
+            "all_target_payload_bytes": 104532480,
+            "height": 1047,
+            "id_payload_bytes": 32163840,
+            "samples": 4,
+            "submit_ms": 0.017,
+            "width": 1920
+          },
+          {
+            "all_target_payload_bytes": 28757820,
+            "height": 687,
+            "id_payload_bytes": 8848560,
+            "samples": 4,
+            "submit_ms": 0.0165,
+            "width": 805
+          },
+          {
+            "all_target_payload_bytes": 45726720,
+            "height": 687,
+            "id_payload_bytes": 14069760,
+            "samples": 4,
+            "submit_ms": 0.0141,
+            "width": 1280
+          }
+        ],
+        "validated_requests": 140
+      },
+      "cases": [
+        {
+          "name": "fit_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 493128,
+          "max_sample_id": 494150
+        },
+        {
+          "name": "far_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 492743,
+          "max_sample_id": 500248
+        },
+        {
+          "name": "near_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 489138,
+          "max_sample_id": 490154
+        },
+        {
+          "name": "zoom_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 489695,
+          "max_sample_id": 493177
+        },
+        {
+          "name": "orbit_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 492772,
+          "max_sample_id": 508076
+        },
+        {
+          "name": "pan_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 488698,
+          "max_sample_id": 491730
+        },
+        {
+          "name": "solid_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 493128,
+          "max_sample_id": 494150
+        },
+        {
+          "name": "alpha_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 493128,
+          "max_sample_id": 494818
+        },
+        {
+          "name": "single_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 493128,
+          "max_sample_id": 494150
+        },
+        {
+          "name": "large_id_async",
+          "requests": 10,
+          "hits": 10,
+          "max_winner_id": 493165,
+          "max_sample_id": 495186
+        },
+        {
+          "name": "1080p_id_async",
+          "requests": 10,
+          "hits": 5,
+          "max_winner_id": 492784,
+          "max_sample_id": 494136
+        },
+        {
+          "name": "pane_id_async",
+          "requests": 10,
+          "hits": 7,
+          "max_winner_id": 492134,
+          "max_sample_id": 494150
+        },
+        {
+          "name": "hidden_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        },
+        {
+          "name": "zero_id_async",
+          "requests": 10,
+          "hits": 0,
+          "max_winner_id": 0,
+          "max_sample_id": 0
+        }
+      ],
+      "raw": "D:\\woby\\build\\marker-qa-compact\\uploads_files_2720101_BusGameMap-1.marker.json"
+    }
+  ],
+  "model_requests": 700,
+  "fixtures": [
+    {
+      "model": "overlap.obj",
+      "case": "opaque",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "single",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "alpha",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "zero",
+      "requests": 10,
+      "hits": 0
+    },
+    {
+      "model": "overlap.obj",
+      "case": "hidden",
+      "requests": 10,
+      "hits": 0
+    },
+    {
+      "model": "overlap.obj",
+      "case": "rear",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "solid",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "alpha_solid",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "translated",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "large",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "pane",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "overlap.obj",
+      "case": "resized",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "opaque",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "single",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "alpha",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "zero",
+      "requests": 10,
+      "hits": 0
+    },
+    {
+      "model": "occluder.obj",
+      "case": "hidden",
+      "requests": 10,
+      "hits": 0
+    },
+    {
+      "model": "occluder.obj",
+      "case": "rear",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "solid",
+      "requests": 10,
+      "hits": 0
+    },
+    {
+      "model": "occluder.obj",
+      "case": "alpha_solid",
+      "requests": 10,
+      "hits": 0
+    },
+    {
+      "model": "occluder.obj",
+      "case": "translated",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "large",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "pane",
+      "requests": 10,
+      "hits": 10
+    },
+    {
+      "model": "occluder.obj",
+      "case": "resized",
+      "requests": 10,
+      "hits": 10
+    }
+  ],
+  "fixture_requests": 240,
+  "color_comparisons": [
+    {
+      "case": "opaque",
+      "mode": "routed",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "opaque",
+      "mode": "id_buffer",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "alpha",
+      "mode": "routed",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "alpha",
+      "mode": "id_buffer",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "solid",
+      "mode": "routed",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "solid",
+      "mode": "id_buffer",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "pane",
+      "mode": "routed",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "pane",
+      "mode": "id_buffer",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "single",
+      "mode": "routed",
+      "max_channel_difference": 0
+    },
+    {
+      "case": "single",
+      "mode": "id_buffer",
+      "max_channel_difference": 0
+    }
+  ]
+}

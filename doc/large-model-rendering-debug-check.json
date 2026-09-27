@@ -1,0 +1,188 @@
+{
+  "metadata": {
+    "binary": "D:\\.worktree\\woby-render-fps\\build\\vs2026-vcpkg\\bin\\Debug\\woby.exe",
+    "captures": false,
+    "device_id": 9437,
+    "distance": 160230.078125,
+    "measure_seconds": 3,
+    "min_frames": 30,
+    "models": [
+      {
+        "groups": 65,
+        "path": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+        "triangles": 1054542,
+        "vertices": 547469
+      }
+    ],
+    "near_plane": 0.10000000149011612,
+    "output": "D:\\woby\\build\\render-fps-debug-check\\uploads_files_2720101_BusGameMap-1",
+    "renderer": "Direct3D 11",
+    "scenarios": [
+      {
+        "name": "points4",
+        "solid": false,
+        "vertices": true
+      },
+      {
+        "name": "points_hover_move",
+        "pointer": "sweep",
+        "solid": false,
+        "vertices": true
+      },
+      {
+        "name": "solid_fit"
+      },
+      {
+        "inspector": true,
+        "name": "solid_selected",
+        "selected": true
+      }
+    ],
+    "vendor_id": 4318,
+    "warmup_seconds": 1.5
+  },
+  "scenarios": [
+    {
+      "name": "points4",
+      "settings": {
+        "name": "points4",
+        "solid": false,
+        "vertices": true
+      },
+      "frames": 2971,
+      "fps": 990.3051096377086,
+      "wall_p50_ms": 0.9397,
+      "wall_p95_ms": 1.34385,
+      "wall_p99_ms": 1.6186000000000003,
+      "cpu_p50_ms": 0.7219,
+      "cpu_p95_ms": 0.9979500000000001,
+      "gpu_p50_ms": 0.755712,
+      "gpu_p95_ms": 0.765952,
+      "gpu_samples": 2635,
+      "draws": 74.0,
+      "width": 1280.0,
+      "height": 720.0,
+      "stages": {
+        "events": 0.0334,
+        "pending_io": 0.0149,
+        "state_update": 0.0068,
+        "imgui_build": 0.1271,
+        "scene_state": 0.2287,
+        "view_setup": 0.0229,
+        "hover_pick": 0.0164,
+        "submit_scene": 0.228,
+        "submit_helpers": 0.009,
+        "imgui_render": 0.0298,
+        "bgfx_frame": 0.1951,
+        "render_cpu_ms": 0.7415
+      }
+    },
+    {
+      "name": "points_hover_move",
+      "settings": {
+        "name": "points_hover_move",
+        "pointer": "sweep",
+        "solid": false,
+        "vertices": true
+      },
+      "frames": 30,
+      "fps": 2.541513655895977,
+      "wall_p50_ms": 391.7788,
+      "wall_p95_ms": 400.39398,
+      "wall_p99_ms": 405.854916,
+      "cpu_p50_ms": 391.72569999999996,
+      "cpu_p95_ms": 400.34243,
+      "gpu_p50_ms": 7.466495999999999,
+      "gpu_p95_ms": 8.106649599999999,
+      "gpu_samples": 14,
+      "draws": 76.0,
+      "width": 1280.0,
+      "height": 720.0,
+      "stages": {
+        "events": 0.0719,
+        "pending_io": 0.0239,
+        "state_update": 0.0099,
+        "imgui_build": 0.17149999999999999,
+        "scene_state": 0.2382,
+        "view_setup": 0.0289,
+        "hover_pick": 390.81935,
+        "submit_scene": 0.25345,
+        "submit_helpers": 0.0674,
+        "imgui_render": 0.0513,
+        "bgfx_frame": 0.0303,
+        "render_cpu_ms": 0.9031
+      }
+    },
+    {
+      "name": "solid_fit",
+      "settings": {
+        "name": "solid_fit"
+      },
+      "frames": 3263,
+      "fps": 1087.565668068292,
+      "wall_p50_ms": 0.8455,
+      "wall_p95_ms": 1.337369999999999,
+      "wall_p99_ms": 1.549304,
+      "cpu_p50_ms": 0.6902,
+      "cpu_p95_ms": 0.9589599999999995,
+      "gpu_p50_ms": 0.198656,
+      "gpu_p95_ms": 0.208896,
+      "gpu_samples": 3243,
+      "draws": 74.0,
+      "width": 1280.0,
+      "height": 720.0,
+      "stages": {
+        "events": 0.03,
+        "pending_io": 0.0141,
+        "state_update": 0.0066,
+        "imgui_build": 0.1232,
+        "scene_state": 0.2284,
+        "view_setup": 0.0225,
+        "hover_pick": 0.0158,
+        "submit_scene": 0.2025,
+        "submit_helpers": 0.0089,
+        "imgui_render": 0.0287,
+        "bgfx_frame": 0.1427,
+        "render_cpu_ms": 0.658
+      }
+    },
+    {
+      "name": "solid_selected",
+      "settings": {
+        "inspector": true,
+        "name": "solid_selected",
+        "selected": true
+      },
+      "frames": 951,
+      "fps": 316.9110008272676,
+      "wall_p50_ms": 3.1151,
+      "wall_p95_ms": 3.3798,
+      "wall_p99_ms": 3.85445,
+      "cpu_p50_ms": 3.0733,
+      "cpu_p95_ms": 3.33745,
+      "gpu_p50_ms": 0.55296,
+      "gpu_p95_ms": 0.607232,
+      "gpu_samples": 935,
+      "draws": 79.0,
+      "width": 1280.0,
+      "height": 720.0,
+      "stages": {
+        "events": 0.0352,
+        "pending_io": 0.0151,
+        "state_update": 0.007,
+        "imgui_build": 1.8541,
+        "scene_state": 0.2317,
+        "view_setup": 0.029,
+        "hover_pick": 0.0204,
+        "submit_scene": 0.2045,
+        "submit_helpers": 0.6133,
+        "imgui_render": 0.0471,
+        "bgfx_frame": 0.024,
+        "render_cpu_ms": 0.7677
+      }
+    }
+  ],
+  "model": "uploads_files_2720101_BusGameMap.obj",
+  "round": 1,
+  "process_seconds": 39.55595529999118
+}

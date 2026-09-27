@@ -1,0 +1,497 @@
+[
+  {
+    "model": "20190810_BearTrap_Ground_Model.obj",
+    "round": 1,
+    "metadata": {
+      "build_ms": 22466.9694,
+      "clusters": 262144,
+      "cpu_index_bytes": 188470676,
+      "gpu_extra_bytes": 170451452,
+      "nodes": 524287,
+      "points": 38414391,
+      "skipped_requests": 0
+    },
+    "scenarios": [
+      {
+        "name": "fit_gpu_cluster",
+        "settings": {
+          "case": "fit",
+          "name": "fit_gpu_cluster",
+          "picker": "gpu_cluster",
+          "pointer": "sweep",
+          "solid": false,
+          "vertices": true
+        },
+        "frames": 30,
+        "fps": 9.486685863291735,
+        "wall_p50_ms": 105.46665,
+        "wall_p95_ms": 106.01375999999999,
+        "wall_p99_ms": 107.36601900000001,
+        "cpu_p50_ms": 0.17150000000000176,
+        "cpu_p95_ms": 0.2608649999999975,
+        "gpu_p50_ms": 105.30591999999999,
+        "gpu_p95_ms": 106.5441776,
+        "gpu_samples": 14,
+        "draws": 10.0,
+        "width": 1280.0,
+        "height": 720.0,
+        "stages": {
+          "events": 0.01935,
+          "pending_io": 0.0071,
+          "state_update": 0.0059,
+          "imgui_build": 0.07665,
+          "scene_state": 0.0046,
+          "view_setup": 0.01,
+          "hover_pick": 0.0218,
+          "submit_scene": 0.0034,
+          "submit_helpers": 0.0033499999999999997,
+          "imgui_render": 0.009,
+          "bgfx_frame": 105.2375,
+          "render_cpu_ms": 0.1343
+        },
+        "query_cpu_ms": {
+          "n": 30,
+          "p50": 0.015449999999999998,
+          "p95": 0.021729999999999996,
+          "max": 0.0232
+        },
+        "cpu_hit_queries": 0,
+        "cpu_queries": 0,
+        "cpu_hit_ms": null,
+        "points_tested": {
+          "n": 30,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "nodes_tested": {
+          "n": 30,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "latency_ms": {
+          "n": 22,
+          "p50": 632.0035499999999,
+          "p95": 635.099975,
+          "max": 635.2236
+        },
+        "latency_frames": {
+          "n": 22,
+          "p50": 6.0,
+          "p95": 6.0,
+          "max": 6
+        },
+        "picking_gpu_ms": {
+          "n": 14,
+          "p50": 1.4878719999999999,
+          "p95": 1.5062015999999998,
+          "max": 1.51552
+        },
+        "validation": {
+          "queries": 0,
+          "exact_rank_matches": 0,
+          "hit_presence_matches": 0,
+          "max_depth_error": 0
+        }
+      }
+    ],
+    "gpu_culling_validation": []
+  },
+  {
+    "model": "bennu_OLA_v21_PTM_very-high.obj",
+    "round": 1,
+    "metadata": {
+      "build_ms": 9295.1821,
+      "clusters": 65536,
+      "cpu_index_bytes": 43830204,
+      "gpu_extra_bytes": 39932784,
+      "nodes": 131071,
+      "points": 8933524,
+      "skipped_requests": 0
+    },
+    "scenarios": [
+      {
+        "name": "fit_gpu_cluster",
+        "settings": {
+          "case": "fit",
+          "name": "fit_gpu_cluster",
+          "picker": "gpu_cluster",
+          "pointer": "sweep",
+          "solid": false,
+          "vertices": true
+        },
+        "frames": 392,
+        "fps": 130.40271852410203,
+        "wall_p50_ms": 7.6234,
+        "wall_p95_ms": 8.111134999999999,
+        "wall_p99_ms": 8.277021,
+        "cpu_p50_ms": 0.15290000000000026,
+        "cpu_p95_ms": 0.23436499999999982,
+        "gpu_p50_ms": 7.608128,
+        "gpu_p95_ms": 8.07772,
+        "gpu_samples": 376,
+        "draws": 10.0,
+        "width": 1280.0,
+        "height": 720.0,
+        "stages": {
+          "events": 0.0168,
+          "pending_io": 0.0067,
+          "state_update": 0.0054,
+          "imgui_build": 0.07205,
+          "scene_state": 0.0045,
+          "view_setup": 0.009,
+          "hover_pick": 0.0206,
+          "submit_scene": 0.0031,
+          "submit_helpers": 0.0031,
+          "imgui_render": 0.0083,
+          "bgfx_frame": 7.41875,
+          "render_cpu_ms": 0.11030000000000001
+        },
+        "query_cpu_ms": {
+          "n": 392,
+          "p50": 0.0147,
+          "p95": 0.023745,
+          "max": 0.1571
+        },
+        "cpu_hit_queries": 0,
+        "cpu_queries": 0,
+        "cpu_hit_ms": null,
+        "points_tested": {
+          "n": 392,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "nodes_tested": {
+          "n": 392,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "latency_ms": {
+          "n": 384,
+          "p50": 45.870000000000005,
+          "p95": 46.529055,
+          "max": 47.0541
+        },
+        "latency_frames": {
+          "n": 384,
+          "p50": 6.0,
+          "p95": 6.0,
+          "max": 6
+        },
+        "picking_gpu_ms": {
+          "n": 376,
+          "p50": 0.42598400000000003,
+          "p95": 0.48870399999999997,
+          "max": 0.867328
+        },
+        "validation": {
+          "queries": 0,
+          "exact_rank_matches": 0,
+          "hit_presence_matches": 0,
+          "max_depth_error": 0
+        }
+      }
+    ],
+    "gpu_culling_validation": []
+  },
+  {
+    "model": "powerplant.obj",
+    "round": 1,
+    "metadata": {
+      "build_ms": 4603.0779,
+      "clusters": 59008,
+      "cpu_index_bytes": 53743756,
+      "gpu_extra_bytes": 47597884,
+      "nodes": 117995,
+      "points": 10953627,
+      "skipped_requests": 0
+    },
+    "scenarios": [
+      {
+        "name": "fit_gpu_cluster",
+        "settings": {
+          "case": "fit",
+          "name": "fit_gpu_cluster",
+          "picker": "gpu_cluster",
+          "pointer": "sweep",
+          "solid": false,
+          "vertices": true
+        },
+        "frames": 83,
+        "fps": 27.425433468062703,
+        "wall_p50_ms": 36.4627,
+        "wall_p95_ms": 36.90788,
+        "wall_p99_ms": 37.106586,
+        "cpu_p50_ms": 0.1957000000000022,
+        "cpu_p95_ms": 0.3368199999999987,
+        "gpu_p50_ms": 36.484064,
+        "gpu_p95_ms": 36.769216,
+        "gpu_samples": 67,
+        "draws": 30.0,
+        "width": 1280.0,
+        "height": 720.0,
+        "stages": {
+          "events": 0.018,
+          "pending_io": 0.0071,
+          "state_update": 0.0058,
+          "imgui_build": 0.0785,
+          "scene_state": 0.0111,
+          "view_setup": 0.01,
+          "hover_pick": 0.0306,
+          "submit_scene": 0.0114,
+          "submit_helpers": 0.0034,
+          "imgui_render": 0.0094,
+          "bgfx_frame": 36.2195,
+          "render_cpu_ms": 0.1253
+        },
+        "query_cpu_ms": {
+          "n": 83,
+          "p50": 0.0245,
+          "p95": 0.038669999999999996,
+          "max": 0.0718
+        },
+        "cpu_hit_queries": 0,
+        "cpu_queries": 0,
+        "cpu_hit_ms": null,
+        "points_tested": {
+          "n": 83,
+          "p50": 0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "nodes_tested": {
+          "n": 83,
+          "p50": 0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "latency_ms": {
+          "n": 75,
+          "p50": 218.4851,
+          "p95": 219.60156999999998,
+          "max": 219.9303
+        },
+        "latency_frames": {
+          "n": 75,
+          "p50": 6,
+          "p95": 6.0,
+          "max": 6
+        },
+        "picking_gpu_ms": {
+          "n": 67,
+          "p50": 0.429056,
+          "p95": 0.4468736,
+          "max": 0.838656
+        },
+        "validation": {
+          "queries": 0,
+          "exact_rank_matches": 0,
+          "hit_presence_matches": 0,
+          "max_depth_error": 0
+        }
+      }
+    ],
+    "gpu_culling_validation": []
+  },
+  {
+    "model": "san-miguel.obj",
+    "round": 1,
+    "metadata": {
+      "build_ms": 1798.5602,
+      "clusters": 51095,
+      "cpu_index_bytes": 44527652,
+      "gpu_extra_bytes": 39677332,
+      "nodes": 99987,
+      "points": 9021669,
+      "skipped_requests": 0
+    },
+    "scenarios": [
+      {
+        "name": "fit_gpu_cluster",
+        "settings": {
+          "case": "fit",
+          "name": "fit_gpu_cluster",
+          "picker": "gpu_cluster",
+          "pointer": "sweep",
+          "solid": false,
+          "vertices": true
+        },
+        "frames": 122,
+        "fps": 40.38614450692159,
+        "wall_p50_ms": 24.74515,
+        "wall_p95_ms": 25.46806,
+        "wall_p99_ms": 25.792026,
+        "cpu_p50_ms": 3.9681500000000014,
+        "cpu_p95_ms": 4.62027,
+        "gpu_p50_ms": 24.582624,
+        "gpu_p95_ms": 25.352559999999997,
+        "gpu_samples": 106,
+        "draws": 2212.0,
+        "width": 1280.0,
+        "height": 720.0,
+        "stages": {
+          "events": 0.0218,
+          "pending_io": 0.0083,
+          "state_update": 0.0067,
+          "imgui_build": 0.103,
+          "scene_state": 0.9741,
+          "view_setup": 0.0347,
+          "hover_pick": 1.4399000000000002,
+          "submit_scene": 1.34775,
+          "submit_helpers": 0.0083,
+          "imgui_render": 0.0184,
+          "bgfx_frame": 20.699399999999997,
+          "render_cpu_ms": 1.80475
+        },
+        "query_cpu_ms": {
+          "n": 122,
+          "p50": 1.4273500000000001,
+          "p95": 1.7679899999999993,
+          "max": 2.3053
+        },
+        "cpu_hit_queries": 0,
+        "cpu_queries": 0,
+        "cpu_hit_ms": null,
+        "points_tested": {
+          "n": 122,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "nodes_tested": {
+          "n": 122,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "latency_ms": {
+          "n": 114,
+          "p50": 146.44995,
+          "p95": 148.28043499999998,
+          "max": 148.9325
+        },
+        "latency_frames": {
+          "n": 114,
+          "p50": 6.0,
+          "p95": 6.0,
+          "max": 6
+        },
+        "picking_gpu_ms": {
+          "n": 106,
+          "p50": 0.411648,
+          "p95": 0.421376,
+          "max": 0.8448
+        },
+        "validation": {
+          "queries": 0,
+          "exact_rank_matches": 0,
+          "hit_presence_matches": 0,
+          "max_depth_error": 0
+        }
+      }
+    ],
+    "gpu_culling_validation": []
+  },
+  {
+    "model": "uploads_files_2720101_BusGameMap.obj",
+    "round": 1,
+    "metadata": {
+      "build_ms": 193.5314,
+      "clusters": 2638,
+      "cpu_index_bytes": 2693924,
+      "gpu_extra_bytes": 2368388,
+      "nodes": 5211,
+      "points": 547469,
+      "skipped_requests": 0
+    },
+    "scenarios": [
+      {
+        "name": "fit_gpu_cluster",
+        "settings": {
+          "case": "fit",
+          "name": "fit_gpu_cluster",
+          "picker": "gpu_cluster",
+          "pointer": "sweep",
+          "solid": false,
+          "vertices": true
+        },
+        "frames": 3080,
+        "fps": 1026.6489056405992,
+        "wall_p50_ms": 0.89035,
+        "wall_p95_ms": 1.769064999999999,
+        "wall_p99_ms": 2.249361,
+        "cpu_p50_ms": 0.24025000000000002,
+        "cpu_p95_ms": 0.408925,
+        "gpu_p50_ms": 0.820128,
+        "gpu_p95_ms": 0.835584,
+        "gpu_samples": 2430,
+        "draws": 74.0,
+        "width": 1280.0,
+        "height": 720.0,
+        "stages": {
+          "events": 0.0108,
+          "pending_io": 0.0043,
+          "state_update": 0.0038,
+          "imgui_build": 0.0666,
+          "scene_state": 0.0309,
+          "view_setup": 0.0089,
+          "hover_pick": 0.0603,
+          "submit_scene": 0.0407,
+          "submit_helpers": 0.0031,
+          "imgui_render": 0.0089,
+          "bgfx_frame": 0.63455,
+          "render_cpu_ms": 0.1604
+        },
+        "query_cpu_ms": {
+          "n": 3080,
+          "p50": 0.0533,
+          "p95": 0.06410499999999998,
+          "max": 0.5695
+        },
+        "cpu_hit_queries": 0,
+        "cpu_queries": 0,
+        "cpu_hit_ms": null,
+        "points_tested": {
+          "n": 3080,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "nodes_tested": {
+          "n": 3080,
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0
+        },
+        "latency_ms": {
+          "n": 3072,
+          "p50": 5.63635,
+          "p95": 6.533835,
+          "max": 9.0708
+        },
+        "latency_frames": {
+          "n": 3072,
+          "p50": 6.0,
+          "p95": 6.0,
+          "max": 6
+        },
+        "picking_gpu_ms": {
+          "n": 2487,
+          "p50": 0.048128000000000004,
+          "p95": 0.057344,
+          "max": 0.335872
+        },
+        "validation": {
+          "queries": 0,
+          "exact_rank_matches": 0,
+          "hit_presence_matches": 0,
+          "max_depth_error": 0
+        }
+      }
+    ],
+    "gpu_culling_validation": []
+  }
+]

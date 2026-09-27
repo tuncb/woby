@@ -1,0 +1,96 @@
+{
+  "date": "2026-09-27",
+  "commit": "51933cf87d59257bc5f822f8e68cb95712b1434f",
+  "worktree": "D:\\.worktree\\woby-hover-picking",
+  "hardware": {
+    "cpu": "AMD Ryzen 7 5800H",
+    "physical_cores": 8,
+    "logical_processors": 16,
+    "physical_memory_bytes": 68564348928,
+    "gpu": "NVIDIA GeForce RTX 3070 Laptop GPU",
+    "gpu_memory_mib": 8192,
+    "driver": "546.30"
+  },
+  "renderer": "Direct3D 11",
+  "bgfx_package_records": [
+    "Package: bgfx\nVersion: 1.129.8940-496\nPort-Version: 1\nDepends: libsquish, lodepng, mgnlibs, miniz, stb, tinyexr, vcpkg-cmake, vcpkg-cmake-config\nArchitecture: x64-windows\nMulti-Arch: same\nMaintainer: Sandy Carter <bwrsandman@users.noreply.github.com>\nAbi: 6faa072e0cbad63d22f7337d448fbbcc5b556bd28d0d09c2ef70bc6647bf00a9\nDescription: Cross-platform, graphics API agnostic, Bring Your Own Engine/Framework style rendering library.\nDefault-Features: multithreaded\nStatus: install ok installed",
+    "Package: bgfx\nFeature: multithreaded\nArchitecture: x64-windows\nMulti-Arch: same\nDescription: Encode and render on different threads\nStatus: install ok installed",
+    "Package: bgfx\nFeature: tools\nDepends: cgltf, glslang, meshoptimizer, spirv-cross, spirv-tools\nArchitecture: x64-windows\nMulti-Arch: same\nDescription: Shader, Texture and Geometry compilers for bgfx.\nStatus: install ok installed"
+  ],
+  "model_files": [
+    {
+      "path": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "bytes": 7108991827
+    },
+    {
+      "path": "D:\\temp\\obj_tests\\bennu_OLA_v21_PTM_very-high.obj",
+      "bytes": 815866103
+    },
+    {
+      "path": "D:\\temp\\obj_tests\\powerplant.obj",
+      "bytes": 817891724
+    },
+    {
+      "path": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "bytes": 1143041382
+    },
+    {
+      "path": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "bytes": 75585857
+    }
+  ],
+  "research_sha256": {
+    "tests\\hover_experiment\\adapter.h": "c51e909667d9b2eb93b0dae500c16f721791f05d7b0a5696535436770aea8511",
+    "tests\\hover_experiment\\candidates.sc": "b1392ffe21c25018fb923b3b7856b7bd7fd1ecf3ba5995ad06bea7c0c1042eda",
+    "tests\\hover_experiment\\check_validation.py": "69fc948d7d3f60fc6105d7d743e215ff9fe00fec99eadb9a33830757c0d5b108",
+    "tests\\hover_experiment\\index_tests.cpp": "392f84c72dc9831b09bcab4171262d54f09074116c6186f83e1bd208b7f2c6f9",
+    "tests\\hover_experiment\\instrument.py": "92ec6582aa62754a6720a836d092017551042fbd271213078db85a272775211b",
+    "tests\\hover_experiment\\plot.py": "558828bab6515526c0175431245461272c4354ee9cb8141fd44f0b921c57a44a",
+    "tests\\hover_experiment\\point_index.h": "576e6ae7a71717d9c3b03a5afdcc5fbddfde8c09e37fe14573230bcdcb7c5ac1",
+    "tests\\hover_experiment\\README.md": "93ce38a610eee9960bec50abb44698006c06cebc43015947add93f5ab049f65e",
+    "tests\\hover_experiment\\reduce.sc": "3b50feabc7612f294d73ae63c58109bd6881d12c895f9515f682c7fc415fcfb6",
+    "tests\\hover_experiment\\report.py": "0f2331c9653a54cacc70313e93020eb237d0953d2f14ab1d7d9e411c3d6b1bc1",
+    "tests\\hover_experiment\\run.py": "1b64292f8a1dc83e4da3f9e7c8c9e4347fcced3812aafca37d604ac62be7a156",
+    "tests\\hover_experiment\\summarize.py": "2ac58e181e5fa95692f88d5755f88e5df7e79b6d12b09d315d5579f41e88fddc",
+    "tests\\hover_experiment\\test_analysis.py": "441e4266fcb85db8d292c62b0df537a2c3219ad1455296e46f1db8ff9c9a8147",
+    "tests\\render_fps\\probe.h": "9d07d8c788ed056205ef6b57b8bc36f487687199fac4fbb2044ce88d721c269f",
+    "tests\\render_fps\\instrument.py": "23761ce0a8997a13f9db1b4a27e671ecd9823ddceb64dc01fcb8b676cdaee988",
+    "tests\\render_fps\\run.py": "a89140498d05e8a7e7699d16aa39f19bd8079f82736c7f2a134ae607666377a5"
+  },
+  "compiled_source_sha256": {
+    "CMakeLists.txt": "ea0b849b2ca31602a776ba9bc26e026af79627f46bb996c85a744ba02131759d",
+    "src\\main.cpp": "2dd9c13147609d39844a83ccc86774d243ef69739eca4f66b38f42feaae6e62d",
+    "src\\point_index.h": "576e6ae7a71717d9c3b03a5afdcc5fbddfde8c09e37fe14573230bcdcb7c5ac1",
+    "src\\hover_experiment.h": "c51e909667d9b2eb93b0dae500c16f721791f05d7b0a5696535436770aea8511",
+    "src\\render_fps_probe.h": "c04029e83e9dd81083d35f4af0228776ad7728ae95d2dbc54ca0a7a1b9a2eb2d",
+    "src\\candidates.sc": "b1392ffe21c25018fb923b3b7856b7bd7fd1ecf3ba5995ad06bea7c0c1042eda",
+    "src\\reduce.sc": "3b50feabc7612f294d73ae63c58109bd6881d12c895f9515f682c7fc415fcfb6",
+    "src\\index_tests.cpp": "392f84c72dc9831b09bcab4171262d54f09074116c6186f83e1bd208b7f2c6f9"
+  },
+  "release_binary_sha256": "9f548f4d88fe4c8cb6e69408e6111b8e70b724a14680da1453ff5d8ae40c0119",
+  "shader_sha256": {
+    "cs_hover_candidates.bin": "6a349b458fab06c4f21327d6de18ed208d5a68aad13160132479bb1a80a48de9",
+    "cs_hover_reduce.bin": "33e2a8bb2503cefa8a7ac38ed39f22f31cd2296c18d457763602040aee1b6e1d"
+  },
+  "tests": {
+    "ctest_passed": 638,
+    "index_test_cases": 4,
+    "index_assertions": 1558,
+    "new_python_analysis_tests": 3,
+    "reused_python_analysis_tests": 4
+  },
+  "timing": {
+    "processes": 15,
+    "scenarios_excluding_prime": 305,
+    "measured_frames": 206053,
+    "core_rounds": 2,
+    "extra_rounds": 1
+  },
+  "raw_directories": [
+    "build/hover-core",
+    "build/hover-extra",
+    "build/hover-qa"
+  ],
+  "verification_logs": "D:\\woby\\build\\hover-verification",
+  "reproduction_source_files_verified": 8
+}

@@ -1,3 +1,4 @@
+#include "marker_pick.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
 #include "comparison_legend.h"
@@ -1843,7 +1844,7 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
 
 static void submitComparisonScene(bgfx::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,
                            const ComparisonRuntimes& runtimes,
-                           bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, const ComparisonSettings& settings)
+                           bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, const ComparisonSettings& settings, bgfx::ProgramHandle markerProgram)
 {
     if (!comparison.settings.enabled || !runtime.ready) { return; }
     const bool useOriginal = originalActive(settings);
@@ -1864,9 +1865,9 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
     {
         bgfx::setIndexBuffer(gpu.triangles);
     }
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LEQUAL |
-                   BGFX_STATE_MSAA);
-    bgfx::submit(view, runtimes.program);
+    setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LEQUAL |
+                   BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
+    bgfx::submit(view, bgfx::isValid(markerProgram) ? markerProgram : runtimes.program);
     if (settings.showEdges)
     {
         submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false, identity);
@@ -1880,7 +1881,7 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
             const std::array<float, 4> red = {1, .2f, .15f, .45f};
             bgfx::setTransform(identity); bgfx::setVertexBuffer(0, gpu.intersectionFill);
             bgfx::setUniform(colorUniform, red.data());
-            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA);
+            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
             bgfx::submit(view, colorProgram);
         }
         submitEdges(view, gpu.intersectionEdges, colorProgram, colorUniform, {1, .2f, .15f, 1}, identity);
@@ -1890,7 +1891,7 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
             const std::array<float, 4> purple = {.8f, .25f, 1, .45f};
             bgfx::setTransform(identity); bgfx::setVertexBuffer(0, gpu.degenerateFill);
             bgfx::setUniform(colorUniform, purple.data());
-            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA);
+            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
             bgfx::submit(view, colorProgram);
         }
         submitEdges(view, gpu.degenerateEdges, colorProgram, colorUniform, {.8f, .25f, 1, 1}, identity);
@@ -1900,7 +1901,7 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
             const std::array<float, 4> orange = {1, .45f, .08f, .4f};
             bgfx::setTransform(identity); bgfx::setVertexBuffer(0, gpu.duplicateTriangleFill);
             bgfx::setUniform(colorUniform, orange.data());
-            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA);
+            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
             bgfx::submit(view, colorProgram);
         }
         submitEdges(view, gpu.duplicateTriangleEdges, colorProgram, colorUniform, {1, .45f, .08f, 1}, identity);
@@ -1924,7 +1925,7 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
             const float color[] = {.2f, .9f, .65f, .35f};
             bgfx::setTransform(identity); bgfx::setUniform(colorUniform, color);
             bgfx::setVertexBuffer(0, gpu.finFill);
-            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_BLEND_ALPHA);
+            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_BLEND_ALPHA, bgfx::isValid(markerProgram));
             bgfx::submit(view, colorProgram);
         }
         submitEdges(view, gpu.finEdges, colorProgram, colorUniform, {.2f, .9f, .65f, 1}, identity);
@@ -1950,7 +1951,7 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
 }
 
 void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
-    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch)
+    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch, bgfx::ProgramHandle markerProgram)
 {
     for (const auto& comparison : state.comparisons) {
         const auto it = runtimes.objects.find(comparison.objectId);
@@ -1959,7 +1960,7 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
             if (it->second.resultSignature != comparisonGeometrySignature(state, comparison.objectId)) {
                 settings.duplicates.showPoints = false; settings.duplicates.showTriangles = false;
             }
-            submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform, settings);
+            submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform, settings, markerProgram);
         }
     }
     // Submit focus last so surfaces and other diagnostic edges cannot obscure it.
