@@ -2,6 +2,12 @@
 
 Measured on 28 September 2026. The migration improves edge overlays on the four large models by 15–20%, but vertex overlays regress by 26–34%. Solid rendering of the largest model is close: 60.5 FPS on main versus 59.0 FPS after migration. Lighter solid scenes also lose some presented FPS; the empty-scene control suggests investigating presentation/frame pacing separately from geometry rendering.
 
+The [follow-up investigation](nographicsapi-renderer-investigation.md) isolates
+the vertex cost to per-sample fragment shading and examines FIFO presentation
+waits with controlled shader experiments and PresentMon traces. Its adopted
+pixel-coverage follow-up includes updated FPS results; the tables below retain
+the initial migration's measurements.
+
 ## Builds and machine
 
 - Main baseline: `97886f5fa86f09256b95237016fbbd3315670a73` (`97886f5`, Share indexed comparison vertices and separate mesh limits), the common ancestor from which the current work branched. Main has advanced since that revision.

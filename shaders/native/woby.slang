@@ -11,7 +11,9 @@ float4 clipPosition(float4 value) {
 struct VertexOutput {
     float4 position : SV_Position;
     float3 normal : NORMAL;
-    sample float2 uv : TEXCOORD0;
+    // Match the original renderer: shade circular coverage once per pixel.
+    // MSAA still handles geometry/depth coverage and individual picking samples.
+    float2 uv : TEXCOORD0;
     nointerpolation uint id : TEXCOORD1;
     float4 color : COLOR0;
 };

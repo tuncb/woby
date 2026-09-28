@@ -31,6 +31,12 @@ upload cancellation, resize, and asynchronous readback use the same timeline.
   separate, unblended, and unresolved; compute picking reads individual samples.
 - Selection highlights, desktop presentation, headless rendering, and PNG export.
 
+Circular vertex markers use the original renderer's pixel-rate cutout in both
+ordinary drawing and the picking shader. Four-sample MSAA still handles geometry
+and depth coverage; the circle itself is evaluated once per pixel. This restores
+the earlier performance/appearance tradeoff, as requested after the
+[rendering investigation](nographicsapi-renderer-investigation.md).
+
 NoGraphicsAPI is pinned to `ae017a2f545abc0847e546cc7e84139bf3cc4241` with an
 archive checksum. `cmake/PatchNoGraphicsAPI.cmake` extends that private dependency
 copy with MSAA, line/strip topology, color resolves, and SDL Vulkan surface
