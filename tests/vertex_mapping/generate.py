@@ -1,6 +1,7 @@
 """Generate instrumented production copies, failing on stale anchors."""
 from pathlib import Path
 import sys
+from diagnostics import instrument, split_gather
 
 root, output = map(Path, sys.argv[1:])
 output.mkdir(parents=True, exist_ok=True)
@@ -11,7 +12,7 @@ def replace(text, old, new):
     return text.replace(old, new)
 
 
-for mode in ("baseline", "hybrid", "adaptive"):
+for mode in ("baseline", "hybrid", "adaptive", "diagnostic", "split1", "split8"):
     text = (root / "src/obj_mesh.cpp").read_text()
     text = '#include "mapping_probe.h"\n#include <bit>\n' + text
     if mode == "baseline":
@@ -22,6 +23,10 @@ for mode in ("baseline", "hybrid", "adaptive"):
                        "reserveIndexTable(vertexMap, vertexCapacity);")
     elif mode == "hybrid":
         text = replace(text, "attrib.normals.empty() && attrib.texcoords.empty()", "false")
+    elif mode == "diagnostic":
+        text = instrument(text)
+    elif mode in ("split1", "split8"):
+        text = split_gather(text, int(mode[-1]))
     text = replace(text, "auto result = parseObj(path);", 'mapping_probe::start();\n    auto result = parseObj(path);\n    mapping_probe::mark("parse_ms");')
     text = replace(text, "const auto& attrib = result.attributes;", 'mapping_probe::mark("triangulate_ms");\n    const auto& attrib = result.attributes;')
     text = replace(text, "VertexIndexTable vertexMap;", 'mapping_probe::mark("source_copy_ms");\n    VertexIndexTable vertexMap;')
@@ -39,6 +44,8 @@ for mode in ("baseline", "hybrid", "adaptive"):
     mapping_probe::stats["secondary_entries"] = vertexMap.secondaryCount;
     mapping_probe::stats["direct"] = vertexMap.direct;
 '''
+    if mode == "diagnostic":
+        metadata += '\n    mapping_probe::stats["diagnostics"] = mapping_probe::diagnosticJson();\n'
     text = replace(text, "    mesh.sourceData = std::move(source);", metadata + "    mesh.sourceData = std::move(source);")
     text = replace(text, "    return mesh;", '''
     mapping_probe::mark("metadata_and_finalize_ms");

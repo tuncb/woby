@@ -1,0 +1,71 @@
+MSVC 14.51.36231, x64 Release /O2 /Ob2, 2026-09-28.
+Excerpts from loadObjMesh in the actual compiled object files.
+Generated with dumpbin /DISASM:NOBYTES. Offsets are relative to the function.
+These demonstrate instruction selection/inlining, not retired-instruction counts.
+The production object is build/vs2026-vcpkg/woby.dir/Release/obj_mesh.obj.
+The split objects are build/vs2026-vcpkg/woby_mapping_split{1,8}.dir/Release/obj_split{1,8}.obj.
+Production source commit: 4cfcb11b0b62894316204f8b7bf306a7c059efe1.
+
+Production Release: scalar position/UV gathers, then two 128-bit vertex-copy chunks
+?loadObjMesh@woby@@YA?AUMesh@1@AEBVpath@filesystem@std@@AEBV?$function@$$A6AXAEBUModelLoadProgress@woby@@@Z@5@@Z (struct woby::Mesh __cdecl woby::loadObjMesh(class std::filesystem::path const &,class std::function<void __cdecl(struct woby::ModelLoadProgress const &)> const &)):
+  ... offsets 098A-09A5 ...
+  000000000000098A: movss       xmm0,dword ptr [rax+rcx*4]
+  000000000000098F: movss       dword ptr [rbp+48h],xmm0
+  0000000000000994: movss       xmm1,dword ptr [rax+rcx*4+4]
+  000000000000099A: movss       dword ptr [rbp+4Ch],xmm1
+  000000000000099F: movss       xmm0,dword ptr [rax+rcx*4+8]
+  00000000000009A5: movss       dword ptr [rbp+50h],xmm0
+  ... offsets 09EF-0A02 ...
+  00000000000009EF: movss       xmm0,dword ptr [rax+rcx*8]
+  00000000000009F4: movss       dword ptr [rbp+60h],xmm0
+  00000000000009F9: movaps      xmm1,xmm6
+  00000000000009FC: subss       xmm1,dword ptr [rax+rcx*8+4]
+  0000000000000A02: movss       dword ptr [rbp+64h],xmm1
+  ... offsets 0A12-0A1E ...
+  0000000000000A12: movups      xmm0,xmmword ptr [rbp+48h]
+  0000000000000A16: movups      xmmword ptr [r14],xmm0
+  0000000000000A1A: movups      xmm1,xmmword ptr [rbp+58h]
+  0000000000000A1E: movups      xmmword ptr [r14+10h],xmm1
+
+split1 Release: inlined source-position size check and source-index append
+?loadObjMesh@woby@@YA?AUMesh@1@AEBVpath@filesystem@std@@AEBV?$function@$$A6AXAEBUModelLoadProgress@woby@@@Z@5@@Z (struct woby::Mesh __cdecl woby::loadObjMesh(class std::filesystem::path const &,class std::function<void __cdecl(struct woby::ModelLoadProgress const &)> const &)):
+  ... offsets 0429-0473 ...
+  0000000000000429: movsxd      r8,dword ptr [r13]
+  000000000000042D: mov         dword ptr [rsp+48h],r8d
+  0000000000000432: test        r8d,r8d
+  0000000000000435: js          0000000000001A1C
+  000000000000043B: mov         rcx,qword ptr [r15+8]
+  000000000000043F: sub         rcx,qword ptr [r15]
+  0000000000000442: mov         rax,r11
+  0000000000000445: imul        rcx
+  0000000000000448: sar         rdx,1
+  000000000000044B: mov         rax,rdx
+  000000000000044E: shr         rax,3Fh
+  0000000000000452: add         rdx,rax
+  0000000000000455: cmp         r8,rdx
+  0000000000000458: jae         0000000000001A1C
+  000000000000045E: mov         r14,qword ptr [rsi+28h]
+  0000000000000462: mov         rcx,qword ptr [rsi+30h]
+  0000000000000466: cmp         r14,rcx
+  0000000000000469: je          0000000000000478
+  000000000000046B: mov         dword ptr [r14],r8d
+  000000000000046E: add         qword ptr [rsi+28h],4
+  0000000000000473: jmp         0000000000000579
+
+split8 Release: out-of-line size and source-index push_back calls
+?loadObjMesh@woby@@YA?AUMesh@1@AEBVpath@filesystem@std@@AEBV?$function@$$A6AXAEBUModelLoadProgress@woby@@@Z@5@@Z (struct woby::Mesh __cdecl woby::loadObjMesh(class std::filesystem::path const &,class std::function<void __cdecl(struct woby::ModelLoadProgress const &)> const &)):
+  ... offsets 03E1-0413 ...
+  00000000000003E1: movsxd      rsi,dword ptr [rbx]
+  00000000000003E4: test        esi,esi
+  00000000000003E6: js          00000000000012D4
+  00000000000003EC: mov         rcx,qword ptr [rbp-80h]
+  00000000000003F0: add         rcx,8
+  00000000000003F4: call        ?size@?$vector@V?$array@M$02@std@@V?$allocator@V?$array@M$02@std@@@2@@std@@QEBA_KXZ
+  00000000000003F9: cmp         rsi,rax
+  00000000000003FC: jae         00000000000012D4
+  0000000000000402: mov         dword ptr [rsp+70h],esi
+  0000000000000406: lea         rdx,[rsp+70h]
+  000000000000040B: mov         rcx,qword ptr [rbp-80h]
+  000000000000040F: add         rcx,20h
+  0000000000000413: call        ?push_back@?$vector@IV?$allocator@I@std@@@std@@QEAAX$$QEAI@Z
+

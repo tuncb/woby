@@ -16,9 +16,11 @@ using PickPoint = std::array<float, 2>;
 struct ScenePointerGesture {
     bool active = false, dragging = false, alt = false, toggle = false;
     PickPoint start{};
+    // Latch at press time: becoming ready during a press must not replay a click.
+    bool selectionEnabled = true;
 };
 struct SceneClick { PickPoint position{}; bool toggle = false; };
-void beginScenePointer(ScenePointerGesture& gesture, PickPoint point, bool alt, bool toggle);
+void beginScenePointer(ScenePointerGesture& gesture, PickPoint point, bool alt, bool toggle, bool selectionEnabled = true);
 bool moveScenePointer(ScenePointerGesture& gesture, PickPoint point);
 [[nodiscard]] std::optional<SceneClick> endScenePointer(
     ScenePointerGesture& gesture, PickPoint point, bool allowed);

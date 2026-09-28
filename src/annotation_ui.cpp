@@ -127,13 +127,15 @@ void submitLines(bgfx::ViewId viewId, const ScenePickView& view,
 
 void drawAnnotationTools(const UiState& state, AnnotationInteraction& interaction, bool disabled)
 {
-    ImGui::BeginDisabled(disabled || state.files.empty() || interaction.dragging);
+    const bool ready = annotationPreparationReady(state);
+    ImGui::BeginDisabled(disabled || !ready || state.files.empty() || interaction.dragging);
     for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
         if (shape == AnnotationShape::rectangle) { ImGui::SameLine(); }
         const bool active = interaction.tool == shape;
         const bool clicked = drawRenderModeIconButton(
             shape == AnnotationShape::line ? "annotation_line" : "annotation_rectangle", "",
-            shape == AnnotationShape::line ? "Surface line: drag on the model. Click again or press Escape to cancel."
+            !ready ? "Annotation tools are disabled while annotation data is being prepared."
+                : shape == AnnotationShape::line ? "Surface line: drag on the model. Click again or press Escape to cancel."
                 : "Surface rectangle: drag on the model. Click again or press Escape to cancel.",
             active ? RenderModeState::on : RenderModeState::off, false);
         const auto low = ImGui::GetItemRectMin(), high = ImGui::GetItemRectMax();
@@ -280,14 +282,7 @@ void cancelAnnotationPointer(AnnotationInteraction& interaction) { interaction =
 
 bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, const ScenePickView& view, PickPoint point)
 {
-    if ((interaction.tool || selectedAnnotation(state)) && !annotationPreparationReady(state)) {
-        interaction.waitingForPreparation = true;
-        interaction.waitingReleased = false;
-        interaction.view = view;
-        interaction.pointerStart = interaction.pointerEnd = point;
-        interaction.generation = state.sceneGeneration; interaction.revision = state.sceneEditRevision;
-        return true;
-    }
+    if (!annotationPreparationReady(state)) { return false; }
     auto parts = scenePickParts(state);
     const auto* selected = selectedAnnotation(state);
     int handle = -1;
@@ -349,7 +344,6 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
 }
 void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point)
 {
-    if (interaction.waitingForPreparation) { interaction.pointerEnd = point; return; }
     if (!interaction.dragging) { return; }
     interaction.pointerEnd = point;
     interaction.preview.geometry.segments.clear();
@@ -394,11 +388,6 @@ void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interact
 }
 void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bool allowed)
 {
-    if (interaction.waitingForPreparation) {
-        if (!allowed) { cancelAnnotationPointer(interaction); }
-        else { interaction.waitingReleased = true; }
-        return;
-    }
     if (!interaction.dragging) { return; }
     interaction.dragging = false;
     if (!allowed || state.sceneGeneration != interaction.generation || state.sceneEditRevision != interaction.revision) {
@@ -420,27 +409,10 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
         cancelAnnotationPointer(interaction);
     } catch (const std::exception& error) { interaction.error = error.what(); }
 }
-void resumeAnnotationPointer(UiState& state, AnnotationInteraction& interaction)
-{
-    if (!interaction.waitingForPreparation) { return; }
-    if (interaction.generation != state.sceneGeneration || interaction.revision != state.sceneEditRevision) {
-        cancelAnnotationPointer(interaction);
-        interaction.error = "Drawing canceled because the scene changed while preparing annotations.";
-        return;
-    }
-    if (!annotationPreparationReady(state)) { return; }
-    const auto start = interaction.pointerStart, end = interaction.pointerEnd;
-    const auto view = interaction.view;
-    const bool released = interaction.waitingReleased;
-    interaction.waitingForPreparation = false;
-    if (beginAnnotationPointer(state, interaction, view, start)) {
-        moveAnnotationPointer(state, interaction, end);
-        if (released) { endAnnotationPointer(state, interaction, true); }
-    }
-}
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
     const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed, float windowY)
 {
+    pointerAllowed = pointerAllowed && annotationPreparationReady(state);
     auto* draw = ImGui::GetForegroundDrawList();
     const ImVec2 low{windowX, windowY}, high{windowX + static_cast<float>(view.width) * pixelsToWindow, windowY + static_cast<float>(view.height) * pixelsToWindow};
     draw->PushClipRect(low, high);

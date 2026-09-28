@@ -153,6 +153,10 @@ for example `$instances = .\woby.exe ctl instances --json`.
 
 ### Surface annotations
 
+Annotation tools and viewport selection are disabled while background annotation
+data is being prepared. They become available when preparation finishes; clicks
+made while disabled are ignored. Camera navigation remains available.
+
 Use the **Surface line** or **Surface rectangle** icon to the left of
 **Show dimensions**, then drag
 on a visible model surface. Selecting a file or part first restricts where the

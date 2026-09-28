@@ -5,7 +5,7 @@ endif()
 set(mapping_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/vertex_mapping")
 set(mapping_dir "${CMAKE_CURRENT_BINARY_DIR}/mapping-probe")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-    "${mapping_tests}/generate.py" "${mapping_tests}/legacy.h"
+    "${mapping_tests}/generate.py" "${mapping_tests}/legacy.h" "${mapping_tests}/diagnostics.py"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/obj_mesh.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/model_mesh.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/surface_annotation.cpp"
@@ -13,7 +13,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/scene_renderer.cpp")
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${mapping_tests}/generate.py"
     "${CMAKE_CURRENT_SOURCE_DIR}" "${mapping_dir}" COMMAND_ERROR_IS_FATAL ANY)
-foreach(mode IN ITEMS baseline hybrid adaptive)
+foreach(mode IN ITEMS baseline hybrid adaptive diagnostic split1 split8)
     set(target "woby_mapping_${mode}")
     add_executable(${target} "${mapping_tests}/main.cpp" "${mapping_dir}/obj_${mode}.cpp"
         "${mapping_dir}/model_mesh.cpp" "${mapping_dir}/point_ranges.cpp" "${mapping_dir}/annotation_cache.cpp"

@@ -550,6 +550,25 @@ TEST_CASE("annotation icon tools share the dimensions row and toggle without edi
     CHECK_FALSE(fixture.interaction.tool);
     CHECK(fixture.scene.state.sceneEditRevision == revision);
 }
+TEST_CASE("annotation tool buttons disable until geometry preparation finishes")
+{
+    AnnotationUiFixture fixture;
+    auto& mesh = fixture.scene.state.files[0].mesh;
+    const auto triangle = std::array{mesh.indices[0], mesh.indices[1], mesh.indices[2]};
+    while (mesh.indices.size() < 50000 * 3) { mesh.indices.insert(mesh.indices.end(), triangle.begin(), triangle.end()); }
+    mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
+    mesh.annotationCache.reset();
+    CHECK_FALSE(annotationMeshCacheReady(mesh));
+    fixture.click(fixture.lineButton);
+    fixture.click(fixture.rectangleButton);
+    CHECK_FALSE(fixture.interaction.tool);
+    prepareAnnotationMeshCache(mesh);
+    fixture.frame(); fixture.frame();
+    CHECK_FALSE(fixture.interaction.tool);
+    fixture.click(fixture.lineButton);
+    CHECK(fixture.interaction.tool == AnnotationShape::line);
+}
+
 TEST_CASE("annotation row eye toggles visibility and X deletes long named items with undo")
 {
     AnnotationUiFixture fixture;

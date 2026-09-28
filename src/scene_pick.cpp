@@ -205,9 +205,9 @@ void closest(std::optional<double>& best, std::optional<double> value)
 }
 } // namespace
 
-void beginScenePointer(ScenePointerGesture& gesture, PickPoint point, bool alt, bool toggle)
+void beginScenePointer(ScenePointerGesture& gesture, PickPoint point, bool alt, bool toggle, bool selectionEnabled)
 {
-    gesture = {true, false, alt, toggle, point};
+    gesture = {true, false, alt, toggle, point, selectionEnabled};
 }
 bool moveScenePointer(ScenePointerGesture& gesture, PickPoint point)
 {
@@ -218,7 +218,7 @@ bool moveScenePointer(ScenePointerGesture& gesture, PickPoint point)
 std::optional<SceneClick> endScenePointer(ScenePointerGesture& gesture, PickPoint point, bool allowed)
 {
     moveScenePointer(gesture, point);
-    const bool click = gesture.active && !gesture.dragging && !gesture.alt && allowed;
+    const bool click = gesture.active && !gesture.dragging && !gesture.alt && allowed && gesture.selectionEnabled;
     const bool toggle = gesture.toggle;
     gesture = {};
     return click ? std::optional<SceneClick>({point, toggle}) : std::nullopt;

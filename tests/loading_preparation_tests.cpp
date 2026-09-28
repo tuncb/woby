@@ -1,11 +1,13 @@
 #include "annotation_preparation.h"
 #include "annotation_ui.h"
 #include "background_load.h"
+#include "control_scene.h"
 #include "model_load.h"
 #include "surface_annotation.h"
 #include "ui_operations.h"
 
 #include <doctest/doctest.h>
+#include <nlohmann/json.hpp>
 #include <bx/math.h>
 #include <atomic>
 #include <chrono>
@@ -164,7 +166,7 @@ TEST_CASE("saved annotation target validation waits for background fingerprints"
     CHECK_FALSE(state.annotations[0].targetValid);
 }
 
-TEST_CASE("annotation gesture waits without projection and cancels stale pending input")
+TEST_CASE("annotation gestures are disabled until ready and never replay old input")
 {
     auto state = preparationScene();
     woby::ScenePickView view;
@@ -172,29 +174,58 @@ TEST_CASE("annotation gesture waits without projection and cancels stale pending
     view.width = view.height = 200;
     woby::AnnotationInteraction interaction;
     interaction.tool = woby::AnnotationShape::line;
-    CHECK(woby::beginAnnotationPointer(state, interaction, view, {80, 100}));
-    CHECK(interaction.waitingForPreparation); CHECK_FALSE(interaction.dragging);
+    CHECK_FALSE(woby::beginAnnotationPointer(state, interaction, view, {80, 100}));
+    CHECK_FALSE(interaction.dragging);
     CHECK(interaction.projection.triangles.empty());
     woby::moveAnnotationPointer(state, interaction, {120, 100});
     woby::endAnnotationPointer(state, interaction, true);
-    CHECK(interaction.waitingReleased);
-    CHECK(interaction.pointerEnd == woby::PickPoint{120, 100});
-    SUBCASE("resume when ready") {
-        woby::prepareAnnotationMeshCache(state.files[0].mesh);
-        woby::resumeAnnotationPointer(state, interaction);
-        CHECK_FALSE(interaction.waitingForPreparation);
-        CHECK_FALSE(interaction.dragging);
-        CHECK(interaction.error.empty());
-        CHECK(state.annotations.size() == 1);
+    CHECK(interaction.error.empty()); CHECK(state.annotations.empty());
+
+    woby::AnnotationPreparationRuntime runtime;
+    woby::updateAnnotationPreparation(runtime, state);
+    REQUIRE(runtime.job);
+    runtime.job->worker.join();
+    woby::updateAnnotationPreparation(runtime, state);
+    REQUIRE(woby::annotationPreparationReady(state));
+    // Publishing readiness, motion and release cannot revive the disabled press.
+    woby::moveAnnotationPointer(state, interaction, {120, 100});
+    woby::endAnnotationPointer(state, interaction, true);
+    CHECK(state.annotations.empty()); CHECK_FALSE(interaction.dragging);
+    REQUIRE(woby::beginAnnotationPointer(state, interaction, view, {80, 100}));
+    REQUIRE(interaction.dragging);
+    woby::moveAnnotationPointer(state, interaction, {120, 100});
+    woby::endAnnotationPointer(state, interaction, true);
+    CHECK(interaction.error.empty()); CHECK(state.annotations.size() == 1);
+}
+
+TEST_CASE("annotation commands reject unprepared geometry while unrelated actions stay available")
+{
+    using A = woby::ControlAction;
+    auto state = preparationScene();
+    const auto clean = woby::createSceneDocument(state);
+    woby::ControlOperation command;
+    command.action = A::annotationCreate;
+    command.objectId = state.files[0].groupSettings[0].objectId;
+    command.shape = "line"; command.start = {{-.1f, 0}}; command.end = {{.1f, 0}};
+    const auto formatId = [](woby::SceneObjectId id) { return std::to_string(id); };
+    const auto revision = state.sceneEditRevision;
+    CHECK_THROWS_WITH(woby::applyControlAnnotationOperation(state, clean, command, formatId),
+        "Annotation actions are disabled while annotation data is being prepared. Retry when annotationReady is true.");
+    CHECK(state.annotations.empty()); CHECK(state.sceneEditRevision == revision);
+    CHECK(woby::annotationControlReady(state, A::annotationList)); // Empty list needs no coordinates.
+    for (auto action : {A::annotationCreate, A::annotationMove, A::annotationReshape, A::annotationGet}) {
+        CHECK_FALSE(woby::annotationControlReady(state, action));
     }
-    SUBCASE("changed scene cancels") {
-        ++state.sceneGeneration;
-        woby::resumeAnnotationPointer(state, interaction);
-        CHECK_FALSE(interaction.waitingForPreparation);
-        CHECK_FALSE(interaction.error.empty()); CHECK(state.annotations.empty());
+    for (auto action : {A::annotationSet, A::annotationDelete, A::status, A::cameraSet}) {
+        CHECK(woby::annotationControlReady(state, action));
     }
-    SUBCASE("escape cancels") {
-        woby::cancelAnnotationPointer(interaction);
-        CHECK_FALSE(interaction.waitingForPreparation); CHECK_FALSE(interaction.tool);
+    woby::prepareAnnotationMeshCache(state.files[0].mesh);
+    for (auto action : {A::annotationCreate, A::annotationMove, A::annotationReshape, A::annotationGet}) {
+        CHECK(woby::annotationControlReady(state, action));
     }
+    CHECK(state.annotations.empty()); // Readiness does not execute the rejected command.
+    woby::UiAnnotation pending;
+    pending.targetPending = true;
+    state.annotations.push_back(pending);
+    CHECK_FALSE(woby::annotationControlReady(state, A::annotationList));
 }

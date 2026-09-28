@@ -1,4 +1,5 @@
 #include "control_scene.h"
+#include "annotation_preparation.h"
 #include "surface_annotation.h"
 #include "ui_operations.h"
 
@@ -8,6 +9,15 @@
 
 namespace woby {
 using Json = nlohmann::json;
+
+bool annotationControlReady(const UiState& state, ControlAction action)
+{
+    using A = ControlAction;
+    const bool needsPreparation = action == A::annotationCreate || action == A::annotationMove
+        || action == A::annotationReshape || action == A::annotationGet
+        || (action == A::annotationList && !state.annotations.empty());
+    return !needsPreparation || annotationPreparationReady(state);
+}
 
 Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
 {
@@ -29,6 +39,9 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
     const ControlOperation& command, const ObjectIdFormatter& formatId)
 {
     using A = ControlAction;
+    if (!annotationControlReady(state, command.action)) {
+        throw std::runtime_error("Annotation actions are disabled while annotation data is being prepared. Retry when annotationReady is true.");
+    }
     const auto objectInfo = [&](SceneObjectId id) {
         auto result = controlObjectDetails(state, id, formatId);
         result.update({{"id", formatId(id)}, {"name", findAnnotation(state, id)->settings.name}, {"kind", "annotation"}});

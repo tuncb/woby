@@ -7,8 +7,20 @@ import os
 from pathlib import Path
 import sys
 import tempfile
+import time
 
 from ctl_headless_smoke import session
+
+
+def wait_annotation_ready(ctl):
+    deadline = time.monotonic() + 15
+    while True:
+        status = ctl("status")
+        assert not status["annotationPreparationError"], status
+        if status["annotationReady"]:
+            return
+        assert time.monotonic() < deadline, status
+        time.sleep(0.025)
 
 
 def main():
@@ -31,7 +43,8 @@ def main():
             ctl("model", "add", model)
             group = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "group")
             ctl("camera", "set", "--target", 0, 0, 0, "--yaw-degrees", -60, "--pitch-degrees", 50, "--distance", 4)
-            # The adapter waits/resumes if the worker is still preparing; no timing assertion.
+            # Clients explicitly wait for readiness; disabled commands are not queued.
+            wait_annotation_ready(ctl)
             created = ctl("annotation", "create", group, "--shape", "line", "--start", -.1, -.05, "--end", .1, .05)
             assert created["object"]["targetValid"], created
             assert not created["object"]["targetPending"], created
@@ -40,6 +53,7 @@ def main():
             ctl("scene", "save-as", scene)
             ctl("scene", "new", "--on-dirty", "discard")
             ctl("scene", "open", scene)
+            wait_annotation_ready(ctl)
             loaded = ctl("annotation", "list")["annotations"]
             assert len(loaded) == 1 and loaded[0]["targetValid"] and not loaded[0]["targetPending"], loaded
             file_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "file")

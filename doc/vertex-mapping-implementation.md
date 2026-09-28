@@ -3,6 +3,10 @@
 Implemented against `1d7f1ad` after the
 [vertex-mapping investigation](vertex-mapping-performance.md).
 
+A [follow-up mapping investigation](vertex-mapping-detail-2026-09-28.md)
+measures actual lookup frequencies, growth costs, and separate serial/parallel
+attribute-gathering experiments against the current implementation.
+
 ## Production changes
 
 The OBJ loader now uses a uint32 primary entry per source position. A position's

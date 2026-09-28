@@ -64,6 +64,14 @@ returns `renderer` and `screenshot: {width, height, format}`. Its `pane` field i
 in headless mode. `capabilities` includes `headless`, `renderer`, and per-method
 `available`; `pane.set` is unavailable in headless mode and returns `-32602`.
 
+`status` also reports `annotationPreparing`, `annotationReady`, and
+`annotationPreparationError`. Loading can finish while annotation data is still
+being prepared. Geometry-dependent annotation commands (`create`, `move`,
+`reshape`, `get`, and a nonempty `list`) return `-32014` while that data is
+unavailable; they are not saved or replayed. Clients can poll `annotationReady`
+and issue a new command when it becomes true. Camera navigation and annotation
+name/style edits remain available during preparation.
+
 ### Capture the scene
 
 ```json

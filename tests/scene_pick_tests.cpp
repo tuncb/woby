@@ -494,6 +494,20 @@ TEST_CASE("click threshold preserves gestures modifiers and canceled presses")
     CHECK_FALSE(woby::endScenePointer(gesture, {30, 30}, true));
 }
 
+TEST_CASE("disabled selection ignores presses while allowing navigation drags")
+{
+    woby::ScenePointerGesture gesture;
+    woby::beginScenePointer(gesture, {10, 10}, false, false, false);
+    // Ready on release still requires a new press.
+    CHECK_FALSE(woby::endScenePointer(gesture, {10, 10}, true));
+    woby::beginScenePointer(gesture, {10, 10}, false, false, false);
+    CHECK(woby::moveScenePointer(gesture, {30, 30}));
+    CHECK_FALSE(woby::endScenePointer(gesture, {30, 30}, true));
+    woby::beginScenePointer(gesture, {10, 10}, false, true, true);
+    const auto click = woby::endScenePointer(gesture, {10, 10}, true);
+    REQUIRE(click); CHECK(click->toggle);
+}
+
 TEST_CASE("render scratch reuses selection storage and replaces stale scene parts")
 {
     auto state = scene();
