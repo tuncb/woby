@@ -21,6 +21,7 @@ struct ImporterInfo {
 struct ImportCallbacks {
     std::function<bool()> canceled;
     std::function<void(float)> progress;
+    ModelLoadProgressCallback stageProgress = {};
 };
 
 struct ImportedModel {

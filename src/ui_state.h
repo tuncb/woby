@@ -173,6 +173,7 @@ struct UiAnnotation {
     AnnotationGeometry geometry;
     // Derived at load/geometry replacement boundaries, never serialized.
     bool targetValid = false;
+    bool targetPending = false;
 };
 
 struct UiState {
@@ -219,12 +220,14 @@ struct UiState {
 
 [[nodiscard]] std::array<float, 4> defaultGroupColor(size_t groupIndex);
 [[nodiscard]] std::array<float, 3> nodeCenter(const Mesh& mesh, const MeshNode& node);
-[[nodiscard]] std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex);
+[[nodiscard]] std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex,
+    const ModelLoadProgressCallback& progress = {});
 [[nodiscard]] UiFileState createUiFileState(
     std::filesystem::path modelPath,
     Mesh mesh,
     size_t firstColorIndex,
-    std::string importerId = {});
+    std::string importerId = {},
+    const ModelLoadProgressCallback& progress = {});
 void groupTransformMatrix(const UiGroupState& settings, float* model);
 void fileTransformMatrix(const UiFileSettings& settings, float* model);
 void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model);

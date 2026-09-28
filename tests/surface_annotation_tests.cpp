@@ -1875,6 +1875,7 @@ TEST_CASE("dense annotation gestures resolve the sampled guide before committing
 {
     Fixture fixture;
     fixture.state.files[0].mesh = tessellatedSurface(160);
+    prepareAnnotationMeshCache(fixture.state.files[0].mesh); // Simulate completed runtime preparation.
     AnnotationInteraction interaction;
     interaction.tool = AnnotationShape::rectangle;
     REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {21,143}));
@@ -1913,6 +1914,7 @@ TEST_CASE("sampled annotation gestures cannot commit narrow occluders missed by 
 {
     Fixture fixture;
     fixture.state.files[0].mesh = tessellatedSurface(160);
+    prepareAnnotationMeshCache(fixture.state.files[0].mesh);
     auto front = surface();
     for (auto& vertex : front.vertices) {
         vertex.position[0] = .12345f + vertex.position[0] * .00001f;
@@ -1977,6 +1979,7 @@ TEST_CASE("annotation navigation overlay external scene benchmark" * doctest::sk
     std::vector<UiFileState> files;
     for (const auto& file : document.files) {
         files.push_back(createUiFileState(file.path, loadObjMesh(file.path), files.size()));
+        prepareAnnotationMeshCache(files.back().mesh);
     }
     fixture.scene.state = prepareSceneReplacement(fixture.scene.state, std::move(files), document);
     auto& state = fixture.scene.state;

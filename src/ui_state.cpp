@@ -157,13 +157,17 @@ void finalizeBounds(Bounds& bounds)
     bounds.radius = std::max(std::sqrt(radiusSquared), 0.001f);
 }
 
-Bounds nodeBounds(const Mesh& mesh, const MeshNode& node)
+Bounds nodeBounds(const Mesh& mesh, const MeshNode& node, const ModelLoadProgressCallback& progress = {},
+    size_t completed = 0, size_t total = 0)
 {
     Bounds bounds = emptyAccumulatedBounds();
     const uint32_t endIndex = std::min(
         node.indexOffset + node.indexCount,
         static_cast<uint32_t>(mesh.indices.size()));
     for (uint32_t index = node.indexOffset; index < endIndex; ++index) {
+        if ((index - node.indexOffset) % 16384 == 0) {
+            reportModelLoadProgress(progress, ModelLoadStage::groups, completed + index - node.indexOffset, total);
+        }
         const uint32_t vertexIndex = mesh.indices[index];
         if (vertexIndex < mesh.vertices.size()) {
             expandBounds(bounds, mesh.vertices[vertexIndex].position);
@@ -495,32 +499,39 @@ std::array<float, 3> nodeCenter(const Mesh& mesh, const MeshNode& node)
     };
 }
 
-std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex)
+std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex,
+    const ModelLoadProgressCallback& progress)
 {
     std::vector<UiGroupState> settings;
     settings.reserve(mesh.nodes.size());
+    size_t completed = 0, total = 0;
+    for (const auto& node : mesh.nodes) { total += node.indexCount; }
+    reportModelLoadProgress(progress, ModelLoadStage::groups, 0, total);
 
     for (size_t groupIndex = 0; groupIndex < mesh.nodes.size(); ++groupIndex) {
         UiGroupState group;
         group.color = defaultGroupColor(firstColorIndex + groupIndex);
-        group.localBounds = nodeBounds(mesh, mesh.nodes[groupIndex]);
+        group.localBounds = nodeBounds(mesh, mesh.nodes[groupIndex], progress, completed, total);
         group.localBoundsValid = true;
-        group.center = nodeCenter(mesh, mesh.nodes[groupIndex]);
+        group.center = group.localBounds.center;
+        completed += mesh.nodes[groupIndex].indexCount;
         settings.push_back(group);
     }
 
+    reportModelLoadProgress(progress, ModelLoadStage::groups, total, total);
     return settings;
 }
 
-UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t firstColorIndex, std::string importerId)
+UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t firstColorIndex, std::string importerId,
+    const ModelLoadProgressCallback& progress)
 {
     UiFileState file;
     file.path = std::move(modelPath);
     file.importerId = std::move(importerId);
     file.mesh = std::move(mesh);
-    prepareAnnotationMeshCache(file.mesh);
-    file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex);
+    file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex, progress);
     file.fileSettings.center = file.mesh.bounds.center;
+    reportModelLoadProgress(progress, ModelLoadStage::ready, 1, 1);
     return file;
 }
 

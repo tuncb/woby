@@ -7,6 +7,8 @@ namespace woby {
 struct AnnotationInteraction {
     std::optional<AnnotationShape> tool;
     bool dragging = false;
+    bool waitingForPreparation = false;
+    bool waitingReleased = false;
     // Runtime-only coarse guide on dense meshes; commit resolves the full edge.
     bool sampledPreview = false;
     SceneObjectId editing = 0;
@@ -45,6 +47,8 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction,
 void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point);
 void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bool allowed);
 void cancelAnnotationPointer(AnnotationInteraction& interaction);
+// Resume the saved gesture after asynchronous mesh preparation; never blocks.
+void resumeAnnotationPointer(UiState& state, AnnotationInteraction& interaction);
 // Returns the message banner's bottom edge in window coordinates (zero if absent),
 // so other viewport notifications can be stacked below it.
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,

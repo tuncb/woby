@@ -72,7 +72,8 @@ void reportProgress(
     const std::filesystem::path& path,
     size_t completedCount,
     size_t totalCount,
-    float fraction = 0.0f)
+    float fraction = 0.0f,
+    ModelLoadProgress model = {})
 {
     if (!progress) {
         return;
@@ -83,6 +84,7 @@ void reportProgress(
     update.completedCount = completedCount;
     update.totalCount = totalCount;
     update.currentFileFraction = fraction;
+    update.model = model;
     progress(update);
 }
 
@@ -144,9 +146,13 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
                 return std::optional<std::filesystem::path>{modelPaths[index]};
             });
             auto& pending = prefetched.pending[pathIndex % prefetched.pending.size()];
+            const auto stageProgress = [&](const ModelLoadProgress& update) {
+                reportProgress(progress, modelPath, pathIndex, modelPaths.size(), modelLoadFraction(update), update);
+            };
             auto parsed = pending.valid() ? pending.get() : timedModelLoad(modelPath, {}, {shouldCancel, [&](float fraction) {
-                reportProgress(progress, modelPath, pathIndex, modelPaths.size(), fraction);
-            }});
+                reportProgress(progress, modelPath, pathIndex, modelPaths.size(), std::clamp(fraction, 0.0f, 1.0f) * 6.0f / 7.0f,
+                    {ModelLoadStage::reading, static_cast<size_t>(std::clamp(fraction, 0.0f, 1.0f) * 1000), 1000});
+            }, stageProgress});
             auto& imported = parsed.imported;
             if (imported.canceled) {
                 result.canceled = true;
@@ -155,7 +161,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
             }
 
             UiFileState file = createUiFileState(
-                modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId));
+                modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId), stageProgress);
             colorIndex += file.groupSettings.size();
             spdlog::info(
                 "perf model_cpu_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} total_ms={}",
@@ -224,15 +230,19 @@ SceneCpuLoadResult loadSceneCpu(
             return std::optional<std::filesystem::path>{sceneAbsolutePath(scenePath, candidate.path)};
         });
         auto& pending = prefetched.pending[result.files.size() % prefetched.pending.size()];
+        const auto stageProgress = [&](const ModelLoadProgress& update) {
+            reportProgress(progress, modelPath, result.files.size(), result.document.files.size(), modelLoadFraction(update), update);
+        };
         auto parsed = pending.valid() ? pending.get() : timedModelLoad(modelPath, record.importerId, {shouldCancel, [&](float fraction) {
-            reportProgress(progress, modelPath, result.files.size(), result.document.files.size(), fraction);
-        }});
+            reportProgress(progress, modelPath, result.files.size(), result.document.files.size(), std::clamp(fraction, 0.0f, 1.0f) * 6.0f / 7.0f,
+                {ModelLoadStage::reading, static_cast<size_t>(std::clamp(fraction, 0.0f, 1.0f) * 1000), 1000});
+        }, stageProgress});
         auto& imported = parsed.imported;
         if (imported.canceled) {
             result.canceled = true;
             break;
         }
-        UiFileState file = createUiFileState(modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId));
+        UiFileState file = createUiFileState(modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId), stageProgress);
         applySceneFileRecord(file, record);
         colorIndex += file.groupSettings.size();
         spdlog::info(

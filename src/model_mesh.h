@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mesh_duplicates.h"
+#include "load_progress.h"
 
 #include <array>
 #include <cstdint>
@@ -49,7 +50,7 @@ struct Mesh {
     Bounds bounds;
     std::shared_ptr<const SourceMeshData> sourceData;
     std::shared_ptr<const DuplicateInput> duplicateInput;
-    // Derived geometry index, built once on import for large models.
+    // Immutable derived geometry index, published by the runtime after preparation.
     std::shared_ptr<const MeshAnnotationCache> annotationCache;
 };
 
@@ -60,9 +61,10 @@ struct Mesh {
     const std::array<float, 3>& a,
     const std::array<float, 3>& b,
     const std::array<float, 3>& c);
-void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
-[[nodiscard]] Bounds calculateBounds(const std::vector<Vertex>& vertices);
+void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
+    const ModelLoadProgressCallback& progress = {});
+[[nodiscard]] Bounds calculateBounds(const std::vector<Vertex>& vertices, const ModelLoadProgressCallback& progress = {});
 void captureSourceMesh(Mesh& mesh, SourceProvenance provenance);
-void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals);
+void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoadProgressCallback& progress = {});
 
 } // namespace woby

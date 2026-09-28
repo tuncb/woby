@@ -1,4 +1,5 @@
 #include "annotation_ui.h"
+#include "annotation_preparation.h"
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
 
@@ -186,7 +187,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
         }
         ImGui::SameLine();
         const bool missing = !item.targetValid || !findSceneObject(state, item.targetId);
-        const std::string label = item.settings.name + (missing ? " [needs reattachment]" : "") + "##annotation";
+        const std::string label = item.settings.name + (item.targetPending ? " [preparing]" : missing ? " [needs reattachment]" : "") + "##annotation";
         const float nameWidth = std::max(1.0f, removeX - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
         if (edit.objectId == id) {
             const bool focusing = edit.focus;
@@ -238,7 +239,8 @@ void drawAnnotationInspector(UiState& state)
     auto settings = item->settings;
     ImGui::TextUnformatted(item->geometry.shape == AnnotationShape::line ? "Surface line" : "Surface rectangle");
     ImGui::TextWrapped("Target: %s", item->targetName.c_str());
-    if (!item->targetValid || !findSceneObject(state, item->targetId)) {
+    if (item->targetPending) { ImGui::TextWrapped("Preparing annotation data..."); }
+    else if (!item->targetValid || !findSceneObject(state, item->targetId)) {
         ImGui::TextWrapped("Needs reattachment: the source is missing or its geometry changed. Restore the original source or draw a new annotation.");
     }
     char name[512]{};
@@ -257,7 +259,8 @@ void drawAnnotationInspector(UiState& state)
     ImGui::TextWrapped(item->targetIds.empty() ? "Model coordinates, before scene transforms. Values use the model's units."
         : "World coordinates. Each vertex follows its attached source part.");
     const auto vertices = annotationVertices(state, *item);
-    if (vertices.empty()) { ImGui::TextWrapped("Coordinates unavailable: restore the original source model."); }
+    if (item->targetPending) { ImGui::TextWrapped("Preparing annotation data..."); }
+    else if (vertices.empty()) { ImGui::TextWrapped("Coordinates unavailable: restore the original source model."); }
     else if (ImGui::BeginTable("vertices", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Vertex");
         ImGui::TableSetupColumn("X"); ImGui::TableSetupColumn("Y"); ImGui::TableSetupColumn("Z");
@@ -277,6 +280,14 @@ void cancelAnnotationPointer(AnnotationInteraction& interaction) { interaction =
 
 bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, const ScenePickView& view, PickPoint point)
 {
+    if ((interaction.tool || selectedAnnotation(state)) && !annotationPreparationReady(state)) {
+        interaction.waitingForPreparation = true;
+        interaction.waitingReleased = false;
+        interaction.view = view;
+        interaction.pointerStart = interaction.pointerEnd = point;
+        interaction.generation = state.sceneGeneration; interaction.revision = state.sceneEditRevision;
+        return true;
+    }
     auto parts = scenePickParts(state);
     const auto* selected = selectedAnnotation(state);
     int handle = -1;
@@ -338,6 +349,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
 }
 void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point)
 {
+    if (interaction.waitingForPreparation) { interaction.pointerEnd = point; return; }
     if (!interaction.dragging) { return; }
     interaction.pointerEnd = point;
     interaction.preview.geometry.segments.clear();
@@ -382,6 +394,11 @@ void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interact
 }
 void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bool allowed)
 {
+    if (interaction.waitingForPreparation) {
+        if (!allowed) { cancelAnnotationPointer(interaction); }
+        else { interaction.waitingReleased = true; }
+        return;
+    }
     if (!interaction.dragging) { return; }
     interaction.dragging = false;
     if (!allowed || state.sceneGeneration != interaction.generation || state.sceneEditRevision != interaction.revision) {
@@ -402,6 +419,24 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
         else { createAnnotation(state, interaction.preview.targetId, interaction.preview.geometry, interaction.preview.targetIds); }
         cancelAnnotationPointer(interaction);
     } catch (const std::exception& error) { interaction.error = error.what(); }
+}
+void resumeAnnotationPointer(UiState& state, AnnotationInteraction& interaction)
+{
+    if (!interaction.waitingForPreparation) { return; }
+    if (interaction.generation != state.sceneGeneration || interaction.revision != state.sceneEditRevision) {
+        cancelAnnotationPointer(interaction);
+        interaction.error = "Drawing canceled because the scene changed while preparing annotations.";
+        return;
+    }
+    if (!annotationPreparationReady(state)) { return; }
+    const auto start = interaction.pointerStart, end = interaction.pointerEnd;
+    const auto view = interaction.view;
+    const bool released = interaction.waitingReleased;
+    interaction.waitingForPreparation = false;
+    if (beginAnnotationPointer(state, interaction, view, start)) {
+        moveAnnotationPointer(state, interaction, end);
+        if (released) { endAnnotationPointer(state, interaction, true); }
+    }
 }
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
     const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed, float windowY)

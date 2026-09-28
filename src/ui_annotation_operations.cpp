@@ -21,7 +21,7 @@ bool validAttachments(const UiState& state, const UiAnnotation& item)
                 if (!id || file.groupSettings[g].objectId != id) { continue; }
                 const auto& node = file.mesh.nodes[g];
                 const auto& fingerprint = item.geometry.sources.empty() ? item.geometry.fingerprint : item.geometry.sources[i].fingerprint;
-                if (fingerprint != annotationFingerprint(file.mesh, node.indexOffset, node.indexCount)) { return false; }
+                if (fingerprint != gestureFingerprint(file.mesh, node.indexOffset, node.indexCount)) { return false; }
                 for (const auto& segment : item.geometry.segments) {
                     if ((segment.source == i && segment.triangle >= node.indexCount / 3)
                         || (segment.endSource.value_or(segment.source) == i
@@ -99,7 +99,19 @@ std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const
 }
 void validateAnnotationTargets(UiState& state)
 {
-    for (auto& item : state.annotations) { item.targetValid = validAttachments(state, item); }
+    for (auto& item : state.annotations) {
+        item.targetPending = false;
+        for (const auto& file : state.files) {
+            if (annotationMeshCacheReady(file.mesh)) { continue; }
+            for (const auto& group : file.groupSettings) {
+                if (group.objectId == item.targetId
+                    || std::find(item.targetIds.begin(), item.targetIds.end(), group.objectId) != item.targetIds.end()) {
+                    item.targetPending = true;
+                }
+            }
+        }
+        item.targetValid = !item.targetPending && validAttachments(state, item);
+    }
 }
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry, std::vector<SceneObjectId> targets)
 {

@@ -72,7 +72,7 @@ TEST_CASE("prefetched model batches preserve ordering colors and failures across
         CHECK(std::this_thread::get_id() == coordinator);
         CHECK(update.currentPath == paths[update.completedCount]);
         CHECK(update.totalCount == paths.size());
-        progress.push_back(update.completedCount);
+        if (progress.empty() || progress.back() != update.completedCount) { progress.push_back(update.completedCount); }
     }, [&] {
         CHECK(std::this_thread::get_id() == coordinator);
         return false;
@@ -297,23 +297,19 @@ TEST_CASE("background model batch loader reports skipped and failed files")
 
 TEST_CASE("background model batch loader cancels after completed files")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_background_model_batch_partial_cancel";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const BatchTestDirectory fixture;
+    const auto& root = fixture.path;
     const std::filesystem::path firstPath = root / "one.stl";
     const std::filesystem::path secondPath = root / "two.stl";
     writeTriangleStl(firstPath);
     writeTriangleStl(secondPath);
 
-    size_t cancelChecks = 0u;
+    bool cancel = false;
     const woby::ModelBatchCpuLoadResult result = woby::loadModelBatchCpu(
         {firstPath, secondPath},
         0u,
-        {},
-        [&cancelChecks]() {
-            return cancelChecks++ > 0u;
-        });
+        [&](const auto& update) { cancel = update.model.stage == woby::ModelLoadStage::ready; },
+        [&]() { return cancel; });
 
     CHECK(result.canceled);
     CHECK(result.requestedCount == 2u);
@@ -324,15 +320,12 @@ TEST_CASE("background model batch loader cancels after completed files")
     CHECK(result.outcomes[0].state == "loaded");
     CHECK(result.outcomes[1].state == "not-started");
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("background scene loader cancels after completed files")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_background_scene_partial_cancel";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const BatchTestDirectory fixture;
+    const auto& root = fixture.path;
     const std::filesystem::path firstPath = root / "one.stl";
     const std::filesystem::path secondPath = root / "two.stl";
     const std::filesystem::path scenePath = root / "scene.woby";
@@ -348,17 +341,14 @@ TEST_CASE("background scene loader cancels after completed files")
     document.files.push_back(secondRecord);
     woby::writeSceneDocument(scenePath, document);
 
-    size_t cancelChecks = 0u;
+    bool cancel = false;
     const woby::SceneCpuLoadResult result = woby::loadSceneCpu(
         scenePath,
-        {},
-        [&cancelChecks]() {
-            return cancelChecks++ > 0u;
-        });
+        [&](const auto& update) { cancel = update.model.stage == woby::ModelLoadStage::ready; },
+        [&]() { return cancel; });
 
     CHECK(result.canceled);
     REQUIRE(result.files.size() == 1u);
     CHECK(result.files[0].path == firstPath);
 
-    std::filesystem::remove_all(root);
 }

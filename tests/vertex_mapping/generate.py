@@ -54,16 +54,16 @@ text = replace(text, "    if (generateMissingSmoothNormals && !hasCompleteNormal
     const bool missing = generateMissingSmoothNormals && !hasCompleteNormals(mesh.vertices);
     mapping_probe::mark("normal_check_ms");
     if (missing) {''')
-text = replace(text, "    mesh.bounds = calculateBounds(mesh.vertices);", '''
+text = replace(text, "    mesh.bounds = calculateBounds(mesh.vertices, progress);", '''
     mapping_probe::mark("normal_generate_ms");
-    mesh.bounds = calculateBounds(mesh.vertices);
+    mesh.bounds = calculateBounds(mesh.vertices, progress);
     mapping_probe::mark("bounds_ms");''')
 (output / "model_mesh.cpp").write_text(text)
 
 text = (root / "src/surface_annotation.cpp").read_text()
 start = text.index("void prepareAnnotationMeshCache(Mesh& mesh)")
 end = text.index("std::string gestureFingerprint", start)
-(output / "annotation_cache.cpp").write_text('''#include "model_mesh.h"
+(output / "annotation_cache.cpp").write_text('''#include "surface_annotation.h"
 #include "hash_utils.h"
 #include <algorithm>
 #include <cmath>

@@ -10,12 +10,8 @@
 
 namespace woby {
 
-enum class BackgroundLoadStage {
-    loading,
-};
-
 struct BackgroundLoadProgress {
-    BackgroundLoadStage stage = BackgroundLoadStage::loading;
+    ModelLoadProgress model;
     std::filesystem::path currentPath;
     size_t completedCount = 0;
     size_t totalCount = 0;

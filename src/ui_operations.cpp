@@ -1525,6 +1525,7 @@ bool removeFileFromState(UiState& state, size_t fileIndex)
         return !findSceneObject(state, id).has_value();
     });
     pruneMissingViewReferences(state);
+    validateAnnotationTargets(state);
     recalculateSceneBounds(state);
     frameCameraToScene(state);
     markSceneDirty(state);

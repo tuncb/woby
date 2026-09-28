@@ -101,7 +101,7 @@ executes no vector instructions.
 | Annotation preparation | Build per-group geometry fingerprints and bounds for blocks of 256 triangles, when there are at least 50,000 triangles. | Serial, eagerly built and cached for later annotation work. Hash combines depend on the previous hash value; geometry is gathered through corner indices. No explicit SIMD. All five subjects exceed the threshold. |
 | Group bounds/centers | Compute each group's bounds and center for transforms and scene controls. | Serial and cached. `nodeBounds` already calculates the bounding-box center; `nodeCenter` traverses the corners again for that center. No explicit SIMD. |
 | GPU index validation | Check every render index before creating GPU resources. | Serial, contiguous index scan. No explicit SIMD kernel. |
-| CPU picking lists | Deduplicate render vertex IDs within each group for picking/tooltips. | Serial. A temporary stamp array avoids a hash set and avoids clearing the whole array between groups. Output storage is reserved. These CPU lists are built even with markers off. No explicit SIMD. |
+| CPU point-ID lists | Deduplicate render vertex IDs within each group. These supply the GPU marker buffer, resolve GPU-picked IDs to coordinates, support fallback CPU hover and provide group vertex counts. | Serial. A temporary stamp array avoids a hash set and avoids clearing the whole array between groups. Output storage is reserved. These CPU lists are built even with markers off. No explicit SIMD. |
 | GPU staging/submission | Copy vertices and triangle indices into bgfx-owned memory; enqueue buffer creation. | Serial CPU calls and full staging copies, followed by renderer/driver work. Memory copies may be optimized inside the library. Optional GPU edge and point-ID buffers are already lazy; default solid mode does not create them. |
 | Scene/camera/UI setup | Assign scene IDs, use cached bounds for framing, initialize history and viewer resources, submit draw calls. | Primarily main-thread CPU work. Uses prepared bounds rather than rescanning all geometry for scene framing. This is small relative to import/preparation for these subjects. |
 | Execute first frame | Create GPU buffers, transfer data, execute shaders and indexed drawing, present and synchronize. | GPU hardware parallelism. Normal production bgfx also has a render thread; the measurement probe deliberately runs rendering on the calling thread and waits on a D3D11 event query to obtain a definite completion endpoint. |
@@ -140,9 +140,17 @@ five large models.
    normal/UV seams and deterministic first-use IDs. SIMD alone is unlikely to
    solve irregular gathers and branch-dependent insertion; hardware counters
    would help distinguish memory stalls from computation.
-4. **Evaluate deferring CPU picking lists.** Keep picking/tooltips correct when
-   requested. Making the GPU marker buffer lazy offers no new benefit because
-   it is already lazy.
+4. **Evaluate deferring construction of CPU point-ID lists until markers are
+   enabled.** These are shared marker data, not evidence that normal hover
+   selection still scans vertices on the CPU. The GPU marker buffer is populated
+   from these lists; after GPU readback, `resolveMarkerCoordinates` also uses
+   them to map the selected marker ID to a mesh position. CPU hover uses them
+   as a fallback, and group tooltips use the resulting counts. Deferral must
+   preserve all these consumers, including exact counts before marker activation.
+   It would move preparation to first marker use. BearTrap's list allocation and
+   construction take approximately 1.14 s; GPU index validation remains necessary
+   for solid rendering and is not part of that proposed saving. Making the GPU
+   marker buffer lazy offers no new benefit because it is already lazy.
 5. **Parallelize independent reductions where worthwhile.** Bounds and source
    validation are simpler candidates than mapping or normal accumulation.
    Normal generation needs controlled accumulation/reduction and numerical

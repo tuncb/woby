@@ -17,6 +17,7 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
         {"settings", {{"name", settings.name}, {"comments", settings.note}, {"visible", settings.visible},
             {"locked", settings.locked}, {"width", settings.width}, {"color", settings.color}}},
         {"sourceName", item.targetName}, {"targetValid", item.targetValid && findSceneObject(state, item.targetId).has_value()},
+        {"targetPending", item.targetPending},
         {"effectiveVisible", !annotationWorldLines(item, parts).empty()},
         {"vertices", annotationVertices(state, item)}, {"vertexSpace", item.targetIds.empty() ? "model" : "world"},
         {"start", item.geometry.start}, {"end", item.geometry.end}, {"controlSpace", "original-projector-ndc"},

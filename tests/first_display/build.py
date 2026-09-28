@@ -23,8 +23,7 @@ def generate():
     shutil.copyfile(OUT / "obj_adaptive.cpp", OUT / "obj_mesh.cpp")
     text = (ROOT / "src/ui_state.cpp").read_text()
     text = '#include "mapping_probe.h"\n' + text
-    text = replace(text, "    prepareAnnotationMeshCache(file.mesh);", '    mapping_probe::start();\n    prepareAnnotationMeshCache(file.mesh);\n    mapping_probe::mark("annotation_cache_ms");')
-    text = replace(text, "    file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex);", '    file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex);\n    mapping_probe::mark("group_state_ms");')
+    text = replace(text, "    file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex, progress);", '    mapping_probe::start();\n    mapping_probe::stages["annotation_cache_ms"] = 0.0; // Prepared asynchronously after load.\n    file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex, progress);\n    mapping_probe::mark("group_state_ms");')
     (OUT / "ui_state.cpp").write_text(text)
 
     text = '#include "mapping_probe.h"\n' + (ROOT / "src/scene_renderer.cpp").read_text()

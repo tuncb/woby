@@ -92,6 +92,12 @@ void setAnnotationProjectionTarget(AnnotationProjection& projection,
     AnnotationShape shape, std::array<float, 2> start, std::array<float, 2> end);
 [[nodiscard]] std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count);
 void prepareAnnotationMeshCache(Mesh& mesh);
+// Worker inputs borrow immutable geometry; the owner must retain it until completion/cancellation.
+[[nodiscard]] std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
+    std::span<const Vertex> vertices, std::span<const uint32_t> indices, std::span<const MeshNode> nodes,
+    const std::function<bool()>& canceled = {});
+[[nodiscard]] bool annotationMeshCacheReady(const Mesh& mesh);
+[[nodiscard]] std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count);
 [[nodiscard]] std::array<float, 3> annotationPosition(const Mesh& mesh, size_t offset,
     uint32_t triangle, const std::array<float, 3>& bary);
 // Model-local endpoints, or four corners in outline order, shared by handles and Properties.

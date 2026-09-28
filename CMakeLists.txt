@@ -130,6 +130,7 @@ add_executable(woby
     src/hover_pick.h
     src/surface_annotation.cpp
     src/ui_annotation_operations.cpp
+    src/annotation_preparation.cpp
     src/annotation_ui.cpp
     src/scene_pick.cpp
     src/scene_pick.h
@@ -444,7 +445,9 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_camera_smoke.py" "$<TARGET_FILE:woby>" --headless)
         add_test(NAME woby_vertex_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_vertex_render_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render PROPERTIES TIMEOUT 180 LABELS graphics)
+        add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_loading_preparation PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -524,6 +527,7 @@ if(BUILD_TESTING)
         src/hover_pick.h
         src/surface_annotation.cpp
         src/ui_annotation_operations.cpp
+        src/annotation_preparation.cpp
         src/annotation_ui.cpp
         src/scene_pick.cpp
         src/scene_pick.h
@@ -574,6 +578,7 @@ if(BUILD_TESTING)
         tests/importer_tests.cpp
         tests/automation_tests.cpp
         tests/background_load_tests.cpp
+        tests/loading_preparation_tests.cpp
         tests/dummy_tests.cpp
         tests/command_line_tests.cpp
         tests/file_discovery_tests.cpp

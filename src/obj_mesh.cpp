@@ -117,9 +117,10 @@ rapidobj::Result parseObj(const std::filesystem::path& path)
 
 } // namespace
 
-Mesh loadObjMesh(const std::filesystem::path& path)
+Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
 {
     // Missing material libraries must not prevent importing the geometry.
+    reportModelLoadProgress(progress, ModelLoadStage::reading);
     auto result = parseObj(path);
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
@@ -134,6 +135,7 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     if (result.error) {
         throwLoadError("Failed to load OBJ");
     }
+    reportModelLoadProgress(progress, ModelLoadStage::triangulating);
     if (!rapidobj::Triangulate(result)) {
         throwLoadError("Failed to triangulate OBJ");
     }
@@ -145,7 +147,9 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     auto source = std::make_shared<SourceMeshData>();
     source->provenance = SourceProvenance::objPositions;
     source->points.reserve(attrib.positions.size() / 3);
+    reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, 0, attrib.positions.size() / 3);
     for (size_t i = 0; i < attrib.positions.size(); i += 3) {
+        if ((i / 3) % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, i / 3, attrib.positions.size() / 3); }
         const std::array<float, 3> point = {attrib.positions[i], attrib.positions[i+1], attrib.positions[i+2]};
         if (!finitePosition(point)) { throw std::runtime_error("OBJ contains a non-finite source coordinate."); }
         source->points.push_back({point[0], point[1], point[2]});
@@ -167,12 +171,14 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     source->indices.reserve(indexCount);
     reserveIndexTable(vertexMap, source->points.size(), indexCount,
         attrib.normals.empty() && attrib.texcoords.empty());
+    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, indexCount);
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
         const auto& shape = shapes[shapeIndex];
         const uint32_t nodeIndexOffset = static_cast<uint32_t>(mesh.indices.size());
 
         for (const auto& index : shape.mesh.indices) {
+            if (mesh.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, mesh.indices.size(), indexCount); }
             if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= source->points.size()) {
                 throw std::runtime_error("OBJ contains an invalid source position index.");
             }
@@ -233,7 +239,8 @@ Mesh loadObjMesh(const std::filesystem::path& path)
     }
 
     mesh.sourceData = std::move(source);
-    finalizeMesh(mesh, true);
+    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, indexCount, indexCount);
+    finalizeMesh(mesh, true, progress);
     return mesh;
 }
 

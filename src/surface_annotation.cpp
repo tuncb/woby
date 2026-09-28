@@ -594,30 +594,45 @@ std::string annotationFingerprint(const Mesh& mesh, size_t offset, size_t count)
 }
 void prepareAnnotationMeshCache(Mesh& mesh)
 {
-    mesh.annotationCache.reset();
-    if (mesh.indices.size() < 50000 * 3 || mesh.nodes.empty()) { return; }
+    mesh.annotationCache = buildAnnotationMeshCache(mesh.vertices, mesh.indices, mesh.nodes);
+}
+bool annotationMeshCacheReady(const Mesh& mesh)
+{
+    return mesh.indices.size() < 50000 * 3 || mesh.nodes.empty()
+        || (mesh.annotationCache && mesh.annotationCache->vertexCount == mesh.vertices.size()
+            && mesh.annotationCache->indexCount == mesh.indices.size()
+            && mesh.annotationCache->vertexData == mesh.vertices.data()
+            && mesh.annotationCache->indexData == mesh.indices.data());
+}
+std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
+    std::span<const Vertex> vertices, std::span<const uint32_t> indices, std::span<const MeshNode> nodes,
+    const std::function<bool()>& canceled)
+{
+    if (indices.size() < 50000 * 3 || nodes.empty()) { return {}; }
     auto cache = std::make_shared<MeshAnnotationCache>();
-    cache->vertexCount = mesh.vertices.size();
-    cache->indexCount = mesh.indices.size();
-    cache->vertexData = mesh.vertices.data();
-    cache->indexData = mesh.indices.data();
-    cache->fingerprints.reserve(mesh.nodes.size());
+    cache->vertexCount = vertices.size();
+    cache->indexCount = indices.size();
+    cache->vertexData = vertices.data();
+    cache->indexData = indices.data();
+    cache->fingerprints.reserve(nodes.size());
     constexpr size_t blockIndices = 256 * 3;
-    for (const auto& node : mesh.nodes) {
-        const size_t end = std::min(mesh.indices.size(), size_t{node.indexOffset} + node.indexCount);
+    for (const auto& node : nodes) {
+        if (canceled && canceled()) { return {}; }
+        const size_t end = std::min(indices.size(), size_t{node.indexOffset} + node.indexCount);
         uint64_t hash = 1469598103934665603ull;
         hashCombine(hash, node.indexCount);
         for (size_t begin = node.indexOffset; begin < end; begin += blockIndices) {
+            if (canceled && canceled()) { return {}; }
             MeshAnnotationBlock block;
             block.begin = begin;
             block.end = std::min(end, begin + blockIndices);
             block.minimum.fill(std::numeric_limits<float>::infinity());
             block.maximum.fill(-std::numeric_limits<float>::infinity());
             for (size_t i = begin; i < block.end; ++i) {
-                const auto index = mesh.indices[i];
+                const auto index = indices[i];
                 hashCombine(hash, index);
-                if (index >= mesh.vertices.size()) { continue; }
-                const auto& p = mesh.vertices[index].position;
+                if (index >= vertices.size()) { continue; }
+                const auto& p = vertices[index].position;
                 hashArray3(hash, p);
                 if (!finitePosition(p)) { continue; }
                 for (size_t axis = 0; axis < 3; ++axis) {
@@ -629,7 +644,7 @@ void prepareAnnotationMeshCache(Mesh& mesh)
         }
         cache->fingerprints.push_back(std::to_string(hash));
     }
-    mesh.annotationCache = std::move(cache);
+    return cache;
 }
 std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count)
 {
@@ -672,7 +687,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
         for (size_t i = 0; i < result.targetIds.size(); ++i) {
             const auto source = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == result.targetIds[i]; });
             result.definition.sources[i] = {composeProjector(source->model, vp),
-                annotationFingerprint(*source->mesh, source->indexOffset, source->indexCount)};
+                gestureFingerprint(*source->mesh, source->indexOffset, source->indexCount)};
             if (i != 0) { result.definition.sources[i].toPrimary = annotationCompose(source->model, inverse); }
         }
     }
@@ -684,7 +699,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
         const auto transform = composeProjector(part.model, vp);
         if (part.objectId == target) {
             result.definition.projector = transform;
-            result.definition.fingerprint = annotationFingerprint(*part.mesh, part.indexOffset, part.indexCount);
+            result.definition.fingerprint = gestureFingerprint(*part.mesh, part.indexOffset, part.indexCount);
         }
         appendProjection(result, part, transform, view.homogeneousDepth, cache);
     }
@@ -831,7 +846,7 @@ void setAnnotationProjectionTarget(AnnotationProjection& projection,
     projection.definition.projector = composeProjector(part->model, composeProjector(view.view, view.projection));
     projection.definition.fingerprint = projection.region
         ? gestureFingerprint(*part->mesh, part->indexOffset, part->indexCount)
-        : annotationFingerprint(*part->mesh, part->indexOffset, part->indexCount);
+        : gestureFingerprint(*part->mesh, part->indexOffset, part->indexCount);
     std::vector<SceneObjectId> transparent;
     for (const auto& p : parts) {
         if (p.objectId != target && p.opacity < .999f) { transparent.push_back(p.objectId); }

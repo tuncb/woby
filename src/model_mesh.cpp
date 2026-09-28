@@ -84,13 +84,19 @@ std::array<float, 3> calculateFaceNormal(
     return normal;
 }
 
-void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
+    const ModelLoadProgressCallback& progress)
 {
+    const auto total = vertices.size() * 2 + indices.size();
+    size_t completed = 0;
     for (auto& vertex : vertices) {
+        if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::normals, completed, total); }
         vertex.normal = {0.0f, 0.0f, 0.0f};
+        ++completed;
     }
 
     for (size_t index = 0; index + 2 < indices.size(); index += 3u) {
+        if (index % 49152 == 0) { reportModelLoadProgress(progress, ModelLoadStage::normals, completed + index, total); }
         Vertex& a = vertices[indices[index + 0u]];
         Vertex& b = vertices[indices[index + 1u]];
         Vertex& c = vertices[indices[index + 2u]];
@@ -101,12 +107,16 @@ void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint
         add(c.normal, faceNormal);
     }
 
+    completed += indices.size();
     for (auto& vertex : vertices) {
+        if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::normals, completed, total); }
         normalize(vertex.normal);
+        ++completed;
     }
+    reportModelLoadProgress(progress, ModelLoadStage::normals, total, total);
 }
 
-Bounds calculateBounds(const std::vector<Vertex>& vertices)
+Bounds calculateBounds(const std::vector<Vertex>& vertices, const ModelLoadProgressCallback& progress)
 {
     if (vertices.empty()) {
         throw std::runtime_error("Cannot calculate bounds for an empty mesh.");
@@ -116,7 +126,11 @@ Bounds calculateBounds(const std::vector<Vertex>& vertices)
     bounds.min = vertices.front().position;
     bounds.max = vertices.front().position;
 
+    size_t completed = 0;
+    const auto total = vertices.size() * 2;
     for (const auto& vertex : vertices) {
+        if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::bounds, completed, total); }
+        ++completed;
         for (size_t axis = 0; axis < 3u; ++axis) {
             bounds.min[axis] = std::min(bounds.min[axis], vertex.position[axis]);
             bounds.max[axis] = std::max(bounds.max[axis], vertex.position[axis]);
@@ -129,11 +143,14 @@ Bounds calculateBounds(const std::vector<Vertex>& vertices)
 
     float radiusSquared = 0.0f;
     for (const auto& vertex : vertices) {
+        if (completed % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::bounds, completed, total); }
+        ++completed;
         const auto offset = subtract(vertex.position, bounds.center);
         radiusSquared = std::max(radiusSquared, offset[0] * offset[0] + offset[1] * offset[1] + offset[2] * offset[2]);
     }
 
     bounds.radius = std::max(std::sqrt(radiusSquared), 0.001f);
+    reportModelLoadProgress(progress, ModelLoadStage::bounds, total, total);
     return bounds;
 }
 
@@ -149,17 +166,19 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance)
     mesh.sourceData = std::move(data);
 }
 
-void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals)
+void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoadProgressCallback& progress)
 {
     if (empty(mesh)) {
         throw std::runtime_error("Mesh did not contain renderable triangles.");
     }
 
+    reportModelLoadProgress(progress, ModelLoadStage::normals);
     if (generateMissingSmoothNormals && !hasCompleteNormals(mesh.vertices)) {
-        generateSmoothNormals(mesh.vertices, mesh.indices);
+        generateSmoothNormals(mesh.vertices, mesh.indices, progress);
     }
 
-    mesh.bounds = calculateBounds(mesh.vertices);
+    reportModelLoadProgress(progress, ModelLoadStage::bounds);
+    mesh.bounds = calculateBounds(mesh.vertices, progress);
 }
 
 } // namespace woby
