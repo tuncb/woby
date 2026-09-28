@@ -387,6 +387,12 @@ set(woby_runtime_targets woby woby-update-helper)
 
 include(CTest)
 
+option(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE "Build the Windows NoGraphicsAPI migration experiment" OFF)
+if(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE)
+    add_subdirectory(experiments/nographicsapi)
+    list(APPEND woby_runtime_targets woby_nographicsapi_prototype)
+endif()
+
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
 if(WOBY_BUILD_HASH_BENCHMARKS)
     find_package(unordered_dense CONFIG REQUIRED)
