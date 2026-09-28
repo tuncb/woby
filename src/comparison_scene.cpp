@@ -7,6 +7,7 @@
 #include <bx/math.h>
 
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>
@@ -16,7 +17,12 @@ namespace woby
 {
 namespace
 {
-void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const float *parent)
+struct WorldVertexRemap {
+    const Mesh* mesh = nullptr;
+    std::vector<uint32_t> vertices;
+};
+
+void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file, size_t groupIndex, const float *parent)
 {
     if (groupIndex >= file.mesh.nodes.size() || groupIndex >= file.groupSettings.size())
     {
@@ -31,11 +37,26 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
     {
         throw std::runtime_error("Analysis encountered an invalid triangle range.");
     }
-    validateComparisonMeshSize(result.vertices.size() + group.indexCount,
+    validateComparisonMeshSize(result.vertices.size(),
         (result.indices.size() + group.indexCount) / 3);
+    constexpr auto missing = std::numeric_limits<uint32_t>::max();
+    if (remap.mesh != &file.mesh) {
+        remap.mesh = &file.mesh;
+        remap.vertices.assign(file.mesh.vertices.size(), missing);
+    }
+    // Reuse vertices within a part, preserving source splits and triangle order.
+    // A new part gets its own vertices because its transform can differ. Earlier
+    // mappings precede this offset, so no whole-file clear is needed per part.
+    const auto firstVertex = result.vertices.size();
     for (size_t i = group.indexOffset; i < end; ++i)
     {
-        const auto &p = file.mesh.vertices.at(file.mesh.indices[i]).position;
+        const auto sourceIndex = file.mesh.indices[i];
+        auto& mapped = remap.vertices.at(sourceIndex);
+        if (mapped != missing && mapped >= firstVertex) {
+            result.indices.push_back(mapped);
+            continue;
+        }
+        const auto &p = file.mesh.vertices[sourceIndex].position;
         Vertex vertex;
         for (size_t k = 0; k < 3; ++k)
         {
@@ -45,7 +66,9 @@ void appendGroup(Mesh &result, const UiFileState &file, size_t groupIndex, const
         {
             throw std::runtime_error("Analysis requires finite transformed coordinates.");
         }
-        result.indices.push_back(static_cast<uint32_t>(result.vertices.size()));
+        validateComparisonMeshSize(result.vertices.size() + 1, 0);
+        mapped = static_cast<uint32_t>(result.vertices.size());
+        result.indices.push_back(mapped);
         result.vertices.push_back(vertex);
     }
 }
@@ -211,20 +234,23 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         }
     }
     Mesh result;
-    // Check the whole side before allocating any expanded world geometry.
-    size_t triangleCount = 0;
+    // Check index counts before allocating; shared vertices do not need one
+    // world-space copy for every triangle corner.
+    size_t triangleCount = 0, vertexCapacity = 0;
     visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float*) {
         triangleCount += file.mesh.nodes[index].indexCount / 3;
-        validateComparisonMeshSize(triangleCount * 3, triangleCount);
+        validateComparisonMeshSize(0, triangleCount);
+        vertexCapacity += std::min(file.mesh.vertices.size(), size_t{file.mesh.nodes[index].indexCount});
     });
-    result.vertices.reserve(triangleCount * 3);
+    result.vertices.reserve(vertexCapacity);
     result.indices.reserve(triangleCount * 3);
+    WorldVertexRemap remap;
     auto duplicateInput = std::make_shared<DuplicateInput>();
     boost::unordered_flat_map<SceneObjectId, size_t> sourceIndices;
     sourceIndices.reserve(state.files.size());
     duplicateInput->settings = comparison->settings.duplicates;
     visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
-        appendGroup(result, file, index, parent);
+        appendGroup(result, remap, file, index, parent);
         const auto [entry, inserted] = sourceIndices.try_emplace(file.objectId, duplicateInput->sources.size());
         if (inserted) {
             DuplicateSource source;

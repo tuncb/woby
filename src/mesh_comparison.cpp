@@ -227,7 +227,7 @@ uint32_t buildNode(DistanceTree& tree, size_t begin, size_t end, const DistanceB
 }
 DistanceTree buildTree(const Mesh &mesh, std::stop_token stop)
 {
-    validateComparisonMeshSize(mesh.vertices.size(), mesh.indices.size() / 3);
+    validateComparisonDistanceSize(mesh.vertices.size(), mesh.indices.size() / 3);
     DistanceTree tree;
     tree.stop = stop;
     tree.triangles = meshTriangles(mesh, stop);
@@ -763,16 +763,24 @@ MeshDiagnostics inspectTriangles(const Mesh& mesh, std::stop_token stop)
 uint32_t comparisonBufferBytes(size_t count, size_t elementBytes)
 {
     if (elementBytes == 0 || count > std::numeric_limits<uint32_t>::max() / elementBytes)
-        throw std::runtime_error("Analysis exceeds the supported 32-bit buffer size. Reduce the selected geometry.");
+        throw std::runtime_error("Analysis display exceeds the supported 32-bit GPU buffer size. Reduce the selected geometry.");
     return static_cast<uint32_t>(count * elementBytes);
 }
 
 void validateComparisonMeshSize(size_t vertexCount, size_t triangleCount)
 {
-    (void)comparisonBufferBytes(vertexCount, sizeof(Vertex));
-    (void)comparisonBufferBytes(triangleCount, 12 * sizeof(Vertex));
-    (void)comparisonBufferBytes(triangleCount, 12 * sizeof(uint32_t));
-    (void)comparisonBufferBytes(triangleCount, 6 * sizeof(uint32_t));
+    const size_t maxIndices = std::numeric_limits<uint32_t>::max();
+    if (vertexCount > maxIndices || triangleCount > maxIndices / 3) {
+        throw std::runtime_error("Analysis exceeds the supported 32-bit mesh index range. Reduce the selected geometry.");
+    }
+}
+
+void validateComparisonDistanceSize(size_t vertexCount, size_t triangleCount)
+{
+    validateComparisonMeshSize(vertexCount, triangleCount);
+    if (triangleCount > std::numeric_limits<uint32_t>::max() / (12 * sizeof(Vertex))) {
+        throw std::runtime_error("Distance heatmap exceeds the supported 32-bit GPU buffer size. Reduce the selected geometry or use a detector analysis.");
+    }
 }
 
 MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop)
@@ -820,6 +828,8 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
         completeComparisonDetectors(result, comparisonDetectors);
         return result;
     }
+    validateComparisonDistanceSize(original.vertices.size(), original.indices.size() / 3);
+    validateComparisonDistanceSize(repaired.vertices.size(), repaired.indices.size() / 3);
     const auto originalTree = buildTree(original, stop), repairedTree = buildTree(repaired, stop);
     MeshComparison result;
     result.original = compareSurface(original, originalTree, repairedTree, false, degenerates);
@@ -966,6 +976,8 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     checkCanceled(stop);
     MeshComparison result;
     if ((stages & comparisonDistance) && !original.indices.empty() && !repaired.indices.empty()) {
+        validateComparisonDistanceSize(original.vertices.size(), original.indices.size() / 3);
+        validateComparisonDistanceSize(repaired.vertices.size(), repaired.indices.size() / 3);
         const auto a = buildTree(original, stop), b = buildTree(repaired, stop);
         result.original = compareSurface(original, a, b, true);
         result.repaired = compareSurface(repaired, b, a, true);

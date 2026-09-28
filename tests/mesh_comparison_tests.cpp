@@ -1164,7 +1164,7 @@ TEST_CASE("analysis accepts more than 50000 selected triangles across the whole 
     woby::setComparisonObjects(state, {state.files[0].objectId, state.files[1].objectId}, woby::ComparisonSide::a, true);
     const auto combined = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
     CHECK(combined.indices.size() == 60000 * 3);
-    CHECK(combined.vertices.size() == 60000 * 3);
+    CHECK(combined.vertices.size() == 8);
     auto& file = state.files[0];
     file.mesh.indices.resize(60000 * 3, 0);
     file.mesh.nodes[0].indexCount = 3;
@@ -1201,7 +1201,7 @@ TEST_CASE("analysis measures both surfaces above the former triangle cap")
     CHECK(b.vertices.front().position[2] == .25f);
 }
 
-TEST_CASE("analysis rejects unrepresentable buffers without allocating geometry")
+TEST_CASE("analysis mesh limits are independent of distance and GPU buffer sizes")
 {
     const size_t maxBytes = std::numeric_limits<uint32_t>::max();
     CHECK(woby::comparisonBufferBytes(0, sizeof(woby::Vertex)) == 0);
@@ -1212,10 +1212,71 @@ TEST_CASE("analysis rejects unrepresentable buffers without allocating geometry"
         CHECK_THROWS((void)woby::comparisonBufferBytes(maxBytes / stride + 1, stride));
         CHECK_THROWS((void)woby::comparisonBufferBytes(std::numeric_limits<size_t>::max(), stride));
     }
-    const size_t maxTriangles = maxBytes / (12 * sizeof(woby::Vertex));
-    CHECK_NOTHROW(woby::validateComparisonMeshSize(maxTriangles * 3, maxTriangles));
-    CHECK_THROWS(woby::validateComparisonMeshSize(3, maxTriangles + 1));
-    CHECK_THROWS(woby::validateComparisonMeshSize(maxBytes / sizeof(woby::Vertex) + 1, 1));
+    CHECK_THROWS((void)woby::comparisonBufferBytes(1, 0));
+    const size_t maxDistanceTriangles = maxBytes / (12 * sizeof(woby::Vertex));
+    CHECK_NOTHROW(woby::validateComparisonDistanceSize(3, maxDistanceTriangles));
+    CHECK_THROWS(woby::validateComparisonDistanceSize(3, maxDistanceTriangles + 1));
+    CHECK_NOTHROW(woby::validateComparisonMeshSize(maxDistanceTriangles * 3, maxDistanceTriangles + 1));
+    CHECK_NOTHROW(woby::validateComparisonMeshSize(maxBytes / sizeof(woby::Vertex) + 1, 1));
+    CHECK_NOTHROW(woby::validateComparisonMeshSize(maxBytes, maxBytes / 3));
+    CHECK_THROWS(woby::validateComparisonMeshSize(3, maxBytes / 3 + 1));
+    CHECK_THROWS(woby::validateComparisonMeshSize(maxBytes + 1, 1));
+    CHECK_THROWS(woby::validateComparisonMeshSize(0, std::numeric_limits<size_t>::max()));
+}
+
+TEST_CASE("analysis snapshots share indexed vertices within each transformed part")
+{
+    auto input = square();
+    // Coincident source vertices remain distinct, and unused vertices stay out
+    // of the display mesh (source provenance still handles unused points).
+    input.vertices.push_back(input.vertices[0]);
+    input.vertices.push_back({{100, 100, 100}});
+    input.indices = {0, 1, 2, 4, 2, 3, 0, 1, 2, 0, 2, 3};
+    input.nodes = {{"first", 0, 6}, {"second", 6, 6}};
+    woby::UiState state;
+    state.files.push_back(woby::createUiFileState("indexed.obj", input, 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::setGroupTranslation(state.files[0].groupSettings[1], {10, 0, 0});
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true);
+    const auto world = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
+    REQUIRE(world.vertices.size() == 9);
+    CHECK(world.indices == std::vector<uint32_t>{0, 1, 2, 3, 2, 4, 5, 6, 7, 5, 7, 8});
+    for (size_t i = 0; i < input.indices.size(); ++i) {
+        auto expected = input.vertices[input.indices[i]].position;
+        if (i >= 6) { expected[0] += 10; }
+        CHECK(world.vertices[world.indices[i]].position == expected);
+    }
+    CHECK(world.bounds.max == std::array<float, 3>{11, 1, 0});
+    REQUIRE(world.duplicateInput);
+    REQUIRE(world.duplicateInput->sources.size() == 1);
+    CHECK(world.duplicateInput->sources[0].wholeFile);
+    CHECK(world.duplicateInput->sources[0].parts.size() == 2);
+    CHECK(state.files[0].mesh.indices == input.indices);
+}
+
+TEST_CASE("detector snapshots and stages accept meshes beyond the distance heatmap limit")
+{
+    // Only indices are large: exercising the real call paths needs about 128 MiB
+    // rather than allocating an unrepresentable multi-gigabyte heatmap.
+    const size_t triangles = std::numeric_limits<uint32_t>::max() / (12 * sizeof(woby::Vertex)) + 1;
+    auto state = stateWithFiles(1);
+    auto& file = state.files[0];
+    file.mesh.indices.assign(triangles * 3, 0);
+    file.mesh.nodes[0].indexCount = static_cast<uint32_t>(file.mesh.indices.size());
+    woby::setComparisonObjects(state, {file.objectId}, woby::ComparisonSide::a, true);
+    auto world = woby::comparisonWorldMesh(state, woby::ComparisonSide::a);
+    CHECK(world.vertices.size() == 1);
+    CHECK(world.indices.size() == triangles * 3);
+    // Provenance is unavailable here; the detector still has to get past mesh
+    // validation and return its normal unavailable result, not a GPU error.
+    world.duplicateInput.reset();
+    const auto result = woby::computeComparisonStages(world, {}, woby::comparisonDuplicatePoints);
+    CHECK(result.original.duplicates.points.unavailableSources == 1);
+    CHECK(result.detectors[static_cast<size_t>(woby::DiagnosticCategory::duplicatePoints)].phase
+        == woby::IntersectionPhase::complete);
+    CHECK_THROWS_WITH((void)woby::computeComparisonStages(world, square(), woby::comparisonDistance),
+        "Distance heatmap exceeds the supported 32-bit GPU buffer size. Reduce the selected geometry or use a detector analysis.");
+    CHECK_THROWS((void)woby::compareMeshes(square(), world));
 }
 
 TEST_CASE("mesh diagnostics honor cancellation")

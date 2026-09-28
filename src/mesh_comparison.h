@@ -11,10 +11,11 @@
 namespace woby
 {
 
-// Comparison buffers use 32-bit byte sizes and indices. Validate before
-// allocating expanded geometry; these are representation limits, not a mesh cap.
+// CPU meshes use 32-bit indices, while individual GPU buffers use 32-bit byte
+// sizes. Distance samples have a separate, expanded GPU representation limit.
 [[nodiscard]] uint32_t comparisonBufferBytes(size_t count, size_t elementBytes);
 void validateComparisonMeshSize(size_t vertexCount, size_t triangleCount);
+void validateComparisonDistanceSize(size_t vertexCount, size_t triangleCount);
 
 struct DiagnosticEdge
 {
