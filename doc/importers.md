@@ -143,18 +143,27 @@ The plugin allocates and frees its own buffers; the host copies successful outpu
 before release. Never retain request pointers or callbacks after the call returns.
 Do not perform substantial work in `DllMain`.
 
-Output consists of interleaved vertices, 32-bit triangle indices, and optional
-groups. Flags indicate whether normals and texture coordinates are present.
+Output consists of interleaved vertices, zero-based 32-bit triangle indices, and
+optional groups. Each vertex contains a position, normal, and texture coordinate;
+each triangle uses three indices into that single vertex table. Plugins must
+triangulate polygons and combine any separate position/normal/UV index tables
+before returning. Vertices must be split where corners at the same position need
+different normals or UVs. Unlike the built-in OBJ loader, the importer host does
+not perform these conversions.
+
+Flags indicate whether normals and texture coordinates are present.
 Missing normals are generated; missing texture coordinates become zero. Positions
 must be finite and have absolute components no greater than 1e9. Supplied normals
 must be finite and nonzero; woby normalizes them. UVs must be finite.
 All indices must reference valid vertices. The combined input vertex/index buffers
-are limited to 4 GiB; internal copies and GPU expansion consume additional memory.
+are limited to 4 GiB; internal copies and GPU buffers consume additional memory.
 
 Groups must partition the entire index buffer consecutively, with nonempty ranges
 aligned to triangles, and unique nonempty names. The limits are 100,000 groups and
 1 MiB of total group-name bytes. Zero groups produces one group named `Mesh`.
-Unused vertices are removed. Group and triangle order are preserved.
+The host retains the returned vertex table, including unused and duplicate
+vertices; it does not compact or deduplicate it. Vertex, group, and triangle order
+are preserved. Unused vertices also contribute to the calculated mesh bounds.
 Plugins must bake source transforms and coordinate/unit conversions into their
 output. Hierarchies, CAD surfaces, materials, textures, and animation are not part
 of this mesh-only API.
