@@ -97,12 +97,12 @@ TEST_CASE("Marker asynchronous completion rejects canceled and out of order resu
 
 TEST_CASE("Marker GPU capability checks retain fallback for unsupported backends")
 {
-    bgfx::Caps caps{};
-    caps.rendererType = bgfx::RendererType::Direct3D11;
-    caps.supported = BGFX_CAPS_COMPUTE | BGFX_CAPS_TEXTURE_READ_BACK | BGFX_CAPS_TEXTURE_BLIT | BGFX_CAPS_BLEND_INDEPENDENT;
+    woby::graphics::Caps caps{};
+    caps.rendererType = woby::graphics::RendererType::Vulkan;
+    caps.supported = WOBY_GPU_CAPS_COMPUTE | WOBY_GPU_CAPS_TEXTURE_READ_BACK | WOBY_GPU_CAPS_TEXTURE_BLIT | WOBY_GPU_CAPS_BLEND_INDEPENDENT;
     caps.limits.maxFBAttachments = 2;
     CHECK(woby::supportsGpuMarkerPicking(caps));
-    for (auto flag : {BGFX_CAPS_COMPUTE, BGFX_CAPS_TEXTURE_READ_BACK, BGFX_CAPS_TEXTURE_BLIT, BGFX_CAPS_BLEND_INDEPENDENT}) {
+    for (auto flag : {WOBY_GPU_CAPS_COMPUTE, WOBY_GPU_CAPS_TEXTURE_READ_BACK, WOBY_GPU_CAPS_TEXTURE_BLIT, WOBY_GPU_CAPS_BLEND_INDEPENDENT}) {
         auto missing = caps; missing.supported &= ~flag;
         CHECK_FALSE(woby::supportsGpuMarkerPicking(missing));
     }

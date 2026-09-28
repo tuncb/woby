@@ -21,7 +21,7 @@ def main():
     output = Path(sys.argv[2]).resolve()
     count = int(sys.argv[3]) if len(sys.argv) > 3 else 2500
     if not 1 <= count <= 3500:
-        raise ValueError("Expected 1..3500 models (leave bgfx handles for the UI and display modes).")
+        raise ValueError("Expected 1..3500 models (leave graphics handles for the UI and display modes).")
     output.mkdir(parents=True, exist_ok=True)
     instance = "performance-" + uuid.uuid4().hex[:12]
     startup = None

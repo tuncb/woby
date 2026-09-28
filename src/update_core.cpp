@@ -1,3 +1,4 @@
+#include "graphics_assets.h"
 #include "update_internal.h"
 #include "utf8_path.h"
 
@@ -180,12 +181,10 @@ PackageManifest readPackageManifest(const std::filesystem::path& root)
             entry.at("size").get<uint64_t>(), entry.at("executable").get<bool>()});
     }
     validateFileSet(manifest.files);
-    const auto shader = manifest.platform == "windows-x64" ? "dx11" : manifest.platform == "macos-arm64" ? "metal" : "glsl";
+    const auto shader = manifest.platform == "macos-arm64" ? "metal" : "spirv";
     std::vector<std::string> requiredFiles{updateExecutableName(), updateExecutableName(true), "assets/fonts/RobotoMonoNerdFont-Regular.ttf"};
-    for (const auto* stage : {"vs", "fs"}) {
-        for (const auto* name : {"mesh", "color", "comparison", "imgui", "point_sprite"}) {
-            requiredFiles.push_back(std::string("assets/shaders/") + shader + "/" + stage + "_" + name + ".bin");
-        }
+    for (const auto* name : nativeShaderNames) {
+        requiredFiles.push_back(std::string("assets/shaders/") + shader + "/" + name + ".bin");
     }
     for (const auto& required : requiredFiles) {
         if (std::none_of(manifest.files.begin(), manifest.files.end(), [&](const auto& file) { return file.path == required; })) {

@@ -1,3 +1,4 @@
+#include "graphics_assets.h"
 #include "update_internal.h"
 #include "update_ui.h"
 #include "utf8_path.h"
@@ -55,11 +56,9 @@ json makePackage(const fs::path& root, const std::string& version,
         {"assets/fonts/RobotoMonoNerdFont-Regular.ttf", "font " + version}};
     files.insert(extra.begin(), extra.end());
     const auto platform = woby::updatePlatform();
-    const auto shader = platform == "windows-x64" ? "dx11" : platform == "macos-arm64" ? "metal" : "glsl";
-    for (const auto* stage : {"vs", "fs"}) {
-        for (const auto* name : {"mesh", "color", "comparison", "imgui", "point_sprite"}) {
-            files[std::string("assets/shaders/") + shader + "/" + stage + "_" + name + ".bin"] = "shader";
-        }
+    const auto shader = platform == "macos-arm64" ? "metal" : "spirv";
+    for (const auto* name : woby::nativeShaderNames) {
+        files[std::string("assets/shaders/") + shader + "/" + name + ".bin"] = "shader";
     }
     json manifest{{"schema", 1}, {"version", version}, {"platform", woby::updatePlatform()}, {"files", json::array()}};
     for (const auto& [name, content] : files) {

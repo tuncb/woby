@@ -29,13 +29,13 @@ uint32_t sceneBufferBytes(size_t count, size_t elementBytes)
 }
 
 template <typename T>
-const bgfx::Memory* ownedBuffer(std::vector<T> values)
+const woby::graphics::Memory* ownedBuffer(std::vector<T> values)
 {
     const auto bytes = sceneBufferBytes(values.size(), sizeof(T));
     auto owner = std::make_unique<std::vector<T>>(std::move(values));
-    // bgfx releases this allocation on its render thread after consuming it.
+    // graphics releases this allocation on its render thread after consuming it.
     // The callback owns only immutable upload data, never UI state or a mesh.
-    const auto* memory = bgfx::makeRef(owner->data(), bytes, [](void*, void* data) {
+    const auto* memory = woby::graphics::makeRef(owner->data(), bytes, [](void*, void* data) {
         delete static_cast<std::vector<T>*>(data);
     }, owner.get());
     owner.release();
@@ -110,53 +110,53 @@ uint64_t renderState(
     const std::array<float, 4>& color,
     uint64_t primitiveState)
 {
-    uint64_t state = BGFX_STATE_WRITE_RGB
-        | BGFX_STATE_WRITE_A
+    uint64_t state = WOBY_GPU_STATE_WRITE_RGB
+        | WOBY_GPU_STATE_WRITE_A
         | depthTest
-        | BGFX_STATE_MSAA
+        | WOBY_GPU_STATE_MSAA
         | primitiveState;
 
     if (writeDepth && color[3] >= 0.999f) {
-        state |= BGFX_STATE_WRITE_Z;
+        state |= WOBY_GPU_STATE_WRITE_Z;
     }
     if (color[3] < 0.999f) {
-        state |= BGFX_STATE_BLEND_FUNC(
-            BGFX_STATE_BLEND_SRC_ALPHA,
-            BGFX_STATE_BLEND_INV_SRC_ALPHA);
+        state |= WOBY_GPU_STATE_BLEND_FUNC(
+            WOBY_GPU_STATE_BLEND_SRC_ALPHA,
+            WOBY_GPU_STATE_BLEND_INV_SRC_ALPHA);
     }
 
     return state;
 }
 
 void submitTriangleRange(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const GpuMesh& mesh,
-    bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform,
+    woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform,
     const float* model,
     const std::array<float, 4>& color,
     uint32_t indexOffset,
     uint32_t indexCount,
     bool markerIds)
 {
-    if (!bgfx::isValid(mesh.vertexBuffer) || !bgfx::isValid(mesh.triangleIndexBuffer) || indexCount == 0) {
+    if (!woby::graphics::isValid(mesh.vertexBuffer) || !woby::graphics::isValid(mesh.triangleIndexBuffer) || indexCount == 0) {
         return;
     }
 
-    bgfx::setTransform(model);
-    bgfx::setUniform(colorUniform, color.data());
-    bgfx::setVertexBuffer(0, mesh.vertexBuffer);
-    bgfx::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
-    setMarkerRenderState(renderState(BGFX_STATE_DEPTH_TEST_LESS, true, color, 0u), markerIds);
-    bgfx::submit(viewId, program);
+    woby::graphics::setTransform(model);
+    woby::graphics::setUniform(colorUniform, color.data());
+    woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
+    woby::graphics::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
+    setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_LESS, true, color, 0u), markerIds);
+    woby::graphics::submit(viewId, program);
 }
 
 void submitColorRange(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const GpuMesh& mesh,
-    bgfx::IndexBufferHandle indexBuffer,
-    bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform,
+    woby::graphics::IndexBufferHandle indexBuffer,
+    woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform,
     const float* model,
     const std::array<float, 4>& color,
     uint64_t primitiveState,
@@ -164,24 +164,24 @@ void submitColorRange(
     uint32_t indexCount,
     bool markerIds)
 {
-    if (!bgfx::isValid(mesh.vertexBuffer) || !bgfx::isValid(indexBuffer) || indexCount == 0) {
+    if (!woby::graphics::isValid(mesh.vertexBuffer) || !woby::graphics::isValid(indexBuffer) || indexCount == 0) {
         return;
     }
 
-    bgfx::setTransform(model);
-    bgfx::setUniform(colorUniform, color.data());
-    bgfx::setVertexBuffer(0, mesh.vertexBuffer);
-    bgfx::setIndexBuffer(indexBuffer, indexOffset, indexCount);
-    setMarkerRenderState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, primitiveState), markerIds);
-    bgfx::submit(viewId, program);
+    woby::graphics::setTransform(model);
+    woby::graphics::setUniform(colorUniform, color.data());
+    woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
+    woby::graphics::setIndexBuffer(indexBuffer, indexOffset, indexCount);
+    setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_ALWAYS, false, color, primitiveState), markerIds);
+    woby::graphics::submit(viewId, program);
 }
 
 void submitPointSpriteRange(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const GpuMesh& mesh,
-    bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform,
-    bgfx::UniformHandle pointParamsUniform,
+    woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform,
+    woby::graphics::UniformHandle pointParamsUniform,
     const float* model,
     const std::array<float, 4>& color,
     float pointSize,
@@ -191,76 +191,64 @@ void submitPointSpriteRange(
     uint32_t indexCount,
     bool markerIds)
 {
-    if (!bgfx::isValid(mesh.vertexBuffer)
-        || !bgfx::isValid(mesh.pointIdBuffer)
+    if (!woby::graphics::isValid(mesh.vertexBuffer)
+        || !woby::graphics::isValid(mesh.pointIdBuffer)
         || indexCount == 0) {
         return;
     }
 
     const auto pointParams = pointSpriteParameters(pointSize, viewWidth, viewHeight, indexOffset);
-    bgfx::setTransform(model);
-    bgfx::setUniform(colorUniform, color.data());
-    bgfx::setUniform(pointParamsUniform, pointParams.data(), 2);
-    bgfx::setBuffer(0, mesh.vertexBuffer, bgfx::Access::Read);
-    bgfx::setBuffer(1, mesh.pointIdBuffer, bgfx::Access::Read);
-    bgfx::setVertexCount(4);
-    bgfx::setInstanceCount(indexCount);
-    setMarkerRenderState(renderState(BGFX_STATE_DEPTH_TEST_LEQUAL, true, color, BGFX_STATE_PT_TRISTRIP), markerIds);
-    bgfx::submit(viewId, program);
+    woby::graphics::setTransform(model);
+    woby::graphics::setUniform(colorUniform, color.data());
+    woby::graphics::setUniform(pointParamsUniform, pointParams.data(), 2);
+    woby::graphics::setBuffer(0, mesh.vertexBuffer, woby::graphics::Access::Read);
+    woby::graphics::setBuffer(1, mesh.pointIdBuffer, woby::graphics::Access::Read);
+    woby::graphics::setVertexCount(4);
+    woby::graphics::setInstanceCount(indexCount);
+    setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_LEQUAL, true, color, WOBY_GPU_STATE_PT_TRISTRIP), markerIds);
+    woby::graphics::submit(viewId, program);
 }
 
 void submitHelperBuffer(
-    bgfx::ViewId viewId,
-    const bgfx::TransientVertexBuffer& vertexBuffer,
-    bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform,
+    woby::graphics::ViewId viewId,
+    const woby::graphics::TransientVertexBuffer& vertexBuffer,
+    woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform,
     const std::array<float, 4>& color)
 {
     float model[16];
     bx::mtxIdentity(model);
-    bgfx::setTransform(model);
-    bgfx::setUniform(colorUniform, color.data());
-    bgfx::setVertexBuffer(0, &vertexBuffer);
-    bgfx::setState(renderState(BGFX_STATE_DEPTH_TEST_ALWAYS, false, color, BGFX_STATE_PT_LINES));
-    bgfx::submit(viewId, program);
+    woby::graphics::setTransform(model);
+    woby::graphics::setUniform(colorUniform, color.data());
+    woby::graphics::setVertexBuffer(0, &vertexBuffer);
+    woby::graphics::setState(renderState(WOBY_GPU_STATE_DEPTH_TEST_ALWAYS, false, color, WOBY_GPU_STATE_PT_LINES));
+    woby::graphics::submit(viewId, program);
 }
 
-void submitHelperLines(bgfx::ViewId viewId, std::span<const HelperLineVertex> vertices,
-    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform, const std::array<float, 4>& color)
+void submitHelperLines(woby::graphics::ViewId viewId, std::span<const HelperLineVertex> vertices,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform, const std::array<float, 4>& color)
 {
     if (vertices.empty() || vertices.size() % 2u != 0u) { return; }
     const auto count = sceneBufferBytes(vertices.size(), sizeof(HelperLineVertex)) / sizeof(HelperLineVertex);
     const auto vertexCount = static_cast<uint32_t>(count);
-    if (bgfx::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) { return; }
-    bgfx::TransientVertexBuffer buffer;
-    bgfx::allocTransientVertexBuffer(&buffer, vertexCount, layout);
+    if (woby::graphics::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) { return; }
+    woby::graphics::TransientVertexBuffer buffer;
+    woby::graphics::allocTransientVertexBuffer(&buffer, vertexCount, layout);
     std::copy(vertices.begin(), vertices.end(), reinterpret_cast<HelperLineVertex*>(buffer.data));
     submitHelperBuffer(viewId, buffer, program, colorUniform, color);
 }
 
 } // namespace
 
-bgfx::VertexLayout meshVertexLayout()
+woby::graphics::VertexLayout meshVertexLayout()
 {
-    bgfx::VertexLayout layout;
-    layout
-        .begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Normal, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
-        .end();
-    return layout;
+    return {static_cast<uint16_t>(sizeof(Vertex))};
 }
 
-bgfx::VertexLayout helperLineVertexLayout()
+woby::graphics::VertexLayout helperLineVertexLayout()
 {
-    bgfx::VertexLayout layout;
-    layout
-        .begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .end();
-    return layout;
+    return {static_cast<uint16_t>(3 * sizeof(float))};
 }
 
 uint8_t requestedGpuMeshFeatures(const UiFileState& file)
@@ -277,7 +265,7 @@ uint8_t requestedGpuMeshFeatures(const UiFileState& file)
 
 GpuMesh createGpuMesh(
     const Mesh& mesh,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     uint8_t features)
 {
     GpuMesh gpuMesh;
@@ -312,14 +300,14 @@ GpuMesh createGpuMesh(
         gpuMesh.nodeRanges.push_back(range);
     }
     try {
-        gpuMesh.vertexBuffer = bgfx::createVertexBuffer(
-            bgfx::copy(mesh.vertices.data(), vertexBytes),
-            meshLayout, BGFX_BUFFER_COMPUTE_READ);
+        gpuMesh.vertexBuffer = woby::graphics::createVertexBuffer(
+            woby::graphics::copy(mesh.vertices.data(), vertexBytes),
+            meshLayout, WOBY_GPU_BUFFER_COMPUTE_READ);
 
-        gpuMesh.triangleIndexBuffer = bgfx::createIndexBuffer(
-            bgfx::copy(mesh.indices.data(), indexBytes),
-            BGFX_BUFFER_INDEX32);
-        if (!bgfx::isValid(gpuMesh.vertexBuffer) || !bgfx::isValid(gpuMesh.triangleIndexBuffer)) {
+        gpuMesh.triangleIndexBuffer = woby::graphics::createIndexBuffer(
+            woby::graphics::copy(mesh.indices.data(), indexBytes),
+            WOBY_GPU_BUFFER_INDEX32);
+        if (!woby::graphics::isValid(gpuMesh.vertexBuffer) || !woby::graphics::isValid(gpuMesh.triangleIndexBuffer)) {
             throw std::runtime_error("Failed to allocate scene GPU buffers.");
         }
         prepareGpuMeshFeatures(gpuMesh, mesh, features);
@@ -333,21 +321,21 @@ GpuMesh createGpuMesh(
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
     uint8_t features)
 {
-    if ((features & gpuMeshEdges) && !bgfx::isValid(gpuMesh.lineIndexBuffer)) {
+    if ((features & gpuMeshEdges) && !woby::graphics::isValid(gpuMesh.lineIndexBuffer)) {
         (void)sceneBufferBytes(mesh.indices.size(), 2 * sizeof(uint32_t));
-        gpuMesh.lineIndexBuffer = bgfx::createIndexBuffer(
+        gpuMesh.lineIndexBuffer = woby::graphics::createIndexBuffer(
             ownedBuffer(buildLineIndices(mesh.indices)),
-            BGFX_BUFFER_INDEX32);
-        if (!bgfx::isValid(gpuMesh.lineIndexBuffer)) { throw std::runtime_error("Failed to allocate scene edge buffer."); }
+            WOBY_GPU_BUFFER_INDEX32);
+        if (!woby::graphics::isValid(gpuMesh.lineIndexBuffer)) { throw std::runtime_error("Failed to allocate scene edge buffer."); }
     }
-    if ((features & gpuMeshPoints) && !bgfx::isValid(gpuMesh.pointIdBuffer)) {
+    if ((features & gpuMeshPoints) && !woby::graphics::isValid(gpuMesh.pointIdBuffer)) {
         const auto& pointIndices = gpuMesh.pointVertexIndices;
         if (pointIndices.empty()) { return; }
         // copy owns the asynchronous upload; CPU IDs remain available for picking.
-        gpuMesh.pointIdBuffer = bgfx::createIndexBuffer(
-            bgfx::copy(pointIndices.data(), sceneBufferBytes(pointIndices.size(), sizeof(uint32_t))),
-            BGFX_BUFFER_INDEX32 | BGFX_BUFFER_COMPUTE_READ);
-        if (!bgfx::isValid(gpuMesh.pointIdBuffer)) {
+        gpuMesh.pointIdBuffer = woby::graphics::createIndexBuffer(
+            woby::graphics::copy(pointIndices.data(), sceneBufferBytes(pointIndices.size(), sizeof(uint32_t))),
+            WOBY_GPU_BUFFER_INDEX32 | WOBY_GPU_BUFFER_COMPUTE_READ);
+        if (!woby::graphics::isValid(gpuMesh.pointIdBuffer)) {
             throw std::runtime_error("Failed to allocate scene point-ID buffer.");
         }
     }
@@ -355,23 +343,23 @@ void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
 
 void destroyGpuMesh(GpuMesh& mesh)
 {
-    if (bgfx::isValid(mesh.pointIdBuffer)) {
-        bgfx::destroy(mesh.pointIdBuffer);
+    if (woby::graphics::isValid(mesh.pointIdBuffer)) {
+        woby::graphics::destroy(mesh.pointIdBuffer);
     }
-    if (bgfx::isValid(mesh.lineIndexBuffer)) {
-        bgfx::destroy(mesh.lineIndexBuffer);
+    if (woby::graphics::isValid(mesh.lineIndexBuffer)) {
+        woby::graphics::destroy(mesh.lineIndexBuffer);
     }
-    if (bgfx::isValid(mesh.triangleIndexBuffer)) {
-        bgfx::destroy(mesh.triangleIndexBuffer);
+    if (woby::graphics::isValid(mesh.triangleIndexBuffer)) {
+        woby::graphics::destroy(mesh.triangleIndexBuffer);
     }
-    if (bgfx::isValid(mesh.vertexBuffer)) {
-        bgfx::destroy(mesh.vertexBuffer);
+    if (woby::graphics::isValid(mesh.vertexBuffer)) {
+        woby::graphics::destroy(mesh.vertexBuffer);
     }
 
-    mesh.pointIdBuffer = BGFX_INVALID_HANDLE;
-    mesh.lineIndexBuffer = BGFX_INVALID_HANDLE;
-    mesh.triangleIndexBuffer = BGFX_INVALID_HANDLE;
-    mesh.vertexBuffer = BGFX_INVALID_HANDLE;
+    mesh.pointIdBuffer = WOBY_GPU_INVALID_HANDLE;
+    mesh.lineIndexBuffer = WOBY_GPU_INVALID_HANDLE;
+    mesh.triangleIndexBuffer = WOBY_GPU_INVALID_HANDLE;
+    mesh.vertexBuffer = WOBY_GPU_INVALID_HANDLE;
     mesh.nodeRanges.clear();
     mesh.pointVertexIndices.clear();
 }
@@ -402,7 +390,7 @@ uint32_t vertexPointSize(float masterSize, float groupScale)
 }
 
 void submitGroupRange(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const std::vector<UiFileState>& files,
     const std::vector<LoadedModelRuntime>& runtimes,
     size_t fileIndex,
@@ -410,11 +398,11 @@ void submitGroupRange(
     const float* parentModel,
     float opacityScale,
     float masterVertexPointSize,
-    bgfx::ProgramHandle meshProgram,
-    bgfx::ProgramHandle colorProgram,
-    bgfx::ProgramHandle pointSpriteProgram,
-    bgfx::UniformHandle colorUniform,
-    bgfx::UniformHandle pointParamsUniform,
+    woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::ProgramHandle colorProgram,
+    woby::graphics::ProgramHandle pointSpriteProgram,
+    woby::graphics::UniformHandle colorUniform,
+    woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
     MarkerDrawContext* markers)
@@ -459,7 +447,7 @@ void submitGroupRange(
             colorUniform,
             model,
             groupColor(settings, 1.25f, opacityScale),
-            BGFX_STATE_PT_LINES,
+            WOBY_GPU_STATE_PT_LINES,
             range.lineIndexOffset,
             range.lineIndexCount, markers != nullptr);
     }
@@ -474,7 +462,7 @@ void submitGroupRange(
             draw.pointOffset = range.pointIndexOffset; draw.count = range.pointIndexCount;
             const auto id = appendMarkerDraw(markers->list, draw, static_cast<float>(pointSize));
             const std::array<float, 4> base = {static_cast<float>(id & 65535u), static_cast<float>(id >> 16u), 0, 0};
-            bgfx::setUniform(markers->baseUniform, base.data());
+            woby::graphics::setUniform(markers->baseUniform, base.data());
         }
         submitPointSpriteRange(
             viewId,
@@ -493,7 +481,7 @@ void submitGroupRange(
 }
 
 void submitSceneNode(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const std::vector<UiFileState>& files,
     const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
@@ -501,11 +489,11 @@ void submitSceneNode(
     const float* parentModel,
     float parentOpacity,
     float masterVertexPointSize,
-    bgfx::ProgramHandle meshProgram,
-    bgfx::ProgramHandle colorProgram,
-    bgfx::ProgramHandle pointSpriteProgram,
-    bgfx::UniformHandle colorUniform,
-    bgfx::UniformHandle pointParamsUniform,
+    woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::ProgramHandle colorProgram,
+    woby::graphics::ProgramHandle pointSpriteProgram,
+    woby::graphics::UniformHandle colorUniform,
+    woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
     MarkerDrawContext* markers)
@@ -620,16 +608,16 @@ void submitSceneNode(
 }
 
 void submitSceneFiles(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const std::vector<UiFileState>& files,
     const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
-    bgfx::ProgramHandle meshProgram,
-    bgfx::ProgramHandle colorProgram,
-    bgfx::ProgramHandle pointSpriteProgram,
-    bgfx::UniformHandle colorUniform,
-    bgfx::UniformHandle pointParamsUniform,
+    woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::ProgramHandle colorProgram,
+    woby::graphics::ProgramHandle pointSpriteProgram,
+    woby::graphics::UniformHandle colorUniform,
+    woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
     MarkerDrawContext* markers)
@@ -690,8 +678,8 @@ void submitSceneFiles(
     }
 }
 
-void submitSceneSelection(bgfx::ViewId viewId, std::span<const ScenePickPart> parts,
-    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
     SceneRenderScratch& scratch)
 {
     sceneSelectionLines(parts, scratch.positions);
@@ -699,11 +687,11 @@ void submitSceneSelection(bgfx::ViewId viewId, std::span<const ScenePickPart> pa
 }
 
 void submitSceneHelpers(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const UiState& state,
-    const bgfx::VertexLayout& layout,
-    bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform)
+    const woby::graphics::VertexLayout& layout,
+    woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform)
 {
     const auto grid = sceneGrid(state.sceneBounds, state.upAxis);
     const float spacing = grid.spacing;
@@ -712,9 +700,9 @@ void submitSceneHelpers(
 
     if (state.showGrid) {
         const auto count = static_cast<uint32_t>((lineRadius * 2 + 1) * 4);
-        if (bgfx::getAvailTransientVertexBuffer(count, layout) >= count) {
-            bgfx::TransientVertexBuffer buffer;
-            bgfx::allocTransientVertexBuffer(&buffer, count, layout);
+        if (woby::graphics::getAvailTransientVertexBuffer(count, layout) >= count) {
+            woby::graphics::TransientVertexBuffer buffer;
+            woby::graphics::allocTransientVertexBuffer(&buffer, count, layout);
             auto* vertex = reinterpret_cast<HelperLineVertex*>(buffer.data);
             for (int line = -lineRadius; line <= lineRadius; ++line) {
                 const float offset = static_cast<float>(line) * spacing;

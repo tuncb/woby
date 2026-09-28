@@ -11,9 +11,9 @@ struct MarkerGpuFixture {
     woby::GpuMarkerPicker picker;
     woby::UiState state;
     std::vector<woby::LoadedModelRuntime> runtimes;
-    bgfx::UniformHandle colorUniform = BGFX_INVALID_HANDLE, pointUniform = BGFX_INVALID_HANDLE;
-    bgfx::TextureHandle output = BGFX_INVALID_HANDLE, staging = BGFX_INVALID_HANDLE;
-    bgfx::FrameBufferHandle outputFramebuffer = BGFX_INVALID_HANDLE;
+    woby::graphics::UniformHandle colorUniform = WOBY_GPU_INVALID_HANDLE, pointUniform = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::TextureHandle output = WOBY_GPU_INVALID_HANDLE, staging = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::FrameBufferHandle outputFramebuffer = WOBY_GPU_INVALID_HANDLE;
     std::vector<uint8_t> pixels = std::vector<uint8_t>(128 * 128 * 4);
     uint32_t captureReady = 0;
     bool capturePending = false;
@@ -22,16 +22,16 @@ struct MarkerGpuFixture {
     {
         if (!initialized) { return; }
         // Both result and image readbacks own CPU destinations in this fixture.
-        uint32_t frame = bgfx::frame();
-        while (capturePending && !woby::markerFrameReached(frame, captureReady)) { frame = bgfx::frame(); }
+        uint32_t frame = woby::graphics::frame();
+        while (capturePending && !woby::markerFrameReached(frame, captureReady)) { frame = woby::graphics::frame(); }
         woby::destroyGpuMarkerPicker(picker);
         woby::destroyModelRuntimes(runtimes);
-        if (bgfx::isValid(outputFramebuffer)) { bgfx::destroy(outputFramebuffer); }
-        if (bgfx::isValid(output)) { bgfx::destroy(output); }
-        if (bgfx::isValid(staging)) { bgfx::destroy(staging); }
-        if (bgfx::isValid(colorUniform)) { bgfx::destroy(colorUniform); }
-        if (bgfx::isValid(pointUniform)) { bgfx::destroy(pointUniform); }
-        bgfx::shutdown();
+        if (woby::graphics::isValid(outputFramebuffer)) { woby::graphics::destroy(outputFramebuffer); }
+        if (woby::graphics::isValid(output)) { woby::graphics::destroy(output); }
+        if (woby::graphics::isValid(staging)) { woby::graphics::destroy(staging); }
+        if (woby::graphics::isValid(colorUniform)) { woby::graphics::destroy(colorUniform); }
+        if (woby::graphics::isValid(pointUniform)) { woby::graphics::destroy(pointUniform); }
+        woby::graphics::shutdown();
     }
 };
 
@@ -57,16 +57,16 @@ woby::UiFileState markerFile(float z, uint64_t id)
 TEST_CASE("GPU marker picking highlights before readback and handles visibility resize and cancellation")
 {
     MarkerGpuFixture fixture;
-    bgfx::Init init;
+    woby::graphics::Init init;
 #if defined(_WIN32)
-    init.type = bgfx::RendererType::Direct3D11;
+    init.type = woby::graphics::RendererType::Vulkan;
 #else
-    init.type = bgfx::RendererType::Vulkan;
+    init.type = woby::graphics::RendererType::Vulkan;
 #endif
     init.resolution.width = init.resolution.height = 0;
-    fixture.initialized = bgfx::init(init);
+    fixture.initialized = woby::graphics::init(init);
     REQUIRE(fixture.initialized);
-    REQUIRE(woby::supportsGpuMarkerPicking(*bgfx::getCaps()));
+    REQUIRE(woby::supportsGpuMarkerPicking(*woby::graphics::getCaps()));
     auto& state = fixture.state;
     state.files = {markerFile(0, 10), markerFile(1, 20)};
     state.masterVertexPointSize = 12;
@@ -76,41 +76,41 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     for (const auto& file : state.files) {
         fixture.runtimes.push_back({woby::createGpuMesh(file.mesh, woby::meshVertexLayout(), woby::gpuMeshPoints), woby::gpuMeshPoints});
     }
-    fixture.colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
-    fixture.pointUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4, 2);
-    fixture.output = bgfx::createTexture2D(128, 128, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_RT);
-    fixture.staging = bgfx::createTexture2D(128, 128, false, 1, bgfx::TextureFormat::BGRA8,
-        BGFX_TEXTURE_READ_BACK | BGFX_TEXTURE_BLIT_DST);
-    fixture.outputFramebuffer = bgfx::createFrameBuffer(1, &fixture.output, false);
-    REQUIRE(bgfx::isValid(fixture.outputFramebuffer));
-    REQUIRE(bgfx::isValid(fixture.staging));
+    fixture.colorUniform = woby::graphics::createUniform("u_color", woby::graphics::UniformType::Vec4);
+    fixture.pointUniform = woby::graphics::createUniform("u_pointParams", woby::graphics::UniformType::Vec4, 2);
+    fixture.output = woby::graphics::createTexture2D(128, 128, false, 1, woby::graphics::TextureFormat::BGRA8, WOBY_GPU_TEXTURE_RT);
+    fixture.staging = woby::graphics::createTexture2D(128, 128, false, 1, woby::graphics::TextureFormat::BGRA8,
+        WOBY_GPU_TEXTURE_READ_BACK | WOBY_GPU_TEXTURE_BLIT_DST);
+    fixture.outputFramebuffer = woby::graphics::createFrameBuffer(1, &fixture.output, false);
+    REQUIRE(woby::graphics::isValid(fixture.outputFramebuffer));
+    REQUIRE(woby::graphics::isValid(fixture.staging));
     const std::filesystem::path assets = WOBY_TEST_ASSET_DIRECTORY;
     auto& picker = fixture.picker;
     woby::SceneViewport viewport{0, 128, 128, 0};
     int samples = 4;
     auto render = [&](bool capture = false) {
         const auto view = woby::scenePickView(state.camera, state.upAxis, state.sceneBounds,
-            viewport.width, viewport.height, bgfx::getCaps()->homogeneousDepth, 1.0f);
+            viewport.width, viewport.height, woby::graphics::getCaps()->homogeneousDepth, 1.0f);
         REQUIRE(woby::beginGpuMarkerPicking(picker, assets, state, viewport,
             {static_cast<float>(viewport.width)/2, static_cast<float>(viewport.height)/2}, true, samples));
         // Exercise exact byte encoding above float's 24-bit integer precision.
         picker.context.list.nextId = 16777217;
-        bgfx::setViewTransform(1, view.view.data(), view.projection.data());
-        bgfx::setViewMode(1, bgfx::ViewMode::Sequential);
-        bgfx::touch(1);
+        woby::graphics::setViewTransform(1, view.view.data(), view.projection.data());
+        woby::graphics::setViewMode(1, woby::graphics::ViewMode::Sequential);
+        woby::graphics::touch(1);
         woby::submitSceneFiles(1, state.files, state.sceneNodes, fixture.runtimes, state.masterVertexPointSize,
             picker.mesh, picker.line, picker.point, fixture.colorUniform, fixture.pointUniform,
             viewport.width, viewport.height, &picker.context);
         woby::submitGpuMarkerPicking(picker, viewport);
         // Test output replaces the window, using the production composite/highlight.
-        bgfx::setViewFrameBuffer(3, fixture.outputFramebuffer);
-        bgfx::setViewFrameBuffer(4, fixture.outputFramebuffer);
+        woby::graphics::setViewFrameBuffer(3, fixture.outputFramebuffer);
+        woby::graphics::setViewFrameBuffer(4, fixture.outputFramebuffer);
         if (capture) {
-            bgfx::blit(7, fixture.staging, 0, 0, fixture.output);
-            fixture.captureReady = bgfx::readTexture(fixture.staging, fixture.pixels.data());
+            woby::graphics::blit(7, fixture.staging, 0, 0, fixture.output);
+            fixture.captureReady = woby::graphics::readTexture(fixture.staging, fixture.pixels.data());
             fixture.capturePending = true;
         }
-        woby::pollGpuMarkerPicking(picker, bgfx::frame(), state, fixture.runtimes);
+        woby::pollGpuMarkerPicking(picker, woby::graphics::frame(), state, fixture.runtimes);
     };
     render(true);
     CHECK_FALSE(picker.coordinates); // Highlight is already in the captured GPU frame.
@@ -182,7 +182,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     CHECK_FALSE(woby::beginGpuMarkerPicking(picker, assets, state, viewport, {48, 40}, false, samples));
     ++state.sceneGeneration;
     state.files.clear(); woby::destroyModelRuntimes(fixture.runtimes);
-    for (int i = 0; i < 12; ++i) { woby::pollGpuMarkerPicking(picker, bgfx::frame(), state, fixture.runtimes); }
+    for (int i = 0; i < 12; ++i) { woby::pollGpuMarkerPicking(picker, woby::graphics::frame(), state, fixture.runtimes); }
     CHECK_FALSE(picker.coordinates);
     CHECK(std::none_of(picker.requests.begin(), picker.requests.end(), [](const auto& request) { return request.pending; }));
 }

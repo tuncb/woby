@@ -1,5 +1,5 @@
 #include "scene_renderer.h"
-#include "bgfx_helpers.h"
+#include "graphics_helpers.h"
 
 #include <doctest/doctest.h>
 #include <limits>
@@ -14,7 +14,7 @@ struct RendererFixture {
     {
         if (initialized) {
             woby::destroyGpuMesh(mesh);
-            bgfx::shutdown();
+            woby::graphics::shutdown();
         }
     }
 };
@@ -24,11 +24,11 @@ struct RendererFixture {
 TEST_CASE("GPU point ranges preserve first occurrence order independently for each group")
 {
     RendererFixture fixture;
-    bgfx::Init init;
-    init.type = bgfx::RendererType::Noop;
+    woby::graphics::Init init;
+    init.type = woby::graphics::RendererType::Noop;
     init.resolution.width = 1;
     init.resolution.height = 1;
-    fixture.initialized = bgfx::init(init);
+    fixture.initialized = woby::graphics::init(init);
     REQUIRE(fixture.initialized);
 
     woby::Mesh mesh;
@@ -38,16 +38,16 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
 
     for (int iteration = 0; iteration < 2; ++iteration) {
         fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout());
-        CHECK(bgfx::isValid(fixture.mesh.vertexBuffer));
-        CHECK(bgfx::isValid(fixture.mesh.triangleIndexBuffer));
-        CHECK_FALSE(bgfx::isValid(fixture.mesh.lineIndexBuffer));
-        CHECK_FALSE(bgfx::isValid(fixture.mesh.pointIdBuffer));
+        CHECK(woby::graphics::isValid(fixture.mesh.vertexBuffer));
+        CHECK(woby::graphics::isValid(fixture.mesh.triangleIndexBuffer));
+        CHECK_FALSE(woby::graphics::isValid(fixture.mesh.lineIndexBuffer));
+        CHECK_FALSE(woby::graphics::isValid(fixture.mesh.pointIdBuffer));
         CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 3, 1, 7, 6, 1});
         REQUIRE(fixture.mesh.nodeRanges.size() == 4);
         CHECK(fixture.mesh.nodeRanges[0].pointIndexCount == 3);
         woby::prepareGpuMeshFeatures(fixture.mesh, mesh, woby::gpuMeshPoints);
-        CHECK(bgfx::isValid(fixture.mesh.pointIdBuffer));
-        CHECK_FALSE(bgfx::isValid(fixture.mesh.lineIndexBuffer));
+        CHECK(woby::graphics::isValid(fixture.mesh.pointIdBuffer));
+        CHECK_FALSE(woby::graphics::isValid(fixture.mesh.lineIndexBuffer));
         CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 3, 1, 7, 6, 1});
         REQUIRE(fixture.mesh.nodeRanges.size() == 4u);
         const std::array<uint32_t, 4> offsets = {0, 3, 3, 6};
@@ -64,7 +64,7 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
         const auto points = fixture.mesh.pointIdBuffer.idx;
         woby::prepareGpuMeshFeatures(fixture.mesh, mesh,
             woby::gpuMeshEdges | woby::gpuMeshPoints);
-        REQUIRE(bgfx::isValid(fixture.mesh.lineIndexBuffer));
+        REQUIRE(woby::graphics::isValid(fixture.mesh.lineIndexBuffer));
         const auto lines = fixture.mesh.lineIndexBuffer.idx;
         woby::prepareGpuMeshFeatures(fixture.mesh, mesh, 0);
         woby::prepareGpuMeshFeatures(fixture.mesh, mesh,
@@ -72,7 +72,7 @@ TEST_CASE("GPU point ranges preserve first occurrence order independently for ea
         CHECK(fixture.mesh.pointIdBuffer.idx == points);
         CHECK(fixture.mesh.lineIndexBuffer.idx == lines);
         woby::destroyGpuMesh(fixture.mesh);
-        CHECK_FALSE(bgfx::isValid(fixture.mesh.pointIdBuffer));
+        CHECK_FALSE(woby::graphics::isValid(fixture.mesh.pointIdBuffer));
         CHECK(fixture.mesh.pointVertexIndices.empty());
         CHECK(fixture.mesh.nodeRanges.empty());
     }
@@ -97,18 +97,16 @@ TEST_CASE("Point uniforms preserve large offsets and pixel sizing")
 
 TEST_CASE("Renderer requirements reject missing shader features at startup")
 {
-    bgfx::Caps caps{};
-    caps.supported = BGFX_CAPS_COMPUTE | BGFX_CAPS_VERTEX_ID | BGFX_CAPS_INSTANCING
-        | BGFX_CAPS_INDEX32 | BGFX_CAPS_PRIMITIVE_ID;
+    woby::graphics::Caps caps{};
+    caps.supported = WOBY_GPU_CAPS_COMPUTE | WOBY_GPU_CAPS_VERTEX_ID | WOBY_GPU_CAPS_INSTANCING
+        | WOBY_GPU_CAPS_INDEX32 | WOBY_GPU_CAPS_PRIMITIVE_ID;
     caps.limits.maxComputeBindings = 2;
-    for (const auto renderer : {bgfx::RendererType::Direct3D11, bgfx::RendererType::Direct3D12,
-             bgfx::RendererType::Metal, bgfx::RendererType::Vulkan,
-             bgfx::RendererType::OpenGL, bgfx::RendererType::OpenGLES}) {
+    for (const auto renderer : {woby::graphics::RendererType::Metal, woby::graphics::RendererType::Vulkan}) {
         caps.rendererType = renderer;
         CHECK(woby::unsupportedRendererReason(caps) == nullptr);
         CHECK_NOTHROW(woby::validateRendererCapabilities(caps));
-        for (const auto feature : {BGFX_CAPS_COMPUTE, BGFX_CAPS_VERTEX_ID,
-                                  BGFX_CAPS_INSTANCING, BGFX_CAPS_INDEX32}) {
+        for (const auto feature : {WOBY_GPU_CAPS_COMPUTE, WOBY_GPU_CAPS_VERTEX_ID,
+                                  WOBY_GPU_CAPS_INSTANCING, WOBY_GPU_CAPS_INDEX32}) {
             auto missing = caps;
             missing.supported &= ~feature;
             CHECK(woby::unsupportedRendererReason(missing) != nullptr);
@@ -122,27 +120,15 @@ TEST_CASE("Renderer requirements reject missing shader features at startup")
                 doctest::Contains("two shader storage buffer bindings"), std::runtime_error);
         }
     }
-    // D3D10 devices can advertise compute and instancing without Shader Model 5.
-    caps.rendererType = bgfx::RendererType::Direct3D11;
-    caps.supported &= ~BGFX_CAPS_PRIMITIVE_ID;
-    CHECK_THROWS_WITH_AS(woby::validateRendererCapabilities(caps),
-        doctest::Contains("feature level 11_0"), std::runtime_error);
-    caps.rendererType = bgfx::RendererType::Noop;
+    caps.rendererType = woby::graphics::RendererType::Noop;
     CHECK(woby::unsupportedRendererReason(caps) != nullptr);
 }
 
-TEST_CASE("OpenGL requirements check versions and vertex-stage storage limits")
+TEST_CASE("Native shader folders match the supported backends")
 {
-    CHECK(woby::unsupportedOpenGlReason(false, {4, 3, 8, 8}) == nullptr);
-    CHECK(woby::unsupportedOpenGlReason(false, {4, 6, 8, 8}) == nullptr);
-    CHECK(woby::unsupportedOpenGlReason(false, {4, 1, 8, 8}) != nullptr);
-    CHECK(woby::unsupportedOpenGlReason(false, {4, 2, 8, 8}) != nullptr);
-    CHECK(woby::unsupportedOpenGlReason(true, {3, 0, 8, 8}) != nullptr);
-    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 2, 2}) == nullptr);
-    CHECK(woby::unsupportedOpenGlReason(true, {3, 2, 8, 8}) == nullptr);
-    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 0, 8}) != nullptr);
-    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 1, 8}) != nullptr);
-    CHECK(woby::unsupportedOpenGlReason(true, {3, 1, 8, 1}) != nullptr);
+    CHECK(std::string(woby::rendererShaderFolder(woby::graphics::RendererType::Vulkan)) == "spirv");
+    CHECK(std::string(woby::rendererShaderFolder(woby::graphics::RendererType::Metal)) == "metal");
+    CHECK_THROWS(woby::rendererShaderFolder(woby::graphics::RendererType::Noop));
 }
 
 TEST_CASE("GPU display demand follows visible file and part settings")

@@ -4,7 +4,7 @@
 #include "ui_state.h"
 #include "scene_pick.h"
 
-#include <bgfx/bgfx.h>
+#include "graphics.h"
 
 #include <cstdint>
 #include <vector>
@@ -34,10 +34,10 @@ struct GpuNodeRange {
 };
 
 struct GpuMesh {
-    bgfx::VertexBufferHandle vertexBuffer = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle triangleIndexBuffer = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle lineIndexBuffer = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle pointIdBuffer = BGFX_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle vertexBuffer = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::IndexBufferHandle triangleIndexBuffer = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::IndexBufferHandle lineIndexBuffer = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::IndexBufferHandle pointIdBuffer = WOBY_GPU_INVALID_HANDLE;
     std::vector<GpuNodeRange> nodeRanges;
     std::vector<uint32_t> pointVertexIndices;
 };
@@ -51,12 +51,12 @@ struct LoadedModelRuntime {
 enum GpuMeshFeature : uint8_t { gpuMeshEdges = 1, gpuMeshPoints = 2 };
 [[nodiscard]] uint8_t requestedGpuMeshFeatures(const UiFileState& file);
 
-[[nodiscard]] bgfx::VertexLayout meshVertexLayout();
-[[nodiscard]] bgfx::VertexLayout helperLineVertexLayout();
+[[nodiscard]] woby::graphics::VertexLayout meshVertexLayout();
+[[nodiscard]] woby::graphics::VertexLayout helperLineVertexLayout();
 
 [[nodiscard]] GpuMesh createGpuMesh(
     const Mesh& mesh,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     uint8_t features = 0);
 // Optional display buffers are retained once built; drawing never allocates.
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh, uint8_t features);
@@ -69,29 +69,29 @@ void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
     float pointSize, uint32_t viewWidth, uint32_t viewHeight, uint32_t pointOffset);
 
 void submitSceneFiles(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const std::vector<UiFileState>& files,
     const std::vector<UiSceneNode>& sceneNodes,
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
-    bgfx::ProgramHandle meshProgram,
-    bgfx::ProgramHandle colorProgram,
-    bgfx::ProgramHandle pointSpriteProgram,
-    bgfx::UniformHandle colorUniform,
-    bgfx::UniformHandle pointParamsUniform,
+    woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::ProgramHandle colorProgram,
+    woby::graphics::ProgramHandle pointSpriteProgram,
+    woby::graphics::UniformHandle colorUniform,
+    woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
     MarkerDrawContext* markers = nullptr);
 
 void submitSceneHelpers(
-    bgfx::ViewId viewId,
+    woby::graphics::ViewId viewId,
     const UiState& state,
-    const bgfx::VertexLayout& layout,
-    bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform);
+    const woby::graphics::VertexLayout& layout,
+    woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform);
 
-void submitSceneSelection(bgfx::ViewId viewId, std::span<const ScenePickPart> parts,
-    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
     SceneRenderScratch& scratch);
 
 } // namespace woby

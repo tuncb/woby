@@ -47,8 +47,8 @@ const char* frameStageName(FrameStage stage)
         return "submit_helpers";
     case FrameStage::imguiRender:
         return "imgui_render";
-    case FrameStage::bgfxFrame:
-        return "bgfx_frame";
+    case FrameStage::graphicsFrame:
+        return "graphics_frame";
     case FrameStage::count:
         break;
     }
@@ -120,27 +120,27 @@ void logSlowFrame(const FrameTimings& timings, double thresholdMilliseconds)
     std::ostringstream stages;
     appendStageTimings(stages, timings.stageMilliseconds);
 
-    if (timings.hasBgfxGpuFrameMilliseconds) {
+    if (timings.hasGraphicsGpuFrameMilliseconds) {
         spdlog::info(
-            "perf slow_frame frame={} total_ms={} threshold_ms={} stages=[{}] bgfx_cpu_frame_ms={} bgfx_cpu_submit_ms={} bgfx_gpu_frame_ms={}",
+            "perf slow_frame frame={} total_ms={} threshold_ms={} stages=[{}] graphics_cpu_frame_ms={} graphics_cpu_submit_ms={} graphics_gpu_frame_ms={}",
             timings.frameIndex,
             timings.totalMilliseconds,
             thresholdMilliseconds,
             stages.str(),
-            timings.bgfxCpuFrameMilliseconds,
-            timings.bgfxCpuSubmitMilliseconds,
-            timings.bgfxGpuFrameMilliseconds);
+            timings.graphicsCpuFrameMilliseconds,
+            timings.graphicsCpuSubmitMilliseconds,
+            timings.graphicsGpuFrameMilliseconds);
         return;
     }
 
     spdlog::info(
-        "perf slow_frame frame={} total_ms={} threshold_ms={} stages=[{}] bgfx_cpu_frame_ms={} bgfx_cpu_submit_ms={}",
+        "perf slow_frame frame={} total_ms={} threshold_ms={} stages=[{}] graphics_cpu_frame_ms={} graphics_cpu_submit_ms={}",
         timings.frameIndex,
         timings.totalMilliseconds,
         thresholdMilliseconds,
         stages.str(),
-        timings.bgfxCpuFrameMilliseconds,
-        timings.bgfxCpuSubmitMilliseconds);
+        timings.graphicsCpuFrameMilliseconds,
+        timings.graphicsCpuSubmitMilliseconds);
 }
 
 } // namespace woby

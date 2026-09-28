@@ -25,12 +25,16 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Getting started
 
-Graphics requirements: Direct3D feature level 11_0 / Shader Model 5.0 or newer,
-Metal, Vulkan, OpenGL 4.3 / GLSL 4.30, or OpenGL ES 3.1 / GLSL ES 3.10, with
-instancing and shader-readable buffers. OpenGL ES devices must also expose at
-least two vertex-stage storage buffers. Woby checks these requirements at startup
-and reports an error before loading models if the renderer is unsupported.
-Vertex markers are generated in the shader; there is no legacy rendering fallback.
+Woby renders through [NoGraphicsAPI](https://github.com/sebbbi/NoGraphicsAPI).
+Windows and Linux require Vulkan 1.4 **and** the NoGraphicsAPI feature profile,
+including `VK_EXT_descriptor_heap`, `VK_KHR_device_address_commands`,
+`VK_KHR_shader_untyped_pointers`, and `VK_EXT_mesh_shader`. A Vulkan version
+number alone does not establish compatibility. macOS requires Apple silicon,
+macOS 26+, and Metal 4. Woby reports unsupported devices at startup.
+
+The native renderer handles meshes, lines, circular vertex markers, 4x MSAA,
+per-sample marker picking, comparison heatmaps, annotations, ImGui, and PNG
+readback. See [renderer architecture and validation](doc/nographicsapi-migration.md).
 
 The main menu stays available above the scene and panes:
 
@@ -457,7 +461,7 @@ Frame performance logging is opt-in. `--log-frame-interval` controls how many fr
 
 For scripting and AI inspection, start `woby --headless --instance review` to render
 without a window. It uses the same camera, scene, analysis, and screenshot commands
-as the desktop viewer. Windows uses Direct3D 11 and Linux uses Vulkan; graphics
+as the desktop viewer. Windows and Linux use NoGraphicsAPI Vulkan; graphics
 support is still required. See the [headless agent guide](doc/headless.md) for
 launch/readiness handling and the camera-to-PNG inspection loop. `woby --help`
 also includes a complete agent quick start. Without `--headless`, Woby opens its UI.
@@ -575,7 +579,14 @@ does not require Python or uv; release packaging still does.
 
 ### Windows development
 
-Set `VCPKG_ROOT` to your vcpkg checkout, then configure and build the Debug preset:
+Install Vulkan SDK 1.4.357.0+ and standalone Slang 2026.18.3+ (the SDK's bundled
+Slang may be older). Put `slangc` and the SDK's `spirv-val` on PATH, set
+`VULKAN_SDK` and `SLANG_ROOT`, then configure and build the Debug preset.
+`WOBY_SLANGC` and `WOBY_SPIRV_VAL` can explicitly select the executables.
+SDL is built with Vulkan support. No bgfx or shaderc installation is needed.
+On macOS use Xcode 26 with its Metal toolchain instead of Vulkan SDK.
+
+Set `VCPKG_ROOT` to your vcpkg checkout:
 
 ```powershell
 $env:VCPKG_ROOT="C:\path\to\vcpkg"
@@ -587,6 +598,10 @@ cmake --build --preset vs2026-vcpkg
 Run tests:
 
 ```powershell
+ctest --preset vs2026-vcpkg
+# On a compatible GPU, enable production rendering/readback tests:
+cmake --preset vs2026-vcpkg -DWOBY_TEST_HEADLESS=ON
+cmake --build --preset vs2026-vcpkg
 ctest --preset vs2026-vcpkg
 ```
 

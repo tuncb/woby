@@ -324,20 +324,20 @@ struct WorkflowFixture {
     SceneObjectId id = invalidSceneObjectId;
     bool initialized = false;
     WorkflowFixture() {
-        bgfx::Init init; init.type = bgfx::RendererType::Noop;
+        woby::graphics::Init init; init.type = woby::graphics::RendererType::Noop;
         init.resolution.width = init.resolution.height = 1;
-        initialized = bgfx::init(init);
+        initialized = woby::graphics::init(init);
         const auto path = files.write("crossing.obj", "v 0 0 0\nv 2 0 0\nv 0 2 0\nv .5 .5 -1\nv .5 .5 1\nv 1.5 .5 0\nf 1 2 3\nf 4 5 6\n");
         state.files.push_back(createUiFileState(path,loadObjMesh(path),0)); appendDefaultSceneNodesForFiles(state,0);
         id = createComparison(state); setComparisonObjects(state,{state.files[0].objectId},ComparisonSide::a,true,id);
         auto settings = comparisonSettings(state,id); settings.mode = ComparisonMode::original;
         setComparisonSettings(state,settings,id);
     }
-    ~WorkflowFixture() { if (initialized) { destroyComparisonRuntimes(runtimes); bgfx::shutdown(); } }
+    ~WorkflowFixture() { if (initialized) { destroyComparisonRuntimes(runtimes); woby::graphics::shutdown(); } }
     bool until(const std::function<bool()>& done) {
         const auto deadline = std::chrono::steady_clock::now()+std::chrono::seconds(10);
         do {
-            updateComparisonRuntimes(runtimes,state); bgfx::frame();
+            updateComparisonRuntimes(runtimes,state); woby::graphics::frame();
             if (done()) { return true; }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         } while (std::chrono::steady_clock::now() < deadline);

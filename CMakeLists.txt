@@ -5,6 +5,9 @@ if(WOBY_BUILD_HASH_BENCHMARKS)
     list(APPEND VCPKG_MANIFEST_FEATURES hash-benchmarks)
 endif()
 
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS version (Metal 4)")
+endif()
 project(woby_obj_viewer VERSION 0.21.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -26,8 +29,9 @@ include(cmake/WobyWarnings.cmake)
 include(cmake/WobyPrecompiledHeaders.cmake)
 include(cmake/WobyRuntimeFiles.cmake)
 
-find_package(SDL3 CONFIG REQUIRED)
-find_package(bgfx CONFIG REQUIRED)
+find_package(SDL3 3.4 CONFIG REQUIRED)
+include(cmake/NoGraphicsAPI.cmake)
+include(cmake/BxMath.cmake)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
@@ -108,8 +112,8 @@ add_executable(woby
     src/control_scene.h
     src/background_load.cpp
     src/background_load.h
-    src/bgfx_helpers.cpp
-    src/bgfx_helpers.h
+    src/graphics_helpers.cpp
+    src/graphics_helpers.h
     src/renderer_startup.cpp
     src/renderer_startup.h
     src/camera.cpp
@@ -138,8 +142,8 @@ add_executable(woby
     src/scene_dimensions.h
     src/scene_scale_overlay.cpp
     src/scene_scale_overlay.h
-    src/imgui_bgfx.cpp
-    src/imgui_bgfx.h
+    src/imgui_graphics.cpp
+    src/imgui_graphics.h
     src/main.cpp
     src/main_menu.cpp
     src/main_menu.h
@@ -210,7 +214,7 @@ target_link_libraries(woby PRIVATE
     woby_automation
     SDL3::SDL3
     ${CMAKE_DL_LIBS}
-    bgfx::bgfx
+    woby_graphics
     Threads::Threads
     imgui::imgui
     spdlog::spdlog
@@ -223,9 +227,9 @@ if(UNIX AND NOT APPLE)
     )
 endif()
 
-foreach(optional_bgfx_target IN ITEMS bgfx::bx bgfx::bimg)
-    if(TARGET "${optional_bgfx_target}")
-        target_link_libraries(woby PRIVATE "${optional_bgfx_target}")
+foreach(optional_math_target IN ITEMS woby_math)
+    if(TARGET "${optional_math_target}")
+        target_link_libraries(woby PRIVATE "${optional_math_target}")
     endif()
 endforeach()
 
@@ -233,146 +237,8 @@ woby_enable_project_warnings(woby)
 woby_enable_enum_switch_warnings(woby)
 woby_enable_precompiled_headers(woby)
 
-include(cmake/BgfxShaders.cmake)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/point.vert.sc"
-    TYPE vertex OUTPUT_NAME vs_marker_point
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/point.frag.sc"
-    TYPE fragment OUTPUT_NAME fs_marker_point
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/mesh.frag.sc"
-    TYPE fragment OUTPUT_NAME fs_marker_mesh
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/line.frag.sc"
-    TYPE fragment OUTPUT_NAME fs_marker_line
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/comparison.frag.sc"
-    TYPE fragment OUTPUT_NAME fs_marker_comparison
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/screen.vert.sc"
-    TYPE vertex OUTPUT_NAME vs_marker_screen
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/highlight.vert.sc"
-    TYPE vertex OUTPUT_NAME vs_marker_highlight
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/composite.frag.sc"
-    TYPE fragment OUTPUT_NAME fs_marker_composite
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/lookup_single.sc"
-    TYPE compute OUTPUT_NAME cs_marker_lookup_single
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/highlight_single.frag.sc"
-    TYPE fragment OUTPUT_NAME fs_marker_highlight_single
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/lookup_msaa.sc"
-    TYPE compute OUTPUT_NAME cs_marker_lookup_msaa
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/highlight_msaa.frag.sc"
-    TYPE fragment OUTPUT_NAME fs_marker_highlight_msaa
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/marker/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.vert.sc"
-    TYPE vertex
-    OUTPUT_NAME vs_mesh
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/mesh.frag.sc"
-    TYPE fragment
-    OUTPUT_NAME fs_mesh
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/comparison.vert.sc"
-    TYPE vertex
-    OUTPUT_NAME vs_comparison
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/comparison.frag.sc"
-    TYPE fragment
-    OUTPUT_NAME fs_comparison
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/color.vert.sc"
-    TYPE vertex
-    OUTPUT_NAME vs_color
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/annotation.vert.sc"
-    TYPE vertex
-    OUTPUT_NAME vs_annotation
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/color.frag.sc"
-    TYPE fragment
-    OUTPUT_NAME fs_color
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/point_sprite.vert.sc"
-    TYPE vertex
-    OUTPUT_NAME vs_point_sprite
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/point_sprite.frag.sc"
-    TYPE fragment
-    OUTPUT_NAME fs_point_sprite
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/imgui.vert.sc"
-    TYPE vertex
-    OUTPUT_NAME vs_imgui
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
-woby_compile_bgfx_shader(woby
-    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/imgui.frag.sc"
-    TYPE fragment
-    OUTPUT_NAME fs_imgui
-    VARYING "${CMAKE_CURRENT_SOURCE_DIR}/shaders/varying.def.sc"
-)
-
 set(woby_resource_directory "${WOBY_RUNTIME_DIRECTORY}")
+
 if(APPLE)
     include(cmake/WobyMacOSBundle.cmake)
     woby_configure_macos_bundle(woby "${WOBY_RUNTIME_DIRECTORY}" woby_resource_directory
@@ -381,6 +247,7 @@ if(APPLE)
     set_source_files_properties(packaging/icons/woby.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     set_target_properties(woby PROPERTIES MACOSX_BUNDLE_ICON_FILE woby.icns)
 endif()
+woby_compile_graphics_shaders(woby)
 woby_stage_assets(woby "${woby_resource_directory}")
 add_dependencies(woby woby-update-helper)
 set(woby_runtime_targets woby woby-update-helper)
@@ -443,7 +310,7 @@ endif()
 
 if(BUILD_TESTING)
     include(cmake/WobyPython.cmake)
-    option(WOBY_TEST_HEADLESS "Run headless integration tests (requires D3D11 or Vulkan graphics support)" OFF)
+    option(WOBY_TEST_HEADLESS "Run headless integration tests (requires a NoGraphicsAPI-compatible GPU)" OFF)
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
         add_test(NAME woby_headless COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_headless_smoke.py" "$<TARGET_FILE:woby>")
@@ -479,6 +346,7 @@ if(BUILD_TESTING)
     include(doctest)
 
     add_executable(woby_tests
+        tests/graphics_tests.cpp
         tests/manual_path_dialog_tests.cpp
         src/manual_path_dialog.cpp
         src/manual_path_dialog_ui.cpp
@@ -564,8 +432,8 @@ if(BUILD_TESTING)
         src/scene_file.h
         src/scene_objects.cpp
         src/scene_objects.h
-        src/bgfx_helpers.cpp
-        src/bgfx_helpers.h
+        src/graphics_helpers.cpp
+        src/graphics_helpers.h
         src/scene_renderer.cpp
         src/scene_renderer.h
         src/stl_mesh.cpp
@@ -605,7 +473,7 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp)
+        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp)
     endif()
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -619,14 +487,14 @@ if(BUILD_TESTING)
         doctest::doctest
         imgui::imgui
         ${CMAKE_DL_LIBS}
-        bgfx::bgfx
+        woby_graphics
         Threads::Threads
         spdlog::spdlog
     )
 
-    foreach(optional_bgfx_target IN ITEMS bgfx::bx bgfx::bimg)
-        if(TARGET "${optional_bgfx_target}")
-            target_link_libraries(woby_tests PRIVATE "${optional_bgfx_target}")
+    foreach(optional_math_target IN ITEMS woby_math)
+        if(TARGET "${optional_math_target}")
+            target_link_libraries(woby_tests PRIVATE "${optional_math_target}")
         endif()
     endforeach()
 

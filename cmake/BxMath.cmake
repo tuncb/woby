@@ -1,0 +1,26 @@
+# Keep the camera's established CPU math conventions without a bgfx dependency.
+include(FetchContent)
+FetchContent_Declare(woby_bx
+    URL https://github.com/bkaradzic/bx/archive/eda38395ddfdeba08c46653b93b8d5bb21f2c863.zip
+    URL_HASH SHA256=abf1054dd123610bd21eb8add51371a50633334ba389130f6a6115e43249635f
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(woby_bx)
+file(GLOB bx_sources "${woby_bx_SOURCE_DIR}/src/*.cpp")
+list(REMOVE_ITEM bx_sources "${woby_bx_SOURCE_DIR}/src/amalgamated.cpp")
+add_library(woby_math STATIC ${bx_sources})
+target_compile_features(woby_math PUBLIC cxx_std_20)
+target_include_directories(woby_math SYSTEM PUBLIC "${woby_bx_SOURCE_DIR}/include")
+target_include_directories(woby_math PRIVATE "${woby_bx_SOURCE_DIR}/3rdparty")
+target_compile_definitions(woby_math PUBLIC BX_CONFIG_DEBUG=$<IF:$<CONFIG:Debug>,1,0>)
+if(MSVC)
+    target_include_directories(woby_math SYSTEM PUBLIC "${woby_bx_SOURCE_DIR}/include/compat/msvc")
+    target_compile_options(woby_math PUBLIC /Zc:__cplusplus /Zc:preprocessor)
+    target_link_libraries(woby_math PRIVATE psapi)
+elseif(APPLE)
+    target_include_directories(woby_math SYSTEM PUBLIC "${woby_bx_SOURCE_DIR}/include/compat/osx")
+    target_link_libraries(woby_math PRIVATE "-framework Foundation")
+elseif(UNIX)
+    target_include_directories(woby_math SYSTEM PUBLIC "${woby_bx_SOURCE_DIR}/include/compat/linux")
+    find_package(Threads REQUIRED)
+    target_link_libraries(woby_math PRIVATE Threads::Threads ${CMAKE_DL_LIBS} rt)
+endif()

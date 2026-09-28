@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstring>
 #include <fstream>
@@ -274,7 +275,9 @@ Frame& render(Renderer& r, const Fixture& fixture, RenderOptions o, ImDrawData* 
     f.completion = ++r.submitted;
     f.epoch = r.selection.epoch; f.sequence = ++r.nextSequence; f.pending = true; f.captured = o.capture;
     const auto uploadComplete = r.uploads->flush();
-    const SubmitDesc submitDesc{.commands = {cmd}, .waits = {uploadComplete},.completion = {r.timeline,f.completion}};
+    const std::array submittedCommands{cmd};
+    const std::array uploadWaits{uploadComplete};
+    const SubmitDesc submitDesc{.commands = submittedCommands, .waits = uploadWaits,.completion = {r.timeline,f.completion}};
     if (swap.render_view) submit_and_present(r.device,submitDesc); else submit(r.device,submitDesc);
     return f;
 }

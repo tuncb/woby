@@ -6,12 +6,10 @@
 #include "comparison_legend.h"
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
-#include "imgui_bgfx.h"
+#include "imgui_graphics.h"
 
-#include <bimg/bimg.h>
-#include <bx/allocator.h>
+#include <SDL3/SDL.h>
 #include <bx/math.h>
-#include <bx/readerwriter.h>
 
 #include <algorithm>
 #include <cctype>
@@ -21,10 +19,10 @@
 namespace woby {
 namespace {
 
-constexpr bgfx::ViewId screenshotSceneView = 16;
-constexpr bgfx::ViewId screenshotHelperView = 17;
-constexpr bgfx::ViewId screenshotAnnotationView = 18;
-constexpr bgfx::ViewId screenshotReadbackView = 19;
+constexpr woby::graphics::ViewId screenshotSceneView = 16;
+constexpr woby::graphics::ViewId screenshotHelperView = 17;
+constexpr woby::graphics::ViewId screenshotAnnotationView = 18;
+constexpr woby::graphics::ViewId screenshotReadbackView = 19;
 
 std::string fileDisplayName(const std::filesystem::path& path)
 {
@@ -59,85 +57,85 @@ std::filesystem::path pngPath(const std::filesystem::path& path)
 
 void ensureSceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
 {
-    if (bgfx::isValid(screenshot.frameBuffer)
+    if (woby::graphics::isValid(screenshot.frameBuffer)
         && screenshot.width == screenshot.options.width && screenshot.height == screenshot.options.height) {
         return;
     }
     destroySceneScreenshotFramebuffer(screenshot);
     screenshot.width = static_cast<uint16_t>(screenshot.options.width);
     screenshot.height = static_cast<uint16_t>(screenshot.options.height);
-    if (screenshot.width > bgfx::getCaps()->limits.maxTextureSize
-        || screenshot.height > bgfx::getCaps()->limits.maxTextureSize) {
+    if (screenshot.width > woby::graphics::getCaps()->limits.maxTextureSize
+        || screenshot.height > woby::graphics::getCaps()->limits.maxTextureSize) {
         throw std::runtime_error("Export resolution exceeds the renderer texture limit.");
     }
 
     validateSceneScreenshotRenderer();
 
-    constexpr uint64_t colorFlags = BGFX_TEXTURE_RT
-        | BGFX_SAMPLER_U_CLAMP
-        | BGFX_SAMPLER_V_CLAMP;
-    constexpr uint64_t depthFlags = BGFX_TEXTURE_RT
-        | BGFX_SAMPLER_U_CLAMP
-        | BGFX_SAMPLER_V_CLAMP;
-    constexpr uint64_t readbackFlags = BGFX_TEXTURE_BLIT_DST
-        | BGFX_TEXTURE_READ_BACK
-        | BGFX_SAMPLER_U_CLAMP
-        | BGFX_SAMPLER_V_CLAMP;
-    if (!bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::BGRA8, colorFlags)) {
+    constexpr uint64_t colorFlags = WOBY_GPU_TEXTURE_RT
+        | WOBY_GPU_SAMPLER_U_CLAMP
+        | WOBY_GPU_SAMPLER_V_CLAMP;
+    constexpr uint64_t depthFlags = WOBY_GPU_TEXTURE_RT
+        | WOBY_GPU_SAMPLER_U_CLAMP
+        | WOBY_GPU_SAMPLER_V_CLAMP;
+    constexpr uint64_t readbackFlags = WOBY_GPU_TEXTURE_BLIT_DST
+        | WOBY_GPU_TEXTURE_READ_BACK
+        | WOBY_GPU_SAMPLER_U_CLAMP
+        | WOBY_GPU_SAMPLER_V_CLAMP;
+    if (!woby::graphics::isTextureValid(0, false, 1, woby::graphics::TextureFormat::BGRA8, colorFlags)) {
         throw std::runtime_error("Renderer cannot create screenshot color target.");
     }
-    if (!bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::D24S8, depthFlags)) {
+    if (!woby::graphics::isTextureValid(0, false, 1, woby::graphics::TextureFormat::D24S8, depthFlags)) {
         throw std::runtime_error("Renderer cannot create screenshot depth target.");
     }
-    if (!bgfx::isTextureValid(0, false, 1, bgfx::TextureFormat::BGRA8, readbackFlags)) {
+    if (!woby::graphics::isTextureValid(0, false, 1, woby::graphics::TextureFormat::BGRA8, readbackFlags)) {
         throw std::runtime_error("Renderer cannot create screenshot readback target.");
     }
 
-    screenshot.colorTexture = bgfx::createTexture2D(
+    screenshot.colorTexture = woby::graphics::createTexture2D(
         screenshot.width,
         screenshot.height,
         false,
         1,
-        bgfx::TextureFormat::BGRA8,
+        woby::graphics::TextureFormat::BGRA8,
         colorFlags);
-    screenshot.depthTexture = bgfx::createTexture2D(
+    screenshot.depthTexture = woby::graphics::createTexture2D(
         screenshot.width,
         screenshot.height,
         false,
         1,
-        bgfx::TextureFormat::D24S8,
+        woby::graphics::TextureFormat::D24S8,
         depthFlags);
-    screenshot.readbackTexture = bgfx::createTexture2D(
+    screenshot.readbackTexture = woby::graphics::createTexture2D(
         screenshot.width,
         screenshot.height,
         false,
         1,
-        bgfx::TextureFormat::BGRA8,
+        woby::graphics::TextureFormat::BGRA8,
         readbackFlags);
-    if (!bgfx::isValid(screenshot.colorTexture)
-        || !bgfx::isValid(screenshot.depthTexture)
-        || !bgfx::isValid(screenshot.readbackTexture)) {
+    if (!woby::graphics::isValid(screenshot.colorTexture)
+        || !woby::graphics::isValid(screenshot.depthTexture)
+        || !woby::graphics::isValid(screenshot.readbackTexture)) {
         destroySceneScreenshotFramebuffer(screenshot);
         throw std::runtime_error("Failed to create screenshot textures.");
     }
 
-    const bgfx::TextureHandle textures[] = {
+    const woby::graphics::TextureHandle textures[] = {
         screenshot.colorTexture,
         screenshot.depthTexture,
     };
-    screenshot.frameBuffer = bgfx::createFrameBuffer(
+    screenshot.frameBuffer = woby::graphics::createFrameBuffer(
         static_cast<uint8_t>(std::size(textures)),
         textures,
         false);
-    if (!bgfx::isValid(screenshot.frameBuffer)) {
+    if (!woby::graphics::isValid(screenshot.frameBuffer)) {
         destroySceneScreenshotFramebuffer(screenshot);
         throw std::runtime_error("Failed to create screenshot framebuffer.");
     }
 
-    bgfx::setName(screenshot.frameBuffer, "Scene Screenshot Framebuffer");
-    bgfx::setName(screenshot.colorTexture, "Scene Screenshot Color");
-    bgfx::setName(screenshot.depthTexture, "Scene Screenshot Depth");
-    bgfx::setName(screenshot.readbackTexture, "Scene Screenshot Readback");
+    woby::graphics::setName(screenshot.frameBuffer, "Scene Screenshot Framebuffer");
+    woby::graphics::setName(screenshot.colorTexture, "Scene Screenshot Color");
+    woby::graphics::setName(screenshot.depthTexture, "Scene Screenshot Depth");
+    woby::graphics::setName(screenshot.readbackTexture, "Scene Screenshot Readback");
     screenshot.pixels.resize(static_cast<size_t>(screenshot.width) * screenshot.height * 4u);
 }
 
@@ -148,75 +146,51 @@ void writeSceneScreenshotPng(const SceneScreenshotRuntime& screenshot)
         std::filesystem::create_directories(parentPath);
     }
 
-    // Encode to memory, then use filesystem-aware output so Windows Unicode paths work.
-    // RGBA lets bimg write whole rows instead of making a writer call for every channel.
-    auto rgbaPixels = screenshot.pixels;
-    for (size_t index = 0; index < rgbaPixels.size(); index += 4u) {
-        std::swap(rgbaPixels[index], rgbaPixels[index + 2u]);
-    }
-    bx::DefaultAllocator allocator;
-    bx::MemoryBlock block(&allocator);
-    block.more(static_cast<uint32_t>(rgbaPixels.size()) + screenshot.height * 16u + 1024u);
-    bx::MemoryWriter writer(&block);
-    bx::Error error;
-    const auto outputPathUtf8 = screenshot.outputPath.u8string();
-    const std::string outputPath(outputPathUtf8.begin(), outputPathUtf8.end());
-
-    const bool yflip = bgfx::getCaps()->originBottomLeft;
-    const int32_t result = bimg::imageWritePng(
-        &writer,
-        screenshot.width,
-        screenshot.height,
-        screenshot.width * 4u,
-        rgbaPixels.data(),
-        bimg::TextureFormat::RGBA8,
-        yflip,
-        &error);
-    if (result <= 0 || !error.isOk()) {
-        throw std::runtime_error("Failed to encode screenshot PNG: " + outputPath);
-    }
-    std::ofstream output(screenshot.outputPath, std::ios::binary | std::ios::trunc);
-    output.write(static_cast<const char*>(block.more()), static_cast<std::streamsize>(writer.seek()));
-    output.close();
-    if (!output) {
-        throw std::runtime_error("Failed to write screenshot PNG: " + outputPath);
-    }
+    const auto utf8 = screenshot.outputPath.u8string();
+    const std::string outputPath(utf8.begin(), utf8.end());
+    SDL_Surface* surface = SDL_CreateSurfaceFrom(screenshot.width, screenshot.height,
+        SDL_PIXELFORMAT_BGRA32, const_cast<uint8_t*>(screenshot.pixels.data()), screenshot.width * 4);
+    if (!surface) throw std::runtime_error(std::string("Cannot create PNG surface: ") + SDL_GetError());
+    const bool saved = SDL_SavePNG(surface, outputPath.c_str());
+    const std::string error = saved ? "" : SDL_GetError();
+    SDL_DestroySurface(surface);
+    if (!saved) throw std::runtime_error("Failed to write screenshot PNG: " + outputPath + ": " + error);
 }
 
 } // namespace
 
 void validateSceneScreenshotRenderer()
 {
-    if (bgfx::getRendererType() == bgfx::RendererType::Noop) {
-        throw std::runtime_error("A graphics renderer is required for screenshots; bgfx Noop is not supported.");
+    if (woby::graphics::getRendererType() == woby::graphics::RendererType::Noop) {
+        throw std::runtime_error("A graphics renderer is required for screenshots; graphics Noop is not supported.");
     }
-    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_READ_BACK) == 0u) {
+    if ((woby::graphics::getCaps()->supported & WOBY_GPU_CAPS_TEXTURE_READ_BACK) == 0u) {
         throw std::runtime_error("Renderer does not support texture readback.");
     }
-    if ((bgfx::getCaps()->supported & BGFX_CAPS_TEXTURE_BLIT) == 0u) {
+    if ((woby::graphics::getCaps()->supported & WOBY_GPU_CAPS_TEXTURE_BLIT) == 0u) {
         throw std::runtime_error("Renderer does not support texture blit for screenshot readback.");
     }
 }
 
 void destroySceneScreenshotFramebuffer(SceneScreenshotRuntime& screenshot)
 {
-    if (bgfx::isValid(screenshot.frameBuffer)) {
-        bgfx::destroy(screenshot.frameBuffer);
+    if (woby::graphics::isValid(screenshot.frameBuffer)) {
+        woby::graphics::destroy(screenshot.frameBuffer);
     }
-    if (bgfx::isValid(screenshot.depthTexture)) {
-        bgfx::destroy(screenshot.depthTexture);
+    if (woby::graphics::isValid(screenshot.depthTexture)) {
+        woby::graphics::destroy(screenshot.depthTexture);
     }
-    if (bgfx::isValid(screenshot.readbackTexture)) {
-        bgfx::destroy(screenshot.readbackTexture);
+    if (woby::graphics::isValid(screenshot.readbackTexture)) {
+        woby::graphics::destroy(screenshot.readbackTexture);
     }
-    if (bgfx::isValid(screenshot.colorTexture)) {
-        bgfx::destroy(screenshot.colorTexture);
+    if (woby::graphics::isValid(screenshot.colorTexture)) {
+        woby::graphics::destroy(screenshot.colorTexture);
     }
 
-    screenshot.frameBuffer = BGFX_INVALID_HANDLE;
-    screenshot.depthTexture = BGFX_INVALID_HANDLE;
-    screenshot.readbackTexture = BGFX_INVALID_HANDLE;
-    screenshot.colorTexture = BGFX_INVALID_HANDLE;
+    screenshot.frameBuffer = WOBY_GPU_INVALID_HANDLE;
+    screenshot.depthTexture = WOBY_GPU_INVALID_HANDLE;
+    screenshot.readbackTexture = WOBY_GPU_INVALID_HANDLE;
+    screenshot.colorTexture = WOBY_GPU_INVALID_HANDLE;
     screenshot.pixels.clear();
 }
 
@@ -237,14 +211,14 @@ void submitSceneScreenshotCapture(
     const std::vector<UiFileState>& files,
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
-    bgfx::ProgramHandle meshProgram,
-    bgfx::ProgramHandle colorProgram,
-    bgfx::ProgramHandle annotationProgram,
-    bgfx::ProgramHandle pointSpriteProgram,
-    bgfx::UniformHandle colorUniform,
-    bgfx::UniformHandle pointParamsUniform,
+    woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::ProgramHandle colorProgram,
+    woby::graphics::ProgramHandle annotationProgram,
+    woby::graphics::ProgramHandle pointSpriteProgram,
+    woby::graphics::UniformHandle colorUniform,
+    woby::graphics::UniformHandle pointParamsUniform,
     const UiState& ui,
-    const bgfx::VertexLayout& helperLayout,
+    const woby::graphics::VertexLayout& helperLayout,
     const Bounds& sceneBounds,
     const SceneCamera& camera,
     bool homogeneousDepth,
@@ -327,26 +301,26 @@ void submitSceneScreenshotCapture(
     annotationDraw.PopTexture();
     annotationDraw.PopClipRect();
 
-    bgfx::setViewName(screenshotSceneView, "Scene Screenshot");
-    bgfx::setViewName(screenshotHelperView, "Scene Screenshot Helpers");
-    bgfx::setViewName(screenshotReadbackView, "Scene Screenshot Readback");
-    bgfx::setViewFrameBuffer(screenshotSceneView, screenshot.frameBuffer);
-    bgfx::setViewFrameBuffer(screenshotHelperView, screenshot.frameBuffer);
-    bgfx::setViewClear(screenshotSceneView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
-    bgfx::setViewClear(screenshotHelperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
-    bgfx::setViewRect(screenshotSceneView, 0, 0, sceneWidth, screenshot.height);
-    bgfx::setViewRect(screenshotHelperView, 0, 0, sceneWidth, screenshot.height);
-    bgfx::touch(screenshotSceneView);
-    bgfx::touch(screenshotHelperView);
+    woby::graphics::setViewName(screenshotSceneView, "Scene Screenshot");
+    woby::graphics::setViewName(screenshotHelperView, "Scene Screenshot Helpers");
+    woby::graphics::setViewName(screenshotReadbackView, "Scene Screenshot Readback");
+    woby::graphics::setViewFrameBuffer(screenshotSceneView, screenshot.frameBuffer);
+    woby::graphics::setViewFrameBuffer(screenshotHelperView, screenshot.frameBuffer);
+    woby::graphics::setViewClear(screenshotSceneView, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
+    woby::graphics::setViewClear(screenshotHelperView, WOBY_GPU_CLEAR_NONE, 0x00000000, 1.0f, 0);
+    woby::graphics::setViewRect(screenshotSceneView, 0, 0, sceneWidth, screenshot.height);
+    woby::graphics::setViewRect(screenshotHelperView, 0, 0, sceneWidth, screenshot.height);
+    woby::graphics::touch(screenshotSceneView);
+    woby::graphics::touch(screenshotHelperView);
 
     const auto captureView = scenePickView(camera, ui.upAxis, sceneBounds,
         sceneWidth, screenshot.height, homogeneousDepth, 1);
     const auto* view = captureView.view.data();
     const auto* projection = captureView.projection.data();
-    bgfx::setViewTransform(screenshotSceneView, view, projection);
-    bgfx::setViewTransform(screenshotHelperView, view, projection);
+    woby::graphics::setViewTransform(screenshotSceneView, view, projection);
+    woby::graphics::setViewTransform(screenshotHelperView, view, projection);
 
-    bgfx::setViewMode(screenshotSceneView, bgfx::ViewMode::Sequential);
+    woby::graphics::setViewMode(screenshotSceneView, woby::graphics::ViewMode::Sequential);
     if (!options.resultsOnly) {
         submitSceneFiles(
             screenshotSceneView,
@@ -384,12 +358,12 @@ void submitSceneScreenshotCapture(
         drawData.FramebufferScale = {1, 1};
         drawData.Textures = &textures;
         drawData.AddDrawList(&annotationDraw);
-        bgfx::setViewFrameBuffer(screenshotAnnotationView, screenshot.frameBuffer);
-        bgfx::setViewClear(screenshotAnnotationView, BGFX_CLEAR_NONE);
-        imgui_bgfx::renderToView(&drawData, screenshotAnnotationView);
+        woby::graphics::setViewFrameBuffer(screenshotAnnotationView, screenshot.frameBuffer);
+        woby::graphics::setViewClear(screenshotAnnotationView, WOBY_GPU_CLEAR_NONE);
+        imgui_graphics::renderToView(&drawData, screenshotAnnotationView);
     }
 
-    bgfx::blit(
+    woby::graphics::blit(
         screenshotReadbackView,
         screenshot.readbackTexture,
         0,
@@ -399,7 +373,7 @@ void submitSceneScreenshotCapture(
         0,
         screenshot.width,
         screenshot.height);
-    screenshot.readFrame = bgfx::readTexture(screenshot.readbackTexture, screenshot.pixels.data());
+    screenshot.readFrame = woby::graphics::readTexture(screenshot.readbackTexture, screenshot.pixels.data());
     screenshot.captureRequested = false;
     screenshot.readbackPending = true;
 }

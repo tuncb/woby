@@ -33,7 +33,7 @@ jobs:
             package_name: woby-linux-x64
             vcpkg_triplet: woby-ci-x64-linux
             archive_extension: tar.gz
-          - os: macos-latest
+          - os: macos-26
             package_name: woby-macos-arm64
             vcpkg_triplet: woby-ci-arm64-osx
             archive_extension: tar.gz
@@ -202,6 +202,10 @@ jobs:
           } else {
             & "$env:WOBY_VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
           }
+
+      - name: Install native graphics build tools
+        shell: pwsh
+        run: .github/scripts/setup-graphics-toolchain.ps1 -Destination "$env:RUNNER_TEMP/woby-graphics-tools"
 
       - name: Configure CMake
         shell: pwsh

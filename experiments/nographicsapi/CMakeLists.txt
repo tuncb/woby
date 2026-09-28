@@ -11,16 +11,7 @@ if(NOT slang_version_number OR slang_version_number VERSION_LESS 2026.18.3)
     message(FATAL_ERROR "Use standalone Slang >= 2026.18.3; set WOBY_SLANGC to slangc.exe (the SDK bundled compiler may be older)")
 endif()
 
-include(FetchContent)
-FetchContent_Declare(woby_ngapi
-    URL https://github.com/sebbbi/NoGraphicsAPI/archive/ae017a2f545abc0847e546cc7e84139bf3cc4241.zip
-    URL_HASH SHA256=3a51391ca3004b391a1b86b972e16c9004e532bedf26f9419211fbd5d228a722
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-    PATCH_COMMAND "${CMAKE_COMMAND}" -DNGAPI_SOURCE=<SOURCE_DIR> -P "${CMAKE_CURRENT_SOURCE_DIR}/patch_upstream.cmake"
-    EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(woby_ngapi)
-set(NGAPI_SOURCE "${woby_ngapi_SOURCE_DIR}")
-include(patch_upstream.cmake)
+include("${PROJECT_SOURCE_DIR}/cmake/NoGraphicsAPI.cmake")
 
 set(shader_outputs)
 foreach(entry_stage IN ITEMS "sceneVertex,vertex" "markerVertex,vertex" "sceneFragment,fragment"
@@ -54,7 +45,7 @@ endforeach()
 add_custom_target(woby_ngapi_shaders DEPENDS ${shader_outputs})
 add_library(woby_ngapi_logic STATIC logic.cpp ../../src/marker_pick_logic.cpp)
 target_include_directories(woby_ngapi_logic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/src")
-target_link_libraries(woby_ngapi_logic PUBLIC bgfx::bx)
+target_link_libraries(woby_ngapi_logic PUBLIC woby_math)
 woby_enable_project_warnings(woby_ngapi_logic)
 
 add_executable(woby_nographicsapi_prototype main.cpp renderer.cpp imgui_renderer.cpp)

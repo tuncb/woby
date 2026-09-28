@@ -10,6 +10,13 @@ import tarfile
 import zipfile
 from pathlib import Path
 
+NATIVE_SHADERS = (
+    "vs_mesh", "fs_mesh", "vs_color", "fs_color", "vs_annotation", "vs_point_sprite", "fs_point_sprite",
+    "vs_comparison", "fs_comparison", "vs_imgui", "fs_imgui", "vs_marker_point", "fs_marker_point", "fs_marker_mesh",
+    "fs_marker_line", "fs_marker_comparison", "vs_marker_screen", "fs_marker_composite",
+    "vs_marker_highlight", "fs_marker_highlight_single", "fs_marker_highlight_msaa",
+    "cs_marker_lookup_single", "cs_marker_lookup_msaa",
+)
 MANIFEST = "woby-manifest.json"
 PLATFORMS = {"windows-x64": ".zip", "linux-x64": ".tar.gz", "macos-arm64": ".tar.gz"}
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
@@ -66,10 +73,9 @@ def collect_manifest(root, platform, version):
         files.append({"path": name, "size": info.st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                       "executable": bool(info.st_mode & stat.S_IXUSR) if platform != "windows-x64" else name.endswith(".exe")})
     suffix = ".exe" if platform == "windows-x64" else ""
-    shader = {"windows-x64": "dx11", "linux-x64": "glsl", "macos-arm64": "metal"}[platform]
+    shader = {"windows-x64": "spirv", "linux-x64": "spirv", "macos-arm64": "metal"}[platform]
     required = {"woby" + suffix, "woby-update-helper" + suffix, "assets/fonts/RobotoMonoNerdFont-Regular.ttf"}
-    required |= {f"assets/shaders/{shader}/{stage}_{name}.bin" for stage in ("vs", "fs")
-                 for name in ("mesh", "color", "comparison", "imgui", "point_sprite")}
+    required |= {f"assets/shaders/{shader}/{name}.bin" for name in NATIVE_SHADERS}
     if not {name.lower() for name in required}.issubset(seen):
         raise ValueError("Package is missing executable, font, or shader files")
     return {"schema": 1, "platform": platform, "version": version, "files": files}

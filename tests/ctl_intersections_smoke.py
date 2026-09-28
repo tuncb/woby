@@ -110,7 +110,7 @@ def main():
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved, "--overwrite")
                 text = saved.read_text(encoding="utf-8")
-                assert 'version = 15' in text and 'self_intersections_auto_update = false' in text
+                assert 'version = 16' in text and 'self_intersections_auto_update = false' in text
                 ctl("scene", "open", saved)
                 objects = ctl("objects")["objects"]
                 analysis = next(item["id"] for item in objects if item["kind"] == "analysis")

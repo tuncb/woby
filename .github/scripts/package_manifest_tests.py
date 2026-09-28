@@ -33,8 +33,7 @@ def test_manifest_and_archive_validation():
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary) / 'package'
         names = ['woby.exe', 'woby-update-helper.exe', 'assets/fonts/RobotoMonoNerdFont-Regular.ttf']
-        names += [f'assets/shaders/dx11/{stage}_{name}.bin' for stage in ('vs', 'fs')
-                  for name in ('mesh', 'color', 'comparison', 'imgui', 'point_sprite')]
+        names += [f'assets/shaders/spirv/{name}.bin' for name in package.NATIVE_SHADERS]
         for name in names:
             path = root / name
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -71,7 +70,7 @@ def test_manifest_and_archive_validation():
             names.pop()
             manifest['files'].pop()
             path.unlink()
-        (root / 'assets/shaders/dx11/vs_mesh.bin').unlink()
+        (root / 'assets/shaders/spirv/cs_marker_lookup_msaa.bin').unlink()
         expect_error(package.collect_manifest, root, 'windows-x64', '1.2.3')
 
 

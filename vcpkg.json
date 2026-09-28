@@ -2,11 +2,10 @@
   "name": "woby-obj-viewer",
   "version-string": "0.21.3",
   "dependencies": [
-    "sdl3",
     {
-      "name": "bgfx",
+      "name": "sdl3",
       "features": [
-        "tools"
+        "vulkan"
       ]
     },
     {
@@ -17,11 +16,26 @@
       ]
     },
     "spdlog",
-    { "name": "cpp-httplib", "default-features": false },
+    {
+      "name": "cpp-httplib",
+      "default-features": false
+    },
     "nlohmann-json",
-    { "name": "curl", "default-features": false, "features": ["ssl"] },
-    { "name": "libarchive", "default-features": false },
-    { "name": "openssl", "platform": "!windows" },
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": [
+        "ssl"
+      ]
+    },
+    {
+      "name": "libarchive",
+      "default-features": false
+    },
+    {
+      "name": "openssl",
+      "platform": "!windows"
+    },
     "boost-multiprecision",
     "boost-unordered",
     "doctest"
@@ -29,7 +43,9 @@
   "features": {
     "hash-benchmarks": {
       "description": "Compare standard, Woby, Boost and unordered_dense hash tables",
-      "dependencies": ["unordered-dense"]
+      "dependencies": [
+        "unordered-dense"
+      ]
     }
   }
 }

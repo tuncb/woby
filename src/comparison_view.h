@@ -15,24 +15,24 @@ inline constexpr const char* comparisonSourcePayload = "WOBY_COMPARISON_SOURCES"
 
 struct ComparisonGpuSurface
 {
-    bgfx::VertexBufferHandle vertices = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle triangles = BGFX_INVALID_HANDLE;
-    bgfx::IndexBufferHandle lines = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle samples = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle quality = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle boundaries = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle nonManifold = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle nonManifoldVertices = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle holes = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle finEdges = BGFX_INVALID_HANDLE, finFill = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle winding = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle intersectionEdges = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle intersectionFill = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle degenerateEdges = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle degenerateFill = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle duplicatePoints = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle duplicateTriangleEdges = BGFX_INVALID_HANDLE;
-    bgfx::VertexBufferHandle duplicateTriangleFill = BGFX_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle vertices = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::IndexBufferHandle triangles = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::IndexBufferHandle lines = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle samples = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle quality = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle boundaries = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle nonManifold = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle nonManifoldVertices = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle holes = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle finEdges = WOBY_GPU_INVALID_HANDLE, finFill = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle winding = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle intersectionEdges = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle intersectionFill = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle degenerateEdges = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle degenerateFill = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle duplicatePoints = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle duplicateTriangleEdges = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::VertexBufferHandle duplicateTriangleFill = WOBY_GPU_INVALID_HANDLE;
 };
 
 struct IntersectionRuntime {
@@ -72,8 +72,8 @@ struct ComparisonRuntime
 
 struct ComparisonRuntimes {
     std::map<SceneObjectId, ComparisonRuntime> objects;
-    bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;
-    bgfx::UniformHandle parameters = BGFX_INVALID_HANDLE;
+    woby::graphics::ProgramHandle program = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::UniformHandle parameters = WOBY_GPU_INVALID_HANDLE;
 };
 
 [[nodiscard]] bool comparisonDetectorReady(const ComparisonRuntime& runtime, const UiState& state,
@@ -97,9 +97,9 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit);
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
-void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
-    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch,
-    bgfx::ProgramHandle markerProgram = BGFX_INVALID_HANDLE);
+void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
+    woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch,
+    woby::graphics::ProgramHandle markerProgram = WOBY_GPU_INVALID_HANDLE);
 void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
     const ComparisonRuntimes& runtimes);
 // False while any visible, valid comparison is queued/computing. Errors are reported to the caller.

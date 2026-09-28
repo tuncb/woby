@@ -9,7 +9,7 @@ namespace woby {
 // Explicit draw context keeps viewport picking out of screenshot submissions.
 struct MarkerDrawContext {
     MarkerDrawList list;
-    bgfx::UniformHandle baseUniform = BGFX_INVALID_HANDLE;
+    woby::graphics::UniformHandle baseUniform = WOBY_GPU_INVALID_HANDLE;
 };
 
 struct MarkerReadback {
@@ -18,7 +18,7 @@ struct MarkerReadback {
     uint64_t epoch = 0, sequence = 0;
     MarkerPixel pixel{};
     std::vector<MarkerDraw> draws;
-    bgfx::TextureHandle staging = BGFX_INVALID_HANDLE;
+    woby::graphics::TextureHandle staging = WOBY_GPU_INVALID_HANDLE;
 };
 
 struct GpuMarkerPicker {
@@ -32,25 +32,25 @@ struct GpuMarkerPicker {
     MarkerDrawContext context;
     std::array<MarkerReadback, 8> requests;
     std::optional<HoveredVertex> coordinates;
-    bgfx::TextureHandle color = BGFX_INVALID_HANDLE, ids = BGFX_INVALID_HANDLE,
-        depth = BGFX_INVALID_HANDLE, result = BGFX_INVALID_HANDLE;
-    bgfx::FrameBufferHandle framebuffer = BGFX_INVALID_HANDLE;
-    bgfx::ProgramHandle point = BGFX_INVALID_HANDLE, mesh = BGFX_INVALID_HANDLE,
-        line = BGFX_INVALID_HANDLE, comparison = BGFX_INVALID_HANDLE, composite = BGFX_INVALID_HANDLE;
-    std::array<bgfx::ProgramHandle, 2> lookup = {{{bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}}},
-        highlight = {{{bgfx::kInvalidHandle}, {bgfx::kInvalidHandle}}};
-    bgfx::UniformHandle queryUniform = BGFX_INVALID_HANDLE, optionsUniform = BGFX_INVALID_HANDLE,
-        colorSampler = BGFX_INVALID_HANDLE, idSampler = BGFX_INVALID_HANDLE, resultSampler = BGFX_INVALID_HANDLE;
+    woby::graphics::TextureHandle color = WOBY_GPU_INVALID_HANDLE, ids = WOBY_GPU_INVALID_HANDLE,
+        depth = WOBY_GPU_INVALID_HANDLE, result = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::FrameBufferHandle framebuffer = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::ProgramHandle point = WOBY_GPU_INVALID_HANDLE, mesh = WOBY_GPU_INVALID_HANDLE,
+        line = WOBY_GPU_INVALID_HANDLE, comparison = WOBY_GPU_INVALID_HANDLE, composite = WOBY_GPU_INVALID_HANDLE;
+    std::array<woby::graphics::ProgramHandle, 2> lookup = {{{woby::graphics::kInvalidHandle}, {woby::graphics::kInvalidHandle}}},
+        highlight = {{{woby::graphics::kInvalidHandle}, {woby::graphics::kInvalidHandle}}};
+    woby::graphics::UniformHandle queryUniform = WOBY_GPU_INVALID_HANDLE, optionsUniform = WOBY_GPU_INVALID_HANDLE,
+        colorSampler = WOBY_GPU_INVALID_HANDLE, idSampler = WOBY_GPU_INVALID_HANDLE, resultSampler = WOBY_GPU_INVALID_HANDLE;
 };
 
-[[nodiscard]] bool supportsGpuMarkerPicking(const bgfx::Caps& caps);
+[[nodiscard]] bool supportsGpuMarkerPicking(const woby::graphics::Caps& caps);
 // Call every viewport frame, including disabled frames, to invalidate old results.
 [[nodiscard]] bool beginGpuMarkerPicking(GpuMarkerPicker& picker, const std::filesystem::path& assets,
     const UiState& state, const SceneViewport& viewport, MousePosition mouse, bool enabled, int samples = 4);
 void submitGpuMarkerPicking(GpuMarkerPicker& picker, const SceneViewport& viewport);
 void pollGpuMarkerPicking(GpuMarkerPicker& picker, uint32_t frame, const UiState& state,
     const std::vector<LoadedModelRuntime>& runtimes);
-// Flush readbacks before their CPU storage is released. Call before bgfx::shutdown.
+// Flush readbacks before their CPU storage is released. Call before woby::graphics::shutdown.
 void destroyGpuMarkerPicker(GpuMarkerPicker& picker);
 [[nodiscard]] std::optional<HoveredVertex> resolveMarkerCoordinates(uint32_t id,
     std::span<const MarkerDraw> draws, const UiState& state, const std::vector<LoadedModelRuntime>& runtimes);

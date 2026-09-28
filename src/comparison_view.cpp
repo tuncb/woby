@@ -81,25 +81,25 @@ void destroySurface(ComparisonGpuSurface &gpu)
     for (const auto handle : {gpu.vertices, gpu.samples, gpu.quality, gpu.boundaries, gpu.nonManifold, gpu.winding,
         gpu.nonManifoldVertices, gpu.holes, gpu.finEdges, gpu.finFill, gpu.duplicatePoints, gpu.duplicateTriangleEdges, gpu.duplicateTriangleFill, gpu.degenerateEdges, gpu.degenerateFill, gpu.intersectionEdges, gpu.intersectionFill})
     {
-        if (bgfx::isValid(handle))
+        if (woby::graphics::isValid(handle))
         {
-            bgfx::destroy(handle);
+            woby::graphics::destroy(handle);
         }
     }
     for (const auto handle : {gpu.triangles, gpu.lines})
     {
-        if (bgfx::isValid(handle))
+        if (woby::graphics::isValid(handle))
         {
-            bgfx::destroy(handle);
+            woby::graphics::destroy(handle);
         }
     }
     gpu = {};
 }
-bgfx::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
+woby::graphics::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
 {
     if (edges.empty())
     {
-        return BGFX_INVALID_HANDLE;
+        return WOBY_GPU_INVALID_HANDLE;
     }
     const auto bytes = comparisonBufferBytes(edges.size(), 2 * sizeof(std::array<float, 3>));
     std::vector<std::array<float, 3>> points;
@@ -109,19 +109,19 @@ bgfx::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge> &edges)
         points.push_back(edge.a);
         points.push_back(edge.b);
     }
-    const auto handle = bgfx::createVertexBuffer(
-        bgfx::copy(points.data(), bytes), helperLineVertexLayout());
-    if (!bgfx::isValid(handle))
+    const auto handle = woby::graphics::createVertexBuffer(
+        woby::graphics::copy(points.data(), bytes), helperLineVertexLayout());
+    if (!woby::graphics::isValid(handle))
     {
         throw std::runtime_error("Cannot allocate analysis edge buffer.");
     }
     return handle;
 }
-bgfx::VertexBufferHandle uploadPositions(const std::vector<std::array<float, 3>>& positions)
+woby::graphics::VertexBufferHandle uploadPositions(const std::vector<std::array<float, 3>>& positions)
 {
-    if (positions.empty()) { return BGFX_INVALID_HANDLE; }
-    const auto handle = bgfx::createVertexBuffer(bgfx::copy(positions.data(), comparisonBufferBytes(positions.size(), sizeof(positions[0]))), helperLineVertexLayout());
-    if (!bgfx::isValid(handle)) { throw std::runtime_error("Cannot allocate duplicate overlay buffer."); }
+    if (positions.empty()) { return WOBY_GPU_INVALID_HANDLE; }
+    const auto handle = woby::graphics::createVertexBuffer(woby::graphics::copy(positions.data(), comparisonBufferBytes(positions.size(), sizeof(positions[0]))), helperLineVertexLayout());
+    if (!woby::graphics::isValid(handle)) { throw std::runtime_error("Cannot allocate duplicate overlay buffer."); }
     return handle;
 }
 void appendCross(std::vector<std::array<float, 3>>& lines, const std::array<float, 3>& point, float radius)
@@ -162,9 +162,9 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         const auto lineBytes = comparisonBufferBytes(surface.source.indices.size(), 2 * sizeof(uint32_t));
         auto vertices = surface.source.vertices;
         generateSmoothNormals(vertices, surface.source.indices);
-        gpu.vertices = bgfx::createVertexBuffer(bgfx::copy(vertices.data(), vertexBytes), meshVertexLayout());
+        gpu.vertices = woby::graphics::createVertexBuffer(woby::graphics::copy(vertices.data(), vertexBytes), meshVertexLayout());
         const auto& indices = surface.source.indices;
-        gpu.triangles = bgfx::createIndexBuffer(bgfx::copy(indices.data(), indexBytes), BGFX_BUFFER_INDEX32);
+        gpu.triangles = woby::graphics::createIndexBuffer(woby::graphics::copy(indices.data(), indexBytes), WOBY_GPU_BUFFER_INDEX32);
         std::vector<uint32_t> lines;
         lines.reserve(indices.size() * 2);
         for (size_t i = 0; i < indices.size(); i += 3) {
@@ -173,15 +173,15 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
                 lines.push_back(indices[i + (k + 1) % 3]);
             }
         }
-        gpu.lines = bgfx::createIndexBuffer(bgfx::copy(lines.data(), lineBytes), BGFX_BUFFER_INDEX32);
-        if (!bgfx::isValid(gpu.vertices) || !bgfx::isValid(gpu.triangles) || !bgfx::isValid(gpu.lines)) {
+        gpu.lines = woby::graphics::createIndexBuffer(woby::graphics::copy(lines.data(), lineBytes), WOBY_GPU_BUFFER_INDEX32);
+        if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles) || !woby::graphics::isValid(gpu.lines)) {
             throw std::runtime_error("Cannot allocate analysis surface buffers.");
         }
     }
     if ((stages & comparisonDistance) && !surface.sampled.vertices.empty()) {
         const auto& samples = surface.sampled.vertices;
-        gpu.samples = bgfx::createVertexBuffer(bgfx::copy(samples.data(), comparisonBufferBytes(samples.size(), sizeof(Vertex))), meshVertexLayout());
-        if (!bgfx::isValid(gpu.samples)) { throw std::runtime_error("Cannot allocate analysis distance buffer."); }
+        gpu.samples = woby::graphics::createVertexBuffer(woby::graphics::copy(samples.data(), comparisonBufferBytes(samples.size(), sizeof(Vertex))), meshVertexLayout());
+        if (!woby::graphics::isValid(gpu.samples)) { throw std::runtime_error("Cannot allocate analysis distance buffer."); }
     }
     if (stages & comparisonTopology) {
         gpu.boundaries = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.boundaryEdges : surface.topologyBoundaries);
@@ -227,9 +227,9 @@ void uploadQuality(ComparisonGpuSurface& gpu, const SurfaceComparison& surface,
     if (surface.source.indices.empty()) { return; }
     const auto bytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(Vertex));
     const auto vertices = surfaceQualityVertices(surface.source, surface.quality, metric, distribution);
-    const auto handle = bgfx::createVertexBuffer(bgfx::copy(vertices.data(), bytes), meshVertexLayout());
-    if (!bgfx::isValid(handle)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
-    if (bgfx::isValid(gpu.quality)) { bgfx::destroy(gpu.quality); }
+    const auto handle = woby::graphics::createVertexBuffer(woby::graphics::copy(vertices.data(), bytes), meshVertexLayout());
+    if (!woby::graphics::isValid(handle)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
+    if (woby::graphics::isValid(gpu.quality)) { woby::graphics::destroy(gpu.quality); }
     gpu.quality = handle;
 }
 void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectId id,
@@ -1033,30 +1033,30 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     ImGui::EndDisabled();
 }
 
-void submitEdges(bgfx::ViewId view, bgfx::VertexBufferHandle vertices, bgfx::ProgramHandle program,
-                 bgfx::UniformHandle uniform, const std::array<float, 4> &color, const float* transform)
+void submitEdges(woby::graphics::ViewId view, woby::graphics::VertexBufferHandle vertices, woby::graphics::ProgramHandle program,
+                 woby::graphics::UniformHandle uniform, const std::array<float, 4> &color, const float* transform)
 {
-    if (!bgfx::isValid(vertices))
+    if (!woby::graphics::isValid(vertices))
     {
         return;
     }
-    bgfx::setTransform(transform);
-    bgfx::setVertexBuffer(0, vertices);
-    bgfx::setUniform(uniform, color.data());
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_PT_LINES | BGFX_STATE_DEPTH_TEST_ALWAYS |
-                   BGFX_STATE_MSAA);
-    bgfx::submit(view, program);
+    woby::graphics::setTransform(transform);
+    woby::graphics::setVertexBuffer(0, vertices);
+    woby::graphics::setUniform(uniform, color.data());
+    woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS |
+                   WOBY_GPU_STATE_MSAA);
+    woby::graphics::submit(view, program);
 }
-void submitWire(bgfx::ViewId view, const ComparisonGpuSurface &gpu, bgfx::ProgramHandle program,
-                bgfx::UniformHandle uniform, const std::array<float, 4> &color, bool xray, const float* transform)
+void submitWire(woby::graphics::ViewId view, const ComparisonGpuSurface &gpu, woby::graphics::ProgramHandle program,
+                woby::graphics::UniformHandle uniform, const std::array<float, 4> &color, bool xray, const float* transform)
 {
-    bgfx::setTransform(transform);
-    bgfx::setVertexBuffer(0, gpu.vertices);
-    bgfx::setIndexBuffer(gpu.lines);
-    bgfx::setUniform(uniform, color.data());
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_PT_LINES | BGFX_STATE_MSAA |
-                   (xray ? BGFX_STATE_DEPTH_TEST_ALWAYS : BGFX_STATE_DEPTH_TEST_LEQUAL));
-    bgfx::submit(view, program);
+    woby::graphics::setTransform(transform);
+    woby::graphics::setVertexBuffer(0, gpu.vertices);
+    woby::graphics::setIndexBuffer(gpu.lines);
+    woby::graphics::setUniform(uniform, color.data());
+    woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_MSAA |
+                   (xray ? WOBY_GPU_STATE_DEPTH_TEST_ALWAYS : WOBY_GPU_STATE_DEPTH_TEST_LEQUAL));
+    woby::graphics::submit(view, program);
 }
 } // namespace
 
@@ -1143,7 +1143,7 @@ ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, con
 
 static void destroyStage(ComparisonGpuSurface& gpu, uint32_t stages)
 {
-    const auto destroy = [](auto& handle) { if (bgfx::isValid(handle)) { bgfx::destroy(handle); } handle = BGFX_INVALID_HANDLE; };
+    const auto destroy = [](auto& handle) { if (woby::graphics::isValid(handle)) { woby::graphics::destroy(handle); } handle = WOBY_GPU_INVALID_HANDLE; };
     if (stages & comparisonSource) { destroy(gpu.vertices); destroy(gpu.triangles); destroy(gpu.lines); }
     if (stages & comparisonTopology) { for (auto* h : {&gpu.boundaries,&gpu.nonManifold,&gpu.winding,&gpu.nonManifoldVertices,&gpu.holes,&gpu.finEdges,&gpu.finFill}) { destroy(*h); } }
     if (stages & comparisonDuplicatePoints) { destroy(gpu.duplicatePoints); }
@@ -1433,8 +1433,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         }
         if ((runtime.cache.completed & comparisonQuality) && settings.mode == ComparisonMode::surfaceQuality
             && !(runtime.failedStages & comparisonQuality) && (runtime.uploadedQualityMetric != settings.quality.metric
-                || (!runtime.result.original.source.indices.empty() && !bgfx::isValid(runtime.originalGpu.quality))
-                || (!runtime.result.repaired.source.indices.empty() && !bgfx::isValid(runtime.repairedGpu.quality)))) {
+                || (!runtime.result.original.source.indices.empty() && !woby::graphics::isValid(runtime.originalGpu.quality))
+                || (!runtime.result.repaired.source.indices.empty() && !woby::graphics::isValid(runtime.repairedGpu.quality)))) {
             try {
                 const auto& distribution = runtime.result.qualityDistributions.at(static_cast<size_t>(settings.quality.metric));
                 uploadQuality(runtime.originalGpu, runtime.result.original, settings.quality.metric, distribution);
@@ -1483,8 +1483,8 @@ void destroyComparisonRuntimes(ComparisonRuntimes& runtimes)
     for (auto& [id, runtime] : runtimes.objects) { (void)id; runtime.stop.request_stop(); }
     for (auto& [id, runtime] : runtimes.objects) { (void)id; destroyComparisonRuntime(runtime); }
     runtimes.objects.clear();
-    if (bgfx::isValid(runtimes.program)) { bgfx::destroy(runtimes.program); runtimes.program = BGFX_INVALID_HANDLE; }
-    if (bgfx::isValid(runtimes.parameters)) { bgfx::destroy(runtimes.parameters); runtimes.parameters = BGFX_INVALID_HANDLE; }
+    if (woby::graphics::isValid(runtimes.program)) { woby::graphics::destroy(runtimes.program); runtimes.program = WOBY_GPU_INVALID_HANDLE; }
+    if (woby::graphics::isValid(runtimes.parameters)) { woby::graphics::destroy(runtimes.parameters); runtimes.parameters = WOBY_GPU_INVALID_HANDLE; }
 }
 
 bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntimes& runtimes)
@@ -1515,8 +1515,8 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
             || findComparison(state, comparison.objectId)->intersectionRequestRevision != runtime.intersection.consumedRequest)) { ready = false; }
         if (comparison.settings.mode == ComparisonMode::surfaceQuality) {
             ready = ready && runtime.uploadedQualityMetric == comparison.settings.quality.metric &&
-                (runtime.result.original.source.indices.empty() || bgfx::isValid(runtime.originalGpu.quality)) &&
-                (runtime.result.repaired.source.indices.empty() || bgfx::isValid(runtime.repairedGpu.quality));
+                (runtime.result.original.source.indices.empty() || woby::graphics::isValid(runtime.originalGpu.quality)) &&
+                (runtime.result.repaired.source.indices.empty() || woby::graphics::isValid(runtime.repairedGpu.quality));
         }
     }
     return ready;
@@ -1842,32 +1842,32 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
     ImGui::PopID();
 }
 
-static void submitComparisonScene(bgfx::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,
+static void submitComparisonScene(woby::graphics::ViewId view, const UiComparison& comparison, const ComparisonRuntime& runtime,
                            const ComparisonRuntimes& runtimes,
-                           bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, const ComparisonSettings& settings, bgfx::ProgramHandle markerProgram)
+                           woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, const ComparisonSettings& settings, woby::graphics::ProgramHandle markerProgram)
 {
     if (!comparison.settings.enabled || !runtime.ready) { return; }
     const bool useOriginal = originalActive(settings);
     const auto &gpu = useOriginal ? runtime.originalGpu : runtime.repairedGpu;
     const bool quality = settings.mode == ComparisonMode::surfaceQuality;
     const bool heatmap = settings.mode == ComparisonMode::distance || quality;
-    if (quality && (!bgfx::isValid(gpu.quality) || runtime.uploadedQualityMetric != settings.quality.metric)) { return; }
+    if (quality && (!woby::graphics::isValid(gpu.quality) || runtime.uploadedQualityMetric != settings.quality.metric)) { return; }
     float identity[16];
     bx::mtxTranslate(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
     const std::array<float, 4> parameters = {settings.tolerance, settings.colorRange, quality ? 2.0f : heatmap ? 1.0f : 0.0f,
         quality && settings.quality.metric == SurfaceQualityMetric::shape ? 1.0f : 0.0f};
     const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
-    bgfx::setTransform(identity);
-    bgfx::setUniform(runtimes.parameters, parameters.data());
-    bgfx::setUniform(colorUniform, gray.data());
-    bgfx::setVertexBuffer(0, quality ? gpu.quality : heatmap ? gpu.samples : gpu.vertices);
+    woby::graphics::setTransform(identity);
+    woby::graphics::setUniform(runtimes.parameters, parameters.data());
+    woby::graphics::setUniform(colorUniform, gray.data());
+    woby::graphics::setVertexBuffer(0, quality ? gpu.quality : heatmap ? gpu.samples : gpu.vertices);
     if (!heatmap)
     {
-        bgfx::setIndexBuffer(gpu.triangles);
+        woby::graphics::setIndexBuffer(gpu.triangles);
     }
-    setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LEQUAL |
-                   BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
-    bgfx::submit(view, bgfx::isValid(markerProgram) ? markerProgram : runtimes.program);
+    setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL |
+                   WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
+    woby::graphics::submit(view, woby::graphics::isValid(markerProgram) ? markerProgram : runtimes.program);
     if (settings.showEdges)
     {
         submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false, identity);
@@ -1877,32 +1877,32 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
         submitWire(view, runtime.originalGpu, colorProgram, colorUniform, {.3f, .75f, 1, 1}, true, identity);
     }
     if (settings.intersections.show) {
-        if (bgfx::isValid(gpu.intersectionFill)) {
+        if (woby::graphics::isValid(gpu.intersectionFill)) {
             const std::array<float, 4> red = {1, .2f, .15f, .45f};
-            bgfx::setTransform(identity); bgfx::setVertexBuffer(0, gpu.intersectionFill);
-            bgfx::setUniform(colorUniform, red.data());
-            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
-            bgfx::submit(view, colorProgram);
+            woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0, gpu.intersectionFill);
+            woby::graphics::setUniform(colorUniform, red.data());
+            setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
+            woby::graphics::submit(view, colorProgram);
         }
         submitEdges(view, gpu.intersectionEdges, colorProgram, colorUniform, {1, .2f, .15f, 1}, identity);
     }
     if (settings.degenerates.enabled && settings.degenerates.show) {
-        if (bgfx::isValid(gpu.degenerateFill)) {
+        if (woby::graphics::isValid(gpu.degenerateFill)) {
             const std::array<float, 4> purple = {.8f, .25f, 1, .45f};
-            bgfx::setTransform(identity); bgfx::setVertexBuffer(0, gpu.degenerateFill);
-            bgfx::setUniform(colorUniform, purple.data());
-            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
-            bgfx::submit(view, colorProgram);
+            woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0, gpu.degenerateFill);
+            woby::graphics::setUniform(colorUniform, purple.data());
+            setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
+            woby::graphics::submit(view, colorProgram);
         }
         submitEdges(view, gpu.degenerateEdges, colorProgram, colorUniform, {.8f, .25f, 1, 1}, identity);
     }
     if (settings.duplicates.triangles && settings.duplicates.showTriangles) {
-        if (bgfx::isValid(gpu.duplicateTriangleFill)) {
+        if (woby::graphics::isValid(gpu.duplicateTriangleFill)) {
             const std::array<float, 4> orange = {1, .45f, .08f, .4f};
-            bgfx::setTransform(identity); bgfx::setVertexBuffer(0, gpu.duplicateTriangleFill);
-            bgfx::setUniform(colorUniform, orange.data());
-            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA, bgfx::isValid(markerProgram));
-            bgfx::submit(view, colorProgram);
+            woby::graphics::setTransform(identity); woby::graphics::setVertexBuffer(0, gpu.duplicateTriangleFill);
+            woby::graphics::setUniform(colorUniform, orange.data());
+            setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
+            woby::graphics::submit(view, colorProgram);
         }
         submitEdges(view, gpu.duplicateTriangleEdges, colorProgram, colorUniform, {1, .45f, .08f, 1}, identity);
     }
@@ -1921,12 +1921,12 @@ static void submitComparisonScene(bgfx::ViewId view, const UiComparison& compari
         submitEdges(view, gpu.nonManifoldVertices, colorProgram, colorUniform, {1, .65f, .05f, 1}, identity);
     }
     if (settings.topologyInspection.fins && settings.topologyInspection.showFins) {
-        if (bgfx::isValid(gpu.finFill)) {
+        if (woby::graphics::isValid(gpu.finFill)) {
             const float color[] = {.2f, .9f, .65f, .35f};
-            bgfx::setTransform(identity); bgfx::setUniform(colorUniform, color);
-            bgfx::setVertexBuffer(0, gpu.finFill);
-            setMarkerRenderState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_DEPTH_TEST_LEQUAL | BGFX_STATE_BLEND_ALPHA, bgfx::isValid(markerProgram));
-            bgfx::submit(view, colorProgram);
+            woby::graphics::setTransform(identity); woby::graphics::setUniform(colorUniform, color);
+            woby::graphics::setVertexBuffer(0, gpu.finFill);
+            setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_BLEND_ALPHA, woby::graphics::isValid(markerProgram));
+            woby::graphics::submit(view, colorProgram);
         }
         submitEdges(view, gpu.finEdges, colorProgram, colorUniform, {.2f, .9f, .65f, 1}, identity);
     }
@@ -1950,8 +1950,8 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
     }
 }
 
-void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
-    bgfx::ProgramHandle colorProgram, bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch, bgfx::ProgramHandle markerProgram)
+void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
+    woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch, woby::graphics::ProgramHandle markerProgram)
 {
     for (const auto& comparison : state.comparisons) {
         const auto it = runtimes.objects.find(comparison.objectId);
@@ -2045,7 +2045,7 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
                 }
             }
         }
-        // Portable thick lines: bgfx line primitives are only one pixel wide on
+        // Portable thick lines: graphics line primitives are only one pixel wide on
         // some backends and would merge into the yellow object-selection outline.
         auto& triangles = faceFill;
         triangles.reserve(triangles.size() + points.size()*3);
@@ -2067,19 +2067,19 @@ void submitComparisonScenes(bgfx::ViewId view, const UiState& state, const Compa
         const auto layout = helperLineVertexLayout();
         const auto vertexCount = static_cast<uint32_t>(triangles.size());
         if (vertexCount == 0) { continue; }
-        if (bgfx::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) { continue; }
-        bgfx::TransientVertexBuffer buffer;
-        bgfx::allocTransientVertexBuffer(&buffer, vertexCount, layout);
+        if (woby::graphics::getAvailTransientVertexBuffer(vertexCount, layout) < vertexCount) { continue; }
+        woby::graphics::TransientVertexBuffer buffer;
+        woby::graphics::allocTransientVertexBuffer(&buffer, vertexCount, layout);
         std::memcpy(buffer.data, triangles.data(), triangles.size() * sizeof(triangles[0]));
         float transform[16];
         bx::mtxTranslate(transform, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
         const std::array<float, 4> yellow = {1, 1, .1f, 1};
-        bgfx::setTransform(transform);
-        bgfx::setUniform(colorUniform, yellow.data());
-        bgfx::setVertexBuffer(0, &buffer);
-        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-            BGFX_STATE_DEPTH_TEST_ALWAYS | BGFX_STATE_MSAA);
-        bgfx::submit(view, colorProgram);
+        woby::graphics::setTransform(transform);
+        woby::graphics::setUniform(colorUniform, yellow.data());
+        woby::graphics::setVertexBuffer(0, &buffer);
+        woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A |
+            WOBY_GPU_STATE_DEPTH_TEST_ALWAYS | WOBY_GPU_STATE_MSAA);
+        woby::graphics::submit(view, colorProgram);
     }
 }
 

@@ -18,7 +18,7 @@ enum class FrameStage {
     submitScene,
     submitHelpers,
     imguiRender,
-    bgfxFrame,
+    graphicsFrame,
     count,
 };
 
@@ -28,10 +28,10 @@ struct FrameTimings {
     uint64_t frameIndex = 0;
     std::array<double, static_cast<size_t>(FrameStage::count)> stageMilliseconds{};
     double totalMilliseconds = 0.0;
-    double bgfxCpuFrameMilliseconds = 0.0;
-    double bgfxCpuSubmitMilliseconds = 0.0;
-    double bgfxGpuFrameMilliseconds = 0.0;
-    bool hasBgfxGpuFrameMilliseconds = false;
+    double graphicsCpuFrameMilliseconds = 0.0;
+    double graphicsCpuSubmitMilliseconds = 0.0;
+    double graphicsGpuFrameMilliseconds = 0.0;
+    bool hasGraphicsGpuFrameMilliseconds = false;
 };
 
 struct FrameTimingAccumulator {

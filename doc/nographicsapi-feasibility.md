@@ -1,5 +1,9 @@
 # NoGraphicsAPI migration feasibility
 
+Historical assessment: the migration described in
+[renderer architecture and validation](nographicsapi-migration.md) now replaces
+bgfx in the application. The recommendations below predate that implementation.
+
 Researched 28 September 2026. Woby revision: `97886f5fa86f09256b95237016fbbd3315670a73`.
 NoGraphicsAPI revision: [`ae017a2f545abc0847e546cc7e84139bf3cc4241`](https://github.com/sebbbi/NoGraphicsAPI/commit/ae017a2f545abc0847e546cc7e84139bf3cc4241).
 Findings below concern that source snapshot, not a promise about future versions.
