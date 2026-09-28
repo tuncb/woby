@@ -99,15 +99,25 @@ TEST_CASE("prefetched model batches preserve ordering colors and failures across
     }
 }
 
-TEST_CASE("prefetched cancellation publishes only completed models")
+TEST_CASE("model batch cancellation publishes only completed models")
 {
     const BatchTestDirectory fixture;
     const auto obj = fixture.path / "triangle.obj";
     writeTriangleObj(obj);
-    const std::vector<std::filesystem::path> paths(12, obj);
-    size_t checks = 0;
-    const auto result = woby::loadModelBatchCpu(paths, 0, {}, [&] { return checks++ == 3; });
+    size_t fileCount = 12;
+    SUBCASE("prefetch eligible batch") {}
+    SUBCASE("serial batch below prefetch threshold") { fileCount = 7; }
+    const std::vector<std::filesystem::path> paths(fileCount, obj);
+    size_t readyCount = 0;
+    const auto result = woby::loadModelBatchCpu(paths, 0, [&](const auto& update) {
+        // Cancellation polls also occur within a model when prefetching is unavailable.
+        if (update.model.stage == woby::ModelLoadStage::ready) {
+            readyCount = update.completedCount + 1;
+        }
+    }, [&] { return readyCount >= 3; });
     CHECK(result.canceled);
+    CHECK(readyCount == 3);
+    CHECK(result.addedCount == 3);
     REQUIRE(result.files.size() == 3);
     REQUIRE(result.outcomes.size() == paths.size());
     for (size_t i = 0; i < paths.size(); ++i) {
@@ -115,29 +125,36 @@ TEST_CASE("prefetched cancellation publishes only completed models")
     }
 }
 
-TEST_CASE("prefetched scene models retain per record settings and cancellation order")
+TEST_CASE("scene models retain per record settings and cancellation order")
 {
     const BatchTestDirectory fixture;
     const auto obj = fixture.path / "triangle.obj", scene = fixture.path / "scene.woby";
     writeTriangleObj(obj);
+    size_t fileCount = 12;
+    bool cancel = false;
+    SUBCASE("all prefetch eligible records") {}
+    SUBCASE("cancel after five prefetch eligible records") { cancel = true; }
+    SUBCASE("all serial records") { fileCount = 7; }
+    SUBCASE("cancel after five serial records") { fileCount = 7; cancel = true; }
     woby::SceneDocument document;
-    for (size_t i = 0; i < 12; ++i) {
+    for (size_t i = 0; i < fileCount; ++i) {
         woby::SceneFileRecord record;
         record.path = obj;
         record.settings.visible = i % 2 == 0;
         document.files.push_back(record);
     }
     woby::writeSceneDocument(scene, document);
-    bool cancel = false;
-    SUBCASE("all records") {}
-    SUBCASE("cancel after five records") { cancel = true; }
-    size_t checks = 0;
+    size_t readyCount = 0;
     const auto coordinator = std::this_thread::get_id();
-    const auto result = woby::loadSceneCpu(scene, [&](const auto&) {
+    const auto result = woby::loadSceneCpu(scene, [&](const auto& update) {
         CHECK(std::this_thread::get_id() == coordinator);
-    }, [&] { return cancel && checks++ >= 5; });
+        if (update.model.stage == woby::ModelLoadStage::ready) {
+            readyCount = update.completedCount + 1;
+        }
+    }, [&] { return cancel && readyCount >= 5; });
     CHECK(result.canceled == cancel);
-    REQUIRE(result.files.size() == (cancel ? 5u : 12u));
+    CHECK(readyCount == (cancel ? 5u : fileCount));
+    REQUIRE(result.files.size() == (cancel ? 5u : fileCount));
     for (size_t i = 0; i < result.files.size(); ++i) {
         CHECK(result.files[i].path == obj);
         CHECK(result.files[i].fileSettings.visible == (i % 2 == 0));
