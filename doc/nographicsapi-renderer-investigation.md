@@ -4,13 +4,21 @@ Investigated on 29 September 2026, following the [large-model comparison](nograp
 Production revision: `188efd8`. Historical main: `97886f5`.
 RTX 3070 Laptop GPU, NVIDIA 616.92, Windows, AC power.
 
+The [second frame-pacing investigation](nographicsapi-frame-pacing.md) records
+the actual target displays, separates presentation-fence reuse from image
+acquisition, and tests frame caps, explicit present waits, and mailbox modes.
+It preserves the failed one-frame-per-refresh mailbox repeats and records the
+later adopted workaround: compatible mailbox on supported Windows surfaces,
+with rendering bounded to twice the actual target display's refresh rate.
+
 ## Adopted follow-up: original pixel coverage
 
 Following this investigation, the user chose the original renderer's pixel
 coverage. The production shared UV interface now uses ordinary interpolation,
 including both the display and marker-picking fragment shaders. This restores
 the old circle cutout and removes its per-sample shading cost. MSAA geometry,
-depth, and per-sample ID lookup remain enabled; FIFO presentation is unchanged.
+depth, and per-sample ID lookup remain enabled. FIFO presentation was unchanged
+by that pixel-coverage change; the later pacing change is described below.
 
 The GPU regression now verifies the complete expected circle footprint for
 both ordinary and MRT picking shaders, at one and four samples. The earlier
@@ -39,7 +47,53 @@ All five benchmark processes exited successfully. The new portable Release ZIP
 was verified against its manifest. Logs, raw measurements, a comparison CSV,
 and the updated package are under `build/pixel-coverage`.
 
-## Findings
+## Adopted follow-up: bounded mailbox pacing
+
+The continued investigation measured FIFO presentation/resource-reuse waits
+despite ample light-scene rendering headroom. It also found a target mismatch:
+Vulkan swapchain timing properties reported 165 Hz while the window was on the
+120 Hz TV and available first-pixel timing advanced in approximately 8.33 ms
+steps. The precise driver/compositor cause remains unproven.
+
+Windows windowed devices now explicitly opt into mailbox only after querying
+surface mode support and FIFO compatibility. The swapchain declares both
+compatible modes, starts in FIFO, and selects mailbox per present. This retained
+`Composed: Flip` in the measured traces. Unsupported surfaces retain FIFO;
+headless rendering stays unpaced and other platforms keep their existing policy.
+
+A pure monotonic deadline policy limits rendering to twice the actual target
+display refresh queried through SDL, with a 60 Hz fallback for invalid rates.
+The delay occurs after GPU reuse and image acquisition; late/GPU-bound frames
+receive no extra limiter wait. This bounds the additional light-scene CPU/GPU
+work while bypassing FIFO queue backpressure. Hidden/minimized Windows windows
+use FIFO with a 20 FPS idle cap, preventing an inactive presentation loop from
+running unbounded; restoring the window immediately resets the active cadence.
+No D3DKMT display-clock worker or
+temporary profiling hooks are shipped.
+
+The repeated TV captures rendered 239.98 FPS at the 240 FPS cap; the 40-second
+repeat recorded 4798 positive display-change intervals, with an 8.33354 ms mean
+and 8.3964 ms p95. Two 40-second laptop captures rendered 329.87/329.98 FPS at
+the 330 FPS cap, recording 6596/6599 intervals with approximately 6.060615 ms
+means. Laptop p95 values of 8.76/8.46 ms contain non-quantized jitter. These are
+PresentMon presentation observations, not proof of exact physical scanout.
+Likewise, zero EXT stage timestamps mean unavailable feedback, not proven
+dropped frames.
+
+Temporary native/layered presentation and preferred-refresh driver overrides
+did not resolve FIFO's interval tail. All application profiles were restored
+and global settings remained unchanged. The final Debug and Release builds are
+warning-free. All 677 Debug tests and 15 focused Release checks passed. Window
+moves, resize, minimize/restore, and portable startup/exit passed in the final
+build; minimized rendering stayed near 20 FPS. Powerplant edges and vertices
+measured 40.05/39.03 FPS versus 39.68/38.88 FPS for the FIFO control, showing no
+material GPU-bound regression. The final TV capture had an 8.36 ms display-
+interval p95. The earlier validation results below apply to the
+historical builds named in their sections. Full measurements and evidence paths
+under `build/pacing-fix` are in the
+[continued frame-pacing report](nographicsapi-frame-pacing.md#continued-investigation-and-adopted-workaround).
+
+## Original findings before the adopted follow-ups
 
 The vertex regression is primarily fragment sample shading, not additional mesh
 vertices or CPU submission work. The migrated shader evaluates the circular
@@ -53,8 +107,10 @@ Changing to mailbox removes the throughput limit, but changes the Windows
 presentation path and generates substantial excess rendering. The exact
 driver/compositor scheduling cause remains unresolved.
 
-At the end of the investigation, no experimental presentation or shading changes
-had been adopted. The subsequent pixel-coverage decision is described above.
+At the end of this original investigation, no experimental presentation or
+shading changes had been adopted. The subsequent pixel-coverage and pacing
+decisions are described above. The remaining sections preserve the original
+experiments and their then-current conclusions.
 
 ## Vertex rendering: controlled experiments
 
@@ -179,7 +235,7 @@ display before attributing the remaining scheduling behavior to a driver bug.
    fallback and query mode support. An uncapped mailbox switch and increasing
    presentation contexts are not validated solutions for this laptop.
 
-## Evidence and reproduction notes
+## Original evidence and reproduction notes
 
 The original packaged Release executable and assets are unchanged. Its executable
 SHA-256 remains `206f3b6769cb6c2c71443aa571b8af7898021c06f56b7b05f85c657ef6fc1b9a`.
@@ -205,7 +261,7 @@ and camera settings. Individual variant timings are short measurements rather
 than confidence intervals; the repeat controls and GPU timings support the
 large observed differences.
 
-## Final validation
+## Original validation
 
 - Restored production Debug and Release builds completed without compiler warnings.
 - The full Debug run passed 664/668 checks. Four headless smoke checks initially

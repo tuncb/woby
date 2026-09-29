@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "graphics_helpers.h"
+#include <NoGraphicsAPI/NoGraphicsAPI.hpp>
 #include <array>
 #include <doctest/doctest.h>
 
@@ -15,6 +16,17 @@ struct NativeFixture
     }
 };
 } // namespace
+
+TEST_CASE("Native headless devices never enable mailbox presentation")
+{
+    const auto created = gpu::create_device({.allow_mailbox_presentation = true});
+    REQUIRE(created.device != nullptr);
+    CHECK_FALSE(gpu::supports_mailbox_presentation(created.device));
+    gpu::set_mailbox_presentation(created.device, true);
+    CHECK_FALSE(gpu::supports_mailbox_presentation(created.device));
+    gpu::set_mailbox_presentation(created.device, false);
+    gpu::destroy_device(created.device);
+}
 
 TEST_CASE("Native renderer submits empty frames before geometry exists")
 {

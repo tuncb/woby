@@ -1,4 +1,5 @@
 #include "graphics.h"
+#include "frame_pacing.h"
 #include "root.h"
 #include <NoGraphicsAPI/NoGraphicsAPI.hpp>
 #include <NoGraphicsAPIUtility/bump_allocator.hpp>
@@ -172,6 +173,8 @@ using PipelineKey = std::array<uint64_t, 7>;
 struct Context
 {
     gpu::Device *device = nullptr;
+    SDL_Window *window = nullptr;
+    FramePacingState pacing;
 #if defined(__APPLE__)
     SDL_MetalView metalView = nullptr;
 #endif
@@ -752,6 +755,9 @@ bool init(const Init &options)
     {
         auto *window = static_cast<SDL_Window *>(options.platformData.window);
         gpu::DeviceDesc deviceOptions{.swapchain_format = gpu::Format::bgra8_unorm};
+#if defined(_WIN32)
+        deviceOptions.allow_mailbox_presentation = window != nullptr;
+#endif
 #if defined(__APPLE__)
         if (window)
         {
@@ -786,6 +792,7 @@ bool init(const Init &options)
                 "NoGraphicsAPI cannot initialize this GPU. Vulkan 1.4 with descriptor heaps and device address "
                 "commands, or Metal 4 on macOS 26, is required. Check the graphics driver and hardware requirements.");
         c.device = initialized.device;
+        c.window = window;
         c.windowed = window != nullptr;
 #if defined(__APPLE__)
         c.caps.rendererType = RendererType::Metal;
@@ -1278,6 +1285,27 @@ uint32_t frame()
     // Acquire before finalizing the upload command buffer: resize may create targets.
     auto *commands = gpu::begin_commands(f.pool);
     auto swap = c.windowed ? gpu::acquire(commands) : gpu::SwapchainFrame{};
+#if defined(_WIN32)
+    // FIFO retirement on mixed-refresh Windows desktops can follow a different
+    // display's cadence. Mailbox keeps the latest completed image available to
+    // the compositor. Rendering at most twice the target refresh rate avoids
+    // the observed starvation between those clocks while keeping work bounded.
+    const bool inactive = c.window &&
+        (SDL_GetWindowFlags(c.window) & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN)) != 0;
+    const bool mailbox = swap.render_view && !inactive && gpu::supports_mailbox_presentation(c.device);
+    if (mailbox || inactive)
+    {
+        const auto *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(c.window));
+        // Occluded FIFO presentation may return immediately; keep minimized
+        // windows responsive without spinning through thousands of frames.
+        const auto delay = advanceFramePacing(c.pacing, SDL_GetTicksNS(), mode ? mode->refresh_rate : 0.0, !inactive);
+        if (delay)
+            SDL_DelayPrecise(delay);
+    }
+    else
+        resetFramePacing(c.pacing);
+    gpu::set_mailbox_presentation(c.device, mailbox);
+#endif
     if (swap.render_view)
     {
         c.width = swap.extent.x;

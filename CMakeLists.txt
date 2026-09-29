@@ -347,6 +347,7 @@ if(BUILD_TESTING)
 
     add_executable(woby_tests
         tests/graphics_tests.cpp
+        tests/frame_pacing_tests.cpp
         tests/manual_path_dialog_tests.cpp
         src/manual_path_dialog.cpp
         src/manual_path_dialog_ui.cpp

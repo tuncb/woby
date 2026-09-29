@@ -7,6 +7,7 @@ FetchContent_Declare(woby_ngapi
 FetchContent_MakeAvailable(woby_ngapi)
 set(NGAPI_SOURCE "${woby_ngapi_SOURCE_DIR}")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPI.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIPacing.cmake")
 
 find_program(WOBY_SLANGC slangc HINTS "$ENV{SLANG_ROOT}/bin" REQUIRED)
 execute_process(COMMAND "${WOBY_SLANGC}" -version OUTPUT_VARIABLE slang_version ERROR_VARIABLE slang_error)
@@ -26,7 +27,7 @@ else()
 endif()
 message(STATUS "Woby renderer: NoGraphicsAPI, Slang ${slang_version_number}")
 
-add_library(woby_graphics STATIC "${PROJECT_SOURCE_DIR}/src/graphics.cpp")
+add_library(woby_graphics STATIC "${PROJECT_SOURCE_DIR}/src/graphics.cpp" "${PROJECT_SOURCE_DIR}/src/frame_pacing.cpp")
 target_include_directories(woby_graphics PUBLIC "${PROJECT_SOURCE_DIR}/src" PRIVATE "${PROJECT_SOURCE_DIR}/shaders/native")
 target_link_libraries(woby_graphics PUBLIC NoGraphicsAPI::NoGraphicsAPI PRIVATE
     NoGraphicsAPIUtility::allocators NoGraphicsAPIUtility::textures NoGraphicsAPIUtility::uploads
