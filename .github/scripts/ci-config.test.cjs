@@ -5,7 +5,7 @@ const { createCiConfig } = require('./ci-config.cjs');
 function inputs() {
     return {
         manifest: { name: 'woby', 'version-string': '0.7.1', dependencies: [
-            'sdl3', { name: 'bgfx', features: ['tools'] },
+            'doctest', { name: 'sdl3', features: ['vulkan'] },
         ] },
         revision: 'a'.repeat(40), compiler: 'MSVC 19.51;SDK 26100',
         os: 'Windows', arch: 'X64', image: 'windows-2025/20260901',
@@ -43,7 +43,7 @@ test('dependency changes produce a new key while retaining the compatible restor
 test('feature and override changes invalidate the dependency cache', () => {
     const baseline = createCiConfig(inputs()).key;
     const featureChange = inputs();
-    featureChange.manifest.dependencies[1].features.push('multithreaded');
+    featureChange.manifest.dependencies[1].features.push('wayland');
     assert.notEqual(createCiConfig(featureChange).key, baseline);
     const overrideChange = inputs();
     overrideChange.manifest.overrides = [{ name: 'fmt', version: '12.0.0' }];
@@ -67,7 +67,7 @@ test('compiler, SDK, vcpkg revision, image, and included triplet changes invalid
 test('JSON key order and checkout line endings do not change cache identity', () => {
     const before = inputs();
     const after = inputs();
-    after.manifest.dependencies[1] = { features: ['tools'], name: 'bgfx' };
+    after.manifest.dependencies[1] = { features: ['vulkan'], name: 'sdl3' };
     after.triplets['woby-ci-x64-windows.cmake'] = 'set(VCPKG_BUILD_TYPE release)\r\n';
     after.revision += '\r\n';
     assert.equal(createCiConfig(before).key, createCiConfig(after).key);

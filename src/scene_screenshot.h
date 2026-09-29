@@ -4,7 +4,7 @@
 #include "scene_renderer.h"
 #include "ui_state.h"
 
-#include <bgfx/bgfx.h>
+#include "graphics.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -21,10 +21,10 @@ struct SceneScreenshotRuntime {
     ScreenshotSettings options;
     uint16_t width = 0;
     uint16_t height = 0;
-    bgfx::FrameBufferHandle frameBuffer = BGFX_INVALID_HANDLE;
-    bgfx::TextureHandle colorTexture = BGFX_INVALID_HANDLE;
-    bgfx::TextureHandle depthTexture = BGFX_INVALID_HANDLE;
-    bgfx::TextureHandle readbackTexture = BGFX_INVALID_HANDLE;
+    woby::graphics::FrameBufferHandle frameBuffer = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::TextureHandle colorTexture = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::TextureHandle depthTexture = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::TextureHandle readbackTexture = WOBY_GPU_INVALID_HANDLE;
     std::vector<uint8_t> pixels;
     std::filesystem::path outputPath;
     uint32_t readFrame = 0;
@@ -44,14 +44,14 @@ void submitSceneScreenshotCapture(
     const std::vector<UiFileState>& files,
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
-    bgfx::ProgramHandle meshProgram,
-    bgfx::ProgramHandle colorProgram,
-    bgfx::ProgramHandle annotationProgram,
-    bgfx::ProgramHandle pointSpriteProgram,
-    bgfx::UniformHandle colorUniform,
-    bgfx::UniformHandle pointParamsUniform,
+    woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::ProgramHandle colorProgram,
+    woby::graphics::ProgramHandle annotationProgram,
+    woby::graphics::ProgramHandle pointSpriteProgram,
+    woby::graphics::UniformHandle colorUniform,
+    woby::graphics::UniformHandle pointParamsUniform,
     const UiState& ui,
-    const bgfx::VertexLayout& helperLayout,
+    const woby::graphics::VertexLayout& helperLayout,
     const Bounds& sceneBounds,
     const SceneCamera& camera,
     bool homogeneousDepth,

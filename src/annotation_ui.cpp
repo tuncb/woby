@@ -26,9 +26,9 @@ std::vector<PickPoint> handles(const UiAnnotation& item, std::span<const ScenePi
     }
     return result;
 }
-void submitLines(bgfx::ViewId viewId, const ScenePickView& view,
-    const UiAnnotation& item, std::span<const ScenePickPart> parts, const bgfx::VertexLayout& layout, bgfx::ProgramHandle program,
-    bgfx::UniformHandle colorUniform, SceneRenderScratch& scratch, bool sampledPreview = false)
+void submitLines(woby::graphics::ViewId viewId, const ScenePickView& view,
+    const UiAnnotation& item, std::span<const ScenePickPart> parts, const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch, bool sampledPreview = false)
 {
     auto& sources = scratch.annotationSources;
     auto& lines = scratch.annotationLines;
@@ -111,17 +111,17 @@ void submitLines(bgfx::ViewId viewId, const ScenePickView& view,
     }
     if (vertices.empty()) { return; }
     const auto count = static_cast<uint32_t>(vertices.size());
-    if (bgfx::getAvailTransientVertexBuffer(count, layout) < count) { return; }
-    bgfx::TransientVertexBuffer buffer;
-    bgfx::allocTransientVertexBuffer(&buffer, count, layout);
+    if (woby::graphics::getAvailTransientVertexBuffer(count, layout) < count) { return; }
+    woby::graphics::TransientVertexBuffer buffer;
+    woby::graphics::allocTransientVertexBuffer(&buffer, count, layout);
     std::memcpy(buffer.data, vertices.data(), vertices.size() * sizeof(vertices.front()));
-    bgfx::setVertexBuffer(0, &buffer);
-    bgfx::setUniform(colorUniform, settings.color.data());
+    woby::graphics::setVertexBuffer(0, &buffer);
+    woby::graphics::setUniform(colorUniform, settings.color.data());
     // Sampled chords can sink into curved surfaces. The temporary drag guide
     // stays visible; only the final, fully attached outline uses surface depth.
-    bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | (sampledPreview ? 0 : BGFX_STATE_DEPTH_TEST_LEQUAL)
-        | BGFX_STATE_BLEND_ALPHA | BGFX_STATE_MSAA);
-    bgfx::submit(viewId, program);
+    woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | (sampledPreview ? 0 : WOBY_GPU_STATE_DEPTH_TEST_LEQUAL)
+        | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_MSAA);
+    woby::graphics::submit(viewId, program);
 }
 } // namespace
 
@@ -500,8 +500,8 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
     draw->PopClipRect();
     return messageBottom;
 }
-void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const ScenePickView& view,
-    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state, const ScenePickView& view,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
     SceneRenderScratch& scratch,
     const AnnotationInteraction* interaction)
 {

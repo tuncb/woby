@@ -1,0 +1,168 @@
+#include <NoGraphicsAPI/shader.slang>
+#include "root.h"
+GPU_ROOT(WobyRoot, root);
+
+float4 clipPosition(float4 value) {
+#ifdef WOBY_VULKAN
+    value.y = -value.y;
+#endif
+    return value;
+}
+struct VertexOutput {
+    float4 position : SV_Position;
+    float3 normal : NORMAL;
+    // Match the original renderer: shade circular coverage once per pixel.
+    // MSAA still handles geometry/depth coverage and individual picking samples.
+    float2 uv : TEXCOORD0;
+    nointerpolation uint id : TEXCOORD1;
+    float4 color : COLOR0;
+};
+float3 positionAt(uint index) {
+    uint p = index * root.stride;
+    return float3(root.vertices[p],root.vertices[p+1],root.vertices[p+2]);
+}
+VertexOutput vs_mesh(uint index : SV_VertexID) {
+    VertexOutput v = {};
+    uint p = index * root.stride;
+    v.position = clipPosition(mul(root.modelViewProj,float4(positionAt(index),1)));
+    v.normal = mul(root.model,float4(root.vertices[p+3],root.vertices[p+4],root.vertices[p+5],0)).xyz;
+    return v;
+}
+VertexOutput vs_color(uint index : SV_VertexID) {
+    VertexOutput v = {};
+    v.position = clipPosition(mul(root.modelViewProj,float4(positionAt(index),1)));
+    return v;
+}
+VertexOutput vs_annotation(uint index : SV_VertexID) {
+    VertexOutput v = {};
+    v.position = clipPosition(float4(positionAt(index),1));
+    return v;
+}
+VertexOutput vs_comparison(uint index : SV_VertexID) {
+    VertexOutput v = vs_mesh(index);
+    uint p = index * root.stride;
+    v.normal = float3(root.vertices[p+3],root.vertices[p+4],root.vertices[p+5]);
+    v.uv = float2(root.vertices[p+6],root.vertices[p+7]);
+    return v;
+}
+VertexOutput pointVertex(uint vertex, uint instance) {
+    VertexOutput v = {};
+    uint base = uint(root.pointParams[1].x) + uint(root.pointParams[1].y)*65536u;
+    uint index = root.pointIds[base+instance];
+    float2 corner = float2(1.0-float((vertex>>1)&1),float(vertex&1))-0.5;
+    float4 center = mul(root.modelViewProj,float4(positionAt(index),1));
+    center.xy += corner * root.pointParams[0].x * float2(2.0/root.pointParams[0].y,2.0/root.pointParams[0].z) * center.w;
+    v.position = clipPosition(center);
+    v.uv = corner;
+    uint first = uint(root.markerBase.x)|(uint(root.markerBase.y)<<16);
+    v.id = first == 0 ? 0 : first+instance;
+    return v;
+}
+VertexOutput vs_point_sprite(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
+VertexOutput vs_marker_point(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
+float4 fs_mesh(VertexOutput v) : SV_Target0 {
+    float diffuse = max(dot(normalize(v.normal),normalize(float3(.35,.6,.7))),0);
+    return float4(root.color.rgb*(.32+diffuse*.68),root.color.a);
+}
+float4 fs_color(VertexOutput v) : SV_Target0 { return root.color; }
+float4 fs_point_sprite(VertexOutput v) : SV_Target0 {
+    if (length(v.uv) > .5 || root.color.a <= .000001) discard;
+    return root.color;
+}
+float4 fs_comparison(VertexOutput v) : SV_Target0 {
+    float3 color = root.color.rgb;
+    if (root.comparison.z > 1.5) {
+        float amount = saturate(v.uv.x);
+        if (root.comparison.w > .5) amount = 1-amount;
+        color = amount <= .5 ? lerp(float3(.18,.48,.85),float3(1,.82,.3),amount*2)
+            : lerp(float3(1,.82,.3),float3(.94,.22,.055),(amount-.5)*2);
+        if (v.uv.x < 0) color = float3(1,0,1);
+        if (v.uv.x < -1.5) color = float3(.56,.61,.67);
+    } else if (root.comparison.z > .5) {
+        color = float3(.56,.61,.67);
+        if (v.uv.x > root.comparison.x) {
+            float amount = root.comparison.y > root.comparison.x ? saturate((v.uv.x-root.comparison.x)/(root.comparison.y-root.comparison.x)) : 1;
+            color = lerp(float3(1,.77,.31),float3(.94,.22,.055),amount);
+        }
+    }
+    float light = .6+.4*abs(dot(normalize(v.normal+1e-8),normalize(float3(.35,.6,.7))));
+    return float4(color*light,1);
+}
+struct MarkerOutput { float4 color : SV_Target0; float4 id : SV_Target1; };
+MarkerOutput fs_marker_point(VertexOutput v) {
+    MarkerOutput o;
+    o.color = fs_point_sprite(v);
+    o.id = float4(v.id&255,(v.id>>8)&255,(v.id>>16)&255,v.id>>24)/255.0;
+    return o;
+}
+MarkerOutput fs_marker_mesh(VertexOutput v) {
+    if (root.color.a <= .000001) discard;
+    return MarkerOutput(fs_mesh(v),float4(0));
+}
+MarkerOutput fs_marker_line(VertexOutput v) {
+    if (root.color.a <= .000001) discard;
+    return MarkerOutput(root.color,float4(0));
+}
+MarkerOutput fs_marker_comparison(VertexOutput v) { return MarkerOutput(fs_comparison(v),float4(0)); }
+
+VertexOutput screenVertex(uint index,bool highlight) {
+    VertexOutput v = {};
+    float2 uv = float2((index>>1)&1,index&1);
+    if (highlight) uv = (root.markerQuery.xy+(uv*2-1)*root.markerOptions.z)/root.markerQuery.zw;
+    v.position = clipPosition(float4(uv.x*2-1,1-uv.y*2,0,1));
+    v.uv = uv;
+    return v;
+}
+VertexOutput vs_marker_screen(uint index : SV_VertexID) { return screenVertex(index,false); }
+VertexOutput vs_marker_highlight(uint index : SV_VertexID) { return screenVertex(index,true); }
+float4 fs_marker_composite(VertexOutput v) : SV_Target0 {
+    return gpu_texture<Texture2D<float4>>(root.texture0).Sample(gpu_sampler(root.sampler),v.uv);
+}
+uint readId(int2 pixel,uint sample,bool msaa) {
+    float4 value = msaa ? gpu_texture<Texture2DMS<float4>>(root.texture0).Load(pixel,sample)
+        : gpu_texture<Texture2D<float4>>(root.texture0).Load(int3(pixel,0));
+    uint4 bytes = uint4(round(value*255));
+    return bytes.x | (bytes.y<<8) | (bytes.z<<16) | (bytes.w<<24);
+}
+void lookup(bool msaa) {
+    uint best = 0; float bestDistance = 1e30;
+    for (int i=0;i<49;++i) {
+        int2 pixel = int2(floor(root.markerQuery.xy))+int2(i%7-3,i/7-3);
+        if (any(pixel<0) || any(pixel>=int2(root.markerQuery.zw))) continue;
+        float2 delta = float2(pixel)+.5-root.markerQuery.xy;
+        float distance = dot(delta,delta);
+        if (distance>9) continue;
+        for (uint s=0;s<uint(root.markerOptions.x);++s) {
+            uint id = readId(pixel,s,msaa);
+            if (id != 0 && (best == 0 || distance<bestDistance || (distance==bestDistance && id<best))) { best=id; bestDistance=distance; }
+        }
+    }
+    gpu_texture<RWTexture2D<float4>>(root.image1)[uint2(0,0)] = float4(best&65535,best>>16,0,0);
+}
+[numthreads(1,1,1)] void cs_marker_lookup_single() { lookup(false); }
+[numthreads(1,1,1)] void cs_marker_lookup_msaa() { lookup(true); }
+float4 highlight(VertexOutput v,bool msaa) {
+    float4 winner = gpu_texture<Texture2D<float4>>(root.texture1).Load(int3(0,0,0));
+    uint id = uint(winner.x)|(uint(winner.y)<<16);
+    if (id == 0) discard;
+    int2 pixel = int2(v.uv*root.markerQuery.zw);
+    if (any(pixel<0) || any(pixel>=int2(root.markerQuery.zw))) discard;
+    float coverage = 0;
+    for (uint s=0;s<uint(root.markerOptions.x);++s) if (readId(pixel,s,msaa)==id) coverage++;
+    if (coverage == 0) discard;
+    return float4(1,.68,.05,coverage/root.markerOptions.x);
+}
+float4 fs_marker_highlight_single(VertexOutput v) : SV_Target0 { return highlight(v,false); }
+float4 fs_marker_highlight_msaa(VertexOutput v) : SV_Target0 { return highlight(v,true); }
+VertexOutput vs_imgui(uint index : SV_VertexID) {
+    VertexOutput v = {};
+    uint p = index*5;
+    v.position = clipPosition(mul(root.modelViewProj,float4(root.vertices[p],root.vertices[p+1],0,1)));
+    v.uv = float2(root.vertices[p+2],root.vertices[p+3]);
+    uint color = asuint(root.vertices[p+4]);
+    v.color = float4(color&255,(color>>8)&255,(color>>16)&255,color>>24)/255.0;
+    return v;
+}
+float4 fs_imgui(VertexOutput v) : SV_Target0 {
+    return v.color*gpu_texture<Texture2D<float4>>(root.texture0).Sample(gpu_sampler(root.sampler),v.uv);
+}

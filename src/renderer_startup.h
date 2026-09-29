@@ -2,7 +2,7 @@
 
 namespace woby {
 
-// Run immediately after bgfx initialization, before loading shaders or models.
+// Run immediately after graphics initialization, before loading shaders or models.
 void validateRendererStartup();
 
 } // namespace woby

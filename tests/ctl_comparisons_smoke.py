@@ -8,14 +8,20 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 
 
 def main():
     executable = Path(sys.argv[1]).resolve()
-    root = Path(sys.argv[2]).resolve()
-    root.mkdir(parents=True, exist_ok=True)
+    output = Path(sys.argv[2]).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="woby-comparisons-") as directory:
+        run(executable, Path(directory).resolve(), output)
+
+
+def run(executable, root, output):
     instance = "analyses-" + uuid.uuid4().hex[:12]
     for index, height in enumerate((1, 1.12)):
         vertices = [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0),
@@ -43,11 +49,13 @@ def main():
         startup = subprocess.STARTUPINFO()
         startup.dwFlags = subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 0
-    with (root / "viewer.log").open("w", encoding="utf-8") as log:
+    with (output / "viewer.log").open("w", encoding="utf-8") as log:
         viewer = subprocess.Popen([str(executable), "--instance", instance, "--scene", str(scene_path)],
                                   cwd=root, stdout=log, stderr=log, startupinfo=startup)
 
         def ctl(*args, success=True):
+            if args[0] == "screenshot":
+                args = (args[0], output / Path(args[1]).name, *args[2:])
             process = subprocess.run([str(executable), "ctl", "--instance", instance, *map(str, args), "--json"],
                                      cwd=root, capture_output=True, text=True, timeout=60)
             result = json.loads(process.stdout)
@@ -57,7 +65,7 @@ def main():
         try:
             deadline = time.monotonic() + 30
             while True:
-                assert viewer.poll() is None, (root / "viewer.log").read_text()
+                assert viewer.poll() is None, (output / "viewer.log").read_text(encoding="utf-8")
                 discovered = subprocess.run([str(executable), "ctl", "instances", "--json"],
                                             capture_output=True, text=True, timeout=5)
                 if any(item["id"] == instance and item["ready"] for item in json.loads(discovered.stdout)):
@@ -141,28 +149,40 @@ def main():
             ctl("analysis", "delete", files[0]["id"], success=False)
             assert ctl("scene", "info")["analysisCount"] == 2
             ctl("camera", "frame")
-            ctl("screenshot", root / "both.png")
+            # The full detector reports for two analyses exceed the default
+            # 1800-pixel export height. Assert the capacity guard, then export
+            # each result. Both analyses remain active for scene operations.
+            rejected = ctl("screenshot", output / "both.png", success=False)
+            assert "annotations do not fit" in rejected["error"], rejected
+            assert not (output / "both.png").exists()
+            ctl("visibility", "set", second, "--visible", "false")
+            ctl("screenshot", output / "distance-only.png")
+            ctl("visibility", "set", second, "--visible", "true")
             ctl("visibility", "set", first, "--visible", "false")
             assert ctl("object", second)["object"]["settings"]["visible"]
             ctl("screenshot", root / "overlay-only.png")
-            assert (root / "both.png").read_bytes() != (root / "overlay-only.png").read_bytes()
+            assert (output / "distance-only.png").read_bytes() != (output / "overlay-only.png").read_bytes()
             ctl("visibility", "set", second, "--visible", "false")
             ctl("screenshot", root / "sources-only.png")
-            assert (root / "overlay-only.png").read_bytes() != (root / "sources-only.png").read_bytes()
+            assert (output / "overlay-only.png").read_bytes() != (output / "sources-only.png").read_bytes()
             ctl("visibility", "set", first, "--visible", "true")
             ctl("visibility", "set", second, "--visible", "true")
             for item in files:
                 ctl("visibility", "set", item["id"], "--visible", "false")
             ctl("camera", "frame")
             assert ctl("scene", "bounds")["bounds"]["min"][0] == 2.5
+            ctl("visibility", "set", second, "--visible", "false")
             ctl("screenshot", root / "results-only.png")
+            ctl("visibility", "set", second, "--visible", "true")
             for item in files:
                 ctl("visibility", "set", item["id"], "--visible", "true")
             ctl("camera", "frame")
             ctl("transform", "set", second, "--translation", "5", "0", "1")
             assert ctl("object", first)["object"]["settings"]["translation"] == [2.5, 0, 0]
             ctl("transform", "set", files[1]["id"], "--translation", "0", "0", "0.25")
+            ctl("visibility", "set", first, "--visible", "false")
             ctl("screenshot", root / "updated.png")
+            ctl("visibility", "set", first, "--visible", "true")
             saved = root / "saved.woby"
             ctl("scene", "save-as", saved, "--overwrite")
             ctl("scene", "open", saved)
@@ -222,7 +242,7 @@ def main():
                 ctl("analysis", "set", single_id, "--mode", "surface_quality", "--quality-metric", metric,
                     "--quality-on-a", "true", "--quality-maximum-enabled", "true", "--quality-maximum-size", "1")
                 ctl("screenshot", root / f"quality-{metric}.png")
-                assert (root / f"quality-{metric}.png").stat().st_size > 10000
+                assert (output / f"quality-{metric}.png").stat().st_size > 10000
             ctl("scene", "save-as", root / "quality-single.woby", "--overwrite")
             ctl("scene", "open", root / "quality-single.woby")
             single_id = next(item["id"] for item in ctl("objects")["objects"] if item["kind"] == "analysis")

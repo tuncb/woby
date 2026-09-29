@@ -1,4 +1,4 @@
-#include "bgfx_helpers.h"
+#include "graphics_helpers.h"
 #include "renderer_startup.h"
 #include "background_load.h"
 #include "camera.h"
@@ -10,7 +10,7 @@
 #include "marker_pick.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
-#include "imgui_bgfx.h"
+#include "imgui_graphics.h"
 #include "model_load.h"
 #include "native_dialogs.h"
 #include "performance_log.h"
@@ -41,8 +41,7 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-#include <bgfx/bgfx.h>
-#include <bgfx/platform.h>
+#include "graphics.h"
 #include <bx/math.h>
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
@@ -86,11 +85,11 @@ using woby::drawVisibilityButton;
 using woby::drawRemoveButton;
 using woby::setLastItemTooltip;
 
-constexpr uint32_t resetFlags = BGFX_RESET_VSYNC | BGFX_RESET_MSAA_X4;
-constexpr bgfx::ViewId clearView = 0;
-constexpr bgfx::ViewId sceneView = 1;
-constexpr bgfx::ViewId helperView = 5;
-constexpr bgfx::ViewId imguiView = 255;
+constexpr uint32_t resetFlags = WOBY_GPU_RESET_VSYNC | WOBY_GPU_RESET_MSAA_X4;
+constexpr woby::graphics::ViewId clearView = 0;
+constexpr woby::graphics::ViewId sceneView = 1;
+constexpr woby::graphics::ViewId helperView = 5;
+constexpr woby::graphics::ViewId imguiView = 255;
 constexpr float minSceneViewportWidth = 160.0f;
 constexpr float viewerPaneBackgroundRed = 0.20f;
 constexpr float viewerPaneBackgroundGreen = 0.21f;
@@ -167,31 +166,9 @@ constexpr float viewerPaneTogglePaneMargin = 6.0f;
 constexpr float toastDurationSeconds = 8.0f;
 constexpr float toastMargin = 12.0f;
 
-bgfx::PlatformData platformDataFromSdlWindow(SDL_Window* window)
+woby::graphics::PlatformData platformDataFromSdlWindow(SDL_Window* window)
 {
-    bgfx::PlatformData platformData{};
-    const SDL_PropertiesID properties = SDL_GetWindowProperties(window);
-
-#if defined(_WIN32)
-    platformData.nwh = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
-#elif defined(__APPLE__)
-    platformData.nwh = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr);
-#elif defined(__linux__)
-    platformData.ndt = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
-    const Sint64 x11Window = SDL_GetNumberProperty(properties, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
-    if (platformData.ndt != nullptr && x11Window != 0) {
-        platformData.nwh = reinterpret_cast<void*>(static_cast<uintptr_t>(x11Window));
-    } else {
-        platformData.ndt = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
-        platformData.nwh = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);
-    }
-#endif
-
-    if (platformData.nwh == nullptr) {
-        throw std::runtime_error("Failed to get a native window handle from SDL3.");
-    }
-
-    return platformData;
+    return {window};
 }
 
 std::filesystem::path assetRoot()
@@ -1039,20 +1016,20 @@ double timerTicksToMilliseconds(int64_t ticks, int64_t frequency)
     return (static_cast<double>(ticks) * 1000.0) / static_cast<double>(frequency);
 }
 
-void copyBgfxStats(woby::FrameTimings& timings)
+void copyGraphicsStats(woby::FrameTimings& timings)
 {
-    const bgfx::Stats* stats = bgfx::getStats();
+    const woby::graphics::Stats* stats = woby::graphics::getStats();
     if (stats == nullptr) {
         return;
     }
 
-    timings.bgfxCpuFrameMilliseconds = timerTicksToMilliseconds(stats->cpuTimeFrame, stats->cpuTimerFreq);
-    timings.bgfxCpuSubmitMilliseconds =
+    timings.graphicsCpuFrameMilliseconds = timerTicksToMilliseconds(stats->cpuTimeFrame, stats->cpuTimerFreq);
+    timings.graphicsCpuSubmitMilliseconds =
         timerTicksToMilliseconds(stats->cpuTimeEnd - stats->cpuTimeBegin, stats->cpuTimerFreq);
     if (stats->gpuTimerFreq > 0 && stats->gpuTimeEnd > stats->gpuTimeBegin) {
-        timings.bgfxGpuFrameMilliseconds =
+        timings.graphicsGpuFrameMilliseconds =
             timerTicksToMilliseconds(stats->gpuTimeEnd - stats->gpuTimeBegin, stats->gpuTimerFreq);
-        timings.hasBgfxGpuFrameMilliseconds = true;
+        timings.hasGraphicsGpuFrameMilliseconds = true;
     }
 }
 
@@ -1124,7 +1101,7 @@ void appendSceneNodesForResolvedInputs(
 
 LoadedModelFileWithRuntime loadModelFile(
     const std::filesystem::path& modelPath,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     size_t firstColorIndex,
     const woby::SceneFileRecord* sceneRecord = nullptr)
 {
@@ -1168,7 +1145,7 @@ LoadedModelFileWithRuntime loadModelFile(
 
 std::vector<LoadedModelFile> loadModelFiles(
     const std::vector<std::filesystem::path>& modelPaths,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     std::vector<LoadedModelRuntime>& runtimes,
     size_t firstColorIndex = 0)
 {
@@ -1200,7 +1177,7 @@ std::vector<LoadedModelFile> loadModelFiles(
 
 void appendInitialModelFiles(
     const ResolvedModelInputs& modelInputs,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes)
 {
@@ -1252,7 +1229,7 @@ void removeModelFile(
 
 bool applySceneHistory(woby::SceneHistory& history, woby::UiState& state,
     const woby::SceneDocument& cleanDocument, std::vector<LoadedModelRuntime>& runtimes,
-    const bgfx::VertexLayout& layout, bool redo, woby::AnnotationPreparationRuntime& preparation)
+    const woby::graphics::VertexLayout& layout, bool redo, woby::AnnotationPreparationRuntime& preparation)
 {
     woby::cancelAnnotationPreparation(preparation);
     auto prepared = woby::loadSceneHistoryStep(history, state, cleanDocument, redo);
@@ -1403,7 +1380,7 @@ void appendDropClassificationStatus(
 std::vector<LoadedModelFile> loadSceneFiles(
     const std::filesystem::path& scenePath,
     const woby::SceneDocument& document,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     std::vector<LoadedModelRuntime>& runtimes)
 {
     std::vector<LoadedModelFile> loadedFiles;
@@ -1431,7 +1408,7 @@ std::vector<LoadedModelFile> loadSceneFiles(
 
 void loadScene(
     const std::filesystem::path& scenePath,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes)
 {
@@ -1488,7 +1465,7 @@ void resetSceneToUntitled(
 
 void loadSceneFromPath(
     const std::filesystem::path& requestedScenePath,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
@@ -1788,7 +1765,7 @@ void commitGpuFinalize(
 
 std::optional<std::string> processGpuFinalizeStep(
     GpuFinalizeRuntime& finalize,
-    const bgfx::VertexLayout& meshLayout,
+    const woby::graphics::VertexLayout& meshLayout,
     woby::UiState& state,
     std::vector<LoadedModelRuntime>& runtimes,
     std::optional<std::filesystem::path>& currentScenePath,
@@ -2091,8 +2068,8 @@ int main(int argc, char** argv)
     const bool headlessLaunchRequested = std::any_of(argv + 1, argv + argc,
         [](const char* argument) { return std::string_view(argument) == "--headless"; });
     bool sdlInitialized = false;
-    bool bgfxInitialized = false;
-    // Readback memory must outlive bgfx shutdown, including exception paths.
+    bool graphicsInitialized = false;
+    // Readback memory must outlive graphics shutdown, including exception paths.
     woby::GpuMarkerPicker markerPicker;
     woby::AutomationOwner automation(nullptr, &woby::stopAutomation);
 
@@ -2169,7 +2146,13 @@ int main(int argc, char** argv)
         } catch (const std::exception& error) { reportImporterError(error.what()); }
 
         SDL_Window* rawWindow = headless ? nullptr
-            : SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE);
+            : SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE |
+#if defined(__APPLE__)
+                SDL_WINDOW_METAL
+#else
+                SDL_WINDOW_VULKAN
+#endif
+            );
         if (!headless && rawWindow == nullptr) {
             throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
         }
@@ -2195,40 +2178,38 @@ int main(int argc, char** argv)
         if (window) { getDrawableSize(window.get(), width, height); }
         woby::logDuration("startup_sdl_window", elapsedMilliseconds(sdlStart));
 
-        const auto bgfxStart = woby::PerformanceClock::now();
-        bgfx::Init init;
-        init.type = bgfx::RendererType::Count;
+        const auto graphicsStart = woby::PerformanceClock::now();
+        woby::graphics::Init init;
+        init.type = woby::graphics::RendererType::Count;
         if (headless) {
             // Use a backend with a windowless device and packaged shaders.
 #if defined(_WIN32)
-            init.type = bgfx::RendererType::Direct3D11;
+            init.type = woby::graphics::RendererType::Vulkan;
 #elif defined(__linux__)
-            init.type = bgfx::RendererType::Vulkan;
+            init.type = woby::graphics::RendererType::Vulkan;
 #else
-            throw std::runtime_error("Headless mode currently supports Windows (Direct3D 11) and Linux (Vulkan).");
+            throw std::runtime_error("Headless mode currently supports Windows (Vulkan) and Linux (Vulkan).");
 #endif
         } else {
             init.platformData = platformDataFromSdlWindow(window.get());
         }
         init.resolution.width = width;
         init.resolution.height = height;
-        init.resolution.reset = headless ? BGFX_RESET_NONE : resetFlags;
+        init.resolution.reset = headless ? WOBY_GPU_RESET_NONE : resetFlags;
 
-        if (!bgfx::init(init)) {
-            throw std::runtime_error(headless
-                ? "Headless renderer initialization failed. A working Direct3D 11 (Windows) or Vulkan (Linux) graphics device/driver is required."
-                : "bgfx::init failed.");
+        if (!woby::graphics::init(init)) {
+            throw std::runtime_error(woby::graphics::initializationError());
         }
-        bgfxInitialized = true;
+        graphicsInitialized = true;
         // Fail before importing any model or creating shader-dependent resources.
         woby::validateRendererStartup();
         if (headless) { woby::validateSceneScreenshotRenderer(); }
 
-        bgfx::setViewClear(clearView, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
-        bgfx::setViewClear(sceneView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
-        bgfx::setViewClear(helperView, BGFX_CLEAR_NONE, 0x00000000, 1.0f, 0);
-        bgfx::setDebug(headless ? BGFX_DEBUG_NONE : BGFX_DEBUG_TEXT);
-        woby::logDuration("startup_bgfx", elapsedMilliseconds(bgfxStart));
+        woby::graphics::setViewClear(clearView, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
+        woby::graphics::setViewClear(sceneView, WOBY_GPU_CLEAR_NONE, 0x00000000, 1.0f, 0);
+        woby::graphics::setViewClear(helperView, WOBY_GPU_CLEAR_NONE, 0x00000000, 1.0f, 0);
+        woby::graphics::setDebug(headless ? WOBY_GPU_DEBUG_NONE : WOBY_GPU_DEBUG_TEXT);
+        woby::logDuration("startup_graphics", elapsedMilliseconds(graphicsStart));
 
         const auto modelPathsStart = woby::PerformanceClock::now();
         const auto modelInputs = resolveModelInputs(commandLine);
@@ -2269,14 +2250,15 @@ int main(int argc, char** argv)
         woby::resetSceneHistory(sceneHistory, ui);
 
         const auto shaderStart = woby::PerformanceClock::now();
-        bgfx::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
-        bgfx::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
-        bgfx::ProgramHandle annotationProgram = woby::loadProgram(assets, "vs_annotation.bin", "fs_color.bin");
-        bgfx::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
-        bgfx::UniformHandle colorUniform = bgfx::createUniform("u_color", bgfx::UniformType::Vec4);
-        bgfx::UniformHandle pointParamsUniform = bgfx::createUniform("u_pointParams", bgfx::UniformType::Vec4, 2);
+        const auto presentationProgram = woby::loadProgram(assets, "vs_marker_screen.bin", "fs_marker_composite.bin");
+        woby::graphics::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
+        woby::graphics::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
+        woby::graphics::ProgramHandle annotationProgram = woby::loadProgram(assets, "vs_annotation.bin", "fs_color.bin");
+        woby::graphics::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
+        woby::graphics::UniformHandle colorUniform = woby::graphics::createUniform("u_color", woby::graphics::UniformType::Vec4);
+        woby::graphics::UniformHandle pointParamsUniform = woby::graphics::createUniform("u_pointParams", woby::graphics::UniformType::Vec4, 2);
         comparison.program = woby::loadProgram(assets, "vs_comparison.bin", "fs_comparison.bin");
-        comparison.parameters = bgfx::createUniform("u_comparison", bgfx::UniformType::Vec4);
+        comparison.parameters = woby::graphics::createUniform("u_comparison", woby::graphics::UniformType::Vec4);
         woby::logDuration("startup_shaders", elapsedMilliseconds(shaderStart));
 
         const auto imguiStart = woby::PerformanceClock::now();
@@ -2300,7 +2282,7 @@ int main(int argc, char** argv)
                 throw std::runtime_error("ImGui_ImplSDL3_InitForOther failed.");
             }
         }
-        woby::imgui_bgfx::init(assets, imguiView);
+        woby::imgui_graphics::init(assets, imguiView);
         woby::logDuration("startup_imgui", elapsedMilliseconds(imguiStart));
 
         ui.viewerPaneWidth = minimumViewerPaneWidth();
@@ -2456,7 +2438,7 @@ int main(int argc, char** argv)
                     scenePointer = {};
                     presentedPickView.reset();
                     getDrawableSize(window.get(), width, height);
-                    bgfx::reset(width, height, resetFlags);
+                    woby::graphics::reset(width, height, resetFlags);
                 }
                 if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
                     woby::cancelAnnotationPointer(annotationInteraction);
@@ -2796,7 +2778,7 @@ int main(int argc, char** argv)
                 headless ? minViewerPaneWidth : canvasLayout(window.get(), ui).width - minSceneViewportWidth);
             if (!headless) { woby::setViewerPaneWidth(ui, viewerPaneWidth, minViewerPaneWidth, maxViewerPaneWidth); }
 
-            if (!headless) { bgfx::dbgTextClear(); }
+            if (!headless) { woby::graphics::dbgTextClear(); }
             recordFrameStage(frameTimings, woby::FrameStage::stateUpdate, stageStart);
 
             const bool popupWasOpen = !headless && ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup);
@@ -3171,7 +3153,7 @@ int main(int argc, char** argv)
                         triangleCountTotal += file.mesh.indices.size() / 3u;
                     }
                     ImGui::TextDisabled("%zu vertices | %zu triangles", vertexCountTotal, triangleCountTotal);
-                    ImGui::TextDisabled("%s | %.1f FPS", bgfx::getRendererName(bgfx::getRendererType()), fps);
+                    ImGui::TextDisabled("%s | %.1f FPS", woby::graphics::getRendererName(woby::graphics::getRendererType()), fps);
                 }
                     ImGui::End();
                 }
@@ -3407,13 +3389,13 @@ int main(int argc, char** argv)
                                     {"annotationPreparationError", annotationPreparation.error},
                                     {"capturing", sceneScreenshot.captureRequested || sceneScreenshot.readbackPending},
                                     {"busy", busy}, {"version", WOBY_VERSION},
-                                    {"renderer", bgfx::getRendererName(bgfx::getRendererType())},
+                                    {"renderer", woby::graphics::getRendererName(woby::graphics::getRendererType())},
                                     {"screenshot", {{"width", ui.screenshotSettings.width}, {"height", ui.screenshotSettings.height}, {"format", "png"}}},
                                     {"pane", headless ? Json(nullptr) : Json{{"visible", ui.viewerPaneVisible}, {"width", ui.viewerPaneWidth}}}});
                             } else if (payload.action == A::capabilities) {
                                 result = woby::controlCapabilities();
                                 result["headless"] = headless;
-                                result["renderer"] = bgfx::getRendererName(bgfx::getRendererType());
+                                result["renderer"] = woby::graphics::getRendererName(woby::graphics::getRendererType());
                                 for (auto& method : result["methods"]) {
                                     method["available"] = !headless || method["method"] != "pane.set";
                                 }
@@ -3444,9 +3426,9 @@ int main(int argc, char** argv)
                             } else if (payload.action == A::performance) {
                                 result = {{"frameIndex", lastFrameTimings.frameIndex}, {"fps", fps},
                                     {"frameMilliseconds", lastFrameTimings.totalMilliseconds},
-                                    {"cpuFrameMilliseconds", lastFrameTimings.bgfxCpuFrameMilliseconds},
-                                    {"cpuSubmitMilliseconds", lastFrameTimings.bgfxCpuSubmitMilliseconds},
-                                    {"gpuFrameMilliseconds", lastFrameTimings.hasBgfxGpuFrameMilliseconds ? Json(lastFrameTimings.bgfxGpuFrameMilliseconds) : Json(nullptr)}};
+                                    {"cpuFrameMilliseconds", lastFrameTimings.graphicsCpuFrameMilliseconds},
+                                    {"cpuSubmitMilliseconds", lastFrameTimings.graphicsCpuSubmitMilliseconds},
+                                    {"gpuFrameMilliseconds", lastFrameTimings.hasGraphicsGpuFrameMilliseconds ? Json(lastFrameTimings.graphicsGpuFrameMilliseconds) : Json(nullptr)}};
                                 result["stagesMilliseconds"] = Json::object();
                                 for (size_t stage = 0; stage < lastFrameTimings.stageMilliseconds.size(); ++stage) {
                                     result["stagesMilliseconds"][woby::frameStageName(static_cast<woby::FrameStage>(stage))] = lastFrameTimings.stageMilliseconds[stage];
@@ -3454,7 +3436,7 @@ int main(int argc, char** argv)
                             } else {
                                 result = woby::applyControlSceneOperation(ui, cleanSceneDocument, payload, formatObjectId, minViewerPaneWidth, maxViewerPaneWidth);
                                 if (payload.action == A::sceneInfo) { result["path"] = currentScenePath ? Json(woby::pathToUtf8(*currentScenePath)) : Json(nullptr); }
-                                if (payload.action == A::stats) { result["renderer"] = bgfx::getRendererName(bgfx::getRendererType()); result["fps"] = fps; }
+                                if (payload.action == A::stats) { result["renderer"] = woby::graphics::getRendererName(woby::graphics::getRendererType()); result["fps"] = fps; }
                             }
                             woby::completeAutomationCommand(*automation, command->id, woby::AutomationControlResult{std::move(result)});
                         } else if constexpr (std::is_same_v<Command, woby::SceneLifecycleCommand>) {
@@ -3590,24 +3572,24 @@ int main(int argc, char** argv)
                 const auto viewport = canvasLayout(window.get(), ui).viewport;
                 const uint32_t sceneViewportWidth = viewport.width;
                 const uint32_t sceneViewportHeight = viewport.height;
-                bgfx::setViewRect(clearView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
-                bgfx::touch(clearView);
-                bgfx::setViewRect(
+                woby::graphics::setViewRect(clearView, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
+                woby::graphics::touch(clearView);
+                woby::graphics::setViewRect(
                     sceneView,
                     static_cast<uint16_t>(viewport.x),
                     static_cast<uint16_t>(viewport.y),
                     static_cast<uint16_t>(sceneViewportWidth),
                     static_cast<uint16_t>(sceneViewportHeight));
-                bgfx::setViewRect(
+                woby::graphics::setViewRect(
                     helperView,
                     static_cast<uint16_t>(viewport.x),
                     static_cast<uint16_t>(viewport.y),
                     static_cast<uint16_t>(sceneViewportWidth),
                     static_cast<uint16_t>(sceneViewportHeight));
-                bgfx::touch(sceneView);
-                bgfx::touch(helperView);
+                woby::graphics::touch(sceneView);
+                woby::graphics::touch(helperView);
 
-                const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
+                const bool homogeneousDepth = woby::graphics::getCaps()->homogeneousDepth;
                 const auto currentPickView = woby::scenePickView(camera, ui.upAxis, sceneBounds,
                     sceneViewportWidth, sceneViewportHeight, homogeneousDepth,
                     static_cast<float>(width) / canvasLayout(window.get(), ui).width);
@@ -3615,8 +3597,8 @@ int main(int argc, char** argv)
                 const auto* projection = currentPickView.projection.data();
                 presentedPickView = currentPickView;
                 presentedViewport = viewport;
-                bgfx::setViewTransform(sceneView, view, projection);
-                bgfx::setViewTransform(helperView, view, projection);
+                woby::graphics::setViewTransform(sceneView, view, projection);
+                woby::graphics::setViewTransform(helperView, view, projection);
                 recordFrameStage(frameTimings, woby::FrameStage::viewSetup, stageStart);
 
                 std::optional<HoveredVertex> hoveredVertex;
@@ -3696,7 +3678,7 @@ int main(int argc, char** argv)
                 hoveredVertex = gpuHover ? markerPicker.coordinates : hoverPickCache.hoveredVertex;
                 recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
-                bgfx::setViewMode(sceneView, bgfx::ViewMode::Sequential);
+                woby::graphics::setViewMode(sceneView, woby::graphics::ViewMode::Sequential);
                 {
                     submitSceneFiles(
                         sceneView,
@@ -3715,7 +3697,7 @@ int main(int argc, char** argv)
                 }
                 woby::submitComparisonScenes(sceneView, ui, comparison,
                     gpuHover ? markerPicker.line : colorProgram, colorUniform, renderScratch,
-                    gpuHover ? markerPicker.comparison : bgfx::ProgramHandle{bgfx::kInvalidHandle});
+                    gpuHover ? markerPicker.comparison : woby::graphics::ProgramHandle{woby::graphics::kInvalidHandle});
                 woby::submitGpuMarkerPicking(markerPicker, viewport);
                 recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
@@ -3747,7 +3729,7 @@ int main(int argc, char** argv)
 
             }
 
-            const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
+            const bool homogeneousDepth = woby::graphics::getCaps()->homogeneousDepth;
             try {
                 submitSceneScreenshotCapture(
                     sceneScreenshot,
@@ -3780,11 +3762,11 @@ int main(int argc, char** argv)
                 ImGui::EndFrame();
             } else {
                 ImGui::Render();
-                woby::imgui_bgfx::render(ImGui::GetDrawData());
+                woby::imgui_graphics::render(ImGui::GetDrawData());
             }
             recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);
 
-            const uint32_t frameNumber = bgfx::frame();
+            const uint32_t frameNumber = woby::graphics::frame();
             woby::pollGpuMarkerPicking(markerPicker, frameNumber, ui, runtimes);
             try {
                 const std::optional<std::string> screenshotStatus = completeSceneScreenshotReadback(
@@ -3807,9 +3789,9 @@ int main(int argc, char** argv)
                 }
                 setToastMessage(toast, std::string("Save screenshot failed: ") + exception.what());
             }
-            recordFrameStage(frameTimings, woby::FrameStage::bgfxFrame, stageStart);
+            recordFrameStage(frameTimings, woby::FrameStage::graphicsFrame, stageStart);
             frameTimings.totalMilliseconds = woby::millisecondsBetween(frameStart, woby::PerformanceClock::now());
-            copyBgfxStats(frameTimings);
+            copyGraphicsStats(frameTimings);
             lastFrameTimings = frameTimings;
             if (commandLine.logPerformance) {
                 woby::accumulateFrameTiming(frameTimingAccumulator, frameTimings);
@@ -3842,22 +3824,23 @@ int main(int argc, char** argv)
         abortGpuFinalize(gpuFinalize);
         woby::unloadImporters();
 
-        woby::imgui_bgfx::shutdown();
+        woby::imgui_graphics::shutdown();
         if (!headless) { ImGui_ImplSDL3_Shutdown(); }
         ImGui::DestroyContext();
 
         woby::destroyGpuMarkerPicker(markerPicker);
-        bgfx::destroy(pointParamsUniform);
+        woby::graphics::destroy(pointParamsUniform);
         woby::destroyComparisonRuntimes(comparison);
-        bgfx::destroy(colorUniform);
-        bgfx::destroy(pointSpriteProgram);
-        bgfx::destroy(colorProgram);
-        bgfx::destroy(annotationProgram);
-        bgfx::destroy(meshProgram);
+        woby::graphics::destroy(colorUniform);
+        woby::graphics::destroy(pointSpriteProgram);
+        woby::graphics::destroy(colorProgram);
+        woby::graphics::destroy(annotationProgram);
+        woby::graphics::destroy(presentationProgram);
+        woby::graphics::destroy(meshProgram);
         destroySceneScreenshotFramebuffer(sceneScreenshot);
         destroyModelRuntimes(runtimes);
-        bgfx::shutdown();
-        bgfxInitialized = false;
+        woby::graphics::shutdown();
+        graphicsInitialized = false;
         window.reset();
         SDL_Quit();
         sdlInitialized = false;
@@ -3871,8 +3854,8 @@ int main(int argc, char** argv)
         if (!headlessLaunchRequested && !woby::hasStandardError()) {
             SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Woby could not continue", exception.what(), nullptr);
         }
-        if (bgfxInitialized) {
-            bgfx::shutdown();
+        if (graphicsInitialized) {
+            woby::graphics::shutdown();
         }
         if (sdlInitialized) {
             SDL_Quit();

@@ -51,8 +51,8 @@ void cancelAnnotationPointer(AnnotationInteraction& interaction);
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
     const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed, float windowY = 0.0f);
 // Requires the annotation vertex shader, which consumes projected NDC positions.
-void submitSceneAnnotations(bgfx::ViewId viewId, const UiState& state, const ScenePickView& view,
-    const bgfx::VertexLayout& layout, bgfx::ProgramHandle program, bgfx::UniformHandle colorUniform,
+void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state, const ScenePickView& view,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
     SceneRenderScratch& scratch,
     const AnnotationInteraction* interaction = nullptr);
 } // namespace woby

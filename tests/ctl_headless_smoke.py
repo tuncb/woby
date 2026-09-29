@@ -4,7 +4,7 @@
 # ///
 """Exercise windowless rendering, automation, overlays, and process lifecycle.
 
-Requires a working D3D11 (Windows) or Vulkan (Linux) device/driver, not a desktop.
+Requires a NoGraphicsAPI-compatible Vulkan device/driver, without a desktop.
 uv run tests/ctl_headless_smoke.py path/to/woby
 """
 from contextlib import contextmanager
@@ -88,6 +88,8 @@ def session(executable, root, env, *args):
             if viewer.poll() is None:
                 viewer.kill()
             viewer.wait(timeout=15)
+    text = log_path.read_text(encoding="utf-8")
+    assert not any(token in text for token in ("Validation Error", "VUID-", "SYNC-HAZARD", "Unhandled exception")), text
     discovered = run(executable, "ctl", "instances", "--json", env=env)
     assert all(item["id"] != instance for item in json.loads(discovered.stdout))
 
@@ -131,7 +133,7 @@ def main():
             capture(ctl, root / "empty.png")
             status = ctl("status")
             assert status["headless"] and status["pane"] is None
-            assert status["renderer"] in ("Direct3D 11", "Vulkan")
+            assert status["renderer"] in ("NoGraphicsAPI Vulkan", "NoGraphicsAPI Metal")
             assert status["screenshot"] == {"width": 1920, "height": 1800, "format": "png"}
             methods = {item["method"]: item for item in ctl("capabilities")["methods"]}
             assert methods["screenshot.capture"]["available"]

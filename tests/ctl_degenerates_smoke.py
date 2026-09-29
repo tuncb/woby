@@ -82,9 +82,11 @@ def main():
                 ctl("analysis", "set", analysis, "--show-degenerate-triangles", "false")
                 assert findings() == initial
                 ctl("analysis", "set", analysis, "--degenerate-triangles", "false", "--cap-min-angle-degrees", "179.5")
-                disabled = findings()
-                assert disabled["status"] == "disabled" and disabled["count"] is None and not disabled["findings"]
-                assert disabled["capMinAngleDegrees"] == 179.5
+                # Turning off automatic updates preserves the previous count,
+                # while a changed threshold makes that result out of date.
+                stale = findings()
+                assert stale["status"] == "out_of_date" and stale["count"] is None and not stale["findings"], stale
+                assert stale["knownCount"] == 3 and stale["hasPreviousResult"], stale
                 ctl("analysis", "set", analysis, "--degenerate-triangles", "true", "--show-degenerate-triangles", "true",
                     "--needle-threshold-ratio", "20000", "--cap-min-angle-degrees", "180")
                 assert findings()["count"] == 1
@@ -92,7 +94,7 @@ def main():
                 assert findings()["count"] == 2
                 saved = root / "saved.woby"
                 ctl("scene", "save-as", saved, "--overwrite")
-                assert "version = 15" in saved.read_text(encoding="utf-8")
+                assert "version = 16" in saved.read_text(encoding="utf-8")
                 ctl("scene", "open", saved)
                 objects = ctl("objects")["objects"]
                 analysis = next(item["id"] for item in objects if item["kind"] == "analysis")

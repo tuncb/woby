@@ -23,7 +23,7 @@ struct ScreenshotSettings {
 
 [[nodiscard]] ScreenshotSettings normalizedScreenshotSettings(ScreenshotSettings settings);
 [[nodiscard]] std::string measurementNumber(double value);
-// Unlit palette, shared by numeric legends. Matches comparison.frag.sc.
+// Unlit palette, shared by numeric legends. Matches shaders/native/woby.slang.
 [[nodiscard]] std::array<float, 4> comparisonHeatmapColor(double distance, const ComparisonSettings& settings);
 [[nodiscard]] std::vector<std::string> comparisonReportLines(
     const std::string& name, const std::string& a, const std::string& b,

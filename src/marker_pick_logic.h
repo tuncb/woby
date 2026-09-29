@@ -33,7 +33,7 @@ struct MarkerDrawList {
     const std::array<float, 16>& model, const std::array<float, 3>& local);
 [[nodiscard]] bool acceptMarkerCompletion(uint64_t epoch, uint64_t currentEpoch,
     uint64_t sequence, uint64_t latestSequence);
-// bgfx frame counters wrap after UINT32_MAX.
+// graphics frame counters wrap after UINT32_MAX.
 [[nodiscard]] bool markerFrameReached(uint32_t frame, uint32_t target);
 
 } // namespace woby

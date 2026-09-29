@@ -58,6 +58,38 @@ helper, libraries, assets, and `woby-manifest.json`. Build outputs intentionally
 have no manifest and refuse installation, although `--check` works there.
 Releases published before this feature cannot bootstrap themselves.
 
+### Upgrading from the bgfx renderer
+
+Managed releases with the bgfx updater can install a newer NoGraphicsAPI release
+directly; no bridge release or manual reinstall is needed. Their updater and
+already-installed helper require ten historical shader paths: `assets/shaders/dx11/`
+on Windows, `assets/shaders/glsl/` on Linux, and `assets/shaders/metal/` on macOS.
+They validate these files but do not load them.
+
+Package generation automatically copies the corresponding native SPIR-V shaders
+to the ten legacy Windows/Linux paths before generating the manifest. These are
+compatibility copies, not usable bgfx shaders; Woby loads only the native shader
+directory. Metal already supplies the required paths, so its native files are
+left unchanged. This adds no bgfx dependency. Every copy is a normal package-owned
+file with a recorded size and SHA-256, covered by installation and rollback.
+
+Keep these paths in **every release** while direct upgrades from bgfx-era updaters
+are supported: users may skip releases, and the updater selects the latest stable
+release. Removing them after just one transitional release would strand those
+users again. Release archive verification requires both the native assets and
+legacy paths, including when publishing reused build artifacts.
+
+The new runtime updater requires the viewer and helper executables but does not
+hardcode font or shader names. It still validates every manifest-owned file's
+path, size, hash, and executable permissions. Current renderer/font completeness
+is enforced by release packaging instead, allowing later updates to replace those
+assets without another updater compatibility break. Manifest schema remains 1.
+
+The migration package still needs a strictly newer application version and a
+published stable release to be offered by **Check for updates**. Local packages
+labelled with the same version are not updates. Graphics hardware/driver
+requirements also remain unchanged by this packaging compatibility mechanism.
+
 Self-update is intended for writable per-user portable deployments, not shared
 system installations or installations managed by another package manager. It does
 not request elevation. Close all viewers using the deployment before updating.
@@ -132,3 +164,23 @@ version check, interrupted-update recovery, and paths with spaces and Unicode.
 Headless viewer fixtures verify that UI installs restart only after completion,
 with the deployment lock available, while CLI installs and failed updates stay closed.
 Python is required for development/CI tests and package generation only.
+
+To additionally test a real historical viewer/helper, point the optional cache
+variable at a pre-migration Windows or Linux portable/bin directory containing
+the viewer, helper, libraries, and `assets`:
+
+```powershell
+cmake --preset vs2026-vcpkg -DWOBY_LEGACY_UPDATE_DIRECTORY="D:/path/to/legacy/bin/Release"
+cmake --build --preset vs2026-vcpkg
+ctest --test-dir build/vs2026-vcpkg -C Debug -R woby_update_legacy_smoke --output-on-failure
+```
+
+The offline test copies both builds into isolated temporary deployments. It checks
+legacy rejection without compatibility files, corrupt-file rejection, successful
+migration, rollback after the executable health check fails, preservation of user
+files, and a subsequent native-only update using the newly installed helper. The
+actual historical CLI is exercised for local status and the historical helper
+performs installation. Installed fixture manifests use version `0.0.0` so local
+builds sharing an application version can be tested; this does not test GitHub
+discovery or downloading. Packaging tests cover Windows, Linux, and macOS layouts;
+native helper execution must be tested on the corresponding operating system.
