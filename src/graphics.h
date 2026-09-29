@@ -220,7 +220,9 @@ void setViewName(ViewId, const char *);
 void setViewMode(ViewId, ViewMode::Enum);
 void setViewFrameBuffer(ViewId, FrameBufferHandle);
 void setViewRect(ViewId, uint16_t x, uint16_t y, uint16_t width, uint16_t height);
-void setViewTransform(ViewId, const float *view, const float *projection);
+// Reversed views receive an already reversed [1, 0] projection. Depth-test
+// flags and clear values retain their forward-depth meaning at this interface.
+void setViewTransform(ViewId, const float *view, const float *projection, bool reversedDepth = false);
 void setViewClear(ViewId, uint16_t flags, uint32_t color = 0, float depth = 1, uint8_t stencil = 0);
 void setViewClear(ViewId, uint16_t flags, float depth, uint8_t stencil, uint8_t color0, uint8_t color1);
 void setPaletteColor(uint8_t index, uint32_t rgba);

@@ -316,9 +316,9 @@ void submitSceneScreenshotCapture(
     const auto captureView = scenePickView(camera, ui.upAxis, sceneBounds,
         sceneWidth, screenshot.height, homogeneousDepth, 1);
     const auto* view = captureView.view.data();
-    const auto* projection = captureView.projection.data();
-    woby::graphics::setViewTransform(screenshotSceneView, view, projection);
-    woby::graphics::setViewTransform(screenshotHelperView, view, projection);
+    const auto* projection = captureView.renderProjection.data();
+    woby::graphics::setViewTransform(screenshotSceneView, view, projection, true);
+    woby::graphics::setViewTransform(screenshotHelperView, view, projection, true);
 
     woby::graphics::setViewMode(screenshotSceneView, woby::graphics::ViewMode::Sequential);
     if (!options.resultsOnly) {

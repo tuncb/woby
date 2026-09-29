@@ -95,7 +95,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
             {static_cast<float>(viewport.width)/2, static_cast<float>(viewport.height)/2}, true, samples));
         // Exercise exact byte encoding above float's 24-bit integer precision.
         picker.context.list.nextId = 16777217;
-        woby::graphics::setViewTransform(1, view.view.data(), view.projection.data());
+        woby::graphics::setViewTransform(1, view.view.data(), view.renderProjection.data(), true);
         woby::graphics::setViewMode(1, woby::graphics::ViewMode::Sequential);
         woby::graphics::touch(1);
         woby::submitSceneFiles(1, state.files, state.sceneNodes, fixture.runtimes, state.masterVertexPointSize,

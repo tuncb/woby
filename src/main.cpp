@@ -2206,6 +2206,7 @@ int main(int argc, char** argv)
         if (headless) { woby::validateSceneScreenshotRenderer(); }
 
         woby::graphics::setViewClear(clearView, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x20242aff, 1.0f, 0);
+        woby::graphics::setViewTransform(clearView, nullptr, nullptr, true);
         woby::graphics::setViewClear(sceneView, WOBY_GPU_CLEAR_NONE, 0x00000000, 1.0f, 0);
         woby::graphics::setViewClear(helperView, WOBY_GPU_CLEAR_NONE, 0x00000000, 1.0f, 0);
         woby::graphics::setDebug(headless ? WOBY_GPU_DEBUG_NONE : WOBY_GPU_DEBUG_TEXT);
@@ -3597,8 +3598,8 @@ int main(int argc, char** argv)
                 const auto* projection = currentPickView.projection.data();
                 presentedPickView = currentPickView;
                 presentedViewport = viewport;
-                woby::graphics::setViewTransform(sceneView, view, projection);
-                woby::graphics::setViewTransform(helperView, view, projection);
+                woby::graphics::setViewTransform(sceneView, view, currentPickView.renderProjection.data(), true);
+                woby::graphics::setViewTransform(helperView, view, currentPickView.renderProjection.data(), true);
                 recordFrameStage(frameTimings, woby::FrameStage::viewSetup, stageStart);
 
                 std::optional<HoveredVertex> hoveredVertex;

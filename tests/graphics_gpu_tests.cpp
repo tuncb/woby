@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "graphics_helpers.h"
+#include "scene_pick.h"
 #include <NoGraphicsAPI/NoGraphicsAPI.hpp>
 #include <array>
 #include <doctest/doctest.h>
@@ -166,4 +167,71 @@ TEST_CASE("Native circular markers use pixel coverage consistently for display a
     g::destroy(color);
     g::destroy(indices);
     g::destroy(vertices);
+}
+
+TEST_CASE("Reversed depth resolves close and distant layers independent of draw order and MSAA")
+{
+    namespace g = woby::graphics;
+    NativeFixture fixture;
+    fixture.initialized = g::init({});
+    REQUIRE(fixture.initialized);
+    const auto program = woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_color.bin", "fs_color.bin");
+    const auto color = g::createUniform("u_color", g::UniformType::Vec4);
+    const std::array<float, 4> red{1, 0, 0, 1}, blue{0, 0, 1, 1};
+    const std::array<float, 18> positions{
+        -200000, -200000, .5f, 200000, -200000, .5f, 0, 200000, .5f,
+        -200000, -200000, 0, 200000, -200000, 0, 0, 200000, 0};
+    const auto vertices = g::createVertexBuffer(g::copy(positions.data(), sizeof(positions)), {12});
+    woby::Bounds bounds; bounds.radius = 300000;
+    for (const bool msaa : {false, true}) {
+        const uint64_t flags = msaa ? WOBY_GPU_TEXTURE_RT_MSAA_X4 : WOBY_GPU_TEXTURE_RT;
+        const auto output = g::createTexture2D(16, 16, false, 1, g::TextureFormat::RGBA8,
+            flags | WOBY_GPU_TEXTURE_READ_BACK);
+        const auto depth = g::createTexture2D(16, 16, false, 1, g::TextureFormat::D24S8, flags);
+        const std::array attachments{output, depth};
+        const auto target = g::createFrameBuffer(2, attachments.data());
+        // Match the window path: one view clears and a later view loads depth.
+        // Screenshot and marker passes also exercise clear-and-draw in one view.
+        g::setViewFrameBuffer(0, target);
+        g::setViewRect(0, 0, 0, 16, 16);
+        g::setViewClear(0, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x000000ff, 1);
+        g::setViewTransform(0, nullptr, nullptr, true);
+        g::setViewFrameBuffer(1, target);
+        g::setViewRect(1, 0, 0, 16, 16);
+        g::setViewClear(1, WOBY_GPU_CLEAR_NONE);
+        for (const float distance : {1.0f, 33000.0f, 80000.0f}) {
+            for (const float angle : {0.0f, .4f}) {
+                const auto camera = woby::cameraLookingAt({}, {distance * angle, distance * angle, distance},
+                    {0, 0, 0}, woby::SceneUpAxis::y);
+                const auto view = woby::scenePickView(camera, woby::SceneUpAxis::y, bounds, 16, 16, false, 1);
+                g::setViewTransform(1, view.view.data(), view.renderProjection.data(), true);
+                for (const bool frontFirst : {false, true}) {
+                    for (const auto test : {WOBY_GPU_STATE_DEPTH_TEST_LESS, WOBY_GPU_STATE_DEPTH_TEST_LEQUAL}) {
+                        CAPTURE(msaa); CAPTURE(distance); CAPTURE(angle); CAPTURE(frontFirst); CAPTURE(test);
+                        g::touch(0);
+                        for (int draw = 0; draw < 2; ++draw) {
+                            const bool front = (draw == 0) == frontFirst;
+                            g::setUniform(color, front ? red.data() : blue.data());
+                            g::setVertexBuffer(0, vertices, front ? 0 : 3, 3);
+                            g::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z | test);
+                            g::submit(1, program);
+                        }
+                        std::array<uint8_t, 16 * 16 * 4> pixels{};
+                        const auto ready = g::readTexture(output, pixels.data());
+                        while (g::frame() < ready) {}
+                        for (size_t y = 4; y < 12; ++y) {
+                            for (size_t x = 4; x < 12; ++x) {
+                                const auto pixel = (y * 16 + x) * 4;
+                                CHECK(pixels[pixel] == 255);
+                                CHECK(pixels[pixel + 1] == 0);
+                                CHECK(pixels[pixel + 2] == 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        g::destroy(target); g::destroy(depth); g::destroy(output);
+    }
+    g::destroy(vertices); g::destroy(color); g::destroy(program);
 }

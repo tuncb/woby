@@ -116,6 +116,7 @@ struct View
     std::shared_ptr<Framebuffer> framebuffer;
     uint16_t x = 0, y = 0, width = 1, height = 1, clearFlags = 0;
     float depth = 1;
+    bool reversedDepth = false;
     std::array<uint32_t, 2> colors{0x20242aff, 0};
     std::array<float, 16> view{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
     std::array<float, 16> projection{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
@@ -574,7 +575,7 @@ Attachments attachments(const Framebuffer &framebuffer, const View &view, bool f
             result.depth = {.render_view = image->view,
                             .load = first && (view.clearFlags & WOBY_GPU_CLEAR_DEPTH) ? gpu::LoadOp::clear
                                                                                       : gpu::LoadOp::load,
-                            .clear = view.depth};
+                            .clear = view.reversedDepth ? 1.0f - view.depth : view.depth};
             result.depthFormat = image->format;
         }
         else
@@ -667,8 +668,9 @@ void drawOperation(gpu::CommandBuffer *commands, const Operation &op, const View
     gpu::set_depth_stencil(commands,
                            {.depth_test = test,
                             .depth_write = (flags & WOBY_GPU_STATE_WRITE_Z) != 0,
-                            .depth_compare = (flags & WOBY_GPU_STATE_DEPTH_TEST_LESS) ? gpu::CompareOp::less
-                                                                                      : gpu::CompareOp::less_equal});
+                            .depth_compare = (flags & WOBY_GPU_STATE_DEPTH_TEST_LESS)
+                                ? (view.reversedDepth ? gpu::CompareOp::greater : gpu::CompareOp::less)
+                                : (view.reversedDepth ? gpu::CompareOp::greater_equal : gpu::CompareOp::less_equal)});
     const gpu::Scissor full{view.x, view.y, view.width, view.height};
     gpu::set_scissor(commands, encoder.hasScissor ? encoder.scissor : full);
     if (encoder.indices.gpu)
@@ -1187,9 +1189,10 @@ void setViewRect(ViewId id, uint16_t x, uint16_t y, uint16_t width, uint16_t hei
     v.width = width;
     v.height = height;
 }
-void setViewTransform(ViewId id, const float *view, const float *projection)
+void setViewTransform(ViewId id, const float *view, const float *projection, bool reversedDepth)
 {
     auto &v = state().views.at(id);
+    v.reversedDepth = reversedDepth;
     if (view)
         std::copy_n(view, 16, v.view.begin());
     else

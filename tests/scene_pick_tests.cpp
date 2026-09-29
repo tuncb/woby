@@ -82,6 +82,36 @@ TEST_CASE("camera depth range retreats for close geometry and honors explicit ne
     CHECK(woby::cameraDepthRange(camera, bounds).nearPlane == camera.nearPlane);
 }
 
+TEST_CASE("reversed render projection separates distant layers while preserving close clipping")
+{
+    woby::Bounds bounds; bounds.radius = 60000;
+    woby::SceneCamera camera; camera.distance = 33000; camera.nearPlane = .1f;
+    const auto saved = camera;
+    const auto depth = woby::cameraDepthRange(camera, bounds);
+    REQUIRE(depth.nearPlane == camera.nearPlane);
+    const auto view = woby::scenePickView(camera, woby::SceneUpAxis::z, bounds, 320, 240, false, 1);
+    const auto& projection = view.renderProjection;
+    // bx defaults to a left-handed camera; positive view-space Z is forward.
+    const auto projectedDepth = [&](float z) {
+        return (projection[10] * z + projection[14]) / (projection[11] * z);
+    };
+    CHECK(projectedDepth(depth.nearPlane) == doctest::Approx(1));
+    CHECK(projectedDepth(depth.farPlane) == doctest::Approx(0).epsilon(1e-6));
+    CHECK(projectedDepth(depth.nearPlane * .5f) > 1);
+    CHECK(projectedDepth(depth.nearPlane * 2) < 1);
+    CHECK(projectedDepth(depth.farPlane * 2) < 0);
+    // The map has ground layers only half a unit apart at these distances.
+    // Retain several floating-point steps, not just a double-precision difference.
+    for (const float distance : {20000.0f, 33000.0f, 80000.0f}) {
+        const float front = projectedDepth(distance), back = projectedDepth(distance + .5f);
+        CHECK(front > back);
+        CHECK(front - back > 8 * (std::nextafter(back, 1.0f) - back));
+    }
+    CHECK(view.renderProjection[0] == view.projection[0]);
+    CHECK(view.renderProjection[5] == view.projection[5]);
+    CHECK(camera == saved);
+}
+
 TEST_CASE("camera far plane covers geometry beyond an off center target for both up axes")
 {
     for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {

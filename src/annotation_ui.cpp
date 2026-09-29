@@ -36,7 +36,7 @@ void submitLines(woby::graphics::ViewId viewId, const ScenePickView& view,
     if (lines.empty()) { return; }
     auto& sourceTransforms = scratch.annotationTransforms;
     sourceTransforms.clear();
-    const auto vp = annotationCompose(view.view, view.projection);
+    const auto vp = annotationCompose(view.view, view.renderProjection);
     for (const auto* source : sources) {
         sourceTransforms.push_back(annotationCompose(source->model, vp));
     }
@@ -78,7 +78,7 @@ void submitLines(woby::graphics::ViewId viewId, const ScenePickView& view,
         for (size_t plane = 0; plane < 6; ++plane) {
             const auto distance = [&](const auto& p) {
                 if (plane < 4) { return p[3] + (plane % 2 == 0 ? p[plane / 2] : -p[plane / 2]); }
-                return plane == 4 ? (view.homogeneousDepth ? p[3] + p[2] : p[2]) : p[3] - p[2];
+                return plane == 4 ? p[2] : p[3] - p[2];
             };
             const float da = distance(a), db = distance(b);
             if (da < 0 && db < 0) { visible = false; break; }
@@ -101,7 +101,10 @@ void submitLines(woby::graphics::ViewId viewId, const ScenePickView& view,
             auto p = i < 2 ? a : b;
             const float sign = i % 2 == 0 ? 1.0f : -1.0f;
             p[0] += sign * ox * p[3]; p[1] += sign * oy * p[3];
-            p[2] += static_cast<float>(sign * (slopeX * ox + slopeY * oy) - 1e-6) * p[3];
+            // Reversed floating-point depth needs a relative bias toward the
+            // eye. A fixed NDC offset would pull distant strokes through occluders.
+            p[2] += static_cast<float>(sign * (slopeX * ox + slopeY * oy)) * p[3]
+                + std::abs(p[2]) * 1e-6f;
             // Keep the expanded stroke in NDC. Inverting the combined view and
             // projection loses precision on large scenes with small near planes,
             // shifting the rendered stroke away from its handles and pick edges.

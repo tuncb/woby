@@ -64,9 +64,10 @@ def main():
                     ctl("render", "set", "scene", "--solid", "true", "--triangles", "false", "--vertices", "false")
                     ctl("color", "set", group_id, "--rgb", ".5", ".3", ".1")
                     target = (20000, 2000, 10000) if up == "y" else (20000, 10000, 2000)
-                    ctl("camera", "set", "--target", *target, "--yaw-degrees", -60,
-                        "--pitch-degrees", 50, "--distance", 200000, "--near-plane", .1)
-                    for shape in ("line", "rectangle"):
+                    for distance, shape in ((200000, "line"), (200000, "rectangle"),
+                                            (33000, "line"), (33000, "rectangle")):
+                        ctl("camera", "set", "--target", *target, "--yaw-degrees", -60,
+                            "--pitch-degrees", 50, "--distance", distance, "--near-plane", .1)
                         start, end = (-.2, -.12), (.2, .12)
                         created = ctl("annotation", "create", group_id, "--shape", shape,
                                       "--start", *start, "--end", *end, "--aspect", 1920 / 1800)
@@ -74,7 +75,7 @@ def main():
                         ctl("annotation", "set", annotation, "--rgb", 0, 1, 1, "--width", 5)
                         for near in (.1, 10, 100):
                             ctl("camera", "set", "--near-plane", near)
-                            path = root / f"{up}-{shape}-{near}.png"
+                            path = root / f"{up}-{distance}-{shape}-{near}.png"
                             ctl("screenshot", path)
                             with Image.open(path) as source:
                                 red, green, blue = source.convert("RGB").split()
@@ -88,13 +89,38 @@ def main():
                                         x = round((1 + a[0] + t * (b[0] - a[0])) * source.width / 2)
                                         y = round((1 - a[1] - t * (b[1] - a[1])) * source.height / 2)
                                         assert mask.crop((x-4, y-4, x+5, y+5)).getbbox(), (
-                                            up, shape, near, "stroke misses its projected control/edge", (x, y), mask.getbbox())
+                                            up, distance, shape, near, "stroke misses its projected control/edge", (x, y), mask.getbbox())
+                        if distance == 33000:
+                            # Inside the scene bounds, keep the 0.1 near plane.
+                            # A second surface just 0.5 units forward must hide
+                            # the attached stroke; a fixed reverse-depth bias
+                            # would pull the stroke through it at this distance.
+                            occluder = root / f"{up}-occluder.obj"
+                            shifted = [(x, y + .5, z) if up == "y" else (x, y, z + .5)
+                                       for x, y, z in vertices]
+                            occluder.write_text("o occluder\n" + "".join(f"v {x} {y} {z}\n" for x, y, z in shifted)
+                                               + "f 1 2 3\nf 1 3 4\n", encoding="utf-8")
+                            occluder_id = ctl("model", "add", occluder)["addedIds"][0]
+                            occluder_group = next(item["id"] for item in ctl("objects")["objects"]
+                                                  if item["kind"] == "group" and item["id"] != group_id)
+                            ctl("color", "set", occluder_group, "--rgb", 1, 0, 0)
+                            ctl("camera", "set", "--target", *target, "--yaw-degrees", -60,
+                                "--pitch-degrees", 50, "--distance", distance, "--near-plane", .1)
+                            path = root / f"{up}-{shape}-occluded.png"
+                            ctl("screenshot", path)
+                            with Image.open(path) as source:
+                                red, green, blue = source.convert("RGB").split()
+                                cyan = ImageChops.multiply(red.point(lambda v: 255 if v < 80 else 0),
+                                    ImageChops.multiply(green.point(lambda v: 255 if v > 180 else 0),
+                                                        blue.point(lambda v: 255 if v > 180 else 0)))
+                                assert cyan.getbbox() is None, (up, shape, "stroke shows through occluder")
+                            ctl("model", "remove", occluder_id)
                         ctl("annotation", "delete", annotation)
                         ctl("camera", "set", "--near-plane", .1)
                     ctl("model", "remove", file_id)
                 ctl("quit", "--on-dirty", "discard")
                 assert viewer.wait(timeout=15) == 0
-                print("Annotation rendering passed: large translated terrain, both up axes, lines/rectangles, and three near planes.")
+                print("Annotation rendering passed: both up axes, lines/rectangles, near planes, distant/inside-bounds views, and close occluders.")
             finally:
                 if viewer.poll() is None:
                     viewer.kill()

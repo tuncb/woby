@@ -237,6 +237,10 @@ ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis, const
     bx::mtxLookAt(result.view.data(), cameraEye(camera, upAxis), cameraLookAt(camera), cameraUp(camera, upAxis));
     bx::mtxProj(result.projection.data(), cameraViewportFov(camera, aspect), aspect,
         depth.nearPlane, depth.farPlane, homogeneousDepth);
+    // Build reversed Z directly; subtracting forward depth from 1 would retain
+    // its rounding error. Both native backends use a [0, 1] clip volume.
+    bx::mtxProj(result.renderProjection.data(), cameraViewportFov(camera, aspect), aspect,
+        depth.farPlane, depth.nearPlane, false);
     return result;
 }
 

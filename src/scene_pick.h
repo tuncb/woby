@@ -45,6 +45,9 @@ struct ScenePickView {
     bool homogeneousDepth = false;
     // Drawable pixels per window coordinate, for a DPI-independent line tolerance.
     float pixelScale = 1.0f;
+    // GPU rendering uses [1, 0] floating-point depth. Keep the forward CPU
+    // projector for picking and persisted annotation geometry.
+    PickMatrix renderProjection{};
 };
 
 [[nodiscard]] ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis,
