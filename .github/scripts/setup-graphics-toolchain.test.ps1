@@ -6,12 +6,21 @@ if (-not $IsWindows) {
     exit 0
 }
 $setupScript = Join-Path $PSScriptRoot 'setup-graphics-toolchain.ps1'
-$cmakeExecutable = (Get-Command cmake -CommandType Application).Source
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) "woby graphics $([guid]::NewGuid().ToString('N'))"
 $previousGithubPath = $env:GITHUB_PATH
 $previousGithubEnv = $env:GITHUB_ENV
+$previousPath = $env:PATH
 try {
     New-Item -ItemType Directory -Path $testRoot | Out-Null
+    # Hosted Windows runners expose several CMake installations. Add another
+    # executable candidate so this also exercises command selection locally.
+    $extraCmake = Join-Path $testRoot 'second cmake/bin'
+    New-Item -ItemType Directory -Path $extraCmake -Force | Out-Null
+    New-Item -ItemType File -Path "$extraCmake/cmake.exe" | Out-Null
+    $env:PATH += ";$extraCmake"
+    $cmakeCommands = @(Get-Command cmake -CommandType Application)
+    if ($cmakeCommands.Count -lt 2) { throw 'Expected multiple CMake candidates.' }
+    $cmakeExecutable = $cmakeCommands[0].Source
     $env:GITHUB_PATH = Join-Path $testRoot 'github-path'
     $env:GITHUB_ENV = Join-Path $testRoot 'github-env'
     & {
@@ -61,6 +70,7 @@ endif()
 } finally {
     $env:GITHUB_PATH = $previousGithubPath
     $env:GITHUB_ENV = $previousGithubEnv
+    $env:PATH = $previousPath
     $resolvedRoot = [IO.Path]::GetFullPath($testRoot)
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     if (-not $resolvedRoot.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {

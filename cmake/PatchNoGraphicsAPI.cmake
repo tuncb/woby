@@ -27,6 +27,13 @@ function(replace_exact path before after)
     string(REPLACE "${before}" "${after}" source "${source}")
     file(WRITE "${NGAPI_SOURCE}/${path}" "${source}")
 endfunction()
+# ARM NEON reserves the global float16_t name for its native half type.
+# Keep NoGraphicsAPI's opaque CPU storage distinct, including vector members,
+# without changing its bit layout or Slang's built-in float16_t types.
+replace_exact(utility/include/NoGraphicsAPIUtility/shader_types.h
+    "struct float16_t {" "struct WobyFloat16Storage {")
+replace_exact(utility/include/NoGraphicsAPIUtility/shader_types.h
+    "\tfloat16_t " "\tWobyFloat16Storage ")
 set(header include/NoGraphicsAPI/NoGraphicsAPI.hpp)
 set(source src/NoGraphicsAPI.cpp)
 replace_exact(${header} "TextureUsage usage = TextureUsage::sampled;"

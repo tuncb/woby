@@ -359,6 +359,7 @@ if(BUILD_TESTING)
 
     add_executable(woby_tests
         tests/graphics_tests.cpp
+        tests/shader_types_tests.cpp
         tests/frame_pacing_tests.cpp
         tests/manual_path_dialog_tests.cpp
         src/manual_path_dialog.cpp
@@ -489,7 +490,8 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp)
     endif()
     target_compile_features(woby_tests PRIVATE cxx_std_20)
-    target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(woby_tests PRIVATE
         Boost::multiprecision
@@ -501,6 +503,7 @@ if(BUILD_TESTING)
         imgui::imgui
         ${CMAKE_DL_LIBS}
         woby_graphics
+        NoGraphicsAPIUtility::types
         Threads::Threads
         spdlog::spdlog
     )
