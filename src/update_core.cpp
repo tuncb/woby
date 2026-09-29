@@ -1,4 +1,3 @@
-#include "graphics_assets.h"
 #include "update_internal.h"
 #include "utf8_path.h"
 
@@ -181,11 +180,10 @@ PackageManifest readPackageManifest(const std::filesystem::path& root)
             entry.at("size").get<uint64_t>(), entry.at("executable").get<bool>()});
     }
     validateFileSet(manifest.files);
-    const auto shader = manifest.platform == "macos-arm64" ? "metal" : "spirv";
-    std::vector<std::string> requiredFiles{updateExecutableName(), updateExecutableName(true), "assets/fonts/RobotoMonoNerdFont-Regular.ttf"};
-    for (const auto* name : nativeShaderNames) {
-        requiredFiles.push_back(std::string("assets/shaders/") + shader + "/" + name + ".bin");
-    }
+    // The installed updater must accept assets from future renderers. Release
+    // packaging validates the current asset set; the updater validates ownership,
+    // paths, sizes and hashes for every file declared by that release.
+    const std::vector<std::string> requiredFiles{updateExecutableName(), updateExecutableName(true)};
     for (const auto& required : requiredFiles) {
         if (std::none_of(manifest.files.begin(), manifest.files.end(), [&](const auto& file) { return file.path == required; })) {
             throw std::runtime_error("Package is missing " + required);

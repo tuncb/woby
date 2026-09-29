@@ -5,6 +5,7 @@
 #include <doctest/doctest.h>
 #include <archive.h>
 #include <archive_entry.h>
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <map>
@@ -49,16 +50,18 @@ std::string readFile(const fs::path& path)
 }
 
 json makePackage(const fs::path& root, const std::string& version,
-    const std::map<std::string, std::string>& extra = {})
+    const std::map<std::string, std::string>& extra = {}, bool nativeAssets = true)
 {
     std::map<std::string, std::string> files{{woby::updateExecutableName(), "binary " + version},
-        {woby::updateExecutableName(true), "helper " + version},
-        {"assets/fonts/RobotoMonoNerdFont-Regular.ttf", "font " + version}};
+        {woby::updateExecutableName(true), "helper " + version}};
     files.insert(extra.begin(), extra.end());
     const auto platform = woby::updatePlatform();
     const auto shader = platform == "macos-arm64" ? "metal" : "spirv";
-    for (const auto* name : woby::nativeShaderNames) {
-        files[std::string("assets/shaders/") + shader + "/" + name + ".bin"] = "shader";
+    if (nativeAssets) {
+        files["assets/fonts/RobotoMonoNerdFont-Regular.ttf"] = "font " + version;
+        for (const auto* name : woby::nativeShaderNames) {
+            files[std::string("assets/shaders/") + shader + "/" + name + ".bin"] = "shader";
+        }
     }
     json manifest{{"schema", 1}, {"version", version}, {"platform", woby::updatePlatform()}, {"files", json::array()}};
     for (const auto& [name, content] : files) {
@@ -171,6 +174,62 @@ TEST_CASE("updater validates manifest ownership before file operations")
     SUBCASE("wrong platform") { manifest["platform"] = "unsupported"; }
     SUBCASE("wrong schema") { manifest["schema"] = 99; }
     SUBCASE("missing executable") { manifest["files"] = json::array(); }
+    woby::writeUpdateJson(*root / woby::packageManifestName, manifest);
+    CHECK_THROWS((void)woby::readPackageManifest(*root));
+}
+
+TEST_CASE("updater accepts renderer transitions and restores the previous asset layout")
+{
+    const auto root = temporaryDirectory();
+    const auto platform = woby::updatePlatform();
+    const auto legacy = platform == "windows-x64" ? "dx11" : platform == "macos-arm64" ? "metal" : "glsl";
+    std::map<std::string, std::string> legacyAssets{{"assets/fonts/RobotoMonoNerdFont-Regular.ttf", "old font"}};
+    for (const auto* stage : {"vs", "fs"}) {
+        for (const auto* name : {"mesh", "color", "comparison", "imgui", "point_sprite"}) {
+            legacyAssets[std::string("assets/shaders/") + legacy + "/" + stage + "_" + name + ".bin"] = "old shader";
+        }
+    }
+    const auto job = jobDirectory(*root);
+    json oldManifest, newManifest;
+    SUBCASE("legacy to compatibility package") {
+        oldManifest = makePackage(*root, "1.0.0", legacyAssets, false);
+        newManifest = makePackage(job / "package", "1.1.0", legacyAssets);
+    }
+    SUBCASE("compatibility package to future renderer and renamed font") {
+        oldManifest = makePackage(*root, "1.0.0", legacyAssets);
+        newManifest = makePackage(job / "package", "1.1.0",
+            {{"assets/future/pipeline.dat", "future pipeline"}, {"assets/fonts/new-font.ttf", "new font"}}, false);
+    }
+    writeFile(*root / "scene.woby", "user scene");
+    woby::applyUpdateTransaction(*root, job);
+    CHECK(woby::readUpdateJson(*root / woby::packageManifestName) == newManifest);
+    for (const auto& file : oldManifest.at("files")) {
+        const auto name = file.at("path").get<std::string>();
+        CHECK(fs::exists(*root / name) == fs::exists(job / "package" / name));
+    }
+    woby::recoverUpdateTransaction(*root, job);
+    CHECK(woby::readUpdateJson(*root / woby::packageManifestName) == oldManifest);
+    CHECK_NOTHROW(woby::validateUpdatePackage(*root, woby::readPackageManifest(*root)));
+    CHECK_FALSE(fs::exists(*root / "assets/future/pipeline.dat"));
+    CHECK(readFile(*root / "scene.woby") == "user scene");
+}
+
+TEST_CASE("renderer independent manifests still require both executable binaries")
+{
+    const auto root = temporaryDirectory();
+    auto manifest = makePackage(*root, "1.0.0", {}, false);
+    CHECK_NOTHROW((void)woby::readPackageManifest(*root));
+    bool helper = false;
+    SUBCASE("viewer") {}
+    SUBCASE("helper") { helper = true; }
+    const auto name = woby::updateExecutableName(helper);
+    for (auto& file : manifest["files"]) {
+        if (file.at("path") == name) { file["executable"] = false; }
+    }
+    woby::writeUpdateJson(*root / woby::packageManifestName, manifest);
+    CHECK_THROWS((void)woby::readPackageManifest(*root));
+    auto& files = manifest["files"];
+    files.erase(std::remove_if(files.begin(), files.end(), [&](const auto& file) { return file.at("path") == name; }), files.end());
     woby::writeUpdateJson(*root / woby::packageManifestName, manifest);
     CHECK_THROWS((void)woby::readPackageManifest(*root));
 }

@@ -77,7 +77,10 @@ the explicit command above includes them.
 
 Every Vulkan shader build runs `spirv-val`. Runtime assets contain the native
 SPIR-V or Metal shader set, including the picking compute shaders. The package
-manifest and updater now require these assets instead of Direct3D/OpenGL files.
+generator requires these native assets. It also stages ten shader copies at the
+legacy Direct3D/OpenGL paths so already-installed bgfx updaters can accept a new
+release. The runtime updater validates the manifest without requiring a specific
+shader layout. See [upgrading from bgfx](updates.md#upgrading-from-the-bgfx-renderer).
 
 ## Validation on this machine
 

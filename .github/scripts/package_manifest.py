@@ -3,6 +3,7 @@
 import hashlib
 import json
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -17,6 +18,11 @@ NATIVE_SHADERS = (
     "vs_marker_highlight", "fs_marker_highlight_single", "fs_marker_highlight_msaa",
     "cs_marker_lookup_single", "cs_marker_lookup_msaa",
 )
+# Frozen requirements of the bgfx updater (through 0.21.3). It checks these paths
+# but never executes the shaders. Copies of native shaders satisfy its manifest
+# contract without shipping or building bgfx. Metal already uses the same paths.
+LEGACY_SHADERS = tuple(f"{stage}_{name}" for stage in ("vs", "fs")
+                       for name in ("mesh", "color", "comparison", "imgui", "point_sprite"))
 MANIFEST = "woby-manifest.json"
 PLATFORMS = {"windows-x64": ".zip", "linux-x64": ".tar.gz", "macos-arm64": ".tar.gz"}
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
@@ -51,7 +57,18 @@ def valid_path(name):
     return True
 
 
-def collect_manifest(root, platform, version):
+def required_release_files(platform, compatibility=True):
+    suffix = ".exe" if platform == "windows-x64" else ""
+    shader = "metal" if platform == "macos-arm64" else "spirv"
+    required = {"woby" + suffix, "woby-update-helper" + suffix, "assets/fonts/RobotoMonoNerdFont-Regular.ttf"}
+    required |= {f"assets/shaders/{shader}/{name}.bin" for name in NATIVE_SHADERS}
+    if compatibility:
+        legacy = {"windows-x64": "dx11", "linux-x64": "glsl", "macos-arm64": "metal"}[platform]
+        required |= {f"assets/shaders/{legacy}/{name}.bin" for name in LEGACY_SHADERS}
+    return required
+
+
+def collect_manifest(root, platform, version, compatibility=True):
     if platform not in PLATFORMS or not VERSION.fullmatch(version):
         raise ValueError("Invalid platform or version")
     files = []
@@ -72,13 +89,22 @@ def collect_manifest(root, platform, version):
         info = path.stat()
         files.append({"path": name, "size": info.st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                       "executable": bool(info.st_mode & stat.S_IXUSR) if platform != "windows-x64" else name.endswith(".exe")})
-    suffix = ".exe" if platform == "windows-x64" else ""
-    shader = {"windows-x64": "spirv", "linux-x64": "spirv", "macos-arm64": "metal"}[platform]
-    required = {"woby" + suffix, "woby-update-helper" + suffix, "assets/fonts/RobotoMonoNerdFont-Regular.ttf"}
-    required |= {f"assets/shaders/{shader}/{name}.bin" for name in NATIVE_SHADERS}
-    if not {name.lower() for name in required}.issubset(seen):
+    if not required_release_files(platform, compatibility).issubset({file['path'] for file in files}):
         raise ValueError("Package is missing executable, font, or shader files")
     return {"schema": 1, "platform": platform, "version": version, "files": files}
+
+
+def prepare_manifest(root, platform, version):
+    # Validate the staging tree before writing aliases, including any existing
+    # alias directories: symlinks must not redirect writes outside the package.
+    collect_manifest(root, platform, version, compatibility=False)
+    if platform != "macos-arm64":
+        legacy = "dx11" if platform == "windows-x64" else "glsl"
+        destination = root / "assets/shaders" / legacy
+        destination.mkdir(parents=True, exist_ok=True)
+        for name in LEGACY_SHADERS:
+            shutil.copyfile(root / f"assets/shaders/spirv/{name}.bin", destination / (name + ".bin"))
+    return collect_manifest(root, platform, version)
 
 
 def generate_manifest(root, platform):
@@ -90,7 +116,7 @@ def generate_manifest(root, platform):
                                 check=True, capture_output=True, text=True, timeout=15)
         if result.stdout.strip() != version:
             raise ValueError(binary + " version does not match CMake")
-    manifest = collect_manifest(root, platform, version)
+    manifest = prepare_manifest(root, platform, version)
     (root / MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
@@ -137,6 +163,8 @@ def verify_archive(path, platform, version):
             raise ValueError("Archive file digest mismatch: " + name)
     if expected != contents.keys():
         raise ValueError("Archive contains unlisted files")
+    if not required_release_files(platform).issubset(expected):
+        raise ValueError("Archive is missing executable, font, or shader files")
 
 
 if __name__ == "__main__":

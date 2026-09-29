@@ -340,6 +340,14 @@ if(BUILD_TESTING)
         "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets"
         "$<TARGET_FILE:woby_update_viewer_fixture>")
     set_tests_properties(woby_update_helper_smoke PROPERTIES TIMEOUT 180 LABELS slow)
+    set(WOBY_LEGACY_UPDATE_DIRECTORY "" CACHE PATH "Optional pre-migration portable/bin directory for offline updater migration tests")
+    if(WOBY_LEGACY_UPDATE_DIRECTORY)
+        add_test(NAME woby_update_legacy_smoke COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_legacy_smoke.py" "$<TARGET_FILE:woby>"
+            "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets"
+            "${WOBY_LEGACY_UPDATE_DIRECTORY}")
+        set_tests_properties(woby_update_legacy_smoke PROPERTIES TIMEOUT 180 LABELS slow)
+    endif()
     add_test(NAME woby_update_helper_fixtures COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
