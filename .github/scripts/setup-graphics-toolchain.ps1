@@ -15,7 +15,8 @@ function Get-Source([string]$Repository, [string]$Revision, [string]$Name) {
     }
     Invoke-Checked git @('-C', $path, 'fetch', '--depth=1', 'origin', $Revision)
     Invoke-Checked git @('-C', $path, 'checkout', '--detach', $Revision)
-    return $path
+    # CMake macro arguments reparse backslashes as escapes (for example D:\a).
+    return $path.Replace('\', '/')
 }
 function Build-Installed([string]$Source, [string]$Name, [string[]]$Options) {
     $build = Join-Path $Destination "$Name-build"
@@ -47,7 +48,7 @@ if ($IsMacOS) {
     Invoke-Checked xcrun @('-sdk', 'macosx', 'metal', '--version')
     exit 0
 }
-$sdk = Join-Path $Destination 'vulkan'
+$sdk = (Join-Path $Destination 'vulkan').Replace('\', '/')
 $headers = Get-Source 'KhronosGroup/Vulkan-Headers' 'e3b1eec08173d6b825cd3ac88c885a63b621504a' 'vulkan-headers'
 Build-Installed $headers 'vulkan-headers' @('-DVULKAN_HEADERS_ENABLE_TESTS=OFF')
 $loader = Get-Source 'KhronosGroup/Vulkan-Loader' '5f157b62e333c63260d05d81bf66faa216ab0fb8' 'vulkan-loader'

@@ -331,6 +331,10 @@ if(BUILD_TESTING)
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/python_tests.cmake")
     add_test(NAME woby_update_packaging COMMAND "${Python3_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/.github/scripts/package_manifest_tests.py")
+    add_test(NAME woby_marker_shaders COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/marker_shader_tests.py"
+        "${WOBY_SLANGC}" "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native/woby.slang"
+        "${woby_ngapi_SOURCE_DIR}")
     add_executable(woby_update_viewer_fixture tests/update_viewer_fixture.cpp)
     target_compile_definitions(woby_update_viewer_fixture PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
     target_link_libraries(woby_update_viewer_fixture PRIVATE woby_update_core)

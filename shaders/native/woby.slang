@@ -118,8 +118,18 @@ VertexOutput vs_marker_highlight(uint index : SV_VertexID) { return screenVertex
 float4 fs_marker_composite(VertexOutput v) : SV_Target0 {
     return gpu_texture<Texture2D<float4>>(root.texture0).Sample(gpu_sampler(root.sampler),v.uv);
 }
+float4 loadMarkerSample(Texture2DMS<float4> texture,int2 pixel,uint sample) {
+    __target_switch {
+    case metal:
+        // Slang 2026.18.3 emits signed coordinates for Texture2DMS.Load,
+        // but Metal requires uint2. Callers check pixel bounds before loading.
+        __intrinsic_asm "$0.read(uint2($1), uint($2))";
+    default:
+        return texture.Load(pixel,sample);
+    }
+}
 uint readId(int2 pixel,uint sample,bool msaa) {
-    float4 value = msaa ? gpu_texture<Texture2DMS<float4>>(root.texture0).Load(pixel,sample)
+    float4 value = msaa ? loadMarkerSample(gpu_texture<Texture2DMS<float4>>(root.texture0),pixel,sample)
         : gpu_texture<Texture2D<float4>>(root.texture0).Load(int3(pixel,0));
     uint4 bytes = uint4(round(value*255));
     return bytes.x | (bytes.y<<8) | (bytes.z<<16) | (bytes.w<<24);
