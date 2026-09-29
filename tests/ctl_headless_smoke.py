@@ -52,6 +52,11 @@ def run(executable, *args, **kwargs):
 
 @contextmanager
 def session(executable, root, env, *args):
+    # Injected Vulkan overlays can create their own hidden D3D/IME windows.
+    # Test the application's windowless contract without those external layers;
+    # explicit validation layers remain available, as do caller overrides.
+    env = dict(env)
+    env.setdefault("VK_LOADER_LAYERS_DISABLE", "~implicit~")
     instance = "headless-" + uuid.uuid4().hex[:12]
     log_path = root / (instance + ".log")
     with log_path.open("w", encoding="utf-8") as log:

@@ -5,8 +5,9 @@ local API as the desktop application. It creates no native window, initializes n
 SDL video driver, and opens no dialogs. Camera controls, models, analyses,
 annotations, saved views, history, scene files, and PNG screenshots remain available.
 
-The headless backends are Direct3D 11 on Windows and Vulkan on Linux. A working
-graphics device/driver is required; this option does not supply a software renderer.
+The headless backend is NoGraphicsAPI Vulkan on Windows and Linux. A compatible
+graphics device/driver supporting its required Vulkan feature profile is needed;
+this option does not supply a software renderer.
 macOS headless launches currently fail with an explicit unsupported-platform error.
 Without `--headless`, startup retains the normal desktop behavior.
 
@@ -100,6 +101,10 @@ ctest --preset vs2026-vcpkg --output-on-failure
 Use `ninja-vcpkg` for CI. The graphics tests use the project's selected Python
 through `uv` with Pillow. `ctl_headless_smoke.py` forces an invalid SDL video
 driver, unsets Linux display variables, and checks for native windows on Windows.
+Its shared session harness defaults `VK_LOADER_LAYERS_DISABLE` to `~implicit~`
+for child processes: injected Vulkan overlays can create hidden D3D/IME windows
+even when the application creates none. Explicit validation layers remain
+available, and a caller-supplied value overrides this test isolation.
 It verifies real pixels, first-frame labels, analysis readiness, persistence,
 history, errors, idle pacing, and shutdown. `ctl_camera_smoke.py --headless`
 checks camera motion against PNG pixels. All model/scene/output fixtures share
