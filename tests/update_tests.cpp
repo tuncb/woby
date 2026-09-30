@@ -178,7 +178,7 @@ TEST_CASE("updater validates manifest ownership before file operations")
     CHECK_THROWS((void)woby::readPackageManifest(*root));
 }
 
-TEST_CASE("updater accepts renderer transitions and restores the previous asset layout")
+TEST_CASE("updater removes obsolete renderer assets and restores them on rollback")
 {
     const auto root = temporaryDirectory();
     const auto platform = woby::updatePlatform();
@@ -191,9 +191,13 @@ TEST_CASE("updater accepts renderer transitions and restores the previous asset 
     }
     const auto job = jobDirectory(*root);
     json oldManifest, newManifest;
-    SUBCASE("legacy to compatibility package") {
+    SUBCASE("legacy assets to native package") {
         oldManifest = makePackage(*root, "1.0.0", legacyAssets, false);
-        newManifest = makePackage(job / "package", "1.1.0", legacyAssets);
+        newManifest = makePackage(job / "package", "1.1.0");
+    }
+    SUBCASE("compatibility package to native package") {
+        oldManifest = makePackage(*root, "1.0.0", legacyAssets);
+        newManifest = makePackage(job / "package", "1.1.0");
     }
     SUBCASE("compatibility package to future renderer and renamed font") {
         oldManifest = makePackage(*root, "1.0.0", legacyAssets);

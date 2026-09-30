@@ -1,8 +1,11 @@
+import hashlib
 import importlib.util
 import json
+import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('package_manifest', Path(__file__).with_name('package_manifest.py'))
 package = importlib.util.module_from_spec(spec)
@@ -38,8 +41,7 @@ def test_manifest_and_archive_validation():
             path = root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(name.encode())
-        manifest = package.prepare_manifest(root, 'windows-x64', '1.2.3')
-        names += [f'assets/shaders/dx11/{name}.bin' for name in package.LEGACY_SHADERS]
+        manifest = package.collect_manifest(root, 'windows-x64', '1.2.3')
         assert len(manifest['files']) == len(names)
         assert next(file for file in manifest['files'] if file['path'] == 'woby.exe')['executable']
         archive = Path(temporary) / 'package.zip'
@@ -57,9 +59,9 @@ def test_manifest_and_archive_validation():
         expect_error(package.verify_archive, archive, 'windows-x64', '1.2.3')
         write_zip(unlisted=True)
         expect_error(package.verify_archive, archive, 'windows-x64', '1.2.3')
-        # Correctly hashed archives must still contain both the real renderer's
-        # assets and the paths required by already-installed legacy updaters.
-        for missing in ('assets/shaders/dx11/vs_mesh.bin', 'assets/shaders/spirv/cs_marker_lookup_msaa.bin', 'woby.exe'):
+        # Correctly hashed archives must still contain the native renderer assets.
+        for missing in ('assets/shaders/spirv/cs_marker_lookup_msaa.bin', 'woby.exe',
+                        'woby-update-helper.exe', 'assets/fonts/RobotoMonoNerdFont-Regular.ttf'):
             original_files = manifest['files']
             manifest['files'] = [file for file in original_files if file['path'] != missing]
             names.remove(missing)
@@ -85,37 +87,76 @@ def test_manifest_and_archive_validation():
         expect_error(package.collect_manifest, root, 'windows-x64', '1.2.3')
 
 
-def test_compatibility_packages_for_all_platforms():
-    for platform, legacy, native in (('windows-x64', 'dx11', 'spirv'),
-                                     ('linux-x64', 'glsl', 'spirv'),
-                                     ('macos-arm64', 'metal', 'metal')):
+def write_fixture_package(root, platform):
+    for name in package.required_release_files(platform):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(name.encode())
+    return package.collect_manifest(root, platform, '1.2.3')
+
+
+def write_fixture_archive(root, manifest, archive):
+    (root / package.MANIFEST).write_text(json.dumps(manifest), encoding='utf-8')
+    names = [package.MANIFEST] + [file['path'] for file in manifest['files']]
+    prefix = 'woby-' + manifest['platform'] + '/'
+    if archive.suffix == '.zip':
+        with zipfile.ZipFile(archive, 'w') as output:
+            for name in names:
+                output.write(root / name, prefix + name)
+    else:
+        with tarfile.open(archive, 'w:gz') as output:
+            for name in names:
+                output.add(root / name, arcname=prefix + name)
+
+
+def test_native_packages_for_all_platforms():
+    for platform, extension in package.PLATFORMS.items():
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary).resolve()
-            for name in package.required_release_files(platform, compatibility=False):
-                path = root / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(name.encode())
+            root = Path(temporary).resolve() / 'package'
+            manifest = write_fixture_package(root, platform)
             before = {path.relative_to(root).as_posix(): path.read_bytes()
                       for path in root.rglob('*') if path.is_file()}
-            if legacy != native:
-                expect_error(package.collect_manifest, root, platform, '1.2.3')
-            manifest = package.prepare_manifest(root, platform, '1.2.3')
-            assert manifest == package.prepare_manifest(root, platform, '1.2.3')
+            assert manifest == package.collect_manifest(root, platform, '1.2.3')
             assert {file['path'] for file in manifest['files']} == package.required_release_files(platform)
-            for name, content in before.items():
-                assert (root / name).read_bytes() == content
-            for name in package.LEGACY_SHADERS:
-                assert (root / f'assets/shaders/{legacy}/{name}.bin').read_bytes() == \
-                       (root / f'assets/shaders/{native}/{name}.bin').read_bytes()
-            if legacy != native:
-                # Repackaging must refresh aliases after shader changes.
-                (root / f'assets/shaders/{native}/vs_mesh.bin').write_bytes(b'changed shader')
-                package.prepare_manifest(root, platform, '1.2.3')
-                assert (root / f'assets/shaders/{legacy}/vs_mesh.bin').read_bytes() == b'changed shader'
+            with (patch.object(package, 'repository_version', return_value='1.2.3'),
+                  patch.object(package.subprocess, 'run',
+                               return_value=package.subprocess.CompletedProcess([], 0, stdout='1.2.3\n'))):
+                package.generate_manifest(root, platform)
+            assert json.loads((root / package.MANIFEST).read_text()) == manifest
+            assert {path.relative_to(root).as_posix(): path.read_bytes()
+                    for path in root.rglob('*') if path.is_file() and path.name != package.MANIFEST} == before
+            assert not (root / 'assets/shaders/dx11').exists()
+            assert not (root / 'assets/shaders/glsl').exists()
+            archive = Path(temporary) / ('package' + extension)
+            write_fixture_archive(root, manifest, archive)
+            package.verify_archive(archive, platform, '1.2.3')
+
+
+def test_obsolete_shader_files_rejected_in_packages_and_archives():
+    for platform, extension in package.PLATFORMS.items():
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve() / 'package'
+            manifest = write_fixture_package(root, platform)
+            archive = Path(temporary) / ('package' + extension)
+            for name in ('assets/shaders/dx11/vs_mesh.bin', 'assets/shaders/glsl/fs_mesh.bin',
+                         'ASSETS/SHADERS/DX11/vs_mesh.bin', 'assets/shaders/GLSL/fs_mesh.bin'):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                content = b'obsolete compatibility copy'
+                path.write_bytes(content)
+                expect_error(package.collect_manifest, root, platform, '1.2.3')
+                # Reused artifacts must be rejected even with correct ownership and hashes.
+                manifest['files'].append({'path': name, 'size': len(content),
+                                          'sha256': hashlib.sha256(content).hexdigest(), 'executable': False})
+                write_fixture_archive(root, manifest, archive)
+                expect_error(package.verify_archive, archive, platform, '1.2.3')
+                manifest['files'].pop()
+                path.unlink()
 
 
 if __name__ == '__main__':
     for test in (test_tag_must_match_built_version, test_portable_paths, test_manifest_and_archive_validation,
-                 test_compatibility_packages_for_all_platforms):
+                 test_native_packages_for_all_platforms,
+                 test_obsolete_shader_files_rejected_in_packages_and_archives):
         test()
         print(test.__name__ + ': passed')

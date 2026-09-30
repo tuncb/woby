@@ -3,7 +3,6 @@
 import hashlib
 import json
 import re
-import shutil
 import stat
 import subprocess
 import sys
@@ -18,11 +17,6 @@ NATIVE_SHADERS = (
     "vs_marker_highlight", "fs_marker_highlight_single", "fs_marker_highlight_msaa",
     "cs_marker_lookup_single", "cs_marker_lookup_msaa",
 )
-# Frozen requirements of the bgfx updater (through 0.21.3). It checks these paths
-# but never executes the shaders. Copies of native shaders satisfy its manifest
-# contract without shipping or building bgfx. Metal already uses the same paths.
-LEGACY_SHADERS = tuple(f"{stage}_{name}" for stage in ("vs", "fs")
-                       for name in ("mesh", "color", "comparison", "imgui", "point_sprite"))
 MANIFEST = "woby-manifest.json"
 PLATFORMS = {"windows-x64": ".zip", "linux-x64": ".tar.gz", "macos-arm64": ".tar.gz"}
 VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\Z")
@@ -57,18 +51,20 @@ def valid_path(name):
     return True
 
 
-def required_release_files(platform, compatibility=True):
+def obsolete_shader_path(name):
+    parts = name.lower().split("/")
+    return len(parts) >= 3 and parts[:2] == ["assets", "shaders"] and parts[2] in ("dx11", "glsl")
+
+
+def required_release_files(platform):
     suffix = ".exe" if platform == "windows-x64" else ""
     shader = "metal" if platform == "macos-arm64" else "spirv"
     required = {"woby" + suffix, "woby-update-helper" + suffix, "assets/fonts/RobotoMonoNerdFont-Regular.ttf"}
     required |= {f"assets/shaders/{shader}/{name}.bin" for name in NATIVE_SHADERS}
-    if compatibility:
-        legacy = {"windows-x64": "dx11", "linux-x64": "glsl", "macos-arm64": "metal"}[platform]
-        required |= {f"assets/shaders/{legacy}/{name}.bin" for name in LEGACY_SHADERS}
     return required
 
 
-def collect_manifest(root, platform, version, compatibility=True):
+def collect_manifest(root, platform, version):
     if platform not in PLATFORMS or not VERSION.fullmatch(version):
         raise ValueError("Invalid platform or version")
     files = []
@@ -83,28 +79,17 @@ def collect_manifest(root, platform, version, compatibility=True):
             continue
         if not valid_path(name) or name.lower().split("/")[0] in (".woby-update", "importers") or name.lower() in seen:
             raise ValueError("Invalid, reserved, or duplicate package path: " + name)
+        if obsolete_shader_path(name):
+            raise ValueError("Package contains obsolete shader files: " + name)
         if not path.is_file():
             raise ValueError("Package contains a special file")
         seen.add(name.lower())
         info = path.stat()
         files.append({"path": name, "size": info.st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                       "executable": bool(info.st_mode & stat.S_IXUSR) if platform != "windows-x64" else name.endswith(".exe")})
-    if not required_release_files(platform, compatibility).issubset({file['path'] for file in files}):
+    if not required_release_files(platform).issubset({file['path'] for file in files}):
         raise ValueError("Package is missing executable, font, or shader files")
     return {"schema": 1, "platform": platform, "version": version, "files": files}
-
-
-def prepare_manifest(root, platform, version):
-    # Validate the staging tree before writing aliases, including any existing
-    # alias directories: symlinks must not redirect writes outside the package.
-    collect_manifest(root, platform, version, compatibility=False)
-    if platform != "macos-arm64":
-        legacy = "dx11" if platform == "windows-x64" else "glsl"
-        destination = root / "assets/shaders" / legacy
-        destination.mkdir(parents=True, exist_ok=True)
-        for name in LEGACY_SHADERS:
-            shutil.copyfile(root / f"assets/shaders/spirv/{name}.bin", destination / (name + ".bin"))
-    return collect_manifest(root, platform, version)
 
 
 def generate_manifest(root, platform):
@@ -116,7 +101,7 @@ def generate_manifest(root, platform):
                                 check=True, capture_output=True, text=True, timeout=15)
         if result.stdout.strip() != version:
             raise ValueError(binary + " version does not match CMake")
-    manifest = prepare_manifest(root, platform, version)
+    manifest = collect_manifest(root, platform, version)
     (root / MANIFEST).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 
@@ -158,6 +143,8 @@ def verify_archive(path, platform, version):
         name = file["path"]
         if name in expected or not valid_path(name) or name.lower().split("/")[0] in (".woby-update", "importers"):
             raise ValueError("Invalid manifest ownership")
+        if obsolete_shader_path(name):
+            raise ValueError("Archive contains obsolete shader files: " + name)
         expected.add(name)
         if len(contents[name]) != file["size"] or hashlib.sha256(contents[name]).hexdigest() != file["sha256"]:
             raise ValueError("Archive file digest mismatch: " + name)

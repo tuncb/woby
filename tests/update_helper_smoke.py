@@ -103,7 +103,7 @@ def main():
         base = Path(temporary).resolve()
         template = base / "template"
         stage_template(binary, helper_binary, assets, template)
-        package.prepare_manifest(template, platform, version)
+        package.collect_manifest(template, platform, version)
         # Use a metadata-only older version; this tests the installer with the
         # actual built binaries, without requiring a historical release/network.
         scenarios = ["success", "health-failure", "interrupted", "success-restart", "success-no-restart",
