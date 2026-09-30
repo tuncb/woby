@@ -506,6 +506,13 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
     for (size_t groupIndex = 0; groupIndex < mesh.nodes.size(); ++groupIndex) {
         UiGroupState group;
         group.color = defaultGroupColor(firstColorIndex + groupIndex);
+        const auto& node = mesh.nodes[groupIndex];
+        setGroupVisible(group, node.defaultVisible);
+        if (node.defaultColor) {
+            const auto& color = *node.defaultColor;
+            setGroupColor(group, {color[0], color[1], color[2], 1.0f});
+            setGroupOpacity(group, color[3]);
+        }
         group.localBounds = nodeBounds(mesh, mesh.nodes[groupIndex], progress, completed, total);
         group.localBoundsValid = true;
         group.originalBounds = originalMeshBounds(mesh, &mesh.nodes[groupIndex]);
@@ -526,6 +533,10 @@ UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t
     file.importerId = std::move(importerId);
     file.mesh = std::move(mesh);
     file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex, progress);
+    if (!file.groupSettings.empty()) {
+        file.fileSettings.visible = std::any_of(file.groupSettings.begin(), file.groupSettings.end(),
+            [](const UiGroupState& group) { return group.visible; });
+    }
     file.fileSettings.center = file.mesh.bounds.center;
     file.fileSettings.coordinateOffset = file.mesh.origin;
     reportModelLoadProgress(progress, ModelLoadStage::ready, 1, 1);

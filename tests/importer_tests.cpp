@@ -4,6 +4,7 @@
 #include "importer_host.h"
 #include "model_load.h"
 #include "control_importers.h"
+#include "ui_operations.h"
 
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
@@ -148,7 +149,8 @@ TEST_CASE("DLL importer rejects malformed outputs and releases every result")
 {
     ImporterTestScope scope;
     woby::loadImporter(WOBY_TEST_IMPORTER);
-    for (const auto* name : {"invalid_index", "nan_position", "invalid_group", "null_buffer", "huge_buffer", "short_result", "failure"}) {
+    for (const auto* name : {"invalid_index", "nan_position", "invalid_group", "invalid_flags", "invalid_color",
+            "null_buffer", "huge_buffer", "short_result", "failure"}) {
         CHECK_THROWS_AS((void)woby::loadModel(scope.root / (std::string(name) + ".wtest")), std::runtime_error);
         CHECK_NOTHROW((void)woby::loadModel(scope.root / "valid.wtest"));
     }
@@ -396,6 +398,88 @@ TEST_CASE("Background plugin cancellation does not append a partial file")
     CHECK(result.failedCount == 0u);
 }
 
+TEST_CASE("Imported appearance initializes UI state and hidden geometry remains available")
+{
+    ImporterTestScope scope;
+    woby::loadImporter(WOBY_TEST_IMPORTER);
+    const auto path = scope.root / "colored_hidden.wtest";
+    writeFile(path);
+    auto imported = woby::loadModel(path);
+    REQUIRE(imported.mesh.nodes.size() == 1u);
+    // The fixture clears its metadata during release_result.
+    REQUIRE(imported.mesh.nodes[0].defaultColor.has_value());
+    CHECK(*imported.mesh.nodes[0].defaultColor == std::array<float, 4>{0.2f, 0.4f, 0.6f, 0.25f});
+    CHECK_FALSE(imported.mesh.nodes[0].defaultVisible);
+    auto file = woby::createUiFileState(path, std::move(imported.mesh), 5u, imported.importerId);
+    REQUIRE(file.groupSettings.size() == 1u);
+    CHECK(file.groupSettings[0].color == std::array<float, 4>{0.2f, 0.4f, 0.6f, 1.0f});
+    CHECK(file.groupSettings[0].opacity == 0.25f);
+    CHECK_FALSE(file.groupSettings[0].visible);
+    CHECK_FALSE(file.fileSettings.visible);
+    CHECK(file.mesh.vertices.size() == 4u);
+    CHECK(file.mesh.indices == std::vector<uint32_t>{0, 1, 2});
+    woby::setGroupVisible(file, file.groupSettings[0], true);
+    CHECK(file.groupSettings[0].visible);
+    CHECK(file.fileSettings.visible);
+}
+
+TEST_CASE("Saved scenes override importer appearance defaults in both directions")
+{
+    ImporterTestScope scope;
+    woby::loadImporter(WOBY_TEST_IMPORTER);
+    const auto hiddenPath = scope.root / "colored_hidden.wtest";
+    const auto plainPath = scope.root / "plain.wtest";
+    writeFile(hiddenPath);
+    writeFile(plainPath);
+    auto loaded = woby::loadModelBatchCpu({hiddenPath, plainPath}, 5u, {}, {});
+    REQUIRE(loaded.files.size() == 2u);
+    REQUIRE(loaded.files[0].groupSettings.size() == 1u);
+    REQUIRE(loaded.files[1].groupSettings.size() == 1u);
+    CHECK_FALSE(loaded.files[0].groupSettings[0].visible);
+    CHECK(loaded.files[0].groupSettings[0].opacity == 0.25f);
+    CHECK(loaded.files[1].groupSettings[0].visible);
+    CHECK(loaded.files[1].groupSettings[0].color == woby::defaultGroupColor(6u));
+    CHECK(loaded.files[1].groupSettings[0].opacity == 1.0f);
+
+    woby::UiState state;
+    state.files = std::move(loaded.files);
+    const auto scene = scope.root / "appearance.woby";
+    woby::writeSceneDocument(scene, woby::createSceneDocument(state));
+    auto restored = woby::loadSceneCpu(scene, {}, {});
+    REQUIRE(restored.files.size() == 2u);
+    CHECK_FALSE(restored.files[0].groupSettings[0].visible);
+    CHECK_FALSE(restored.files[0].fileSettings.visible);
+    CHECK(restored.files[0].groupSettings[0].color == state.files[0].groupSettings[0].color);
+    CHECK(restored.files[0].groupSettings[0].opacity == 0.25f);
+
+    auto& first = state.files[0];
+    auto& second = state.files[1];
+    woby::setGroupVisible(first, first.groupSettings[0], true);
+    woby::setGroupColor(first.groupSettings[0], {0.8f, 0.1f, 0.3f, 1.0f});
+    woby::setGroupOpacity(first.groupSettings[0], 0.75f);
+    woby::setGroupVisible(second, second.groupSettings[0], false);
+    woby::setGroupColor(second.groupSettings[0], {0.1f, 0.8f, 0.2f, 1.0f});
+    woby::setGroupOpacity(second.groupSettings[0], 0.5f);
+    auto document = woby::createSceneDocument(state);
+    woby::writeSceneDocument(scene, document);
+    restored = woby::loadSceneCpu(scene, {}, {});
+    REQUIRE(restored.files.size() == 2u);
+    for (size_t i = 0; i < state.files.size(); ++i) {
+        CHECK(restored.files[i].fileSettings.visible == state.files[i].fileSettings.visible);
+        CHECK(restored.files[i].groupSettings[0].visible == state.files[i].groupSettings[0].visible);
+        CHECK(restored.files[i].groupSettings[0].color == state.files[i].groupSettings[0].color);
+        CHECK(restored.files[i].groupSettings[0].opacity == state.files[i].groupSettings[0].opacity);
+    }
+    // Simulate changed source defaults using the same importer/group layout.
+    document.files[1].path = hiddenPath;
+    woby::writeSceneDocument(scene, document);
+    restored = woby::loadSceneCpu(scene, {}, {});
+    REQUIRE(restored.files.size() == 2u);
+    CHECK(restored.files[1].groupSettings[0].color == second.groupSettings[0].color);
+    CHECK(restored.files[1].groupSettings[0].opacity == 0.5f);
+    CHECK_FALSE(restored.files[1].groupSettings[0].visible);
+}
+
 TEST_CASE("OFF example DLL reads real files including Unicode paths")
 {
     ImporterTestScope scope;
@@ -426,7 +510,7 @@ TEST_CASE("Importer mesh validation handles optional attributes and group partit
         {{0, 1, 0}, {0, 0, 2}, {0, 1}},
     };
     uint32_t indices[] = {0, 1, 2, 2, 1, 0};
-    WobyImportGroup groups[] = {{"front", 0, 3}, {"back", 3, 3}};
+    WobyImportGroup groups[] = {{"front", 0, 3, 0u, {}}, {"back", 3, 3, 0u, {}}};
     WobyImportResult result{};
     result.struct_size = sizeof(result);
     result.vertices = vertices;
@@ -459,4 +543,66 @@ TEST_CASE("Importer mesh validation handles optional attributes and group partit
     CHECK_THROWS_AS((void)woby::copyImportedMesh(result), std::runtime_error);
     result.flags = 0;
     CHECK_NOTHROW((void)woby::copyImportedMesh(result));
+}
+
+TEST_CASE("Importer group appearance is optional validated and copied per group")
+{
+    ImporterTestScope scope;
+    WobyImportVertex vertices[] = {
+        {{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}},
+    };
+    uint32_t indices[] = {0, 1, 2, 2, 1, 0};
+    WobyImportGroup groups[] = {
+        {"front", 0, 3, WOBY_IMPORT_GROUP_HAS_COLOR, {0.0f, 0.5f, 1.0f, 0.0f}},
+        {"back", 3, 3, WOBY_IMPORT_GROUP_INITIALLY_HIDDEN, {}},
+    };
+    // Unflagged color storage is ignored, even if it does not contain a valid color.
+    groups[1].color[0] = std::numeric_limits<float>::quiet_NaN();
+    WobyImportResult result{};
+    result.struct_size = sizeof(result);
+    result.vertices = vertices;
+    result.vertex_count = 3;
+    result.indices = indices;
+    result.index_count = 6;
+    result.groups = groups;
+    result.group_count = 2;
+    auto mesh = woby::copyImportedMesh(result);
+    REQUIRE(mesh.nodes.size() == 2u);
+    CHECK(mesh.indices == std::vector<uint32_t>{0, 1, 2, 2, 1, 0});
+    CHECK(mesh.nodes[0].indexOffset == 0u);
+    CHECK(mesh.nodes[1].indexOffset == 3u);
+    CHECK_FALSE(mesh.nodes[1].defaultColor.has_value());
+    const auto file = woby::createUiFileState(scope.root / "groups.wtest", std::move(mesh), 7u);
+    CHECK(file.fileSettings.visible);
+    REQUIRE(file.groupSettings.size() == 2u);
+    CHECK(file.groupSettings[0].visible);
+    CHECK(file.groupSettings[0].color == std::array<float, 4>{0.0f, 0.5f, 1.0f, 1.0f});
+    CHECK(file.groupSettings[0].opacity == 0.0f);
+    CHECK_FALSE(file.groupSettings[1].visible);
+    CHECK(file.groupSettings[1].color == woby::defaultGroupColor(8u));
+    CHECK(file.groupSettings[1].opacity == 1.0f);
+
+    for (size_t component = 0; component < 4u; ++component) {
+        const float original = groups[0].color[component];
+        for (const float invalid : {-0.01f, 1.01f, std::numeric_limits<float>::quiet_NaN(),
+                std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity()}) {
+            groups[0].color[component] = invalid;
+            CHECK_THROWS_WITH_AS((void)woby::copyImportedMesh(result), doctest::Contains("group color"), std::runtime_error);
+        }
+        groups[0].color[component] = original;
+    }
+    groups[0].flags = 4u;
+    CHECK_THROWS_WITH_AS((void)woby::copyImportedMesh(result), doctest::Contains("group flags"), std::runtime_error);
+    groups[0].flags = WOBY_IMPORT_GROUP_HAS_COLOR;
+    groups[0].color[3] = 1.0f;
+    CHECK_NOTHROW((void)woby::copyImportedMesh(result));
+
+    result.group_count = 0;
+    result.groups = nullptr;
+    const auto fallback = woby::createUiFileState(scope.root / "ungrouped.wtest", woby::copyImportedMesh(result), 7u);
+    REQUIRE(fallback.groupSettings.size() == 1u);
+    CHECK(fallback.mesh.nodes[0].name == "Mesh");
+    CHECK(fallback.groupSettings[0].visible);
+    CHECK(fallback.groupSettings[0].color == woby::defaultGroupColor(7u));
+    CHECK(fallback.groupSettings[0].opacity == 1.0f);
 }
