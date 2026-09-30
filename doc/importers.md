@@ -122,9 +122,10 @@ continue using the same ID. Importer IDs must remain stable when the DLL is move
 The public, C-compatible header is [`include/woby/importer.h`](../include/woby/importer.h).
 Define `WOBY_IMPORTER_BUILD` when building the plugin and export the exact C symbol
 `woby_get_importer_api`. It takes the host ABI version and returns a static
-`WobyImporterApi`, or null for unsupported versions. The current ABI version is 1.
+`WobyImporterApi`, or null for unsupported versions. The current ABI version is 2. Plugins built for ABI 1 must be rebuilt with the new header; the host rejects the old binary layout.
 The DLL must match the host's architecture (the Windows preset builds x64).
-Use the platform's default struct alignment, 32-bit IEEE floats, and the header's
+Use the platform's default struct alignment, 64-bit IEEE doubles for positions,
+32-bit IEEE floats for normals/UVs, and the header's
 calling convention. No C++ containers, exceptions, FILE handles, SDL, ImGui, or
 bgfx objects cross the interface.
 
@@ -165,7 +166,13 @@ The host retains the returned vertex table, including unused and duplicate
 vertices; it does not compact or deduplicate it. Vertex, group, and triangle order
 are preserved. Unused vertices also contribute to the calculated mesh bounds.
 Plugins must bake source transforms and coordinate/unit conversions into their
-output. Hierarchies, CAD surfaces, materials, textures, and animation are not part
+output. Return positions in double precision without recentering them. Woby
+chooses a local origin before constructing float GPU vertices and retains double
+positions for analysis. Source bounds and exported finding coordinates restore
+the original coordinates. This does not recover detail already lost by an SDK
+or a source format that stores positions as floats.
+
+Hierarchies, CAD surfaces, materials, textures, and animation are not part
 of this mesh-only API.
 
 Imports through the interactive loading pipeline run on its CPU worker; startup

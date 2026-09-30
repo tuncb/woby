@@ -116,6 +116,15 @@ directions. X/Y/Z sizes also appear at the bottom of the viewport, including zer
 and edges that are too small or off-screen to label. **Properties > Geometry** shows
 the same sizes, followed by original local bounds for a single file or part.
 Enabling the grid displays **Grid spacing** using the same spacing as the drawn lines.
+Woby automatically establishes a working origin for models far from zero. OBJ,
+ASCII STL, and importer ABI 2 positions retain double precision through import
+and analysis; float GPU positions are relative to a per-file origin. A shared
+scene origin keeps files aligned and remains fixed when adding, hiding, or
+removing files. Properties and annotation coordinates show original coordinates.
+Scene files save both origins so saved views and annotation frames remain stable.
+Binary STL coordinates are already floats in the file; lost source detail cannot
+be recovered. Very large scene extents may still exceed float display precision.
+
 All values are raw coordinates, without unit conversion. Dimension visibility is
 saved in `.woby` files and supports Undo/Redo; selection remains transient. Scene
 PNG exports include these overlays when enabled (results-only exports omit them).
@@ -192,7 +201,7 @@ crosshair while drawing and a move cursor over editable endpoints and corners.
 Each outline section follows its own source part through transforms. Outlines hide
 when one of their source parts is hidden.
 They are depth-tested, included in scene PNG exports, and saved in `.woby` scenes
-(version 16, including multiple source attachments and gap bridges). Saved views restore their visibility,
+(version 17, including coordinate origins, multiple source attachments, and gap bridges). Saved views restore their visibility,
 color, and width. Older scene files remain readable. Removing a source retains a named annotation with a
 **needs reattachment** status; restoring the unchanged source through Undo
 restores attachment. Changed source geometry is detected on Open or history
@@ -289,7 +298,7 @@ referenced points. Source checks use imported coordinates and IDs before renderi
 optimization. Highlights follow all selected part transforms and the result position.
 OBJ IDs use position records (before UV/normal splits); triangle IDs refer to
 triangulated output, not original polygons. Importer IDs refer to its returned vertex
-table, which may differ from original file IDs. Import precision is unchanged.
+table, which may differ from original file IDs. Source positions retain double precision.
 STL repeated corners are informational; its source-ID triangle check is unavailable.
 Unavailable, partial, and not-checked results are explicitly labeled. The existing
 **Geometric duplicate triangles** count keeps its coordinate-based definition.

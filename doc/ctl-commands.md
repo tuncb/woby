@@ -322,8 +322,8 @@ available sources. Incomplete, unavailable, or partial results have `count: null
 `knownCount` reports the available subset or the previous completed count.
 
 Detection uses retained source records transformed into world coordinates in
-double precision, excluding the analysis display offset. Imported float precision
-is not recovered. Counts refer to source triangle / transformed part instances;
+double precision, excluding the analysis display offset. Detail already lost in the source format
+cannot be recovered. Counts refer to source triangle / transformed part instances;
 overlapping selections do not multiply counts. STL facets are supported. Missing
 source records report unavailable rather than zero defects. Legacy
 `diagnostics.degenerateTriangles` and `surfaceMeshQuality.degenerateTriangles`
@@ -782,3 +782,15 @@ can qualify, and GGM/GMM parity is not claimed.
 If a physical-boundary patch area cannot be represented as a positive finite
 double, fin results for that source are unavailable (`unavailableAreaSources`);
 other topology detectors remain usable.
+
+
+### Coordinate origins
+
+`scene.info.coordinateOrigin` is the double-precision original-coordinate offset
+of the working scene. It is fixed after the first file is added and saved in the
+scene. Rendering, camera targets, and camera placement commands use working
+coordinates. Add this origin to a working position to recover its original world
+coordinate. Object local bounds, annotation vertex readouts, and detector finding
+positions already include the appropriate offset. Distances and sizes need no
+offset. Imported positions and detector calculations retain double precision;
+GPU positions remain floats relative to their mesh origin.

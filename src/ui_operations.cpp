@@ -1419,6 +1419,7 @@ bool sceneNodeTransformIsDefault(const UiSceneNodeSettings& settings)
 
 void recalculateSceneBounds(UiState& state)
 {
+    synchronizeCoordinateFrames(state);
     state.sceneBounds = combineBounds(state.files, state.sceneNodes);
     if (state.comparisons.empty()) { return; }
     std::vector<Vertex> corners;
@@ -1546,6 +1547,8 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.nextViewId = current.nextViewId;
     prepared.sceneGeneration = current.sceneGeneration + 1;
     prepared.files = std::move(files);
+    prepared.coordinateOrigin = document.coordinateOrigin;
+    synchronizeCoordinateFrames(prepared);
     // Every replacement receives fresh IDs, even when reopening the same file.
     for (auto& file : prepared.files) {
         file.objectId = invalidSceneObjectId;
@@ -1602,6 +1605,14 @@ UiState prepareSceneReplacement(const UiState& current,
     recalculateSceneBounds(prepared);
     prepared.camera = document.camera ? normalizedSceneCamera(*document.camera)
         : frameCameraBounds(prepared.sceneBounds, prepared.upAxis);
+    if (!document.coordinateOrigin && prepared.coordinateOrigin) {
+        const auto rebaseCamera = [&](SceneCamera& camera) {
+            const Coordinate target{camera.target[0], camera.target[1], camera.target[2]};
+            camera.target = renderPosition(relativePosition(target, *prepared.coordinateOrigin));
+        };
+        if (document.camera) { rebaseCamera(prepared.camera); }
+        for (auto& view : prepared.views) { rebaseCamera(view.scene.camera); }
+    }
     clearSceneDirty(prepared);
     return prepared;
 }

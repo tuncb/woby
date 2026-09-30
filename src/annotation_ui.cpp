@@ -263,7 +263,7 @@ void drawAnnotationInspector(UiState& state)
     ImGui::SeparatorText("Vertex coordinates");
     ImGui::TextWrapped(item->targetIds.empty() ? "Model coordinates, before scene transforms. Values use the model's units."
         : "World coordinates. Each vertex follows its attached source part.");
-    const auto vertices = annotationVertices(state, *item);
+    const auto vertices = annotationOriginalVertices(state, *item);
     if (item->targetPending) { ImGui::TextWrapped("Preparing annotation data..."); }
     else if (vertices.empty()) { ImGui::TextWrapped("Coordinates unavailable: restore the original source model."); }
     else if (ImGui::BeginTable("vertices", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
@@ -274,7 +274,7 @@ void drawAnnotationInspector(UiState& state)
             ImGui::TableNextRow(); ImGui::TableNextColumn();
             if (item->geometry.shape == AnnotationShape::line) { ImGui::TextUnformatted(i == 0 ? "Start" : "End"); }
             else { ImGui::Text("Corner %d", static_cast<int>(i + 1)); }
-            for (const auto value : vertices[i]) { ImGui::TableNextColumn(); ImGui::Text("%.6g", static_cast<double>(value)); }
+            for (const auto value : vertices[i]) { ImGui::TableNextColumn(); ImGui::Text("%.12g", value); }
         }
         ImGui::EndTable();
     }

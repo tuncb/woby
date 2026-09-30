@@ -154,18 +154,19 @@ void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
         return;
     }
     const auto id = state.selectedSceneObjects.front();
-    const Bounds* bounds = nullptr;
+    std::optional<std::array<Coordinate, 2>> bounds;
     for (const auto& file : state.files) {
         if (file.objectId == id) {
             ImGui::Text("%zu parts | %zu vertices | %zu triangles", file.groupSettings.size(),
                 file.mesh.vertices.size(), file.mesh.indices.size() / 3u);
-            bounds = &file.mesh.bounds;
+            bounds = originalMeshBounds(file.mesh);
             break;
         }
         for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
             if (file.groupSettings[i].objectId == id) {
                 ImGui::Text("%u triangles", file.mesh.nodes[i].indexCount / 3u);
-                if (file.groupSettings[i].localBoundsValid) { bounds = &file.groupSettings[i].localBounds; }
+                if (file.groupSettings[i].localBoundsValid) { bounds = file.groupSettings[i].originalBounds;
+                    if (!bounds) { bounds = originalMeshBounds(file.mesh, &file.mesh.nodes[i]); } }
                 break;
             }
         }
@@ -173,8 +174,8 @@ void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
     if (bounds) {
         std::array<double, 3> minimum{}, maximum{};
         for (size_t axis = 0; axis < 3; ++axis) {
-            minimum[axis] = bounds->min[axis];
-            maximum[axis] = bounds->max[axis];
+            minimum[axis] = (*bounds)[0][axis];
+            maximum[axis] = (*bounds)[1][axis];
             // Hide double-precision roundoff relative to this axis's extent,
             // without erasing legitimately tiny models or changing their bounds.
             const double tolerance = std::abs(maximum[axis] - minimum[axis])
@@ -185,10 +186,10 @@ void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
         ImGui::Text("Local bounds  X:%.3g to %.3g  Y:%.3g to %.3g  Z:%.3g to %.3g",
             minimum[0], maximum[0], minimum[1], maximum[1], minimum[2], maximum[2]);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Local bounds\nX: %.9g to %.9g\nY: %.9g to %.9g\nZ: %.9g to %.9g",
-                static_cast<double>(bounds->min[0]), static_cast<double>(bounds->max[0]),
-                static_cast<double>(bounds->min[1]), static_cast<double>(bounds->max[1]),
-                static_cast<double>(bounds->min[2]), static_cast<double>(bounds->max[2]));
+            ImGui::SetTooltip("Original model coordinates\nX: %.17g to %.17g\nY: %.17g to %.17g\nZ: %.17g to %.17g",
+                (*bounds)[0][0], (*bounds)[1][0],
+                (*bounds)[0][1], (*bounds)[1][1],
+                (*bounds)[0][2], (*bounds)[1][2]);
         }
     } else if (!dimensions) {
         ImGui::TextDisabled("No geometry selected");

@@ -96,8 +96,7 @@ SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token s
             if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) {
                 throw std::invalid_argument("Quality requires valid indices and finite coordinates.");
             }
-            const auto& v = mesh.vertices[index].position;
-            p[k] = {v[0], v[1], v[2]};
+            p[k] = meshPosition(mesh, index);
         }
         const auto u = difference(p[1], p[0]), v = difference(p[2], p[0]);
         const Point cross = {u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]};

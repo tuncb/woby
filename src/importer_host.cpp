@@ -305,6 +305,7 @@ Mesh copyImportedMesh(const WobyImportResult& result)
     }
     Mesh mesh;
     mesh.vertices.resize(result.vertex_count);
+    mesh.precisePositions.resize(result.vertex_count);
     for (size_t i = 0; i < mesh.vertices.size(); ++i) {
         const auto& source = result.vertices[i];
         auto& vertex = mesh.vertices[i];
@@ -312,7 +313,7 @@ Mesh copyImportedMesh(const WobyImportResult& result)
             if (!std::isfinite(source.position[axis]) || std::abs(source.position[axis]) > 1.0e9f) {
                 throw std::runtime_error("Invalid importer vertex position.");
             }
-            vertex.position[axis] = source.position[axis];
+            mesh.precisePositions[i][axis] = source.position[axis];
             if ((result.flags & WOBY_IMPORT_HAS_NORMALS) != 0u) {
                 vertex.normal[axis] = source.normal[axis];
             }
@@ -360,6 +361,7 @@ Mesh copyImportedMesh(const WobyImportResult& result)
     } else if (nextIndex != result.index_count) {
         throw std::runtime_error("Importer groups do not cover all triangles.");
     }
+    localizeMesh(mesh);
     captureSourceMesh(mesh, SourceProvenance::importerVertices);
     finalizeMesh(mesh, (result.flags & WOBY_IMPORT_HAS_NORMALS) == 0u);
     return mesh;

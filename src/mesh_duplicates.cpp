@@ -13,7 +13,7 @@ void canceled(const std::stop_token& stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
 }
-std::array<float, 3> transformed(const std::array<float, 3>& sourcePoint, const std::array<float, 16>& m)
+std::array<float, 3> transformed(const std::array<double, 3>& sourcePoint, const std::array<double, 16>& m)
 {
     const auto point = promoteSourcePoint(sourcePoint);
     std::array<float, 3> result{};
@@ -137,7 +137,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             return value;
         };
         if (result.points.enabled) {
-            AnalysisIndex<float, 3> groups;
+            AnalysisIndex<double, 3> groups;
             reserveAnalysisIndex(groups, data.points.size());
             std::vector<size_t> heads, next(data.points.size(), noOccurrence);
             for (size_t id = 0; id < pointParts.heads.size(); ++id) {

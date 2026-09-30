@@ -429,7 +429,7 @@ TEST_CASE("OBJ position lookup preserves first use across shapes and unused posi
     writeText(path, text.c_str());
     const auto mesh = woby::loadObjMesh(path);
     REQUIRE(mesh.sourceData);
-    CHECK(sizeof(mesh.sourceData->points[0]) == 3 * sizeof(float));
+    CHECK(sizeof(mesh.sourceData->points[0]) == 3 * sizeof(double));
     CHECK(mesh.sourceData->points.size() == (sparse ? 104u : 4u));
     CHECK(mesh.sourceData->indices == std::vector<uint32_t>{3,1,2,2,1,3});
     CHECK(mesh.indices == std::vector<uint32_t>{0,1,2,2,1,0});

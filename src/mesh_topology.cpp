@@ -286,7 +286,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
     });
     AnalysisIndex<size_t, 2> originalVertices;
     AnalysisIndex<double, 3> exactVertices;
-    AnalysisIndex<float, 16> transforms;
+    AnalysisIndex<double, 16> transforms;
     AnalysisIndex<uint64_t, 3> largeReferenceSets;
     const bool uniformTransform = !parts.empty() && std::all_of(parts.begin(), parts.end(), [&](const auto* part) {
         return part->transform == parts.front()->transform;

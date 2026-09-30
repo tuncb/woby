@@ -41,8 +41,7 @@ std::optional<SceneDimensions> sceneDimensions(std::span<const ScenePickPart> pa
         for (size_t i = begin; i < end; ++i) {
             const auto index = mesh.indices[i];
             if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { continue; }
-            const auto& vertex = mesh.vertices[index].position;
-            DimensionPoint point{vertex[0], vertex[1], vertex[2]};
+            DimensionPoint point = meshPosition(mesh, index);
             if (!local) { point = transformed(part.model, point); }
             if (!std::all_of(point.begin(), point.end(), [](double value) { return std::isfinite(value); })) { continue; }
             for (size_t axis = 0; axis < 3; ++axis) {

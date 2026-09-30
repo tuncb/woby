@@ -11,6 +11,7 @@ namespace woby {
 [[nodiscard]] uint32_t floatBits(float value);
 void hashCombine(uint64_t& seed, uint64_t value);
 void hashFloat(uint64_t& seed, float value);
+void hashDouble(uint64_t& seed, double value);
 void hashBool(uint64_t& seed, bool value);
 void hashArray3(uint64_t& seed, const std::array<float, 3>& values);
 void hashCamera(uint64_t& seed, const SceneCamera& camera);

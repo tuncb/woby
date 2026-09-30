@@ -54,6 +54,7 @@ struct SceneFileRecord {
     SceneFileSettings settings;
     float vertexSizeScale = 1.0f;
     std::vector<SceneGroupRecord> groups;
+    std::optional<std::array<double, 3>> coordinateOrigin;
 
     friend bool operator==(const SceneFileRecord&, const SceneFileRecord&) = default;
 };
@@ -147,6 +148,7 @@ struct SceneViewRecord {
 };
 
 struct SceneDocument {
+    std::optional<std::array<double, 3>> coordinateOrigin;
     std::vector<SceneAnnotationRecord> annotations;
     std::vector<SceneViewRecord> views;
     // Saved review view; absent in legacy scenes. Excluded from edits/history.

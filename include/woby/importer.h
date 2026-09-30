@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-#define WOBY_IMPORTER_ABI_VERSION 1u
+#define WOBY_IMPORTER_ABI_VERSION 2u
 #define WOBY_IMPORT_OK 0u
 #define WOBY_IMPORT_ERROR 1u
 #define WOBY_IMPORT_CANCELED 2u
@@ -25,7 +25,7 @@ extern "C" {
 /* All strings are null-terminated UTF-8. No exceptions may cross this ABI.
  * The plugin owns all returned memory until release_result. See doc/importers.md. */
 typedef struct WobyImportVertex {
-    float position[3];
+    double position[3]; // Original coordinates; Woby chooses the working origin.
     float normal[3];
     float texcoord[2];
 } WobyImportVertex;

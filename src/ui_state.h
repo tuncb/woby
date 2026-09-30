@@ -41,6 +41,7 @@ struct UiGroupState {
     std::array<float, 4> color{};
     Bounds localBounds;
     bool localBoundsValid = false;
+    std::optional<std::array<std::array<double, 3>, 2>> originalBounds;
     SceneObjectId objectId = invalidSceneObjectId;
 };
 
@@ -51,6 +52,7 @@ struct UiFileSettings {
     std::array<float, 3> center{};
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
+    Coordinate coordinateOffset{}; // Mesh origin minus the stable scene origin.
 };
 
 struct UiFileState {
@@ -177,6 +179,7 @@ struct UiAnnotation {
 };
 
 struct UiState {
+    std::optional<Coordinate> coordinateOrigin; // Fixed once the first file enters the scene.
     std::vector<UiAnnotation> annotations;
     std::vector<UiView> views;
     // Session identities and history notification; never serialized.
@@ -228,9 +231,14 @@ struct UiState {
     size_t firstColorIndex,
     std::string importerId = {},
     const ModelLoadProgressCallback& progress = {});
+// Establish the origin once and update derived file offsets at load/edit boundaries.
+void synchronizeCoordinateFrames(UiState& state);
 void groupTransformMatrix(const UiGroupState& settings, float* model);
+void groupTransformMatrix(const UiGroupState& settings, double* model);
 void fileTransformMatrix(const UiFileSettings& settings, float* model);
+void fileTransformMatrix(const UiFileSettings& settings, double* model);
 void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model);
+void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, double* model);
 [[nodiscard]] Bounds defaultDisplayBounds();
 // Visible selected objects, including descendants and comparison display offsets.
 [[nodiscard]] std::optional<Bounds> selectedSceneBounds(const UiState& state);

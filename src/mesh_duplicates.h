@@ -13,15 +13,14 @@ namespace woby {
 enum class SourceProvenance { objPositions, stlCorners, importerVertices };
 
 // Captured before render optimization. Triangle IDs refer to generated triangles,
-// not original polygons. Keep importer float precision in storage; promote only
-// the points being processed by analysis, before performing any arithmetic.
+// not original polygons. Positions retain double precision in the mesh local frame.
 struct SourceMeshData {
     SourceProvenance provenance = SourceProvenance::importerVertices;
-    std::vector<std::array<float, 3>> points;
+    std::vector<std::array<double, 3>> points;
     std::vector<uint32_t> indices;
 };
 
-[[nodiscard]] inline std::array<double, 3> promoteSourcePoint(const std::array<float, 3>& point)
+[[nodiscard]] inline std::array<double, 3> promoteSourcePoint(const std::array<double, 3>& point)
 {
     return {point[0], point[1], point[2]};
 }
@@ -35,7 +34,7 @@ struct DuplicateSettings {
 struct SourcePartInstance {
     uint64_t partId = 0;
     size_t firstIndex = 0, indexCount = 0;
-    std::array<float, 16> transform{};
+    std::array<double, 16> transform{};
 };
 
 struct DuplicateSource {
@@ -45,7 +44,7 @@ struct DuplicateSource {
     bool wholeFile = false;
     std::vector<SourcePartInstance> parts;
     // Unreferenced points belong to the source file, not an arbitrary mesh part.
-    std::array<float, 16> unusedPointTransform = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    std::array<double, 16> unusedPointTransform = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
 };
 
 struct DuplicateInput {

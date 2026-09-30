@@ -318,7 +318,8 @@ void writeTomlFloat(std::ostream& stream, double value)
     stream << std::setprecision(17) << value;
 }
 
-void writeTomlFloat3(std::ostream& stream, const std::array<float, 3>& value)
+template<typename T>
+void writeTomlFloat3(std::ostream& stream, const std::array<T, 3>& value)
 {
     stream << '[';
     writeTomlFloat(stream, value[0]);
@@ -364,6 +365,11 @@ void assignSceneFileValue(SceneFileRecord& record, const std::string& key, std::
 {
     if (key == "path") {
         record.path = woby::pathFromUtf8(parseTomlString(value));
+    } else if (key == "coordinate_origin") {
+        const auto origin = parseTomlFloatArray<double>(value);
+        if (origin.size() != 3) { throw std::runtime_error("Expected 3 mesh origin coordinates."); }
+        for (double v : origin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite mesh origin."); } }
+        record.coordinateOrigin = {origin[0], origin[1], origin[2]};
     } else if (key == "importer_id") {
         record.importerId = parseTomlString(value);
     } else if (key == "visible") {
@@ -674,9 +680,9 @@ bool sceneContentEqual(const SceneDocument& a, const SceneDocument& b)
     // The live camera is excluded so ordinary navigation stays transient.
     // Named checkpoints, including their cameras, are editable document content.
     return std::tie(a.annotations, a.views, a.comparisons, a.comparison, a.masterVertexPointSize, a.showOrigin,
-               a.showGrid, a.showDimensions, a.upAxis, a.files, a.nodes)
+               a.showGrid, a.showDimensions, a.upAxis, a.files, a.nodes, a.coordinateOrigin)
         == std::tie(b.annotations, b.views, b.comparisons, b.comparison, b.masterVertexPointSize, b.showOrigin,
-               b.showGrid, b.showDimensions, b.upAxis, b.files, b.nodes);
+               b.showGrid, b.showDimensions, b.upAxis, b.files, b.nodes, b.coordinateOrigin);
 }
 
 SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
@@ -805,9 +811,14 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
+                } else if (key == "coordinate_origin") {
+                    const auto origin = parseTomlFloatArray<double>(value);
+                    if (origin.size() != 3) { throw std::runtime_error("Expected 3 origin coordinates."); }
+                    for (double v : origin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
+                    document.coordinateOrigin = {origin[0], origin[1], origin[2]};
                 } else if (key == "master_vertex_point_size") {
                     document.masterVertexPointSize = parseTomlFloat(value);
                 } else if (key == "show_origin") {
@@ -1093,7 +1104,11 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 16\n";
+    stream << "version = 17\n";
+    if (document.coordinateOrigin) {
+        for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
+        stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';
+    }
     stream << "master_vertex_point_size = ";
     writeTomlFloat(stream, document.masterVertexPointSize);
     stream << "\n";
@@ -1115,6 +1130,10 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "path = \"" << escapeTomlString(pathText) << "\"\n";
         if (!file.importerId.empty()) {
             stream << "importer_id = \"" << escapeTomlString(file.importerId) << "\"\n";
+        }
+        if (file.coordinateOrigin) {
+            for (double v : *file.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite mesh origin."); } }
+            stream << "coordinate_origin = "; writeTomlFloat3(stream, *file.coordinateOrigin); stream << '\n';
         }
         stream << "visible = " << (file.settings.visible ? "true" : "false") << "\n";
         stream << "scale = ";

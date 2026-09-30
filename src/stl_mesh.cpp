@@ -105,26 +105,24 @@ void reserveTriangles(Mesh& mesh, uint32_t triangleCount)
 void appendTriangle(
     Mesh& mesh,
     std::array<float, 3> normal,
-    const std::array<float, 3>& a,
-    const std::array<float, 3>& b,
-    const std::array<float, 3>& c)
+    const Coordinate& a,
+    const Coordinate& b,
+    const Coordinate& c)
 {
-    if (!finitePosition(a) || !finitePosition(b) || !finitePosition(c)) {
+    if (!finiteCoordinate(a) || !finiteCoordinate(b) || !finiteCoordinate(c)) {
         throw std::runtime_error("STL contains a non-finite vertex coordinate.");
     }
 
-    if (!validNormal(normal)) {
-        normal = calculateFaceNormal(a, b, c);
-    }
 
     if (mesh.vertices.size() > std::numeric_limits<uint32_t>::max() - 3u) {
         throw std::runtime_error("STL contains too many vertices.");
     }
 
     const uint32_t firstIndex = static_cast<uint32_t>(mesh.vertices.size());
-    mesh.vertices.push_back({a, normal, {}});
-    mesh.vertices.push_back({b, normal, {}});
-    mesh.vertices.push_back({c, normal, {}});
+    for (const auto& p : {a, b, c}) {
+        mesh.precisePositions.push_back(p);
+        mesh.vertices.push_back({{}, normal, {}});
+    }
     mesh.indices.push_back(firstIndex + 0u);
     mesh.indices.push_back(firstIndex + 1u);
     mesh.indices.push_back(firstIndex + 2u);
@@ -144,7 +142,7 @@ Mesh loadBinaryStlMesh(const std::filesystem::path& path, const std::vector<unsi
             readFloat32Le(bytes.data() + offset + 8u),
         };
 
-        std::array<float, 3> vertices[3] = {};
+        Coordinate vertices[3] = {};
         for (size_t vertex = 0; vertex < 3u; ++vertex) {
             const size_t vertexOffset = offset + 12u + vertex * 12u;
             vertices[vertex] = {
@@ -167,14 +165,21 @@ Mesh loadBinaryStlMesh(const std::filesystem::path& path, const std::vector<unsi
     node.indexOffset = 0u;
     node.indexCount = static_cast<uint32_t>(mesh.indices.size());
     mesh.nodes.push_back(std::move(node));
+    localizeMesh(mesh);
+    for (size_t i = 0; i < mesh.vertices.size(); i += 3) {
+        if (!validNormal(mesh.vertices[i].normal)) {
+            const auto normal = calculateFaceNormal(mesh.vertices[i].position, mesh.vertices[i+1].position, mesh.vertices[i+2].position);
+            for (size_t k = 0; k < 3; ++k) { mesh.vertices[i+k].normal = normal; }
+        }
+    }
     captureSourceMesh(mesh, SourceProvenance::stlCorners);
     finalizeMesh(mesh, false);
     return mesh;
 }
 
-std::array<float, 3> parseFloat3(std::istringstream& stream, const std::string& context)
+Coordinate parseFloat3(std::istringstream& stream, const std::string& context)
 {
-    std::array<float, 3> value{};
+    Coordinate value{};
     if (!(stream >> value[0] >> value[1] >> value[2])) {
         throw std::runtime_error("Invalid ASCII STL " + context + ".");
     }
@@ -189,7 +194,7 @@ Mesh loadAsciiStlMesh(const std::filesystem::path& path, const std::vector<unsig
     Mesh mesh;
     std::string solidName;
     std::array<float, 3> currentNormal{};
-    std::vector<std::array<float, 3>> facetVertices;
+    std::vector<Coordinate> facetVertices;
     facetVertices.reserve(3u);
 
     std::string line;
@@ -208,7 +213,7 @@ Mesh loadAsciiStlMesh(const std::filesystem::path& path, const std::vector<unsig
 
         if (startsWith(trimmed, "facet normal")) {
             std::istringstream stream(trimmed.substr(12u));
-            currentNormal = parseFloat3(stream, "facet normal");
+            currentNormal = renderPosition(parseFloat3(stream, "facet normal"));
             facetVertices.clear();
             continue;
         }
@@ -251,6 +256,13 @@ Mesh loadAsciiStlMesh(const std::filesystem::path& path, const std::vector<unsig
     node.indexOffset = 0u;
     node.indexCount = static_cast<uint32_t>(mesh.indices.size());
     mesh.nodes.push_back(std::move(node));
+    localizeMesh(mesh);
+    for (size_t i = 0; i < mesh.vertices.size(); i += 3) {
+        if (!validNormal(mesh.vertices[i].normal)) {
+            const auto normal = calculateFaceNormal(mesh.vertices[i].position, mesh.vertices[i+1].position, mesh.vertices[i+2].position);
+            for (size_t k = 0; k < 3; ++k) { mesh.vertices[i+k].normal = normal; }
+        }
+    }
     captureSourceMesh(mesh, SourceProvenance::stlCorners);
     finalizeMesh(mesh, false);
     return mesh;

@@ -27,9 +27,17 @@ Json groupInfo(const UiGroupState& group)
         {"vertices", group.showVertices}, {"color", group.color}, {"vertexSizeScale", group.vertexSizeScale}});
     return result;
 }
-Json boundsInfo(const Bounds& bounds)
+Json boundsInfo(const Bounds& bounds, const Coordinate& origin = {})
 {
-    return {{"min", bounds.min}, {"max", bounds.max}, {"center", bounds.center}, {"radius", bounds.radius}};
+    const auto original = [&](const auto& p) { return originalPosition({p[0],p[1],p[2]},origin); };
+    return {{"min", original(bounds.min)}, {"max", original(bounds.max)}, {"center", original(bounds.center)}, {"radius", bounds.radius}};
+}
+Json originalBoundsInfo(const Mesh& mesh, float radius, const MeshNode* node = nullptr)
+{
+    const auto bounds = originalMeshBounds(mesh, node);
+    Coordinate center{};
+    for (size_t k = 0; k < 3; ++k) { center[k] = bounds[0][k]*.5 + bounds[1][k]*.5; }
+    return {{"min", bounds[0]}, {"max", bounds[1]}, {"center", center}, {"radius", radius}};
 }
 const UiSceneNode* findFolder(const std::vector<UiSceneNode>& nodes, SceneObjectId id)
 {
@@ -109,13 +117,13 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
         if (file.objectId == id) {
             return {{"settings", fileInfo(file)}, {"importerId", file.importerId},
                 {"vertexCount", file.mesh.vertices.size()}, {"triangleCount", file.mesh.indices.size() / 3},
-                {"groupCount", file.groupSettings.size()}, {"localBounds", boundsInfo(file.mesh.bounds)}};
+                {"groupCount", file.groupSettings.size()}, {"localBounds", originalBoundsInfo(file.mesh, file.mesh.bounds.radius)}};
         }
         for (size_t index = 0; index < file.groupSettings.size(); ++index) {
             const auto& group = file.groupSettings[index];
             if (group.objectId == id) {
                 return {{"settings", groupInfo(group)}, {"triangleCount", file.mesh.nodes.at(index).indexCount / 3},
-                    {"localBounds", group.localBoundsValid ? boundsInfo(group.localBounds) : Json(nullptr)}};
+                    {"localBounds", group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius, &file.mesh.nodes[index]) : Json(nullptr)}};
             }
         }
     }
@@ -242,7 +250,8 @@ Json controlSceneInfo(const UiState& state)
         {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles},
         {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
         {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
-        {"masterVertexPointSize", state.masterVertexPointSize}, {"renderModes", modes}, {"bounds", boundsInfo(state.sceneBounds)}};
+        {"coordinateOrigin", state.coordinateOrigin.value_or(Coordinate{})},
+        {"masterVertexPointSize", state.masterVertexPointSize}, {"renderModes", modes}, {"bounds", boundsInfo(state.sceneBounds, state.coordinateOrigin.value_or(Coordinate{}))}};
 }
 
 Json controlCameraInfo(const UiState& state)
@@ -427,7 +436,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         updateSceneDirty(state, cleanDocument);
         auto object = controlObjectDetails(state, id, formatId);
         object.update({{"id", formatId(id)}, {"name", findComparison(state, id)->name}, {"kind", "analysis"}});
-        return {{"target", formatId(id)}, {"object", std::move(object)}, {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
+        return {{"target", formatId(id)}, {"object", std::move(object)}, {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds, state.coordinateOrigin.value_or(Coordinate{}))}};
     }
     if (command.objectId != invalidSceneObjectId && findComparison(state, command.objectId)) {
         if (command.action == A::transformGet) {
@@ -449,7 +458,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         }
         updateSceneDirty(state, cleanDocument);
         return {{"target", command.target}, {"applied", localObjectDetails(state, command.objectId)["settings"]},
-            {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
+            {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds, state.coordinateOrigin.value_or(Coordinate{}))}};
     }
     Target target;
     if (command.objectId != invalidSceneObjectId) { target = resolveTarget(state, command.objectId); }
@@ -457,7 +466,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     switch (command.action) {
     case A::sceneInfo: case A::stats: return controlSceneInfo(state);
     case A::sceneTree: return {{"nodes", controlSceneTree(state, formatId)}};
-    case A::sceneBounds: return {{"bounds", boundsInfo(state.sceneBounds)}, {"visibleOnly", true}, {"emptyFallback", boundsInfo(defaultDisplayBounds())}};
+    case A::sceneBounds: return {{"bounds", boundsInfo(state.sceneBounds, state.coordinateOrigin.value_or(Coordinate{}))}, {"visibleOnly", true}, {"emptyFallback", boundsInfo(defaultDisplayBounds())}};
     case A::transformGet: return {{"target", command.target}, {"settings", localObjectDetails(state, command.objectId)["settings"]}};
     case A::visibility:
         if (scene) { setAllSceneVisible(state, *command.visible); }
@@ -557,7 +566,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     updateSceneDirty(state, cleanDocument);
     if (command.objectId != invalidSceneObjectId) {
         return {{"target", command.target}, {"applied", localObjectDetails(state, command.objectId)["settings"]},
-            {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds)}};
+            {"dirty", state.isDirty}, {"bounds", boundsInfo(state.sceneBounds, state.coordinateOrigin.value_or(Coordinate{}))}};
     }
     return controlSceneInfo(state);
 }

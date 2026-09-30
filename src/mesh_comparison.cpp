@@ -132,7 +132,7 @@ std::vector<Triangle> meshTriangles(const Mesh &mesh, std::stop_token stop)
             const auto index = mesh.indices[i + k];
             if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position))
                 throw std::runtime_error("Mesh contains an invalid vertex or triangle index.");
-            t[k] = toPoint(mesh.vertices[index].position);
+            t[k] = meshPosition(mesh, index);
         }
         triangles.push_back(t);
     }
@@ -435,6 +435,7 @@ void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, Topolo
 {
     const std::vector<DuplicateSource> empty;
     surface.topology = buildMeshTopology(mesh.duplicateInput ? mesh.duplicateInput->sources : empty, mode, stop);
+    surface.topology.coordinateOrigin = mesh.origin;
     if (!mesh.duplicateInput) { surface.topology.unavailableSources = 1; }
     const auto geometry = [&](const std::vector<TopologyEdgeFinding>& findings) {
         std::vector<DiagnosticEdge> result;
@@ -473,6 +474,8 @@ SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop, Degenerate
     result.source.indices = copyWithCancellation(mesh.indices, stop);
     result.source.nodes = copyWithCancellation(mesh.nodes, stop);
     result.source.bounds = mesh.bounds;
+    result.source.origin = mesh.origin;
+    result.source.precisePositions = copyWithCancellation(mesh.precisePositions, stop);
     result.quality = inspectSurfaceMeshQuality(mesh, stop);
     return result;
 }
@@ -482,6 +485,7 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
     const auto stop = source.stop;
     auto result = distancesOnly ? SurfaceComparison{} : copySurface(mesh, stop, degenerates);
     if (!distancesOnly) { result.diagnostics = inspectMesh(mesh, stop); }
+    result.sampled.origin = mesh.origin;
     const size_t triangleCount = mesh.indices.size() / 3;
     resizeWithCancellation(result.sampled.vertices, triangleCount * 12, stop);
     resizeWithCancellation(result.sampled.indices, triangleCount * 12, stop);
@@ -493,9 +497,9 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
         uint32_t hint = 0;
         for (size_t face = begin; face < end; ++face) {
             checkCanceled(stop);
-            const Triangle t = {toPoint(mesh.vertices[mesh.indices[face * 3]].position),
-                toPoint(mesh.vertices[mesh.indices[face * 3 + 1]].position),
-                toPoint(mesh.vertices[mesh.indices[face * 3 + 2]].position)};
+            const Triangle t = {meshPosition(mesh, mesh.indices[face * 3]),
+                meshPosition(mesh, mesh.indices[face * 3 + 1]),
+                meshPosition(mesh, mesh.indices[face * 3 + 2])};
             const Point ab = mul(add(t[0], t[1]), .5), bc = mul(add(t[1], t[2]), .5), ca = mul(add(t[2], t[0]), .5);
             const std::array<Triangle, 4> parts = {Triangle{t[0], ab, ca}, Triangle{ab, t[1], bc}, Triangle{ca, bc, t[2]},
                                                    Triangle{ab, bc, ca}};
@@ -696,7 +700,7 @@ MeshDiagnostics inspectTriangles(const Mesh& mesh, std::stop_token stop)
             if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) {
                 throw std::runtime_error("Mesh contains an invalid vertex or triangle index.");
             }
-            triangle[k] = toPoint(mesh.vertices[index].position);
+            triangle[k] = meshPosition(mesh, index);
         }
         if (degenerate(triangle)) { ++result.degenerateTriangles; continue; }
         std::array<size_t, 3> ids;
@@ -807,6 +811,11 @@ static void completeComparisonDetectors(MeshComparison& result, uint32_t stages)
 
 MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode)
 {
+    if (!original.vertices.empty() && !repaired.vertices.empty() && original.origin != repaired.origin) {
+        auto aligned = repaired;
+        rebaseMesh(aligned, original.origin);
+        return compareMeshes(original, aligned, stop, degenerates, topologyMode);
+    }
     checkCanceled(stop);
     validateComparisonMeshSize(original.vertices.size(), original.indices.size() / 3);
     validateComparisonMeshSize(repaired.vertices.size(), repaired.indices.size() / 3);
@@ -973,6 +982,11 @@ bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mod
 
 MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode, IntersectionLimits intersectionLimits)
 {
+    if (!original.vertices.empty() && !repaired.vertices.empty() && original.origin != repaired.origin) {
+        auto aligned = repaired;
+        rebaseMesh(aligned, original.origin);
+        return computeComparisonStages(original, aligned, stages, stop, degenerates, topologyMode, intersectionLimits);
+    }
     checkCanceled(stop);
     MeshComparison result;
     if ((stages & comparisonDistance) && !original.indices.empty() && !repaired.indices.empty()) {
@@ -997,6 +1011,8 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             surface.source.indices = copyWithCancellation(mesh.indices, stop);
             surface.source.nodes = copyWithCancellation(mesh.nodes, stop);
             surface.source.bounds = mesh.bounds;
+            surface.source.origin = mesh.origin;
+            surface.source.precisePositions = copyWithCancellation(mesh.precisePositions, stop);
         }
         std::vector<uint32_t> tasks;
         if (stages & (comparisonTopology | comparisonIntersections)) { tasks.push_back(comparisonTopology); }

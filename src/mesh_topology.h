@@ -106,6 +106,7 @@ struct MeshTopology {
     std::vector<TopologyFinPatch> finPatches;
     std::vector<size_t> fins; // Indices into finPatches after the inclusive area filter.
     size_t unavailableFinAreaSources = 0;
+    std::array<double, 3> coordinateOrigin{}; // Report positions in original world coordinates.
 };
 
 // Returns true when a geometry filter changed. Run/Show retain cached findings.

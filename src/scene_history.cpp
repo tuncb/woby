@@ -32,6 +32,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     result.identities = std::move(identities);
     auto& content = result.content;
     content.sceneGeneration = state.sceneGeneration;
+    content.coordinateOrigin = state.coordinateOrigin;
     content.showOrigin = state.showOrigin;
     content.showGrid = state.showGrid;
     content.showDimensions = state.showDimensions;
@@ -50,6 +51,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     for (const auto& file : state.files) {
         UiFileState metadata;
         metadata.path = file.path;
+        metadata.mesh.origin = file.mesh.origin;
         metadata.importerId = file.importerId;
         metadata.groupSettings = file.groupSettings;
         metadata.fileSettings = file.fileSettings;
@@ -161,6 +163,7 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
             file.groupSettings[group].center = source->groupSettings[group].center;
             file.groupSettings[group].localBounds = source->groupSettings[group].localBounds;
             file.groupSettings[group].localBoundsValid = source->groupSettings[group].localBoundsValid;
+            file.groupSettings[group].originalBounds = source->groupSettings[group].originalBounds;
         }
         file.fileSettings.center = source->fileSettings.center;
         if (live != current.files.end()) { file.mesh = live->mesh; }

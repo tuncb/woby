@@ -22,15 +22,15 @@ struct WorldVertexRemap {
     std::vector<uint32_t> vertices;
 };
 
-void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file, size_t groupIndex, const float *parent)
+void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file, size_t groupIndex, const double *parent)
 {
     if (groupIndex >= file.mesh.nodes.size() || groupIndex >= file.groupSettings.size())
     {
         throw std::runtime_error("Analysis encountered an invalid mesh group.");
     }
-    float local[16], model[16];
+    double local[16], model[16];
     groupTransformMatrix(file.groupSettings[groupIndex], local);
-    bx::mtxMul(model, parent, local);
+    coordinateMultiply(model, parent, local);
     const auto &group = file.mesh.nodes[groupIndex];
     const size_t end = static_cast<size_t>(group.indexOffset) + group.indexCount;
     if (end > file.mesh.indices.size() || group.indexCount % 3 != 0)
@@ -56,16 +56,10 @@ void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file,
             result.indices.push_back(mapped);
             continue;
         }
-        const auto &p = file.mesh.vertices[sourceIndex].position;
+        const auto point = transformCoordinate(model, meshPosition(file.mesh, sourceIndex));
         Vertex vertex;
-        for (size_t k = 0; k < 3; ++k)
-        {
-            vertex.position[k] = model[k] * p[0] + model[k + 4] * p[1] + model[k + 8] * p[2] + model[k + 12];
-        }
-        if (!finitePosition(vertex.position))
-        {
-            throw std::runtime_error("Analysis requires finite transformed coordinates.");
-        }
+        vertex.position = renderPosition(point);
+        result.precisePositions.push_back(point);
         validateComparisonMeshSize(result.vertices.size() + 1, 0);
         mapped = static_cast<uint32_t>(result.vertices.size());
         result.indices.push_back(mapped);
@@ -81,7 +75,7 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
     if (members.empty()) { return; }
     boost::unordered_flat_set<std::pair<size_t, size_t>> visited;
     visited.reserve(members.size());
-    const auto part = [&](size_t fileIndex, size_t groupIndex, const float* parent) {
+    const auto part = [&](size_t fileIndex, size_t groupIndex, const double* parent) {
         if (fileIndex >= state.files.size()) { return; }
         const auto& file = state.files[fileIndex];
         if (groupIndex >= file.groupSettings.size() || groupIndex >= file.mesh.nodes.size()) { return; }
@@ -90,8 +84,8 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
             || !visited.emplace(fileIndex, groupIndex).second) { return; }
         visitor(file, groupIndex, parent);
     };
-    const auto nodeVisitor = [&](auto&& self, const UiSceneNode& node, const float* parent) -> void {
-        float local[16], model[16];
+    const auto nodeVisitor = [&](auto&& self, const UiSceneNode& node, const double* parent) -> void {
+        double local[16], model[16];
         if (node.kind == UiSceneNodeKind::group) {
             part(node.fileIndex, node.groupIndex, parent);
             return;
@@ -102,7 +96,7 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
             if (node.fileIndex >= state.files.size()) { return; }
             fileTransformMatrix(state.files[node.fileIndex].fileSettings, local);
         }
-        bx::mtxMul(model, parent, local);
+        coordinateMultiply(model, parent, local);
         if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
             for (size_t i = 0; i < state.files[node.fileIndex].groupSettings.size(); ++i) {
                 part(node.fileIndex, i, model);
@@ -110,11 +104,11 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
         }
         for (const auto& child : node.children) { self(self, child, model); }
     };
-    float identity[16];
-    bx::mtxIdentity(identity);
+    double identity[16];
+    coordinateIdentity(identity);
     if (state.sceneNodes.empty()) {
         for (size_t i = 0; i < state.files.size(); ++i) {
-            float model[16];
+            double model[16];
             fileTransformMatrix(state.files[i].fileSettings, model);
             for (size_t j = 0; j < state.files[i].groupSettings.size(); ++j) { part(i, j, model); }
         }
@@ -237,19 +231,21 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
     // Check index counts before allocating; shared vertices do not need one
     // world-space copy for every triangle corner.
     size_t triangleCount = 0, vertexCapacity = 0;
-    visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float*) {
+    visitParts(state, side, id, [&](const UiFileState& file, size_t index, const double*) {
         triangleCount += file.mesh.nodes[index].indexCount / 3;
         validateComparisonMeshSize(0, triangleCount);
         vertexCapacity += std::min(file.mesh.vertices.size(), size_t{file.mesh.nodes[index].indexCount});
     });
     result.vertices.reserve(vertexCapacity);
+    result.precisePositions.reserve(vertexCapacity);
+    result.origin = state.coordinateOrigin.value_or(Coordinate{});
     result.indices.reserve(triangleCount * 3);
     WorldVertexRemap remap;
     auto duplicateInput = std::make_shared<DuplicateInput>();
     boost::unordered_flat_map<SceneObjectId, size_t> sourceIndices;
     sourceIndices.reserve(state.files.size());
     duplicateInput->settings = comparison->settings.duplicates;
-    visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
+    visitParts(state, side, id, [&](const UiFileState& file, size_t index, const double* parent) {
         appendGroup(result, remap, file, index, parent);
         const auto [entry, inserted] = sourceIndices.try_emplace(file.objectId, duplicateInput->sources.size());
         if (inserted) {
@@ -265,9 +261,9 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         part.partId = file.groupSettings[index].objectId;
         part.firstIndex = file.mesh.nodes[index].indexOffset;
         part.indexCount = file.mesh.nodes[index].indexCount;
-        float local[16];
+        double local[16];
         groupTransformMatrix(file.groupSettings[index], local);
-        bx::mtxMul(part.transform.data(), parent, local);
+        coordinateMultiply(part.transform.data(), parent, local);
         source.parts.push_back(part);
         source.wholeFile = source.parts.size() == file.mesh.nodes.size();
     });
@@ -287,7 +283,7 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
         size_t count = 0;
-        visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
+        visitParts(state, side, id, [&](const UiFileState& file, size_t index, const double* parent) {
             ++count;
             hashCombine(seed, file.objectId);
             hashCombine(seed, file.groupSettings[index].objectId);
@@ -298,10 +294,10 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
             hashCombine(seed, file.mesh.indices.size());
             hashCombine(seed, file.mesh.nodes[index].indexOffset);
             hashCombine(seed, file.mesh.nodes[index].indexCount);
-            float local[16], model[16];
+            double local[16], model[16];
             groupTransformMatrix(file.groupSettings[index], local);
-            bx::mtxMul(model, parent, local);
-            for (const auto value : model) { hashFloat(seed, value); }
+            coordinateMultiply(model, parent, local);
+            for (const auto value : model) { hashDouble(seed, value); }
         });
         hashCombine(seed, count);
     }
@@ -313,19 +309,19 @@ std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectI
     if (!comparison || !canInspectComparison(state, id)) { return std::nullopt; }
     std::vector<Vertex> corners;
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
-        visitParts(state, side, id, [&](const UiFileState& file, size_t index, const float* parent) {
+        visitParts(state, side, id, [&](const UiFileState& file, size_t index, const double* parent) {
             const auto& group = file.groupSettings[index];
-            float local[16], model[16];
+            double local[16], model[16];
             groupTransformMatrix(group, local);
-            bx::mtxMul(model, parent, local);
+            coordinateMultiply(model, parent, local);
             const auto& bounds = group.localBoundsValid ? group.localBounds : file.mesh.bounds;
             for (unsigned mask = 0; mask < 8; ++mask) {
                 Vertex corner;
                 std::array<float, 3> p{};
                 for (size_t k = 0; k < 3; ++k) { p[k] = (mask & (1u << k)) ? bounds.max[k] : bounds.min[k]; }
                 for (size_t k = 0; k < 3; ++k) {
-                    corner.position[k] = model[k] * p[0] + model[k + 4] * p[1] + model[k + 8] * p[2]
-                        + model[k + 12] + comparison->translation[k];
+                    corner.position[k] = static_cast<float>(model[k] * p[0] + model[k + 4] * p[1] + model[k + 8] * p[2]
+                        + model[k + 12] + comparison->translation[k]);
                 }
                 if (finitePosition(corner.position)) { corners.push_back(corner); }
             }

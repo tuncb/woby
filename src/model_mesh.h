@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -43,17 +44,36 @@ struct MeshAnnotationCache {
     std::vector<std::string> fingerprints;
 };
 
+using Coordinate = std::array<double, 3>;
+using CoordinateMatrix = std::array<double, 16>;
+void coordinateIdentity(double* result);
+void coordinateMultiply(double* result, const double* a, const double* b);
+[[nodiscard]] Coordinate transformCoordinate(const double* matrix, const Coordinate& point);
+
 struct Mesh {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<MeshNode> nodes;
     Bounds bounds;
+    std::optional<std::array<Coordinate, 2>> originalBounds;
+    Coordinate origin{}; // Original file coordinates of the local zero.
+    std::vector<Coordinate> precisePositions; // CPU positions, in the same local frame as vertices.
     std::shared_ptr<const SourceMeshData> sourceData;
     std::shared_ptr<const DuplicateInput> duplicateInput;
     // Immutable derived geometry index, published by the runtime after preparation.
     std::shared_ptr<const MeshAnnotationCache> annotationCache;
 };
 
+[[nodiscard]] bool finiteCoordinate(const Coordinate& point) noexcept;
+[[nodiscard]] Coordinate meshPosition(const Mesh& mesh, size_t index);
+[[nodiscard]] std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node = nullptr);
+[[nodiscard]] std::array<float, 3> renderPosition(const Coordinate& point);
+[[nodiscard]] Coordinate coordinateOrigin(const std::vector<Coordinate>& points);
+[[nodiscard]] Coordinate relativePosition(const Coordinate& point, const Coordinate& origin);
+[[nodiscard]] Coordinate originalPosition(const Coordinate& point, const Coordinate& origin);
+// Call once after reading double positions, before normals or bounds are built.
+void localizeMesh(Mesh& mesh);
+void rebaseMesh(Mesh& mesh, const Coordinate& origin);
 [[nodiscard]] bool empty(const Mesh& mesh) noexcept;
 [[nodiscard]] bool finitePosition(const std::array<float, 3>& position) noexcept;
 [[nodiscard]] bool validNormal(const std::array<float, 3>& normal) noexcept;

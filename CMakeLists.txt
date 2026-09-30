@@ -320,7 +320,9 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_vertex_render_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_loading_preparation PROPERTIES TIMEOUT 180 LABELS graphics)
+        add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -475,6 +477,7 @@ if(BUILD_TESTING)
         tests/surface_annotation_tests.cpp
         tests/scene_pick_tests.cpp
         tests/scene_renderer_tests.cpp
+        tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
         tests/scene_file_edge_tests.cpp

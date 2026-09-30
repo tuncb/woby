@@ -1,6 +1,7 @@
 #include "hash_utils.h"
 
 #include <cstring>
+#include <bit>
 
 namespace woby {
 
@@ -22,6 +23,10 @@ void hashFloat(uint64_t& seed, float value)
     hashCombine(seed, floatBits(value));
 }
 
+void hashDouble(uint64_t& seed, double value)
+{
+    hashCombine(seed, std::bit_cast<uint64_t>(value == 0 ? 0.0 : value));
+}
 void hashBool(uint64_t& seed, bool value)
 {
     hashCombine(seed, value ? 1u : 0u);
@@ -54,6 +59,7 @@ void hashBounds(uint64_t& seed, const Bounds& bounds)
 
 void hashFileSettings(uint64_t& seed, const UiFileSettings& settings)
 {
+    for (double v : settings.coordinateOffset) { hashDouble(seed, v); }
     hashBool(seed, settings.visible);
     hashFloat(seed, settings.scale);
     hashFloat(seed, settings.opacity);

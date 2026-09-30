@@ -29,7 +29,7 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
         {"sourceName", item.targetName}, {"targetValid", item.targetValid && findSceneObject(state, item.targetId).has_value()},
         {"targetPending", item.targetPending},
         {"effectiveVisible", !annotationWorldLines(item, parts).empty()},
-        {"vertices", annotationVertices(state, item)}, {"vertexSpace", item.targetIds.empty() ? "model" : "world"},
+        {"vertices", annotationOriginalVertices(state, item)}, {"vertexSpace", item.targetIds.empty() ? "model" : "world"},
         {"start", item.geometry.start}, {"end", item.geometry.end}, {"controlSpace", "original-projector-ndc"},
         {"projector", item.geometry.projector}, {"homogeneousDepth", item.geometry.homogeneousDepth},
         {"segmentCount", item.geometry.segments.size()}};

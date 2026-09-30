@@ -70,9 +70,9 @@ Node topologyEdges(const MeshTopology& t, const std::vector<TopologyEdgeFinding>
         array(item, "incidentFaces", e.incidentFaces.size(), [&s, &e](size_t k) {
             const auto& use = e.incidentFaces[k]; auto v = face(s.faces[use.face].reference); v["forward"] = use.forward; return scalar(std::move(v));
         }, "incidentFacesTruncated");
-        array(item, "endpoints", 2, [&s, &e](size_t k) {
+        array(item, "endpoints", 2, [&t, &s, &e](size_t k) {
             const auto& v = s.vertices[e.vertices[k]];
-            auto endpoint = scalar({{"position", v.position}, {"sourcePointCount", v.references.size()}});
+            auto endpoint = scalar({{"position", originalPosition(v.position, t.coordinateOrigin)}, {"sourcePointCount", v.references.size()}});
             array(endpoint, "sourcePoints", v.references.size(), [&v](size_t j) { return scalar(point(v.references[j])); }, "sourcePointsTruncated");
             return endpoint;
         });
@@ -84,11 +84,11 @@ Node topologyEdges(const MeshTopology& t, const std::vector<TopologyEdgeFinding>
     }
     return n;
 }
-Node vertex(const SourceTopology& s, size_t index)
+Node vertex(const SourceTopology& s, size_t index, const Coordinate& origin)
 {
     const auto& v = s.vertices[index];
     auto n = scalar({{"sourceId", std::to_string(s.fileId)}, {"source", s.source}, {"vertexId", index + 1},
-        {"position", v.position}, {"topologyMode", topologyModeName(s.mode)},
+        {"position", originalPosition(v.position, origin)}, {"topologyMode", topologyModeName(s.mode)},
         {"pointReferenceCount", v.references.size()}, {"incidentFaceCount", v.faces.size()}});
     array(n, "pointReferences", v.references.size(), [&v](size_t i) { return scalar(point(v.references[i])); }, "pointReferencesTruncated");
     array(n, "incidentFaces", v.faces.size(), [&s, &v](size_t i) { return scalar(face(s.faces[v.faces[i]].reference)); }, "incidentFacesTruncated");
@@ -101,9 +101,9 @@ Node boundary(const MeshTopology& t, size_t index)
         {"componentId", b.component + 1}, {"topologyMode", topologyModeName(s.mode)}, {"kind", boundaryKindName(b.kind)},
         {"diagonal", b.diagonal}, {"componentDiagonal", b.componentDiagonal},
         {"sizeRatio", b.ratioAvailable ? Json(b.sizeRatio) : Json(nullptr)}, {"vertexCount", b.vertices.size()}, {"edgeCount", b.edges.size()}});
-    array(n, "vertices", b.vertices.size(), [&s, &b](size_t i) {
+    array(n, "vertices", b.vertices.size(), [&t, &s, &b](size_t i) {
         const auto index = b.vertices[i]; const auto& v = s.vertices[index];
-        auto item = scalar({{"vertexId", index + 1}, {"position", v.position}, {"pointReferenceCount", v.references.size()}});
+        auto item = scalar({{"vertexId", index + 1}, {"position", originalPosition(v.position, t.coordinateOrigin)}, {"pointReferenceCount", v.references.size()}});
         array(item, "pointReferences", v.references.size(), [&v](size_t j) { return scalar(point(v.references[j])); }, "pointReferencesTruncated", 1);
         return item;
     }, "verticesTruncated");
@@ -121,7 +121,7 @@ Node topologyInspection(const MeshTopology& t, bool holes)
         {"knownCount", count}, {"findingCount", count}, {"countUnit", "edges"}});
     array(n, "findings", count, [&t, holes](size_t i) {
         if (holes) { return boundary(t, t.holes[i]); }
-        const auto& f = t.nonManifoldVertices[i]; auto item = vertex(t.sources[f.source], f.vertex);
+        const auto& f = t.nonManifoldVertices[i]; auto item = vertex(t.sources[f.source], f.vertex, t.coordinateOrigin);
         item.value["linkComponents"] = f.linkComponents; return item;
     }, "findingsTruncated");
     if (holes) {

@@ -752,6 +752,7 @@ TEST_CASE("ctl analysis numeric results describe both directions and tolerance w
     const auto a = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
     auto b = a;
     for (auto& vertex : b.vertices) { vertex.position[2] += 2; }
+    for (auto& point : b.precisePositions) { point[2] += 2; }
     const auto result = woby::compareMeshes(a, b);
     const auto json = woby::controlComparisonResults(result, 1);
     for (const auto* direction : {"aToB", "bToA"}) {

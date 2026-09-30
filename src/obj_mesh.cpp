@@ -135,6 +135,16 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     if (result.error) {
         throwLoadError("Failed to load OBJ");
     }
+    std::vector<Coordinate> sourcePoints;
+    sourcePoints.reserve(result.attributes.positions.size() / 3);
+    for (size_t i = 0; i < result.attributes.positions.size(); i += 3) {
+        sourcePoints.push_back({result.attributes.positions[i], result.attributes.positions[i+1], result.attributes.positions[i+2]});
+    }
+    const auto origin = coordinateOrigin(sourcePoints);
+    for (size_t i = 0; i < sourcePoints.size(); ++i) {
+        sourcePoints[i] = relativePosition(sourcePoints[i], origin);
+        for (size_t k = 0; k < 3; ++k) { result.attributes.positions[i*3+k] = sourcePoints[i][k]; }
+    }
     reportModelLoadProgress(progress, ModelLoadStage::triangulating);
     if (!rapidobj::Triangulate(result)) {
         throwLoadError("Failed to triangulate OBJ");
@@ -146,14 +156,9 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     Mesh mesh;
     auto source = std::make_shared<SourceMeshData>();
     source->provenance = SourceProvenance::objPositions;
-    source->points.reserve(attrib.positions.size() / 3);
-    reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, 0, attrib.positions.size() / 3);
-    for (size_t i = 0; i < attrib.positions.size(); i += 3) {
-        if ((i / 3) % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, i / 3, attrib.positions.size() / 3); }
-        const std::array<float, 3> point = {attrib.positions[i], attrib.positions[i+1], attrib.positions[i+2]};
-        if (!finitePosition(point)) { throw std::runtime_error("OBJ contains a non-finite source coordinate."); }
-        source->points.push_back({point[0], point[1], point[2]});
-    }
+    mesh.origin = origin;
+    source->points = std::move(sourcePoints);
+    reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, source->points.size(), source->points.size());
     VertexIndexTable vertexMap;
     size_t indexCount = 0;
     for (const auto& shape : shapes) {
@@ -167,6 +172,7 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     const size_t vertexCapacity = std::min(attrib.positions.size() / 3u, indexCount);
     mesh.indices.reserve(indexCount);
     mesh.vertices.reserve(vertexCapacity);
+    mesh.precisePositions.reserve(vertexCapacity);
     mesh.nodes.reserve(shapes.size());
     source->indices.reserve(indexCount);
     reserveIndexTable(vertexMap, source->points.size(), indexCount,
@@ -195,12 +201,9 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
             }
 
             Vertex vertex{};
-            const auto vertexIndex = static_cast<size_t>(index.position_index) * 3u;
-            vertex.position = {
-                attrib.positions[vertexIndex + 0u],
-                attrib.positions[vertexIndex + 1u],
-                attrib.positions[vertexIndex + 2u],
-            };
+            const auto& point = source->points[static_cast<size_t>(index.position_index)];
+            mesh.precisePositions.push_back(point);
+            vertex.position = renderPosition(point);
 
             if (index.normal_index >= 0) {
                 const auto normalIndex = static_cast<size_t>(index.normal_index) * 3u;

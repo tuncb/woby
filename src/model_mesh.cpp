@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -50,6 +51,131 @@ bool hasCompleteNormals(const std::vector<Vertex>& vertices)
 }
 
 } // namespace
+
+void coordinateIdentity(double* result)
+{
+    std::fill_n(result, 16, 0.0);
+    for (size_t i = 0; i < 4; ++i) { result[i*5] = 1.0; }
+}
+void coordinateMultiply(double* result, const double* a, const double* b)
+{
+    CoordinateMatrix product{};
+    for (size_t col = 0; col < 4; ++col) {
+        for (size_t row = 0; row < 4; ++row) {
+            for (size_t k = 0; k < 4; ++k) { product[col*4+row] += a[col*4+k] * b[k*4+row]; }
+        }
+    }
+    std::copy(product.begin(), product.end(), result);
+}
+Coordinate transformCoordinate(const double* m, const Coordinate& p)
+{
+    Coordinate result{};
+    for (size_t k = 0; k < 3; ++k) { result[k] = m[k]*p[0] + m[k+4]*p[1] + m[k+8]*p[2] + m[k+12]; }
+    return result;
+}
+
+bool finiteCoordinate(const Coordinate& point) noexcept
+{
+    return std::all_of(point.begin(), point.end(), [](double v) { return std::isfinite(v); });
+}
+Coordinate meshPosition(const Mesh& mesh, size_t index)
+{
+    if (!mesh.precisePositions.empty()) { return mesh.precisePositions.at(index); }
+    const auto& p = mesh.vertices.at(index).position;
+    return {p[0], p[1], p[2]};
+}
+std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node)
+{
+    if (!node && mesh.originalBounds) { return *mesh.originalBounds; }
+    const auto count = node ? size_t(node->indexCount) : mesh.vertices.size();
+    std::array<Coordinate, 2> bounds{};
+    for (size_t i = 0; i < count; ++i) {
+        const auto p = originalPosition(meshPosition(mesh, node ? mesh.indices.at(size_t(node->indexOffset)+i) : i), mesh.origin);
+        if (i == 0) { bounds = {p, p}; }
+        else { for (size_t k = 0; k < 3; ++k) { bounds[0][k] = std::min(bounds[0][k], p[k]); bounds[1][k] = std::max(bounds[1][k], p[k]); } }
+    }
+    return bounds;
+}
+std::array<float, 3> renderPosition(const Coordinate& point)
+{
+    std::array<float, 3> result{};
+    for (size_t k = 0; k < 3; ++k) {
+        if (!std::isfinite(point[k]) || std::abs(point[k]) > std::numeric_limits<float>::max()) {
+            throw std::invalid_argument("Position exceeds the supported display range.");
+        }
+        result[k] = static_cast<float>(point[k]);
+    }
+    return result;
+}
+Coordinate relativePosition(const Coordinate& point, const Coordinate& origin)
+{
+    return {point[0] - origin[0], point[1] - origin[1], point[2] - origin[2]};
+}
+Coordinate originalPosition(const Coordinate& point, const Coordinate& origin)
+{
+    return {point[0] + origin[0], point[1] + origin[1], point[2] + origin[2]};
+}
+Coordinate coordinateOrigin(const std::vector<Coordinate>& points)
+{
+    if (points.empty()) { return {}; }
+    auto low = points.front(), high = low;
+    for (const auto& p : points) {
+        if (!finiteCoordinate(p)) { throw std::invalid_argument("Non-finite source coordinate."); }
+        for (size_t k = 0; k < 3; ++k) { low[k] = std::min(low[k], p[k]); high[k] = std::max(high[k], p[k]); }
+    }
+    Coordinate origin{};
+    // Small coordinates already have a useful working frame. Keep their existing
+    // origin, including models straddling zero. Rebase large absolute offsets.
+    for (size_t k = 0; k < 3; ++k) {
+        const double center = low[k] * .5 + high[k] * .5;
+        if (std::abs(center) >= 65536.0) { origin[k] = center; }
+    }
+    return origin;
+}
+void localizeMesh(Mesh& mesh)
+{
+    if (mesh.precisePositions.size() != mesh.vertices.size()) {
+        throw std::invalid_argument("Source and render position counts differ.");
+    }
+    mesh.origin = coordinateOrigin(mesh.precisePositions);
+    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+        auto& p = mesh.precisePositions[i];
+        p = relativePosition(p, mesh.origin);
+        mesh.vertices[i].position = renderPosition(p);
+    }
+}
+
+void rebaseMesh(Mesh& mesh, const Coordinate& origin)
+{
+    if (!finiteCoordinate(origin)) { throw std::invalid_argument("Non-finite mesh origin."); }
+    if (mesh.origin == origin) { return; }
+    const auto delta = relativePosition(mesh.origin, origin);
+    if (mesh.precisePositions.empty()) {
+        mesh.precisePositions.reserve(mesh.vertices.size());
+        for (const auto& vertex : mesh.vertices) { mesh.precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]}); }
+    }
+    for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+        auto& p = mesh.precisePositions.at(i);
+        p = originalPosition(p, delta);
+        mesh.vertices[i].position = renderPosition(p);
+    }
+    if (mesh.sourceData) {
+        auto source = std::make_shared<SourceMeshData>(*mesh.sourceData);
+        for (auto& p : source->points) { p = originalPosition(p, delta); }
+        mesh.sourceData = std::move(source);
+    }
+    if (mesh.duplicateInput) {
+        auto input = std::make_shared<DuplicateInput>(*mesh.duplicateInput);
+        for (auto& source : input->sources) {
+            for (size_t k = 0; k < 3; ++k) { source.unusedPointTransform[12+k] += delta[k]; }
+            for (auto& part : source.parts) { for (size_t k = 0; k < 3; ++k) { part.transform[12+k] += delta[k]; } }
+        }
+        mesh.duplicateInput = std::move(input);
+    }
+    mesh.origin = origin;
+    mesh.annotationCache.reset();
+    if (!mesh.vertices.empty()) { mesh.bounds = calculateBounds(mesh.vertices); }
+}
 
 bool empty(const Mesh& mesh) noexcept
 {
@@ -159,9 +285,7 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance)
     auto data = std::make_shared<SourceMeshData>();
     data->provenance = provenance;
     data->points.reserve(mesh.vertices.size());
-    for (const auto& vertex : mesh.vertices) {
-        data->points.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
-    }
+    for (size_t i = 0; i < mesh.vertices.size(); ++i) { data->points.push_back(meshPosition(mesh, i)); }
     data->indices = mesh.indices;
     mesh.sourceData = std::move(data);
 }
@@ -179,6 +303,8 @@ void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoad
 
     reportModelLoadProgress(progress, ModelLoadStage::bounds);
     mesh.bounds = calculateBounds(mesh.vertices, progress);
+    mesh.originalBounds.reset();
+    mesh.originalBounds = originalMeshBounds(mesh);
 }
 
 } // namespace woby

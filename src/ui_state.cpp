@@ -74,24 +74,19 @@ void transformFromSettings(
     const std::array<float, 3>& center,
     const std::array<float, 3>& translation,
     const std::array<float, 3>& rotationDegrees,
-    float scale,
-    float* model)
+    float scale, double* model)
 {
-    float toOrigin[16];
-    float transformed[16];
-    bx::mtxTranslate(toOrigin, -center[0], -center[1], -center[2]);
-    bx::mtxSRT(
-        transformed,
-        scale,
-        scale,
-        scale,
-        bx::toRad(rotationDegrees[0]),
-        bx::toRad(rotationDegrees[1]),
-        bx::toRad(rotationDegrees[2]),
-        center[0] + translation[0],
-        center[1] + translation[1],
-        center[2] + translation[2]);
-    bx::mtxMul(model, transformed, toOrigin);
+    float rotation[16];
+    bx::mtxSRT(rotation, scale, scale, scale, bx::toRad(rotationDegrees[0]),
+        bx::toRad(rotationDegrees[1]), bx::toRad(rotationDegrees[2]), 0, 0, 0);
+    CoordinateMatrix toOrigin{}, transformed{};
+    coordinateIdentity(toOrigin.data());
+    std::copy_n(rotation, 16, transformed.begin());
+    for (size_t k = 0; k < 3; ++k) {
+        toOrigin[12+k] = -double(center[k]);
+        transformed[12+k] = double(center[k]) + translation[k];
+    }
+    coordinateMultiply(model, transformed.data(), toOrigin.data());
 }
 
 bool boundsContainFinitePoints(const Bounds& bounds)
@@ -513,6 +508,7 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
         group.color = defaultGroupColor(firstColorIndex + groupIndex);
         group.localBounds = nodeBounds(mesh, mesh.nodes[groupIndex], progress, completed, total);
         group.localBoundsValid = true;
+        group.originalBounds = originalMeshBounds(mesh, &mesh.nodes[groupIndex]);
         group.center = group.localBounds.center;
         completed += mesh.nodes[groupIndex].indexCount;
         settings.push_back(group);
@@ -531,38 +527,46 @@ UiFileState createUiFileState(std::filesystem::path modelPath, Mesh mesh, size_t
     file.mesh = std::move(mesh);
     file.groupSettings = createUiGroupStates(file.mesh, firstColorIndex, progress);
     file.fileSettings.center = file.mesh.bounds.center;
+    file.fileSettings.coordinateOffset = file.mesh.origin;
     reportModelLoadProgress(progress, ModelLoadStage::ready, 1, 1);
     return file;
 }
 
+void synchronizeCoordinateFrames(UiState& state)
+{
+    if (!state.coordinateOrigin && !state.files.empty()) { state.coordinateOrigin = state.files.front().mesh.origin; }
+    if (!state.coordinateOrigin) { return; }
+    if (!finiteCoordinate(*state.coordinateOrigin)) { throw std::invalid_argument("Non-finite scene origin."); }
+    for (auto& file : state.files) { file.fileSettings.coordinateOffset = relativePosition(file.mesh.origin, *state.coordinateOrigin); }
+}
+
+void groupTransformMatrix(const UiGroupState& settings, double* model)
+{
+    transformFromSettings(settings.center, settings.translation, settings.rotationDegrees, settings.scale, model);
+}
+void fileTransformMatrix(const UiFileSettings& settings, double* model)
+{
+    transformFromSettings(settings.center, settings.translation, settings.rotationDegrees, settings.scale, model);
+    for (size_t k = 0; k < 3; ++k) { model[12+k] += settings.coordinateOffset[k]; }
+}
+void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, double* model)
+{
+    transformFromSettings(settings.center, settings.translation, settings.rotationDegrees, settings.scale, model);
+}
 void groupTransformMatrix(const UiGroupState& settings, float* model)
 {
-    transformFromSettings(
-        settings.center,
-        settings.translation,
-        settings.rotationDegrees,
-        settings.scale,
-        model);
+    CoordinateMatrix precise; groupTransformMatrix(settings, precise.data());
+    std::transform(precise.begin(), precise.end(), model, [](double v) { return static_cast<float>(v); });
 }
-
 void fileTransformMatrix(const UiFileSettings& settings, float* model)
 {
-    transformFromSettings(
-        settings.center,
-        settings.translation,
-        settings.rotationDegrees,
-        settings.scale,
-        model);
+    CoordinateMatrix precise; fileTransformMatrix(settings, precise.data());
+    std::transform(precise.begin(), precise.end(), model, [](double v) { return static_cast<float>(v); });
 }
-
 void sceneNodeTransformMatrix(const UiSceneNodeSettings& settings, float* model)
 {
-    transformFromSettings(
-        settings.center,
-        settings.translation,
-        settings.rotationDegrees,
-        settings.scale,
-        model);
+    CoordinateMatrix precise; sceneNodeTransformMatrix(settings, precise.data());
+    std::transform(precise.begin(), precise.end(), model, [](double v) { return static_cast<float>(v); });
 }
 
 Bounds defaultDisplayBounds()
@@ -645,6 +649,7 @@ UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex)
 
 void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
 {
+    synchronizeCoordinateFrames(state);
     if (firstFileIndex >= state.files.size()) {
         return;
     }
@@ -705,6 +710,7 @@ void refreshSceneTreeFolderVisibility(UiState& state)
 
 void refreshSceneTreeFolderCenters(UiState& state)
 {
+    synchronizeCoordinateFrames(state);
     for (auto& node : state.sceneNodes) {
         refreshFolderCentersRecursive(state, node);
     }
@@ -751,6 +757,8 @@ SceneNodeSettings sceneNodeSettings(const UiSceneNodeSettings& settings)
 SceneDocument createSceneDocument(const UiState& state)
 {
     SceneDocument document;
+    document.coordinateOrigin = state.coordinateOrigin;
+    if (!document.coordinateOrigin && !state.files.empty()) { document.coordinateOrigin = state.files.front().mesh.origin; }
     document.camera = state.camera;
     document.views = sceneViewRecords(state);
     document.annotations = sceneAnnotationRecords(state);
@@ -808,6 +816,7 @@ SceneDocument createSceneDocument(const UiState& state)
     for (const auto& file : state.files) {
         SceneFileRecord fileRecord;
         fileRecord.path = file.path;
+        fileRecord.coordinateOrigin = file.mesh.origin;
         fileRecord.importerId = file.importerId;
         fileRecord.settings = sceneFileSettings(file.fileSettings);
         fileRecord.vertexSizeScale = file.vertexSizeScale;
@@ -839,6 +848,12 @@ SceneDocument createSceneDocument(const UiState& state)
 
 void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
 {
+    if (record.coordinateOrigin && file.mesh.origin != *record.coordinateOrigin) {
+        rebaseMesh(file.mesh, *record.coordinateOrigin);
+        file.groupSettings = createUiGroupStates(file.mesh, 0);
+        file.fileSettings.center = file.mesh.bounds.center;
+        file.fileSettings.coordinateOffset = file.mesh.origin;
+    }
     if (!record.importerId.empty()) {
         if (record.importerId != file.importerId || record.groups.size() != file.mesh.nodes.size()) {
             throw std::runtime_error("Saved importer or group layout does not match the imported file.");

@@ -3,6 +3,7 @@
 #include "utf8_path.h"
 
 #include <algorithm>
+#include <map>
 #include <stdexcept>
 
 namespace woby {
@@ -53,6 +54,59 @@ SceneObjectId loadedTarget(const UiState& state, const SceneDocument& document, 
         || file.mesh.nodes[g].name != document.files[f].groups[g].name) { return 0; }
     return file.groupSettings[g].objectId;
 }
+// Legacy annotation projectors address unrecentered model coordinates. Migrate
+// only after verifying the old float geometry fingerprint; changed files remain
+// unresolved instead of silently attaching a saved annotation to new geometry.
+void migrateAnnotationFrame(UiAnnotation& item, const SceneAnnotationRecord& record,
+    const UiState& state, const SceneDocument& document, std::map<size_t, Mesh>& legacyMeshes)
+{
+    auto geometry = item.geometry;
+    const auto targets = record.targets.empty()
+        ? std::vector<SceneAnnotationTarget>{{record.fileIndex, record.groupIndex}} : record.targets;
+    std::vector<Coordinate> offsets(targets.size());
+    bool changed = false;
+    for (size_t i = 0; i < targets.size(); ++i) {
+        if (targets[i].fileIndex < 0 || targets[i].groupIndex < 0) { return; }
+        const auto f = static_cast<size_t>(targets[i].fileIndex), g = static_cast<size_t>(targets[i].groupIndex);
+        if (f >= state.files.size() || f >= document.files.size() || g >= state.files[f].mesh.nodes.size()) { return; }
+        const auto& mesh = state.files[f].mesh;
+        if (document.files[f].coordinateOrigin || mesh.origin == Coordinate{}) { continue; }
+        const auto& node = mesh.nodes[g];
+        auto [it, inserted] = legacyMeshes.try_emplace(f);
+        if (inserted) {
+            auto& legacy = it->second;
+            legacy.vertices = mesh.vertices;
+            legacy.indices = mesh.indices;
+            for (size_t v = 0; v < legacy.vertices.size(); ++v) {
+                legacy.vertices[v].position = renderPosition(originalPosition(meshPosition(mesh,v),mesh.origin));
+            }
+        }
+        auto& fingerprint = geometry.sources.empty() ? geometry.fingerprint : geometry.sources[i].fingerprint;
+        if (fingerprint != annotationFingerprint(it->second,node.indexOffset,node.indexCount)) { return; }
+        fingerprint = annotationFingerprint(mesh,node.indexOffset,node.indexCount);
+        offsets[i] = mesh.origin;
+        auto& projector = geometry.sources.empty() ? geometry.projector : geometry.sources[i].projector;
+        for (size_t row = 0; row < 4; ++row) {
+            for (size_t k = 0; k < 3; ++k) { projector[12+row] += projector[k*4+row]*offsets[i][k]; }
+        }
+        changed = true;
+    }
+    if (!changed) { return; }
+    for (size_t i = 0; i < geometry.sources.size(); ++i) {
+        auto& transform = geometry.sources[i].toPrimary;
+        for (size_t row = 0; row < 3; ++row) {
+            double translation = double(transform[12+row]) - offsets[0][row];
+            for (size_t k = 0; k < 3; ++k) { translation += double(transform[k*4+row])*offsets[i][k]; }
+            transform[12+row] = static_cast<float>(translation);
+        }
+    }
+    if (!geometry.sources.empty()) {
+        geometry.projector = geometry.sources[0].projector;
+        geometry.fingerprint = geometry.sources[0].fingerprint;
+    }
+    validateAnnotationGeometry(geometry);
+    item.geometry = std::move(geometry);
+}
 } // namespace
 std::vector<SceneObjectId> annotationGroupTargets(const UiState& state, SceneObjectId target)
 {
@@ -96,6 +150,19 @@ std::vector<std::array<float, 3>> annotationVertices(const UiState& state, const
         }
     }
     return {};
+}
+std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const UiAnnotation& item)
+{
+    Coordinate origin = state.coordinateOrigin.value_or(Coordinate{});
+    if (item.targetIds.empty()) {
+        for (const auto& file : state.files) {
+            if (std::any_of(file.groupSettings.begin(), file.groupSettings.end(),
+                [&](const auto& group) { return group.objectId == item.targetId; })) { origin = file.mesh.origin; break; }
+        }
+    }
+    std::vector<Coordinate> result;
+    for (const auto& p : annotationVertices(state, item)) { result.push_back(originalPosition({p[0],p[1],p[2]}, origin)); }
+    return result;
 }
 void validateAnnotationTargets(UiState& state)
 {
@@ -211,6 +278,7 @@ std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state)
 void loadSceneAnnotations(UiState& state, const SceneDocument& document)
 {
     state.annotations.clear();
+    std::map<size_t, Mesh> legacyMeshes;
     for (const auto& record : document.annotations) {
         validateAnnotationGeometry(record.geometry);
         UiAnnotation item;
@@ -220,6 +288,7 @@ void loadSceneAnnotations(UiState& state, const SceneDocument& document)
         if (record.targets.size() != record.geometry.sources.size()) { throw std::runtime_error("Invalid annotation source count."); }
         item.targetId = loadedTarget(state, document, {record.fileIndex, record.groupIndex});
         for (const auto& target : record.targets) { item.targetIds.push_back(loadedTarget(state, document, target)); }
+        migrateAnnotationFrame(item, record, state, document, legacyMeshes);
         state.annotations.push_back(std::move(item));
     }
     assignSceneObjectIds(state);
