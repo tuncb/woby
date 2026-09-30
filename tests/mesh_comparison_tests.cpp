@@ -92,6 +92,141 @@ woby::UiState stateWithFiles(size_t count)
 }
 } // namespace
 
+TEST_CASE("diagnostic visibility counts every category independently")
+{
+    woby::ComparisonSettings settings;
+    settings.showEdges = true;
+    const std::array fields = {
+        &settings.showBoundaries, &settings.showNonManifold, &settings.showWinding,
+        &settings.duplicates.showPoints, &settings.duplicates.showTriangles, &settings.degenerates.show,
+        &settings.topologyInspection.showNonManifoldVertices, &settings.topologyInspection.showHoles,
+        &settings.topologyInspection.showFins, &settings.intersections.show
+    };
+    CHECK(woby::countVisibleComparisonDiagnostics(settings) == woby::diagnosticCategoryCount);
+    for (auto* field : fields) { *field = false; }
+    CHECK(woby::countVisibleComparisonDiagnostics(settings) == 0);
+    for (size_t i = 0; i < fields.size(); ++i) {
+        INFO("category: ", i);
+        *fields[i] = true;
+        CHECK(woby::countVisibleComparisonDiagnostics(settings) == 1);
+        *fields[i] = false;
+    }
+}
+
+TEST_CASE("bulk diagnostic visibility changes only the targeted analysis display")
+{
+    auto state = stateWithFiles(2);
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    const auto other = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[1].objectId}, woby::ComparisonSide::b, true, other);
+    auto settings = woby::comparisonSettings(state, id);
+    settings.mode = woby::ComparisonMode::overlay;
+    settings.showEdges = true;
+    settings.tolerance = .2f;
+    settings.degenerates.needleThresholdRatio = 500;
+    settings.intersections.limits.pairs = 123;
+    for (size_t i = 0; i < woby::diagnosticCategoryCount; ++i) {
+        woby::setDiagnosticAutoUpdate(settings, static_cast<woby::DiagnosticCategory>(i), i % 2 == 0);
+    }
+    const auto allShown = settings;
+    settings.showWinding = false;
+    settings.intersections.show = false;
+    woby::setComparisonSettings(state, settings, id);
+    CHECK(woby::countVisibleComparisonDiagnostics(settings) == 8);
+    const auto otherSettings = woby::comparisonSettings(state, other);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    const auto result = woby::compareMeshes(square(), {});
+    woby::navigateComparisonDiagnostic(state, result, signature, 1, id);
+    REQUIRE(woby::findComparison(state, id)->diagnosticFocus);
+    woby::findComparison(state, id)->pendingDiagnosticFocus = woby::findComparison(state, id)->diagnosticFocus;
+    woby::requestComparisonDetector(state, id, woby::DiagnosticCategory::holes);
+    woby::requestComparisonIntersections(state, id);
+    woby::setPropertiesPaneVisible(state, false);
+    const auto selection = state.selectedSceneObjects;
+    const auto camera = state.camera;
+    woby::SceneHistory history;
+    woby::resetSceneHistory(history, state);
+
+    for (const bool visible : {false, true}) {
+        woby::setComparisonDiagnosticsVisible(state, visible, id);
+        const auto actual = woby::comparisonSettings(state, id);
+        CHECK(actual.showBoundaries == visible);
+        CHECK(actual.showNonManifold == visible);
+        CHECK(actual.showWinding == visible);
+        CHECK(actual.duplicates.showPoints == visible);
+        CHECK(actual.duplicates.showTriangles == visible);
+        CHECK(actual.degenerates.show == visible);
+        CHECK(actual.topologyInspection.showNonManifoldVertices == visible);
+        CHECK(actual.topologyInspection.showHoles == visible);
+        CHECK(actual.topologyInspection.showFins == visible);
+        CHECK(actual.intersections.show == visible);
+        CHECK(woby::countVisibleComparisonDiagnostics(actual) == (visible ? woby::diagnosticCategoryCount : 0));
+        if (visible) { CHECK(actual == allShown); }
+        for (size_t i = 0; i < woby::diagnosticCategoryCount; ++i) {
+            CHECK(woby::diagnosticAutoUpdate(actual, static_cast<woby::DiagnosticCategory>(i))
+                == woby::diagnosticAutoUpdate(allShown, static_cast<woby::DiagnosticCategory>(i)));
+        }
+        CHECK(woby::comparisonSettings(state, other) == otherSettings);
+        CHECK(woby::comparisonGeometrySignature(state, id) == signature);
+        CHECK(state.activeComparisonId == other);
+        CHECK(state.selectedSceneObjects == selection);
+        CHECK(state.camera == camera);
+        CHECK_FALSE(state.propertiesPaneVisible);
+        CHECK_FALSE(woby::findComparison(state, id)->diagnosticFocus);
+        CHECK_FALSE(woby::findComparison(state, id)->pendingDiagnosticFocus);
+        CHECK(woby::findComparison(state, id)->intersectionRequestRevision == 1);
+        CHECK(woby::findComparison(state, id)->detectorRequests[static_cast<size_t>(woby::DiagnosticCategory::holes)].revision == 1);
+        CHECK(state.isDirty);
+        CHECK(woby::recordSceneHistory(history, state));
+
+        const auto saved = woby::createSceneDocument(state);
+        woby::updateSceneDirty(state, saved);
+        const auto revision = state.sceneEditRevision;
+        woby::setComparisonDiagnosticsVisible(state, visible, id);
+        CHECK(state.sceneEditRevision == revision);
+        CHECK_FALSE(state.isDirty);
+    }
+    CHECK(history.snapshots.size() == 3);
+    const auto saved = woby::createSceneDocument(state);
+    const auto revision = state.sceneEditRevision;
+    woby::setComparisonDiagnosticsVisible(state, false, state.nextObjectId);
+    CHECK(woby::createSceneDocument(state) == saved);
+    CHECK(state.sceneEditRevision == revision);
+    CHECK_FALSE(state.isDirty);
+    woby::setComparisonDiagnosticsVisible(state, false);
+    CHECK(woby::countVisibleComparisonDiagnostics(woby::comparisonSettings(state, other)) == 0);
+    CHECK(woby::comparisonSettings(state, id) == allShown);
+}
+
+TEST_CASE("bulk diagnostic visibility survives scene save and load")
+{
+    struct Fixture {
+        std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+            / ("woby-diagnostic-visibility-" + std::to_string(std::random_device{}()) + "-" + std::to_string(std::random_device{}()));
+        Fixture() { std::filesystem::create_directory(root); }
+        ~Fixture() { std::error_code ignored; std::filesystem::remove_all(root, ignored); }
+    } fixture;
+    auto state = stateWithFiles(1);
+    state.files[0].path = fixture.root / "model.obj";
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    for (const bool visible : {false, true}) {
+        woby::setComparisonDiagnosticsVisible(state, visible, id);
+        const auto expected = woby::comparisonSettings(state, id);
+        const auto path = fixture.root / "scene.woby";
+        woby::writeSceneDocument(path, woby::createSceneDocument(state));
+        const auto loaded = woby::readSceneDocument(path);
+        REQUIRE(loaded.comparisons.size() == 1);
+        CHECK(loaded.comparisons[0].settings == expected);
+        const auto restored = woby::prepareSceneReplacement(state, state.files, loaded);
+        REQUIRE(restored.comparisons.size() == 1);
+        CHECK(restored.comparisons[0].settings == expected);
+        CHECK(woby::countVisibleComparisonDiagnostics(restored.comparisons[0].settings)
+            == (visible ? woby::diagnosticCategoryCount : 0));
+    }
+}
+
 TEST_CASE("diagnostic navigation visits every edge on each side and category and wraps")
 {
     auto state = stateWithFiles(2);

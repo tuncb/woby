@@ -588,6 +588,14 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and nearby dete
     };
     for (int warmup = 0; warmup < 5; ++warmup) { frame(); }
     REQUIRE(diagnostics);
+    const auto diagnosticsHeading = contents.find("Diagnostics");
+    REQUIRE(diagnosticsHeading != std::string::npos);
+    const auto headingRow = contents.substr(diagnosticsHeading,
+        contents.find('\n', diagnosticsHeading) - diagnosticsHeading);
+    const auto targetLabel = headingRow.find("Target");
+    REQUIRE(targetLabel != std::string::npos);
+    CHECK(headingRow.find("A", targetLabel) != std::string::npos);
+    CHECK(headingRow.find("B", targetLabel) != std::string::npos);
     CHECK((contents.find(hasA && hasB ? "Count A" : "Count") != std::string::npos) == (hasA || hasB));
     CHECK((contents.find("Count B") != std::string::npos) == (hasA && hasB));
     CHECK(contents.find("\xef\x80\x93") != std::string::npos); // Settings glyph.

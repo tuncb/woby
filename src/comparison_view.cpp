@@ -941,7 +941,30 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
 void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, bool current,
     bool hasA, bool hasB, SceneObjectId id)
 {
+    const auto visibleCount = countVisibleComparisonDiagnostics(comparisonSettings(state, id));
+    bool allVisible = visibleCount == diagnosticCategoryCount;
+    ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted("Diagnostics");
+    ImGui::SameLine();
+    if (drawVisibilityIconField("all diagnostics", allVisible, visibleCount > 0 && !allVisible)) {
+        setComparisonDiagnosticsVisible(state, allVisible, id);
+    }
+    ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 2);
+    auto settings = comparisonSettings(state, id);
+    const auto initial = settings;
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Target");
+    ImGui::SameLine();
+    if (ImGui::RadioButton("A##diagnostics", settings.diagnosticSide == ComparisonSide::a)) {
+        settings.diagnosticSide = ComparisonSide::a;
+    }
+    setLastItemTooltip("Inspect mesh diagnostics for input A.");
+    ImGui::SameLine();
+    if (ImGui::RadioButton("B##diagnostics", settings.diagnosticSide == ComparisonSide::b)) {
+        settings.diagnosticSide = ComparisonSide::b;
+    }
+    setLastItemTooltip("Inspect mesh diagnostics for input B.");
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
         "Topology is inspected separately within each source file. Automatic uses original indices for indexed input and exact positions for STL. "
@@ -955,20 +978,6 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         "OBJ IDs precede UV/normal splitting. Triangle IDs identify generated triangles, not original polygons. "
         "Plugin IDs describe the importer vertex table. STL corners are informational; its source-ID triangle check is unavailable. "
         "An asterisk indicates informational or partial results; hover the count for details.");
-    auto settings = comparisonSettings(state, id);
-    const auto initial = settings;
-    ImGui::TextUnformatted("Target");
-    ImGui::SameLine();
-    if (ImGui::RadioButton("A##diagnostics", settings.diagnosticSide == ComparisonSide::a)) {
-        settings.diagnosticSide = ComparisonSide::a;
-    }
-    setLastItemTooltip("Inspect mesh diagnostics for input A.");
-    ImGui::SameLine();
-    if (ImGui::RadioButton("B##diagnostics", settings.diagnosticSide == ComparisonSide::b)) {
-        settings.diagnosticSide = ComparisonSide::b;
-    }
-    setLastItemTooltip("Inspect mesh diagnostics for input B.");
-    if (settings != initial) { setComparisonSettings(state, settings, id); }
     int topologyMode = static_cast<int>(settings.topologyMode);
     if (ImGui::Combo("Topology", &topologyMode, "Automatic\0Original indices\0Exact positions\0")) {
         settings.topologyMode = static_cast<TopologyMode>(topologyMode);
