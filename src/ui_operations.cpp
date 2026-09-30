@@ -635,6 +635,36 @@ void setComparisonAutomaticUpdate(UiState& state, SceneObjectId id, DiagnosticCa
     setComparisonSettings(state, settings, id);
 }
 
+size_t countVisibleComparisonDiagnostics(const ComparisonSettings& settings)
+{
+    const std::array visibility = {
+        settings.showBoundaries, settings.showNonManifold, settings.showWinding,
+        settings.duplicates.showPoints, settings.duplicates.showTriangles, settings.degenerates.show,
+        settings.topologyInspection.showNonManifoldVertices, settings.topologyInspection.showHoles,
+        settings.topologyInspection.showFins, settings.intersections.show
+    };
+    return static_cast<size_t>(std::count(visibility.begin(), visibility.end(), true));
+}
+
+void setComparisonDiagnosticsVisible(UiState& state, bool visible, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison) { return; }
+    auto settings = comparison->settings;
+    settings.showBoundaries = visible;
+    settings.showNonManifold = visible;
+    settings.showWinding = visible;
+    settings.duplicates.showPoints = visible;
+    settings.duplicates.showTriangles = visible;
+    settings.degenerates.show = visible;
+    settings.topologyInspection.showNonManifoldVertices = visible;
+    settings.topologyInspection.showHoles = visible;
+    settings.topologyInspection.showFins = visible;
+    settings.intersections.show = visible;
+    if (!visible) { resetComparisonDiagnosticFocus(state, id); }
+    if (settings != comparison->settings) { setComparisonSettings(state, settings, id); }
+}
+
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id)
 {
     if (auto* comparison = findComparison(state, id)) {

@@ -53,6 +53,9 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
 void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
     uint64_t resultSignature, int step, SceneObjectId id);
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id = invalidSceneObjectId);
+[[nodiscard]] size_t countVisibleComparisonDiagnostics(const ComparisonSettings& settings);
+// Batch the existing saved visibility flags; hiding also clears highlighted findings.
+void setComparisonDiagnosticsVisible(UiState& state, bool visible, SceneObjectId id = invalidSceneObjectId);
 void setPropertiesPaneVisible(UiState& state, bool visible);
 void setPropertiesPaneWidth(UiState& state, float value, float minWidth, float maxWidth);
 void setScreenshotSettings(UiState& state, ScreenshotSettings settings);
