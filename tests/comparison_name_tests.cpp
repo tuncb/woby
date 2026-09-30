@@ -11,7 +11,9 @@
 #include <imgui_internal.h>
 
 #include <array>
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 
 namespace {
 struct ComparisonNameFixture {
@@ -269,6 +271,7 @@ TEST_CASE("analysis status stays fixed while scrolling and retry preserves the e
         contents = f.context->LogBuffer.c_str();
         ImGui::LogFinish();
         for (auto* window : f.context->Windows) {
+            if (window->ParentWindow != ImGui::GetCurrentWindow()) { continue; }
             if (std::string(window->Name).find("comparison_activity") != std::string::npos) { activity = window; }
             if (std::string(window->Name).find("comparison_properties") != std::string::npos) { editor = window; }
         }
@@ -741,6 +744,104 @@ TEST_CASE("diagnostics use count columns resizable dividers eyes and nearby dete
     io.AddMousePosEvent(divider.x + 30, divider.y); frame(); frame();
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
     CHECK(diagnostics->Columns[2].WidthGiven > countWidth + 20);
+}
+
+TEST_CASE("diagnostics keep readable labels and reachable controls as properties narrow")
+{
+    ComparisonNameFixture f;
+    bool hasA = true, hasB = true;
+    float scale = 1.0f;
+    SUBCASE("two inputs") {}
+    SUBCASE("only input A") { hasB = false; }
+    SUBCASE("only input B") { hasA = false; }
+    SUBCASE("no inputs") { hasA = hasB = false; }
+    SUBCASE("two inputs at double UI scale") { scale = 2.0f; }
+    auto& style = ImGui::GetStyle();
+    style.ScaleAllSizes(scale);
+    style.FontScaleMain = scale;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    const auto part = f.state.files[0].groupSettings[0].objectId;
+    if (hasA) { woby::setComparisonObjects(f.state, {part}, woby::ComparisonSide::a, true, f.id); }
+    if (hasB) { woby::setComparisonObjects(f.state, {part}, woby::ComparisonSide::b, true, f.id); }
+    auto settings = woby::comparisonSettings(f.state, f.id);
+    settings.mode = woby::ComparisonMode::original;
+    woby::setComparisonSettings(f.state, settings, f.id);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    ImGuiTable* diagnostics = nullptr;
+    float paneWidth = 900.0f;
+    const auto frame = [&] {
+        ImGui::GetIO().DisplaySize = {1200 * scale, 1600 * scale};
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({20, 20});
+        ImGui::SetNextWindowSize({paneWidth * scale, 1500 * scale});
+        ImGui::Begin("Responsive diagnostic properties");
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        for (auto* window : f.context->Windows) {
+            if (auto* table = ImGui::TableFindByID(window->GetID("Analysis diagnostics"))) {
+                diagnostics = table;
+            }
+        }
+        ImGui::End();
+        ImGui::EndFrame();
+    };
+    const auto settle = [&] { frame(); frame(); frame(); };
+    for (const float width : {900.0f, 440.0f, 340.0f, 250.0f, 900.0f}) {
+        paneWidth = width;
+        settle();
+        CAPTURE(width);
+        CAPTURE(scale);
+        CAPTURE(hasA);
+        CAPTURE(hasB);
+        REQUIRE(diagnostics);
+        CHECK(diagnostics->ColumnsCount == 5 + static_cast<int>(hasA) + static_cast<int>(hasB));
+        const float findingWidth = diagnostics->Columns[1].WorkMaxX - diagnostics->Columns[1].WorkMinX;
+        for (const char* label : {"Boundary edges", "Non-manifold vertices", "Inconsistent triangles", "Degenerate triangles"}) {
+            CAPTURE(label);
+            CHECK(findingWidth + 1 >= ImGui::CalcTextSize(label).x);
+            CHECK(ImGui::CalcTextSize(label, nullptr, false, findingWidth).y <= ImGui::GetFrameHeight());
+        }
+        CHECK(diagnostics->RowPosY2 - diagnostics->RowPosY1
+            <= std::max(woby::renderModeButtonSize(), ImGui::GetFrameHeight()) + 2 * style.CellPadding.y + 1);
+        CHECK(diagnostics->InnerWindow != diagnostics->OuterWindow);
+        if (diagnostics->InnerWindow != diagnostics->OuterWindow) {
+            CHECK(diagnostics->InnerWindow->ScrollMax.y == 0);
+            if (width == 250.0f) { CHECK(diagnostics->InnerWindow->ScrollMax.x > 0); }
+            if (width == 900.0f) { CHECK(diagnostics->InnerWindow->ScrollMax.x == 0); }
+        }
+    }
+
+    // Count widths customized in a wide pane must not squeeze Finding when narrowed.
+    diagnostics->Columns[2].WidthRequest += 100 * scale;
+    paneWidth = 250.0f;
+    settle();
+    CHECK(diagnostics->Columns[1].WidthGiven + 1 >= ImGui::CalcTextSize("Non-manifold vertices").x);
+    REQUIRE(diagnostics->InnerWindow->ScrollMax.x > 0);
+    ImGui::SetScrollX(diagnostics->InnerWindow, diagnostics->InnerWindow->ScrollMax.x);
+    settle();
+    const auto& gearColumn = diagnostics->Columns[diagnostics->ColumnsCount - 1];
+    CHECK(gearColumn.WorkMinX >= diagnostics->InnerWindow->InnerRect.Min.x);
+    CHECK(gearColumn.WorkMinX + woby::renderModeButtonSize() <= diagnostics->InnerWindow->InnerRect.Max.x);
+    const float rowHeight = diagnostics->RowPosY2 - diagnostics->RowPosY1;
+    const ImVec2 gear(gearColumn.WorkMinX + woby::renderModeButtonSize() * .5f,
+        diagnostics->RowPosY1 - (diagnostics->CurrentRow - 3) * rowHeight
+        + style.CellPadding.y + woby::renderModeButtonSize() * .5f);
+    auto& io = ImGui::GetIO();
+    io.AddMousePosEvent(gear.x, gear.y); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); settle();
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    const auto* popup = f.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    CHECK(popup->Pos.x <= gear.x + woby::renderModeButtonSize() * .5f);
+    CHECK(popup->Pos.x + popup->Size.x >= gear.x - woby::renderModeButtonSize() * .5f);
+    CHECK(std::abs(popup->Pos.y - (gear.y + woby::renderModeButtonSize() * .5f + style.ItemSpacing.y)) < 2 * scale);
 }
 
 TEST_CASE("diagnostic settings popup edits only its analysis and persists without inline editors")

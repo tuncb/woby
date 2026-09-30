@@ -501,7 +501,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
     ImGui::TableNextColumn();
     drawDetectorUpdate(state, detector, hasA || hasB, id, category);
     ImGui::TableNextColumn();
-    // Wrap long edge labels in narrower panels while retaining a selectable row.
+    // Keep the selectable and its text within the Finding column.
     const auto position = ImGui::GetCursorScreenPos();
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
     const float height = std::max(ImGui::GetFrameHeight(), ImGui::CalcTextSize(name, nullptr, false, width).y);
@@ -979,11 +979,35 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity; unavailable for STL.\nExact positions join exactly equal world coordinates within a file, with no epsilon.\nAutomatic selects original indices except for STL.");
     }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
+    constexpr struct {
+        const char* name;
+        DiagnosticCategory category;
+    } rows[] = {
+        {"Boundary edges", DiagnosticCategory::boundary},
+        {"Non-manifold vertices", DiagnosticCategory::nonManifoldVertices},
+        {"Holes", DiagnosticCategory::holes},
+        {"Fin candidates", DiagnosticCategory::fins},
+        {"Non-manifold edges", DiagnosticCategory::nonManifold},
+        {"Inconsistent triangles", DiagnosticCategory::winding},
+        {"Duplicate points", DiagnosticCategory::duplicatePoints},
+        {"Duplicate triangles", DiagnosticCategory::duplicateTriangles},
+        {"Degenerate triangles", DiagnosticCategory::degenerateTriangles},
+        {"Self-intersections", DiagnosticCategory::selfIntersections},
+    };
+    float findingWidth = ImGui::CalcTextSize("Finding").x;
+    for (const auto& row : rows) { findingWidth = std::max(findingWidth, ImGui::CalcTextSize(row.name).x); }
+    // Keep labels on one line and scroll the columns before a narrow pane squeezes them.
+    // Size the scrolling child to the rows so the properties pane retains vertical scrolling.
+    const auto& style = ImGui::GetStyle();
+    const float rowHeight = std::max(renderModeButtonSize(), ImGui::GetFrameHeight()) + 2 * style.CellPadding.y;
+    const float tableHeight = ImGui::GetTextLineHeight() + 2 * style.CellPadding.y
+        + static_cast<float>(std::size(rows)) * rowHeight + style.ScrollbarSize;
     if (ImGui::BeginTable("Analysis diagnostics", 5 + static_cast<int>(hasA) + static_cast<int>(hasB),
-            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV)) {
+            ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV
+                | ImGuiTableFlags_ScrollX, {0, tableHeight})) {
         ImGui::TableSetupColumn("Update", ImGuiTableColumnFlags_WidthFixed,
             std::max(renderModeButtonSize(), ImGui::CalcTextSize("Update").x));
-        ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize, findingWidth);
         if (hasA) { ImGui::TableSetupColumn(hasB ? "Count A" : "Count", ImGuiTableColumnFlags_WidthFixed, std::max(ImGui::GetFontSize() * 4, ImGui::CalcTextSize("Not checked").x)); }
         if (hasB) { ImGui::TableSetupColumn(hasA ? "Count B" : "Count", ImGuiTableColumnFlags_WidthFixed, std::max(ImGui::GetFontSize() * 4, ImGui::CalcTextSize("Not checked").x)); }
         ImGui::TableSetupColumn("Show", ImGuiTableColumnFlags_WidthFixed);
@@ -991,16 +1015,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
             2 * ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x);
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
-        diagnosticRow(state, runtime, current, "Boundary edges", DiagnosticCategory::boundary, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Non-manifold vertices", DiagnosticCategory::nonManifoldVertices, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Holes", DiagnosticCategory::holes, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Fin candidates", DiagnosticCategory::fins, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Non-manifold edges", DiagnosticCategory::nonManifold, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Inconsistent triangles", DiagnosticCategory::winding, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Duplicate points", DiagnosticCategory::duplicatePoints, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Duplicate triangles", DiagnosticCategory::duplicateTriangles, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Degenerate triangles", DiagnosticCategory::degenerateTriangles, hasA, hasB, id);
-        diagnosticRow(state, runtime, current, "Self-intersections", DiagnosticCategory::selfIntersections, hasA, hasB, id);
+        for (const auto& row : rows) { diagnosticRow(state, runtime, current, row.name, row.category, hasA, hasB, id); }
         ImGui::EndTable();
     }
     current = comparisonStagesReady(runtime, state, id, comparisonSource);
