@@ -2198,6 +2198,7 @@ int main(int argc, char** argv)
         init.resolution.reset = headless ? WOBY_GPU_RESET_NONE : resetFlags;
 
         if (!woby::graphics::init(init)) {
+            spdlog::error("{}", woby::graphics::initializationError());
             throw std::runtime_error(woby::graphics::initializationError());
         }
         graphicsInitialized = true;

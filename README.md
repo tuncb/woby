@@ -32,6 +32,15 @@ including `VK_EXT_descriptor_heap`, `VK_KHR_device_address_commands`,
 number alone does not establish compatibility. macOS requires Apple silicon,
 macOS 26+, and Metal 4. Woby reports unsupported devices at startup.
 
+Vulkan startup errors list each rejected GPU, its API and driver information,
+and exact missing extensions or queried feature flags. Unqueried features are
+identified as unchecked. Surface and logical-device creation failures report
+the failing operation separately. Copy the full diagnostic text from the startup
+error or terminal into a support report; it is also included in file logs at
+error level or more verbose. Install a driver exposing the listed requirements on compatible
+hardware. Vulkan 1.4 alone, a larger driver version, or selecting another rejected
+GPU does not establish compatibility.
+
 The native renderer handles meshes, lines, circular vertex markers, 4x MSAA,
 per-sample marker picking, comparison heatmaps, annotations, ImGui, and PNG
 readback. See [renderer architecture and validation](doc/nographicsapi-migration.md).

@@ -16,6 +16,14 @@ endif()
 # user's checkout: FetchContent invokes this only in its private dependency tree.
 function(replace_exact path before after)
     file(READ "${NGAPI_SOURCE}/${path}" source)
+    # A later patch can extend this replacement. Its optional exact marker
+    # keeps repeated configuration idempotent without skipping other patches.
+    if(ARGC GREATER 3)
+        string(FIND "${source}" "${ARGV3}" extended)
+        if(NOT extended EQUAL -1)
+            return()
+        endif()
+    endif()
     string(FIND "${source}" "${after}" applied)
     if(NOT applied EQUAL -1)
         return()
@@ -87,7 +95,8 @@ replace_exact(src/NoGraphicsAPI.cpp
 [==[#if !defined(_WIN32)
     if (presentation && !desc.create_surface)
         return {.error = Error::unsupported};
-#endif]==])
+#endif]==]
+[==[return fail_initialization(desc, nullptr, Error::unsupported, "Vulkan surface adapter is unavailable");]==])
 replace_exact(src/NoGraphicsAPI.cpp
 [==[    state->timestamp_query_count = desc.timestamp_query_count;]==]
 [==[    state->timestamp_query_count = desc.timestamp_query_count;
@@ -103,7 +112,8 @@ replace_exact(src/NoGraphicsAPI.cpp
 [==[#if defined(_WIN32)
          (!desc.create_surface && !has_name({instance_extensions, instance_extension_count},
                    VK_KHR_WIN32_SURFACE_EXTENSION_NAME)) ||
-#endif]==])
+#endif]==]
+[==[if (!desc.create_surface) check_instance_extension(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);]==])
 replace_exact(src/NoGraphicsAPI.cpp
 [==[#else
     constexpr bool khr_surface_maintenance1 = false;
@@ -114,7 +124,8 @@ replace_exact(src/NoGraphicsAPI.cpp
 replace_exact(src/NoGraphicsAPI.cpp
 [==[    const char* enabled_instance_extensions[6]{};]==]
 [==[    const char* enabled_instance_extensions[32]{};
-    if (desc.surface_extension_count > 24) return fail_device_creation(state, Error::unsupported);]==])
+    if (desc.surface_extension_count > 24) return fail_device_creation(state, Error::unsupported);]==]
+[==[return fail_initialization(desc, state, Error::unsupported, "surface extension count exceeds backend capacity");]==])
 replace_exact(src/NoGraphicsAPI.cpp
 [==[#if defined(_WIN32)
     if (presentation)
@@ -131,7 +142,9 @@ replace_exact(src/NoGraphicsAPI.cpp
             const char* name=desc.surface_extensions[i];
             if (!has_name({instance_extensions, instance_extension_count}, name)) return fail_device_creation(state, Error::unsupported);
             if (strcmp(name, VK_KHR_SURFACE_EXTENSION_NAME) != 0) enabled_instance_extensions[enabled_instance_extension_count++] = name;
-        }]==])
+        }]==]
+[==[            if (!has_name({instance_extensions, instance_extension_count}, name)) {
+                report_diagnostic(desc, DeviceDiagnosticKind::missing_extension, name);]==])
 replace_exact(src/NoGraphicsAPI.cpp
 [==[    }
 #endif
@@ -152,7 +165,8 @@ replace_exact(src/NoGraphicsAPI.cpp
 #if defined(_WIN32)
     if (presentation && !desc.create_surface)
     {
-        const VkWin32SurfaceCreateInfoKHR surface_info]==])
+        const VkWin32SurfaceCreateInfoKHR surface_info]==]
+[==[if (!state->surface) return fail_initialization(desc, state, Error::driver_error, "creating the SDL Vulkan surface");]==])
 replace_exact(src/NoGraphicsAPI.cpp
 [==[[[nodiscard]] bool swapchain_surface_configuration_changed(const Swapchain& swapchain) noexcept]==]
 [==[VkExtent2D surface_extent(const Device& device, const VkSurfaceCapabilitiesKHR& capabilities) noexcept

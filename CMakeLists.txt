@@ -361,6 +361,7 @@ if(BUILD_TESTING)
 
     add_executable(woby_tests
         tests/graphics_tests.cpp
+        tests/graphics_diagnostics_tests.cpp
         tests/shader_types_tests.cpp
         tests/frame_pacing_tests.cpp
         tests/manual_path_dialog_tests.cpp

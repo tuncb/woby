@@ -1,4 +1,5 @@
 #include "graphics.h"
+#include "graphics_diagnostics.h"
 #include "frame_pacing.h"
 #include "root.h"
 #include <NoGraphicsAPI/NoGraphicsAPI.hpp>
@@ -746,6 +747,7 @@ bool init(const Init &options)
         initError = "Renderer already initialized";
         return false;
     }
+    initError.clear();
     context = std::make_unique<Context>();
     auto &c = *context;
     c.width = std::max(1u, options.resolution.width);
@@ -789,10 +791,18 @@ bool init(const Init &options)
             };
         }
 #endif
+        DeviceCreationDiagnostics diagnostics;
+        deviceOptions.diagnostic_context = &diagnostics;
+        deviceOptions.diagnostic = collectDeviceDiagnostic;
         auto initialized = gpu::create_device(deviceOptions);
-        require(initialized.device != nullptr,
-                "NoGraphicsAPI cannot initialize this GPU. Vulkan 1.4 with descriptor heaps and device address "
-                "commands, or Metal 4 on macOS 26, is required. Check the graphics driver and hardware requirements.");
+        if (!initialized.device)
+            throw std::runtime_error(formatDeviceCreationFailure(diagnostics, initialized.error,
+#if defined(__APPLE__)
+                true
+#else
+                false
+#endif
+                ));
         c.device = initialized.device;
         c.window = window;
         c.windowed = window != nullptr;
