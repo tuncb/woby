@@ -29,6 +29,9 @@ struct MeshNode {
     std::string name;
     uint32_t indexOffset = 0;
     uint32_t indexCount = 0;
+    // Source defaults only; editable appearance lives in UiState.
+    std::optional<std::array<float, 4>> defaultColor = {};
+    bool defaultVisible = true;
 };
 
 struct MeshAnnotationBlock {

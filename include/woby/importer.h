@@ -21,6 +21,8 @@ extern "C" {
 #define WOBY_IMPORT_CANCELED 2u
 #define WOBY_IMPORT_HAS_NORMALS 1u
 #define WOBY_IMPORT_HAS_TEXCOORDS 2u
+#define WOBY_IMPORT_GROUP_HAS_COLOR 1u
+#define WOBY_IMPORT_GROUP_INITIALLY_HIDDEN 2u
 
 /* All strings are null-terminated UTF-8. No exceptions may cross this ABI.
  * The plugin owns all returned memory until release_result. See doc/importers.md. */
@@ -34,6 +36,11 @@ typedef struct WobyImportGroup {
     const char* name;
     uint32_t index_offset;
     uint32_t index_count;
+    /* Zero flags uses Woby's palette and initially shows this group. */
+    uint32_t flags;
+    /* Optional RGBA in [0, 1], used only with WOBY_IMPORT_GROUP_HAS_COLOR.
+     * Alpha initializes group opacity. These are defaults; saved scenes override them. */
+    float color[4];
 } WobyImportGroup;
 
 typedef struct WobyImportRequest {

@@ -12,7 +12,7 @@ WobyImportVertex vertices[] = {
     {{9, 9, 9}, {0, 0, 1}, {0, 0}}, // Deliberately unused.
 };
 uint32_t indices[] = {0, 1, 2};
-WobyImportGroup group = {"triangle", 0u, 3u};
+WobyImportGroup group = {"triangle", 0u, 3u, 0u, {}};
 int outstanding = 0;
 
 uint32_t WOBY_IMPORT_CALL readFixture(const WobyImportRequest* request, WobyImportResult* result)
@@ -33,6 +33,21 @@ uint32_t WOBY_IMPORT_CALL readFixture(const WobyImportRequest* request, WobyImpo
     vertices[0].position[0] = 0.0f;
     group.index_offset = 0u;
     group.name = "triangle";
+    group.flags = 0u;
+    for (auto& component : group.color) { component = 0.0f; }
+    if (std::strstr(request->path, "colored")) {
+        group.flags |= WOBY_IMPORT_GROUP_HAS_COLOR;
+        group.color[0] = 0.2f;
+        group.color[1] = 0.4f;
+        group.color[2] = 0.6f;
+        group.color[3] = 0.25f;
+    }
+    if (std::strstr(request->path, "hidden")) { group.flags |= WOBY_IMPORT_GROUP_INITIALLY_HIDDEN; }
+    if (std::strstr(request->path, "invalid_flags")) { group.flags = 4u; }
+    if (std::strstr(request->path, "invalid_color")) {
+        group.flags |= WOBY_IMPORT_GROUP_HAS_COLOR;
+        group.color[3] = std::numeric_limits<float>::quiet_NaN();
+    }
     if (std::strstr(request->path, "invalid_index")) { indices[2] = 100u; }
     if (std::strstr(request->path, "nan_position")) { vertices[0].position[0] = std::numeric_limits<float>::quiet_NaN(); }
     if (std::strstr(request->path, "invalid_group")) { group.index_offset = 3u; }
@@ -53,6 +68,9 @@ uint32_t WOBY_IMPORT_CALL readFixture(const WobyImportRequest* request, WobyImpo
 void WOBY_IMPORT_CALL releaseFixture(WobyImportResult* result)
 {
     if (result->user_data) { --outstanding; }
+    // Successful imports must own their metadata before this callback returns.
+    group.flags = 0u;
+    for (auto& component : group.color) { component = 0.0f; }
 }
 
 const WobyImporterApi api = {

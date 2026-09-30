@@ -353,7 +353,24 @@ Mesh copyImportedMesh(const WobyImportResult& result)
         if (name.empty() || nameBytes > 1024u * 1024u || !groupNames.insert(name).second) {
             throw std::runtime_error("Importer group names must be unique, nonempty and within size limits.");
         }
-        mesh.nodes.push_back({std::move(name), nextIndex, group.index_count});
+        constexpr uint32_t groupFlags = WOBY_IMPORT_GROUP_HAS_COLOR | WOBY_IMPORT_GROUP_INITIALLY_HIDDEN;
+        if ((group.flags & ~groupFlags) != 0u) {
+            throw std::runtime_error("Invalid importer group flags.");
+        }
+        MeshNode node{std::move(name), nextIndex, group.index_count};
+        node.defaultVisible = (group.flags & WOBY_IMPORT_GROUP_INITIALLY_HIDDEN) == 0u;
+        if ((group.flags & WOBY_IMPORT_GROUP_HAS_COLOR) != 0u) {
+            std::array<float, 4> color;
+            for (size_t component = 0; component < color.size(); ++component) {
+                const float value = group.color[component];
+                if (!std::isfinite(value) || value < 0.0f || value > 1.0f) {
+                    throw std::runtime_error("Importer group color components must be finite and within [0, 1].");
+                }
+                color[component] = value;
+            }
+            node.defaultColor = color;
+        }
+        mesh.nodes.push_back(std::move(node));
         nextIndex += group.index_count;
     }
     if (result.group_count == 0u) {

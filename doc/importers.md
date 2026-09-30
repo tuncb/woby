@@ -1,8 +1,9 @@
 # File format importers
 
 woby can load native importer libraries supplied by the user. An importer reads
-a model file and returns triangles and named groups. woby owns the copied geometry,
-scene settings, GPU resources, and rendering. The DLL must implement the woby API;
+a model file and returns triangles and named groups with optional color and
+visibility defaults. woby owns the copied geometry, scene settings, GPU resources,
+and rendering. The DLL must implement the woby API;
 an arbitrary third-party format library needs a small adapter.
 
 ## Portable importer packages
@@ -122,7 +123,10 @@ continue using the same ID. Importer IDs must remain stable when the DLL is move
 The public, C-compatible header is [`include/woby/importer.h`](../include/woby/importer.h).
 Define `WOBY_IMPORTER_BUILD` when building the plugin and export the exact C symbol
 `woby_get_importer_api`. It takes the host ABI version and returns a static
-`WobyImporterApi`, or null for unsupported versions. The current ABI version is 2. Plugins built for ABI 1 must be rebuilt with the new header; the host rejects the old binary layout.
+`WobyImporterApi`, or null for unsupported versions. The current ABI version is 2.
+The group layout was extended within ABI 2 before external adoption. Rebuild any
+existing plugins against the current header; previous ABI 2 group layouts are not
+compatible and cannot be distinguished by the version number. ABI 1 is rejected.
 The DLL must match the host's architecture (the Windows preset builds x64).
 Use the platform's default struct alignment, 64-bit IEEE doubles for positions,
 32-bit IEEE floats for normals/UVs, and the header's
@@ -162,6 +166,31 @@ are limited to 4 GiB; internal copies and GPU buffers consume additional memory.
 Groups must partition the entire index buffer consecutively, with nonempty ranges
 aligned to triangles, and unique nonempty names. The limits are 100,000 groups and
 1 MiB of total group-name bytes. Zero groups produces one group named `Mesh`.
+
+Zero-initialize each group's `flags` and `color` when no appearance defaults are
+needed. `WOBY_IMPORT_GROUP_HAS_COLOR` supplies an RGBA color in `color[4]`, using
+the same RGB values as woby's group color control. Every component must be finite
+and in `[0, 1]`; invalid colors and unknown group flags reject the import.
+Without that flag, color storage is ignored and the normal palette is used.
+Alpha initializes the separate group opacity control; the UI color's alpha is
+set to 1. A color with alpha 0 is transparent, but is still logically visible.
+
+`WOBY_IMPORT_GROUP_INITIALLY_HIDDEN` starts the group hidden without discarding
+its geometry. Users can reveal it with the existing visibility control. Without
+that flag, the group starts visible. Both flags can be combined:
+
+```c
+WobyImportGroup groups[] = {
+    {"Primary", 0, 3, WOBY_IMPORT_GROUP_HAS_COLOR, {0.2f, 0.6f, 0.9f, 1.0f}},
+    {"Auxiliary", 3, 3, WOBY_IMPORT_GROUP_HAS_COLOR | WOBY_IMPORT_GROUP_INITIALLY_HIDDEN,
+        {0.8f, 0.4f, 0.2f, 0.5f}}
+};
+```
+
+These values initialize new imports only. Saved scene color, opacity, and
+visibility override the importer defaults, including when those defaults change.
+Palette assignment for other groups retains its normal group-index ordering.
+
 The host retains the returned vertex table, including unused and duplicate
 vertices; it does not compact or deduplicate it. Vertex, group, and triangle order
 are preserved. Unused vertices also contribute to the calculated mesh bounds.
@@ -172,8 +201,8 @@ positions for analysis. Source bounds and exported finding coordinates restore
 the original coordinates. This does not recover detail already lost by an SDK
 or a source format that stores positions as floats.
 
-Hierarchies, CAD surfaces, materials, textures, and animation are not part
-of this mesh-only API.
+Hierarchies, CAD surfaces, full material definitions, textures, and animation are
+not part of this mesh-only API.
 
 Imports through the interactive loading pipeline run on its CPU worker; startup
 imports use the existing synchronous startup pipeline. Calls into each importer
