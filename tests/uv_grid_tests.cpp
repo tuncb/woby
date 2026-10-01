@@ -154,7 +154,7 @@ TEST_CASE("UV layout preserves seams tile offsets and proportions while omitting
     source.vertices.push_back(source.vertices[0]);
     source.vertices.back().texcoord = {1, 1};
     source.indices[3] = 3;
-    const auto result = woby::uvLayoutMesh(source);
+    const auto result = woby::uvLayoutMesh(source, woby::SceneUpAxis::y);
     REQUIRE(result.nodes.size() == 2);
     REQUIRE(result.indices.size() == 6);
     REQUIRE(result.vertices.size() == 4);
@@ -169,10 +169,10 @@ TEST_CASE("UV layout preserves seams tile offsets and proportions while omitting
     CHECK(source.vertices[0].position == source.vertices[3].position);
     CHECK(result.precisePositions.size() == result.vertices.size());
     for (auto& node : source.nodes) { node.hasTexcoords = false; }
-    CHECK(woby::uvLayoutMesh(source).indices.empty());
+    CHECK(woby::uvLayoutMesh(source, woby::SceneUpAxis::y).indices.empty());
     source.nodes[0].hasTexcoords = true;
     for (auto& vertex : source.vertices) { vertex.texcoord = {0, 0}; }
-    const auto constant = woby::uvLayoutMesh(source);
+    const auto constant = woby::uvLayoutMesh(source, woby::SceneUpAxis::y);
     REQUIRE(constant.indices.size() == 3);
     CHECK(woby::finitePosition(constant.bounds.min));
     CHECK(woby::finitePosition(constant.bounds.max));
@@ -261,6 +261,116 @@ TEST_CASE("UV analysis type and view survive persistence saved views and undo re
     const auto legacy = woby::readSceneDocument(path);
     REQUIRE(legacy.comparisons.size() == 1);
     CHECK(legacy.comparisons[0].settings.type == woby::AnalysisType::mesh);
+}
+
+TEST_CASE("UV layouts obey the scene up axis and refresh geometry and framing bounds")
+{
+    UvFixture f;
+    auto& state = f.state;
+    woby::setFileTranslation(state.files[0].fileSettings, {3, 4, 5});
+    const auto layoutId = woby::createComparison(state, woby::AnalysisType::uv);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, layoutId);
+    woby::setComparisonTranslation(state, layoutId, {-7, 8, -9});
+    const auto surfaceId = woby::duplicateComparison(state, layoutId);
+    auto surfaceSettings = woby::comparisonSettings(state, surfaceId);
+    surfaceSettings.uvView = woby::UvView::surface;
+    woby::setComparisonSettings(state, surfaceSettings, surfaceId);
+    const auto meshId = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, meshId);
+    const auto surfaceSignature = woby::comparisonGeometrySignature(state, surfaceId);
+    const auto meshSignature = woby::comparisonGeometrySignature(state, meshId);
+    auto layoutSignature = woby::comparisonGeometrySignature(state, layoutId);
+    REQUIRE(surfaceSignature != 0);
+    REQUIRE(meshSignature != 0);
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z, woby::SceneUpAxis::y}) {
+        woby::setSceneUpAxis(state, up);
+        CHECK(woby::comparisonGeometrySignature(state, layoutId) != layoutSignature);
+        layoutSignature = woby::comparisonGeometrySignature(state, layoutId);
+        CHECK(woby::comparisonGeometrySignature(state, surfaceId) == surfaceSignature);
+        CHECK(woby::comparisonGeometrySignature(state, meshId) == meshSignature);
+        auto refreshed = state;
+        woby::recalculateSceneBounds(refreshed);
+        CHECK(state.sceneBounds.min == refreshed.sceneBounds.min);
+        CHECK(state.sceneBounds.max == refreshed.sceneBounds.max);
+        const auto layout = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, layoutId);
+        const bool yUp = up == woby::SceneUpAxis::y;
+        const std::array<std::array<float, 3>, 3> positions = yUp
+            ? std::array<std::array<float, 3>, 3>{{{3, 5, 5}, {4, 5, 5}, {3, 4, 5}}}
+            : std::array<std::array<float, 3>, 3>{{{3, 4.5f, 5.5f}, {4, 4.5f, 5.5f}, {3, 4.5f, 4.5f}}};
+        REQUIRE(layout.vertices.size() == 6);
+        for (size_t i = 0; i < layout.vertices.size(); ++i) {
+            CHECK(layout.vertices[i].position == positions[i % 3]);
+            CHECK(layout.vertices[i].normal == (yUp ? std::array<float, 3>{0, 0, 1}
+                : std::array<float, 3>{0, -1, 0}));
+            CHECK(layout.vertices[i].texcoord == state.files[0].mesh.vertices[i % 3].texcoord);
+            for (size_t k = 0; k < 3; ++k) {
+                CHECK(layout.precisePositions[i][k] == layout.vertices[i].position[k]);
+            }
+        }
+        const auto display = woby::comparisonDisplayBounds(state, layoutId);
+        REQUIRE(display);
+        woby::selectSceneObject(state, layoutId);
+        const auto selected = woby::selectedSceneBounds(state);
+        REQUIRE(selected);
+        for (size_t k = 0; k < 3; ++k) {
+            CHECK(display->min[k] == layout.bounds.min[k] + state.comparisons[0].translation[k]);
+            CHECK(display->max[k] == layout.bounds.max[k] + state.comparisons[0].translation[k]);
+            CHECK(selected->min[k] == display->min[k]);
+            CHECK(selected->max[k] == display->max[k]);
+            CHECK(state.sceneBounds.min[k] <= display->min[k]);
+            CHECK(state.sceneBounds.max[k] >= display->max[k]);
+        }
+        CHECK(state.camera.target == state.sceneBounds.center);
+        const auto revision = state.sceneEditRevision;
+        woby::setSceneUpAxis(state, up);
+        CHECK(state.sceneEditRevision == revision);
+        CHECK(woby::comparisonGeometrySignature(state, layoutId) == layoutSignature);
+    }
+}
+
+TEST_CASE("UV layout orientation survives scene reload saved views and undo redo")
+{
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        UvFixture f;
+        auto& state = f.state;
+        const auto opposite = up == woby::SceneUpAxis::y ? woby::SceneUpAxis::z : woby::SceneUpAxis::y;
+        woby::setSceneUpAxis(state, opposite);
+        const auto id = woby::createComparison(state, woby::AnalysisType::uv);
+        woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+        const auto clean = woby::createSceneDocument(state);
+        woby::SceneHistory history;
+        woby::resetSceneHistory(history, state);
+        woby::setSceneUpAxis(state, up);
+        REQUIRE(woby::recordSceneHistory(history, state));
+        auto undo = woby::prepareSceneHistoryStep(history, state, clean, false);
+        REQUIRE(undo);
+        woby::commitSceneHistoryStep(history, state, std::move(*undo), false);
+        CHECK(state.upAxis == opposite);
+        auto redo = woby::prepareSceneHistoryStep(history, state, clean, true);
+        REQUIRE(redo);
+        woby::commitSceneHistoryStep(history, state, std::move(*redo), true);
+        CHECK(state.upAxis == up);
+        const auto view = woby::createView(state);
+        woby::setSceneUpAxis(state, opposite);
+        woby::applyView(state, view);
+        CHECK(state.upAxis == up);
+        const auto path = f.root / "uv-orientation.woby";
+        woby::writeSceneDocument(path, woby::createSceneDocument(state));
+        auto document = woby::readSceneDocument(path);
+        for (auto& file : document.files) { file.path = woby::sceneAbsolutePath(path, file.path); }
+        const auto restored = woby::prepareSceneReplacement(state, state.files, document);
+        CHECK(restored.upAxis == up);
+        const auto checkLayout = [&](const woby::UiState& current, woby::SceneObjectId currentId) {
+            const auto mesh = woby::comparisonWorldMesh(current, woby::ComparisonSide::a, currentId);
+            const size_t vertical = current.upAxis == woby::SceneUpAxis::y ? 1 : 2;
+            const size_t depth = current.upAxis == woby::SceneUpAxis::y ? 2 : 1;
+            CHECK(mesh.bounds.max[vertical] - mesh.bounds.min[vertical] == doctest::Approx(1));
+            CHECK(mesh.bounds.max[depth] == mesh.bounds.min[depth]);
+            CHECK(mesh.vertices[0].position[vertical] > mesh.vertices[2].position[vertical]);
+        };
+        checkLayout(state, id);
+        checkLayout(restored, restored.activeComparisonId);
+    }
 }
 
 TEST_CASE("UV analysis controls validate types and reject incompatible edits atomically")

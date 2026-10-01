@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["Pillow>=11"]
 # ///
-"""Verify UV grid pixels, density, missing UVs, undo, and scene reload.
+"""Verify UV grid pixels, density, up axis, missing UVs, undo, and scene reload.
 
 An optional second argument writes a persistent curved-patch demo and screenshots.
 """
@@ -128,6 +128,31 @@ def analysis_demo(executable, output, env):
         assert viewer.wait(timeout=15) == 0
 
 
+def layout_orientation(executable, root, model, env):
+    saved = root / "uv-layout-orientation.woby"
+    with session(executable, root, env) as (ctl, viewer):
+        groups = prepare(ctl, model)
+        analysis = ctl("analysis", "create", "--type", "uv", "--a", groups[0])["target"]
+        ctl("analysis", "set", analysis, "--show-edges", "false",
+            "--uv-density-u", 4, "--uv-density-v", 4)
+        for group in groups:
+            ctl("visibility", "set", group, "--visible", "false")
+        # Revisit each axis after GPU upload to exercise cached-geometry refresh.
+        for index, axis in enumerate(("y", "z", "y", "z")):
+            ctl("up-axis", "set", axis)
+            ctl("camera", "view", "front")
+            ctl("camera", "frame", "--object", analysis)
+            image = capture(ctl, root / f"layout-{index}-{axis}-up.png")
+            assert all(count > 1000 for count in grid_pixels(image)), (axis, grid_pixels(image))
+        ctl("scene", "save-as", saved)
+        ctl("quit")
+        assert viewer.wait(timeout=15) == 0
+    with session(executable, root, env, "--scene", saved) as (ctl, viewer):
+        assert ImageChops.difference(image, capture(ctl, root / "layout-orientation-reloaded.png")).getbbox() is None
+        ctl("quit")
+        assert viewer.wait(timeout=15) == 0
+
+
 def main():
     executable = Path(sys.argv[1]).resolve()
     env = dict(os.environ, SDL_VIDEO_DRIVER="woby-test-no-video-driver")
@@ -183,7 +208,8 @@ f 5 7 8
             ctl("quit")
             assert viewer.wait(timeout=15) == 0
         analysis_demo(executable, root / "analysis", env)
-    print("UV grid render passed: U/V lines, density, missing UV fallback, disable, undo/redo, and reload.")
+        layout_orientation(executable, root, model, env)
+    print("UV grid render passed: U/V lines, density, up-axis changes, missing UV fallback, disable, undo/redo, and reload.")
     if len(sys.argv) > 2:
         demo(executable, Path(sys.argv[2]).resolve(), env)
         analysis_demo(executable, Path(sys.argv[2]).resolve(), env)

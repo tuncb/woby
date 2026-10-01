@@ -1295,6 +1295,7 @@ void setSceneUpAxis(UiState& state, SceneUpAxis upAxis)
 {
     if (state.upAxis != upAxis) {
         state.upAxis = upAxis;
+        recalculateSceneBounds(state);
         frameCameraToScene(state);
         markSceneDirty(state);
     }
