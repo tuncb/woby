@@ -34,7 +34,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::sceneUndo, "scene.undo", "scene undo", {}, {}, {}, false, true},
         {ControlAction::sceneRedo, "scene.redo", "scene redo", {}, {}, {}, false, true},
         {ControlAction::visibility, "visibility.set", "visibility set", "target", {"visible"}, {"visible"}, false, true},
-        {ControlAction::render, "render.set", "render set", "target", {"solid", "triangles", "vertices", "uvGrid", "uvDensityU", "uvDensityV"}, {}, true, true},
+        {ControlAction::render, "render.set", "render set", "target", {"solid", "triangles", "vertices", "uvGrid", "uvDensityU", "uvDensityV", "lineWidth", "lineDepthTest"}, {}, true, true},
         {ControlAction::transformGet, "transform.get", "transform get", "target", {}, {}},
         {ControlAction::transformSet, "transform.set", "transform set", "target", {"translation", "rotationDegrees", "scale"}, {}, true, true},
         {ControlAction::transformReset, "transform.reset", "transform reset", "target", {}, {}, false, true},
@@ -111,7 +111,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
-    if (name == "uvGrid") { return true; }
+    if (name == "uvGrid" || name == "lineDepthTest") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
         || name == "locked" || name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
@@ -134,6 +134,8 @@ std::string cliOption(const std::string& name)
 {
     if (name == "uvGrid") { return "--uv-grid"; }
     if (name == "uvView") { return "--uv-view"; }
+    if (name == "lineWidth") { return "--line-width"; }
+    if (name == "lineDepthTest") { return "--line-depth-test"; }
     if (name == "uvDensityU") { return "--uv-density-u"; }
     if (name == "uvDensityV") { return "--uv-density-v"; }
     if (name == "intersectionPairLimit") { return "--intersection-pair-limit"; }
@@ -275,7 +277,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
-    BOOL_FIELD(uvGrid)
+    BOOL_FIELD(uvGrid) BOOL_FIELD(lineDepthTest)
     BOOL_FIELD(nonManifoldVertices) BOOL_FIELD(showNonManifoldVertices) BOOL_FIELD(holes) BOOL_FIELD(showHoles) BOOL_FIELD(fins) BOOL_FIELD(showFins)
     BOOL_FIELD(autoUpdateBoundaries) BOOL_FIELD(autoUpdateNonManifold) BOOL_FIELD(autoUpdateWinding)
     BOOL_FIELD(autoUpdateSelfIntersections) BOOL_FIELD(selfIntersections) BOOL_FIELD(showSelfIntersections)
@@ -287,7 +289,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
-    NUMBER_FIELD(uvDensityU) NUMBER_FIELD(uvDensityV)
+    NUMBER_FIELD(lineWidth) NUMBER_FIELD(uvDensityU) NUMBER_FIELD(uvDensityV)
     NUMBER_FIELD(aspect) NUMBER_FIELD(opacity)
     NUMBER_FIELD(yawDegrees) NUMBER_FIELD(pitchDegrees) NUMBER_FIELD(rollDegrees)
     NUMBER_FIELD(right) NUMBER_FIELD(up) NUMBER_FIELD(forward) NUMBER_FIELD(factor)
@@ -405,7 +407,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
     FIELD(visible) FIELD(solid) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb)
-    FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
+    FIELD(lineWidth) FIELD(lineDepthTest) FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
     FIELD(type) FIELD(uvView)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)

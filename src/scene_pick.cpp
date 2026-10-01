@@ -53,9 +53,9 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     const auto& file = state.files[fileIndex];
     if (groupIndex >= file.mesh.nodes.size() || groupIndex >= file.groupSettings.size()) { return; }
     const auto& group = file.groupSettings[groupIndex];
-    opacity *= group.opacity;
-    if (!includeHidden && (!group.visible || opacity <= 0.0f || (!group.showSolidMesh && !group.showTriangles && !group.showVertices))) { return; }
     const auto& node = file.mesh.nodes[groupIndex];
+    opacity *= group.opacity;
+    if (!includeHidden && (!group.visible || opacity <= 0.0f || (!node.lineIndexCount && !group.showSolidMesh && !group.showTriangles && !group.showVertices))) { return; }
     PickMatrix local;
     groupTransformMatrix(group, local.data());
     ScenePickPart part;
@@ -63,10 +63,14 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     part.mesh = &file.mesh;
     part.indexOffset = node.indexOffset;
     part.indexCount = node.indexCount;
+    part.lineIndexOffset = node.lineIndexOffset;
+    part.lineIndexCount = node.lineIndexCount;
+    part.lineWidth = node.lineIndexCount ? group.lines.width : 0;
     part.model = compose(parent, local);
     if (group.localBoundsValid) { part.bounds = group.localBounds; }
-    part.solid = group.showSolidMesh;
-    part.edges = group.showTriangles;
+    part.solid = !node.lineIndexCount && group.showSolidMesh;
+    part.edges = node.lineIndexCount || group.showTriangles;
+    part.edgeXray = node.lineIndexCount ? !group.lines.depthTest : true;
     part.vertices = group.showVertices;
     part.opacity = opacity;
     part.pointSize = std::round(std::clamp(state.masterVertexPointSize * file.vertexSizeScale * group.vertexSizeScale,
@@ -175,7 +179,7 @@ Point screen(const Clip& p, const ScenePickView& view)
 {
     return {(p[0] / p[3] * .5 + .5) * view.width, (.5 - p[1] / p[3] * .5) * view.height, p[2] / p[3]};
 }
-std::optional<double> edgeHit(Clip a, Clip b, const ScenePickView& view, PickPoint point)
+std::optional<double> edgeHit(Clip a, Clip b, const ScenePickView& view, PickPoint point, float width = 0)
 {
     // Clip before the perspective divide, including edges crossing the near plane.
     for (size_t plane = 0; plane < 6; ++plane) {
@@ -192,9 +196,10 @@ std::optional<double> edgeHit(Clip a, Clip b, const ScenePickView& view, PickPoi
     const auto pa = screen(a, view), pb = screen(b, view);
     const double dx = pb[0] - pa[0], dy = pb[1] - pa[1];
     const double length = dx * dx + dy * dy;
+    if (width > 0 && length < 1e-12) { return {}; }
     const double t = length > 0 ? std::clamp(((point[0] - pa[0]) * dx + (point[1] - pa[1]) * dy) / length, 0.0, 1.0) : 0;
     const double x = pa[0] + t * dx - point[0], y = pa[1] + t * dy - point[1];
-    const double radius = 3.0 * view.pixelScale;
+    const double radius = std::max(3.0 * view.pixelScale, double(width) * .5);
     if (x * x + y * y > radius * radius) { return {}; }
     const double depth = pa[2] + t * (pb[2] - pa[2]);
     return std::isfinite(depth) ? std::optional<double>(depth) : std::nullopt;
@@ -340,83 +345,114 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
     const auto middle = position(inverse, {x, y, view.homogeneousDepth ? 0.0 : 0.5});
     double depthBuffer = 1.0;
     SceneObjectId hit = invalidSceneObjectId;
-    for (const auto& part : parts) {
-        if (part.objectId == invalidSceneObjectId || part.opacity <= 0) { continue; }
-        const auto mvp = compose(part.model, viewProjection);
-        bx::mtxInverse(inverse.data(), part.model.data());
-        const auto origin = position(inverse, near), end = position(inverse, middle);
-        const auto direction = subtract(end, origin);
-        const bool testSurface = part.solid && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
-        if (!testSurface && !part.edges && !part.vertices && part.diagnosticEdges.empty()) { continue; }
-        std::optional<double> surfaceDepth, edgeDepth, pointDepth;
-        const auto clip = [&](const Point& p) { return transform(mvp, {p[0], p[1], p[2], 1}); };
-        if (part.mesh) {
-            const auto& mesh = *part.mesh;
-            const size_t begin = std::min(part.indexOffset, mesh.indices.size());
-            const size_t finish = begin + std::min(part.indexCount, mesh.indices.size() - begin);
-            const auto visitTriangle = [&](size_t i) {
-                std::array<Point, 3> triangle;
-                bool valid = true;
-                for (size_t k = 0; k < 3; ++k) {
-                    const auto index = mesh.indices[i + k];
-                    if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { valid = false; break; }
-                    const auto& p = mesh.vertices[index].position;
-                    triangle[k] = {p[0], p[1], p[2]};
-                }
-                if (!valid) { return; }
-                if (testSurface) {
-                    if (const auto t = triangleHit(origin, direction, triangle)) {
-                        const auto p = clip({origin[0] + *t * direction[0], origin[1] + *t * direction[1], origin[2] + *t * direction[2]});
-                        if (inside(p, view.homogeneousDepth)) { closest(surfaceDepth, p[2] / p[3]); }
-                    }
-                }
-                if (part.edges || part.vertices) {
-                    const std::array<Clip, 3> projected = {clip(triangle[0]), clip(triangle[1]), clip(triangle[2])};
-                    for (size_t k = 0; k < 3; ++k) {
-                        if (part.edges) { closest(edgeDepth, edgeHit(projected[k], projected[(k + 1) % 3], view, point)); }
-                        if (part.vertices && inside(projected[k], view.homogeneousDepth)) {
-                            const auto p = screen(projected[k], view);
-                            const double dx = p[0] - point[0], dy = p[1] - point[1];
-                            const double radius = std::max(part.pointSize * .5, 3.0 * view.pixelScale);
-                            if (dx * dx + dy * dy <= radius * radius) { closest(pointDepth, p[2]); }
+    for (int layer = 0; layer < 3; ++layer) {
+        for (const auto& part : parts) {
+            if (layer != (part.annotationOverlay ? 2 : part.lineIndexCount ? 1 : 0)) { continue; }
+            if (part.objectId == invalidSceneObjectId || part.opacity <= 0) { continue; }
+            const auto mvp = compose(part.model, viewProjection);
+            bx::mtxInverse(inverse.data(), part.model.data());
+            const auto origin = position(inverse, near), end = position(inverse, middle);
+            const auto direction = subtract(end, origin);
+            const bool testSurface = part.solid && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
+            if (!testSurface && !part.edges && !part.vertices && part.diagnosticEdges.empty()) { continue; }
+            std::optional<double> surfaceDepth, edgeDepth, pointDepth;
+            const auto clip = [&](const Point& p) { return transform(mvp, {p[0], p[1], p[2], 1}); };
+            if (part.mesh) {
+                const auto& mesh = *part.mesh;
+                if (part.lineIndexCount) {
+                    const auto indices = scenePartIndices(part);
+                    for (size_t i = 0; i + 1 < indices.size(); i += 2) {
+                        if (indices[i] >= mesh.vertices.size() || indices[i+1] >= mesh.vertices.size()) { continue; }
+                        const auto a = clip(meshPosition(mesh, indices[i])), b = clip(meshPosition(mesh, indices[i+1]));
+                        closest(edgeDepth, edgeHit(a, b, view, point, part.lineWidth));
+                        if (part.vertices) {
+                            for (const auto& p : {a, b}) {
+                                if (!inside(p, view.homogeneousDepth)) { continue; }
+                                const auto xy = screen(p, view);
+                                const double radius = std::max(part.pointSize * .5, 3.0 * view.pixelScale);
+                                if (std::hypot(xy[0]-point[0], xy[1]-point[1]) <= radius) { closest(pointDepth, xy[2]); }
+                            }
                         }
                     }
                 }
-            };
-            bool useBlocks = testSurface && !part.edges && !part.vertices && mesh.annotationCache
-                && mesh.annotationCache->vertexCount == mesh.vertices.size()
-                && mesh.annotationCache->indexCount == mesh.indices.size()
-                && mesh.annotationCache->vertexData == mesh.vertices.data()
-                && mesh.annotationCache->indexData == mesh.indices.data();
-            if (useBlocks) {
-                useBlocks = std::any_of(mesh.nodes.begin(), mesh.nodes.end(), [&](const auto& node) {
-                    return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount;
-                });
-            }
-            if (useBlocks) {
-                for (const auto& block : mesh.annotationCache->blocks) {
-                    if (block.begin < begin || block.end > finish || !intersectsPickBlock(block, origin, direction)) { continue; }
-                    for (size_t i = block.begin; i + 2 < block.end; i += 3) { visitTriangle(i); }
+                const size_t begin = std::min(part.indexOffset, mesh.indices.size());
+                const size_t finish = begin + std::min(part.indexCount, mesh.indices.size() - begin);
+                const auto visitTriangle = [&](size_t i) {
+                    std::array<Point, 3> triangle;
+                    bool valid = true;
+                    for (size_t k = 0; k < 3; ++k) {
+                        const auto index = mesh.indices[i + k];
+                        if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { valid = false; break; }
+                        const auto& p = mesh.vertices[index].position;
+                        triangle[k] = {p[0], p[1], p[2]};
+                    }
+                    if (!valid) { return; }
+                    if (testSurface) {
+                        if (const auto t = triangleHit(origin, direction, triangle)) {
+                            const auto p = clip({origin[0] + *t * direction[0], origin[1] + *t * direction[1], origin[2] + *t * direction[2]});
+                            if (inside(p, view.homogeneousDepth)) { closest(surfaceDepth, p[2] / p[3]); }
+                        }
+                    }
+                    if (part.edges || part.vertices) {
+                        const std::array<Clip, 3> projected = {clip(triangle[0]), clip(triangle[1]), clip(triangle[2])};
+                        for (size_t k = 0; k < 3; ++k) {
+                            if (part.edges) { closest(edgeDepth, edgeHit(projected[k], projected[(k + 1) % 3], view, point)); }
+                            if (part.vertices && inside(projected[k], view.homogeneousDepth)) {
+                                const auto p = screen(projected[k], view);
+                                const double dx = p[0] - point[0], dy = p[1] - point[1];
+                                const double radius = std::max(part.pointSize * .5, 3.0 * view.pixelScale);
+                                if (dx * dx + dy * dy <= radius * radius) { closest(pointDepth, p[2]); }
+                            }
+                        }
+                    }
+                };
+                bool useBlocks = testSurface && !part.edges && !part.vertices && mesh.annotationCache
+                    && mesh.annotationCache->vertexCount == mesh.vertices.size()
+                    && mesh.annotationCache->indexCount == mesh.indices.size()
+                    && mesh.annotationCache->vertexData == mesh.vertices.data()
+                    && mesh.annotationCache->indexData == mesh.indices.data();
+                if (useBlocks) {
+                    useBlocks = std::any_of(mesh.nodes.begin(), mesh.nodes.end(), [&](const auto& node) {
+                        return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount;
+                    });
                 }
-            } else {
-                for (size_t i = begin; i + 2 < finish; i += 3) { visitTriangle(i); }
+                if (useBlocks) {
+                    for (const auto& block : mesh.annotationCache->blocks) {
+                        if (block.begin < begin || block.end > finish || !intersectsPickBlock(block, origin, direction)) { continue; }
+                        for (size_t i = block.begin; i + 2 < block.end; i += 3) { visitTriangle(i); }
+                    }
+                } else {
+                    for (size_t i = begin; i + 2 < finish; i += 3) { visitTriangle(i); }
+                }
             }
-        }
-        for (const auto& line : part.diagnosticEdges) {
-            closest(edgeDepth, edgeHit(clip({line.a[0], line.a[1], line.a[2]}),
-                clip({line.b[0], line.b[1], line.b[2]}), view, point));
-        }
-        if (surfaceDepth && (part.surfaceLessEqual ? *surfaceDepth <= depthBuffer : *surfaceDepth < depthBuffer)) {
-            hit = part.objectId;
-            if (part.opacity >= .999f) { depthBuffer = *surfaceDepth; }
-        }
-        if (edgeDepth && (part.edgeXray || *edgeDepth <= depthBuffer + 1e-7)) { hit = part.objectId; }
-        if (pointDepth && *pointDepth <= depthBuffer + 1e-7) {
-            hit = part.objectId;
-            if (part.opacity >= .999f) { depthBuffer = *pointDepth; }
+            for (const auto& line : part.diagnosticEdges) {
+                closest(edgeDepth, edgeHit(clip({line.a[0], line.a[1], line.a[2]}),
+                    clip({line.b[0], line.b[1], line.b[2]}), view, point));
+            }
+            if (surfaceDepth && (part.surfaceLessEqual ? *surfaceDepth <= depthBuffer : *surfaceDepth < depthBuffer)) {
+                hit = part.objectId;
+                if (part.opacity >= .999f) { depthBuffer = *surfaceDepth; }
+            }
+            if (edgeDepth && (part.edgeXray || *edgeDepth <= depthBuffer + 1e-7)) {
+                hit = part.objectId;
+                if (part.lineIndexCount && !part.edgeXray && part.opacity >= .999f) { depthBuffer = *edgeDepth; }
+            }
+            if (pointDepth && *pointDepth <= depthBuffer + 1e-7) {
+                hit = part.objectId;
+                if (part.opacity >= .999f) { depthBuffer = *pointDepth; }
+            }
         }
     }
     return hit;
+}
+
+std::span<const uint32_t> scenePartIndices(const ScenePickPart& part)
+{
+    if (!part.mesh) { return {}; }
+    const auto& indices = part.lineIndexCount ? part.mesh->lineIndices : part.mesh->indices;
+    const auto begin = std::min(part.lineIndexCount ? part.lineIndexOffset : part.indexOffset, indices.size());
+    const auto count = std::min(part.lineIndexCount ? part.lineIndexCount : part.indexCount, indices.size() - begin);
+    return std::span<const uint32_t>(indices).subspan(begin, count);
 }
 
 std::vector<SceneObjectId> sceneSelectionPath(const UiState& state, SceneObjectId id)
@@ -445,14 +481,11 @@ void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::
 {
     lines.clear();
     for (const auto& part : parts) {
-        if (!part.selected || !part.mesh || part.indexCount == 0) { continue; }
+        if (!part.selected || !part.mesh || (part.indexCount == 0 && part.lineIndexCount == 0)) { continue; }
         auto bounds = part.bounds;
         if (!bounds) {
             const auto& mesh = *part.mesh;
-            const size_t begin = std::min(part.indexOffset, mesh.indices.size());
-            const size_t end = begin + std::min(part.indexCount, mesh.indices.size() - begin);
-            for (size_t i = begin; i < end; ++i) {
-                const auto index = mesh.indices[i];
+            for (const auto index : scenePartIndices(part)) {
                 if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { continue; }
                 const auto& p = mesh.vertices[index].position;
                 if (!bounds) { bounds = Bounds{p, p, p, 0}; }

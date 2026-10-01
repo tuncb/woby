@@ -156,14 +156,12 @@ Bounds nodeBounds(const Mesh& mesh, const MeshNode& node, const ModelLoadProgres
     size_t completed = 0, size_t total = 0)
 {
     Bounds bounds = emptyAccumulatedBounds();
-    const uint32_t endIndex = std::min(
-        node.indexOffset + node.indexCount,
-        static_cast<uint32_t>(mesh.indices.size()));
-    for (uint32_t index = node.indexOffset; index < endIndex; ++index) {
-        if ((index - node.indexOffset) % 16384 == 0) {
-            reportModelLoadProgress(progress, ModelLoadStage::groups, completed + index - node.indexOffset, total);
+    const auto indices = meshNodeIndices(mesh, node);
+    for (size_t index = 0; index < indices.size(); ++index) {
+        if (index % 16384 == 0) {
+            reportModelLoadProgress(progress, ModelLoadStage::groups, completed + index, total);
         }
-        const uint32_t vertexIndex = mesh.indices[index];
+        const uint32_t vertexIndex = indices[index];
         if (vertexIndex < mesh.vertices.size()) {
             expandBounds(bounds, mesh.vertices[vertexIndex].position);
         }
@@ -463,35 +461,7 @@ std::array<float, 4> defaultGroupColor(size_t groupIndex)
 
 std::array<float, 3> nodeCenter(const Mesh& mesh, const MeshNode& node)
 {
-    if (node.indexCount == 0u || mesh.indices.empty() || mesh.vertices.empty()) {
-        return mesh.bounds.center;
-    }
-
-    std::array<float, 3> minPosition = {
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max(),
-    };
-    std::array<float, 3> maxPosition = {
-        std::numeric_limits<float>::lowest(),
-        std::numeric_limits<float>::lowest(),
-        std::numeric_limits<float>::lowest(),
-    };
-
-    const uint32_t endIndex = node.indexOffset + node.indexCount;
-    for (uint32_t index = node.indexOffset; index < endIndex; ++index) {
-        const auto& position = mesh.vertices[mesh.indices[index]].position;
-        for (size_t axis = 0; axis < 3u; ++axis) {
-            minPosition[axis] = std::min(minPosition[axis], position[axis]);
-            maxPosition[axis] = std::max(maxPosition[axis], position[axis]);
-        }
-    }
-
-    return {
-        (minPosition[0] + maxPosition[0]) * 0.5f,
-        (minPosition[1] + maxPosition[1]) * 0.5f,
-        (minPosition[2] + maxPosition[2]) * 0.5f,
-    };
+    return nodeBounds(mesh, node).center;
 }
 
 std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColorIndex,
@@ -500,7 +470,7 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
     std::vector<UiGroupState> settings;
     settings.reserve(mesh.nodes.size());
     size_t completed = 0, total = 0;
-    for (const auto& node : mesh.nodes) { total += node.indexCount; }
+    for (const auto& node : mesh.nodes) { total += size_t(node.indexCount) + node.lineIndexCount; }
     reportModelLoadProgress(progress, ModelLoadStage::groups, 0, total);
 
     for (size_t groupIndex = 0; groupIndex < mesh.nodes.size(); ++groupIndex) {
@@ -517,7 +487,7 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
         group.localBoundsValid = true;
         group.originalBounds = originalMeshBounds(mesh, &mesh.nodes[groupIndex]);
         group.center = group.localBounds.center;
-        completed += mesh.nodes[groupIndex].indexCount;
+        completed += size_t(node.indexCount) + node.lineIndexCount;
         settings.push_back(group);
     }
 
@@ -774,6 +744,7 @@ SceneGroupSettings sceneGroupSettings(const UiGroupState& settings)
 {
     SceneGroupSettings result;
     result.uvGrid = settings.uvGrid;
+    result.lines = settings.lines;
     result.visible = settings.visible;
     result.showSolidMesh = settings.showSolidMesh;
     result.showTriangles = settings.showTriangles;
@@ -870,6 +841,7 @@ SceneDocument createSceneDocument(const UiState& state)
         for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
             SceneGroupRecord groupRecord;
             groupRecord.name = file.mesh.nodes[groupIndex].name;
+            groupRecord.lineGroup = file.mesh.nodes[groupIndex].lineIndexCount != 0;
             groupRecord.settings = sceneGroupSettings(file.groupSettings[groupIndex]);
             fileRecord.groups.push_back(std::move(groupRecord));
         }
@@ -903,7 +875,8 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
             throw std::runtime_error("Saved importer or group layout does not match the imported file.");
         }
         for (size_t i = 0; i < record.groups.size(); ++i) {
-            if (record.groups[i].name != file.mesh.nodes[i].name) {
+            if (record.groups[i].name != file.mesh.nodes[i].name
+                || record.groups[i].lineGroup != (file.mesh.nodes[i].lineIndexCount != 0)) {
                 throw std::runtime_error("Importer group order changed; cannot restore saved group settings.");
             }
         }
@@ -923,6 +896,7 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
         auto& group = file.groupSettings[groupIndex];
         const auto& recordGroup = record.groups[groupIndex].settings;
         group.uvGrid = normalizedUvGrid(recordGroup.uvGrid);
+        group.lines = normalizedLineStyle(recordGroup.lines);
         group.visible = recordGroup.visible;
         group.showSolidMesh = recordGroup.showSolidMesh;
         group.showTriangles = recordGroup.showTriangles;

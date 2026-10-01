@@ -106,6 +106,28 @@ typedef struct WobyImporterApiWithHierarchy {
     const WobyImportHierarchy* (WOBY_IMPORT_CALL *get_hierarchy)(const WobyImportResult*);
 } WobyImporterApiWithHierarchy;
 
+/* Optional segment pairs referencing the result's shared vertex table. Groups
+ * partition indices in pairs and use the triangle group's color/visibility flags.
+ * A nonempty buffer with zero groups creates one group named "Lines".
+ * NULL from get_lines means absent. */
+typedef struct WobyImportLines {
+    uint32_t struct_size;
+    const uint32_t* indices;
+    uint32_t index_count;
+    const WobyImportGroup* groups;
+    uint32_t group_count;
+} WobyImportLines;
+
+typedef struct WobyImporterApiWithLines {
+    /* Set base.base.struct_size to sizeof(WobyImporterApiWithLines) and return
+     * &base.base. Existing ABI 2 and hierarchy tables remain unchanged. Hierarchy
+     * group indexes address triangle groups first, then line groups (including
+     * generated defaults). A line-only result has no triangle groups. */
+    WobyImporterApiWithHierarchy base;
+    /* Borrowed metadata prepared during import_file; lifetime until release_result. */
+    const WobyImportLines* (WOBY_IMPORT_CALL *get_lines)(const WobyImportResult*);
+} WobyImporterApiWithLines;
+
 typedef const WobyImporterApi* (WOBY_IMPORT_CALL *WobyGetImporterApi)(uint32_t host_abi_version);
 
 /* Each plugin exports this exact symbol; return NULL for an unsupported ABI. */

@@ -33,6 +33,7 @@ void initialize(GpuMarkerPicker& picker, const std::filesystem::path& assets)
     picker.point = loadProgram(assets, "vs_marker_point.bin", "fs_marker_point.bin");
     picker.mesh = loadProgram(assets, "vs_mesh.bin", "fs_marker_mesh.bin");
     picker.line = loadProgram(assets, "vs_color.bin", "fs_marker_line.bin");
+    picker.lineSprite = loadProgram(assets, "vs_line_sprite.bin", "fs_marker_line.bin");
     picker.comparison = loadProgram(assets, "vs_comparison.bin", "fs_marker_comparison.bin");
     picker.composite = loadProgram(assets, "vs_marker_screen.bin", "fs_marker_composite.bin");
     const auto root = assets / "shaders" / rendererShaderFolder(woby::graphics::getRendererType());
@@ -54,7 +55,7 @@ void initialize(GpuMarkerPicker& picker, const std::filesystem::path& assets)
             WOBY_GPU_TEXTURE_READ_BACK | WOBY_GPU_TEXTURE_BLIT_DST);
         if (!woby::graphics::isValid(request.staging)) { throw std::runtime_error("Marker readback allocation failed."); }
     }
-    for (auto handle : {picker.point, picker.mesh, picker.line, picker.comparison, picker.composite,
+    for (auto handle : {picker.point, picker.mesh, picker.line, picker.lineSprite, picker.comparison, picker.composite,
              picker.lookup[0], picker.lookup[1], picker.highlight[0], picker.highlight[1]}) {
         if (!woby::graphics::isValid(handle)) { throw std::runtime_error("Marker shader allocation failed."); }
     }
@@ -221,7 +222,7 @@ void destroyGpuMarkerPicker(GpuMarkerPicker& picker)
     woby::graphics::setViewFrameBuffer(sceneView, WOBY_GPU_INVALID_HANDLE);
     woby::graphics::setViewClear(sceneView, WOBY_GPU_CLEAR_NONE);
     destroyTargets(picker);
-    release(picker.point); release(picker.mesh); release(picker.line); release(picker.comparison); release(picker.composite);
+    release(picker.point); release(picker.mesh); release(picker.line); release(picker.lineSprite); release(picker.comparison); release(picker.composite);
     for (auto& handle : picker.lookup) { release(handle); }
     for (auto& handle : picker.highlight) { release(handle); }
     release(picker.context.baseUniform); release(picker.queryUniform); release(picker.optionsUniform);

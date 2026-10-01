@@ -160,12 +160,15 @@ void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
         if (file.objectId == id) {
             ImGui::Text("%zu parts | %zu vertices | %zu triangles", file.groupSettings.size(),
                 file.mesh.vertices.size(), file.mesh.indices.size() / 3u);
+            if (!file.mesh.lineIndices.empty()) { ImGui::Text("%zu line segments", file.mesh.lineIndices.size() / 2u); }
             bounds = originalMeshBounds(file.mesh);
             break;
         }
         for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
             if (file.groupSettings[i].objectId == id) {
-                ImGui::Text("%u triangles", file.mesh.nodes[i].indexCount / 3u);
+                const auto& node = file.mesh.nodes[i];
+                if (node.lineIndexCount) { ImGui::Text("%u line segments", node.lineIndexCount / 2u); }
+                else { ImGui::Text("%u triangles", node.indexCount / 3u); }
                 if (file.groupSettings[i].localBoundsValid) { bounds = file.groupSettings[i].originalBounds;
                     if (!bounds) { bounds = originalMeshBounds(file.mesh, &file.mesh.nodes[i]); } }
                 break;
@@ -298,6 +301,20 @@ void drawSceneInspector(UiState& state, SceneDimensionsCache& dimensionsCache)
                 ImGui::EndDisabled();
             }
             const auto red = selectedObjectProperty(state, UiObjectProperty::red);
+            const auto lineDepth = selectedObjectProperty(state, UiObjectProperty::lineDepthTest);
+            if (lineDepth.available) {
+                ImGui::Spacing();
+                if (ImGui::BeginTable("line_style", 2)) {
+                    scalarField(state, "Line width (1-12 px)", UiObjectProperty::lineWidth);
+                    ImGui::EndTable();
+                }
+                bool onTop = lineDepth.value == 0.0f;
+                if (lineDepth.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
+                if (ImGui::Checkbox("Draw lines on top", &onTop)) {
+                    setSelectedObjectProperty(state, UiObjectProperty::lineDepthTest, (lineDepth.mixed || onTop) ? 0.0f : 1.0f);
+                }
+                if (lineDepth.mixed) { ImGui::PopItemFlag(); }
+            }
             const auto uv = selectedObjectProperty(state, UiObjectProperty::uvGrid);
             ImGui::Spacing();
             ImGui::BeginDisabled(!uv.available);

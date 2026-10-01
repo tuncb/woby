@@ -1,4 +1,5 @@
 #pragma once
+#include "line_style.h"
 
 #include "camera.h"
 #include "comparison_report.h"
@@ -28,6 +29,7 @@ inline constexpr float defaultDisplayBoundsMin = -10.0f;
 inline constexpr float defaultDisplayBoundsMax = 10.0f;
 
 struct UiGroupState {
+    LineStyle lines;
     UvGridSettings uvGrid;
     bool visible = true;
     bool showSolidMesh = true;

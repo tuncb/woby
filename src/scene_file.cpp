@@ -391,6 +391,14 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
 {
     if (key == "name") {
         record.name = parseTomlString(value);
+    } else if (key == "primitive") {
+        const auto primitive = parseTomlString(value);
+        if (primitive != "triangles" && primitive != "lines") { throw std::runtime_error("Invalid group primitive."); }
+        record.lineGroup = primitive == "lines";
+    } else if (key == "line_width") {
+        record.settings.lines.width = normalizedLineStyle({parseTomlFloat(value), true}).width;
+    } else if (key == "line_depth_test") {
+        record.settings.lines.depthTest = parseTomlBool(value);
     } else if (key == "visible") {
         record.settings.visible = parseTomlBool(value);
     } else if (key == "analysis_a") {
@@ -657,6 +665,9 @@ void writeCamera(std::ostream& stream, const SceneCamera& value)
 void writeAppearance(std::ostream& stream, const SceneGroupSettings& settings)
 {
     stream << "uv_grid = " << (settings.uvGrid.enabled ? "true" : "false") << "\n";
+    stream << "line_width = ";
+    writeTomlFloat(stream, settings.lines.width);
+    stream << "\nline_depth_test = " << (settings.lines.depthTest ? "true" : "false") << "\n";
     stream << "uv_density_u = ";
     writeTomlFloat(stream, settings.uvGrid.densityU);
     stream << "\nuv_density_v = ";
@@ -844,7 +855,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1137,7 +1148,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 17\n";
+    stream << "version = 18\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';
@@ -1188,6 +1199,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         for (const auto& group : file.groups) {
             stream << "\n[[files.groups]]\n";
             stream << "name = \"" << escapeTomlString(group.name) << "\"\n";
+            stream << "primitive = \"" << (group.lineGroup ? "lines" : "triangles") << "\"\n";
             writeAppearance(stream, group.settings);
         }
     }

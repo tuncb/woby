@@ -70,6 +70,7 @@ enum class UiObjectProperty {
     rotationX, rotationY, rotationZ,
     scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue,
     uvGrid, uvDensityU, uvDensityV,
+    lineWidth, lineDepthTest,
 };
 enum class UiPropertyGroup { translation, rotation, scale, transform, appearance };
 struct UiPropertyValue {
@@ -86,6 +87,9 @@ struct UiPropertyValue {
 void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float value);
 void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group);
 void setGroupUvGrid(UiGroupState& group, UvGridSettings settings);
+void setGroupLineStyle(UiGroupState& group, LineStyle settings);
+bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& objects,
+    std::optional<float> width, std::optional<bool> depthTest);
 // Expand containers using existing part semantics; skip parts without complete UVs.
 // Returns false when no eligible part exists. Empty objects means the whole scene.
 bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,

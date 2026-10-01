@@ -48,6 +48,7 @@ void submitSceneScreenshotCapture(
     woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle annotationProgram,
+    woby::graphics::ProgramHandle lineSpriteProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
     woby::graphics::UniformHandle colorUniform,
     woby::graphics::UniformHandle pointParamsUniform,

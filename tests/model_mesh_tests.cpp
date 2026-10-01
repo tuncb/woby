@@ -123,7 +123,7 @@ TEST_CASE("finalizing a mesh rejects empty input and fills derived data")
     woby::Mesh emptyMesh;
     CHECK_THROWS_WITH_AS(
         woby::finalizeMesh(emptyMesh, true),
-        "Mesh did not contain renderable triangles.",
+        "Mesh did not contain renderable triangles or lines.",
         std::runtime_error);
 
     woby::Mesh mesh;

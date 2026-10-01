@@ -163,5 +163,22 @@ TEST_CASE("GPU uploads reject invalid indices and ranges before allocating")
     mesh.indices[2] = 2;
     mesh.nodes[0].indexCount = 6;
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
-        "Scene contains an invalid triangle range.");
+        "Scene contains an invalid primitive range.");
+    mesh.indices.clear();
+    mesh.nodes[0].indexCount = 0;
+    mesh.nodes[0].lineIndexCount = 2;
+    mesh.lineIndices = {0, 99};
+    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
+        "Scene contains an invalid line vertex index.");
+    mesh.lineIndices[1] = 1;
+    mesh.nodes[0].lineIndexOffset = 1;
+    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
+        "Scene contains an invalid primitive range.");
+    mesh.nodes[0].lineIndexOffset = 0;
+    mesh.nodes[0].lineIndexCount = 1;
+    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
+        "Scene contains an invalid primitive range.");
+    mesh.lineIndices.push_back(2);
+    CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
+        "Scene needs valid triangles or line segments.");
 }

@@ -215,6 +215,7 @@ void submitSceneScreenshotCapture(
     woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle annotationProgram,
+    woby::graphics::ProgramHandle lineSpriteProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
     woby::graphics::UniformHandle colorUniform,
     woby::graphics::UniformHandle pointParamsUniform,
@@ -339,6 +340,11 @@ void submitSceneScreenshotCapture(
             screenshot.height);
     }
     if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform, screenshot.renderScratch); }
+    if (!options.resultsOnly) {
+        submitSceneFiles(screenshotSceneView, files, ui.sceneNodes, runtimes, masterVertexPointSize,
+            meshProgram, uvGridUniform, lineSpriteProgram, pointSpriteProgram, colorUniform, pointParamsUniform,
+            sceneWidth, screenshot.height, nullptr, true);
+    }
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
         submitSceneAnnotations(screenshotHelperView, ui, captureView,

@@ -36,6 +36,8 @@ struct ControlOperation {
     std::optional<bool> visible, solid, triangles, vertices;
     std::optional<bool> uvGrid;
     std::optional<float> uvDensityU, uvDensityV;
+    std::optional<float> lineWidth;
+    std::optional<bool> lineDepthTest;
     std::optional<std::array<float, 3>> translation, rotationDegrees, rgb;
     std::optional<float> scale, value, pixels, width;
     std::optional<float> yawDegrees, pitchDegrees, rollDegrees, right, up, forward, factor;

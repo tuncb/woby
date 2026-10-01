@@ -4,6 +4,7 @@
 #include "comparison_settings.h"
 #include "camera.h"
 #include "uv_grid.h"
+#include "line_style.h"
 #include "annotation_types.h"
 
 #include <array>
@@ -16,6 +17,7 @@
 namespace woby {
 
 struct SceneGroupSettings {
+    LineStyle lines;
     UvGridSettings uvGrid;
     // Legacy v2-v4 read mapping; cleared when migrating to comparison records.
     ComparisonMembership comparison;
@@ -46,6 +48,7 @@ struct SceneFileSettings {
 struct SceneGroupRecord {
     std::string name;
     SceneGroupSettings settings;
+    bool lineGroup = false;
 
     friend bool operator==(const SceneGroupRecord&, const SceneGroupRecord&) = default;
 };

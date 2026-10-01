@@ -820,7 +820,8 @@ void drawGroupControls(
     drawClippedTextItem("##name", woby::meshNodeDisplayName(node).c_str(), ImGui::GetContentRegionAvail().x,
         woby::sceneObjectSelected(state, settings.objectId), badge);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("%s\nVertices: %u  Triangles: %u", woby::meshNodeDisplayName(node).c_str(), range.pointIndexCount, node.indexCount / 3u);
+        ImGui::SetTooltip(node.lineIndexCount ? "%s\nVertices: %u  Line segments: %u" : "%s\nVertices: %u  Triangles: %u",
+            woby::meshNodeDisplayName(node).c_str(), range.pointIndexCount, node.lineIndexCount ? node.lineIndexCount / 2u : node.indexCount / 3u);
     }
     drawSceneItemInteraction(state, settings.objectId, false);
     ImGui::PopID();
@@ -2265,6 +2266,7 @@ int main(int argc, char** argv)
         const auto presentationProgram = woby::loadProgram(assets, "vs_marker_screen.bin", "fs_marker_composite.bin");
         woby::graphics::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         woby::graphics::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
+        const auto lineSpriteProgram = woby::loadProgram(assets, "vs_line_sprite.bin", "fs_color.bin");
         woby::graphics::ProgramHandle annotationProgram = woby::loadProgram(assets, "vs_annotation.bin", "fs_color.bin");
         woby::graphics::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
         woby::graphics::UniformHandle uvGridUniform = woby::graphics::createUniform("u_uvGrid", woby::graphics::UniformType::Vec4);
@@ -3160,12 +3162,14 @@ int main(int argc, char** argv)
                             - statusHeight));
                     ImGui::Separator();
                     size_t vertexCountTotal = 0;
-                    size_t triangleCountTotal = 0;
+                    size_t triangleCountTotal = 0, lineCountTotal = 0;
                     for (const auto& file : files) {
                         vertexCountTotal += file.mesh.vertices.size();
                         triangleCountTotal += file.mesh.indices.size() / 3u;
+                        lineCountTotal += file.mesh.lineIndices.size() / 2u;
                     }
                     ImGui::TextDisabled("%zu vertices | %zu triangles", vertexCountTotal, triangleCountTotal);
+                    if (lineCountTotal) { ImGui::SameLine(); ImGui::TextDisabled("| %zu lines", lineCountTotal); }
                     ImGui::TextDisabled("%s | %.1f FPS", woby::graphics::getRendererName(woby::graphics::getRendererType()), fps);
                 }
                     ImGui::End();
@@ -3712,6 +3716,10 @@ int main(int argc, char** argv)
                 woby::submitComparisonScenes(sceneView, ui, comparison,
                     gpuHover ? markerPicker.line : colorProgram, colorUniform, renderScratch,
                     gpuHover ? markerPicker.comparison : woby::graphics::ProgramHandle{woby::graphics::kInvalidHandle});
+                submitSceneFiles(sceneView, files, ui.sceneNodes, runtimes, masterVertexPointSize,
+                    meshProgram, uvGridUniform, gpuHover ? markerPicker.lineSprite : lineSpriteProgram,
+                    gpuHover ? markerPicker.point : pointSpriteProgram, colorUniform, pointParamsUniform,
+                    sceneViewportWidth, sceneViewportHeight, gpuHover ? &markerPicker.context : nullptr, true);
                 woby::submitGpuMarkerPicking(markerPicker, viewport);
                 recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
@@ -3754,6 +3762,7 @@ int main(int argc, char** argv)
                     uvGridUniform,
                     colorProgram,
                     annotationProgram,
+                    lineSpriteProgram,
                     pointSpriteProgram,
                     colorUniform,
                     pointParamsUniform,
@@ -3851,6 +3860,7 @@ int main(int argc, char** argv)
         woby::graphics::destroy(pointSpriteProgram);
         woby::graphics::destroy(colorProgram);
         woby::graphics::destroy(annotationProgram);
+        woby::graphics::destroy(lineSpriteProgram);
         woby::graphics::destroy(presentationProgram);
         woby::graphics::destroy(meshProgram);
         destroySceneScreenshotFramebuffer(sceneScreenshot);

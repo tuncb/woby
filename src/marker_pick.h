@@ -36,7 +36,8 @@ struct GpuMarkerPicker {
         depth = WOBY_GPU_INVALID_HANDLE, result = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::FrameBufferHandle framebuffer = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::ProgramHandle point = WOBY_GPU_INVALID_HANDLE, mesh = WOBY_GPU_INVALID_HANDLE,
-        line = WOBY_GPU_INVALID_HANDLE, comparison = WOBY_GPU_INVALID_HANDLE, composite = WOBY_GPU_INVALID_HANDLE;
+        line = WOBY_GPU_INVALID_HANDLE, lineSprite = WOBY_GPU_INVALID_HANDLE,
+        comparison = WOBY_GPU_INVALID_HANDLE, composite = WOBY_GPU_INVALID_HANDLE;
     std::array<woby::graphics::ProgramHandle, 2> lookup = {{{woby::graphics::kInvalidHandle}, {woby::graphics::kInvalidHandle}}},
         highlight = {{{woby::graphics::kInvalidHandle}, {woby::graphics::kInvalidHandle}}};
     woby::graphics::UniformHandle queryUniform = WOBY_GPU_INVALID_HANDLE, optionsUniform = WOBY_GPU_INVALID_HANDLE,

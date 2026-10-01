@@ -26,6 +26,7 @@ Json groupInfo(const UiGroupState& group)
     result.update({{"solid", group.showSolidMesh}, {"triangles", group.showTriangles},
         {"vertices", group.showVertices}, {"color", group.color}, {"vertexSizeScale", group.vertexSizeScale}});
     result.update({{"uvGrid", group.uvGrid.enabled}, {"uvDensityU", group.uvGrid.densityU}, {"uvDensityV", group.uvGrid.densityV}});
+    result.update({{"lineWidth", group.lines.width}, {"lineDepthTest", group.lines.depthTest}});
     return result;
 }
 Json boundsInfo(const Bounds& bounds, const Coordinate& origin = {})
@@ -127,6 +128,8 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             const auto& group = file.groupSettings[index];
             if (group.objectId == id) {
                 return {{"settings", groupInfo(group)}, {"triangleCount", file.mesh.nodes.at(index).indexCount / 3},
+                    {"primitive", file.mesh.nodes[index].lineIndexCount ? "lines" : "triangles"},
+                    {"lineSegmentCount", file.mesh.nodes[index].lineIndexCount / 2},
                     {"hasTexcoords", file.mesh.nodes.at(index).hasTexcoords},
                     {"localBounds", group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius, &file.mesh.nodes[index]) : Json(nullptr)}};
             }
@@ -163,6 +166,7 @@ Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdForma
         } else {
             const auto& group = file.groupSettings.at(node.groupIndex);
             result["kind"] = "group";
+            result["primitive"] = file.mesh.nodes.at(node.groupIndex).lineIndexCount ? "lines" : "triangles";
             result["fileId"] = formatId(file.objectId);
             result["settings"] = groupInfo(group);
             groupTransformMatrix(group, local.data());
@@ -506,12 +510,20 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         else { setSceneNodeSubtreeVisible(state, *target.folder, *command.visible); }
         break;
     case A::render:
+        if ((command.lineWidth || command.lineDepthTest)
+            && !setObjectLineStyle(state, scene ? std::vector<SceneObjectId>{} : std::vector<SceneObjectId>{command.objectId}, {}, {})) {
+            throw std::invalid_argument("Line style requires an imported line group.");
+        }
         // Validate UV eligibility before changing any of the other render flags.
         if (command.uvGrid || command.uvDensityU || command.uvDensityV) {
             if (!setObjectUvGrid(state, scene ? std::vector<SceneObjectId>{} : std::vector<SceneObjectId>{command.objectId},
                     command.uvGrid, command.uvDensityU, command.uvDensityV)) {
                 throw std::invalid_argument("UV grid requires a part with complete UV coordinates.");
             }
+        }
+        if (command.lineWidth || command.lineDepthTest) {
+            setObjectLineStyle(state, scene ? std::vector<SceneObjectId>{} : std::vector<SceneObjectId>{command.objectId},
+                command.lineWidth, command.lineDepthTest);
         }
         for (const auto& [mode, enabled] : {std::pair{UiRenderMode::solidMesh, command.solid},
             std::pair{UiRenderMode::triangles, command.triangles}, std::pair{UiRenderMode::vertices, command.vertices}}) {

@@ -83,7 +83,7 @@ std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndi
 }
 
 uint32_t appendPointIndicesForRange(
-    const std::vector<uint32_t>& triangleIndices,
+    std::span<const uint32_t> triangleIndices,
     uint32_t triangleIndexOffset,
     uint32_t triangleIndexCount,
     std::vector<size_t>& vertexGroups,
@@ -274,11 +274,14 @@ GpuMesh createGpuMesh(
     GpuMesh gpuMesh;
     const auto vertexBytes = sceneBufferBytes(mesh.vertices.size(), sizeof(Vertex));
     const auto indexBytes = sceneBufferBytes(mesh.indices.size(), sizeof(uint32_t));
-    if (empty(mesh) || mesh.indices.size() % 3 != 0) {
-        throw std::runtime_error("Scene needs a nonempty triangular mesh.");
+    if (empty(mesh) || mesh.indices.size() % 3 != 0 || mesh.lineIndices.size() % 2 != 0) {
+        throw std::runtime_error("Scene needs valid triangles or line segments.");
     }
     for (const auto index : mesh.indices) {
         if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid vertex index."); }
+    }
+    for (const auto index : mesh.lineIndices) {
+        if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid line vertex index."); }
     }
     gpuMesh.nodeRanges.reserve(mesh.nodes.size());
     // Keep compact CPU point ranges for picking and geometry tooltips, even
@@ -288,8 +291,11 @@ GpuMesh createGpuMesh(
     for (size_t nodeIndex = 0; nodeIndex < mesh.nodes.size(); ++nodeIndex) {
         const auto& node = mesh.nodes[nodeIndex];
         if (size_t(node.indexOffset) + node.indexCount > mesh.indices.size()
-            || node.indexOffset % 3 != 0 || node.indexCount % 3 != 0) {
-            throw std::runtime_error("Scene contains an invalid triangle range.");
+            || node.indexOffset % 3 != 0 || node.indexCount % 3 != 0
+            || size_t(node.lineIndexOffset) + node.lineIndexCount > mesh.lineIndices.size()
+            || node.lineIndexOffset % 2 != 0 || node.lineIndexCount % 2 != 0
+            || (node.indexCount && node.lineIndexCount)) {
+            throw std::runtime_error("Scene contains an invalid primitive range.");
         }
         GpuNodeRange range;
         range.triangleIndexOffset = node.indexOffset;
@@ -297,7 +303,8 @@ GpuMesh createGpuMesh(
         range.lineIndexOffset = node.indexOffset * 2u;
         range.lineIndexCount = node.indexCount * 2u;
         range.pointIndexOffset = static_cast<uint32_t>(gpuMesh.pointVertexIndices.size());
-        range.pointIndexCount = appendPointIndicesForRange(mesh.indices, node.indexOffset, node.indexCount,
+        const auto indices = meshNodeIndices(mesh, node);
+        range.pointIndexCount = appendPointIndicesForRange(indices, 0, static_cast<uint32_t>(indices.size()),
             vertexGroups, nodeIndex, gpuMesh.pointVertexIndices);
         (void)sceneBufferBytes(gpuMesh.pointVertexIndices.size(), sizeof(uint32_t));
         gpuMesh.nodeRanges.push_back(range);
@@ -307,10 +314,17 @@ GpuMesh createGpuMesh(
             woby::graphics::copy(mesh.vertices.data(), vertexBytes),
             meshLayout, WOBY_GPU_BUFFER_COMPUTE_READ);
 
-        gpuMesh.triangleIndexBuffer = woby::graphics::createIndexBuffer(
+        if (!mesh.indices.empty()) { gpuMesh.triangleIndexBuffer = woby::graphics::createIndexBuffer(
             woby::graphics::copy(mesh.indices.data(), indexBytes),
-            WOBY_GPU_BUFFER_INDEX32);
-        if (!woby::graphics::isValid(gpuMesh.vertexBuffer) || !woby::graphics::isValid(gpuMesh.triangleIndexBuffer)) {
+            WOBY_GPU_BUFFER_INDEX32); }
+        if (!mesh.lineIndices.empty()) {
+            gpuMesh.importedLineBuffer = woby::graphics::createIndexBuffer(
+                woby::graphics::copy(mesh.lineIndices.data(), sceneBufferBytes(mesh.lineIndices.size(), sizeof(uint32_t))),
+                WOBY_GPU_BUFFER_INDEX32 | WOBY_GPU_BUFFER_COMPUTE_READ);
+            if (!woby::graphics::isValid(gpuMesh.importedLineBuffer)) { throw std::runtime_error("Failed to allocate line segment buffer."); }
+        }
+        if (!woby::graphics::isValid(gpuMesh.vertexBuffer)
+            || (!mesh.indices.empty() && !woby::graphics::isValid(gpuMesh.triangleIndexBuffer))) {
             throw std::runtime_error("Failed to allocate scene GPU buffers.");
         }
         prepareGpuMeshFeatures(gpuMesh, mesh, features);
@@ -324,7 +338,7 @@ GpuMesh createGpuMesh(
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
     uint8_t features)
 {
-    if ((features & gpuMeshEdges) && !woby::graphics::isValid(gpuMesh.lineIndexBuffer)) {
+    if ((features & gpuMeshEdges) && !mesh.indices.empty() && !woby::graphics::isValid(gpuMesh.lineIndexBuffer)) {
         (void)sceneBufferBytes(mesh.indices.size(), 2 * sizeof(uint32_t));
         gpuMesh.lineIndexBuffer = woby::graphics::createIndexBuffer(
             ownedBuffer(buildLineIndices(mesh.indices)),
@@ -346,6 +360,8 @@ void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
 
 void destroyGpuMesh(GpuMesh& mesh)
 {
+    if (woby::graphics::isValid(mesh.importedLineBuffer)) { woby::graphics::destroy(mesh.importedLineBuffer); }
+    mesh.importedLineBuffer = WOBY_GPU_INVALID_HANDLE;
     if (woby::graphics::isValid(mesh.pointIdBuffer)) {
         woby::graphics::destroy(mesh.pointIdBuffer);
     }
@@ -409,7 +425,7 @@ void submitGroupRange(
     woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
-    MarkerDrawContext* markers)
+    MarkerDrawContext* markers, bool importedLinesOnly)
 {
     if (fileIndex >= files.size() || fileIndex >= runtimes.size()) {
         return;
@@ -421,6 +437,8 @@ void submitGroupRange(
         return;
     }
 
+    const auto& node = file.mesh.nodes[nodeIndex];
+    if (importedLinesOnly != (node.lineIndexCount != 0)) { return; }
     const auto& settings = file.groupSettings[nodeIndex];
     if (!settings.visible) {
         return;
@@ -431,7 +449,21 @@ void submitGroupRange(
     groupTransformMatrix(settings, groupModel);
     bx::mtxMul(model, parentModel, groupModel);
     const auto& range = gpuMesh.nodeRanges[nodeIndex];
-    if (settings.showSolidMesh) {
+    if (importedLinesOnly) {
+        const auto params = pointSpriteParameters(settings.lines.width, sceneViewportWidth, viewportHeight, node.lineIndexOffset);
+        woby::graphics::setTransform(model);
+        const auto color = groupColor(settings, 1.0f, opacityScale);
+        woby::graphics::setUniform(colorUniform, color.data());
+        woby::graphics::setUniform(pointParamsUniform, params.data(), 2);
+        woby::graphics::setBuffer(0, gpuMesh.vertexBuffer, woby::graphics::Access::Read);
+        woby::graphics::setBuffer(1, gpuMesh.importedLineBuffer, woby::graphics::Access::Read);
+        woby::graphics::setVertexCount(4);
+        woby::graphics::setInstanceCount(node.lineIndexCount / 2);
+        setMarkerRenderState(renderState(settings.lines.depthTest ? WOBY_GPU_STATE_DEPTH_TEST_LEQUAL : WOBY_GPU_STATE_DEPTH_TEST_ALWAYS,
+            settings.lines.depthTest, color, WOBY_GPU_STATE_PT_TRISTRIP), markers != nullptr);
+        woby::graphics::submit(viewId, colorProgram);
+    }
+    if (!importedLinesOnly && settings.showSolidMesh) {
         submitTriangleRange(
             viewId,
             gpuMesh,
@@ -445,7 +477,7 @@ void submitGroupRange(
             {settings.uvGrid.densityU, settings.uvGrid.densityV,
                 settings.uvGrid.enabled && nodeIndex < file.mesh.nodes.size() && file.mesh.nodes[nodeIndex].hasTexcoords ? 1.0f : 0.0f, 0.0f});
     }
-    if (settings.showTriangles) {
+    if (!importedLinesOnly && settings.showTriangles) {
         submitColorRange(
             viewId,
             gpuMesh,
@@ -504,7 +536,7 @@ void submitSceneNode(
     woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
-    MarkerDrawContext* markers)
+    MarkerDrawContext* markers, bool importedLinesOnly)
 {
     (void)sceneNodes;
     if (node.kind == UiSceneNodeKind::folder) {
@@ -534,7 +566,7 @@ void submitSceneNode(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight, markers);
+                viewportHeight, markers, importedLinesOnly);
         }
         return;
     }
@@ -573,7 +605,7 @@ void submitSceneNode(
                     colorUniform,
                     pointParamsUniform,
                     sceneViewportWidth,
-                    viewportHeight, markers);
+                    viewportHeight, markers, importedLinesOnly);
             }
             return;
         }
@@ -595,7 +627,7 @@ void submitSceneNode(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight, markers);
+                viewportHeight, markers, importedLinesOnly);
         }
         return;
     }
@@ -616,7 +648,7 @@ void submitSceneNode(
         colorUniform,
         pointParamsUniform,
         sceneViewportWidth,
-        viewportHeight, markers);
+        viewportHeight, markers, importedLinesOnly);
 }
 
 void submitSceneFiles(
@@ -633,8 +665,9 @@ void submitSceneFiles(
     woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
-    MarkerDrawContext* markers)
+    MarkerDrawContext* markers, bool importedLinesOnly)
 {
+    if (importedLinesOnly && std::none_of(files.begin(), files.end(), [](const auto& file) { return !file.mesh.lineIndices.empty(); })) { return; }
     float identity[16];
     bx::mtxIdentity(identity);
     if (!sceneNodes.empty()) {
@@ -655,7 +688,7 @@ void submitSceneFiles(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight, markers);
+                viewportHeight, markers, importedLinesOnly);
         }
         return;
     }
@@ -688,7 +721,7 @@ void submitSceneFiles(
                 colorUniform,
                 pointParamsUniform,
                 sceneViewportWidth,
-                viewportHeight, markers);
+                viewportHeight, markers, importedLinesOnly);
         }
     }
 }

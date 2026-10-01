@@ -60,6 +60,36 @@ VertexOutput pointVertex(uint vertex, uint instance) {
     return v;
 }
 VertexOutput vs_point_sprite(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
+VertexOutput vs_line_sprite(uint vertex : SV_VertexID,uint instance : SV_InstanceID) {
+    VertexOutput v = {};
+    v.position = float4(2,2,2,1); // Rejected/zero-length segments emit no fragments.
+    uint base = uint(root.pointParams[1].x) + uint(root.pointParams[1].y)*65536u + instance*2;
+    float4 a = mul(root.modelViewProj,float4(positionAt(root.pointIds[base]),1));
+    float4 b = mul(root.modelViewProj,float4(positionAt(root.pointIds[base+1]),1));
+    // Clip in homogeneous space before dividing by w. Native depth is [0,1],
+    // including reversed-Z; both near and far planes are covered.
+    float4 planes[6] = {float4(1,0,0,1),float4(-1,0,0,1),float4(0,1,0,1),
+        float4(0,-1,0,1),float4(0,0,1,0),float4(0,0,-1,1)};
+    for (uint i=0;i<6;++i) {
+        float da=dot(a,planes[i]), db=dot(b,planes[i]);
+        if (da<0 && db<0) return v;
+        if ((da<0)!=(db<0)) {
+            float4 cut=lerp(a,b,da/(da-db));
+            if (da<0) a=cut; else b=cut;
+        }
+    }
+    if (a.w<=0 || b.w<=0) return v;
+    float2 viewport=root.pointParams[0].yz;
+    float2 delta=(b.xy/b.w-a.xy/a.w)*viewport;
+    float pixelLength=length(delta);
+    if (pixelLength<.000001) return v;
+    float2 normal=float2(-delta.y,delta.x)/pixelLength;
+    float side=(vertex&1)!=0 ? 1.0 : -1.0;
+    float4 endpoint=(vertex&2)!=0 ? b : a;
+    endpoint.xy+=normal*side*root.pointParams[0].x/viewport*endpoint.w;
+    v.position=clipPosition(endpoint);
+    return v;
+}
 VertexOutput vs_marker_point(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
 float3 uvGridColor(float3 color, float2 uv, float2 density) {
         float2 cell = uv * density;

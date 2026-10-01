@@ -463,7 +463,7 @@ woby ctl --instance review render set scene --solid true --uv-grid true --uv-den
 | CLI | RPC method | Scope / behavior |
 | --- | --- | --- |
 | `visibility set TARGET --visible BOOL` | `visibility.set` | Scene, folder subtree, file, group, analysis, or annotation. File changes update all its groups; group changes refresh ancestor visibility. |
-| `render set TARGET [--solid BOOL] [--triangles BOOL] [--vertices BOOL] [--uv-grid BOOL] [--uv-density-u N] [--uv-density-v N]` | `render.set` | Scene, folder subtree, file, group. Independent modes; file/folder controls apply to descendant groups. |
+| `render set TARGET [--solid BOOL] [--triangles BOOL] [--vertices BOOL] [--uv-grid BOOL] [--uv-density-u N] [--uv-density-v N] [--line-width N] [--line-depth-test BOOL]` | `render.set` | Scene, folder subtree, file, group. Independent modes; file/folder controls apply to descendant groups. |
 | `transform get OBJECT_ID` | `transform.get` | Local folder/file/group settings. |
 | `transform set OBJECT_ID [--translation X Y Z] [--rotation-degrees X Y Z] [--scale S]` | `transform.set` | Local translation, Euler rotation, uniform scale; existing center/pivot and transform conventions. |
 | `transform reset OBJECT_ID` | `transform.reset` | Resets translation, rotation, scale **and opacity** to their defaults, matching the UI. |
@@ -476,6 +476,12 @@ woby ctl --instance review render set scene --solid true --uv-grid true --uv-den
 | `dimensions set --visible BOOL` | `dimensions.set` | Selected-geometry dimension visibility; saved and undoable. Values use raw coordinates. |
 | `origin set --visible BOOL` | `origin.set` | Origin-axis visibility. |
 | `up-axis set y|z` | `up-axis.set` | Scene up-axis; also reframes the camera. |
+
+Imported line groups support `--line-width` (1-12 drawable pixels, default 2) and
+`--line-depth-test` (default true; false draws on top). These options apply only
+to line descendants and reject targets with none. Other render flags are preserved.
+`object` and `scene tree` report each group's `primitive` as `triangles` or `lines`;
+object details include `lineSegmentCount` and settings `lineWidth`/`lineDepthTest`.
 
 Object setters return `target`, `applied` local settings, `dirty`, and scene `bounds`.
 Scene-wide setters return the updated scene snapshot. Scale is clamped to 0.01–20;

@@ -1133,6 +1133,7 @@ void appendAnnotationPickParts(std::vector<ScenePickPart>& parts, const UiState&
         part.objectId = state.annotations[i].objectId; part.edgeXray = false;
         bx::mtxIdentity(part.model.data());
         part.diagnosticEdges = storage[i];
+        part.annotationOverlay = true;
         parts.push_back(part);
     }
 }

@@ -1,7 +1,7 @@
 # File format importers
 
 woby can load native importer libraries supplied by the user. An importer reads
-a model file and returns triangles and named groups with optional hierarchy,
+a model file and returns triangles, optional line segments, and named groups with optional hierarchy,
 color and visibility defaults. woby owns the copied geometry, scene settings, GPU resources,
 and rendering. The DLL must implement the woby API;
 an arbitrary third-party format library needs a small adapter.
@@ -206,9 +206,9 @@ positions for analysis. Source bounds and exported finding coordinates restore
 the original coordinates. This does not recover detail already lost by an SDK
 or a source format that stores positions as floats.
 
-CAD surfaces, full material definitions, textures, and animation are not part of
-this mesh-only API. Optional hierarchy describes the organization of these same
-triangle groups; it does not add instancing or source transforms.
+Parametric CAD surfaces, full material definitions, textures, and animation are
+not part of this API. Optional hierarchy organizes triangle and line groups;
+it does not add instancing or source transforms.
 
 Imports through the interactive loading pipeline run on its CPU worker; startup
 imports use the existing synchronous startup pipeline. Calls into each importer
@@ -293,6 +293,86 @@ visible. Parent transforms use the existing scene controls. Geometry must still
 be supplied in one file coordinate system with source transforms baked in.
 `ctl scene tree` exposes nested children and each occurrence's `parentId`;
 `ctl object` includes `parentId` in its `occurrences` array. Root parents are null.
+
+## Optional line segments
+
+`WobyImporterApiWithLines` extends the hierarchy table with `get_lines`. Set
+`base.base.struct_size = sizeof(WobyImporterApiWithLines)` and return
+`&api.base.base` from the entry point. ABI 2's existing layouts stay unchanged;
+existing triangle-only and hierarchy importers require no recompilation. Older
+hosts ignore this extension and cannot display its lines. Use a line-capable
+host for a hierarchy that references line groups or a line-only result.
+
+Prepare `WobyImportLines` during `import_file`. Its `indices` are pairs of
+zero-based indices into **the same vertex table as the triangles**. Each pair
+is an independent segment: a polyline `(a,b,c)` becomes `(a,b,b,c)`. There are
+no implicit closing edges. Degenerate or zero projected-length segments are
+accepted but do not draw. Curved geometry must be sampled into segments by the
+importer. This extension does not change the built-in OBJ or STL readers.
+
+```c
+static const uint32_t segments[] = {0, 1, 1, 2};
+static const WobyImportGroup curves[] = {
+    {"solid-a/boundary", 0, 4, WOBY_IMPORT_GROUP_HAS_COLOR, {0, 1, 0, 1}}
+};
+static const WobyImportLines lines = {sizeof(WobyImportLines), segments, 4, curves, 1};
+static const WobyImportLines* WOBY_IMPORT_CALL get_lines(const WobyImportResult* result)
+{
+    (void)result;
+    return &lines;
+}
+static const WobyImporterApiWithLines api = {
+    {{sizeof(WobyImporterApiWithLines), WOBY_IMPORTER_ABI_VERSION,
+      "org.example.curves", "Curve importer", "1", "curves",
+      import_file, release_result},
+     get_hierarchy}, /* May be null when no hierarchy is needed. */
+    get_lines
+};
+WOBY_IMPORT_EXPORT const WobyImporterApi* WOBY_IMPORT_CALL woby_get_importer_api(uint32_t version)
+{
+    return version == WOBY_IMPORTER_ABI_VERSION ? &api.base.base : 0;
+}
+```
+
+A null callback, null returned pointer, or an empty line buffer with no groups
+means there are no lines. The host calls this callback after a successful import,
+copies its data before releasing the result, and never takes ownership of plugin
+allocations. Release line metadata and geometry from `release_result`, including
+on failed validation or cancellation.
+
+Line groups use `WobyImportGroup` with the same color and initial visibility flags.
+They must cover their line index buffer consecutively, with nonempty, pair-aligned
+ranges. Names must be unique **across both triangle and line groups**. Combined
+limits remain 100,000 groups, 1 MiB of group-name bytes, and 4 GiB of input vertex
+and index buffers. All index values must reference valid vertices. The normal/UV
+flags still apply to the entire shared vertex table, including line vertices;
+leave those flags unset if the corresponding data is not supplied.
+
+Hierarchy `group_index` addresses the concatenation of triangle groups followed
+by line groups. With no explicit groups, a nonempty triangle buffer contributes
+one `Mesh` group and a nonempty line buffer contributes one `Lines` group. An
+empty triangle buffer contributes no group. For a line-only model, set the base
+result's `indices = NULL`, `index_count = 0`, `groups = NULL`, and `group_count = 0`;
+hierarchy index zero then addresses the first line group. At least one primitive
+buffer must be nonempty. Every generated or explicit group needs exactly one
+hierarchy leaf when hierarchy metadata is supplied.
+
+Each line group appears in the scene tree and supports color, opacity, visibility,
+transforms, selection, framing, and optional vertex markers. Line width is measured
+in drawable pixels (1-12, default 2). Lines are depth-tested by default; **Draw lines
+on top** disables depth testing. Parent edits apply to eligible descendant groups,
+and later child edits remain independent. Surface analyses and UV views accept
+triangle groups only; importing curves does not add them to triangle topology.
+
+Line appearance is persisted in scene format 18, views, and undo history. Previous
+scene versions remain readable. The saved primitive kind prevents an updated
+importer from silently applying triangle settings to a same-named line group.
+`ctl object` and `ctl scene tree` expose each group's `primitive`; object details
+also include `lineSegmentCount`, and settings include `lineWidth` and `lineDepthTest`.
+
+```powershell
+woby ctl --instance review render set GROUP_ID --line-width 4 --line-depth-test false
+```
 
 ## Example: triangular OFF files
 

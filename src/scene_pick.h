@@ -37,7 +37,12 @@ struct ScenePickPart {
     bool edgeXray = true, surfaceLessEqual = false;
     float opacity = 1.0f, pointSize = 4.0f;
     std::span<const DiagnosticEdge> diagnosticEdges;
+    size_t lineIndexOffset = 0, lineIndexCount = 0;
+    float lineWidth = 0;
+    bool annotationOverlay = false;
 };
+
+[[nodiscard]] std::span<const uint32_t> scenePartIndices(const ScenePickPart& part);
 
 struct ScenePickView {
     PickMatrix view{}, projection{};

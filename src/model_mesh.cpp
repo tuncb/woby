@@ -87,10 +87,11 @@ Coordinate meshPosition(const Mesh& mesh, size_t index)
 std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node)
 {
     if (!node && mesh.originalBounds) { return *mesh.originalBounds; }
-    const auto count = node ? size_t(node->indexCount) : mesh.vertices.size();
+    const auto indices = node ? meshNodeIndices(mesh, *node) : std::span<const uint32_t>{};
+    const auto count = node ? indices.size() : mesh.vertices.size();
     std::array<Coordinate, 2> bounds{};
     for (size_t i = 0; i < count; ++i) {
-        const auto p = originalPosition(meshPosition(mesh, node ? mesh.indices.at(size_t(node->indexOffset)+i) : i), mesh.origin);
+        const auto p = originalPosition(meshPosition(mesh, node ? indices[i] : i), mesh.origin);
         if (i == 0) { bounds = {p, p}; }
         else { for (size_t k = 0; k < 3; ++k) { bounds[0][k] = std::min(bounds[0][k], p[k]); bounds[1][k] = std::max(bounds[1][k], p[k]); } }
     }
@@ -179,7 +180,18 @@ void rebaseMesh(Mesh& mesh, const Coordinate& origin)
 
 bool empty(const Mesh& mesh) noexcept
 {
-    return mesh.vertices.empty() || mesh.indices.empty();
+    return mesh.vertices.empty() || (mesh.indices.empty() && mesh.lineIndices.empty());
+}
+
+std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node)
+{
+    const auto& indices = node.lineIndexCount ? mesh.lineIndices : mesh.indices;
+    const size_t offset = node.lineIndexCount ? node.lineIndexOffset : node.indexOffset;
+    const size_t count = node.lineIndexCount ? node.lineIndexCount : node.indexCount;
+    if (offset > indices.size() || count > indices.size() - offset) {
+        throw std::runtime_error("Invalid model group index range.");
+    }
+    return std::span<const uint32_t>(indices).subspan(offset, count);
 }
 
 bool finitePosition(const std::array<float, 3>& position) noexcept
@@ -293,7 +305,7 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance)
 void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoadProgressCallback& progress)
 {
     if (empty(mesh)) {
-        throw std::runtime_error("Mesh did not contain renderable triangles.");
+        throw std::runtime_error("Mesh did not contain renderable triangles or lines.");
     }
 
     reportModelLoadProgress(progress, ModelLoadStage::normals);

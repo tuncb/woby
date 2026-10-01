@@ -9,6 +9,7 @@ inline constexpr std::array nativeShaderNames{
     "fs_color",
     "vs_annotation",
     "vs_point_sprite",
+    "vs_line_sprite",
     "fs_point_sprite",
     "vs_comparison",
     "fs_comparison",

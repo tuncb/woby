@@ -30,6 +30,7 @@ struct Importer {
     ImporterInfo info;
     WobyImporterApi api{};
     decltype(WobyImporterApiWithHierarchy::get_hierarchy) getHierarchy = nullptr;
+    decltype(WobyImporterApiWithLines::get_lines) getLines = nullptr;
     std::shared_ptr<void> library;
     std::shared_ptr<std::mutex> callMutex;
 };
@@ -188,6 +189,9 @@ void loadImporter(const std::filesystem::path& path)
     if (api->struct_size >= sizeof(WobyImporterApiWithHierarchy)) {
         entry.getHierarchy = reinterpret_cast<const WobyImporterApiWithHierarchy*>(api)->get_hierarchy;
     }
+    if (api->struct_size >= sizeof(WobyImporterApiWithLines)) {
+        entry.getLines = reinterpret_cast<const WobyImporterApiWithLines*>(api)->get_lines;
+    }
     entry.info.id = boundedString(api->id, 256u);
     entry.info.name = boundedString(api->name);
     entry.info.version = boundedString(api->version, 256u);
@@ -296,16 +300,28 @@ bool hasImporterForPath(const std::filesystem::path& path)
     return std::any_of(host.entries.begin(), host.entries.end(), [&](const Importer& entry) { return supports(entry.info, path); });
 }
 
-Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy)
+Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy, const WobyImportLines* lines)
 {
+    if (lines && lines->struct_size < sizeof(WobyImportLines)) {
+        throw std::runtime_error("Invalid importer line buffers or size limits.");
+    }
     constexpr uint64_t maxBytes = 4ull * 1024u * 1024u * 1024u;
     const uint64_t bytes = uint64_t(result.vertex_count) * sizeof(WobyImportVertex)
-        + uint64_t(result.index_count) * sizeof(uint32_t);
+        + uint64_t(result.index_count) * sizeof(uint32_t)
+        + (lines ? uint64_t(lines->index_count) * sizeof(uint32_t) : 0);
     if (result.struct_size < sizeof(WobyImportResult) || (result.flags & ~3u) != 0u
-        || result.vertex_count == 0u || result.index_count == 0u || result.index_count % 3u != 0u
-        || result.vertices == nullptr || result.indices == nullptr || bytes > maxBytes
+        || result.vertex_count == 0u || (result.index_count == 0u && (!lines || lines->index_count == 0u)) || result.index_count % 3u != 0u
+        || result.vertices == nullptr || (result.index_count != 0u && result.indices == nullptr) || bytes > maxBytes
         || result.group_count > 100000u || (result.group_count != 0u && result.groups == nullptr)) {
         throw std::runtime_error("Invalid importer mesh buffers, flags or size limits.");
+    }
+    const auto effectiveGroupCount = [](uint32_t groups, uint32_t indices) { return groups ? groups : (indices ? 1u : 0u); };
+    if (lines && (lines->index_count % 2u != 0u
+        || (lines->index_count != 0u && lines->indices == nullptr)
+        || uint64_t(effectiveGroupCount(result.group_count, result.index_count))
+            + effectiveGroupCount(lines->group_count, lines->index_count) > 100000u
+        || (lines->group_count != 0u && lines->groups == nullptr))) {
+        throw std::runtime_error("Invalid importer line buffers or size limits.");
     }
     Mesh mesh;
     mesh.vertices.resize(result.vertex_count);
@@ -337,50 +353,68 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
             }
         }
     }
-    mesh.indices.assign(result.indices, result.indices + result.index_count);
+    if (result.index_count) { mesh.indices.assign(result.indices, result.indices + result.index_count); }
     for (uint32_t index : mesh.indices) {
         if (index >= result.vertex_count) {
             throw std::runtime_error("Importer index is outside the vertex buffer.");
         }
     }
-    uint32_t nextIndex = 0;
     size_t nameBytes = 0;
     std::set<std::string> groupNames;
-    for (uint32_t i = 0; i < result.group_count; ++i) {
-        const auto& group = result.groups[i];
-        if (group.index_offset != nextIndex || group.index_count == 0u || group.index_count % 3u != 0u
-            || group.index_count > result.index_count - nextIndex) {
-            throw std::runtime_error("Importer groups must partition the triangle buffer in order.");
-        }
-        auto name = boundedString(group.name);
-        nameBytes += name.size();
-        if (name.empty() || nameBytes > 1024u * 1024u || !groupNames.insert(name).second) {
-            throw std::runtime_error("Importer group names must be unique, nonempty and within size limits.");
-        }
-        constexpr uint32_t groupFlags = WOBY_IMPORT_GROUP_HAS_COLOR | WOBY_IMPORT_GROUP_INITIALLY_HIDDEN;
-        if ((group.flags & ~groupFlags) != 0u) {
-            throw std::runtime_error("Invalid importer group flags.");
-        }
-        MeshNode node{std::move(name), nextIndex, group.index_count};
-        node.defaultVisible = (group.flags & WOBY_IMPORT_GROUP_INITIALLY_HIDDEN) == 0u;
-        if ((group.flags & WOBY_IMPORT_GROUP_HAS_COLOR) != 0u) {
-            std::array<float, 4> color;
-            for (size_t component = 0; component < color.size(); ++component) {
-                const float value = group.color[component];
-                if (!std::isfinite(value) || value < 0.0f || value > 1.0f) {
-                    throw std::runtime_error("Importer group color components must be finite and within [0, 1].");
-                }
-                color[component] = value;
+    const auto appendGroups = [&](const WobyImportGroup* groups, uint32_t count, uint32_t indexCount, bool lineGroups) {
+        uint32_t nextIndex = 0;
+        for (uint32_t i = 0; i < count; ++i) {
+            const auto& group = groups[i];
+            if (group.index_offset != nextIndex || group.index_count == 0u || group.index_count % (lineGroups ? 2u : 3u) != 0u
+                || group.index_count > indexCount - nextIndex) {
+                throw std::runtime_error(lineGroups ? "Importer groups must partition the line buffer in order."
+                    : "Importer groups must partition the triangle buffer in order.");
             }
-            node.defaultColor = color;
+            auto name = boundedString(group.name);
+            nameBytes += name.size();
+            if (name.empty() || nameBytes > 1024u * 1024u || !groupNames.insert(name).second) {
+                throw std::runtime_error("Importer group names must be unique, nonempty and within size limits.");
+            }
+            constexpr uint32_t groupFlags = WOBY_IMPORT_GROUP_HAS_COLOR | WOBY_IMPORT_GROUP_INITIALLY_HIDDEN;
+            if ((group.flags & ~groupFlags) != 0u) {
+                throw std::runtime_error("Invalid importer group flags.");
+            }
+            MeshNode node{std::move(name), nextIndex, group.index_count};
+            if (lineGroups) {
+                node.lineIndexOffset = nextIndex; node.lineIndexCount = group.index_count;
+                node.indexOffset = 0; node.indexCount = 0;
+            }
+            node.defaultVisible = (group.flags & WOBY_IMPORT_GROUP_INITIALLY_HIDDEN) == 0u;
+            if ((group.flags & WOBY_IMPORT_GROUP_HAS_COLOR) != 0u) {
+                std::array<float, 4> color;
+                for (size_t component = 0; component < color.size(); ++component) {
+                    const float value = group.color[component];
+                    if (!std::isfinite(value) || value < 0.0f || value > 1.0f) {
+                        throw std::runtime_error("Importer group color components must be finite and within [0, 1].");
+                    }
+                    color[component] = value;
+                }
+                node.defaultColor = color;
+            }
+            mesh.nodes.push_back(std::move(node));
+            nextIndex += group.index_count;
         }
-        mesh.nodes.push_back(std::move(node));
-        nextIndex += group.index_count;
-    }
-    if (result.group_count == 0u) {
-        mesh.nodes.push_back({"Mesh", 0u, result.index_count});
-    } else if (nextIndex != result.index_count) {
-        throw std::runtime_error("Importer groups do not cover all triangles.");
+        if (count == 0u && indexCount != 0u) {
+            MeshNode node{lineGroups ? "Lines" : "Mesh", 0u, lineGroups ? 0u : indexCount};
+            if (!groupNames.insert(node.name).second) { throw std::runtime_error("Importer group names must be unique."); }
+            node.lineIndexCount = lineGroups ? indexCount : 0u;
+            mesh.nodes.push_back(std::move(node));
+        } else if (nextIndex != indexCount) {
+            throw std::runtime_error(lineGroups ? "Importer groups do not cover all lines." : "Importer groups do not cover all triangles.");
+        }
+    };
+    appendGroups(result.groups, result.group_count, result.index_count, false);
+    if (lines) {
+        if (lines->index_count) { mesh.lineIndices.assign(lines->indices, lines->indices + lines->index_count); }
+        for (const auto index : mesh.lineIndices) {
+            if (index >= result.vertex_count) { throw std::runtime_error("Importer line index is outside the vertex buffer."); }
+        }
+        appendGroups(lines->groups, lines->group_count, lines->index_count, true);
     }
     if (hierarchy != nullptr) {
         if (hierarchy->struct_size < sizeof(WobyImportHierarchy) || hierarchy->node_count == 0u
@@ -425,7 +459,7 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
         }
     }
     localizeMesh(mesh);
-    for (auto& node : mesh.nodes) { node.hasTexcoords = (result.flags & WOBY_IMPORT_HAS_TEXCOORDS) != 0u; }
+    for (auto& node : mesh.nodes) { node.hasTexcoords = node.indexCount != 0u && (result.flags & WOBY_IMPORT_HAS_TEXCOORDS) != 0u; }
     captureSourceMesh(mesh, SourceProvenance::importerVertices);
     finalizeMesh(mesh, (result.flags & WOBY_IMPORT_HAS_NORMALS) == 0u);
     return mesh;
@@ -479,7 +513,8 @@ ImportedModel importModel(const std::filesystem::path& path, const std::string& 
         throw std::runtime_error("Importer " + importer.info.id + ": "
             + (result.error ? boundedString(result.error) : "Import failed."));
     }
-    model.mesh = copyImportedMesh(result, importer.getHierarchy ? importer.getHierarchy(&result) : nullptr);
+    model.mesh = copyImportedMesh(result, importer.getHierarchy ? importer.getHierarchy(&result) : nullptr,
+        importer.getLines ? importer.getLines(&result) : nullptr);
     if (isCanceled(&context) != 0u) {
         if (context.error) { std::rethrow_exception(context.error); }
         model.mesh = {};

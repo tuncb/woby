@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,8 @@ struct MeshNode {
     // True only when every corner in this part has supplied, finite UVs.
     bool hasTexcoords = false;
     std::string displayName = {}; // Optional importer label; name stays the saved identity.
+    uint32_t lineIndexOffset = 0;
+    uint32_t lineIndexCount = 0; // Line groups have indexCount == 0.
 };
 
 [[nodiscard]] inline const std::string& meshNodeDisplayName(const MeshNode& node)
@@ -80,8 +83,10 @@ struct Mesh {
     // Immutable derived geometry index, published by the runtime after preparation.
     std::shared_ptr<const MeshAnnotationCache> annotationCache;
     std::vector<MeshHierarchyNode> hierarchy; // Validated source defaults; editable tree lives in UiState.
+    std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
 };
 
+[[nodiscard]] std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node);
 [[nodiscard]] bool finiteCoordinate(const Coordinate& point) noexcept;
 [[nodiscard]] Coordinate meshPosition(const Mesh& mesh, size_t index);
 [[nodiscard]] std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node = nullptr);

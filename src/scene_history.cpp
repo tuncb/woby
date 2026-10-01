@@ -155,7 +155,8 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
             throw std::runtime_error("Source model parts changed; cannot restore references: " + file.path.string());
         }
         for (size_t group = 0; group < groups.size(); ++group) {
-            if (source->mesh.nodes[group].name != groups[group].name) {
+            if (source->mesh.nodes[group].name != groups[group].name
+                || (source->mesh.nodes[group].lineIndexCount != 0) != groups[group].lineGroup) {
                 throw std::runtime_error("Source model parts changed; cannot restore references: " + file.path.string());
             }
             // Geometry may have changed since removal. Keep historical appearance,

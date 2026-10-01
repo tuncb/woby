@@ -38,6 +38,7 @@ struct GpuMesh {
     woby::graphics::IndexBufferHandle triangleIndexBuffer = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::IndexBufferHandle lineIndexBuffer = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::IndexBufferHandle pointIdBuffer = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::IndexBufferHandle importedLineBuffer = WOBY_GPU_INVALID_HANDLE;
     std::vector<GpuNodeRange> nodeRanges;
     std::vector<uint32_t> pointVertexIndices;
 };
@@ -82,7 +83,8 @@ void submitSceneFiles(
     woby::graphics::UniformHandle pointParamsUniform,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
-    MarkerDrawContext* markers = nullptr);
+    MarkerDrawContext* markers = nullptr,
+    bool importedLinesOnly = false); // Line pass follows surfaces/analyses; colorProgram is vs_line_sprite.
 
 void submitSceneHelpers(
     woby::graphics::ViewId viewId,

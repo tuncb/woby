@@ -67,10 +67,13 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
     case P::opacity: return settings.opacity;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
     case P::red: case P::green: case P::blue:
-    case P::uvGrid: case P::uvDensityU: case P::uvDensityV: break;
+    case P::uvGrid: case P::uvDensityU: case P::uvDensityV:
+    case P::lineWidth: case P::lineDepthTest: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
         switch (property) {
+        case P::lineWidth: return settings.lines.width;
+        case P::lineDepthTest: return settings.lines.depthTest ? 1.0f : 0.0f;
         case P::uvGrid: return settings.uvGrid.enabled ? 1.0f : 0.0f;
         case P::uvDensityU: return settings.uvGrid.densityU;
         case P::uvDensityV: return settings.uvGrid.densityV;
@@ -93,7 +96,8 @@ bool isPartAppearanceProperty(UiObjectProperty property)
 {
     using P = UiObjectProperty;
     return property == P::solidMesh || property == P::triangles || property == P::vertices
-        || property == P::red || property == P::green || property == P::blue || isUvProperty(property);
+        || property == P::red || property == P::green || property == P::blue || isUvProperty(property)
+        || property == P::lineWidth || property == P::lineDepthTest;
 }
 
 void appendAppearanceTargets(const UiState& state, const UiSceneNode& node, bool parts,
@@ -113,20 +117,22 @@ void appendAppearanceTargets(const UiState& state, const UiSceneNode& node, bool
     }
 }
 
-std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectProperty property)
+std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectProperty property,
+    const std::vector<SceneObjectId>* objectsOverride = nullptr)
 {
+    const auto& selection = objectsOverride ? *objectsOverride : state.selectedSceneObjects;
     std::vector<SceneObjectId> targets;
     const bool parts = isPartAppearanceProperty(property);
     // A large selection must not rescan every scene object for each selected ID.
     // Small selections retain direct lookup without building a scene index.
-    const auto objects = state.selectedSceneObjects.size() > 8 ? sceneObjects(state) : std::vector<SceneObjectInfo>{};
+    const auto objects = selection.size() > 8 ? sceneObjects(state) : std::vector<SceneObjectInfo>{};
     boost::unordered_flat_map<SceneObjectId, const SceneObjectInfo*> byId;
     byId.reserve(objects.size());
     for (const auto& object : objects) { byId.emplace(object.id, &object); }
-    for (const auto id : state.selectedSceneObjects) {
+    for (const auto id : selection) {
         std::optional<SceneObjectInfo> single;
         const SceneObjectInfo* object = nullptr;
-        if (state.selectedSceneObjects.size() > 8) {
+        if (selection.size() > 8) {
             if (const auto found = byId.find(id); found != byId.end()) { object = found->second; }
         } else {
             single = findSceneObject(state, id);
@@ -153,11 +159,14 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     boost::unordered_flat_set<SceneObjectId> seen;
     seen.reserve(targets.size());
     std::erase_if(targets, [&](SceneObjectId id) { return !seen.insert(id).second; });
-    if (isUvProperty(property)) {
+    const bool lines = property == UiObjectProperty::lineWidth || property == UiObjectProperty::lineDepthTest;
+    const bool triangles = property == UiObjectProperty::solidMesh || property == UiObjectProperty::triangles;
+    if (isUvProperty(property) || lines || triangles) {
         boost::unordered_flat_set<SceneObjectId> eligible;
         for (const auto& file : state.files) {
             for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
-                if (file.mesh.nodes[i].hasTexcoords) { eligible.insert(file.groupSettings[i].objectId); }
+                if (isUvProperty(property) ? file.mesh.nodes[i].hasTexcoords
+                    : (lines ? file.mesh.nodes[i].lineIndexCount != 0 : file.mesh.nodes[i].lineIndexCount == 0)) { eligible.insert(file.groupSettings[i].objectId); }
             }
         }
         std::erase_if(targets, [&](SceneObjectId id) { return !eligible.contains(id); });
@@ -192,10 +201,13 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
     case P::opacity: settings.opacity = std::clamp(value, minGroupOpacity, maxGroupOpacity); return;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
     case P::red: case P::green: case P::blue:
-    case P::uvGrid: case P::uvDensityU: case P::uvDensityV: break;
+    case P::uvGrid: case P::uvDensityU: case P::uvDensityV:
+    case P::lineWidth: case P::lineDepthTest: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
         switch (property) {
+        case P::lineWidth: setGroupLineStyle(settings, {value, settings.lines.depthTest}); return;
+        case P::lineDepthTest: setGroupLineStyle(settings, {settings.lines.width, value != 0.0f}); return;
         case P::uvGrid: setGroupUvGrid(settings, {value != 0.0f, settings.uvGrid.densityU, settings.uvGrid.densityV}); return;
         case P::uvDensityU: setGroupUvGrid(settings, {settings.uvGrid.enabled, value, settings.uvGrid.densityV}); return;
         case P::uvDensityV: setGroupUvGrid(settings, {settings.uvGrid.enabled, settings.uvGrid.densityU, value}); return;
@@ -218,6 +230,35 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
 void setGroupUvGrid(UiGroupState& group, UvGridSettings settings)
 {
     group.uvGrid = normalizedUvGrid(settings);
+}
+
+void setGroupLineStyle(UiGroupState& group, LineStyle settings)
+{
+    group.lines = normalizedLineStyle(settings);
+}
+
+bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& objects,
+    std::optional<float> width, std::optional<bool> depthTest)
+{
+    if (width && !std::isfinite(*width)) { return false; }
+    const auto targets = propertyTargets(state, UiObjectProperty::lineWidth, &objects);
+    const boost::unordered_flat_set<SceneObjectId> included(targets.begin(), targets.end());
+    bool available = false, changed = false;
+    for (auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+            auto& part = file.groupSettings[i];
+            if (!file.mesh.nodes[i].lineIndexCount || (!objects.empty() && !included.contains(part.objectId))) { continue; }
+            available = true;
+            auto settings = part.lines;
+            if (width) { settings.width = *width; }
+            if (depthTest) { settings.depthTest = *depthTest; }
+            settings = normalizedLineStyle(settings);
+            changed = changed || settings != part.lines;
+            setGroupLineStyle(part, settings);
+        }
+    }
+    if (changed) { markSceneDirty(state); }
+    return available;
 }
 
 bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
@@ -384,6 +425,7 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
                     setGroupRenderMode(part, UiRenderMode::triangles, false);
                     setGroupRenderMode(part, UiRenderMode::vertices, false);
                     setGroupUvGrid(part, {});
+                    setGroupLineStyle(part, {});
                 }
                 ++colorIndex;
             }

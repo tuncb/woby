@@ -19,7 +19,7 @@ DimensionPoint transformed(const PickMatrix& model, const DimensionPoint& point)
 
 bool measurable(const ScenePickPart& part)
 {
-    return part.selected && part.mesh && part.indexCount != 0 && part.opacity > 0;
+    return part.selected && part.mesh && (part.indexCount != 0 || part.lineIndexCount != 0) && part.opacity > 0;
 }
 
 } // namespace
@@ -36,10 +36,7 @@ std::optional<SceneDimensions> sceneDimensions(std::span<const ScenePickPart> pa
         if (!measurable(part)) { continue; }
         single = &part;
         const auto& mesh = *part.mesh;
-        const size_t begin = std::min(part.indexOffset, mesh.indices.size());
-        const size_t end = begin + std::min(part.indexCount, mesh.indices.size() - begin);
-        for (size_t i = begin; i < end; ++i) {
-            const auto index = mesh.indices[i];
+        for (const auto index : scenePartIndices(part)) {
             if (index >= mesh.vertices.size() || !finitePosition(mesh.vertices[index].position)) { continue; }
             DimensionPoint point = meshPosition(mesh, index);
             if (!local) { point = transformed(part.model, point); }
@@ -78,8 +75,9 @@ const std::optional<SceneDimensions>& updateSceneDimensions(SceneDimensionsCache
     size_t index = 0;
     for (const auto& part : parts) {
         if (!measurable(part)) { continue; }
-        const DimensionPartKey key{part.mesh->vertices.data(), part.mesh->indices.data(), part.mesh->vertices.size(),
-            part.mesh->indices.size(), part.indexOffset, part.indexCount, part.model};
+        const auto indices = scenePartIndices(part);
+        const DimensionPartKey key{part.mesh->vertices.data(), indices.data(), part.mesh->vertices.size(),
+            indices.size(), 0, indices.size(), part.model};
         if (index == cache.keys.size()) { cache.keys.push_back(key); changed = true; }
         else if (cache.keys[index] != key) { cache.keys[index] = key; changed = true; }
         ++index;
