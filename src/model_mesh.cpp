@@ -292,13 +292,14 @@ Bounds calculateBounds(const std::vector<Vertex>& vertices, const ModelLoadProgr
     return bounds;
 }
 
-void captureSourceMesh(Mesh& mesh, SourceProvenance provenance)
+void captureSourceMesh(Mesh& mesh, SourceProvenance provenance, std::span<const uint64_t> originalPointIds)
 {
     auto data = std::make_shared<SourceMeshData>();
     data->provenance = provenance;
     data->points.reserve(mesh.vertices.size());
     for (size_t i = 0; i < mesh.vertices.size(); ++i) { data->points.push_back(meshPosition(mesh, i)); }
     data->indices = mesh.indices;
+    data->originalPointIds.assign(originalPointIds.begin(), originalPointIds.end());
     mesh.sourceData = std::move(data);
 }
 

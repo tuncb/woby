@@ -1,4 +1,5 @@
 #include "importer_host.h"
+#include "analysis_index.h"
 #include "utf8_path.h"
 #include <nlohmann/json.hpp>
 
@@ -31,6 +32,7 @@ struct Importer {
     WobyImporterApi api{};
     decltype(WobyImporterApiWithHierarchy::get_hierarchy) getHierarchy = nullptr;
     decltype(WobyImporterApiWithLines::get_lines) getLines = nullptr;
+    decltype(WobyImporterApiWithPointIds::get_point_ids) getPointIds = nullptr;
     std::shared_ptr<void> library;
     std::shared_ptr<std::mutex> callMutex;
 };
@@ -192,6 +194,9 @@ void loadImporter(const std::filesystem::path& path)
     if (api->struct_size >= sizeof(WobyImporterApiWithLines)) {
         entry.getLines = reinterpret_cast<const WobyImporterApiWithLines*>(api)->get_lines;
     }
+    if (api->struct_size >= sizeof(WobyImporterApiWithPointIds)) {
+        entry.getPointIds = reinterpret_cast<const WobyImporterApiWithPointIds*>(api)->get_point_ids;
+    }
     entry.info.id = boundedString(api->id, 256u);
     entry.info.name = boundedString(api->name);
     entry.info.version = boundedString(api->version, 256u);
@@ -300,15 +305,21 @@ bool hasImporterForPath(const std::filesystem::path& path)
     return std::any_of(host.entries.begin(), host.entries.end(), [&](const Importer& entry) { return supports(entry.info, path); });
 }
 
-Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy, const WobyImportLines* lines)
+Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy,
+    const WobyImportLines* lines, const WobyImportPointIds* pointIds)
 {
     if (lines && lines->struct_size < sizeof(WobyImportLines)) {
         throw std::runtime_error("Invalid importer line buffers or size limits.");
     }
+    if (pointIds && (pointIds->struct_size < sizeof(WobyImportPointIds)
+        || pointIds->vertex_count != result.vertex_count || pointIds->ids == nullptr)) {
+        throw std::runtime_error("Invalid importer point ID buffer or vertex count.");
+    }
     constexpr uint64_t maxBytes = 4ull * 1024u * 1024u * 1024u;
     const uint64_t bytes = uint64_t(result.vertex_count) * sizeof(WobyImportVertex)
         + uint64_t(result.index_count) * sizeof(uint32_t)
-        + (lines ? uint64_t(lines->index_count) * sizeof(uint32_t) : 0);
+        + (lines ? uint64_t(lines->index_count) * sizeof(uint32_t) : 0)
+        + (pointIds ? uint64_t(pointIds->vertex_count) * sizeof(uint64_t) : 0);
     if (result.struct_size < sizeof(WobyImportResult) || (result.flags & ~3u) != 0u
         || result.vertex_count == 0u || (result.index_count == 0u && (!lines || lines->index_count == 0u)) || result.index_count % 3u != 0u
         || result.vertices == nullptr || (result.index_count != 0u && result.indices == nullptr) || bytes > maxBytes
@@ -350,6 +361,19 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
                     throw std::runtime_error("Invalid importer texture coordinate.");
                 }
                 vertex.texcoord[axis] = source.texcoord[axis];
+            }
+        }
+    }
+    if (pointIds) {
+        AnalysisIndex<uint64_t, 1> identities;
+        reserveAnalysisIndex(identities, result.vertex_count);
+        std::vector<size_t> representatives;
+        representatives.reserve(result.vertex_count);
+        for (size_t i = 0; i < result.vertex_count; ++i) {
+            const auto identity = analysisIndex(identities, std::array<uint64_t, 1>{pointIds->ids[i]});
+            if (identity == representatives.size()) { representatives.push_back(i); }
+            else if (mesh.precisePositions[i] != mesh.precisePositions[representatives[identity]]) {
+                throw std::runtime_error("Importer vertices sharing a point ID must have identical positions.");
             }
         }
     }
@@ -460,7 +484,8 @@ Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy*
     }
     localizeMesh(mesh);
     for (auto& node : mesh.nodes) { node.hasTexcoords = node.indexCount != 0u && (result.flags & WOBY_IMPORT_HAS_TEXCOORDS) != 0u; }
-    captureSourceMesh(mesh, SourceProvenance::importerVertices);
+    captureSourceMesh(mesh, SourceProvenance::importerVertices,
+        pointIds ? std::span<const uint64_t>{pointIds->ids, pointIds->vertex_count} : std::span<const uint64_t>{});
     finalizeMesh(mesh, (result.flags & WOBY_IMPORT_HAS_NORMALS) == 0u);
     return mesh;
 }
@@ -514,7 +539,8 @@ ImportedModel importModel(const std::filesystem::path& path, const std::string& 
             + (result.error ? boundedString(result.error) : "Import failed."));
     }
     model.mesh = copyImportedMesh(result, importer.getHierarchy ? importer.getHierarchy(&result) : nullptr,
-        importer.getLines ? importer.getLines(&result) : nullptr);
+        importer.getLines ? importer.getLines(&result) : nullptr,
+        importer.getPointIds ? importer.getPointIds(&result) : nullptr);
     if (isCanceled(&context) != 0u) {
         if (context.error) { std::rethrow_exception(context.error); }
         model.mesh = {};

@@ -77,6 +77,9 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             continue;
         }
         const auto& data = *source.data;
+        if (!data.originalPointIds.empty() && data.originalPointIds.size() != data.points.size()) {
+            throw std::invalid_argument("Invalid source point ID count.");
+        }
         const bool stl = data.provenance == SourceProvenance::stlCorners;
         if (result.points.enabled) { ++result.points.availableSources; }
         if (result.triangles.enabled) {
@@ -156,10 +159,19 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
                 for (size_t id = heads[group]; id != noOccurrence; id = next[id]) { canceled(stop); members.push_back(id); }
                 std::reverse(members.begin(), members.end());
                 auto value = finding();
+                // Keep a selected vertex representative for each original ID.
+                // Geometry below still includes every selected render copy.
+                std::set<uint64_t> identities;
+                for (const auto id : members) {
+                    canceled(stop);
+                    if (data.originalPointIds.empty() || identities.insert(data.originalPointIds[id]).second) {
+                        value.members.push_back({id, false});
+                    }
+                }
+                if (value.members.size() < 2) { continue; }
                 std::set<std::array<float, 3>> positions;
                 for (const auto id : members) {
                     canceled(stop);
-                    value.members.push_back({id, false});
                     for (size_t occurrence = pointParts.heads[id]; occurrence != noOccurrence; occurrence = pointParts.entries[occurrence].next) {
                         canceled(stop);
                         const auto p = pointParts.entries[occurrence].part;
@@ -167,8 +179,8 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
                     }
                 }
                 value.geometry.assign(positions.begin(), positions.end());
-                if (stl) { result.points.informationalCount += members.size() - 1; }
-                else { result.points.duplicateCount += members.size() - 1; }
+                if (stl) { result.points.informationalCount += value.members.size() - 1; }
+                else { result.points.duplicateCount += value.members.size() - 1; }
                 found.push_back(std::move(value));
             }
             std::sort(found.begin(), found.end(), [&](const auto& a, const auto& b) { canceled(stop); return a.members.front().id < b.members.front().id; });

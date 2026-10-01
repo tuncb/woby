@@ -107,7 +107,7 @@ void rebaseMesh(Mesh& mesh, const Coordinate& origin);
 void generateSmoothNormals(std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices,
     const ModelLoadProgressCallback& progress = {});
 [[nodiscard]] Bounds calculateBounds(const std::vector<Vertex>& vertices, const ModelLoadProgressCallback& progress = {});
-void captureSourceMesh(Mesh& mesh, SourceProvenance provenance);
+void captureSourceMesh(Mesh& mesh, SourceProvenance provenance, std::span<const uint64_t> originalPointIds = {});
 void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoadProgressCallback& progress = {});
 
 } // namespace woby

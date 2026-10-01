@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-#define WOBY_IMPORTER_ABI_VERSION 2u
+#define WOBY_IMPORTER_ABI_VERSION 3u
 #define WOBY_IMPORT_OK 0u
 #define WOBY_IMPORT_ERROR 1u
 #define WOBY_IMPORT_CANCELED 2u
@@ -80,7 +80,7 @@ typedef struct WobyImporterApi {
     void (WOBY_IMPORT_CALL *release_result)(WobyImportResult*);
 } WobyImporterApi;
 
-/* Optional ABI 2 extension. Existing API and result layouts remain unchanged.
+/* Optional size-gated extension. Base API and result layouts remain unchanged.
  * Nodes are ordered parent before child. Only containers (NO_GROUP) can parent
  * other nodes; every mesh group must occur exactly once. Names are display labels
  * and may repeat; WobyImportGroup.name remains the stable, unique saved identity. */
@@ -98,7 +98,7 @@ typedef struct WobyImportHierarchy {
 
 typedef struct WobyImporterApiWithHierarchy {
     /* Set base.struct_size to sizeof(WobyImporterApiWithHierarchy). Return &base
-     * from woby_get_importer_api. Older hosts read only the unchanged base. */
+     * from woby_get_importer_api. The host checks struct_size before reading it. */
     WobyImporterApi base;
     /* Optional; called after a successful import_file. NULL means a flat import.
      * All metadata is borrowed until release_result. Do not retain the request
@@ -120,13 +120,34 @@ typedef struct WobyImportLines {
 
 typedef struct WobyImporterApiWithLines {
     /* Set base.base.struct_size to sizeof(WobyImporterApiWithLines) and return
-     * &base.base. Existing ABI 2 and hierarchy tables remain unchanged. Hierarchy
+     * &base.base. Base API and hierarchy tables remain unchanged. Hierarchy
      * group indexes address triangle groups first, then line groups (including
      * generated defaults). A line-only result has no triangle groups. */
     WobyImporterApiWithHierarchy base;
     /* Borrowed metadata prepared during import_file; lifetime until release_result. */
     const WobyImportLines* (WOBY_IMPORT_CALL *get_lines)(const WobyImportResult*);
 } WobyImporterApiWithLines;
+
+/* Optional source identity for duplicate-point inspection only. Supply one ID
+ * per result vertex, including unused and line-only vertices. IDs are opaque,
+ * file-local uint64 values (including 0 and UINT64_MAX). Vertices sharing an ID
+ * must have exactly equal original positions; signed zeros compare equal.
+ * Distinct IDs at equal positions remain duplicates. Normals and UVs may differ.
+ * These IDs never weld topology or change duplicate-triangle inspection. */
+typedef struct WobyImportPointIds {
+    uint32_t struct_size;
+    const uint64_t* ids;
+    uint32_t vertex_count;
+} WobyImportPointIds;
+
+typedef struct WobyImporterApiWithPointIds {
+    /* Set base.base.base.struct_size to sizeof(WobyImporterApiWithPointIds) and
+     * return &base.base.base. Unused hierarchy/line callbacks may be NULL. */
+    WobyImporterApiWithLines base;
+    /* Optional; NULL callback/result preserves per-vertex duplicate counting.
+     * Metadata is prepared in import_file and borrowed until release_result. */
+    const WobyImportPointIds* (WOBY_IMPORT_CALL *get_point_ids)(const WobyImportResult*);
+} WobyImporterApiWithPointIds;
 
 typedef const WobyImporterApi* (WOBY_IMPORT_CALL *WobyGetImporterApi)(uint32_t host_abi_version);
 

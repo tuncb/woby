@@ -18,6 +18,9 @@ struct SourceMeshData {
     SourceProvenance provenance = SourceProvenance::importerVertices;
     std::vector<std::array<double, 3>> points;
     std::vector<uint32_t> indices;
+    // Optional importer identities, one per point. Only duplicate-point counting
+    // uses these; connectivity and reported vertex indices remain unchanged.
+    std::vector<uint64_t> originalPointIds;
 };
 
 [[nodiscard]] inline std::array<double, 3> promoteSourcePoint(const std::array<double, 3>& point)

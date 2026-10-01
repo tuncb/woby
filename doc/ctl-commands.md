@@ -298,6 +298,14 @@ explicit `findingsTruncated` and `membersTruncated` flags; totals remain exact f
 completed checks. The UI offers the complete paged group list and scrollable members.
 Legacy `diagnostics.duplicateTriangles` remains the geometric-duplicate count.
 
+When an importer supplies original-point IDs, `duplicate_points` counts distinct
+identities at equal coordinates. Intentional copies with the same ID count once;
+different IDs remain duplicates even across groups. Finding member IDs stay as
+one-based vertex-table indices, using the first selected vertex per identity.
+Display geometry includes all selected copies and their transforms. These IDs
+do not change `duplicate_tris` or topology. Importers without IDs keep the existing
+per-vertex behavior.
+
 Degenerate triangles are independently selectable:
 
 ```powershell

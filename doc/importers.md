@@ -128,10 +128,10 @@ Per-child visibility, color and other settings remain independent saved values.
 The public, C-compatible header is [`include/woby/importer.h`](../include/woby/importer.h).
 Define `WOBY_IMPORTER_BUILD` when building the plugin and export the exact C symbol
 `woby_get_importer_api`. It takes the host ABI version and returns a static
-`WobyImporterApi`, or null for unsupported versions. The current ABI version is 2.
-The group layout was extended within ABI 2 before external adoption. Rebuild any
-existing plugins against the current header; previous ABI 2 group layouts are not
-compatible and cannot be distinguished by the version number. ABI 1 is rejected.
+`WobyImporterApi`, or null for unsupported versions. The current ABI version is 3.
+Rebuild existing plugins against the current header. ABI 1 and ABI 2 are rejected;
+there is no fallback negotiation. ABI 3 adds optional original-point identity
+metadata. Plugins that omit it retain per-vertex duplicate-point counting.
 The DLL must match the host's architecture (the Windows preset builds x64).
 Use the platform's default struct alignment, 64-bit IEEE doubles for positions,
 32-bit IEEE floats for normals/UVs, and the header's
@@ -165,7 +165,7 @@ Flags indicate whether normals and texture coordinates are present.
 Missing normals are generated; missing texture coordinates become zero. Positions
 must be finite and have absolute components no greater than 1e9. Supplied normals
 must be finite and nonzero; woby normalizes them. UVs must be finite.
-All indices must reference valid vertices. The combined input vertex/index buffers
+All indices must reference valid vertices. The combined input vertex/index/point-ID buffers
 are limited to 4 GiB; internal copies and GPU buffers consume additional memory.
 
 Groups must partition the entire index buffer consecutively, with nonempty ranges
@@ -224,13 +224,68 @@ validate a cooperative plugin's output; they cannot make arbitrary pointers safe
 or isolate DLL crashes. Use trusted libraries. Crash isolation would require a
 separate importer process.
 
+## Optional original-point IDs
+
+Importers may split one source point into several vertices to provide different
+normals or UVs, or to keep adjacent closed volumes topologically separate. Return
+`WobyImportPointIds` through `WobyImporterApiWithPointIds.get_point_ids` to identify
+these intentional copies. This changes only `duplicate_points`: at each exactly
+equal position it counts distinct original IDs minus one, rather than vertex
+records minus one. Different IDs at the same position remain genuine duplicates,
+even when they belong to different groups.
+
+Set `base.base.base.struct_size = sizeof(WobyImporterApiWithPointIds)` and return
+`&api.base.base.base`. The intervening hierarchy and line callbacks can be null.
+A base table, null callback, or null returned metadata preserves existing behavior.
+Prepare the metadata during `import_file`; Woby copies it before `release_result`,
+which still runs exactly once after failure, cancellation, or rejected metadata.
+
+```c
+/* Two coincident triangles may have opposite normals in six render vertices. */
+static const uint64_t ids[] = {10, 20, 30, 10, 20, 30};
+static const WobyImportPointIds point_ids = {sizeof(WobyImportPointIds), ids, 6};
+static const WobyImportPointIds* WOBY_IMPORT_CALL get_point_ids(const WobyImportResult* result)
+{
+    (void)result;
+    return &point_ids;
+}
+static const WobyImporterApiWithPointIds api = {
+    {{{sizeof(WobyImporterApiWithPointIds), WOBY_IMPORTER_ABI_VERSION,
+       "org.example.solids", "Solid importer", "1", "solids",
+       import_file, release_result}, 0}, 0},
+    get_point_ids
+};
+WOBY_IMPORT_EXPORT const WobyImporterApi* WOBY_IMPORT_CALL woby_get_importer_api(uint32_t version)
+{
+    return version == WOBY_IMPORTER_ABI_VERSION ? &api.base.base.base : 0;
+}
+```
+
+- Supply exactly one ID per result vertex, including unused and line-only vertices.
+  A non-null metadata object must have a valid `struct_size`, non-null `ids`, and
+  `vertex_count` equal to the result's count. Its bytes count toward the 4 GiB limit.
+- IDs are opaque unsigned 64-bit values scoped to this imported file. Zero and
+  `UINT64_MAX` are valid; there is no sentinel or dense-numbering requirement.
+- Vertices with the same ID must have exactly equal original double coordinates;
+  signed zeros compare equal. Woby checks this before shifting the working origin,
+  so even coordinate differences lost during that shift reject the import.
+- Duplicate findings list the first selected vertex index for each identity, in
+  the existing one-based report format. Importer IDs are not substituted for report
+  indices. All selected transformed copies remain included in the display geometry.
+  Whole-file analysis still includes unused points; part-only analysis does not.
+- IDs do not weld render vertices, change `duplicate_tris`, or alter topology.
+  Keep separate indices for adjacent closed volumes. Exact-position topology
+  remains an explicit geometric weld and can join their contact surfaces.
+
+Scenes reload this metadata from the importer; it is not embedded in `.woby` files.
+
 ## Optional model hierarchy
 
 An importer can return an assembly tree such as `Assembly / Solid A / Patch 1`.
-This is an optional, size-gated extension to ABI 2: `WobyImporterApi`,
-`WobyImportResult`, and the vertex/group layouts are unchanged. Existing ABI 2
-libraries continue to load as flat files without recompilation. Older ABI 2 hosts
-can load an extended library and use its flat groups, ignoring hierarchy.
+This is an optional, size-gated API table extension: `WobyImporterApi`,
+`WobyImportResult`, and the vertex/group layouts are unchanged. ABI 3 libraries
+using only the base API table load as flat files. All API tables must advertise
+ABI 3, including plugins that use neither hierarchy nor point IDs.
 
 Return the `base` member of a static `WobyImporterApiWithHierarchy` from
 `woby_get_importer_api`. Set **`base.struct_size` to the size of the extended
@@ -298,10 +353,8 @@ be supplied in one file coordinate system with source transforms baked in.
 
 `WobyImporterApiWithLines` extends the hierarchy table with `get_lines`. Set
 `base.base.struct_size = sizeof(WobyImporterApiWithLines)` and return
-`&api.base.base` from the entry point. ABI 2's existing layouts stay unchanged;
-existing triangle-only and hierarchy importers require no recompilation. Older
-hosts ignore this extension and cannot display its lines. Use a line-capable
-host for a hierarchy that references line groups or a line-only result.
+`&api.base.base` from the entry point. The base and hierarchy layouts stay unchanged;
+triangle-only and hierarchy tables remain supported when built for ABI 3.
 
 Prepare `WobyImportLines` during `import_file`. Its `indices` are pairs of
 zero-based indices into **the same vertex table as the triangles**. Each pair

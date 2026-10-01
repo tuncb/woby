@@ -471,6 +471,7 @@ const char* diagnosticHint(DiagnosticCategory category)
             "Both incident triangles are reported; this does not identify which one should be flipped.";
     case DiagnosticCategory::duplicatePoints:
         return "Finds separate point records with exactly equal source coordinates within a file. "
+            "Copies marked with the same original point ID by an importer count as one point. "
             "Repeated STL corners are informational because STL stores corners separately for each triangle.";
     case DiagnosticCategory::duplicateTriangles:
         return "Finds triangles that reuse the same three source point indices within a file, "

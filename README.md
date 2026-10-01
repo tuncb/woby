@@ -136,7 +136,8 @@ File/folder and multiple selections edit parts with complete UVs; parts with mis
 or incomplete UVs keep normal shading. All-zero supplied UVs are still valid.
 The grid shows the tessellation's interpolated UV mapping, not an exact CAD surface.
 Settings support Undo/Redo, saved Views, `.woby` persistence, and PNG exports.
-Existing scenes start with the grid off, and importer ABI 2 remains unchanged.
+Existing scenes start with the grid off. Importer plugins use ABI 3; see the
+[importer API documentation](doc/importers.md) for migration and optional point IDs.
 
 **Display > Show dimensions** adds labeled dimension lines beside the visible selected
 geometry. One visible part is measured along its own directions, including all parent
@@ -146,7 +147,7 @@ and edges that are too small or off-screen to label. **Properties > Geometry** s
 the same sizes, followed by original local bounds for a single file or part.
 Enabling the grid displays **Grid spacing** using the same spacing as the drawn lines.
 Woby automatically establishes a working origin for models far from zero. OBJ,
-ASCII STL, and importer ABI 2 positions retain double precision through import
+ASCII STL, and importer ABI 3 positions retain double precision through import
 and analysis; float GPU positions are relative to a per-file origin. A shared
 scene origin keeps files aligned and remains fixed when adding, hiding, or
 removing files. Properties and annotation coordinates show original coordinates.
