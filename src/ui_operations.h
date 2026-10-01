@@ -90,6 +90,9 @@ void setGroupUvGrid(UiGroupState& group, UvGridSettings settings);
 void setGroupLineStyle(UiGroupState& group, LineStyle settings);
 bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& objects,
     std::optional<float> width, std::optional<bool> depthTest);
+// Edit descendant parts without changing selection. A missing color resets the palette.
+bool setObjectColor(UiState& state, const std::vector<SceneObjectId>& objects,
+    std::optional<std::array<float, 3>> color);
 // Expand containers using existing part semantics; skip parts without complete UVs.
 // Returns false when no eligible part exists. Empty objects means the whole scene.
 bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,

@@ -468,8 +468,8 @@ woby ctl --instance review render set scene --solid true --uv-grid true --uv-den
 | `transform set OBJECT_ID [--translation X Y Z] [--rotation-degrees X Y Z] [--scale S]` | `transform.set` | Local translation, Euler rotation, uniform scale; existing center/pivot and transform conventions. |
 | `transform reset OBJECT_ID` | `transform.reset` | Resets translation, rotation, scale **and opacity** to their defaults, matching the UI. |
 | `opacity set OBJECT_ID --value A` | `opacity.set` | Local folder/file/group or annotation opacity, clamped to 0–1. |
-| `color set OBJECT_ID --rgb R G B` | `color.set` | Group or annotation RGB, clamped to 0–1; preserves the existing color alpha. |
-| `color reset OBJECT_ID` | `color.reset` | Current default group palette color or default annotation color; preserves alpha. |
+| `color set OBJECT_ID --rgb R G B` | `color.set` | File/folder descendant groups, individual group, or annotation RGB; clamped to 0–1; preserves the existing color alpha. |
+| `color reset OBJECT_ID` | `color.reset` | Reset each file/folder descendant or individual group to its palette color, or an annotation to its default; preserves opacity. |
 | `vertex-size set scene --pixels N` | `vertex-size.set` | Global base point size, clamped to 1–40 pixels. |
 | `vertex-size set OBJECT_ID --scale S` | `vertex-size.set` | File/group multiplier, clamped to 0.1–10. No folder multiplier. |
 | `grid set --visible BOOL` | `grid.set` | Ground-grid visibility. |
@@ -481,7 +481,9 @@ Imported line groups support `--line-width` (1-12 drawable pixels, default 2) an
 `--line-depth-test` (default true; false draws on top). These options apply only
 to line descendants and reject targets with none. Other render flags are preserved.
 `object` and `scene tree` report each group's `primitive` as `triangles` or `lines`;
-object details include `lineSegmentCount` and settings `lineWidth`/`lineDepthTest`.
+group details include `lineSegmentCount` and settings `lineWidth`/`lineDepthTest`.
+File details and `stats` also include `lineSegmentCount`. Parent color edits include
+hidden descendants; later child color overrides are preserved in scenes and views.
 
 Object setters return `target`, `applied` local settings, `dirty`, and scene `bounds`.
 Scene-wide setters return the updated scene snapshot. Scale is clamped to 0.01–20;

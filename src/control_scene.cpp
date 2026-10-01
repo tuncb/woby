@@ -122,6 +122,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
         if (file.objectId == id) {
             return {{"settings", fileInfo(file)}, {"importerId", file.importerId},
                 {"vertexCount", file.mesh.vertices.size()}, {"triangleCount", file.mesh.indices.size() / 3},
+                {"lineSegmentCount", file.mesh.lineIndices.size() / 2},
                 {"groupCount", file.groupSettings.size()}, {"localBounds", originalBoundsInfo(file.mesh, file.mesh.bounds.radius)}};
         }
         for (size_t index = 0; index < file.groupSettings.size(); ++index) {
@@ -207,17 +208,14 @@ struct Target {
     UiSceneNode* folder = nullptr;
     UiFileState* file = nullptr;
     UiGroupState* group = nullptr;
-    size_t colorIndex = 0;
 };
 Target resolveTarget(UiState& state, SceneObjectId id)
 {
     if (auto* folder = findFolder(state.sceneNodes, id)) { return {folder}; }
-    size_t colorIndex = 0;
     for (auto& file : state.files) {
         if (file.objectId == id) { return {nullptr, &file}; }
         for (auto& group : file.groupSettings) {
-            if (group.objectId == id) { return {nullptr, &file, &group, colorIndex}; }
-            ++colorIndex;
+            if (group.objectId == id) { return {nullptr, &file, &group}; }
         }
     }
     throw std::invalid_argument("Unknown or stale object ID.");
@@ -252,15 +250,18 @@ void editTransform(Target& target, const ControlOperation& command)
 
 Json controlSceneInfo(const UiState& state)
 {
-    size_t vertices = 0, triangles = 0;
-    for (const auto& file : state.files) { vertices += file.mesh.vertices.size(); triangles += file.mesh.indices.size() / 3; }
+    size_t vertices = 0, triangles = 0, lineSegments = 0;
+    for (const auto& file : state.files) {
+        vertices += file.mesh.vertices.size(); triangles += file.mesh.indices.size() / 3;
+        lineSegments += file.mesh.lineIndices.size() / 2;
+    }
     Json modes = Json::object();
     const size_t groups = totalGroupCount(state);
     modes["solid"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::solidMesh), groups);
     modes["triangles"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::triangles), groups);
     modes["vertices"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::vertices), groups);
     return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"analysisCount", state.comparisons.size()}, {"annotationCount", state.annotations.size()}, {"groupCount", groups},
-        {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles},
+        {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles}, {"lineSegmentCount", lineSegments},
         {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
         {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
         {"coordinateOrigin", state.coordinateOrigin.value_or(Coordinate{})},
@@ -536,9 +537,9 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         break;
     case A::transformSet: case A::transformReset: case A::opacity: editTransform(target, command); break;
     case A::colorSet: case A::colorReset:
-        if (!target.group) { throw std::invalid_argument("Color commands require a group ID."); }
-        if (command.action == A::colorReset) { resetGroupColor(*target.group, target.colorIndex); }
-        else { const auto& rgb = *command.rgb; setGroupColor(*target.group, {rgb[0], rgb[1], rgb[2], target.group->color[3]}); }
+        if (!setObjectColor(state, {command.objectId}, command.action == A::colorSet ? command.rgb : std::nullopt)) {
+            throw std::invalid_argument("Color target has no mesh or line groups.");
+        }
         break;
     case A::vertexSize:
         if (scene) { setMasterVertexPointSize(state, *command.pixels); }

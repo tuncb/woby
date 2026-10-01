@@ -25,7 +25,9 @@ def exercise(executable, plugin, root):
     model = root / "mixed.wline"
     model.write_text("fixture", encoding="utf-8")
     saved = root / "lines.woby"
-    with session(executable, root, env, "--plugin", plugin, "--file", model) as (ctl, viewer):
+    with session(executable, root, env) as (ctl, viewer):
+        assert ctl("importers", "add", plugin)["loadedCount"] == 1
+        assert ctl("model", "add", model)["addedCount"] == 1
         objects = ctl("objects")["objects"]
         ids = {item["name"]: item["id"] for item in objects}
         rear, front = ids["Rear curve"], ids["Front curve"]
@@ -51,6 +53,18 @@ def exercise(executable, plugin, root):
         ctl("visibility", "set", ids["Boundary curves"], "--visible", "true")
         ctl("render", "set", front, "--line-width", 3)
         final = capture(ctl, root / "04-child-override.png")
+        tree = ctl("scene", "tree")["nodes"]
+        assembly = tree[0]["children"][0]
+        curves = assembly["children"][-1]
+        assert curves["id"] == ids["Boundary curves"]
+        assert all(part["primitive"] == "lines" and part["parentId"] == curves["id"] for part in curves["children"])
+        assert ctl("stats")["lineSegmentCount"] == 2
+        assert ctl("object", tree[0]["id"])["object"]["lineSegmentCount"] == 2
+        ctl("color", "set", curves["id"], "--rgb", 0, 0, 1)
+        for part in (rear, front):
+            assert ctl("object", part)["object"]["settings"]["color"][:3] == [0, 0, 1]
+        ctl("scene", "undo")
+        assert ImageChops.difference(final, capture(ctl, root / "parent-color-undo.png")).getbbox() is None
         ctl("scene", "save-as", saved, "--overwrite")
         ctl("quit")
         assert viewer.wait(timeout=15) == 0

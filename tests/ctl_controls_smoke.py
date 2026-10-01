@@ -110,7 +110,7 @@ def main():
                 ctl("camera", "frame")
                 ctl("screenshot", root / "edited.png")
                 assert (root / "edited.png").stat().st_size > 100
-                ctl("color", "reset", file_id, code=-32602)
+                ctl("color", "reset", file_id)
                 ctl("model", "remove", group_id, code=-32602)
                 batch = ctl("folder", "add", folder, "--tree")
                 assert batch["addedCount"] == 1 and batch["failedCount"] == 1, batch

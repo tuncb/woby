@@ -63,6 +63,8 @@ TEST_CASE("Line importer supports mixed and line-only hierarchies with owned geo
         CHECK(details.at("primitive") == "lines");
         CHECK(details.at("lineSegmentCount") == 1);
         CHECK(details.at("triangleCount") == 0);
+        CHECK(woby::controlObjectDetails(state, file.objectId, formatId).at("lineSegmentCount") == 2);
+        CHECK(woby::controlSceneInfo(state).at("lineSegmentCount") == 2);
         const auto tree = woby::controlSceneTree(state, formatId);
         CHECK(tree[0]["children"][0]["children"].back()["name"] == "Boundary curves");
     }
@@ -183,6 +185,68 @@ TEST_CASE("Line appearance propagates to descendants and preserves child overrid
     woby::selectSceneObject(state, first);
     woby::resetSelectedObjectProperties(state, woby::UiPropertyGroup::appearance);
     CHECK(state.files[0].groupSettings[1].lines == woby::LineStyle{});
+}
+
+TEST_CASE("CLI parent colors include hidden triangle and line descendants without changing selection or siblings")
+{
+    LineFixture f; auto state = f.scene();
+    auto other = woby::loadModelBatchCpu({f.file("other")}, 3, {}, {});
+    REQUIRE(other.files.size() == 1);
+    state.files.push_back(std::move(other.files[0]));
+    woby::appendDefaultSceneNodesForFiles(state, 1);
+    const auto file = state.files[0].objectId;
+    const auto assembly = state.sceneNodes[0].children[0].objectId;
+    const auto curves = state.sceneNodes[0].children[0].children.back().objectId;
+    auto& groups = state.files[0].groupSettings;
+    woby::selectSceneObject(state, state.files[1].objectId);
+    woby::setGroupVisible(state, state.files[0], groups[2], false);
+    woby::setGroupOpacity(groups[2], .3f);
+    woby::setGroupLineStyle(groups[2], {8,false});
+    const auto clean = woby::createSceneDocument(state);
+    const auto selection = state.selectedSceneObjects;
+    const auto invoke = [&](const char* method, woby::SceneObjectId target, nlohmann::json params = nlohmann::json::object()) {
+        params["target"] = formatId(target);
+        auto command = woby::parseControlOperation(*woby::findControlMethod(method), params);
+        command.objectId = target;
+        return woby::applyControlSceneOperation(state, clean, command, formatId, 200, 800);
+    };
+    woby::SceneHistory history; woby::resetSceneHistory(history, state);
+    invoke("color.set", assembly, {{"rgb", {-1,.25,2}}});
+    for (const auto& group : groups) { CHECK(group.color == std::array<float,4>{0,.25f,1,1}); }
+    CHECK(state.isDirty);
+    CHECK(state.selectedSceneObjects == selection);
+    CHECK(woby::createSceneDocument(state).files[1] == clean.files[1]);
+    invoke("color.set", groups[2].objectId, {{"rgb", {1,0,0}}});
+    const auto overridden = woby::createSceneDocument(state);
+    CHECK_FALSE(groups[2].visible); CHECK(groups[2].opacity == .3f);
+    CHECK(groups[2].lines == woby::LineStyle{8,false});
+    REQUIRE(woby::recordSceneHistory(history, state));
+    auto undo = woby::prepareSceneHistoryStep(history, state, clean, false); REQUIRE(undo);
+    woby::commitSceneHistoryStep(history, state, std::move(*undo), false);
+    CHECK(woby::createSceneDocument(state) == clean);
+    auto redo = woby::prepareSceneHistoryStep(history, state, clean, true); REQUIRE(redo);
+    woby::commitSceneHistoryStep(history, state, std::move(*redo), true);
+    CHECK(woby::createSceneDocument(state) == overridden);
+    const auto path = f.root / "parent-colors.woby";
+    woby::writeSceneDocument(path, overridden);
+    auto restored = woby::readSceneDocument(path);
+    for (auto& record : restored.files) { record.path = woby::sceneAbsolutePath(path, record.path); }
+    CHECK(restored.files == overridden.files);
+    invoke("color.reset", curves);
+    CHECK(state.files[0].groupSettings[0].color == std::array<float,4>{0,.25f,1,1});
+    for (size_t i = 1; i < 3; ++i) { CHECK(state.files[0].groupSettings[i].color == woby::defaultGroupColor(i)); }
+    invoke("color.set", file, {{"rgb", {.5,.5,.5}}});
+    for (const auto& group : state.files[0].groupSettings) { CHECK(group.color == std::array<float,4>{.5f,.5f,.5f,1}); }
+    invoke("color.reset", file);
+    for (size_t i = 0; i < 3; ++i) { CHECK(state.files[0].groupSettings[i].color == woby::defaultGroupColor(i)); }
+    CHECK(state.files[0].groupSettings[2].opacity == .3f);
+    CHECK(woby::createSceneDocument(state).files[1] == clean.files[1]);
+    CHECK(state.selectedSceneObjects == selection);
+    const auto beforeInvalid = woby::createSceneDocument(state);
+    CHECK_FALSE(woby::setObjectColor(state, {assembly, woby::invalidSceneObjectId}, std::array<float,3>{1,0,0}));
+    CHECK_FALSE(woby::setObjectColor(state, {assembly}, std::array<float,3>{1,0,std::numeric_limits<float>::quiet_NaN()}));
+    CHECK(woby::createSceneDocument(state) == beforeInvalid);
+    CHECK(woby::controlCapabilities().at("scopes").at("color") == nlohmann::json({"folder","file","group","annotation"}));
 }
 
 TEST_CASE("Line styles clamp at operation and scene load boundaries and ctl validates eligibility atomically")

@@ -236,7 +236,6 @@ TEST_CASE("ctl scene edits apply clamps refresh bounds and preserve save mapping
     for (size_t i = 0; i < restoredFiles.size(); ++i) { woby::applySceneFileRecord(restoredFiles[i], saved.files[i]); }
     const auto restored = woby::prepareSceneReplacement(state, std::move(restoredFiles), saved);
     CHECK(woby::createSceneDocument(restored) == saved);
-    CHECK_THROWS(run(state, clean, "color.set", {{"rgb", {1, 0, 0}}}, file));
     CHECK_THROWS(run(state, clean, "vertex-size.set", {{"scale", 2}}, folder));
     CHECK(woby::createSceneDocument(state) == saved);
 }

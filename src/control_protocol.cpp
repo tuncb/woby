@@ -448,7 +448,7 @@ Json controlCapabilities()
         {"cameraPersistent", false}, {"screenshot", {{"width", 1920}, {"height", 1800}, {"overwrite", true}}},
         {"scopes", {{"visibility.set", {"scene", "folder", "file", "group", "analysis", "annotation"}},
             {"render.set", {"scene", "folder", "file", "group"}}, {"transform", {"folder", "file", "group", "analysis"}},
-            {"opacity.set", {"folder", "file", "group", "annotation"}}, {"color", {"group", "annotation"}},
+            {"opacity.set", {"folder", "file", "group", "annotation"}}, {"color", {"folder", "file", "group", "annotation"}},
             {"vertex-size.set", {"scene", "file", "group"}}, {"model.remove", {"file"}}}}};
 }
 

@@ -237,6 +237,30 @@ void setGroupLineStyle(UiGroupState& group, LineStyle settings)
     group.lines = normalizedLineStyle(settings);
 }
 
+bool setObjectColor(UiState& state, const std::vector<SceneObjectId>& objects,
+    std::optional<std::array<float, 3>> color)
+{
+    if (color && std::any_of(color->begin(), color->end(), [](float value) { return !std::isfinite(value); })) { return false; }
+    const auto targets = propertyTargets(state, UiObjectProperty::red, &objects);
+    if (targets.empty()) { return false; }
+    const boost::unordered_flat_set<SceneObjectId> included(targets.begin(), targets.end());
+    bool changed = false;
+    size_t colorIndex = 0;
+    for (auto& file : state.files) {
+        for (auto& part : file.groupSettings) {
+            if (included.contains(part.objectId)) {
+                const auto before = part.color;
+                if (color) { setGroupColor(part, {(*color)[0], (*color)[1], (*color)[2], part.color[3]}); }
+                else { resetGroupColor(part, colorIndex); }
+                changed = changed || part.color != before;
+            }
+            ++colorIndex;
+        }
+    }
+    if (changed) { markSceneDirty(state); }
+    return true;
+}
+
 bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& objects,
     std::optional<float> width, std::optional<bool> depthTest)
 {

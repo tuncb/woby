@@ -107,6 +107,10 @@ def analysis_demo(executable, output, env):
         assert all(count > 1000 for count in grid_pixels(surface)), grid_pixels(surface)
         assert all(count > 1000 for count in grid_pixels(layout)), grid_pixels(layout)
         assert ImageChops.difference(surface, layout).getbbox()
+        uv_results = ctl("analysis", "results", analysis)
+        assert uv_results["aToB"]["triangleCount"] > 0
+        assert uv_results["aToB"]["sampleCount"] == 0 and uv_results["aToB"]["maximum"] is None
+        assert uv_results["bToA"] is None
         source_area = (0, 0, 500, layout.height)
         assert ImageChops.difference(surface.crop(source_area), layout.crop(source_area)).getbbox() is None
         ctl("scene", "undo")
