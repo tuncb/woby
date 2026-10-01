@@ -76,7 +76,7 @@ void visitObjects(const UiState& state, const Visitor& visitor, SceneObjectId fi
         for (size_t index = 0; index < file.groupSettings.size() && index < file.mesh.nodes.size(); ++index) {
             const auto id = file.groupSettings[index].objectId;
             if (wanted(id)
-                && visitor(SceneObjectInfo{id, SceneObjectKind::group, file.mesh.nodes[index].name, {}, file.objectId})) {
+                && visitor(SceneObjectInfo{id, SceneObjectKind::group, meshNodeDisplayName(file.mesh.nodes[index]), {}, file.objectId})) {
                 return;
             }
         }

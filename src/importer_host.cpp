@@ -29,6 +29,7 @@ namespace {
 struct Importer {
     ImporterInfo info;
     WobyImporterApi api{};
+    decltype(WobyImporterApiWithHierarchy::get_hierarchy) getHierarchy = nullptr;
     std::shared_ptr<void> library;
     std::shared_ptr<std::mutex> callMutex;
 };
@@ -184,6 +185,9 @@ void loadImporter(const std::filesystem::path& path)
         throw std::runtime_error("Incompatible importer API: " + utf8(path));
     }
     entry.api = *api;
+    if (api->struct_size >= sizeof(WobyImporterApiWithHierarchy)) {
+        entry.getHierarchy = reinterpret_cast<const WobyImporterApiWithHierarchy*>(api)->get_hierarchy;
+    }
     entry.info.id = boundedString(api->id, 256u);
     entry.info.name = boundedString(api->name);
     entry.info.version = boundedString(api->version, 256u);
@@ -292,7 +296,7 @@ bool hasImporterForPath(const std::filesystem::path& path)
     return std::any_of(host.entries.begin(), host.entries.end(), [&](const Importer& entry) { return supports(entry.info, path); });
 }
 
-Mesh copyImportedMesh(const WobyImportResult& result)
+Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy)
 {
     constexpr uint64_t maxBytes = 4ull * 1024u * 1024u * 1024u;
     const uint64_t bytes = uint64_t(result.vertex_count) * sizeof(WobyImportVertex)
@@ -378,6 +382,48 @@ Mesh copyImportedMesh(const WobyImportResult& result)
     } else if (nextIndex != result.index_count) {
         throw std::runtime_error("Importer groups do not cover all triangles.");
     }
+    if (hierarchy != nullptr) {
+        if (hierarchy->struct_size < sizeof(WobyImportHierarchy) || hierarchy->node_count == 0u
+            || hierarchy->node_count > 100000u || hierarchy->nodes == nullptr) {
+            throw std::runtime_error("Invalid importer hierarchy buffers or size limits.");
+        }
+        std::vector<uint32_t> depths;
+        std::vector<bool> seen(mesh.nodes.size(), false);
+        size_t hierarchyNameBytes = 0;
+        mesh.hierarchy.reserve(hierarchy->node_count);
+        depths.reserve(hierarchy->node_count);
+        for (uint32_t i = 0; i < hierarchy->node_count; ++i) {
+            const auto& source = hierarchy->nodes[i];
+            auto name = boundedString(source.name);
+            hierarchyNameBytes += name.size();
+            if (name.empty() || hierarchyNameBytes > 1024u * 1024u) {
+                throw std::runtime_error("Importer hierarchy labels must be nonempty and within size limits.");
+            }
+            uint32_t depth = 1u;
+            if (source.parent_index != WOBY_IMPORT_NO_PARENT) {
+                if (source.parent_index >= i
+                    || mesh.hierarchy[source.parent_index].groupIndex != WOBY_IMPORT_NO_GROUP) {
+                    throw std::runtime_error("Importer hierarchy parents must be preceding container nodes.");
+                }
+                depth = depths[source.parent_index] + 1u;
+            }
+            if (depth > WOBY_IMPORT_MAX_HIERARCHY_DEPTH) {
+                throw std::runtime_error("Importer hierarchy exceeds the maximum depth of 128.");
+            }
+            if (source.group_index != WOBY_IMPORT_NO_GROUP) {
+                if (source.group_index >= seen.size() || seen[source.group_index]) {
+                    throw std::runtime_error("Importer hierarchy must reference each mesh group exactly once.");
+                }
+                seen[source.group_index] = true;
+                mesh.nodes[source.group_index].displayName = name;
+            }
+            mesh.hierarchy.push_back({std::move(name), source.parent_index, source.group_index});
+            depths.push_back(depth);
+        }
+        if (std::find(seen.begin(), seen.end(), false) != seen.end()) {
+            throw std::runtime_error("Importer hierarchy must reference each mesh group exactly once.");
+        }
+    }
     localizeMesh(mesh);
     for (auto& node : mesh.nodes) { node.hasTexcoords = (result.flags & WOBY_IMPORT_HAS_TEXCOORDS) != 0u; }
     captureSourceMesh(mesh, SourceProvenance::importerVertices);
@@ -433,7 +479,7 @@ ImportedModel importModel(const std::filesystem::path& path, const std::string& 
         throw std::runtime_error("Importer " + importer.info.id + ": "
             + (result.error ? boundedString(result.error) : "Import failed."));
     }
-    model.mesh = copyImportedMesh(result);
+    model.mesh = copyImportedMesh(result, importer.getHierarchy ? importer.getHierarchy(&result) : nullptr);
     if (isCanceled(&context) != 0u) {
         if (context.error) { std::rethrow_exception(context.error); }
         model.mesh = {};

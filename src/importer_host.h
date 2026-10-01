@@ -43,7 +43,7 @@ void unloadImporters();
     const std::filesystem::path& path,
     const std::string& requiredImporterId,
     const ImportCallbacks& callbacks);
-[[nodiscard]] Mesh copyImportedMesh(const WobyImportResult& result);
+[[nodiscard]] Mesh copyImportedMesh(const WobyImportResult& result, const WobyImportHierarchy* hierarchy = nullptr);
 [[nodiscard]] std::vector<std::filesystem::path> readImporterSettings(const std::filesystem::path& path);
 void writeImporterSettings(const std::filesystem::path& path, const std::vector<std::filesystem::path>& plugins);
 

@@ -488,10 +488,10 @@ translation composition in [ui_state.cpp](../src/ui_state.cpp), and the renderer
 parent/local matrix multiplication. Effective transforms are returned as 16-number
 `worldMatrix` arrays with translation in elements 12–14 (zero-based).
 
-Tree entries contain `occurrence` index paths and `effective.visible`,
+Tree entries contain `parentId` (null at the root), `occurrence` index paths and `effective.visible`,
 `effective.opacity`, and `effective.worldMatrix`. Repeated references share one
 object ID and have separate occurrences. Object lookup returns these as an
-`occurrences` array. Paths identify positions in that snapshot, not stable IDs.
+`occurrences` array, including each occurrence's `parentId`. Paths identify positions in that snapshot, not stable IDs.
 `implicit` marks generated nodes when the renderer falls back to a default file
 or group tree. Unreferenced objects have an empty occurrences array. Effective
 opacity combines hierarchy opacity; color alpha remains a separate color setting.

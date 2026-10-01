@@ -137,12 +137,13 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
 
 Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdFormatter& formatId,
     const std::array<float, 16>& parent, bool parentVisible, float parentOpacity,
-    std::vector<size_t> path, bool implicit = false)
+    std::vector<size_t> path, bool implicit = false, SceneObjectId parentId = invalidSceneObjectId)
 {
     std::array<float, 16> local{}, world{};
     bool visible = true;
     float opacity = 1;
     Json result = {{"id", formatId(node.objectId)}, {"name", node.name}, {"occurrence", path}, {"implicit", implicit}};
+    result["parentId"] = parentId == invalidSceneObjectId ? Json(nullptr) : Json(formatId(parentId));
     if (node.kind == UiSceneNodeKind::folder) {
         result["kind"] = "folder";
         result["settings"] = settingsInfo(node.settings);
@@ -183,14 +184,17 @@ Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdForma
         auto childPath = path;
         childPath.push_back(index);
         result["children"].push_back(treeNode(state, children[index], formatId, world,
-            parentVisible && visible, parentOpacity * opacity, std::move(childPath), implicitChildren));
+            parentVisible && visible, parentOpacity * opacity, std::move(childPath), implicit || implicitChildren, node.objectId));
     }
     return result;
 }
 void collectOccurrences(const Json& nodes, const std::string& id, Json& result)
 {
     for (const auto& node : nodes) {
-        if (node["id"] == id) { result.push_back({{"occurrence", node["occurrence"]}, {"implicit", node["implicit"]}, {"effective", node["effective"]}}); }
+        if (node["id"] == id) {
+            result.push_back({{"occurrence", node["occurrence"]}, {"parentId", node["parentId"]},
+                {"implicit", node["implicit"]}, {"effective", node["effective"]}});
+        }
         collectOccurrences(node["children"], id, result);
     }
 }
@@ -292,6 +296,7 @@ Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
         std::array<float, 16> world{};
         bx::mtxTranslate(world.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
         result.push_back({{"id", formatId(comparison.objectId)}, {"name", comparison.name}, {"kind", "analysis"},
+            {"parentId", nullptr},
             {"occurrence", {result.size()}}, {"implicit", false}, {"children", Json::array()},
             {"settings", localObjectDetails(state, comparison.objectId)["settings"]},
             {"effective", {{"visible", comparison.settings.enabled && canInspectComparison(state, comparison.objectId)},
@@ -300,6 +305,7 @@ Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
     for (const auto& item : state.annotations) {
         const auto details = controlAnnotationDetails(state, item);
         result.push_back({{"id", formatId(item.objectId)}, {"name", item.settings.name}, {"kind", "annotation"},
+            {"parentId", nullptr},
             {"occurrence", {result.size()}}, {"implicit", false}, {"children", Json::array()},
             {"settings", details["settings"]}, {"effective", {{"visible", details["effectiveVisible"]}}}});
     }

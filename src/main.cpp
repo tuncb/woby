@@ -817,10 +817,10 @@ void drawGroupControls(
     const bool memberA = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::a);
     const bool memberB = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::b);
     const char* badge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
-    drawClippedTextItem("##name", node.name.c_str(), ImGui::GetContentRegionAvail().x,
+    drawClippedTextItem("##name", woby::meshNodeDisplayName(node).c_str(), ImGui::GetContentRegionAvail().x,
         woby::sceneObjectSelected(state, settings.objectId), badge);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("%s\nVertices: %u  Triangles: %u", node.name.c_str(), range.pointIndexCount, node.indexCount / 3u);
+        ImGui::SetTooltip("%s\nVertices: %u  Triangles: %u", woby::meshNodeDisplayName(node).c_str(), range.pointIndexCount, node.indexCount / 3u);
     }
     drawSceneItemInteraction(state, settings.objectId, false);
     ImGui::PopID();

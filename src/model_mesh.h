@@ -34,6 +34,18 @@ struct MeshNode {
     bool defaultVisible = true;
     // True only when every corner in this part has supplied, finite UVs.
     bool hasTexcoords = false;
+    std::string displayName = {}; // Optional importer label; name stays the saved identity.
+};
+
+[[nodiscard]] inline const std::string& meshNodeDisplayName(const MeshNode& node)
+{
+    return node.displayName.empty() ? node.name : node.displayName;
+}
+
+struct MeshHierarchyNode {
+    std::string name;
+    uint32_t parentIndex = UINT32_MAX;
+    uint32_t groupIndex = UINT32_MAX; // A container has no geometry of its own.
 };
 
 struct MeshAnnotationBlock {
@@ -67,6 +79,7 @@ struct Mesh {
     std::shared_ptr<const DuplicateInput> duplicateInput;
     // Immutable derived geometry index, published by the runtime after preparation.
     std::shared_ptr<const MeshAnnotationCache> annotationCache;
+    std::vector<MeshHierarchyNode> hierarchy; // Validated source defaults; editable tree lives in UiState.
 };
 
 [[nodiscard]] bool finiteCoordinate(const Coordinate& point) noexcept;

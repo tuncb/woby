@@ -1,8 +1,8 @@
 # File format importers
 
 woby can load native importer libraries supplied by the user. An importer reads
-a model file and returns triangles and named groups with optional color and
-visibility defaults. woby owns the copied geometry, scene settings, GPU resources,
+a model file and returns triangles and named groups with optional hierarchy,
+color and visibility defaults. woby owns the copied geometry, scene settings, GPU resources,
 and rendering. The DLL must implement the woby API;
 an arbitrary third-party format library needs a small adapter.
 
@@ -109,7 +109,7 @@ importer_id = "org.woby.example.off"
 The DLL path and binary are not embedded in a scene. Opening a scene never loads
 a DLL by a path from that scene. The matching importer must already be registered
 on that machine. Missing importers fail scene loading before the existing scene
-is replaced. Scenes save as version 7 and include independent analysis
+is replaced. Scenes save as version 17 and include independent analysis
 objects in `[[analyses]]` records referencing saved file/group indexes.
 
 Saved group settings are indexed. Importers must preserve unique group names and
@@ -117,6 +117,11 @@ their order for the same file across versions. Reopening rejects a changed group
 count or name/order instead of applying settings to different groups. Importer
 software versions are displayed but not pinned in scenes; compatible updates may
 continue using the same ID. Importer IDs must remain stable when the DLL is moved.
+
+Imported containers and leaves are saved using the existing `[[nodes]]` scene
+records. Saved trees take precedence over the importer's current default hierarchy,
+including scenes saved with a flat tree before the importer supported hierarchy.
+Per-child visibility, color and other settings remain independent saved values.
 
 ## Authoring a DLL
 
@@ -201,8 +206,9 @@ positions for analysis. Source bounds and exported finding coordinates restore
 the original coordinates. This does not recover detail already lost by an SDK
 or a source format that stores positions as floats.
 
-Hierarchies, CAD surfaces, full material definitions, textures, and animation are
-not part of this mesh-only API.
+CAD surfaces, full material definitions, textures, and animation are not part of
+this mesh-only API. Optional hierarchy describes the organization of these same
+triangle groups; it does not add instancing or source transforms.
 
 Imports through the interactive loading pipeline run on its CPU worker; startup
 imports use the existing synchronous startup pipeline. Calls into each importer
@@ -217,6 +223,76 @@ Native importers execute inside woby's process with its permissions. Buffer chec
 validate a cooperative plugin's output; they cannot make arbitrary pointers safe
 or isolate DLL crashes. Use trusted libraries. Crash isolation would require a
 separate importer process.
+
+## Optional model hierarchy
+
+An importer can return an assembly tree such as `Assembly / Solid A / Patch 1`.
+This is an optional, size-gated extension to ABI 2: `WobyImporterApi`,
+`WobyImportResult`, and the vertex/group layouts are unchanged. Existing ABI 2
+libraries continue to load as flat files without recompilation. Older ABI 2 hosts
+can load an extended library and use its flat groups, ignoring hierarchy.
+
+Return the `base` member of a static `WobyImporterApiWithHierarchy` from
+`woby_get_importer_api`. Set **`base.struct_size` to the size of the extended
+table**, and supply `get_hierarchy`. Woby calls it after a successful `import_file`
+and before `release_result`. A null callback or a null returned pointer uses the
+flat behavior for that import. Prepare the metadata during `import_file`, usually
+alongside geometry in `result->user_data`; the callback only retrieves it. All
+node strings and arrays remain owned by the plugin until `release_result`.
+
+For example, given stable groups named `solid-a/patch-1`, `solid-a/patch-2`, and
+`solid-b/patch-1`, the hierarchy can use shorter, repeated display labels:
+
+```c
+static const WobyImportHierarchyNode nodes[] = {
+    {"Solid A", WOBY_IMPORT_NO_PARENT, WOBY_IMPORT_NO_GROUP},
+    {"Patch 1", 0, 0},
+    {"Patch 2", 0, 1},
+    {"Solid B", WOBY_IMPORT_NO_PARENT, WOBY_IMPORT_NO_GROUP},
+    {"Patch 1", 3, 2}
+};
+static const WobyImportHierarchy tree = {
+    sizeof(WobyImportHierarchy), nodes, 5
+};
+static const WobyImportHierarchy* WOBY_IMPORT_CALL get_hierarchy(const WobyImportResult* result)
+{
+    (void)result;
+    return &tree;
+}
+static const WobyImporterApiWithHierarchy api = {
+    {sizeof(WobyImporterApiWithHierarchy), WOBY_IMPORTER_ABI_VERSION,
+     "org.example.surfaces", "Surface importer", "1", "surfaces",
+     import_file, release_result},
+    get_hierarchy
+};
+WOBY_IMPORT_EXPORT const WobyImporterApi* WOBY_IMPORT_CALL woby_get_importer_api(uint32_t version)
+{
+    return version == WOBY_IMPORTER_ABI_VERSION ? &api.base : 0;
+}
+```
+
+The hierarchy must satisfy these rules:
+
+- Parents precede their children in the array; `WOBY_IMPORT_NO_PARENT` places a
+  node directly under the model file. Multiple roots are allowed. Sibling order
+  follows array order, independently of triangle-group order.
+- Containers use `WOBY_IMPORT_NO_GROUP`. A group node references the original
+  zero-based group index and cannot have children. Every group occurs exactly
+  once. For a result with no explicit groups, index `0` refers to the generated
+  `Mesh` group. Empty named containers are allowed and contain no geometry.
+- Labels are nonempty UTF-8 strings of at most 4095 bytes; duplicates are allowed.
+  The original group names remain unique, stable save-file identities.
+- At most 100,000 nodes, 1 MiB total label bytes, and 128 levels (including leaves,
+  excluding Woby's file wrapper) are accepted. A non-null tree must contain nodes.
+  Invalid trees reject the import and still call `release_result` exactly once.
+
+Containers appear as folders under the model in Woby's tree. Selecting a parent
+lets users change its descendants' color or visibility; subsequent child edits
+remain independent. New parent visibility reflects whether any descendant is
+visible. Parent transforms use the existing scene controls. Geometry must still
+be supplied in one file coordinate system with source transforms baked in.
+`ctl scene tree` exposes nested children and each occurrence's `parentId`;
+`ctl object` includes `parentId` in its `occurrences` array. Root parents are null.
 
 ## Example: triangular OFF files
 

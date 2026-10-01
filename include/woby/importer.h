@@ -23,6 +23,9 @@ extern "C" {
 #define WOBY_IMPORT_HAS_TEXCOORDS 2u
 #define WOBY_IMPORT_GROUP_HAS_COLOR 1u
 #define WOBY_IMPORT_GROUP_INITIALLY_HIDDEN 2u
+#define WOBY_IMPORT_NO_PARENT UINT32_MAX
+#define WOBY_IMPORT_NO_GROUP UINT32_MAX
+#define WOBY_IMPORT_MAX_HIERARCHY_DEPTH 128u
 
 /* All strings are null-terminated UTF-8. No exceptions may cross this ABI.
  * The plugin owns all returned memory until release_result. See doc/importers.md. */
@@ -76,6 +79,32 @@ typedef struct WobyImporterApi {
     /* Called exactly once after every import_file call, including failure/cancel. */
     void (WOBY_IMPORT_CALL *release_result)(WobyImportResult*);
 } WobyImporterApi;
+
+/* Optional ABI 2 extension. Existing API and result layouts remain unchanged.
+ * Nodes are ordered parent before child. Only containers (NO_GROUP) can parent
+ * other nodes; every mesh group must occur exactly once. Names are display labels
+ * and may repeat; WobyImportGroup.name remains the stable, unique saved identity. */
+typedef struct WobyImportHierarchyNode {
+    const char* name;
+    uint32_t parent_index;
+    uint32_t group_index;
+} WobyImportHierarchyNode;
+
+typedef struct WobyImportHierarchy {
+    uint32_t struct_size;
+    const WobyImportHierarchyNode* nodes;
+    uint32_t node_count;
+} WobyImportHierarchy;
+
+typedef struct WobyImporterApiWithHierarchy {
+    /* Set base.struct_size to sizeof(WobyImporterApiWithHierarchy). Return &base
+     * from woby_get_importer_api. Older hosts read only the unchanged base. */
+    WobyImporterApi base;
+    /* Optional; called after a successful import_file. NULL means a flat import.
+     * All metadata is borrowed until release_result. Do not retain the request
+     * or perform further import work here. No exceptions may cross this ABI. */
+    const WobyImportHierarchy* (WOBY_IMPORT_CALL *get_hierarchy)(const WobyImportResult*);
+} WobyImporterApiWithHierarchy;
 
 typedef const WobyImporterApi* (WOBY_IMPORT_CALL *WobyGetImporterApi)(uint32_t host_abi_version);
 

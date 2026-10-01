@@ -645,14 +645,45 @@ UiSceneNode createFileSceneNode(const UiFileState& file, size_t fileIndex)
     fileNode.children.reserve(file.groupSettings.size());
 
     const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
-    for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+    const auto makeGroup = [&](size_t groupIndex) {
         UiSceneNode groupNode;
         groupNode.kind = UiSceneNodeKind::group;
         groupNode.objectId = file.groupSettings[groupIndex].objectId;
-        groupNode.name = file.mesh.nodes[groupIndex].name;
+        groupNode.name = meshNodeDisplayName(file.mesh.nodes[groupIndex]);
         groupNode.fileIndex = fileIndex;
         groupNode.groupIndex = groupIndex;
-        fileNode.children.push_back(std::move(groupNode));
+        return groupNode;
+    };
+    if (file.mesh.hierarchy.empty()) {
+        for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
+            fileNode.children.push_back(makeGroup(groupIndex));
+        }
+    } else {
+        // Import validation guarantees a forest, parent-before-child ordering,
+        // bounded depth and exactly one occurrence of each group.
+        const auto& source = file.mesh.hierarchy;
+        std::vector<std::vector<size_t>> children(source.size() + 1u);
+        for (size_t i = 0; i < source.size(); ++i) {
+            children[source[i].parentIndex == UINT32_MAX ? source.size() : source[i].parentIndex].push_back(i);
+        }
+        const auto makeNode = [&](auto&& self, size_t index) -> UiSceneNode {
+            const auto& item = source[index];
+            if (item.groupIndex != UINT32_MAX) { return makeGroup(item.groupIndex); }
+            UiSceneNode node;
+            node.kind = UiSceneNodeKind::folder;
+            node.name = item.name;
+            node.settings.visible = false;
+            for (const auto childIndex : children[index]) {
+                auto child = self(self, childIndex);
+                node.settings.visible = node.settings.visible || (child.kind == UiSceneNodeKind::group
+                    ? file.groupSettings[child.groupIndex].visible : child.settings.visible);
+                node.children.push_back(std::move(child));
+            }
+            return node;
+        };
+        for (const auto index : children[source.size()]) {
+            fileNode.children.push_back(makeNode(makeNode, index));
+        }
     }
 
     return fileNode;
@@ -670,6 +701,7 @@ void appendDefaultSceneNodesForFiles(UiState& state, size_t firstFileIndex)
         state.sceneNodes.push_back(createFileSceneNode(state.files[fileIndex], fileIndex));
     }
     assignSceneObjectIds(state);
+    refreshSceneTreeFolderCenters(state);
     notifySceneEdit(state);
 }
 

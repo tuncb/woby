@@ -519,6 +519,7 @@ if(BUILD_TESTING)
     set_source_files_properties(tests/dummy_tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
     add_library(woby_importer_fixture SHARED tests/importer_fixture.cpp)
+    add_library(woby_importer_hierarchy_fixture SHARED tests/importer_hierarchy_fixture.cpp)
     add_library(woby_importer_bad_abi SHARED tests/importer_fixture.cpp)
     add_library(woby_importer_conflict SHARED tests/importer_fixture.cpp)
     add_library(woby_importer_reserved SHARED tests/importer_fixture.cpp)
@@ -526,7 +527,7 @@ if(BUILD_TESTING)
     target_compile_definitions(woby_importer_bad_abi PRIVATE WOBY_TEST_BAD_ABI)
     target_compile_definitions(woby_importer_conflict PRIVATE WOBY_TEST_CONFLICT)
     target_compile_definitions(woby_importer_reserved PRIVATE WOBY_TEST_RESERVED)
-    foreach(fixture IN ITEMS woby_importer_fixture woby_importer_bad_abi woby_importer_missing_export woby_importer_conflict woby_importer_reserved)
+    foreach(fixture IN ITEMS woby_importer_fixture woby_importer_hierarchy_fixture woby_importer_bad_abi woby_importer_missing_export woby_importer_conflict woby_importer_reserved)
         target_include_directories(${fixture} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
         target_compile_definitions(${fixture} PRIVATE WOBY_IMPORTER_BUILD)
         target_compile_features(${fixture} PRIVATE cxx_std_20)
@@ -546,12 +547,13 @@ if(BUILD_TESTING)
             "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets" "$<TARGET_FILE:woby_off_importer>")
         set_tests_properties(woby_portable_importers PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
-    add_dependencies(woby_tests woby woby_importer_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
+    add_dependencies(woby_tests woby woby_importer_fixture woby_importer_hierarchy_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
     target_compile_definitions(woby_tests PRIVATE
         WOBY_TEST_APP="$<TARGET_FILE:woby>"
         WOBY_TEST_ICON_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons"
         WOBY_TEST_ASSET_DIRECTORY="${woby_resource_directory}/assets"
         WOBY_TEST_IMPORTER="$<TARGET_FILE:woby_importer_fixture>"
+        WOBY_TEST_HIERARCHY_IMPORTER="$<TARGET_FILE:woby_importer_hierarchy_fixture>"
         WOBY_TEST_CONFLICT_IMPORTER="$<TARGET_FILE:woby_importer_conflict>"
         WOBY_TEST_RESERVED_IMPORTER="$<TARGET_FILE:woby_importer_reserved>"
         WOBY_TEST_BAD_IMPORTER="$<TARGET_FILE:woby_importer_bad_abi>"
