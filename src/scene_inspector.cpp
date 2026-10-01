@@ -320,7 +320,7 @@ void drawSceneInspector(UiState& state, SceneDimensionsCache& dimensionsCache)
             ImGui::BeginDisabled(!uv.available);
             bool uvEnabled = uv.value != 0.0f;
             if (uv.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
-            if (ImGui::Checkbox("UV grid", &uvEnabled)) {
+            if (ImGui::Checkbox("UV coloring", &uvEnabled)) {
                 setSelectedObjectProperty(state, UiObjectProperty::uvGrid, uv.mixed || uvEnabled ? 1.0f : 0.0f);
             }
             if (uv.mixed) { ImGui::PopItemFlag(); }
@@ -333,7 +333,17 @@ void drawSceneInspector(UiState& state, SceneDimensionsCache& dimensionsCache)
                     "Density is cells per UV unit (0.1 to 1000). U and V can be changed independently. "
                     "Files and folders edit all parts with complete UVs; other parts keep normal shading. "
                     "Enable Solid mesh to see the grid.");
-                if ((uvEnabled || uv.mixed) && ImGui::BeginTable("uv_density", 2)) {
+                const auto colorMode = selectedObjectProperty(state,UiObjectProperty::uvColorMode);
+                int mode = static_cast<int>(colorMode.value);
+                const char* modes[] = {"Grid", "U gradient", "V gradient"};
+                if (ImGui::Combo("UV color",&mode,modes,3)) { setSelectedObjectProperty(state,UiObjectProperty::uvColorMode,static_cast<float>(mode)); }
+                if (colorMode.mixed) { ImGui::TextDisabled("Mixed coloring modes"); }
+                if (mode != 0 && ImGui::BeginTable("uv_range",2)) {
+                    scalarField(state,"Blue: range minimum",UiObjectProperty::uvMinimum);
+                    scalarField(state,"Yellow: range maximum",UiObjectProperty::uvMaximum);
+                    ImGui::EndTable();
+                }
+                if (mode == 0 && (uvEnabled || uv.mixed) && ImGui::BeginTable("uv_density", 2)) {
                     scalarField(state, "U cells / UV unit", UiObjectProperty::uvDensityU);
                     scalarField(state, "V cells / UV unit", UiObjectProperty::uvDensityV);
                     ImGui::EndTable();

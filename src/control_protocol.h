@@ -34,7 +34,9 @@ struct ControlOperation {
     bool tree = false;
     bool remember = false;
     std::optional<bool> visible, solid, triangles, vertices;
-    std::optional<bool> uvGrid;
+    std::optional<bool> uvGrid, uvSeparated, uvLinkedSelection, isolate;
+    std::optional<std::string> uvColor, uvMetric, uvNormalization;
+    std::optional<float> uvMinimum, uvMaximum;
     std::optional<float> uvDensityU, uvDensityV;
     std::optional<float> lineWidth;
     std::optional<bool> lineDepthTest;

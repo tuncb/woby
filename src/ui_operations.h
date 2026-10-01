@@ -69,7 +69,7 @@ enum class UiObjectProperty {
     translationX, translationY, translationZ,
     rotationX, rotationY, rotationZ,
     scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue,
-    uvGrid, uvDensityU, uvDensityV,
+    uvGrid, uvDensityU, uvDensityV, uvColorMode, uvMinimum, uvMaximum,
     lineWidth, lineDepthTest,
 };
 enum class UiPropertyGroup { translation, rotation, scale, transform, appearance };
@@ -96,7 +96,8 @@ bool setObjectColor(UiState& state, const std::vector<SceneObjectId>& objects,
 // Expand containers using existing part semantics; skip parts without complete UVs.
 // Returns false when no eligible part exists. Empty objects means the whole scene.
 bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
-    std::optional<bool> enabled, std::optional<float> densityU, std::optional<float> densityV);
+    std::optional<bool> enabled, std::optional<float> densityU, std::optional<float> densityV,
+    std::optional<UvColorMode> mode = {}, std::optional<float> minimum = {}, std::optional<float> maximum = {});
 // Visibility follows tree controls: files/folders include descendants. Selection
 // and the properties pane stay intact, including when every target is hidden.
 [[nodiscard]] UiPropertyValue selectedObjectVisibility(const UiState& state);
@@ -116,6 +117,7 @@ void setSelectedObjectsVisible(UiState& state, bool visible);
 [[nodiscard]] size_t enabledComparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 // Toggle existing members only. Files and folders include their descendants;
 // an empty object list toggles the entire side, including missing references.
+void isolateUvObjects(UiState& state, const std::vector<SceneObjectId>& objects, SceneObjectId id);
 void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side,
     bool enabled, SceneObjectId id = invalidSceneObjectId);
 enum class ComparisonMembershipAction { unavailable, add, remove };

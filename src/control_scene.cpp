@@ -1,4 +1,5 @@
 #include "control_scene.h"
+#include "uv_quality.h"
 #include "analysis_results.h"
 #include "comparison_scene.h"
 #include "ui_operations.h"
@@ -25,7 +26,7 @@ Json groupInfo(const UiGroupState& group)
     auto result = settingsInfo(group);
     result.update({{"solid", group.showSolidMesh}, {"triangles", group.showTriangles},
         {"vertices", group.showVertices}, {"color", group.color}, {"vertexSizeScale", group.vertexSizeScale}});
-    result.update({{"uvGrid", group.uvGrid.enabled}, {"uvDensityU", group.uvGrid.densityU}, {"uvDensityV", group.uvGrid.densityV}});
+    result.update({{"uvGrid", group.uvGrid.enabled}, {"uvDensityU", group.uvGrid.densityU}, {"uvDensityV", group.uvGrid.densityV}, {"uvColor", uvColorModeKey(group.uvGrid.mode)}, {"uvMinimum",group.uvGrid.minimum}, {"uvMaximum",group.uvGrid.maximum}});
     result.update({{"lineWidth", group.lines.width}, {"lineDepthTest", group.lines.depthTest}});
     return result;
 }
@@ -82,7 +83,11 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             const char* mode = settings.mode == ComparisonMode::distance ? "distance"
                 : settings.mode == ComparisonMode::original ? "a" : settings.mode == ComparisonMode::repaired ? "b" : settings.mode == ComparisonMode::surfaceQuality ? "surface_quality" : "overlay";
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
-                {"type", settings.type == AnalysisType::uv ? "uv" : "mesh"},
+                {"type", analysisTypeKey(settings.type)},
+                {"uvSeparated",settings.uvSeparated}, {"uvLinkedSelection",settings.uvLinkedSelection},
+                {"uvMetric",settings.uvMetric == UvQualityMetric::area ? "area" : settings.uvMetric == UvQualityMetric::orientation ? "orientation" : "angle"},
+                {"uvNormalization",settings.uvNormalization == UvAreaNormalization::absolute ? "absolute" : "per_patch"},
+                {"uvColor",uvColorModeKey(settings.uvGrid.mode)}, {"uvMinimum",settings.uvGrid.minimum}, {"uvMaximum",settings.uvGrid.maximum},
                 {"uvView", settings.uvView == UvView::layout ? "layout" : "surface"},
                 {"uvGrid", settings.uvGrid.enabled}, {"uvDensityU", settings.uvGrid.densityU}, {"uvDensityV", settings.uvGrid.densityV},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
@@ -374,7 +379,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             }
         }
         auto id = command.objectId;
-        if (command.action != A::comparisonCreate && comparisonSettings(state, id).type == AnalysisType::uv
+        if (command.action != A::comparisonCreate && isUvAnalysis(comparisonSettings(state, id).type)
             && (command.action == A::comparisonRun || command.action == A::comparisonCancel
                 || command.action == A::comparisonSwap || command.side == "b")) {
             throw std::invalid_argument("UV analysis has one source input and no mesh detectors.");
@@ -387,7 +392,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             return {{"target", formatId(id)}, {"detector", *detector}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
         }
         if (command.action == A::comparisonCreate) {
-            id = createComparison(state, command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
+            id = createComparison(state, command.type == "uv_quality" ? AnalysisType::uvQuality : command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
             if (command.name) { renameComparison(state, id, *command.name); }
             if (command.a) { setComparisonObjects(state, {command.aId}, ComparisonSide::a, true, id); }
             if (command.b) { setComparisonObjects(state, {command.bId}, ComparisonSide::b, true, id); }
@@ -397,17 +402,28 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             return {{"removed", command.target}, {"dirty", state.isDirty}};
         } else if (command.action == A::comparisonSet) {
             auto settings = comparisonSettings(state, id);
-            if (settings.type == AnalysisType::uv) {
+            if (isUvAnalysis(settings.type)) {
                 const auto params = controlOperationParams(command);
                 for (auto it = params.begin(); it != params.end(); ++it) {
                     if (it.key() != "target" && it.key() != "name" && it.key() != "visible" && it.key() != "showEdges"
+                        && it.key() != "uvSeparated" && it.key() != "uvLinkedSelection" && it.key() != "uvColor" && it.key() != "uvMinimum" && it.key() != "uvMaximum" && it.key() != "uvMetric" && it.key() != "uvNormalization"
                         && it.key() != "uvView" && it.key() != "uvGrid" && it.key() != "uvDensityU" && it.key() != "uvDensityV") {
-                        throw std::invalid_argument("UV analysis supports source, layout, grid and edge controls only.");
+                        throw std::invalid_argument("UV analysis supports UV display, quality and source controls only.");
                     }
                 }
-            } else if (command.uvView || command.uvGrid || command.uvDensityU || command.uvDensityV) {
-                throw std::invalid_argument("UV analysis controls require an analysis created with --type uv.");
+            } else if (command.uvSeparated || command.uvLinkedSelection || command.uvMetric || command.uvNormalization || command.uvColor || command.uvMinimum || command.uvMaximum || command.uvView || command.uvGrid || command.uvDensityU || command.uvDensityV) {
+                throw std::invalid_argument("UV controls require --type uv or --type uv_quality.");
             }
+            if ((command.uvMetric || command.uvNormalization) && settings.type != AnalysisType::uvQuality) { throw std::invalid_argument("UV quality settings require --type uv_quality."); }
+            if (settings.type == AnalysisType::uvQuality && (command.uvColor || command.uvMinimum || command.uvMaximum || command.uvGrid || command.uvDensityU || command.uvDensityV)) { throw std::invalid_argument("UV quality uses metric heatmaps; use --type uv for grid and parameter colors."); }
+            if (command.uvSeparated) { settings.uvSeparated = *command.uvSeparated; }
+            if (command.uvLinkedSelection) { settings.uvLinkedSelection = *command.uvLinkedSelection; }
+            if (command.uvMetric) { settings.uvMetric = *command.uvMetric == "area" ? UvQualityMetric::area : *command.uvMetric == "orientation" ? UvQualityMetric::orientation : UvQualityMetric::angle; }
+            if (command.uvNormalization) { settings.uvNormalization = *command.uvNormalization == "absolute" ? UvAreaNormalization::absolute : UvAreaNormalization::perPatch; }
+            if (command.uvColor) { settings.uvGrid.mode = *command.uvColor == "u" ? UvColorMode::u : *command.uvColor == "v" ? UvColorMode::v : UvColorMode::grid; }
+            if (command.uvMinimum) { settings.uvGrid.minimum = *command.uvMinimum; }
+            if (command.uvMaximum) { settings.uvGrid.maximum = *command.uvMaximum; }
+            if (settings.uvGrid.maximum <= settings.uvGrid.minimum) { throw std::invalid_argument("UV maximum must exceed minimum."); }
             if (command.uvView) { settings.uvView = *command.uvView == "layout" ? UvView::layout : UvView::surface; }
             if (command.uvGrid) { settings.uvGrid.enabled = *command.uvGrid; }
             if (command.uvDensityU) { settings.uvGrid.densityU = *command.uvDensityU; }
@@ -464,7 +480,13 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             const auto side = *command.side == "a" ? ComparisonSide::a : ComparisonSide::b;
             if (command.action == A::comparisonClear) { clearComparisonGroup(state, side, id); }
             else if (command.action == A::comparisonEnable) {
-                setComparisonObjectsEnabled(state, command.object ? std::vector<SceneObjectId>{command.memberId}
+                if (command.isolate.value_or(false)) {
+                    if (!isUvAnalysis(comparisonSettings(state,id).type)) { throw std::invalid_argument("Patch isolation requires a UV analysis."); }
+                    const auto members = comparisonMemberIds(state,ComparisonSide::a,id,false);
+                    const auto candidates = comparisonObjectParts(state,{command.memberId});
+                    if (std::none_of(candidates.begin(),candidates.end(),[&](auto p) { return std::binary_search(members.begin(),members.end(),p); })) { throw std::invalid_argument("Object is not a member of this UV analysis."); }
+                    isolateUvObjects(state,{command.memberId},id);
+                } else setComparisonObjectsEnabled(state, command.object ? std::vector<SceneObjectId>{command.memberId}
                     : std::vector<SceneObjectId>{}, side, *command.enabled, id);
             }
             else { setComparisonObjects(state, {command.memberId}, side, command.action == A::comparisonAdd, id); }
@@ -516,10 +538,12 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             throw std::invalid_argument("Line style requires an imported line group.");
         }
         // Validate UV eligibility before changing any of the other render flags.
-        if (command.uvGrid || command.uvDensityU || command.uvDensityV) {
+        if (command.uvColor || command.uvMinimum || command.uvMaximum || command.uvGrid || command.uvDensityU || command.uvDensityV) {
             if (!setObjectUvGrid(state, scene ? std::vector<SceneObjectId>{} : std::vector<SceneObjectId>{command.objectId},
-                    command.uvGrid, command.uvDensityU, command.uvDensityV)) {
-                throw std::invalid_argument("UV grid requires a part with complete UV coordinates.");
+                    command.uvGrid, command.uvDensityU, command.uvDensityV,
+                    command.uvColor ? std::optional<UvColorMode>(*command.uvColor == "u" ? UvColorMode::u : *command.uvColor == "v" ? UvColorMode::v : UvColorMode::grid) : std::nullopt,
+                    command.uvMinimum, command.uvMaximum)) {
+                throw std::invalid_argument("UV coloring requires complete UV coordinates and a maximum greater than minimum.");
             }
         }
         if (command.lineWidth || command.lineDepthTest) {
@@ -696,7 +720,31 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
                 {"degenerateTriangles", diagnostics.degenerateTriangles}, {"duplicateTriangles", diagnostics.duplicateTriangles}}}};
     };
     auto a = surface(result.original), b = surface(result.repaired);
-    return {{"tolerance", tolerance}, {"aToB", std::move(a)}, {"bToA", std::move(b)}};
+    Json answer = {{"tolerance", tolerance}, {"aToB", std::move(a)}, {"bToA", std::move(b)}};
+    if (result.original.source.uvQuality) {
+        const auto& q = *result.original.source.uvQuality;
+        Json findings = Json::array();
+        size_t count = 0, valid = 0;
+        double angleMax = 0, areaMin = 0, areaMax = 0;
+        for (const auto& t : q.triangles) {
+            if (!t.missing && !t.collapsed && !t.degenerateSurface) {
+                angleMax = std::max(angleMax,t.angleDegrees);
+                if (valid++ == 0) { areaMin = areaMax = t.areaLog2; }
+                areaMin = std::min(areaMin,t.areaLog2); areaMax = std::max(areaMax,t.areaLog2);
+            }
+            if (!t.collapsed && !t.degenerateSurface && !t.mixedOrientation) { continue; }
+            if (++count > 1000) { continue; }
+            findings.push_back({{"sourcePartId",t.partId}, {"triangle",t.triangle}, {"collapsedUv",t.collapsed},
+                {"degenerateSurface",t.degenerateSurface}, {"mixedOrientation",t.mixedOrientation}, {"orientation",t.orientation}});
+        }
+        answer["uvQuality"] = {{"normalization",q.normalization == UvAreaNormalization::perPatch ? "per_patch" : "absolute"},
+            {"collapsedTriangles",q.collapsed}, {"missingUvTriangles",q.missing}, {"degenerateSurfaceTriangles",q.degenerateSurface},
+            {"mixedOrientationPatches",q.mixedOrientationPatches}, {"validTriangles",valid},
+            {"maximumAngleDegrees",valid ? Json(angleMax) : Json(nullptr)},
+            {"minimumAreaLog2",valid ? Json(areaMin) : Json(nullptr)}, {"maximumAreaLog2",valid ? Json(areaMax) : Json(nullptr)},
+            {"findings",std::move(findings)}, {"findingCount",count}, {"findingsTruncated",count > 1000}};
+    }
+    return answer;
 
 }
 } // namespace woby

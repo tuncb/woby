@@ -102,10 +102,15 @@ float3 uvGridColor(float3 color, float2 uv, float2 density) {
         color = lerp(color,float3(1,.55,.16),lines.y);
     return color;
 }
+float3 uvGradient(float value, float2 range) {
+    float t = saturate((value-range.x)/(range.y-range.x));
+    return lerp(float3(.12,.25,.85),float3(1,.78,.12),t);
+}
 float4 fs_mesh(VertexOutput v) : SV_Target0 {
     float diffuse = max(dot(normalize(v.normal),normalize(float3(.35,.6,.7))),0);
     float3 color = root.color.rgb*(.32+diffuse*.68);
-    if (root.uvGrid.z > .5) { color = uvGridColor(color, v.uv, root.uvGrid.xy); }
+    if (root.uvGrid.z > 3.5) { color = uvGradient(root.uvGrid.z > 4.5 ? v.uv.y : v.uv.x, root.uvGrid.xy); }
+    else if (root.uvGrid.z > .5) { color = uvGridColor(color, v.uv, root.uvGrid.xy); }
     return float4(color,root.color.a);
 }
 float4 fs_color(VertexOutput v) : SV_Target0 { return root.color; }
@@ -115,6 +120,15 @@ float4 fs_point_sprite(VertexOutput v) : SV_Target0 {
 }
 float4 fs_comparison(VertexOutput v) : SV_Target0 {
     float3 color = root.color.rgb;
+    if (root.comparison.z > 5.5) {
+        float amount = saturate(v.uv.x);
+        color = amount <= .5 ? lerp(float3(.18,.48,.85),float3(1,.82,.3),amount*2)
+            : lerp(float3(1,.82,.3),float3(.94,.22,.055),(amount-.5)*2);
+        if (v.uv.x < 0) color = float3(1,0,1);
+        if (v.uv.x < -1.5) color = float3(.56,.61,.67);
+        return float4(color,1);
+    }
+    if (root.comparison.z > 3.5) { return float4(uvGradient(root.comparison.z > 4.5 ? v.uv.y : v.uv.x,root.comparison.xy),1); }
     if (root.comparison.z > 2.5) {
         float light = .6+.4*abs(dot(normalize(v.normal+1e-8),normalize(float3(.35,.6,.7))));
         return float4(uvGridColor(color*light, v.uv, root.comparison.xy),1);

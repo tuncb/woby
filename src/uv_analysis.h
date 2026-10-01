@@ -55,6 +55,6 @@ inline std::array<float, 3> uvLayoutPosition(const UvLayoutFrame& frame, const s
     return result;
 }
 
-[[nodiscard]] Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis);
+[[nodiscard]] Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated = false);
 
 } // namespace woby

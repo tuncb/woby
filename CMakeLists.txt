@@ -100,6 +100,7 @@ add_executable(woby
     src/mesh_degenerates.cpp
     src/mesh_duplicates.cpp
     src/mesh_comparison.cpp
+    src/uv_quality.cpp
     src/comparison_scene.cpp
     src/ui_views.cpp
     src/comparison_view.cpp
@@ -374,6 +375,7 @@ if(BUILD_TESTING)
         src/mesh_degenerates.cpp
         src/mesh_duplicates.cpp
         src/mesh_comparison.cpp
+        src/uv_quality.cpp
         src/comparison_scene.cpp
         tests/mesh_intersections_tests.cpp
         tests/mesh_topology_tests.cpp

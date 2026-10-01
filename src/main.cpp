@@ -773,6 +773,7 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         if (ImGui::BeginMenu("Create analysis", woby::canCompareSceneSelection(state))) {
             if (ImGui::MenuItem("Mesh analysis")) { woby::compareSceneSelection(state); }
             if (ImGui::MenuItem("UV analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uv); }
+            if (ImGui::MenuItem("UV quality analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uvQuality); }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Analysis membership", !state.comparisons.empty())) {
@@ -780,10 +781,10 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
                 ImGui::PushID(std::to_string(comparisonObject.objectId).c_str());
                 if (ImGui::BeginMenu(comparisonObject.name.c_str())) {
                     for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
-                        if (comparisonObject.settings.type == woby::AnalysisType::uv && side == woby::ComparisonSide::b) { continue; }
+                        if (woby::isUvAnalysis(comparisonObject.settings.type) && side == woby::ComparisonSide::b) { continue; }
                         const auto action = woby::comparisonMembershipAction(state, state.selectedSceneObjects, side, comparisonObject.objectId);
                         const bool remove = action == woby::ComparisonMembershipAction::remove;
-                        const char* label = comparisonObject.settings.type == woby::AnalysisType::uv
+                        const char* label = woby::isUvAnalysis(comparisonObject.settings.type)
                             ? (remove ? "Remove from source" : "Add to source") : side == woby::ComparisonSide::a
                             ? (remove ? "Remove from A" : "Add to A") : (remove ? "Remove from B" : "Add to B");
                         if (ImGui::MenuItem(label, nullptr, false, action != woby::ComparisonMembershipAction::unavailable)) {
@@ -910,6 +911,7 @@ void drawSceneTreeNode(
         if (ImGui::BeginPopup("analysis_type")) {
             if (ImGui::MenuItem("Mesh analysis")) { woby::compareSceneSelection(state); }
             if (ImGui::MenuItem("UV analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uv); }
+            if (ImGui::MenuItem("UV quality analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uvQuality); }
             ImGui::EndPopup();
         }
         ImGui::SameLine(removeControlStartX, 0.0f);

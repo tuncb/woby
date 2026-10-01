@@ -179,7 +179,7 @@ Manual run/cancel requests do not change these saved preferences.
 
 | CLI | RPC method | Behavior |
 | --- | --- | --- |
-| `analysis create [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
+| `analysis create [--type mesh|uv|uv_quality] [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
 | `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
 | `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode automatic\|original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
@@ -446,13 +446,60 @@ woby ctl --instance review analysis set ANALYSIS_ID --uv-view surface --uv-grid 
 woby ctl --instance review transform set ANALYSIS_ID --translation 3 0 0
 ```
 
-`layout` displays existing UV islands in the XY plane at one uniform display scale;
+`layout` displays existing UV islands in the scene up-axis plane at one uniform display scale;
 `surface` shows the grid on a 3D copy. Grid density remains cells per supplied UV
 unit, independently clamped to 0.1-1000. Overlaps and tile offsets are preserved.
 Parts without complete UVs are omitted from the layout and shaded normally in the
 3D view. These controls do not change the source mesh appearance. RPC names are
 `type`, `uvView`, `uvGrid`, `uvDensityU`, and `uvDensityV`. Settings, result position,
 and source membership support scene persistence, saved Views, and Undo/Redo.
+
+### Patch inspection, gradients, and UV quality
+
+Both UV analysis types support `--uv-separated true` for a display-only layout of
+independent patches, using one common scale. Original UVs remain unchanged. With
+`--uv-linked-selection true` (default), selecting a rendered patch selects its source
+and highlights both copies. The analysis membership context menu provides isolation.
+
+```powershell
+woby ctl --instance review analysis set ANALYSIS_ID --uv-view layout --uv-separated true
+woby ctl --instance review analysis enable ANALYSIS_ID --side a --object PATCH_ID --enabled true --isolate true
+woby ctl --instance review analysis enable ANALYSIS_ID --side a --enabled true
+woby ctl --instance review analysis set ANALYSIS_ID --uv-color u --uv-minimum -2 --uv-maximum 3
+woby ctl --instance review render set scene --uv-grid true --uv-color v --uv-minimum 0 --uv-maximum 1
+woby ctl --instance review analysis create --type uv_quality --a OBJECT_ID --name "UV quality"
+woby ctl --instance review analysis set QUALITY_ID --uv-metric area --uv-normalization per_patch
+woby ctl --instance review analysis results QUALITY_ID
+```
+
+`uvColor` / `--uv-color` accepts `grid`, `u`, or `v`. `uvMinimum` and `uvMaximum`
+define the blue-to-yellow parameter range; maximum must exceed minimum. Values
+outside the range use endpoint colors. The existing `uvGrid` switch enables any
+of these coloring modes, preserving older scenes and commands. Parent edits apply
+to UV-bearing descendants, retaining individual child overrides in saved scenes.
+
+`uv_quality` is a separate, single-input analysis, initially showing the 3D surface.
+It supports `uvView`, `uvSeparated`, `uvLinkedSelection`, and `showEdges`, but uses
+metric heatmaps instead of grid or parameter colors. `uvMetric` accepts:
+
+- `angle`: maximum absolute difference between corresponding 3D and UV corner
+  angles, in degrees. Blue is zero, yellow is 45, red is 90 or greater.
+- `area`: UV triangle area divided by world-space triangle area. With
+  `uvNormalization=per_patch` (default), divide this ratio by the patch's total
+  valid UV area / total valid surface area. `absolute` retains parameter/world
+  units. Colors use absolute log2 of the ratio: blue at 1, red at 8 or 1/8 and beyond.
+- `orientation`: blue for positive UV winding, red for negative. A uniformly
+  mirrored patch is valid. Mixed signs within one imported patch are findings;
+  independent overlapping domains are not classified as errors.
+
+Collapsed UV triangles are magenta; missing UVs and degenerate surface triangles
+are gray. Missing-UV patches are omitted from layout. Collapsed UVs have no visible
+area there, so inspect them in the surface view. Findings use one-based triangle
+numbers within each source patch. `analysis results` adds `uvQuality` with counts,
+angle/area ranges and up to 1000 findings (`findingCount`, `findingsTruncated`).
+Isolate patches to narrow a large result. All controls and membership changes support
+undo/redo, saved views and `.woby` round trips. Versions 2-18 remain readable.
+
 
 ## Visibility, rendering, transforms, and appearance
 

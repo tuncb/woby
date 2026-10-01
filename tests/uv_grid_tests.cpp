@@ -6,11 +6,56 @@
 #include "comparison_scene.h"
 #include "mesh_comparison.h"
 #include "uv_analysis.h"
+#include "uv_quality.h"
+#include "scene_pick.h"
 
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <limits>
+
+TEST_CASE("UV quality distinguishes scale distortion collapse and mixed orientation")
+{
+    woby::Mesh mesh;
+    mesh.vertices = {{{0,0,0},{},{0,0}},{{1,0,0},{},{2,0}},{{0,1,0},{},{0,2}}};
+    mesh.indices = {0,1,2};
+    mesh.nodes = {{"patch",0,3}};
+    mesh.nodes[0].hasTexcoords = true;
+    mesh.nodes[0].sourceObjectId = 42;
+    auto q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
+    CHECK(q.triangles[0].angleDegrees == doctest::Approx(0));
+    CHECK(q.triangles[0].areaLog2 == doctest::Approx(0));
+    q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::area);
+    CHECK(q.triangles[0].areaLog2 == doctest::Approx(2));
+    mesh.vertices[1].texcoord[0] = -2;
+    q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
+    CHECK(q.triangles[0].orientation == -1);
+    CHECK(q.mixedOrientationPatches == 0);
+    CHECK(q.triangles[0].angleDegrees == doctest::Approx(0));
+    mesh.vertices[1].texcoord[0] = 4;
+    q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
+    CHECK(q.triangles[0].angleDegrees == doctest::Approx(18.4349488));
+    mesh.indices.insert(mesh.indices.end(),{0,2,1}); mesh.nodes[0].indexCount = 6;
+    q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::orientation);
+    CHECK(q.mixedOrientationPatches == 1);
+    CHECK(q.triangles[0].mixedOrientation);
+    CHECK(q.triangles[1].triangle == 2);
+    CHECK(q.triangles[1].partId == 42);
+    // Opposite orientation in independent patches is not a mixed-domain finding.
+    mesh.nodes[0].indexCount = 3;
+    mesh.nodes.push_back(mesh.nodes[0]); mesh.nodes[1].indexOffset = 3;
+    q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
+    CHECK(q.mixedOrientationPatches == 0);
+    mesh.vertices[2].texcoord = {0,0};
+    q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
+    CHECK(q.collapsed == 2);
+    CHECK(std::isfinite(q.triangles[0].areaLog2));
+    mesh.nodes[1].hasTexcoords = false;
+    mesh.vertices[2].position = {0,0,0};
+    q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
+    CHECK(q.missing == 1);
+    CHECK(q.degenerateSurface == 1);
+}
 
 namespace {
 struct UvFixture {
@@ -261,6 +306,132 @@ TEST_CASE("UV analysis type and view survive persistence saved views and undo re
     const auto legacy = woby::readSceneDocument(path);
     REQUIRE(legacy.comparisons.size() == 1);
     CHECK(legacy.comparisons[0].settings.type == woby::AnalysisType::mesh);
+}
+
+TEST_CASE("UV gradients preserve child overrides ranges views and saved scenes")
+{
+    UvFixture f;
+    auto& state = f.state;
+    REQUIRE(woby::setObjectUvGrid(state,{},true,{},{},woby::UvColorMode::u,-2.0f,3.0f));
+    const auto child = state.files[0].groupSettings[1].objectId;
+    REQUIRE(woby::setObjectUvGrid(state,{child},{},{},{},woby::UvColorMode::v,-1.0f,4.0f));
+    woby::selectSceneObject(state,state.files[0].objectId);
+    CHECK(woby::selectedObjectProperty(state,woby::UiObjectProperty::uvColorMode).mixed);
+    woby::setSelectedObjectProperty(state,woby::UiObjectProperty::uvDensityU,8);
+    CHECK(state.files[0].groupSettings[1].uvGrid.mode == woby::UvColorMode::v);
+    CHECK(state.files[0].groupSettings[1].uvGrid.minimum == -1);
+    const auto id = woby::createComparison(state,woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(state,{state.files[0].objectId},woby::ComparisonSide::a,true,id);
+    auto settings = woby::comparisonSettings(state,id);
+    settings.uvSeparated = true; settings.uvLinkedSelection = false;
+    settings.uvMetric = woby::UvQualityMetric::area; settings.uvNormalization = woby::UvAreaNormalization::absolute;
+    woby::setComparisonSettings(state,settings,id);
+    woby::isolateUvObjects(state,{child},id);
+    const auto document = woby::createSceneDocument(state);
+    const auto view = woby::createView(state);
+    woby::isolateUvObjects(state,{},id);
+    settings.uvSeparated = false; woby::setComparisonSettings(state,settings,id);
+    REQUIRE(woby::setObjectUvGrid(state,{},false,{},{},woby::UvColorMode::grid));
+    woby::applyView(state,view);
+    CHECK(woby::comparisonSettings(state,id).uvSeparated);
+    CHECK(woby::comparisonMemberIds(state,woby::ComparisonSide::a,id) == std::vector<woby::SceneObjectId>{child});
+    CHECK(state.files[0].groupSettings[1].uvGrid.mode == woby::UvColorMode::v);
+    auto saved = woby::createSceneDocument(state);
+    const auto path = f.root / "extended-uv.woby";
+    woby::writeSceneDocument(path,saved);
+    auto restored = woby::readSceneDocument(path);
+    for (auto& file : restored.files) { file.path = woby::sceneAbsolutePath(path,file.path); }
+    CHECK(restored == saved);
+    woby::SceneHistory history; woby::resetSceneHistory(history,state);
+    settings = woby::comparisonSettings(state,id);
+    settings.uvSeparated = false; settings.uvMetric = woby::UvQualityMetric::angle;
+    woby::setComparisonSettings(state,settings,id);
+    woby::isolateUvObjects(state,{},id);
+    REQUIRE(woby::setObjectUvGrid(state,{},true,{},{},woby::UvColorMode::grid));
+    const auto changed = woby::createSceneDocument(state);
+    REQUIRE(woby::recordSceneHistory(history,state));
+    auto step = woby::prepareSceneHistoryStep(history,state,document,false);
+    REQUIRE(step);
+    woby::commitSceneHistoryStep(history,state,std::move(*step),false);
+    CHECK(woby::createSceneDocument(state) == saved);
+    step = woby::prepareSceneHistoryStep(history,state,document,true);
+    REQUIRE(step);
+    woby::commitSceneHistoryStep(history,state,std::move(*step),true);
+    CHECK(woby::createSceneDocument(state) == changed);
+    CHECK_FALSE(woby::setObjectUvGrid(state,{},true,{},{},woby::UvColorMode::u,9.0f,2.0f));
+    CHECK(woby::createSceneDocument(state) == changed);
+    CHECK(woby::normalizedUvGrid({true,10,10,woby::UvColorMode::u,5,4}).minimum == 0);
+}
+
+TEST_CASE("Separated UV patches preserve source identities scale and UVs for linked picking")
+{
+    UvFixture f;
+    auto& state = f.state;
+    const auto id = woby::createComparison(state,woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(state,{state.files[0].objectId},woby::ComparisonSide::a,true,id);
+    auto settings = woby::comparisonSettings(state,id);
+    settings.uvView = woby::UvView::layout; settings.uvSeparated = true;
+    woby::setComparisonSettings(state,settings,id);
+    const auto mesh = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id);
+    REQUIRE(mesh.nodes.size() == 2);
+    REQUIRE(mesh.vertices.size() == 6);
+    CHECK(mesh.vertices[0].position != mesh.vertices[3].position);
+    CHECK(mesh.vertices[0].texcoord == mesh.vertices[3].texcoord);
+    CHECK(mesh.vertices[1].position[0]-mesh.vertices[0].position[0] == doctest::Approx(mesh.vertices[4].position[0]-mesh.vertices[3].position[0]));
+    CHECK(mesh.nodes[0].sourceObjectId == state.files[0].groupSettings[0].objectId);
+    const auto result = woby::computeComparisonStages(mesh,{},woby::comparisonSource);
+    REQUIRE(result.original.source.uvQuality);
+    CHECK(result.original.source.uvQuality->missing == 1);
+    CHECK(woby::uvQualityVertices(result.original.source).size() == mesh.indices.size());
+    const auto report = woby::controlComparisonResults(result,.01,false);
+    CHECK(report["uvQuality"]["validTriangles"] == 2);
+    CHECK(report["uvQuality"]["missingUvTriangles"] == 1);
+    std::vector<woby::ScenePickPart> parts;
+    woby::appendComparisonPickParts(parts,state.comparisons[0],settings,result,false);
+    REQUIRE(parts.size() == 2);
+    CHECK(parts[0].objectId == mesh.nodes[0].sourceObjectId);
+    CHECK(parts[1].objectId == mesh.nodes[1].sourceObjectId);
+    CHECK(parts[1].indexOffset == 3);
+    settings.uvLinkedSelection = false; parts.clear();
+    woby::appendComparisonPickParts(parts,state.comparisons[0],settings,result,false);
+    REQUIRE(parts.size() == 1);
+    CHECK(parts[0].objectId == id);
+    const auto signature = woby::comparisonGeometrySignature(state,id);
+    settings.uvMetric = woby::UvQualityMetric::area; woby::setComparisonSettings(state,settings,id);
+    CHECK(woby::comparisonGeometrySignature(state,id) != signature);
+    const auto source = woby::createSceneDocument(state).files;
+    woby::isolateUvObjects(state,{mesh.nodes[0].sourceObjectId},id);
+    CHECK(woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id).nodes.size() == 1);
+    CHECK(woby::createSceneDocument(state).files == source);
+    woby::isolateUvObjects(state,{},id);
+    CHECK(woby::comparisonMemberIds(state,woby::ComparisonSide::a,id).size() == 3);
+}
+
+TEST_CASE("UV quality CLI controls validate types and isolate without changing membership")
+{
+    UvFixture f;
+    const auto clean = woby::createSceneDocument(f.state);
+    const auto format = [](woby::SceneObjectId id) { return std::to_string(id); };
+    const auto& create = woby::controlMethod(woby::ControlAction::comparisonCreate);
+    auto command = woby::parseControlOperation(create,{{"type","uv_quality"},{"a","file"}});
+    command.aId = f.state.files[0].objectId;
+    (void)woby::applyControlSceneOperation(f.state,clean,command,format,200,800);
+    const auto id = f.state.comparisons.back().objectId;
+    const auto& set = woby::controlMethod(woby::ControlAction::comparisonSet);
+    command = woby::parseControlOperation(set,{{"target",format(id)},{"uvMetric","area"},{"uvNormalization","absolute"},{"uvSeparated",true},{"uvLinkedSelection",false}});
+    command.objectId = id;
+    (void)woby::applyControlSceneOperation(f.state,clean,command,format,200,800);
+    CHECK(woby::comparisonSettings(f.state,id).uvMetric == woby::UvQualityMetric::area);
+    CHECK(woby::controlOperationParams(command)["uvNormalization"] == "absolute");
+    CHECK_THROWS(woby::parseControlOperation(set,{{"target",format(id)},{"uvMetric","distance"}}));
+    CHECK_THROWS(woby::parseControlOperation(create,{{"type","uv_quality"},{"b","file"}}));
+    const auto& enable = woby::controlMethod(woby::ControlAction::comparisonEnable);
+    command = woby::parseControlOperation(enable,{{"target",format(id)},{"side","a"},{"object","patch"},{"enabled",true},{"isolate",true}});
+    command.objectId = id; command.memberId = f.state.files[0].groupSettings[0].objectId;
+    (void)woby::applyControlSceneOperation(f.state,clean,command,format,200,800);
+    CHECK(woby::comparisonMemberIds(f.state,woby::ComparisonSide::a,id).size() == 1);
+    CHECK(woby::comparisonMemberIds(f.state,woby::ComparisonSide::a,id,false).size() == 3);
+    CHECK_THROWS(woby::parseControlOperation(enable,{{"target",format(id)},{"side","a"},{"enabled",true},{"isolate",true}}));
 }
 
 TEST_CASE("UV layouts obey the scene up axis and refresh geometry and framing bounds")

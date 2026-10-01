@@ -294,6 +294,16 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     part.edgeXray = false;
     part.surfaceLessEqual = true;
     part.selected = isSelected;
+    if (isUvAnalysis(settings.type) && settings.uvLinkedSelection) {
+        for (const auto& node : surface.source.nodes) {
+            auto patch = part;
+            patch.objectId = node.sourceObjectId ? node.sourceObjectId : comparison.objectId;
+            patch.indexOffset = node.indexOffset; patch.indexCount = node.indexCount;
+            patch.bounds.reset();
+            parts.push_back(patch);
+        }
+        return;
+    }
     parts.push_back(part);
     if (settings.mode == ComparisonMode::overlay) {
         auto overlay = part;

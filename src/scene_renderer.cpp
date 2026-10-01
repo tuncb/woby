@@ -474,8 +474,7 @@ void submitGroupRange(
             groupColor(settings, 1.0f, opacityScale),
             range.triangleIndexOffset,
             range.triangleIndexCount, markers != nullptr,
-            {settings.uvGrid.densityU, settings.uvGrid.densityV,
-                settings.uvGrid.enabled && nodeIndex < file.mesh.nodes.size() && file.mesh.nodes[nodeIndex].hasTexcoords ? 1.0f : 0.0f, 0.0f});
+            uvColorParameters(settings.uvGrid, nodeIndex < file.mesh.nodes.size() && file.mesh.nodes[nodeIndex].hasTexcoords, false));
     }
     if (!importedLinesOnly && settings.showTriangles) {
         submitColorRange(

@@ -26,6 +26,8 @@ struct Bounds {
     float radius = 1.0f;
 };
 
+struct UvQuality;
+
 struct MeshNode {
     std::string name;
     uint32_t indexOffset = 0;
@@ -38,6 +40,8 @@ struct MeshNode {
     std::string displayName = {}; // Optional importer label; name stays the saved identity.
     uint32_t lineIndexOffset = 0;
     uint32_t lineIndexCount = 0; // Line groups have indexCount == 0.
+    uint64_t sourceObjectId = 0; // Analysis copy: linked source patch, never an importer identity.
+    size_t uvQualityOffset = 0; // Triangle offset before optional UV layout filtering.
 };
 
 [[nodiscard]] inline const std::string& meshNodeDisplayName(const MeshNode& node)
@@ -84,6 +88,7 @@ struct Mesh {
     std::shared_ptr<const MeshAnnotationCache> annotationCache;
     std::vector<MeshHierarchyNode> hierarchy; // Validated source defaults; editable tree lives in UiState.
     std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
+    std::shared_ptr<const UvQuality> uvQuality;
 };
 
 [[nodiscard]] std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node);

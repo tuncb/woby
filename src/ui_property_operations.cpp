@@ -12,7 +12,8 @@ namespace {
 bool isUvProperty(UiObjectProperty property)
 {
     return property == UiObjectProperty::uvGrid || property == UiObjectProperty::uvDensityU
-        || property == UiObjectProperty::uvDensityV;
+        || property == UiObjectProperty::uvDensityV || property == UiObjectProperty::uvColorMode
+        || property == UiObjectProperty::uvMinimum || property == UiObjectProperty::uvMaximum;
 }
 
 template <typename Nodes>
@@ -67,7 +68,7 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
     case P::opacity: return settings.opacity;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
     case P::red: case P::green: case P::blue:
-    case P::uvGrid: case P::uvDensityU: case P::uvDensityV:
+    case P::uvGrid: case P::uvDensityU: case P::uvDensityV: case P::uvColorMode: case P::uvMinimum: case P::uvMaximum:
     case P::lineWidth: case P::lineDepthTest: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
@@ -77,6 +78,9 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
         case P::uvGrid: return settings.uvGrid.enabled ? 1.0f : 0.0f;
         case P::uvDensityU: return settings.uvGrid.densityU;
         case P::uvDensityV: return settings.uvGrid.densityV;
+        case P::uvColorMode: return static_cast<float>(settings.uvGrid.mode);
+        case P::uvMinimum: return settings.uvGrid.minimum;
+        case P::uvMaximum: return settings.uvGrid.maximum;
         case P::vertexSize: return settings.vertexSizeScale;
         case P::solidMesh: return settings.showSolidMesh ? 1.0f : 0.0f;
         case P::triangles: return settings.showTriangles ? 1.0f : 0.0f;
@@ -201,16 +205,23 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
     case P::opacity: settings.opacity = std::clamp(value, minGroupOpacity, maxGroupOpacity); return;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
     case P::red: case P::green: case P::blue:
-    case P::uvGrid: case P::uvDensityU: case P::uvDensityV:
+    case P::uvGrid: case P::uvDensityU: case P::uvDensityV: case P::uvColorMode: case P::uvMinimum: case P::uvMaximum:
     case P::lineWidth: case P::lineDepthTest: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
         switch (property) {
         case P::lineWidth: setGroupLineStyle(settings, {value, settings.lines.depthTest}); return;
         case P::lineDepthTest: setGroupLineStyle(settings, {settings.lines.width, value != 0.0f}); return;
-        case P::uvGrid: setGroupUvGrid(settings, {value != 0.0f, settings.uvGrid.densityU, settings.uvGrid.densityV}); return;
-        case P::uvDensityU: setGroupUvGrid(settings, {settings.uvGrid.enabled, value, settings.uvGrid.densityV}); return;
-        case P::uvDensityV: setGroupUvGrid(settings, {settings.uvGrid.enabled, settings.uvGrid.densityU, value}); return;
+        case P::uvGrid: case P::uvDensityU: case P::uvDensityV: case P::uvColorMode: case P::uvMinimum: case P::uvMaximum: {
+            auto uv = settings.uvGrid;
+            if (property == P::uvGrid) { uv.enabled = value != 0; }
+            if (property == P::uvDensityU) { uv.densityU = value; }
+            if (property == P::uvDensityV) { uv.densityV = value; }
+            if (property == P::uvColorMode) { uv.mode = value == 1 ? UvColorMode::u : value == 2 ? UvColorMode::v : UvColorMode::grid; }
+            if (property == P::uvMinimum) { uv.minimum = value; }
+            if (property == P::uvMaximum) { uv.maximum = value; }
+            setGroupUvGrid(settings, uv); return;
+        }
         case P::vertexSize: setGroupVertexSizeScale(settings, value); return;
         case P::solidMesh: setGroupRenderMode(settings, UiRenderMode::solidMesh, value != 0.0f); return;
         case P::triangles: setGroupRenderMode(settings, UiRenderMode::triangles, value != 0.0f); return;
@@ -286,11 +297,21 @@ bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& object
 }
 
 bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
-    std::optional<bool> enabled, std::optional<float> densityU, std::optional<float> densityV)
+    std::optional<bool> enabled, std::optional<float> densityU, std::optional<float> densityV,
+    std::optional<UvColorMode> mode, std::optional<float> minimum, std::optional<float> maximum)
 {
-    if ((densityU && !std::isfinite(*densityU)) || (densityV && !std::isfinite(*densityV))) { return false; }
+    if ((minimum && !std::isfinite(*minimum)) || (maximum && !std::isfinite(*maximum))
+        || (densityU && !std::isfinite(*densityU)) || (densityV && !std::isfinite(*densityV))) { return false; }
     const auto targets = comparisonObjectParts(state, objects);
     const boost::unordered_flat_set<SceneObjectId> included(targets.begin(), targets.end());
+    // Validate every eligible child before applying a multi-object edit.
+    for (const auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+            const auto& part = file.groupSettings[i];
+            if (!file.mesh.nodes[i].hasTexcoords || (!objects.empty() && !included.contains(part.objectId))) { continue; }
+            if (maximum.value_or(part.uvGrid.maximum) <= minimum.value_or(part.uvGrid.minimum)) { return false; }
+        }
+    }
     bool available = false, changed = false;
     for (auto& file : state.files) {
         for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
@@ -301,6 +322,9 @@ bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
             if (enabled) { settings.enabled = *enabled; }
             if (densityU) { settings.densityU = *densityU; }
             if (densityV) { settings.densityV = *densityV; }
+            if (mode) { settings.mode = *mode; }
+            if (minimum) { settings.minimum = *minimum; }
+            if (maximum) { settings.maximum = *maximum; }
             settings = normalizedUvGrid(settings);
             changed = changed || settings != part.uvGrid;
             setGroupUvGrid(part, settings);

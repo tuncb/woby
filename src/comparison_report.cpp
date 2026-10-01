@@ -1,4 +1,5 @@
 #include "comparison_report.h"
+#include "uv_quality.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -41,15 +42,27 @@ std::vector<std::string> comparisonReportLines(
         if (!a.empty()) { lines.push_back("A: " + a); }
         if (!b.empty()) { lines.push_back("B: " + b); }
     }
-    if (settings.type == AnalysisType::uv) {
+    if (isUvAnalysis(settings.type)) {
         lines.push_back(settings.uvView == UvView::layout ? "2D UV layout" : "3D UV surface");
-        if (options.legend && settings.uvGrid.enabled) {
+        if (options.legend && settings.type == AnalysisType::uvQuality) {
+            lines.push_back(settings.uvMetric == UvQualityMetric::angle ? "Angle distortion: blue 0, yellow 45, red 90+ degrees"
+                : settings.uvMetric == UvQualityMetric::area ? "Area stretch: blue 1; red 8 or 1/8 and beyond"
+                : "UV winding: blue positive; red negative (mirrored patches are valid)");
+            lines.push_back(settings.uvNormalization == UvAreaNormalization::perPatch ? "Area normalized per patch" : "Absolute UV / world area");
+            lines.push_back("Magenta: collapsed UV; gray: missing UV / degenerate surface");
+            if (result.original.source.uvQuality) {
+                const auto& q = *result.original.source.uvQuality;
+                lines.push_back(std::to_string(q.collapsed)+" collapsed UV triangles; "+std::to_string(q.mixedOrientationPatches)+" patches with mixed orientation");
+            }
+        } else if (options.legend && settings.uvGrid.enabled && settings.uvGrid.mode != UvColorMode::grid) {
+            lines.push_back(std::string(uvColorModeKey(settings.uvGrid.mode))+" gradient: blue "+measurementNumber(settings.uvGrid.minimum)+"; yellow "+measurementNumber(settings.uvGrid.maximum));
+        } else if (options.legend && settings.uvGrid.enabled) {
             lines.push_back("Cyan: constant U; orange: constant V");
             lines.push_back("Cells per UV unit: U " + measurementNumber(settings.uvGrid.densityU)
                 + "; V " + measurementNumber(settings.uvGrid.densityV));
         }
         if (options.legend && settings.uvView == UvView::layout) {
-            lines.push_back("Uniform display scale; overlapping islands retained; parts without UVs omitted.");
+            lines.push_back(settings.uvSeparated ? "Separated patches; common display scale; original UVs retained." : "Uniform display scale; overlapping islands retained; parts without UVs omitted.");
         }
         return lines;
     }

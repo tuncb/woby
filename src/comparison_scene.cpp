@@ -4,6 +4,7 @@
 #include "utf8_path.h"
 #include "ui_operations.h"
 #include "uv_analysis.h"
+#include "uv_quality.h"
 
 #include <bx/math.h>
 
@@ -51,6 +52,8 @@ void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file,
     const auto firstVertex = result.vertices.size();
     auto node = group;
     node.indexOffset = static_cast<uint32_t>(result.indices.size());
+    node.sourceObjectId = file.groupSettings[groupIndex].objectId;
+    node.uvQualityOffset = result.indices.size()/3;
     result.nodes.push_back(std::move(node));
     for (size_t i = group.indexOffset; i < end; ++i)
     {
@@ -123,7 +126,7 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
 }
 } // namespace
 
-Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis)
+Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated)
 {
     UvExtent extent;
     for (const auto& node : source.nodes) {
@@ -134,21 +137,40 @@ Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis)
     }
     Mesh result;
     result.origin = source.origin;
+    result.uvQuality = source.uvQuality;
     if (extent.min[0] > extent.max[0]) { return result; }
     const auto frame = uvLayoutFrame(source.bounds, extent, upAxis);
     constexpr auto missing = std::numeric_limits<uint32_t>::max();
     std::vector<uint32_t> remap(source.vertices.size(), missing);
+    size_t patch = 0;
+    const auto patchCount = std::count_if(source.nodes.begin(), source.nodes.end(), [](const auto& n) { return n.hasTexcoords; });
+    const auto columns = static_cast<size_t>(std::ceil(std::sqrt(static_cast<double>(patchCount))));
+    const double cellWidth = (extent.max[0]-extent.min[0])*frame.scale;
+    const double cellHeight = (extent.max[1]-extent.min[1])*frame.scale;
+    const double gap = std::max({cellWidth,cellHeight,1e-6})*.15;
     for (const auto& node : source.nodes) {
         if (!node.hasTexcoords) { continue; }
+        UvExtent local;
+        for (size_t i = node.indexOffset; i < size_t{node.indexOffset}+node.indexCount; ++i) { includeUv(local,source.vertices[source.indices[i]].texcoord); }
+        const double offsetU = separated ? (static_cast<double>(patch%columns)-static_cast<double>(columns-1)*.5)*(cellWidth+gap) : 0;
+        const auto rows = (static_cast<size_t>(patchCount)+columns-1)/columns;
+        const double offsetV = separated ? (static_cast<double>(patch/columns)-static_cast<double>(rows-1)*.5)*(cellHeight+gap) : 0;
+        auto patchFrame = frame;
+        if (separated) { patchFrame.uvCenter = {(local.min[0]+local.max[0])*.5,(local.min[1]+local.max[1])*.5}; }
+        ++patch;
+        // Patches can share source vertices; display separation requires independent copies.
+        const auto firstVertex = result.vertices.size();
         auto flattened = node;
         flattened.indexOffset = static_cast<uint32_t>(result.indices.size());
         result.nodes.push_back(std::move(flattened));
         for (size_t i = node.indexOffset; i < size_t{node.indexOffset} + node.indexCount; ++i) {
             const auto sourceIndex = source.indices[i];
             auto& mapped = remap[sourceIndex];
-            if (mapped == missing) {
+            if (mapped == missing || (separated && mapped < firstVertex)) {
                 auto vertex = source.vertices[sourceIndex];
-                vertex.position = uvLayoutPosition(frame, vertex.texcoord);
+                vertex.position = uvLayoutPosition(patchFrame, vertex.texcoord);
+                vertex.position[0] += static_cast<float>(offsetU);
+                vertex.position[upAxis == SceneUpAxis::y ? 1 : 2] += static_cast<float>(offsetV);
                 vertex.normal = upAxis == SceneUpAxis::y ? std::array<float, 3>{0, 0, 1}
                     : std::array<float, 3>{0, -1, 0};
                 mapped = static_cast<uint32_t>(result.vertices.size());
@@ -316,8 +338,11 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         throw std::runtime_error("Each analysis group needs at least one mesh part with triangles.");
     }
     result.bounds = calculateBounds(result.vertices);
-    if (comparison->settings.type == AnalysisType::uv && comparison->settings.uvView == UvView::layout) {
-        return uvLayoutMesh(result, state.upAxis);
+    if (comparison->settings.type == AnalysisType::uvQuality) {
+        result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, comparison->settings.uvNormalization, comparison->settings.uvMetric));
+    }
+    if (isUvAnalysis(comparison->settings.type) && comparison->settings.uvView == UvView::layout) {
+        return uvLayoutMesh(result, state.upAxis, comparison->settings.uvSeparated);
     }
     return result;
 }
@@ -328,8 +353,11 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
     uint64_t seed = 17;
     const auto settings = comparisonSettings(state, id);
     hashCombine(seed, static_cast<uint64_t>(settings.type));
-    if (settings.type == AnalysisType::uv) {
+    if (isUvAnalysis(settings.type)) {
         hashCombine(seed, static_cast<uint64_t>(settings.uvView));
+        hashCombine(seed, settings.uvSeparated);
+        hashCombine(seed, static_cast<uint64_t>(settings.uvMetric));
+        hashCombine(seed, static_cast<uint64_t>(settings.uvNormalization));
         if (settings.uvView == UvView::layout) { hashCombine(seed, static_cast<uint64_t>(state.upAxis)); }
     }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
@@ -360,7 +388,14 @@ std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectI
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison || !canInspectComparison(state, id)) { return std::nullopt; }
-    if (comparison->settings.type == AnalysisType::uv && comparison->settings.uvView == UvView::layout) {
+    if (isUvAnalysis(comparison->settings.type) && comparison->settings.uvView == UvView::layout && comparison->settings.uvSeparated) {
+        auto mesh = comparisonWorldMesh(state, ComparisonSide::a, id);
+        if (mesh.vertices.empty()) { return std::nullopt; }
+        auto bounds = mesh.bounds;
+        for (size_t k = 0; k < 3; ++k) { bounds.min[k] += comparison->translation[k]; bounds.max[k] += comparison->translation[k]; bounds.center[k] += comparison->translation[k]; }
+        return bounds;
+    }
+    if (isUvAnalysis(comparison->settings.type) && comparison->settings.uvView == UvView::layout) {
         // Accumulate without allocating another full mesh during camera framing.
         UvExtent uv;
         Bounds source;

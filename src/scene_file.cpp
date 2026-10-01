@@ -405,6 +405,12 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
         record.settings.comparison.a = parseTomlBool(value);
     } else if (key == "analysis_b") {
         record.settings.comparison.b = parseTomlBool(value);
+    } else if (key == "uv_color") {
+        const auto mode = parseTomlString(value);
+        if (mode != "grid" && mode != "u" && mode != "v") { throw std::runtime_error("Unknown UV coloring mode."); }
+        record.settings.uvGrid.mode = mode == "u" ? UvColorMode::u : mode == "v" ? UvColorMode::v : UvColorMode::grid;
+    } else if (key == "uv_minimum") { record.settings.uvGrid.minimum = parseTomlFloat(value);
+    } else if (key == "uv_maximum") { record.settings.uvGrid.maximum = parseTomlFloat(value);
     } else if (key == "uv_grid") {
         record.settings.uvGrid.enabled = parseTomlBool(value);
     } else if (key == "uv_density_u") {
@@ -482,12 +488,29 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         const auto type = parseTomlString(value);
         if (type == "mesh") { record.settings.type = AnalysisType::mesh; }
         else if (type == "uv") { record.settings.type = AnalysisType::uv; }
+        else if (type == "uv_quality") { record.settings.type = AnalysisType::uvQuality; }
         else { throw std::runtime_error("Unknown analysis type."); }
+    } else if (key == "analysis_uv_separated") { record.settings.uvSeparated = parseTomlBool(value);
+    } else if (key == "analysis_uv_linked_selection") { record.settings.uvLinkedSelection = parseTomlBool(value);
+    } else if (key == "analysis_uv_metric") {
+        const auto metric = parseTomlString(value);
+        if (metric != "angle" && metric != "area" && metric != "orientation") { throw std::runtime_error("Unknown UV quality metric."); }
+        record.settings.uvMetric = metric == "area" ? UvQualityMetric::area : metric == "orientation" ? UvQualityMetric::orientation : UvQualityMetric::angle;
+    } else if (key == "analysis_uv_normalization") {
+        const auto mode = parseTomlString(value);
+        if (mode != "per_patch" && mode != "absolute") { throw std::runtime_error("Unknown UV area normalization."); }
+        record.settings.uvNormalization = mode == "absolute" ? UvAreaNormalization::absolute : UvAreaNormalization::perPatch;
     } else if (key == "analysis_uv_view") {
         const auto view = parseTomlString(value);
         if (view == "layout") { record.settings.uvView = UvView::layout; }
         else if (view == "surface") { record.settings.uvView = UvView::surface; }
         else { throw std::runtime_error("Unknown UV view."); }
+    } else if (key == "analysis_uv_color") {
+        const auto mode = parseTomlString(value);
+        if (mode != "grid" && mode != "u" && mode != "v") { throw std::runtime_error("Unknown UV coloring mode."); }
+        record.settings.uvGrid.mode = mode == "u" ? UvColorMode::u : mode == "v" ? UvColorMode::v : UvColorMode::grid;
+    } else if (key == "analysis_uv_minimum") { record.settings.uvGrid.minimum = parseTomlFloat(value);
+    } else if (key == "analysis_uv_maximum") { record.settings.uvGrid.maximum = parseTomlFloat(value);
     } else if (key == "analysis_uv_grid") {
         record.settings.uvGrid.enabled = parseTomlBool(value);
     } else if (key == "analysis_uv_density_u") {
@@ -584,8 +607,15 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     case ComparisonMode::surfaceQuality: mode = "surface_quality"; break;
     }
     stream << "analysis_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
-    stream << "analysis_type = \"" << (comparison.type == AnalysisType::uv ? "uv" : "mesh") << "\"\n";
+    stream << "analysis_type = \"" << analysisTypeKey(comparison.type) << "\"\n";
+    stream << "analysis_uv_separated = " << (comparison.uvSeparated ? "true" : "false") << "\n";
+    stream << "analysis_uv_linked_selection = " << (comparison.uvLinkedSelection ? "true" : "false") << "\n";
+    stream << "analysis_uv_metric = \"" << (comparison.uvMetric == UvQualityMetric::area ? "area" : comparison.uvMetric == UvQualityMetric::orientation ? "orientation" : "angle") << "\"\n";
+    stream << "analysis_uv_normalization = \"" << (comparison.uvNormalization == UvAreaNormalization::absolute ? "absolute" : "per_patch") << "\"\n";
     stream << "analysis_uv_view = \"" << (comparison.uvView == UvView::layout ? "layout" : "surface") << "\"\n";
+    stream << "analysis_uv_color = \"" << uvColorModeKey(comparison.uvGrid.mode) << "\"\n";
+    stream << "analysis_uv_minimum = " << comparison.uvGrid.minimum << "\n";
+    stream << "analysis_uv_maximum = " << comparison.uvGrid.maximum << "\n";
     stream << "analysis_uv_grid = " << (comparison.uvGrid.enabled ? "true" : "false") << "\n";
     stream << "analysis_uv_density_u = " << comparison.uvGrid.densityU << "\n";
     stream << "analysis_uv_density_v = " << comparison.uvGrid.densityV << "\n";
@@ -664,6 +694,9 @@ void writeCamera(std::ostream& stream, const SceneCamera& value)
 
 void writeAppearance(std::ostream& stream, const SceneGroupSettings& settings)
 {
+    stream << "uv_color = \"" << uvColorModeKey(settings.uvGrid.mode) << "\"\n";
+    stream << "uv_minimum = " << settings.uvGrid.minimum << "\n";
+    stream << "uv_maximum = " << settings.uvGrid.maximum << "\n";
     stream << "uv_grid = " << (settings.uvGrid.enabled ? "true" : "false") << "\n";
     stream << "line_width = ";
     writeTomlFloat(stream, settings.lines.width);
@@ -855,7 +888,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1148,7 +1181,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 18\n";
+    stream << "version = 19\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';
