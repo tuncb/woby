@@ -34,7 +34,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::sceneUndo, "scene.undo", "scene undo", {}, {}, {}, false, true},
         {ControlAction::sceneRedo, "scene.redo", "scene redo", {}, {}, {}, false, true},
         {ControlAction::visibility, "visibility.set", "visibility set", "target", {"visible"}, {"visible"}, false, true},
-        {ControlAction::render, "render.set", "render set", "target", {"solid", "triangles", "vertices"}, {}, true, true},
+        {ControlAction::render, "render.set", "render set", "target", {"solid", "triangles", "vertices", "uvGrid", "uvDensityU", "uvDensityV"}, {}, true, true},
         {ControlAction::transformGet, "transform.get", "transform get", "target", {}, {}},
         {ControlAction::transformSet, "transform.set", "transform set", "target", {"translation", "rotationDegrees", "scale"}, {}, true, true},
         {ControlAction::transformReset, "transform.reset", "transform reset", "target", {}, {}, false, true},
@@ -73,10 +73,10 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::stats, "stats", "stats", {}, {}, {}},
         {ControlAction::performance, "performance.get", "performance get", {}, {}, {}},
         {ControlAction::pane, "pane.set", "pane set", {}, {"visible", "width"}, {}, true, true},
-        {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"name", "a", "b"}, {}, false, true},
+        {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"uvView", "uvGrid", "uvDensityU", "uvDensityV", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object"}, {"side", "enabled"}, false, true},
@@ -111,6 +111,7 @@ const ControlMethod& controlMethod(ControlAction action)
 namespace {
 bool booleanOption(const std::string& name)
 {
+    if (name == "uvGrid") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
         || name == "locked" || name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
@@ -118,7 +119,7 @@ bool booleanOption(const std::string& name)
 }
 bool stringOption(const std::string& name)
 {
-    return name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
+    return name == "type" || name == "uvView" || name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
 }
 bool integerOption(const std::string& name)
 {
@@ -131,6 +132,10 @@ bool vectorOption(const std::string& name)
 }
 std::string cliOption(const std::string& name)
 {
+    if (name == "uvGrid") { return "--uv-grid"; }
+    if (name == "uvView") { return "--uv-view"; }
+    if (name == "uvDensityU") { return "--uv-density-u"; }
+    if (name == "uvDensityV") { return "--uv-density-v"; }
     if (name == "intersectionPairLimit") { return "--intersection-pair-limit"; }
     if (name == "intersectionCandidateLimit") { return "--intersection-candidate-limit"; }
     if (name == "rotationDegrees") { return "--rotation-degrees"; }
@@ -270,6 +275,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
     BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
+    BOOL_FIELD(uvGrid)
     BOOL_FIELD(nonManifoldVertices) BOOL_FIELD(showNonManifoldVertices) BOOL_FIELD(holes) BOOL_FIELD(showHoles) BOOL_FIELD(fins) BOOL_FIELD(showFins)
     BOOL_FIELD(autoUpdateBoundaries) BOOL_FIELD(autoUpdateNonManifold) BOOL_FIELD(autoUpdateWinding)
     BOOL_FIELD(autoUpdateSelfIntersections) BOOL_FIELD(selfIntersections) BOOL_FIELD(showSelfIntersections)
@@ -281,6 +287,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
 #undef BOOL_FIELD
 #define NUMBER_FIELD(field) if (params.contains(#field)) { command.field = number(params[#field]); }
     NUMBER_FIELD(scale) NUMBER_FIELD(value) NUMBER_FIELD(pixels) NUMBER_FIELD(width)
+    NUMBER_FIELD(uvDensityU) NUMBER_FIELD(uvDensityV)
     NUMBER_FIELD(aspect) NUMBER_FIELD(opacity)
     NUMBER_FIELD(yawDegrees) NUMBER_FIELD(pitchDegrees) NUMBER_FIELD(rollDegrees)
     NUMBER_FIELD(right) NUMBER_FIELD(up) NUMBER_FIELD(forward) NUMBER_FIELD(factor)
@@ -302,7 +309,11 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
     STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
     STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
+    STRING_FIELD(type) STRING_FIELD(uvView)
 #undef STRING_FIELD
+    if (command.type && *command.type != "mesh" && *command.type != "uv") { throw std::invalid_argument("type must be mesh or uv."); }
+    if (command.uvView && *command.uvView != "layout" && *command.uvView != "surface") { throw std::invalid_argument("uvView must be layout or surface."); }
+    if (command.type == "uv" && command.b) { throw std::invalid_argument("UV analysis uses one source input: --a."); }
     if (command.shape && *command.shape != "line" && *command.shape != "rectangle") { throw std::invalid_argument("shape must be line or rectangle."); }
     if (command.aspect && (*command.aspect < .1f || *command.aspect > 10)) { throw std::invalid_argument("aspect must be between 0.1 and 10."); }
     for (const auto& point : {command.start, command.end}) {
@@ -372,7 +383,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
-                : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
+                : name == "type" ? " mesh|uv" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
                 : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }
@@ -394,6 +405,8 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
     FIELD(visible) FIELD(solid) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb)
+    FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
+    FIELD(type) FIELD(uvView)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
     FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)

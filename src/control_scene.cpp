@@ -25,6 +25,7 @@ Json groupInfo(const UiGroupState& group)
     auto result = settingsInfo(group);
     result.update({{"solid", group.showSolidMesh}, {"triangles", group.showTriangles},
         {"vertices", group.showVertices}, {"color", group.color}, {"vertexSizeScale", group.vertexSizeScale}});
+    result.update({{"uvGrid", group.uvGrid.enabled}, {"uvDensityU", group.uvGrid.densityU}, {"uvDensityV", group.uvGrid.densityV}});
     return result;
 }
 Json boundsInfo(const Bounds& bounds, const Coordinate& origin = {})
@@ -80,6 +81,9 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             const char* mode = settings.mode == ComparisonMode::distance ? "distance"
                 : settings.mode == ComparisonMode::original ? "a" : settings.mode == ComparisonMode::repaired ? "b" : settings.mode == ComparisonMode::surfaceQuality ? "surface_quality" : "overlay";
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
+                {"type", settings.type == AnalysisType::uv ? "uv" : "mesh"},
+                {"uvView", settings.uvView == UvView::layout ? "layout" : "surface"},
+                {"uvGrid", settings.uvGrid.enabled}, {"uvDensityU", settings.uvGrid.densityU}, {"uvDensityV", settings.uvGrid.densityV},
                 {"mode", mode}, {"distanceOnA", settings.distanceOnOriginal}, {"tolerance", settings.tolerance},
                 {"colorRange", settings.colorRange}, {"showEdges", settings.showEdges},
                 {"nonManifoldVertices", settings.topologyInspection.nonManifoldVertices},
@@ -123,6 +127,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             const auto& group = file.groupSettings[index];
             if (group.objectId == id) {
                 return {{"settings", groupInfo(group)}, {"triangleCount", file.mesh.nodes.at(index).indexCount / 3},
+                    {"hasTexcoords", file.mesh.nodes.at(index).hasTexcoords},
                     {"localBounds", group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius, &file.mesh.nodes[index]) : Json(nullptr)}};
             }
         }
@@ -358,6 +363,11 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             }
         }
         auto id = command.objectId;
+        if (command.action != A::comparisonCreate && comparisonSettings(state, id).type == AnalysisType::uv
+            && (command.action == A::comparisonRun || command.action == A::comparisonCancel
+                || command.action == A::comparisonSwap || command.side == "b")) {
+            throw std::invalid_argument("UV analysis has one source input and no mesh detectors.");
+        }
         if (command.action == A::comparisonRun || command.action == A::comparisonCancel) {
             if (command.action == A::comparisonRun && !canInspectComparison(state, id)) { throw std::invalid_argument("Analysis needs valid input before running a check."); }
             const auto detector = std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), command.detector.value_or(""));
@@ -366,7 +376,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             return {{"target", formatId(id)}, {"detector", *detector}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
         }
         if (command.action == A::comparisonCreate) {
-            id = createComparison(state);
+            id = createComparison(state, command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
             if (command.name) { renameComparison(state, id, *command.name); }
             if (command.a) { setComparisonObjects(state, {command.aId}, ComparisonSide::a, true, id); }
             if (command.b) { setComparisonObjects(state, {command.bId}, ComparisonSide::b, true, id); }
@@ -376,6 +386,21 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             return {{"removed", command.target}, {"dirty", state.isDirty}};
         } else if (command.action == A::comparisonSet) {
             auto settings = comparisonSettings(state, id);
+            if (settings.type == AnalysisType::uv) {
+                const auto params = controlOperationParams(command);
+                for (auto it = params.begin(); it != params.end(); ++it) {
+                    if (it.key() != "target" && it.key() != "name" && it.key() != "visible" && it.key() != "showEdges"
+                        && it.key() != "uvView" && it.key() != "uvGrid" && it.key() != "uvDensityU" && it.key() != "uvDensityV") {
+                        throw std::invalid_argument("UV analysis supports source, layout, grid and edge controls only.");
+                    }
+                }
+            } else if (command.uvView || command.uvGrid || command.uvDensityU || command.uvDensityV) {
+                throw std::invalid_argument("UV analysis controls require an analysis created with --type uv.");
+            }
+            if (command.uvView) { settings.uvView = *command.uvView == "layout" ? UvView::layout : UvView::surface; }
+            if (command.uvGrid) { settings.uvGrid.enabled = *command.uvGrid; }
+            if (command.uvDensityU) { settings.uvGrid.densityU = *command.uvDensityU; }
+            if (command.uvDensityV) { settings.uvGrid.densityV = *command.uvDensityV; }
             if (command.visible) { settings.enabled = *command.visible; }
             if (command.mode) {
                 settings.mode = *command.mode == "distance" ? ComparisonMode::distance : *command.mode == "a"
@@ -475,6 +500,13 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         else { setSceneNodeSubtreeVisible(state, *target.folder, *command.visible); }
         break;
     case A::render:
+        // Validate UV eligibility before changing any of the other render flags.
+        if (command.uvGrid || command.uvDensityU || command.uvDensityV) {
+            if (!setObjectUvGrid(state, scene ? std::vector<SceneObjectId>{} : std::vector<SceneObjectId>{command.objectId},
+                    command.uvGrid, command.uvDensityU, command.uvDensityV)) {
+                throw std::invalid_argument("UV grid requires a part with complete UV coordinates.");
+            }
+        }
         for (const auto& [mode, enabled] : {std::pair{UiRenderMode::solidMesh, command.solid},
             std::pair{UiRenderMode::triangles, command.triangles}, std::pair{UiRenderMode::vertices, command.vertices}}) {
             if (!enabled) { continue; }

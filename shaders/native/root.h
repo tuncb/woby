@@ -9,6 +9,7 @@ struct WobyRoot {
     float4 markerQuery;
     float4 markerOptions;
     float4 comparison;
+    float4 uvGrid; // U/V cells per UV unit, enabled, reserved.
     float* vertices;
     uint32* pointIds;
     uint32 stride;
@@ -19,7 +20,7 @@ struct WobyRoot {
 };
 
 #ifndef __SLANG__
-static_assert(offsetof(WobyRoot, vertices) == 240);
-static_assert(offsetof(WobyRoot, sampler) == 272);
-static_assert(sizeof(WobyRoot) == 280);
+static_assert(offsetof(WobyRoot, vertices) == 256);
+static_assert(offsetof(WobyRoot, sampler) == 288);
+static_assert(sizeof(WobyRoot) == 296);
 #endif

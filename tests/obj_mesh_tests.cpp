@@ -134,6 +134,21 @@ TEST_CASE("OBJ loader rejects files without renderable triangles")
 
 }
 
+TEST_CASE("OBJ UV availability distinguishes supplied zero coordinates from missing corners per part")
+{
+    const ObjTestDirectory fixture;
+    const auto path = std::filesystem::absolute(fixture.path / "uv-parts.obj");
+    writeText(path, "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0 0\n"
+        "g complete\nf 1/1 2/1 3/1\ng missing\nf 1 2 3\n"
+        "g partial\nf 1/1 2/1 3\ng reused\nf 1/1 2/1 3/1\n");
+    const auto mesh = woby::loadObjMesh(path);
+    REQUIRE(mesh.nodes.size() == 4);
+    CHECK(mesh.nodes[0].hasTexcoords);
+    CHECK_FALSE(mesh.nodes[1].hasTexcoords);
+    CHECK_FALSE(mesh.nodes[2].hasTexcoords);
+    CHECK(mesh.nodes[3].hasTexcoords);
+}
+
 TEST_CASE("OBJ dense indexing grows across many seams without merging source identities")
 {
     const ObjTestDirectory fixture;

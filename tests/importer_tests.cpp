@@ -524,6 +524,9 @@ TEST_CASE("Importer mesh validation handles optional attributes and group partit
     REQUIRE(mesh.nodes.size() == 2u);
     CHECK(mesh.nodes[1].indexOffset == 3u);
     CHECK(mesh.vertices[0].normal[2] == 1.0f);
+    CHECK(mesh.nodes[0].hasTexcoords);
+    CHECK(mesh.nodes[1].hasTexcoords);
+    CHECK(mesh.vertices[1].texcoord == std::array<float, 2>{1, 0});
     groups[1].name = "front";
     CHECK_THROWS_AS((void)woby::copyImportedMesh(result), std::runtime_error);
     groups[1].name = "back";
@@ -543,6 +546,7 @@ TEST_CASE("Importer mesh validation handles optional attributes and group partit
     CHECK_THROWS_AS((void)woby::copyImportedMesh(result), std::runtime_error);
     result.flags = 0;
     CHECK_NOTHROW((void)woby::copyImportedMesh(result));
+    CHECK_FALSE(woby::copyImportedMesh(result).nodes[0].hasTexcoords);
 }
 
 TEST_CASE("Importer group appearance is optional validated and copied per group")

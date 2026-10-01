@@ -4,6 +4,7 @@
 #include <rapidobj/rapidobj.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -182,8 +183,14 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
         const auto& shape = shapes[shapeIndex];
         const uint32_t nodeIndexOffset = static_cast<uint32_t>(mesh.indices.size());
+        bool hasTexcoords = true;
 
         for (const auto& index : shape.mesh.indices) {
+            hasTexcoords = hasTexcoords && index.texcoord_index >= 0;
+            if (index.texcoord_index >= 0) {
+                const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
+                hasTexcoords = hasTexcoords && std::isfinite(attrib.texcoords[uv]) && std::isfinite(attrib.texcoords[uv + 1u]);
+            }
             if (mesh.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, mesh.indices.size(), indexCount); }
             if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= source->points.size()) {
                 throw std::runtime_error("OBJ contains an invalid source position index.");
@@ -230,6 +237,7 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
         const uint32_t nodeIndexCount = static_cast<uint32_t>(mesh.indices.size()) - nodeIndexOffset;
         if (nodeIndexCount > 0) {
             MeshNode node;
+            node.hasTexcoords = hasTexcoords;
             node.name = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1u) : shape.name;
             node.indexOffset = nodeIndexOffset;
             node.indexCount = nodeIndexCount;

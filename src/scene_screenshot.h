@@ -45,6 +45,7 @@ void submitSceneScreenshotCapture(
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
     woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle annotationProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,

@@ -606,6 +606,9 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
 
 ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
+    if (settings.type != AnalysisType::mesh && settings.type != AnalysisType::uv) { settings.type = AnalysisType::mesh; }
+    if (settings.uvView != UvView::layout && settings.uvView != UvView::surface) { settings.uvView = UvView::layout; }
+    settings.uvGrid = normalizedUvGrid(settings.uvGrid);
     if (settings.diagnosticSide != ComparisonSide::a && settings.diagnosticSide != ComparisonSide::b) {
         settings.diagnosticSide = ComparisonSide::a;
     }
@@ -632,6 +635,7 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.topologyMode = normalizedTopologyMode(settings.topologyMode);
     settings.intersections.limits.pairs = std::min(settings.intersections.limits.pairs, size_t{2147483647});
     settings.intersections.limits.candidateTests = std::min(settings.intersections.limits.candidateTests, size_t{2147483647});
+    if (settings.type == AnalysisType::uv) { settings.mode = ComparisonMode::original; }
     return settings;
 }
 
@@ -852,6 +856,7 @@ MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::st
 
 bool diagnosticAutoUpdate(const ComparisonSettings& settings, DiagnosticCategory category)
 {
+    if (settings.type == AnalysisType::uv) { return false; }
     switch (category) {
     case DiagnosticCategory::boundary: return settings.autoUpdateBoundaries;
     case DiagnosticCategory::nonManifold: return settings.autoUpdateNonManifold;
@@ -945,6 +950,7 @@ uint32_t nextComparisonStage(uint32_t missing)
 
 uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs, bool fullResults)
 {
+    if (settings.type == AnalysisType::uv) { return comparisonSource; }
     uint32_t stages = comparisonSource;
     for (size_t i = 0; i < diagnosticCategoryCount; ++i) {
         const auto category = static_cast<DiagnosticCategory>(i);

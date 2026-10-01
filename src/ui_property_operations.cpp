@@ -9,6 +9,12 @@
 namespace woby {
 namespace {
 
+bool isUvProperty(UiObjectProperty property)
+{
+    return property == UiObjectProperty::uvGrid || property == UiObjectProperty::uvDensityU
+        || property == UiObjectProperty::uvDensityV;
+}
+
 template <typename Nodes>
 auto* findFolderNode(Nodes& nodes, SceneObjectId id)
 {
@@ -60,10 +66,14 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
     case P::scale: return settings.scale;
     case P::opacity: return settings.opacity;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
-    case P::red: case P::green: case P::blue: break;
+    case P::red: case P::green: case P::blue:
+    case P::uvGrid: case P::uvDensityU: case P::uvDensityV: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
         switch (property) {
+        case P::uvGrid: return settings.uvGrid.enabled ? 1.0f : 0.0f;
+        case P::uvDensityU: return settings.uvGrid.densityU;
+        case P::uvDensityV: return settings.uvGrid.densityV;
         case P::vertexSize: return settings.vertexSizeScale;
         case P::solidMesh: return settings.showSolidMesh ? 1.0f : 0.0f;
         case P::triangles: return settings.showTriangles ? 1.0f : 0.0f;
@@ -83,7 +93,7 @@ bool isPartAppearanceProperty(UiObjectProperty property)
 {
     using P = UiObjectProperty;
     return property == P::solidMesh || property == P::triangles || property == P::vertices
-        || property == P::red || property == P::green || property == P::blue;
+        || property == P::red || property == P::green || property == P::blue || isUvProperty(property);
 }
 
 void appendAppearanceTargets(const UiState& state, const UiSceneNode& node, bool parts,
@@ -143,6 +153,15 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     boost::unordered_flat_set<SceneObjectId> seen;
     seen.reserve(targets.size());
     std::erase_if(targets, [&](SceneObjectId id) { return !seen.insert(id).second; });
+    if (isUvProperty(property)) {
+        boost::unordered_flat_set<SceneObjectId> eligible;
+        for (const auto& file : state.files) {
+            for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+                if (file.mesh.nodes[i].hasTexcoords) { eligible.insert(file.groupSettings[i].objectId); }
+            }
+        }
+        std::erase_if(targets, [&](SceneObjectId id) { return !eligible.contains(id); });
+    }
     return targets;
 }
 
@@ -172,10 +191,14 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
     case P::scale: settings.scale = std::clamp(value, minGroupScale, maxGroupScale); return;
     case P::opacity: settings.opacity = std::clamp(value, minGroupOpacity, maxGroupOpacity); return;
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
-    case P::red: case P::green: case P::blue: break;
+    case P::red: case P::green: case P::blue:
+    case P::uvGrid: case P::uvDensityU: case P::uvDensityV: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
         switch (property) {
+        case P::uvGrid: setGroupUvGrid(settings, {value != 0.0f, settings.uvGrid.densityU, settings.uvGrid.densityV}); return;
+        case P::uvDensityU: setGroupUvGrid(settings, {settings.uvGrid.enabled, value, settings.uvGrid.densityV}); return;
+        case P::uvDensityV: setGroupUvGrid(settings, {settings.uvGrid.enabled, settings.uvGrid.densityU, value}); return;
         case P::vertexSize: setGroupVertexSizeScale(settings, value); return;
         case P::solidMesh: setGroupRenderMode(settings, UiRenderMode::solidMesh, value != 0.0f); return;
         case P::triangles: setGroupRenderMode(settings, UiRenderMode::triangles, value != 0.0f); return;
@@ -191,6 +214,36 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
 }
 
 } // namespace
+
+void setGroupUvGrid(UiGroupState& group, UvGridSettings settings)
+{
+    group.uvGrid = normalizedUvGrid(settings);
+}
+
+bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
+    std::optional<bool> enabled, std::optional<float> densityU, std::optional<float> densityV)
+{
+    if ((densityU && !std::isfinite(*densityU)) || (densityV && !std::isfinite(*densityV))) { return false; }
+    const auto targets = comparisonObjectParts(state, objects);
+    const boost::unordered_flat_set<SceneObjectId> included(targets.begin(), targets.end());
+    bool available = false, changed = false;
+    for (auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+            auto& part = file.groupSettings[i];
+            if (!file.mesh.nodes[i].hasTexcoords || (!objects.empty() && !included.contains(part.objectId))) { continue; }
+            available = true;
+            auto settings = part.uvGrid;
+            if (enabled) { settings.enabled = *enabled; }
+            if (densityU) { settings.densityU = *densityU; }
+            if (densityV) { settings.densityV = *densityV; }
+            settings = normalizedUvGrid(settings);
+            changed = changed || settings != part.uvGrid;
+            setGroupUvGrid(part, settings);
+        }
+    }
+    if (changed) { markSceneDirty(state); }
+    return available;
+}
 
 UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty property)
 {
@@ -330,6 +383,7 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
                     setGroupRenderMode(part, UiRenderMode::solidMesh, true);
                     setGroupRenderMode(part, UiRenderMode::triangles, false);
                     setGroupRenderMode(part, UiRenderMode::vertices, false);
+                    setGroupUvGrid(part, {});
                 }
                 ++colorIndex;
             }

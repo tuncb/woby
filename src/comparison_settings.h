@@ -5,6 +5,7 @@
 #include "mesh_degenerates.h"
 #include "mesh_topology.h"
 #include "mesh_intersections.h"
+#include "uv_grid.h"
 
 #include <cstddef>
 #include <string>
@@ -47,8 +48,14 @@ enum class ComparisonMode
     surfaceQuality
 };
 
+enum class AnalysisType { mesh, uv };
+enum class UvView { layout, surface };
+
 struct ComparisonSettings
 {
+    AnalysisType type = AnalysisType::mesh;
+    UvView uvView = UvView::layout;
+    UvGridSettings uvGrid{true, 10, 10};
     bool enabled = false;
     ComparisonMode mode = ComparisonMode::distance;
     bool distanceOnOriginal = false;

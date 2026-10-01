@@ -424,12 +424,46 @@ Direct RPC uses `target` for the analysis ID, `a`/`b` for creation inputs, `obje
 for an added/removed input, and camelCase settings such as `distanceOnA`, `colorRange`,
 and `showNonManifold`. All commands use the existing authenticated `/rpc` endpoint.
 
+## UV analysis
+
+`analysis create --type uv --a OBJECT_ID` creates an independent UV analysis next
+to its source. Omit `--type` (or use `--type mesh`) for the existing mesh analysis.
+UV analyses use source input A only; mesh detectors, B, and input swapping do not
+apply. Existing scenes and commands keep their previous behavior.
+
+```text
+woby ctl --instance review analysis create --type uv --name "UV inspection" --a OBJECT_ID
+woby ctl --instance review analysis set ANALYSIS_ID --uv-view layout --uv-density-u 8 --uv-density-v 12 --show-edges true
+woby ctl --instance review analysis set ANALYSIS_ID --uv-view surface --uv-grid true
+woby ctl --instance review transform set ANALYSIS_ID --translation 3 0 0
+```
+
+`layout` displays existing UV islands in the XY plane at one uniform display scale;
+`surface` shows the grid on a 3D copy. Grid density remains cells per supplied UV
+unit, independently clamped to 0.1-1000. Overlaps and tile offsets are preserved.
+Parts without complete UVs are omitted from the layout and shaded normally in the
+3D view. These controls do not change the source mesh appearance. RPC names are
+`type`, `uvView`, `uvGrid`, `uvDensityU`, and `uvDensityV`. Settings, result position,
+and source membership support scene persistence, saved Views, and Undo/Redo.
+
 ## Visibility, rendering, transforms, and appearance
+
+UV grid options use raw supplied UV units; density clamps to 0.1-1000 independently
+for U and V. Enable solid rendering to see the grid. Scene/file/folder targets edit
+only parts with complete UVs; a target with none returns `-32602` without applying
+other render options. Omitted settings are preserved. Group `object` output includes
+`hasTexcoords` and settings `uvGrid`, `uvDensityU`, and `uvDensityV` (also the RPC
+parameter names). Scene saves, saved Views, Undo/Redo, and headless PNGs include
+these settings. For example:
+
+```text
+woby ctl --instance review render set scene --solid true --uv-grid true --uv-density-u 8 --uv-density-v 12
+```
 
 | CLI | RPC method | Scope / behavior |
 | --- | --- | --- |
 | `visibility set TARGET --visible BOOL` | `visibility.set` | Scene, folder subtree, file, group, analysis, or annotation. File changes update all its groups; group changes refresh ancestor visibility. |
-| `render set TARGET [--solid BOOL] [--triangles BOOL] [--vertices BOOL]` | `render.set` | Scene, folder subtree, file, group. Independent modes; file/folder controls apply to descendant groups. |
+| `render set TARGET [--solid BOOL] [--triangles BOOL] [--vertices BOOL] [--uv-grid BOOL] [--uv-density-u N] [--uv-density-v N]` | `render.set` | Scene, folder subtree, file, group. Independent modes; file/folder controls apply to descendant groups. |
 | `transform get OBJECT_ID` | `transform.get` | Local folder/file/group settings. |
 | `transform set OBJECT_ID [--translation X Y Z] [--rotation-degrees X Y Z] [--scale S]` | `transform.set` | Local translation, Euler rotation, uniform scale; existing center/pivot and transform conventions. |
 | `transform reset OBJECT_ID` | `transform.reset` | Resets translation, rotation, scale **and opacity** to their defaults, matching the UI. |

@@ -379,6 +379,7 @@ Mesh copyImportedMesh(const WobyImportResult& result)
         throw std::runtime_error("Importer groups do not cover all triangles.");
     }
     localizeMesh(mesh);
+    for (auto& node : mesh.nodes) { node.hasTexcoords = (result.flags & WOBY_IMPORT_HAS_TEXCOORDS) != 0u; }
     captureSourceMesh(mesh, SourceProvenance::importerVertices);
     finalizeMesh(mesh, (result.flags & WOBY_IMPORT_HAS_NORMALS) == 0u);
     return mesh;

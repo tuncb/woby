@@ -274,16 +274,19 @@ size_t missingComparisonPartCount(const UiState& state, SceneObjectId id)
         - comparisonPartCount(state, ComparisonSide::a, id) - comparisonPartCount(state, ComparisonSide::b, id);
 }
 
-SceneObjectId createComparison(UiState& state)
+SceneObjectId createComparison(UiState& state, AnalysisType type)
 {
     UiComparison comparison;
     size_t number = 1;
     do {
-        comparison.name = "Analysis " + std::to_string(number++);
+        comparison.name = std::string(type == AnalysisType::uv ? "UV analysis " : "Analysis ") + std::to_string(number++);
     } while (std::any_of(state.comparisons.begin(), state.comparisons.end(), [&](const UiComparison& other) {
         return other.name == comparison.name;
     }));
     comparison.settings.enabled = true;
+    comparison.settings.type = type;
+    if (type == AnalysisType::uv) { comparison.settings.showEdges = true; }
+    comparison.settings = normalizedComparisonSettings(comparison.settings);
     comparison.translation = initialComparisonTranslation(state);
     state.comparisons.push_back(std::move(comparison));
     assignSceneObjectIds(state);
@@ -574,6 +577,7 @@ bool canInspectComparison(const UiState& state, SceneObjectId id)
 
 ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id)
 {
+    if (comparisonSettings(state, id).type == AnalysisType::uv) { return comparisonSettings(state, id); }
     if (const auto* comparison = findComparison(state, id); comparison && diagnosticFocusCurrent(state, *comparison)) {
         auto settings = comparison->settings;
         settings.mode = settings.diagnosticSide == ComparisonSide::a ? ComparisonMode::original : ComparisonMode::repaired;
@@ -592,13 +596,13 @@ ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObject
     return settings;
 }
 
-bool compareSceneSelection(UiState& state)
+bool compareSceneSelection(UiState& state, AnalysisType type)
 {
     if (!canCompareSceneSelection(state)) { return false; }
     const auto selection = state.selectedSceneObjects;
-    const auto id = createComparison(state);
-    setComparisonObjects(state, {selection[0]}, ComparisonSide::a, true, id);
-    if (selection.size() == 2) { setComparisonObjects(state, {selection[1]}, ComparisonSide::b, true, id); }
+    const auto id = createComparison(state, type);
+    setComparisonObjects(state, type == AnalysisType::uv ? selection : std::vector<SceneObjectId>{selection[0]}, ComparisonSide::a, true, id);
+    if (type == AnalysisType::mesh && selection.size() == 2) { setComparisonObjects(state, {selection[1]}, ComparisonSide::b, true, id); }
     frameCameraToScene(state);
     return true;
 }
@@ -706,6 +710,7 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
     }
     auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
+    if (comparison->settings.type == AnalysisType::uv && side == ComparisonSide::b) { return; }
     auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
     if (member) {
         const auto existing = comparisonMemberIds(state, side, comparison->objectId, false);
@@ -756,6 +761,7 @@ void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id)
 void swapComparisonGroups(UiState& state, SceneObjectId id)
 {
     if (auto* comparison = findComparison(state, id)) {
+        if (comparison->settings.type == AnalysisType::uv) { return; }
         std::swap(comparison->a, comparison->b);
         recalculateSceneBounds(state);
         markSceneDirty(state);

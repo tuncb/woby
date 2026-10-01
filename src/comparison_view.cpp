@@ -289,7 +289,8 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
 
 void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
 {
-    const char* label = side == ComparisonSide::a ? "Group A" : "Group B";
+    const bool uv = comparisonSettings(state, id).type == AnalysisType::uv;
+    const char* label = uv ? "Source" : side == ComparisonSide::a ? "Group A" : "Group B";
     ImGui::PushID(label);
     comparisonEnabledCheckbox(state, side, id, {});
     const auto summary = comparisonInputSummary(state, side, id);
@@ -312,7 +313,7 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     const auto* comparison = findComparison(state, id);
     const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
     if (ImGui::BeginPopupContextItem("group_actions")) {
-        if (ImGui::MenuItem(side == ComparisonSide::a ? "Clear group A" : "Clear group B",
+        if (ImGui::MenuItem(uv ? "Clear source" : side == ComparisonSide::a ? "Clear group A" : "Clear group B",
                 nullptr, false, !members.empty())) {
             clearComparisonGroup(state, side, id);
         }
@@ -1692,7 +1693,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
     ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Analysis");
+    ImGui::TextUnformatted(comparison->settings.type == AnalysisType::uv ? "UV analysis" : "Mesh analysis");
     ImGui::SameLine();
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
@@ -1700,6 +1701,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
     ImGui::SameLine();
     drawInformationIcon("comparison_info", "Analysis inputs",
+        comparison->settings.type == AnalysisType::uv ?
+        "An independent UV view beside the source mesh. Drag mesh parts onto Source to include them. "
+        "Source visibility and appearance remain independent. Parts without complete UVs appear only in the 3D view." :
         "Combined surfaces at scene positions. Hidden members are included. "
         "Other scene objects retain their own appearance.\n\n"
         "Use Analysis membership in the scene tree context menu, or drag sources onto group A or B. "
@@ -1714,6 +1718,43 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (ImGui::DragFloat3("##result_position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
     ImGui::Separator();
     membershipTree(state, ComparisonSide::a, id);
+    if (comparison->settings.type == AnalysisType::uv) {
+        auto settings = comparisonSettings(state, id);
+        const auto initial = settings;
+        ImGui::SeparatorText("UV view");
+        int viewMode = static_cast<int>(settings.uvView);
+        const char* views[] = {"2D UV layout", "3D surface with UV grid"};
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::Combo("##uv_view", &viewMode, views, 2)) { settings.uvView = static_cast<UvView>(viewMode); }
+        drawVisibilityField("UV grid", settings.uvGrid.enabled);
+        ImGui::BeginDisabled(!settings.uvGrid.enabled);
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 6);
+        ImGui::InputFloat("U cells / UV unit", &settings.uvGrid.densityU, 0, 0, "%.5g");
+        ImGui::SetNextItemWidth(ImGui::GetFontSize() * 6);
+        ImGui::InputFloat("V cells / UV unit", &settings.uvGrid.densityV, 0, 0, "%.5g");
+        ImGui::EndDisabled();
+        drawVisibilityField("Triangle edges", settings.showEdges);
+        if (settings != initial) { setComparisonSettings(state, settings, id); }
+        ImGui::Spacing();
+        ImGui::TextColored({.12f, .78f, .92f, 1}, "Cyan: constant U");
+        ImGui::TextColored({1, .55f, .16f, 1}, "Orange: constant V");
+        ImGui::TextWrapped(settings.uvView == UvView::layout
+            ? "Existing UV islands in the XY plane. One display scale preserves proportions and tile offsets; overlapping islands remain overlapped."
+            : "The source surface with its existing UV coordinates. Uneven spacing reveals UV stretch.");
+        const auto members = comparisonMemberIds(state, ComparisonSide::a, id);
+        size_t supplied = 0, missing = 0;
+        for (const auto& file : state.files) {
+            for (size_t i = 0; i < file.groupSettings.size(); ++i) {
+                if (std::binary_search(members.begin(), members.end(), file.groupSettings[i].objectId)) {
+                    if (file.mesh.nodes[i].hasTexcoords) { ++supplied; } else { ++missing; }
+                }
+            }
+        }
+        ImGui::TextWrapped("%zu parts with UVs; %zu without complete UVs", supplied, missing);
+        if (!supplied) { ImGui::TextWrapped("No UV coordinates to display. Add a source with UVs or use the 3D surface view."); }
+        if (ImGui::Button("Fit mesh and UV view")) { frameCameraToScene(state); }
+        return;
+    }
     membershipTree(state, ComparisonSide::b, id);
     ImGui::Separator();
     if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
@@ -1878,6 +1919,24 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     if (quality && (!woby::graphics::isValid(gpu.quality) || runtime.uploadedQualityMetric != settings.quality.metric)) { return; }
     float identity[16];
     bx::mtxTranslate(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+    if (settings.type == AnalysisType::uv) {
+        if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles)) { return; }
+        const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
+        for (const auto& node : runtime.result.original.source.nodes) {
+            const std::array<float, 4> uv = {settings.uvGrid.densityU, settings.uvGrid.densityV,
+                settings.uvGrid.enabled && node.hasTexcoords ? 3.0f : 0.0f, 0};
+            woby::graphics::setTransform(identity);
+            woby::graphics::setUniform(runtimes.parameters, uv.data());
+            woby::graphics::setUniform(colorUniform, gray.data());
+            woby::graphics::setVertexBuffer(0, gpu.vertices);
+            woby::graphics::setIndexBuffer(gpu.triangles, node.indexOffset, node.indexCount);
+            setMarkerRenderState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z |
+                WOBY_GPU_STATE_DEPTH_TEST_LEQUAL | WOBY_GPU_STATE_MSAA, woby::graphics::isValid(markerProgram));
+            woby::graphics::submit(view, woby::graphics::isValid(markerProgram) ? markerProgram : runtimes.program);
+        }
+        if (settings.showEdges) { submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false, identity); }
+        return;
+    }
     const std::array<float, 4> parameters = {settings.tolerance, settings.colorRange, quality ? 2.0f : heatmap ? 1.0f : 0.0f,
         quality && settings.quality.metric == SurfaceQualityMetric::shape ? 1.0f : 0.0f};
     const std::array<float, 4> gray = {.58f, .63f, .69f, 1};

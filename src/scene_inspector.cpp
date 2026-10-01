@@ -5,6 +5,7 @@
 #include "utf8_path.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <algorithm>
 #include <charconv>
 #include <cmath>
@@ -297,6 +298,31 @@ void drawSceneInspector(UiState& state, SceneDimensionsCache& dimensionsCache)
                 ImGui::EndDisabled();
             }
             const auto red = selectedObjectProperty(state, UiObjectProperty::red);
+            const auto uv = selectedObjectProperty(state, UiObjectProperty::uvGrid);
+            ImGui::Spacing();
+            ImGui::BeginDisabled(!uv.available);
+            bool uvEnabled = uv.value != 0.0f;
+            if (uv.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
+            if (ImGui::Checkbox("UV grid", &uvEnabled)) {
+                setSelectedObjectProperty(state, UiObjectProperty::uvGrid, uv.mixed || uvEnabled ? 1.0f : 0.0f);
+            }
+            if (uv.mixed) { ImGui::PopItemFlag(); }
+            ImGui::EndDisabled();
+            if (!uv.available) { ImGui::TextDisabled("No UV coordinates in this selection"); }
+            else {
+                ImGui::SameLine();
+                drawInformationIcon("uv_help", "UV grid",
+                    "Shows supplied UV coordinates on solid surfaces. Cyan lines mark constant U; orange lines mark constant V.\n\n"
+                    "Density is cells per UV unit (0.1 to 1000). U and V can be changed independently. "
+                    "Files and folders edit all parts with complete UVs; other parts keep normal shading. "
+                    "Enable Solid mesh to see the grid.");
+                if ((uvEnabled || uv.mixed) && ImGui::BeginTable("uv_density", 2)) {
+                    scalarField(state, "U cells / UV unit", UiObjectProperty::uvDensityU);
+                    scalarField(state, "V cells / UV unit", UiObjectProperty::uvDensityV);
+                    ImGui::EndTable();
+                }
+            }
+            ImGui::Spacing();
             {
                 ImGui::BeginDisabled(!red.available);
                 const auto green = selectedObjectProperty(state, UiObjectProperty::green);

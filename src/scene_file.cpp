@@ -397,6 +397,12 @@ void assignSceneGroupValue(SceneGroupRecord& record, const std::string& key, std
         record.settings.comparison.a = parseTomlBool(value);
     } else if (key == "analysis_b") {
         record.settings.comparison.b = parseTomlBool(value);
+    } else if (key == "uv_grid") {
+        record.settings.uvGrid.enabled = parseTomlBool(value);
+    } else if (key == "uv_density_u") {
+        record.settings.uvGrid.densityU = normalizedUvGrid({false, parseTomlFloat(value), 10.0f}).densityU;
+    } else if (key == "uv_density_v") {
+        record.settings.uvGrid.densityV = normalizedUvGrid({false, 10.0f, parseTomlFloat(value)}).densityV;
     } else if (key == "show_solid_mesh") {
         record.settings.showSolidMesh = parseTomlBool(value);
     } else if (key == "show_triangles") {
@@ -464,6 +470,22 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "translation") { record.translation = parseTomlFloat3(value);
     } else if (key == "analysis_enabled") {
         record.settings.enabled = parseTomlBool(value);
+    } else if (key == "analysis_type") {
+        const auto type = parseTomlString(value);
+        if (type == "mesh") { record.settings.type = AnalysisType::mesh; }
+        else if (type == "uv") { record.settings.type = AnalysisType::uv; }
+        else { throw std::runtime_error("Unknown analysis type."); }
+    } else if (key == "analysis_uv_view") {
+        const auto view = parseTomlString(value);
+        if (view == "layout") { record.settings.uvView = UvView::layout; }
+        else if (view == "surface") { record.settings.uvView = UvView::surface; }
+        else { throw std::runtime_error("Unknown UV view."); }
+    } else if (key == "analysis_uv_grid") {
+        record.settings.uvGrid.enabled = parseTomlBool(value);
+    } else if (key == "analysis_uv_density_u") {
+        record.settings.uvGrid.densityU = normalizedUvGrid({false, parseTomlFloat(value), 10}).densityU;
+    } else if (key == "analysis_uv_density_v") {
+        record.settings.uvGrid.densityV = normalizedUvGrid({false, 10, parseTomlFloat(value)}).densityV;
     } else if (key == "analysis_mode") {
         const auto mode = parseTomlString(value);
         if (mode == "distance") { record.settings.mode = ComparisonMode::distance; }
@@ -554,6 +576,11 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     case ComparisonMode::surfaceQuality: mode = "surface_quality"; break;
     }
     stream << "analysis_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
+    stream << "analysis_type = \"" << (comparison.type == AnalysisType::uv ? "uv" : "mesh") << "\"\n";
+    stream << "analysis_uv_view = \"" << (comparison.uvView == UvView::layout ? "layout" : "surface") << "\"\n";
+    stream << "analysis_uv_grid = " << (comparison.uvGrid.enabled ? "true" : "false") << "\n";
+    stream << "analysis_uv_density_u = " << comparison.uvGrid.densityU << "\n";
+    stream << "analysis_uv_density_v = " << comparison.uvGrid.densityV << "\n";
     stream << "analysis_mode = \"" << mode << "\"\n";
     stream << "analysis_distance_on_a = " << (comparison.distanceOnOriginal ? "true" : "false") << "\n";
     stream << "diagnostic_side = \"" << (comparison.diagnosticSide == ComparisonSide::a ? "a" : "b") << "\"\n";
@@ -629,6 +656,12 @@ void writeCamera(std::ostream& stream, const SceneCamera& value)
 
 void writeAppearance(std::ostream& stream, const SceneGroupSettings& settings)
 {
+    stream << "uv_grid = " << (settings.uvGrid.enabled ? "true" : "false") << "\n";
+    stream << "uv_density_u = ";
+    writeTomlFloat(stream, settings.uvGrid.densityU);
+    stream << "\nuv_density_v = ";
+    writeTomlFloat(stream, settings.uvGrid.densityV);
+    stream << "\n";
     stream << "visible = " << (settings.visible ? "true" : "false") << "\n";
     stream << "show_solid_mesh = " << (settings.showSolidMesh ? "true" : "false") << "\n";
     stream << "show_triangles = " << (settings.showTriangles ? "true" : "false") << "\n";

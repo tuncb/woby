@@ -26,6 +26,7 @@ VertexOutput vs_mesh(uint index : SV_VertexID) {
     uint p = index * root.stride;
     v.position = clipPosition(mul(root.modelViewProj,float4(positionAt(index),1)));
     v.normal = mul(root.model,float4(root.vertices[p+3],root.vertices[p+4],root.vertices[p+5],0)).xyz;
+    v.uv = float2(root.vertices[p+6],root.vertices[p+7]);
     return v;
 }
 VertexOutput vs_color(uint index : SV_VertexID) {
@@ -60,9 +61,22 @@ VertexOutput pointVertex(uint vertex, uint instance) {
 }
 VertexOutput vs_point_sprite(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
 VertexOutput vs_marker_point(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }
+float3 uvGridColor(float3 color, float2 uv, float2 density) {
+        float2 cell = uv * density;
+        float2 footprint = max(fwidth(cell),float2(.00001));
+        float2 distance = abs(frac(cell+.5)-.5);
+        float2 lines = 1-smoothstep(footprint*.6,footprint*1.4,distance);
+        // Fade subpixel cells instead of letting distant/dense grids shimmer.
+        lines *= 1-smoothstep(float2(.25),float2(.75),footprint);
+        color = lerp(color,float3(.12,.78,.92),lines.x);
+        color = lerp(color,float3(1,.55,.16),lines.y);
+    return color;
+}
 float4 fs_mesh(VertexOutput v) : SV_Target0 {
     float diffuse = max(dot(normalize(v.normal),normalize(float3(.35,.6,.7))),0);
-    return float4(root.color.rgb*(.32+diffuse*.68),root.color.a);
+    float3 color = root.color.rgb*(.32+diffuse*.68);
+    if (root.uvGrid.z > .5) { color = uvGridColor(color, v.uv, root.uvGrid.xy); }
+    return float4(color,root.color.a);
 }
 float4 fs_color(VertexOutput v) : SV_Target0 { return root.color; }
 float4 fs_point_sprite(VertexOutput v) : SV_Target0 {
@@ -71,6 +85,10 @@ float4 fs_point_sprite(VertexOutput v) : SV_Target0 {
 }
 float4 fs_comparison(VertexOutput v) : SV_Target0 {
     float3 color = root.color.rgb;
+    if (root.comparison.z > 2.5) {
+        float light = .6+.4*abs(dot(normalize(v.normal+1e-8),normalize(float3(.35,.6,.7))));
+        return float4(uvGridColor(color*light, v.uv, root.comparison.xy),1);
+    }
     if (root.comparison.z > 1.5) {
         float amount = saturate(v.uv.x);
         if (root.comparison.w > .5) amount = 1-amount;

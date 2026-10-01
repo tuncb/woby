@@ -25,6 +25,7 @@ SceneGroupSettings appearance(const Settings& value)
 SceneGroupSettings normalizedAppearance(const SceneGroupSettings& value)
 {
     UiGroupState group;
+    setGroupUvGrid(group, value.uvGrid);
     group.visible = value.visible;
     group.showSolidMesh = value.showSolidMesh;
     group.showTriangles = value.showTriangles;
@@ -289,6 +290,7 @@ void applyView(UiState& state, ViewId id)
             for (auto& group : file.groupSettings) {
                 if (group.objectId != object.objectId) { continue; }
                 applyAppearance(group, settings);
+                setGroupUvGrid(group, settings.uvGrid);
                 group.showSolidMesh = settings.showSolidMesh;
                 group.showTriangles = settings.showTriangles;
                 group.showVertices = settings.showVertices;

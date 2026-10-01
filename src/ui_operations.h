@@ -35,7 +35,7 @@ void loadSceneViews(UiState& state, const SceneDocument& document);
 [[nodiscard]] bool comparisonContains(const UiState& state, SceneObjectId part, ComparisonSide side,
     SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] size_t missingComparisonPartCount(const UiState& state, SceneObjectId id = invalidSceneObjectId);
-SceneObjectId createComparison(UiState& state);
+SceneObjectId createComparison(UiState& state, AnalysisType type = AnalysisType::mesh);
 SceneObjectId duplicateComparison(UiState& state, SceneObjectId id);
 void removeComparison(UiState& state, SceneObjectId id);
 void renameComparison(UiState& state, SceneObjectId id, const std::string& name);
@@ -69,6 +69,7 @@ enum class UiObjectProperty {
     translationX, translationY, translationZ,
     rotationX, rotationY, rotationZ,
     scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue,
+    uvGrid, uvDensityU, uvDensityV,
 };
 enum class UiPropertyGroup { translation, rotation, scale, transform, appearance };
 struct UiPropertyValue {
@@ -84,6 +85,11 @@ struct UiPropertyValue {
 // vertex multipliers remain independent, including when both are selected.
 void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float value);
 void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group);
+void setGroupUvGrid(UiGroupState& group, UvGridSettings settings);
+// Expand containers using existing part semantics; skip parts without complete UVs.
+// Returns false when no eligible part exists. Empty objects means the whole scene.
+bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
+    std::optional<bool> enabled, std::optional<float> densityU, std::optional<float> densityV);
 // Visibility follows tree controls: files/folders include descendants. Selection
 // and the properties pane stay intact, including when every target is hidden.
 [[nodiscard]] UiPropertyValue selectedObjectVisibility(const UiState& state);
@@ -115,7 +121,7 @@ enum class ComparisonMembershipAction { unavailable, add, remove };
 [[nodiscard]] ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id = invalidSceneObjectId);
 // Create a comparison from one object or two distinct objects in click order.
 [[nodiscard]] bool canCompareSceneSelection(const UiState& state);
-bool compareSceneSelection(UiState& state);
+bool compareSceneSelection(UiState& state, AnalysisType type = AnalysisType::mesh);
 void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, bool member,
     SceneObjectId id = invalidSceneObjectId);
 void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);

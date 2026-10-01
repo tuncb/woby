@@ -770,17 +770,21 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         ImGui::EndDragDropSource();
     }
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
-        if (ImGui::MenuItem("Create analysis", nullptr, false, woby::canCompareSceneSelection(state))) {
-            woby::compareSceneSelection(state);
+        if (ImGui::BeginMenu("Create analysis", woby::canCompareSceneSelection(state))) {
+            if (ImGui::MenuItem("Mesh analysis")) { woby::compareSceneSelection(state); }
+            if (ImGui::MenuItem("UV analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uv); }
+            ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Analysis membership", !state.comparisons.empty())) {
             for (const auto& comparisonObject : state.comparisons) {
                 ImGui::PushID(std::to_string(comparisonObject.objectId).c_str());
                 if (ImGui::BeginMenu(comparisonObject.name.c_str())) {
                     for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+                        if (comparisonObject.settings.type == woby::AnalysisType::uv && side == woby::ComparisonSide::b) { continue; }
                         const auto action = woby::comparisonMembershipAction(state, state.selectedSceneObjects, side, comparisonObject.objectId);
                         const bool remove = action == woby::ComparisonMembershipAction::remove;
-                        const char* label = side == woby::ComparisonSide::a
+                        const char* label = comparisonObject.settings.type == woby::AnalysisType::uv
+                            ? (remove ? "Remove from source" : "Add to source") : side == woby::ComparisonSide::a
                             ? (remove ? "Remove from A" : "Add to A") : (remove ? "Remove from B" : "Add to B");
                         if (ImGui::MenuItem(label, nullptr, false, action != woby::ComparisonMembershipAction::unavailable)) {
                             woby::setComparisonObjects(state, state.selectedSceneObjects, side, !remove, comparisonObject.objectId);
@@ -899,7 +903,13 @@ void drawSceneTreeNode(
         if (woby::drawRenderModeIconButton("analysis", "\xef\x82\x80", "Create analysis for this file",
                 woby::RenderModeState::off, !canAnalyze)) {
             woby::selectSceneObject(state, node.objectId);
-            woby::compareSceneSelection(state);
+            ImGui::OpenPopup("analysis_type");
+        }
+        ImGui::SetNextWindowPos({ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y}, ImGuiCond_Appearing);
+        if (ImGui::BeginPopup("analysis_type")) {
+            if (ImGui::MenuItem("Mesh analysis")) { woby::compareSceneSelection(state); }
+            if (ImGui::MenuItem("UV analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uv); }
+            ImGui::EndPopup();
         }
         ImGui::SameLine(removeControlStartX, 0.0f);
         if (drawRemoveButton("remove", "Remove file from scene")) {
@@ -2257,6 +2267,7 @@ int main(int argc, char** argv)
         woby::graphics::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         woby::graphics::ProgramHandle annotationProgram = woby::loadProgram(assets, "vs_annotation.bin", "fs_color.bin");
         woby::graphics::ProgramHandle pointSpriteProgram = woby::loadProgram(assets, "vs_point_sprite.bin", "fs_point_sprite.bin");
+        woby::graphics::UniformHandle uvGridUniform = woby::graphics::createUniform("u_uvGrid", woby::graphics::UniformType::Vec4);
         woby::graphics::UniformHandle colorUniform = woby::graphics::createUniform("u_color", woby::graphics::UniformType::Vec4);
         woby::graphics::UniformHandle pointParamsUniform = woby::graphics::createUniform("u_pointParams", woby::graphics::UniformType::Vec4, 2);
         comparison.program = woby::loadProgram(assets, "vs_comparison.bin", "fs_comparison.bin");
@@ -3689,6 +3700,7 @@ int main(int argc, char** argv)
                         runtimes,
                         masterVertexPointSize,
                         gpuHover ? markerPicker.mesh : meshProgram,
+                        uvGridUniform,
                         gpuHover ? markerPicker.line : colorProgram,
                         gpuHover ? markerPicker.point : pointSpriteProgram,
                         colorUniform,
@@ -3739,6 +3751,7 @@ int main(int argc, char** argv)
                     runtimes,
                     masterVertexPointSize,
                     meshProgram,
+                    uvGridUniform,
                     colorProgram,
                     annotationProgram,
                     pointSpriteProgram,
@@ -3831,6 +3844,7 @@ int main(int argc, char** argv)
         ImGui::DestroyContext();
 
         woby::destroyGpuMarkerPicker(markerPicker);
+        woby::graphics::destroy(uvGridUniform);
         woby::graphics::destroy(pointParamsUniform);
         woby::destroyComparisonRuntimes(comparison);
         woby::graphics::destroy(colorUniform);

@@ -3,6 +3,7 @@
 #include "scene_up_axis.h"
 #include "comparison_settings.h"
 #include "camera.h"
+#include "uv_grid.h"
 #include "annotation_types.h"
 
 #include <array>
@@ -15,6 +16,7 @@
 namespace woby {
 
 struct SceneGroupSettings {
+    UvGridSettings uvGrid;
     // Legacy v2-v4 read mapping; cleared when migrating to comparison records.
     ComparisonMembership comparison;
     bool visible = true;

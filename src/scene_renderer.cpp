@@ -132,17 +132,20 @@ void submitTriangleRange(
     woby::graphics::ViewId viewId,
     const GpuMesh& mesh,
     woby::graphics::ProgramHandle program,
+    woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::UniformHandle colorUniform,
     const float* model,
     const std::array<float, 4>& color,
     uint32_t indexOffset,
     uint32_t indexCount,
-    bool markerIds)
+    bool markerIds,
+    const std::array<float, 4>& uvGrid)
 {
     if (!woby::graphics::isValid(mesh.vertexBuffer) || !woby::graphics::isValid(mesh.triangleIndexBuffer) || indexCount == 0) {
         return;
     }
 
+    woby::graphics::setUniform(uvGridUniform, uvGrid.data());
     woby::graphics::setTransform(model);
     woby::graphics::setUniform(colorUniform, color.data());
     woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
@@ -399,6 +402,7 @@ void submitGroupRange(
     float opacityScale,
     float masterVertexPointSize,
     woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
     woby::graphics::UniformHandle colorUniform,
@@ -432,11 +436,14 @@ void submitGroupRange(
             viewId,
             gpuMesh,
             meshProgram,
+            uvGridUniform,
             colorUniform,
             model,
             groupColor(settings, 1.0f, opacityScale),
             range.triangleIndexOffset,
-            range.triangleIndexCount, markers != nullptr);
+            range.triangleIndexCount, markers != nullptr,
+            {settings.uvGrid.densityU, settings.uvGrid.densityV,
+                settings.uvGrid.enabled && nodeIndex < file.mesh.nodes.size() && file.mesh.nodes[nodeIndex].hasTexcoords ? 1.0f : 0.0f, 0.0f});
     }
     if (settings.showTriangles) {
         submitColorRange(
@@ -490,6 +497,7 @@ void submitSceneNode(
     float parentOpacity,
     float masterVertexPointSize,
     woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
     woby::graphics::UniformHandle colorUniform,
@@ -520,6 +528,7 @@ void submitSceneNode(
                 opacity,
                 masterVertexPointSize,
                 meshProgram,
+                uvGridUniform,
                 colorProgram,
                 pointSpriteProgram,
                 colorUniform,
@@ -558,6 +567,7 @@ void submitSceneNode(
                     opacity,
                     masterVertexPointSize,
                     meshProgram,
+                    uvGridUniform,
                     colorProgram,
                     pointSpriteProgram,
                     colorUniform,
@@ -579,6 +589,7 @@ void submitSceneNode(
                 opacity,
                 masterVertexPointSize,
                 meshProgram,
+                uvGridUniform,
                 colorProgram,
                 pointSpriteProgram,
                 colorUniform,
@@ -599,6 +610,7 @@ void submitSceneNode(
         parentOpacity,
         masterVertexPointSize,
         meshProgram,
+        uvGridUniform,
         colorProgram,
         pointSpriteProgram,
         colorUniform,
@@ -614,6 +626,7 @@ void submitSceneFiles(
     const std::vector<LoadedModelRuntime>& runtimes,
     float masterVertexPointSize,
     woby::graphics::ProgramHandle meshProgram,
+    woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
     woby::graphics::UniformHandle colorUniform,
@@ -636,6 +649,7 @@ void submitSceneFiles(
                 1.0f,
                 masterVertexPointSize,
                 meshProgram,
+                uvGridUniform,
                 colorProgram,
                 pointSpriteProgram,
                 colorUniform,
@@ -668,6 +682,7 @@ void submitSceneFiles(
                 opacity,
                 masterVertexPointSize,
                 meshProgram,
+                uvGridUniform,
                 colorProgram,
                 pointSpriteProgram,
                 colorUniform,

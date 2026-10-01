@@ -1153,6 +1153,8 @@ void setUniform(UniformHandle h, const void *data, uint16_t count)
         destination = root.pointParams;
     else if (uniform->name == "u_comparison")
         destination = &root.comparison;
+    else if (uniform->name == "u_uvGrid")
+        destination = &root.uvGrid;
     else if (uniform->name == "u_markerBase")
         destination = &root.markerBase;
     else if (uniform->name == "u_markerQuery")

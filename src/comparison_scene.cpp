@@ -3,6 +3,7 @@
 #include "hash_utils.h"
 #include "utf8_path.h"
 #include "ui_operations.h"
+#include "uv_analysis.h"
 
 #include <bx/math.h>
 
@@ -48,6 +49,9 @@ void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file,
     // A new part gets its own vertices because its transform can differ. Earlier
     // mappings precede this offset, so no whole-file clear is needed per part.
     const auto firstVertex = result.vertices.size();
+    auto node = group;
+    node.indexOffset = static_cast<uint32_t>(result.indices.size());
+    result.nodes.push_back(std::move(node));
     for (size_t i = group.indexOffset; i < end; ++i)
     {
         const auto sourceIndex = file.mesh.indices[i];
@@ -59,6 +63,7 @@ void appendGroup(Mesh &result, WorldVertexRemap& remap, const UiFileState &file,
         const auto point = transformCoordinate(model, meshPosition(file.mesh, sourceIndex));
         Vertex vertex;
         vertex.position = renderPosition(point);
+        vertex.texcoord = file.mesh.vertices[sourceIndex].texcoord;
         result.precisePositions.push_back(point);
         validateComparisonMeshSize(result.vertices.size() + 1, 0);
         mapped = static_cast<uint32_t>(result.vertices.size());
@@ -117,6 +122,44 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
     }
 }
 } // namespace
+
+Mesh uvLayoutMesh(const Mesh& source)
+{
+    UvExtent extent;
+    for (const auto& node : source.nodes) {
+        if (!node.hasTexcoords) { continue; }
+        for (size_t i = node.indexOffset; i < size_t{node.indexOffset} + node.indexCount; ++i) {
+            includeUv(extent, source.vertices[source.indices[i]].texcoord);
+        }
+    }
+    Mesh result;
+    result.origin = source.origin;
+    if (extent.min[0] > extent.max[0]) { return result; }
+    const auto frame = uvLayoutFrame(source.bounds, extent);
+    constexpr auto missing = std::numeric_limits<uint32_t>::max();
+    std::vector<uint32_t> remap(source.vertices.size(), missing);
+    for (const auto& node : source.nodes) {
+        if (!node.hasTexcoords) { continue; }
+        auto flattened = node;
+        flattened.indexOffset = static_cast<uint32_t>(result.indices.size());
+        result.nodes.push_back(std::move(flattened));
+        for (size_t i = node.indexOffset; i < size_t{node.indexOffset} + node.indexCount; ++i) {
+            const auto sourceIndex = source.indices[i];
+            auto& mapped = remap[sourceIndex];
+            if (mapped == missing) {
+                auto vertex = source.vertices[sourceIndex];
+                vertex.position = uvLayoutPosition(frame, vertex.texcoord);
+                vertex.normal = {0, 0, 1};
+                mapped = static_cast<uint32_t>(result.vertices.size());
+                result.vertices.push_back(vertex);
+                result.precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
+            }
+            result.indices.push_back(mapped);
+        }
+    }
+    result.bounds = calculateBounds(result.vertices);
+    return result;
+}
 
 std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side, SceneObjectId id)
 {
@@ -272,7 +315,9 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         throw std::runtime_error("Each analysis group needs at least one mesh part with triangles.");
     }
     result.bounds = calculateBounds(result.vertices);
-    result.nodes.push_back({"Analysis", 0, static_cast<uint32_t>(result.indices.size())});
+    if (comparison->settings.type == AnalysisType::uv && comparison->settings.uvView == UvView::layout) {
+        return uvLayoutMesh(result);
+    }
     return result;
 }
 
@@ -280,6 +325,9 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
 {
     if (!canInspectComparison(state, id)) { return 0; }
     uint64_t seed = 17;
+    const auto settings = comparisonSettings(state, id);
+    hashCombine(seed, static_cast<uint64_t>(settings.type));
+    if (settings.type == AnalysisType::uv) { hashCombine(seed, static_cast<uint64_t>(settings.uvView)); }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
         size_t count = 0;
@@ -294,6 +342,7 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
             hashCombine(seed, file.mesh.indices.size());
             hashCombine(seed, file.mesh.nodes[index].indexOffset);
             hashCombine(seed, file.mesh.nodes[index].indexCount);
+            hashCombine(seed, file.mesh.nodes[index].hasTexcoords);
             double local[16], model[16];
             groupTransformMatrix(file.groupSettings[index], local);
             coordinateMultiply(model, parent, local);
@@ -307,6 +356,38 @@ std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectI
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison || !canInspectComparison(state, id)) { return std::nullopt; }
+    if (comparison->settings.type == AnalysisType::uv && comparison->settings.uvView == UvView::layout) {
+        // Accumulate without allocating another full mesh during camera framing.
+        UvExtent uv;
+        Bounds source;
+        source.min.fill(std::numeric_limits<float>::infinity());
+        source.max.fill(-std::numeric_limits<float>::infinity());
+        visitParts(state, ComparisonSide::a, id, [&](const UiFileState& file, size_t index, const double* parent) {
+            double local[16], model[16];
+            groupTransformMatrix(file.groupSettings[index], local);
+            coordinateMultiply(model, parent, local);
+            const auto& node = file.mesh.nodes[index];
+            for (size_t i = node.indexOffset; i < size_t{node.indexOffset} + node.indexCount; ++i) {
+                const auto vertex = file.mesh.indices[i];
+                const auto p = renderPosition(transformCoordinate(model, meshPosition(file.mesh, vertex)));
+                for (size_t k = 0; k < 3; ++k) {
+                    source.min[k] = std::min(source.min[k], p[k]);
+                    source.max[k] = std::max(source.max[k], p[k]);
+                }
+                if (node.hasTexcoords) { includeUv(uv, file.mesh.vertices[vertex].texcoord); }
+            }
+        });
+        if (uv.min[0] > uv.max[0]) { return std::nullopt; }
+        for (size_t k = 0; k < 3; ++k) { source.center[k] = (source.min[k] + source.max[k]) * .5f; }
+        const auto frame = uvLayoutFrame(source, uv);
+        std::vector<Vertex> corners(2);
+        corners[0].position = uvLayoutPosition(frame, {static_cast<float>(uv.min[0]), static_cast<float>(uv.min[1])});
+        corners[1].position = uvLayoutPosition(frame, {static_cast<float>(uv.max[0]), static_cast<float>(uv.max[1])});
+        for (auto& corner : corners) {
+            for (size_t k = 0; k < 3; ++k) { corner.position[k] += comparison->translation[k]; }
+        }
+        return calculateBounds(corners);
+    }
     std::vector<Vertex> corners;
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         visitParts(state, side, id, [&](const UiFileState& file, size_t index, const double* parent) {

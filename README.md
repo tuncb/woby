@@ -13,6 +13,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 - Show selected mesh dimensions in the scene and inspect their size in Properties. The grid displays its current spacing.
 - Control visibility at the scene, folder, file, and mesh-group levels with tri-state master controls.
 - Render each group as solid mesh, triangle edges, vertices, or any combination of those modes.
+- Inspect supplied UV coordinates with an antialiased surface grid and independent U/V density controls.
 - Adjust global, per-file, and per-group vertex point sizes.
 - Arrange files and groups with translation, rotation, scale, opacity, and reset controls.
 - Assign and reset per-group display colors.
@@ -117,6 +118,25 @@ including the defaults of older scene files. **Display > Inspection presets** of
 each hides the helpers while preserving visibility, transforms, colors, and opacity.
 The individual display controls remain available. Enabled icon toggles have an
 outline, mixed toggles have a minus, and selected objects have an outline, so these states are distinguishable without color.
+
+**Create analysis > UV analysis** (the file's analysis button or scene-tree context
+menu) creates a separate view beside the original mesh. UV analysis has its own
+source, position, grid density, and edge controls, separate from **Mesh analysis**.
+Choose **2D UV layout** to inspect existing islands in the XY plane, or **3D surface
+with UV grid** to inspect stretching on a copy of the source. The layout uses one
+uniform display scale, preserving island proportions, overlaps, and UV tile offsets;
+it does not generate new UVs. Parts without complete UVs are omitted from the layout
+and retain normal shading in the 3D view. Existing analyses remain Mesh analyses.
+
+**Properties > Appearance > UV grid** also draws cyan constant-U lines and orange
+constant-V lines on solid surfaces. U and V density are independent cell counts
+per UV unit (0.1 to 1000, initially 10); type a value and press Enter. Coordinates
+retain their supplied domain without normalization. OBJ keeps its existing V flip.
+File/folder and multiple selections edit parts with complete UVs; parts with missing
+or incomplete UVs keep normal shading. All-zero supplied UVs are still valid.
+The grid shows the tessellation's interpolated UV mapping, not an exact CAD surface.
+Settings support Undo/Redo, saved Views, `.woby` persistence, and PNG exports.
+Existing scenes start with the grid off, and importer ABI 2 remains unchanged.
 
 **Display > Show dimensions** adds labeled dimension lines beside the visible selected
 geometry. One visible part is measured along its own directions, including all parent

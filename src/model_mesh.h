@@ -32,6 +32,8 @@ struct MeshNode {
     // Source defaults only; editable appearance lives in UiState.
     std::optional<std::array<float, 4>> defaultColor = {};
     bool defaultVisible = true;
+    // True only when every corner in this part has supplied, finite UVs.
+    bool hasTexcoords = false;
 };
 
 struct MeshAnnotationBlock {

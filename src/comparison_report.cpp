@@ -41,6 +41,18 @@ std::vector<std::string> comparisonReportLines(
         if (!a.empty()) { lines.push_back("A: " + a); }
         if (!b.empty()) { lines.push_back("B: " + b); }
     }
+    if (settings.type == AnalysisType::uv) {
+        lines.push_back(settings.uvView == UvView::layout ? "2D UV layout" : "3D UV surface");
+        if (options.legend && settings.uvGrid.enabled) {
+            lines.push_back("Cyan: constant U; orange: constant V");
+            lines.push_back("Cells per UV unit: U " + measurementNumber(settings.uvGrid.densityU)
+                + "; V " + measurementNumber(settings.uvGrid.densityV));
+        }
+        if (options.legend && settings.uvView == UvView::layout) {
+            lines.push_back("Uniform display scale; overlapping islands retained; parts without UVs omitted.");
+        }
+        return lines;
+    }
     const auto ready = [&](DiagnosticCategory category) {
         return comparisonDetectorStatus(result, category).phase == IntersectionPhase::complete;
     };

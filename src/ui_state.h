@@ -28,6 +28,7 @@ inline constexpr float defaultDisplayBoundsMin = -10.0f;
 inline constexpr float defaultDisplayBoundsMax = 10.0f;
 
 struct UiGroupState {
+    UvGridSettings uvGrid;
     bool visible = true;
     bool showSolidMesh = true;
     bool showTriangles = false;

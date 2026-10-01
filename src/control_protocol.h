@@ -34,6 +34,8 @@ struct ControlOperation {
     bool tree = false;
     bool remember = false;
     std::optional<bool> visible, solid, triangles, vertices;
+    std::optional<bool> uvGrid;
+    std::optional<float> uvDensityU, uvDensityV;
     std::optional<std::array<float, 3>> translation, rotationDegrees, rgb;
     std::optional<float> scale, value, pixels, width;
     std::optional<float> yawDegrees, pitchDegrees, rollDegrees, right, up, forward, factor;
@@ -43,6 +45,7 @@ struct ControlOperation {
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;
     std::optional<float> tolerance, colorRange;
+    std::optional<std::string> type, uvView;
     std::optional<std::string> qualityMetric, topologyMode, detector;
     std::optional<uint64_t> index, offset, limit, intersectionPairLimit, intersectionCandidateLimit;
     std::optional<std::string> collection, revision;
