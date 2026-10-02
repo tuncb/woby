@@ -199,7 +199,7 @@ TEST_CASE("UV layout preserves seams tile offsets and proportions while omitting
     source.vertices.push_back(source.vertices[0]);
     source.vertices.back().texcoord = {1, 1};
     source.indices[3] = 3;
-    const auto result = woby::uvLayoutMesh(source, woby::SceneUpAxis::y);
+    const auto result = woby::uvLayoutMesh(source);
     REQUIRE(result.nodes.size() == 2);
     REQUIRE(result.indices.size() == 6);
     REQUIRE(result.vertices.size() == 4);
@@ -207,17 +207,17 @@ TEST_CASE("UV layout preserves seams tile offsets and proportions while omitting
     CHECK(result.nodes[0].hasTexcoords);
     CHECK(result.vertices[0].texcoord == std::array<float, 2>{-1, 0});
     CHECK(result.vertices[0].position != result.vertices[3].position);
-    CHECK(result.vertices[0].position[1] > result.vertices[2].position[1]);
+    CHECK(result.vertices[0].position[2] > result.vertices[2].position[2]);
     CHECK(result.bounds.max[0] - result.bounds.min[0] == doctest::Approx(1));
-    CHECK(result.bounds.max[1] - result.bounds.min[1] == doctest::Approx(.5));
-    CHECK(result.bounds.min[2] == result.bounds.max[2]);
+    CHECK(result.bounds.max[2] - result.bounds.min[2] == doctest::Approx(.5));
+    CHECK(result.bounds.min[1] == result.bounds.max[1]);
     CHECK(source.vertices[0].position == source.vertices[3].position);
     CHECK(result.precisePositions.size() == result.vertices.size());
     for (auto& node : source.nodes) { node.hasTexcoords = false; }
-    CHECK(woby::uvLayoutMesh(source, woby::SceneUpAxis::y).indices.empty());
+    CHECK(woby::uvLayoutMesh(source).indices.empty());
     source.nodes[0].hasTexcoords = true;
     for (auto& vertex : source.vertices) { vertex.texcoord = {0, 0}; }
-    const auto constant = woby::uvLayoutMesh(source, woby::SceneUpAxis::y);
+    const auto constant = woby::uvLayoutMesh(source);
     REQUIRE(constant.indices.size() == 3);
     CHECK(woby::finitePosition(constant.bounds.min));
     CHECK(woby::finitePosition(constant.bounds.max));
@@ -434,7 +434,7 @@ TEST_CASE("UV quality CLI controls validate types and isolate without changing m
     CHECK_THROWS(woby::parseControlOperation(enable,{{"target",format(id)},{"side","a"},{"enabled",true},{"isolate",true}}));
 }
 
-TEST_CASE("UV layouts obey the scene up axis and refresh geometry and framing bounds")
+TEST_CASE("UV layouts keep world geometry and framing bounds when the scene up axis changes")
 {
     UvFixture f;
     auto& state = f.state;
@@ -455,8 +455,7 @@ TEST_CASE("UV layouts obey the scene up axis and refresh geometry and framing bo
     REQUIRE(meshSignature != 0);
     for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z, woby::SceneUpAxis::y}) {
         woby::setSceneUpAxis(state, up);
-        CHECK(woby::comparisonGeometrySignature(state, layoutId) != layoutSignature);
-        layoutSignature = woby::comparisonGeometrySignature(state, layoutId);
+        CHECK(woby::comparisonGeometrySignature(state, layoutId) == layoutSignature);
         CHECK(woby::comparisonGeometrySignature(state, surfaceId) == surfaceSignature);
         CHECK(woby::comparisonGeometrySignature(state, meshId) == meshSignature);
         auto refreshed = state;
@@ -464,15 +463,11 @@ TEST_CASE("UV layouts obey the scene up axis and refresh geometry and framing bo
         CHECK(state.sceneBounds.min == refreshed.sceneBounds.min);
         CHECK(state.sceneBounds.max == refreshed.sceneBounds.max);
         const auto layout = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, layoutId);
-        const bool yUp = up == woby::SceneUpAxis::y;
-        const std::array<std::array<float, 3>, 3> positions = yUp
-            ? std::array<std::array<float, 3>, 3>{{{3, 5, 5}, {4, 5, 5}, {3, 4, 5}}}
-            : std::array<std::array<float, 3>, 3>{{{3, 4.5f, 5.5f}, {4, 4.5f, 5.5f}, {3, 4.5f, 4.5f}}};
+        const std::array<std::array<float, 3>, 3> positions = {{{3, 4.5f, 5.5f}, {4, 4.5f, 5.5f}, {3, 4.5f, 4.5f}}};
         REQUIRE(layout.vertices.size() == 6);
         for (size_t i = 0; i < layout.vertices.size(); ++i) {
             CHECK(layout.vertices[i].position == positions[i % 3]);
-            CHECK(layout.vertices[i].normal == (yUp ? std::array<float, 3>{0, 0, 1}
-                : std::array<float, 3>{0, -1, 0}));
+            CHECK(layout.vertices[i].normal == std::array<float, 3>{0, -1, 0});
             CHECK(layout.vertices[i].texcoord == state.files[0].mesh.vertices[i % 3].texcoord);
             for (size_t k = 0; k < 3; ++k) {
                 CHECK(layout.precisePositions[i][k] == layout.vertices[i].position[k]);
@@ -496,6 +491,144 @@ TEST_CASE("UV layouts obey the scene up axis and refresh geometry and framing bo
         woby::setSceneUpAxis(state, up);
         CHECK(state.sceneEditRevision == revision);
         CHECK(woby::comparisonGeometrySignature(state, layoutId) == layoutSignature);
+    }
+}
+
+TEST_CASE("Every UV visualization follows the selected up axis without changing UV values")
+{
+    for (const auto type : {woby::AnalysisType::uv, woby::AnalysisType::uvQuality}) {
+        for (const auto view : {woby::UvView::layout, woby::UvView::surface}) {
+            for (const bool separated : {false, true}) {
+                for (int mode = 0; mode < 3; ++mode) {
+                    CAPTURE(type);
+                    CAPTURE(view);
+                    CAPTURE(separated);
+                    CAPTURE(mode);
+                    UvFixture f;
+                    auto& state = f.state;
+                    // Nonzero distortion/stretch and opposite patch winding make
+                    // every quality color meaningful in the axis comparison.
+                    auto& source = state.files[0].mesh;
+                    source.vertices[1].texcoord = {2, 0};
+                    source.vertices[2].texcoord = {0, .25f};
+                    std::swap(source.indices[4], source.indices[5]);
+                    woby::setFileTranslation(state.files[0].fileSettings, {3, 4, 5});
+                    const auto id = woby::createComparison(state, type);
+                    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+                    auto settings = woby::comparisonSettings(state, id);
+                    settings.uvView = view;
+                    settings.uvSeparated = separated;
+                    settings.uvGrid.mode = static_cast<woby::UvColorMode>(mode);
+                    settings.uvMetric = static_cast<woby::UvQualityMetric>(mode);
+                    settings.uvNormalization = woby::UvAreaNormalization::absolute;
+                    woby::setComparisonSettings(state, settings, id);
+                    woby::setComparisonTranslation(state, id, {-7, 8, -9});
+                    woby::setSceneUpAxis(state, woby::SceneUpAxis::y);
+                    const auto yMesh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
+                    const auto yColors = woby::uvQualityVertices(yMesh);
+                    auto signature = woby::comparisonGeometrySignature(state, id);
+                    for (const auto up : {woby::SceneUpAxis::z, woby::SceneUpAxis::y}) {
+                        woby::setSceneUpAxis(state, up);
+                        const auto nextSignature = woby::comparisonGeometrySignature(state, id);
+                        CHECK(nextSignature == signature);
+                        signature = nextSignature;
+                        const auto mesh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
+                        REQUIRE(mesh.vertices.size() == yMesh.vertices.size());
+                        CHECK(mesh.indices == yMesh.indices);
+                        for (size_t i = 0; i < mesh.vertices.size(); ++i) {
+                            CHECK(mesh.vertices[i].position == yMesh.vertices[i].position);
+                            CHECK(mesh.vertices[i].normal == yMesh.vertices[i].normal);
+                            CHECK(mesh.vertices[i].texcoord == yMesh.vertices[i].texcoord);
+                        }
+                        const auto colors = woby::uvQualityVertices(mesh);
+                        REQUIRE(colors.size() == yColors.size());
+                        for (size_t i = 0; i < colors.size(); ++i) {
+                            CHECK(colors[i].position == mesh.vertices[mesh.indices[i]].position);
+                            CHECK(colors[i].texcoord == yColors[i].texcoord);
+                        }
+                        const auto bounds = woby::comparisonDisplayBounds(state, id);
+                        REQUIRE(bounds);
+                        const auto* comparison = woby::findComparison(state, id);
+                        REQUIRE(comparison);
+                        for (size_t k = 0; k < 3; ++k) {
+                            CHECK(bounds->min[k] == doctest::Approx(mesh.bounds.min[k] + comparison->translation[k]));
+                            CHECK(bounds->max[k] == doctest::Approx(mesh.bounds.max[k] + comparison->translation[k]));
+                        }
+                        const auto result = woby::computeComparisonStages(mesh, {}, woby::comparisonSource);
+                        std::vector<woby::ScenePickPart> parts;
+                        woby::appendComparisonPickParts(parts, *comparison, settings, result, true);
+                        REQUIRE(parts.size() == mesh.nodes.size());
+                        const auto outlines = woby::sceneSelectionLines(parts);
+                        REQUIRE_FALSE(outlines.empty());
+                        for (const auto& point : outlines) {
+                            for (size_t k = 0; k < 3; ++k) {
+                                CHECK(point[k] >= bounds->min[k] - 1e-5f);
+                                CHECK(point[k] <= bounds->max[k] + 1e-5f);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("Separated UV patch rows stay in the world XZ plane")
+{
+    UvFixture f;
+    auto source = f.state.files[0].mesh;
+    const auto patch = source.nodes[0];
+    source.nodes.assign(5, patch);
+    const auto layout = woby::uvLayoutMesh(source, true);
+    REQUIRE(layout.nodes.size() == 5);
+    const auto& first = layout.vertices[layout.indices[layout.nodes[0].indexOffset]].position;
+    const auto& nextColumn = layout.vertices[layout.indices[layout.nodes[1].indexOffset]].position;
+    const auto& nextRow = layout.vertices[layout.indices[layout.nodes[3].indexOffset]].position;
+    CHECK(nextColumn[0] > first[0]);
+    CHECK(nextColumn[2] == first[2]);
+    CHECK(nextRow[0] == first[0]);
+    CHECK(nextRow[2] > first[2]);
+    CHECK(layout.bounds.min[1] == layout.bounds.max[1]);
+}
+
+TEST_CASE("UV rectangles turn with their source instead of staying upright when Y becomes up")
+{
+    woby::Mesh source;
+    source.vertices = {{{5, 3, 8}, {}, {0, 1}}, {{7, 3, 8}, {}, {.5f, 1}},
+        {{7, 3, 12}, {}, {.5f, 0}}, {{5, 3, 12}, {}, {0, 0}}};
+    source.indices = {0, 1, 2, 0, 2, 3};
+    source.nodes = {{"rectangle", 0, 6}};
+    source.nodes[0].hasTexcoords = true;
+    source.bounds = woby::calculateBounds(source.vertices);
+    const auto layout = woby::uvLayoutMesh(source);
+    REQUIRE(layout.vertices.size() == source.vertices.size());
+    for (const auto up : {woby::SceneUpAxis::z, woby::SceneUpAxis::y}) {
+        for (const auto direction : {woby::CameraView::front, woby::CameraView::top, woby::CameraView::isometric}) {
+            const auto camera = woby::cameraWithView(woby::frameCameraBounds(source.bounds, up), direction);
+            const auto view = woby::scenePickView(camera, up, source.bounds, 800, 600, false, 1);
+            const auto project = [&](const std::array<float, 3>& position) {
+                const float point[4] = {position[0], position[1], position[2], 1};
+                float eye[4], clip[4];
+                bx::vec4MulMtx(eye, point, view.view.data());
+                bx::vec4MulMtx(clip, eye, view.projection.data());
+                return std::array<float, 2>{clip[0] / clip[3], clip[1] / clip[3]};
+            };
+            for (size_t i = 0; i < source.vertices.size(); ++i) {
+                const auto original = project(source.vertices[i].position);
+                const auto flattened = project(layout.vertices[i].position);
+                CHECK(flattened[0] == doctest::Approx(original[0]));
+                CHECK(flattened[1] == doctest::Approx(original[1]));
+            }
+            if (direction == woby::CameraView::front) {
+                const auto bottom = project(layout.vertices[0].position);
+                const auto top = project(layout.vertices[3].position);
+                if (up == woby::SceneUpAxis::y) {
+                    CHECK(top[1] == doctest::Approx(bottom[1]));
+                } else {
+                    CHECK(top[1] > bottom[1] + .1f);
+                }
+            }
+        }
     }
 }
 
@@ -533,11 +666,9 @@ TEST_CASE("UV layout orientation survives scene reload saved views and undo redo
         CHECK(restored.upAxis == up);
         const auto checkLayout = [&](const woby::UiState& current, woby::SceneObjectId currentId) {
             const auto mesh = woby::comparisonWorldMesh(current, woby::ComparisonSide::a, currentId);
-            const size_t vertical = current.upAxis == woby::SceneUpAxis::y ? 1 : 2;
-            const size_t depth = current.upAxis == woby::SceneUpAxis::y ? 2 : 1;
-            CHECK(mesh.bounds.max[vertical] - mesh.bounds.min[vertical] == doctest::Approx(1));
-            CHECK(mesh.bounds.max[depth] == mesh.bounds.min[depth]);
-            CHECK(mesh.vertices[0].position[vertical] > mesh.vertices[2].position[vertical]);
+            CHECK(mesh.bounds.max[2] - mesh.bounds.min[2] == doctest::Approx(1));
+            CHECK(mesh.bounds.max[1] == mesh.bounds.min[1]);
+            CHECK(mesh.vertices[0].position[2] > mesh.vertices[2].position[2]);
         };
         checkLayout(state, id);
         checkLayout(restored, restored.activeComparisonId);

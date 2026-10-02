@@ -126,7 +126,7 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
 }
 } // namespace
 
-Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated)
+Mesh uvLayoutMesh(const Mesh& source, bool separated)
 {
     UvExtent extent;
     for (const auto& node : source.nodes) {
@@ -139,7 +139,7 @@ Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated)
     result.origin = source.origin;
     result.uvQuality = source.uvQuality;
     if (extent.min[0] > extent.max[0]) { return result; }
-    const auto frame = uvLayoutFrame(source.bounds, extent, upAxis);
+    const auto frame = uvLayoutFrame(source.bounds, extent);
     constexpr auto missing = std::numeric_limits<uint32_t>::max();
     std::vector<uint32_t> remap(source.vertices.size(), missing);
     size_t patch = 0;
@@ -170,9 +170,8 @@ Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated)
                 auto vertex = source.vertices[sourceIndex];
                 vertex.position = uvLayoutPosition(patchFrame, vertex.texcoord);
                 vertex.position[0] += static_cast<float>(offsetU);
-                vertex.position[upAxis == SceneUpAxis::y ? 1 : 2] += static_cast<float>(offsetV);
-                vertex.normal = upAxis == SceneUpAxis::y ? std::array<float, 3>{0, 0, 1}
-                    : std::array<float, 3>{0, -1, 0};
+                vertex.position[2] += static_cast<float>(offsetV);
+                vertex.normal = {0, -1, 0};
                 mapped = static_cast<uint32_t>(result.vertices.size());
                 result.vertices.push_back(vertex);
                 result.precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
@@ -342,7 +341,7 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
         result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, comparison->settings.uvNormalization, comparison->settings.uvMetric));
     }
     if (isUvAnalysis(comparison->settings.type) && comparison->settings.uvView == UvView::layout) {
-        return uvLayoutMesh(result, state.upAxis, comparison->settings.uvSeparated);
+        return uvLayoutMesh(result, comparison->settings.uvSeparated);
     }
     return result;
 }
@@ -358,7 +357,6 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
         hashCombine(seed, settings.uvSeparated);
         hashCombine(seed, static_cast<uint64_t>(settings.uvMetric));
         hashCombine(seed, static_cast<uint64_t>(settings.uvNormalization));
-        if (settings.uvView == UvView::layout) { hashCombine(seed, static_cast<uint64_t>(state.upAxis)); }
     }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
@@ -418,7 +416,7 @@ std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectI
         });
         if (uv.min[0] > uv.max[0]) { return std::nullopt; }
         for (size_t k = 0; k < 3; ++k) { source.center[k] = (source.min[k] + source.max[k]) * .5f; }
-        const auto frame = uvLayoutFrame(source, uv, state.upAxis);
+        const auto frame = uvLayoutFrame(source, uv);
         std::vector<Vertex> corners(2);
         corners[0].position = uvLayoutPosition(frame, {static_cast<float>(uv.min[0]), static_cast<float>(uv.min[1])});
         corners[1].position = uvLayoutPosition(frame, {static_cast<float>(uv.max[0]), static_cast<float>(uv.max[1])});

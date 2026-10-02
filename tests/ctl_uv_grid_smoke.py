@@ -128,27 +128,80 @@ def analysis_demo(executable, output, env):
         assert viewer.wait(timeout=15) == 0
 
 
-def layout_orientation(executable, root, model, env):
+def layout_orientation(executable, root, env):
+    # Five patches exercise both rows and columns in the separated layout.
+    # The source lies in XZ with a matching UV mapping, so its rendered surface
+    # is an independent reference for the layout's orientation in each camera.
+    model = root / "orientation-patches.obj"
+    lines = ["vt 0 0", "vt 1 0", "vt 1 1", "vt 0 .4"]
+    for patch in range(5):
+        start = patch * 4 + 1
+        lines.extend((f"g patch_{patch}", "v 0 0 0", "v 2 0 0", "v 2 0 2", "v 0 0 .8",
+                      f"f {start}/1 {start+1}/2 {start+2}/3",
+                      f"f {start}/1 {start+2}/3 {start+3}/4"))
+    model.write_text("\n".join(lines) + "\n", encoding="utf-8")
     saved = root / "uv-layout-orientation.woby"
     with session(executable, root, env) as (ctl, viewer):
         groups = prepare(ctl, model)
-        analysis = ctl("analysis", "create", "--type", "uv", "--a", groups[0])["target"]
-        ctl("analysis", "set", analysis, "--show-edges", "false",
-            "--uv-density-u", 4, "--uv-density-v", 4)
+        file_id = next(o["id"] for o in ctl("objects")["objects"] if o["kind"] == "file")
         for group in groups:
             ctl("visibility", "set", group, "--visible", "false")
-        # Revisit each axis after GPU upload to exercise cached-geometry refresh.
-        for index, axis in enumerate(("y", "z", "y", "z")):
-            ctl("up-axis", "set", axis)
-            ctl("camera", "view", "front")
-            ctl("camera", "frame", "--object", analysis)
-            image = capture(ctl, root / f"layout-{index}-{axis}-up.png")
-            assert all(count > 1000 for count in grid_pixels(image)), (axis, grid_pixels(image))
+        for kind, option, modes in (("uv", "--uv-color", ("grid", "u", "v")),
+                                    ("uv_quality", "--uv-metric", ("angle", "area", "orientation"))):
+            analysis = ctl("analysis", "create", "--type", kind, "--a", file_id)["target"]
+            ctl("analysis", "set", analysis, "--uv-view", "layout", "--show-edges", "false")
+            for separated in ("false", "true"):
+                ctl("analysis", "set", analysis, "--uv-separated", separated)
+                for mode in modes:
+                    ctl("analysis", "set", analysis, option, mode)
+                    reference = None
+                    # Revisit Y after drawing Z to verify shared camera changes.
+                    for index, axis in enumerate(("y", "z", "y")):
+                        ctl("up-axis", "set", axis)
+                        ctl("camera", "view", "isometric")
+                        ctl("camera", "frame", "--object", analysis)
+                        label = f"{kind}-{mode}-separated-{separated}-{index}-{axis}"
+                        image = capture(ctl, root / f"layout-{label}.png")
+                        def footprint(rendered):
+                            red, green, blue = rendered.split()
+                            maximum = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+                            minimum = ImageChops.darker(ImageChops.darker(red, green), blue)
+                            chroma = ImageChops.subtract(maximum, minimum)
+                            return chroma.point(lambda value: 255 if value > 30 else 0)
+
+                        mask = footprint(image)
+                        pixels = mask.histogram()[255]
+                        assert pixels > 10000, (label, pixels)
+                        if reference is None:
+                            reference = mask
+                        elif axis == "y":
+                            changed = ImageChops.difference(reference, mask).histogram()[255]
+                            assert changed < pixels * .01, (label, changed, pixels)
+                        else:
+                            # The plane must turn with the scene, not remain upright
+                            # by counter-rotating its geometry against the camera.
+                            changed = ImageChops.difference(reference, mask).histogram()[255]
+                            assert changed > pixels * .2, (label, changed, pixels)
+                        if separated == "false":
+                            ctl("analysis", "set", analysis, "--uv-view", "surface")
+                            surface = capture(ctl, root / f"surface-{label}.png")
+                            changed = ImageChops.difference(footprint(surface), mask).histogram()[255]
+                            assert changed < pixels * .01, (label, "source/layout mismatch", changed, pixels)
+                            ctl("analysis", "set", analysis, "--uv-view", "layout")
+                        if mode == "grid":
+                            assert all(count > 1000 for count in grid_pixels(image)), (label, grid_pixels(image))
+            # Keep only the current analysis visible during each comparison.
+            if kind == "uv":
+                ctl("visibility", "set", analysis, "--visible", "false")
         ctl("scene", "save-as", saved)
         ctl("quit")
         assert viewer.wait(timeout=15) == 0
     with session(executable, root, env, "--scene", saved) as (ctl, viewer):
-        assert ImageChops.difference(image, capture(ctl, root / "layout-orientation-reloaded.png")).getbbox() is None
+        restored = capture(ctl, root / "layout-orientation-reloaded.png")
+        # Match the scene exactly; the annotation panel can differ by a few
+        # antialiased glyph pixels when its font atlas is rebuilt on startup.
+        scene_area = (0, 0, image.width - int(image.width * .43), image.height)
+        assert ImageChops.difference(image.crop(scene_area), restored.crop(scene_area)).getbbox() is None
         ctl("quit")
         assert viewer.wait(timeout=15) == 0
 
@@ -288,7 +341,7 @@ f 5 7 8
             assert viewer.wait(timeout=15) == 0
         analysis_demo(executable, root / "analysis", env)
         inspection_demo(executable, root / "inspection", env)
-        layout_orientation(executable, root, model, env)
+        layout_orientation(executable, root, env)
     print("UV grid render passed: U/V lines, density, up-axis changes, missing UV fallback, disable, undo/redo, and reload.")
     if len(sys.argv) > 2:
         inspection_demo(executable, Path(sys.argv[2]).resolve() / "inspection", env)
