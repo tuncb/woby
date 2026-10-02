@@ -139,6 +139,17 @@ def main():
                 ctl("color", "set", group_id, "--rgb", 1, 0, 0)
                 for control in ("grid", "origin", "dimensions"):
                     ctl(control, "set", "--visible", "false")
+                ctl("up-axis", "set", "z")
+                views = []
+                for preset in ("isometric", "top"):
+                    before = ctl("camera", "view", preset)["camera"]
+                    framed = ctl("camera", "frame")["camera"]
+                    for key in ("yawDegrees", "pitchDegrees", "rollDegrees", "verticalFovDegrees", "nearPlane"):
+                        assert framed[key] == before[key], (preset, key, before, framed)
+                    picture = capture(preset + "-framed")
+                    red_bounds(picture)
+                    views.append(picture)
+                assert ImageChops.difference(*views).getbbox() is not None, "Framed isometric and top views are identical"
                 ctl("up-axis", "set", "y")
                 ctl("camera", "set", "--near-plane", .01)
                 ctl("camera", "look-at", "--eye", 0, 0, 1000000, "--target", 0, 0, 999999)
@@ -152,7 +163,7 @@ def main():
                 red_bounds(capture("large-close"))
                 ctl("quit", "--on-dirty", "discard")
                 assert viewer.wait(timeout=15) == 0
-                print("Camera smoke passed: pixels, zoom, pan, roll, look-at, restored captures, persistence, object framing, large depth range, close geometry, and errors.")
+                print("Camera smoke passed: pixels, framed presets, zoom, pan, roll, look-at, restored captures, persistence, object framing, large depth range, close geometry, and errors.")
             finally:
                 if viewer.poll() is None:
                     viewer.kill()

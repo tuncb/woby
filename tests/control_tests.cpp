@@ -303,6 +303,36 @@ TEST_CASE("ctl camera navigation has explicit units finite results and no scene 
     }
 }
 
+TEST_CASE("ctl scene framing preserves camera presets orientation and lens settings")
+{
+    for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        auto state = scene();
+        woby::setSceneUpAxis(state, axis);
+        woby::clearSceneDirty(state);
+        const auto clean = woby::createSceneDocument(state);
+        for (const auto* preset : {"front", "back", "left", "right", "top", "bottom", "isometric"}) {
+            CAPTURE(axis);
+            CAPTURE(std::string(preset));
+            run(state, clean, "camera.view", {{"preset", preset}});
+            run(state, clean, "camera.set", {{"target", {10, 20, 30}}, {"distance", 100},
+                {"rollDegrees", 27}, {"fovDegrees", 35}, {"nearPlane", 0.01}});
+            const auto before = state.camera;
+            const auto result = run(state, clean, "camera.frame");
+            CHECK(state.camera.target == state.sceneBounds.center);
+            CHECK(state.camera.distance < before.distance);
+            CHECK(state.camera.distance > state.sceneBounds.radius);
+            CHECK(state.camera.yawRadians == before.yawRadians);
+            CHECK(state.camera.pitchRadians == before.pitchRadians);
+            CHECK(state.camera.rollRadians == before.rollRadians);
+            CHECK(state.camera.verticalFovDegrees == before.verticalFovDegrees);
+            CHECK(state.camera.nearPlane == before.nearPlane);
+            CHECK(result["camera"] == woby::controlCameraInfo(state));
+            CHECK_FALSE(state.isDirty);
+            CHECK(woby::sceneContentEqual(woby::createSceneDocument(state), clean));
+        }
+    }
+}
+
 TEST_CASE("absolute camera CLI preserves vectors and rejects invalid inputs")
 {
     const auto set = parse({"camera", "set", "--target", "-1", "2", "3", "--distance", "4",

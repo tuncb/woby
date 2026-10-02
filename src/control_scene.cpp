@@ -605,7 +605,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         if (command.object) {
             (void)localObjectDetails(state, command.memberId);
             frameCameraToObject(state, command.memberId);
-        } else { frameCameraToScene(state); }
+        } else { fitCameraToScene(state); }
         return {{"camera", controlCameraInfo(state)}};
     case A::cameraSet:
         setUiCamera(state, {command.cameraTarget, command.yawDegrees, command.pitchDegrees,
