@@ -238,3 +238,58 @@ VertexOutput vs_imgui(uint index : SV_VertexID) {
 float4 fs_imgui(VertexOutput v) : SV_Target0 {
     return v.color*gpu_texture<Texture2D<float4>>(root.texture0).Sample(gpu_sampler(root.sampler),v.uv);
 }
+
+// CPU chooses a stable parameter grid and supplies separable basis tables.
+// Compute evaluates the rational control net and generates render topology.
+uint ffHeader(uint slot) { return asuint(root.freeform[slot]); }
+float3 ffVector(uint offset) { return float3(root.freeform[offset],root.freeform[offset+1],root.freeform[offset+2]); }
+[numthreads(64,1,1)] void cs_freeform(uint3 thread : SV_DispatchThreadID) {
+    uint nu=ffHeader(4), nv=ffHeader(5), id=thread.x;
+    if (id>=nu*nv) return;
+    uint x=id%nu, y=id/nu, bu=ffHeader(9)+x*19, bv=ffHeader(10)+y*19;
+    uint firstU=asuint(root.freeform[bu]), firstV=asuint(root.freeform[bv]);
+    uint controls=ffHeader(8), countU=ffHeader(2), pu=ffHeader(0), pv=ffHeader(1);
+    float3 reference=ffVector(controls+(firstV*countU+firstU)*9);
+    float3 position=0, du=0, dv=0, authoredNormal=0;
+    float2 uv=0;
+    float denominator=0, wu=0, wv=0, scale=0;
+    for (uint j=0;j<=pv;++j) for (uint i=0;i<=pu;++i)
+        scale=max(scale,root.freeform[controls+((firstV+j)*countU+firstU+i)*9+3]);
+    for (uint j=0;j<=pv;++j) for (uint i=0;i<=pu;++i) {
+        uint c=controls+((firstV+j)*countU+firstU+i)*9;
+        float w=root.freeform[c+3]/scale;
+        float b=root.freeform[bu+1+i]*root.freeform[bv+1+j]*w;
+        float a=root.freeform[bu+10+i]*root.freeform[bv+1+j]*w;
+        float d=root.freeform[bu+1+i]*root.freeform[bv+10+j]*w;
+        float3 delta=ffVector(c)-reference;
+        position+=b*delta; du+=a*delta; dv+=d*delta;
+        denominator+=b; wu+=a; wv+=d;
+        uv+=b*float2(root.freeform[c+4],root.freeform[c+5]);
+        authoredNormal+=b*ffVector(c+6);
+    }
+    position/=denominator;
+    du=(du-position*wu)/denominator; dv=(dv-position*wv)/denominator;
+    position+=reference; uv/=denominator;
+    float su=max(max(abs(du.x),abs(du.y)),abs(du.z));
+    float sv=max(max(abs(dv.x),abs(dv.y)),abs(dv.z));
+    float3 n=ffHeader(12)!=0 ? authoredNormal : cross(du/max(su,1e-30),dv/max(sv,1e-30));
+    uint output=(ffHeader(6)+id)*8;
+    // Preserve the CPU interior-limit normal at singular boundaries.
+    if (dot(n,n)>1e-20 && all(isfinite(n))) {
+        n=normalize(n);
+        root.vertices[output+3]=n.x; root.vertices[output+4]=n.y; root.vertices[output+5]=n.z;
+    }
+    root.vertices[output]=position.x; root.vertices[output+1]=position.y; root.vertices[output+2]=position.z;
+    if (ffHeader(11)!=0) { root.vertices[output+6]=uv.x; root.vertices[output+7]=1-uv.y; }
+    uint a=ffHeader(6)+id;
+    if (ffHeader(3)!=0) {
+        if (x+1<nu && y+1<nv) {
+            uint o=ffHeader(7)+(y*(nu-1)+x)*6;
+            root.pointIds[o]=a; root.pointIds[o+1]=a+1; root.pointIds[o+2]=a+nu;
+            root.pointIds[o+3]=a+1; root.pointIds[o+4]=a+nu+1; root.pointIds[o+5]=a+nu;
+        }
+    } else if (x+1<nu) {
+        uint o=ffHeader(7)+x*2;
+        root.pointIds[o]=a; root.pointIds[o+1]=a+1;
+    }
+}

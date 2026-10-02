@@ -5,7 +5,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ## Features
 
 - Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
-- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Curves and freeform surfaces are not supported. STL remains triangle-only.
+- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Bézier and B-spline/NURBS curves and untrimmed surfaces are supported (degrees 1–8, positive rational weights). STL remains triangle-only.
 - Add file formats with user-supplied importer packages in the portable `importers` folder, or register libraries through the CLI.
 - Open, save, and drag in `.woby` scene files with persisted model paths, scene tree hierarchy, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
@@ -184,6 +184,31 @@ the camera, `Q`/`E` move vertically, and Shift speeds movement up. Camera keys a
 paused while editing fields, using Ctrl/Alt/Super commands, or displaying dialogs
 and popups. Escape dismisses context menus and cancels discard confirmations;
 outside editing and popups it clears the selection.
+
+### OBJ freeform geometry
+
+`cstype bezier` and `cstype bspline`, optionally `rat`, support `deg`, `curv`,
+`surf`, `parm u/v`, and `end`. Negative control indexes, continued lines, surface
+UVs, and authored normals are supported. Control nets remain available internally;
+control points are not displayed as an implicit point cloud.
+
+A compute shader evaluates the control net and generates cached vertices and
+indices for the existing render paths. The CPU selects a fixed grid of 32
+segments per nonzero knot span (one for degree-one curves), evaluates basis
+tables in double precision, and keeps matching geometry for picking, bounds,
+annotations, and analysis. These operations therefore use a tessellated
+approximation, not exact CAD geometry. Inputs unsafe for GPU floats retain the
+CPU result. Freeform imports are limited to two million source positions and two
+million generated vertices per file. Generated samples get deterministic synthetic
+analysis point IDs after the original OBJ position records; triangle IDs refer to
+the tessellated mesh.
+
+Curve parts use line controls; surface parts use the usual mesh controls. Saved
+scenes reference the original OBJ and reproduce the same tessellation on reload.
+Camera-adaptive refinement, crack stitching between independent patches, trimmed
+surfaces (`trim`, `hole`, `curv2`), surface connectivity, and other OBJ bases are
+not supported yet. Unsupported freeform statements fail with a file/line diagnostic
+instead of silently importing incomplete geometry.
 
 ## Command Line
 

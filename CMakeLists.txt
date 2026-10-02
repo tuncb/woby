@@ -167,6 +167,8 @@ add_executable(woby
     src/model_mesh.cpp
     src/model_mesh.h
     src/obj_mesh.cpp
+    src/obj_freeform.cpp
+    src/freeform.cpp
     src/obj_mesh.h
     src/performance_log.cpp
     src/performance_log.h
@@ -180,6 +182,7 @@ add_executable(woby
     src/scene_file.cpp
     src/scene_file.h
     src/scene_renderer.cpp
+    src/freeform_gpu.cpp
     src/scene_renderer.h
     src/scene_screenshot.cpp
     src/scene_screenshot.h
@@ -272,7 +275,7 @@ endif()
 if(WOBY_BUILD_BENCHMARKS)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp
-        src/model_mesh.cpp src/obj_mesh.cpp src/mesh_comparison.cpp
+        src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/mesh_comparison.cpp
         src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
@@ -296,7 +299,7 @@ if(WOBY_BUILD_BENCHMARKS)
         foreach(backend IN ITEMS boost ankerl)
             set(target "woby_benchmarks_${backend}")
             add_executable(${target} tests/performance_benchmarks.cpp ${hash_probe_sources}
-                src/model_mesh.cpp src/obj_mesh.cpp src/mesh_degenerates.cpp
+                src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/mesh_degenerates.cpp
                 src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
             target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/tests")
             target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
@@ -321,13 +324,15 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_vertex_render_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_obj_primitives_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_obj_primitives_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_freeform_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_freeform_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_uv_grid_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_grid_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_obj_primitives_render woby_uv_grid_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_obj_primitives_render woby_freeform_render woby_uv_grid_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -433,6 +438,8 @@ if(BUILD_TESTING)
         src/model_mesh.cpp
         src/model_mesh.h
         src/obj_mesh.cpp
+        src/obj_freeform.cpp
+        src/freeform.cpp
         src/obj_mesh.h
         src/performance_log.cpp
         src/performance_log.h
@@ -450,6 +457,7 @@ if(BUILD_TESTING)
         src/graphics_helpers.cpp
         src/graphics_helpers.h
         src/scene_renderer.cpp
+        src/freeform_gpu.cpp
         src/scene_renderer.h
         src/stl_mesh.cpp
         src/stl_mesh.h
@@ -481,6 +489,7 @@ if(BUILD_TESTING)
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
+        tests/freeform_tests.cpp
         tests/scene_file_edge_tests.cpp
         tests/stl_mesh_tests.cpp
         tests/ui_operations_tests.cpp
@@ -492,7 +501,7 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp)
+        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp)
     endif()
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include"

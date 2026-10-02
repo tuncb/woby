@@ -60,7 +60,8 @@ def test_manifest_and_archive_validation():
         write_zip(unlisted=True)
         expect_error(package.verify_archive, archive, 'windows-x64', '1.2.3')
         # Correctly hashed archives must still contain the native renderer assets.
-        for missing in ('assets/shaders/spirv/cs_marker_lookup_msaa.bin', 'woby.exe',
+        for missing in ('assets/shaders/spirv/cs_marker_lookup_msaa.bin',
+                        'assets/shaders/spirv/cs_freeform.bin', 'woby.exe',
                         'woby-update-helper.exe', 'assets/fonts/RobotoMonoNerdFont-Regular.ttf'):
             original_files = manifest['files']
             manifest['files'] = [file for file in original_files if file['path'] != missing]

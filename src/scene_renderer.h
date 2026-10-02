@@ -34,6 +34,7 @@ struct GpuNodeRange {
 };
 
 struct GpuMesh {
+    bool freeformPrepared = false;
     woby::graphics::VertexBufferHandle vertexBuffer = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::IndexBufferHandle triangleIndexBuffer = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::IndexBufferHandle lineIndexBuffer = WOBY_GPU_INVALID_HANDLE;

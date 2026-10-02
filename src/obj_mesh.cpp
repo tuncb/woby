@@ -1,4 +1,6 @@
 #include "obj_mesh.h"
+#include "obj_freeform.h"
+#include <sstream>
 #include "utf8_path.h"
 
 #include <rapidobj/rapidobj.hpp>
@@ -124,6 +126,14 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     // Missing material libraries must not prevent importing the geometry.
     reportModelLoadProgress(progress, ModelLoadStage::reading);
     auto result = parseObj(path);
+    std::vector<FreeformPatch> freeformPatches;
+    if (result.error && objFreeformStatement(result.error.line)) {
+        auto input = readObjFreeform(path, progress);
+        std::istringstream stream(std::move(input.polygonText));
+        result = rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::SearchPath(
+            std::filesystem::absolute(path).parent_path(), rapidobj::Load::Optional));
+        freeformPatches = std::move(input.patches);
+    }
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
         if (result.error) {
@@ -176,7 +186,7 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     }
     // Vertex-only OBJ files are commonly used as point clouds. In files with
     // primitives, only explicit p records become standalone point geometry.
-    const bool vertexCloud = indexCount == 0 && lineIndexCount == 0 && pointIndexCount == 0;
+    const bool vertexCloud = indexCount == 0 && lineIndexCount == 0 && pointIndexCount == 0 && freeformPatches.empty();
     if (vertexCloud) { pointIndexCount = source->points.size(); }
     const size_t totalIndices = indexCount + lineIndexCount + pointIndexCount;
     if (totalIndices > std::numeric_limits<uint32_t>::max()
@@ -324,11 +334,15 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
         node.pointIndexCount = static_cast<uint32_t>(mesh.pointIndices.size());
         mesh.nodes.push_back(std::move(node));
     }
-    if (empty(mesh)) { throw std::runtime_error("OBJ did not contain renderable geometry: " + pathToUtf8(path)); }
+    if (empty(mesh) && freeformPatches.empty()) { throw std::runtime_error("OBJ did not contain renderable geometry: " + pathToUtf8(path)); }
 
     mesh.sourceData = std::move(source);
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, totalIndices, totalIndices);
-    finalizeMesh(mesh, true, progress);
+    if (!empty(mesh)) { finalizeMesh(mesh, true, progress); }
+    if (!freeformPatches.empty()) {
+        appendFreeformGeometry(mesh, std::move(freeformPatches), progress);
+        finalizeMesh(mesh, false, progress);
+    }
     return mesh;
 }
 

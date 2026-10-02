@@ -27,6 +27,7 @@ struct Bounds {
 };
 
 struct UvQuality;
+struct FreeformGeometry;
 
 struct MeshNode {
     std::string name;
@@ -92,6 +93,7 @@ struct Mesh {
     std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
     std::shared_ptr<const UvQuality> uvQuality;
     std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
+    std::shared_ptr<const FreeformGeometry> freeform;
 };
 
 [[nodiscard]] std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node);
