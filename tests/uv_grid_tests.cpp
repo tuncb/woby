@@ -4,6 +4,7 @@
 #include "automation_registry.h"
 #include "command_line.h"
 #include "comparison_scene.h"
+#include "comparison_view.h"
 #include "mesh_comparison.h"
 #include "uv_analysis.h"
 #include "uv_quality.h"
@@ -13,6 +14,7 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <limits>
+#include <thread>
 
 TEST_CASE("UV quality distinguishes scale distortion collapse and mixed orientation")
 {
@@ -78,6 +80,290 @@ struct UvFixture {
     }
     ~UvFixture() { std::error_code ignored; std::filesystem::remove_all(root, ignored); }
 };
+
+void checkUvBounds(const woby::UiState& state, woby::SceneObjectId id)
+{
+    const auto bounds = woby::comparisonDisplayBounds(state, id);
+    const auto mesh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
+    REQUIRE(bounds);
+    const auto* comparison = woby::findComparison(state, id);
+    REQUIRE(comparison);
+    for (size_t k = 0; k < 3; ++k) {
+        CHECK(bounds->min[k] == mesh.bounds.min[k] + comparison->translation[k]);
+        CHECK(bounds->max[k] == mesh.bounds.max[k] + comparison->translation[k]);
+    }
+    if (comparison->settings.uvSeparated) { CHECK(bounds->radius == mesh.bounds.radius); }
+}
+
+struct UvRuntimeFixture {
+    UvFixture fixture;
+    woby::ComparisonRuntimes runtimes;
+    woby::SceneObjectId id;
+    bool initialized = false;
+    UvRuntimeFixture()
+    {
+        woby::graphics::Init init;
+        init.type = woby::graphics::RendererType::Noop;
+        init.resolution.width = init.resolution.height = 1;
+        initialized = woby::graphics::init(init);
+        auto& state = fixture.state;
+        id = woby::createComparison(state, woby::AnalysisType::uvQuality);
+        woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    }
+    ~UvRuntimeFixture()
+    {
+        woby::destroyComparisonRuntimes(runtimes);
+        if (initialized) { woby::graphics::shutdown(); }
+    }
+    bool ready()
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        do {
+            woby::updateComparisonRuntimes(runtimes, fixture.state);
+            woby::graphics::frame();
+            if (woby::comparisonResultsReady(runtimes.objects[id], fixture.state, id)) { return true; }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        } while (std::chrono::steady_clock::now() < deadline);
+        return false;
+    }
+};
+}
+
+TEST_CASE("UV bounds cache ignores presentation and quality edits and is absent from documents")
+{
+    UvFixture f;
+    auto& state = f.state;
+    const auto id = woby::createComparison(state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(state, id);
+    settings.uvView = woby::UvView::layout;
+    settings.uvSeparated = true;
+    woby::setComparisonSettings(state, settings, id);
+    const auto document = woby::createSceneDocument(state);
+    checkUvBounds(state, id);
+    const auto cached = woby::findComparison(state, id)->boundsCache;
+    REQUIRE(cached);
+    woby::recalculateSceneBounds(state);
+    woby::selectSceneObject(state, id);
+    CHECK(woby::selectedSceneBounds(state).has_value());
+    CHECK(woby::findComparison(state, id)->boundsCache == cached);
+    CHECK(woby::createSceneDocument(state) == document);
+    settings.uvMetric = woby::UvQualityMetric::area;
+    settings.uvNormalization = woby::UvAreaNormalization::absolute;
+    settings.uvGrid.densityU = 17;
+    settings.showEdges = !settings.showEdges;
+    woby::setComparisonSettings(state, settings, id);
+    woby::setComparisonTranslation(state, id, {8, -9, 13});
+    checkUvBounds(state, id);
+    CHECK(woby::findComparison(state, id)->boundsCache == cached);
+}
+
+TEST_CASE("UV bounds cache invalidates for source and layout changes without changing mesh bounds")
+{
+    UvFixture f;
+    auto& state = f.state;
+    const auto id = woby::createComparison(state, woby::AnalysisType::uv);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    checkUvBounds(state, id);
+    const auto cached = woby::findComparison(state, id)->boundsCache;
+    SUBCASE("group transform") { state.files[0].groupSettings[0].rotationDegrees = {13, 27, -19}; }
+    SUBCASE("file transform") { state.files[0].fileSettings.translation = {7, 11, 13}; }
+    SUBCASE("folder transform") { state.sceneNodes[0].settings.rotationDegrees = {11, 43, 17}; }
+    SUBCASE("geometry replacement") {
+        auto replacement = state.files[0].mesh;
+        replacement.vertices[1].position = {2, 3, 4};
+        replacement.vertices[1].texcoord = {7, -3};
+        state.files[0].mesh = std::move(replacement);
+    }
+    SUBCASE("membership") { woby::isolateUvObjects(state, {state.files[0].groupSettings[1].objectId}, id); }
+    SUBCASE("up axis") { woby::setSceneUpAxis(state, woby::SceneUpAxis::y); }
+    SUBCASE("separation") {
+        auto settings = woby::comparisonSettings(state, id);
+        settings.uvSeparated = true;
+        woby::setComparisonSettings(state, settings, id);
+    }
+    checkUvBounds(state, id);
+    CHECK(woby::findComparison(state, id)->boundsCache != cached);
+    const auto refreshed = woby::findComparison(state, id)->boundsCache;
+    checkUvBounds(state, id);
+    CHECK(woby::findComparison(state, id)->boundsCache == refreshed);
+}
+
+TEST_CASE("Separated UV bounds match irregular patches including missing and constant UVs")
+{
+    UvFixture f;
+    auto& state = f.state;
+    auto& mesh = state.files[0].mesh;
+    mesh.vertices.insert(mesh.vertices.end(), {{{3, -4, 7}, {}, {-2, 5}}, {{9, 2, 1}, {}, {8, 5}}, {{-2, 5, 6}, {}, {-2, 11}}});
+    mesh.indices.insert(mesh.indices.end(), {3, 4, 5});
+    mesh.nodes.push_back({"Irregular UV", 9, 3});
+    mesh.nodes.back().hasTexcoords = true;
+    SUBCASE("unequal extents") {}
+    SUBCASE("constant coordinates") { for (auto& vertex : mesh.vertices) { vertex.texcoord = {2, -3}; } }
+    state.files[0] = woby::createUiFileState(f.root / "patches.obj", std::move(mesh), 0);
+    state.sceneNodes.clear();
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    state.files[0].groupSettings[1].rotationDegrees = {17, 41, -23};
+    const auto id = woby::createComparison(state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        woby::setSceneUpAxis(state, axis);
+        for (const bool separated : {false, true}) {
+            auto settings = woby::comparisonSettings(state, id);
+            settings.uvView = woby::UvView::layout;
+            settings.uvSeparated = separated;
+            woby::setComparisonSettings(state, settings, id);
+            checkUvBounds(state, id);
+        }
+    }
+}
+
+TEST_CASE("UV bounds cache handles missing UVs removed sources and copied scenes")
+{
+    UvFixture f;
+    auto& state = f.state;
+    const auto id = woby::createComparison(state, woby::AnalysisType::uv);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    checkUvBounds(state, id);
+    const auto original = woby::findComparison(state, id)->boundsCache;
+    auto copy = state;
+    copy.files[0].fileSettings.translation = {13, 17, -7};
+    checkUvBounds(copy, id);
+    CHECK(woby::findComparison(copy, id)->boundsCache != original);
+    CHECK(woby::findComparison(state, id)->boundsCache == original);
+    woby::isolateUvObjects(state, {state.files[0].groupSettings[2].objectId}, id);
+    CHECK_FALSE(woby::comparisonDisplayBounds(state, id));
+    const auto empty = woby::findComparison(state, id)->boundsCache;
+    REQUIRE(empty);
+    CHECK_FALSE(woby::comparisonDisplayBounds(state, id));
+    CHECK(woby::findComparison(state, id)->boundsCache == empty);
+    state.files.clear();
+    CHECK_FALSE(woby::comparisonDisplayBounds(state, id));
+}
+
+TEST_CASE("UV worker snapshot owns inputs and prepares matching geometry quality normals and edges")
+{
+    UvFixture f;
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(f.state, id);
+    settings.uvView = woby::UvView::layout;
+    settings.uvSeparated = true;
+    woby::setComparisonSettings(f.state, settings, id);
+    const auto expected = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, id);
+    const auto snapshot = woby::snapshotComparisonInputs(f.state, id);
+    REQUIRE(snapshot.files.size() == 1);
+    f.state.files.clear();
+    f.state.sceneNodes.clear();
+    const auto prepared = woby::prepareUvComparisonInputs(snapshot);
+    const auto& actual = (*prepared.meshes)[0];
+    REQUIRE(actual.uvQuality);
+    CHECK(actual.uvQuality->missing == expected.uvQuality->missing);
+    CHECK(actual.indices == expected.indices);
+    CHECK(actual.precisePositions == expected.precisePositions);
+    CHECK(actual.bounds.min == expected.bounds.min);
+    CHECK(actual.bounds.max == expected.bounds.max);
+    auto smooth = expected.vertices;
+    woby::generateSmoothNormals(smooth, expected.indices);
+    REQUIRE(actual.vertices.size() == smooth.size());
+    for (size_t i = 0; i < smooth.size(); ++i) {
+        CHECK(actual.vertices[i].normal == smooth[i].normal);
+        CHECK(actual.vertices[i].position == smooth[i].position);
+    }
+    const auto quality = woby::uvQualityVertices(expected);
+    REQUIRE(prepared.buffers[0].quality.size() == quality.size());
+    for (size_t i = 0; i < quality.size(); ++i) {
+        CHECK(prepared.buffers[0].quality[i].position == quality[i].position);
+        CHECK(prepared.buffers[0].quality[i].normal == quality[i].normal);
+        CHECK(prepared.buffers[0].quality[i].texcoord == quality[i].texcoord);
+    }
+    const std::vector<uint32_t> expectedLines{0,1,1,2,2,0,3,4,4,5,5,3};
+    CHECK(prepared.buffers[0].lines == expectedLines);
+    CHECK((*prepared.meshes)[1].indices.empty());
+    std::stop_source stop;
+    stop.request_stop();
+    CHECK_THROWS((void)woby::prepareUvComparisonInputs(snapshot, stop.get_token()));
+    CHECK_THROWS((void)woby::uvLayoutMesh(expected, woby::SceneUpAxis::y, true, stop.get_token()));
+    CHECK_THROWS((void)woby::analyzeUvQuality(expected, settings.uvNormalization, settings.uvMetric, stop.get_token()));
+    CHECK_THROWS((void)woby::uvQualityVertices(expected, stop.get_token()));
+}
+
+TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes edited metrics")
+{
+    UvRuntimeFixture f;
+    REQUIRE(f.initialized);
+    auto& state = f.fixture.state;
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    auto& runtime = f.runtimes.objects[f.id];
+    CHECK(runtime.preparationWorker.valid());
+    CHECK_FALSE(runtime.inputs);
+    REQUIRE(f.ready());
+    REQUIRE(runtime.inputs);
+    CHECK_FALSE(runtime.prepared); // Upload staging memory is released after copying to the GPU.
+    const auto inputs = runtime.inputs;
+    const auto revision = runtime.resultsRevision;
+    for (int i = 0; i < 3; ++i) { woby::updateComparisonRuntimes(f.runtimes, state); }
+    CHECK(runtime.inputs == inputs);
+    CHECK(runtime.resultsRevision == revision);
+    CHECK_FALSE(runtime.preparationWorker.valid());
+    auto settings = woby::comparisonSettings(state, f.id);
+    settings.uvMetric = woby::UvQualityMetric::area;
+    woby::setComparisonSettings(state, settings, f.id);
+    REQUIRE(f.ready());
+    CHECK(runtime.inputs != inputs);
+    CHECK(runtime.result.original.source.uvQuality->metric == woby::UvQualityMetric::area);
+    CHECK(runtime.resultsRevision != revision);
+}
+
+TEST_CASE("UV runtime rejects stale preparation results and survives removal during preparation")
+{
+    UvRuntimeFixture f;
+    REQUIRE(f.initialized);
+    auto& state = f.fixture.state;
+    auto& runtime = f.runtimes.objects[f.id];
+    auto stale = std::make_shared<woby::PreparedComparisonInputs>(woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(state, f.id)));
+    const auto signature = woby::comparisonGeometrySignature(state, f.id);
+    runtime.cache.signature = runtime.preparationSignature = signature;
+    std::promise<std::shared_ptr<const woby::PreparedComparisonInputs>> completion;
+    runtime.preparationWorker = completion.get_future();
+    completion.set_value(stale);
+    state.files[0].groupSettings[0].translation = {7, 0, 0};
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    CHECK(runtime.prepared != stale);
+    REQUIRE(f.ready());
+    CHECK(runtime.resultSignature == woby::comparisonGeometrySignature(state, f.id));
+    CHECK(runtime.result.original.source.vertices[0].position[0] == 7);
+    auto settings = woby::comparisonSettings(state, f.id);
+    settings.uvMetric = woby::UvQualityMetric::orientation;
+    woby::setComparisonSettings(state, settings, f.id);
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    REQUIRE(runtime.preparationWorker.valid());
+    state.comparisons.clear();
+    state.files.clear();
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    CHECK(f.runtimes.objects.empty());
+}
+
+TEST_CASE("UV runtime reports preparation failure once and recovers after geometry replacement")
+{
+    UvRuntimeFixture f;
+    REQUIRE(f.initialized);
+    auto& state = f.fixture.state;
+    auto valid = state.files[0].mesh;
+    state.files[0].mesh.indices[0] = UINT32_MAX;
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(runtime.preparationWorker.valid());
+    runtime.preparationWorker.wait();
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    CHECK_FALSE(runtime.error.empty());
+    CHECK((runtime.failedStages & woby::comparisonSource) != 0);
+    CHECK_FALSE(runtime.ready);
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    CHECK_FALSE(runtime.preparationWorker.valid());
+    state.files[0].mesh = std::move(valid);
+    REQUIRE(f.ready());
+    CHECK(runtime.error.empty());
 }
 
 TEST_CASE("UV edits expand parents skip missing UVs and preserve per-child overrides")

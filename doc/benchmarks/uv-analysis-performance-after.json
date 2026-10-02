@@ -1,0 +1,793 @@
+{
+  "baseline_commit": "0ff49bc3f9e3c5bcb08a6f6e1528ac7250d8850e",
+  "candidate": "Working tree: UV bounds caching and asynchronous UV input/buffer preparation",
+  "date": "2026-10-02",
+  "method": "Same tests/uv_analysis_performance.py and bus model as uv-analysis-performance.json; three fresh Release processes per version, 2 s warm-up and 6 s sampling per scenario; desktop Vulkan, MSAA x4, VSync requested. No concurrent tests/builds during timing.",
+  "limitations": "FPS uses frame counters over query midpoints; GPU timestamps cover the whole frame. Different representations have different projected coverage. Snapshot copying and first exact bounds for immediate camera framing remain synchronous; worker handles mesh assembly, UV metrics/layout, normals and buffer construction. The unchanged solid/source-grid controls paced near 240 FPS in the after run versus 330 FPS before; do not interpret the light-view FPS difference as a measured code regression. UV layout CPU-stage reductions directly corroborate the removal of repeated bounds/quality work.",
+  "validation": "Debug/Release builds without compiler warnings; all 752 Debug CTest tests passed, including UV render/undo/reload integration. Eight new regression tests cover caching, snapshot ownership, cancellation, stale results and recovery.",
+  "scenarios": {
+    "solid": {
+      "before_fps": {
+        "median": 329.7995,
+        "min": 327.106,
+        "max": 330.2889
+      },
+      "after_fps": {
+        "median": 239.5973,
+        "min": 239.324,
+        "max": 239.6612
+      },
+      "before_frame_ms": {
+        "median": 3.0654,
+        "min": 3.0469,
+        "max": 3.1486
+      },
+      "after_frame_ms": {
+        "median": 4.1849,
+        "min": 4.1471,
+        "max": 4.2351
+      },
+      "before_gpu_ms": {
+        "median": 0.471,
+        "min": 0.4669,
+        "max": 0.4721
+      },
+      "after_gpu_ms": {
+        "median": 0.6318,
+        "min": 0.5898,
+        "max": 0.6374
+      },
+      "after_imgui_ms": 0.1873,
+      "after_scene_state_ms": 0.0275,
+      "identical_camera": true,
+      "pixel_identical_screenshot": true,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1920,
+        1800
+      ],
+      "legend_max_channel_difference": 0,
+      "difference_bbox": null
+    },
+    "source_grid": {
+      "before_fps": {
+        "median": 330.0034,
+        "min": 329.262,
+        "max": 332.1846
+      },
+      "after_fps": {
+        "median": 240.0103,
+        "min": 237.8059,
+        "max": 240.1
+      },
+      "before_frame_ms": {
+        "median": 3.1041,
+        "min": 3.0996,
+        "max": 3.1153
+      },
+      "after_frame_ms": {
+        "median": 4.1627,
+        "min": 4.1547,
+        "max": 4.1975
+      },
+      "before_gpu_ms": {
+        "median": 0.4833,
+        "min": 0.4823,
+        "max": 0.4854
+      },
+      "after_gpu_ms": {
+        "median": 0.6492,
+        "min": 0.5448,
+        "max": 0.6584
+      },
+      "after_imgui_ms": 0.1752,
+      "after_scene_state_ms": 0.0265,
+      "identical_camera": true,
+      "pixel_identical_screenshot": true,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1920,
+        1800
+      ],
+      "legend_max_channel_difference": 0,
+      "difference_bbox": null
+    },
+    "uv_layout_edges": {
+      "before_fps": {
+        "median": 3.1798,
+        "min": 3.1771,
+        "max": 3.2466
+      },
+      "after_fps": {
+        "median": 239.8344,
+        "min": 239.8081,
+        "max": 240.5876
+      },
+      "before_frame_ms": {
+        "median": 313.0152,
+        "min": 304.894,
+        "max": 315.1336
+      },
+      "after_frame_ms": {
+        "median": 4.2562,
+        "min": 4.2074,
+        "max": 4.2881
+      },
+      "before_gpu_ms": {
+        "median": 20.1974,
+        "min": 20.182,
+        "max": 20.2179
+      },
+      "after_gpu_ms": {
+        "median": 1.9292,
+        "min": 1.9054,
+        "max": 1.9292
+      },
+      "after_imgui_ms": 0.456,
+      "after_scene_state_ms": 0.0364,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 39,
+      "difference_bbox": [
+        1144,
+        131,
+        1362,
+        221
+      ]
+    },
+    "uv_quality_layout_edges": {
+      "before_fps": {
+        "median": 3.1768,
+        "min": 3.152,
+        "max": 3.2533
+      },
+      "after_fps": {
+        "median": 239.9674,
+        "min": 239.8722,
+        "max": 240.4178
+      },
+      "before_frame_ms": {
+        "median": 314.0783,
+        "min": 309.0679,
+        "max": 316.7232
+      },
+      "after_frame_ms": {
+        "median": 4.2539,
+        "min": 4.2462,
+        "max": 4.2546
+      },
+      "before_gpu_ms": {
+        "median": 21.6054,
+        "min": 21.4333,
+        "max": 21.6172
+      },
+      "after_gpu_ms": {
+        "median": 1.9656,
+        "min": 1.964,
+        "max": 1.9753
+      },
+      "after_imgui_ms": 0.4992,
+      "after_scene_state_ms": 0.0346,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 50,
+      "difference_bbox": [
+        1144,
+        131,
+        1545,
+        277
+      ]
+    },
+    "uv_quality_separated_edges": {
+      "before_fps": {
+        "median": 0.9277,
+        "min": 0.9269,
+        "max": 0.942
+      },
+      "after_fps": {
+        "median": 239.9046,
+        "min": 239.6861,
+        "max": 240.0018
+      },
+      "before_frame_ms": {
+        "median": 1153.6786,
+        "min": 1136.2426,
+        "max": 1157.7165
+      },
+      "after_frame_ms": {
+        "median": 4.2283,
+        "min": 4.2174,
+        "max": 4.2661
+      },
+      "before_gpu_ms": {
+        "median": 29.9464,
+        "min": 29.5506,
+        "max": 30.2546
+      },
+      "after_gpu_ms": {
+        "median": 2.4721,
+        "min": 2.4699,
+        "max": 2.4796
+      },
+      "after_imgui_ms": 0.4839,
+      "after_scene_state_ms": 0.0345,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 50,
+      "difference_bbox": [
+        1158,
+        131,
+        1545,
+        249
+      ]
+    },
+    "uv_quality_surface": {
+      "before_fps": {
+        "median": 329.3547,
+        "min": 328.9156,
+        "max": 329.6
+      },
+      "after_fps": {
+        "median": 240.1123,
+        "min": 239.9016,
+        "max": 240.3233
+      },
+      "before_frame_ms": {
+        "median": 3.1701,
+        "min": 3.0822,
+        "max": 3.2584
+      },
+      "after_frame_ms": {
+        "median": 4.284,
+        "min": 4.275,
+        "max": 4.2942
+      },
+      "before_gpu_ms": {
+        "median": 0.5949,
+        "min": 0.5878,
+        "max": 0.598
+      },
+      "after_gpu_ms": {
+        "median": 0.9518,
+        "min": 0.9411,
+        "max": 0.9569
+      },
+      "after_imgui_ms": 0.4994,
+      "after_scene_state_ms": 0.0511,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 50,
+      "difference_bbox": [
+        1158,
+        156,
+        1545,
+        249
+      ]
+    },
+    "uv_quality_surface_edges": {
+      "before_fps": {
+        "median": 330.2577,
+        "min": 329.9657,
+        "max": 330.6172
+      },
+      "after_fps": {
+        "median": 239.93,
+        "min": 239.5087,
+        "max": 240.0264
+      },
+      "before_frame_ms": {
+        "median": 3.1178,
+        "min": 3.0523,
+        "max": 3.1659
+      },
+      "after_frame_ms": {
+        "median": 4.311,
+        "min": 4.2919,
+        "max": 4.3189
+      },
+      "before_gpu_ms": {
+        "median": 1.952,
+        "min": 1.9507,
+        "max": 1.9584
+      },
+      "after_gpu_ms": {
+        "median": 1.7326,
+        "min": 1.7265,
+        "max": 1.7367
+      },
+      "after_imgui_ms": 0.4966,
+      "after_scene_state_ms": 0.051,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 50,
+      "difference_bbox": [
+        1158,
+        156,
+        1545,
+        249
+      ]
+    },
+    "uv_separated_edges": {
+      "before_fps": {
+        "median": 3.492,
+        "min": 3.4596,
+        "max": 3.5474
+      },
+      "after_fps": {
+        "median": 240.0452,
+        "min": 239.4949,
+        "max": 240.3281
+      },
+      "before_frame_ms": {
+        "median": 283.3403,
+        "min": 278.7194,
+        "max": 283.3531
+      },
+      "after_frame_ms": {
+        "median": 4.2665,
+        "min": 4.2563,
+        "max": 4.2991
+      },
+      "before_gpu_ms": {
+        "median": 21.2265,
+        "min": 21.0811,
+        "max": 21.3842
+      },
+      "after_gpu_ms": {
+        "median": 2.4453,
+        "min": 2.4434,
+        "max": 2.4545
+      },
+      "after_imgui_ms": 0.459,
+      "after_scene_state_ms": 0.0364,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 39,
+      "difference_bbox": [
+        1194,
+        131,
+        1362,
+        165
+      ]
+    },
+    "uv_surface": {
+      "before_fps": {
+        "median": 329.1564,
+        "min": 328.923,
+        "max": 329.8042
+      },
+      "after_fps": {
+        "median": 239.9819,
+        "min": 239.7367,
+        "max": 240.3083
+      },
+      "before_frame_ms": {
+        "median": 3.1242,
+        "min": 3.0293,
+        "max": 3.2075
+      },
+      "after_frame_ms": {
+        "median": 4.2035,
+        "min": 4.182,
+        "max": 4.2431
+      },
+      "before_gpu_ms": {
+        "median": 0.5366,
+        "min": 0.5304,
+        "max": 0.5366
+      },
+      "after_gpu_ms": {
+        "median": 0.6124,
+        "min": 0.5555,
+        "max": 0.6277
+      },
+      "after_imgui_ms": 0.4701,
+      "after_scene_state_ms": 0.0536,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 10,
+      "difference_bbox": [
+        1361,
+        156,
+        1362,
+        165
+      ]
+    },
+    "uv_surface_edges": {
+      "before_fps": {
+        "median": 329.8911,
+        "min": 329.2329,
+        "max": 330.77
+      },
+      "after_fps": {
+        "median": 240.1367,
+        "min": 239.5667,
+        "max": 241.3319
+      },
+      "before_frame_ms": {
+        "median": 3.1095,
+        "min": 3.1079,
+        "max": 3.1126
+      },
+      "after_frame_ms": {
+        "median": 4.2409,
+        "min": 4.2373,
+        "max": 4.2454
+      },
+      "before_gpu_ms": {
+        "median": 1.8831,
+        "min": 1.8821,
+        "max": 1.8842
+      },
+      "after_gpu_ms": {
+        "median": 1.3281,
+        "min": 1.3271,
+        "max": 1.3294
+      },
+      "after_imgui_ms": 0.4689,
+      "after_scene_state_ms": 0.0523,
+      "identical_camera": true,
+      "pixel_identical_screenshot": false,
+      "pixel_identical_scene": true,
+      "scene_region": [
+        0,
+        0,
+        1095,
+        1800
+      ],
+      "legend_max_channel_difference": 10,
+      "difference_bbox": [
+        1361,
+        156,
+        1362,
+        165
+      ]
+    }
+  },
+  "operations": {
+    "grid_color": {
+      "before_ready_ms": {
+        "median": 1000.458,
+        "min": 968.8191,
+        "max": 1003.3122
+      },
+      "after_ready_ms": {
+        "median": 127.3124,
+        "min": 117.1741,
+        "max": 129.6331
+      }
+    },
+    "grid_density": {
+      "before_ready_ms": {
+        "median": 994.4751,
+        "min": 955.0973,
+        "max": 1020.759
+      },
+      "after_ready_ms": {
+        "median": 123.5484,
+        "min": 121.1303,
+        "max": 159.9992
+      }
+    },
+    "import": {
+      "before_ready_ms": {
+        "median": 1592.6469,
+        "min": 910.4946,
+        "max": 1778.0804
+      },
+      "after_ready_ms": {
+        "median": 1257.3751,
+        "min": 1230.1275,
+        "max": 1288.356
+      }
+    },
+    "metric_angle": {
+      "before_ready_ms": {
+        "median": 4868.1023,
+        "min": 4859.3785,
+        "max": 4936.0621
+      },
+      "after_ready_ms": {
+        "median": 838.0516,
+        "min": 829.874,
+        "max": 900.6137
+      }
+    },
+    "metric_area": {
+      "before_ready_ms": {
+        "median": 4873.7728,
+        "min": 4838.1393,
+        "max": 4882.0726
+      },
+      "after_ready_ms": {
+        "median": 857.2633,
+        "min": 843.5411,
+        "max": 928.1983
+      }
+    },
+    "metric_orientation": {
+      "before_ready_ms": {
+        "median": 4870.1209,
+        "min": 4866.7526,
+        "max": 4911.4406
+      },
+      "after_ready_ms": {
+        "median": 849.9839,
+        "min": 838.8825,
+        "max": 923.9457
+      }
+    },
+    "solid_frame_camera": {
+      "before_ready_ms": {
+        "median": 55.9035,
+        "min": 54.6656,
+        "max": 59.4236
+      },
+      "after_ready_ms": {
+        "median": 63.2271,
+        "min": 54.4606,
+        "max": 78.7112
+      }
+    },
+    "source_grid_frame_camera": {
+      "before_ready_ms": {
+        "median": 60.5463,
+        "min": 45.2226,
+        "max": 61.3974
+      },
+      "after_ready_ms": {
+        "median": 63.8704,
+        "min": 50.1004,
+        "max": 87.4471
+      }
+    },
+    "uv_create": {
+      "before_ready_ms": {
+        "median": 1057.3127,
+        "min": 1046.9767,
+        "max": 1111.509
+      },
+      "after_ready_ms": {
+        "median": 494.9815,
+        "min": 468.6296,
+        "max": 508.9327
+      }
+    },
+    "uv_layout": {
+      "before_ready_ms": {
+        "median": 1043.3454,
+        "min": 1031.7788,
+        "max": 1055.8699
+      },
+      "after_ready_ms": {
+        "median": 327.4279,
+        "min": 303.624,
+        "max": 330.2506
+      }
+    },
+    "uv_layout_edges_frame_camera": {
+      "before_ready_ms": {
+        "median": 479.182,
+        "min": 453.1506,
+        "max": 483.3375
+      },
+      "after_ready_ms": {
+        "median": 49.2296,
+        "min": 46.0016,
+        "max": 54.2546
+      }
+    },
+    "uv_quality_create": {
+      "before_ready_ms": {
+        "median": 901.9778,
+        "min": 775.5724,
+        "max": 928.959
+      },
+      "after_ready_ms": {
+        "median": 767.1993,
+        "min": 762.7549,
+        "max": 802.3145
+      }
+    },
+    "uv_quality_layout": {
+      "before_ready_ms": {
+        "median": 1598.9252,
+        "min": 1557.1115,
+        "max": 1610.3588
+      },
+      "after_ready_ms": {
+        "median": 1028.3351,
+        "min": 996.1881,
+        "max": 1045.4243
+      }
+    },
+    "uv_quality_layout_edges_frame_camera": {
+      "before_ready_ms": {
+        "median": 477.8453,
+        "min": 453.4845,
+        "max": 479.11
+      },
+      "after_ready_ms": {
+        "median": 49.6252,
+        "min": 45.8028,
+        "max": 65.7396
+      }
+    },
+    "uv_quality_separated": {
+      "before_ready_ms": {
+        "median": 4067.3425,
+        "min": 4048.6689,
+        "max": 4087.8319
+      },
+      "after_ready_ms": {
+        "median": 1093.0813,
+        "min": 1089.7465,
+        "max": 1115.415
+      }
+    },
+    "uv_quality_separated_edges_frame_camera": {
+      "before_ready_ms": {
+        "median": 1703.9547,
+        "min": 1698.2656,
+        "max": 1737.2227
+      },
+      "after_ready_ms": {
+        "median": 50.5265,
+        "min": 50.3464,
+        "max": 60.1706
+      }
+    },
+    "uv_quality_surface": {
+      "before_ready_ms": {
+        "median": 166.8497,
+        "min": 153.9388,
+        "max": 234.7384
+      },
+      "after_ready_ms": {
+        "median": 138.4341,
+        "min": 137.0602,
+        "max": 163.2815
+      }
+    },
+    "uv_quality_surface_edges_frame_camera": {
+      "before_ready_ms": {
+        "median": 62.5045,
+        "min": 61.7105,
+        "max": 72.6126
+      },
+      "after_ready_ms": {
+        "median": 49.9948,
+        "min": 49.3325,
+        "max": 69.7028
+      }
+    },
+    "uv_quality_surface_frame_camera": {
+      "before_ready_ms": {
+        "median": 70.3918,
+        "min": 69.8696,
+        "max": 78.5439
+      },
+      "after_ready_ms": {
+        "median": 75.3135,
+        "min": 54.6318,
+        "max": 79.0026
+      }
+    },
+    "uv_separated": {
+      "before_ready_ms": {
+        "median": 1270.877,
+        "min": 1267.0592,
+        "max": 1300.2344
+      },
+      "after_ready_ms": {
+        "median": 557.7395,
+        "min": 545.8177,
+        "max": 558.6531
+      }
+    },
+    "uv_separated_edges_frame_camera": {
+      "before_ready_ms": {
+        "median": 422.2965,
+        "min": 419.3307,
+        "max": 427.5815
+      },
+      "after_ready_ms": {
+        "median": 71.2871,
+        "min": 53.7582,
+        "max": 87.3518
+      }
+    },
+    "uv_surface": {
+      "before_ready_ms": {
+        "median": 480.7666,
+        "min": 475.4719,
+        "max": 529.4809
+      },
+      "after_ready_ms": {
+        "median": 245.2121,
+        "min": 242.1688,
+        "max": 249.6295
+      }
+    },
+    "uv_surface_edges_frame_camera": {
+      "before_ready_ms": {
+        "median": 56.1381,
+        "min": 51.8773,
+        "max": 63.4702
+      },
+      "after_ready_ms": {
+        "median": 68.1938,
+        "min": 49.4912,
+        "max": 160.444
+      }
+    },
+    "uv_surface_frame_camera": {
+      "before_ready_ms": {
+        "median": 75.8608,
+        "min": 62.0997,
+        "max": 88.2539
+      },
+      "after_ready_ms": {
+        "median": 54.5643,
+        "min": 54.1257,
+        "max": 59.0815
+      }
+    }
+  },
+  "pixel_identical_screenshots": 2,
+  "pixel_identical_scene_regions": 10,
+  "visual_validation": "All ten scene regions are pixel-identical and all camera payloads match exactly. Full images differ only at 9-99 legend text pixels in eight analysis captures; solid and source-grid images are entirely identical."
+}

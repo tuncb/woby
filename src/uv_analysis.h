@@ -4,7 +4,9 @@
 #include "scene_up_axis.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
+#include <stop_token>
 
 namespace woby {
 
@@ -55,6 +57,36 @@ inline std::array<float, 3> uvLayoutPosition(const UvLayoutFrame& frame, const s
     return result;
 }
 
-[[nodiscard]] Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated = false);
+struct UvPatchLayout {
+    UvLayoutFrame frame;
+    std::array<float, 2> offset{};
+};
+
+inline UvPatchLayout uvPatchLayout(const UvLayoutFrame& frame, const UvExtent& extent,
+    const UvExtent& local, size_t patch, size_t patchCount, bool separated)
+{
+    UvPatchLayout result{frame, {}};
+    if (!separated) { return result; }
+    const auto columns = static_cast<size_t>(std::ceil(std::sqrt(static_cast<double>(patchCount))));
+    const auto rows = (patchCount + columns - 1) / columns;
+    const double width = (extent.max[0] - extent.min[0]) * frame.scale;
+    const double height = (extent.max[1] - extent.min[1]) * frame.scale;
+    const double gap = std::max({width, height, 1e-6}) * .15;
+    result.frame.uvCenter = {(local.min[0]+local.max[0])*.5, (local.min[1]+local.max[1])*.5};
+    result.offset = {
+        static_cast<float>((static_cast<double>(patch%columns)-static_cast<double>(columns-1)*.5)*(width+gap)),
+        static_cast<float>((static_cast<double>(patch/columns)-static_cast<double>(rows-1)*.5)*(height+gap))};
+    return result;
+}
+
+inline std::array<float, 3> uvPatchPosition(const UvPatchLayout& patch, const std::array<float, 2>& uv)
+{
+    auto position = uvLayoutPosition(patch.frame, uv);
+    position[0] += patch.offset[0];
+    position[patch.frame.upAxis == SceneUpAxis::y ? 1 : 2] += patch.offset[1];
+    return position;
+}
+
+[[nodiscard]] Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated = false, std::stop_token stop = {});
 
 } // namespace woby

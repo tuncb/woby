@@ -2,6 +2,7 @@
 
 #include "ui_state.h"
 #include <optional>
+#include <stop_token>
 
 namespace woby
 {
@@ -37,5 +38,35 @@ struct ComparisonInputSummary
 [[nodiscard]] Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id);
+
+struct ComparisonInputPart {
+    size_t fileIndex = 0, groupIndex = 0;
+    CoordinateMatrix parent{};
+};
+
+// Owns only participating files. Workers never borrow the live scene's vectors.
+struct ComparisonInputSnapshot {
+    std::vector<UiFileState> files;
+    std::array<std::vector<ComparisonInputPart>, 2> parts;
+    ComparisonSettings settings;
+    SceneUpAxis upAxis = SceneUpAxis::z;
+    Coordinate origin{};
+};
+
+[[nodiscard]] ComparisonInputSnapshot snapshotComparisonInputs(const UiState& state, SceneObjectId id);
+[[nodiscard]] Mesh comparisonWorldMesh(const ComparisonInputSnapshot& snapshot, ComparisonSide side,
+    std::stop_token stop = {});
+
+struct PreparedComparisonSource {
+    std::vector<Vertex> quality;
+    std::vector<uint32_t> lines;
+};
+struct PreparedComparisonInputs {
+    std::shared_ptr<const std::array<Mesh, 2>> meshes;
+    std::array<PreparedComparisonSource, 2> buffers;
+};
+// CPU-only preparation; the runtime uploads these buffers on the graphics thread.
+[[nodiscard]] PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot& snapshot,
+    std::stop_token stop = {});
 
 } // namespace woby

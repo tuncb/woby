@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mesh_comparison.h"
+#include "comparison_scene.h"
 #include "scene_renderer.h"
 
 #include <future>
@@ -46,6 +47,10 @@ struct IntersectionRuntime {
 
 struct ComparisonRuntime
 {
+    std::stop_source preparationStop;
+    std::future<std::shared_ptr<const PreparedComparisonInputs>> preparationWorker;
+    uint64_t preparationSignature = 0;
+    std::shared_ptr<const PreparedComparisonInputs> prepared;
     std::stop_source stop;
     std::future<MeshComparison> worker;
     uint64_t workerSignature = 0;

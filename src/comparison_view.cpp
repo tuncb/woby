@@ -34,7 +34,8 @@ ComparisonActivity comparisonActivity(const UiState& state, const ComparisonRunt
         || comparisonResultsReady(runtime, state, id)) { return ComparisonActivity::idle; }
     const auto signature = comparisonGeometrySignature(state, id);
     if (!runtime.error.empty() && runtime.attemptedSignature == signature) { return ComparisonActivity::failed; }
-    return runtime.worker.valid() && runtime.workerSignature == signature && !runtime.stop.stop_requested()
+    return ((runtime.preparationWorker.valid() && runtime.preparationSignature == signature && !runtime.preparationStop.stop_requested())
+        || (runtime.worker.valid() && runtime.workerSignature == signature && !runtime.stop.stop_requested()))
         ? ComparisonActivity::calculating : ComparisonActivity::queued;
 }
 
@@ -154,7 +155,8 @@ void uploadDuplicateOverlays(ComparisonGpuSurface& gpu, const SurfaceComparison&
     }
 }
 
-void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, uint32_t stages)
+void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, uint32_t stages,
+    const PreparedComparisonSource* prepared = nullptr)
 {
     if (surface.source.indices.empty()) { return; }
     if (stages & comparisonSource) {
@@ -163,24 +165,24 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         const auto lineBytes = comparisonBufferBytes(surface.source.indices.size(), 2 * sizeof(uint32_t));
         if (surface.source.uvQuality) {
             const auto qualityBytes = comparisonBufferBytes(surface.source.indices.size(),sizeof(Vertex));
-            const auto values = uvQualityVertices(surface.source);
-            gpu.quality = woby::graphics::createVertexBuffer(woby::graphics::copy(values.data(), qualityBytes),meshVertexLayout());
+            const auto values = prepared ? std::vector<Vertex>{} : uvQualityVertices(surface.source);
+            gpu.quality = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? prepared->quality.data() : values.data(), qualityBytes),meshVertexLayout());
             if (!woby::graphics::isValid(gpu.quality)) { throw std::runtime_error("Cannot allocate UV quality buffer."); }
         }
-        auto vertices = surface.source.vertices;
-        generateSmoothNormals(vertices, surface.source.indices);
-        gpu.vertices = woby::graphics::createVertexBuffer(woby::graphics::copy(vertices.data(), vertexBytes), meshVertexLayout());
+        auto vertices = prepared ? std::vector<Vertex>{} : surface.source.vertices;
+        if (!prepared) { generateSmoothNormals(vertices, surface.source.indices); }
+        gpu.vertices = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? surface.source.vertices.data() : vertices.data(), vertexBytes), meshVertexLayout());
         const auto& indices = surface.source.indices;
         gpu.triangles = woby::graphics::createIndexBuffer(woby::graphics::copy(indices.data(), indexBytes), WOBY_GPU_BUFFER_INDEX32);
         std::vector<uint32_t> lines;
-        lines.reserve(indices.size() * 2);
-        for (size_t i = 0; i < indices.size(); i += 3) {
+        if (!prepared) { lines.reserve(indices.size() * 2); }
+        for (size_t i = 0; !prepared && i < indices.size(); i += 3) {
             for (size_t k = 0; k < 3; ++k) {
                 lines.push_back(indices[i + k]);
                 lines.push_back(indices[i + (k + 1) % 3]);
             }
         }
-        gpu.lines = woby::graphics::createIndexBuffer(woby::graphics::copy(lines.data(), lineBytes), WOBY_GPU_BUFFER_INDEX32);
+        gpu.lines = woby::graphics::createIndexBuffer(woby::graphics::copy(prepared ? prepared->lines.data() : lines.data(), lineBytes), WOBY_GPU_BUFFER_INDEX32);
         if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles) || !woby::graphics::isValid(gpu.lines)) {
             throw std::runtime_error("Cannot allocate analysis surface buffers.");
         }
@@ -1227,6 +1229,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         resetComparisonDiagnosticFocus(state, id);
     }
     if (resetComparisonCache(runtime.cache, wanted)) {
+        runtime.preparationStop.request_stop();
+        runtime.prepared.reset();
         runtime.stop.request_stop(); invalidateIntersection();
         invalidateComparisonDetectors(runtime.result, comparisonDetectors);
         auto detectors = std::move(runtime.result.detectors);
@@ -1238,6 +1242,21 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.retryDetectorsSeparately = false;
         runtime.resultSignature = runtime.attemptedSignature = 0; runtime.error.clear();
         resetComparisonDiagnosticFocus(state, id);
+    }
+    if (runtime.preparationWorker.valid() && runtime.preparationWorker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        try {
+            auto prepared = runtime.preparationWorker.get();
+            if (!runtime.preparationStop.stop_requested() && runtime.preparationSignature == wanted) {
+                runtime.prepared = std::move(prepared);
+                runtime.inputs = runtime.prepared->meshes;
+            }
+        } catch (const std::exception& error) {
+            if (!runtime.preparationStop.stop_requested() && runtime.preparationSignature == wanted) {
+                runtime.error = error.what();
+                runtime.attemptedSignature = wanted;
+                runtime.failedStages |= comparisonSource;
+            }
+        }
     }
     if (resetComparisonTopologyCache(runtime.cache, settings.topologyMode)) {
         if (runtime.workerStages & comparisonTopology) { runtime.stop.request_stop(); }
@@ -1403,6 +1422,18 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         if (!wanted || !allowStart || !active || (!missing && !job.requested)) { return; }
         try {
             if (!runtime.inputs) {
+                if (isUvAnalysis(settings.type)) {
+                    if (!runtime.preparationWorker.valid()) {
+                        auto snapshot = snapshotComparisonInputs(state, id);
+                        runtime.preparationStop = std::stop_source{};
+                        runtime.preparationSignature = runtime.attemptedSignature = wanted;
+                        runtime.preparationWorker = std::async(std::launch::async,
+                            [snapshot = std::move(snapshot), stop = runtime.preparationStop.get_token()]() -> std::shared_ptr<const PreparedComparisonInputs> {
+                                return std::make_shared<PreparedComparisonInputs>(prepareUvComparisonInputs(snapshot, stop));
+                            });
+                    }
+                    return;
+                }
                 auto inputs = std::make_shared<std::array<Mesh, 2>>();
                 if (enabledComparisonPartCount(state, ComparisonSide::a, id)) { (*inputs)[0] = comparisonWorldMesh(state, ComparisonSide::a, id); }
                 if (enabledComparisonPartCount(state, ComparisonSide::b, id)) { (*inputs)[1] = comparisonWorldMesh(state, ComparisonSide::b, id); }
@@ -1455,8 +1486,10 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
             comparisonDegenerates, comparisonQuality, comparisonDistance, comparisonIntersections}) {
             if (!(pending & stage)) { continue; }
             try {
-                uploadSurface(runtime.originalGpu, runtime.result.original, stage); uploadSurface(runtime.repairedGpu, runtime.result.repaired, stage);
+                uploadSurface(runtime.originalGpu, runtime.result.original, stage, runtime.prepared ? &runtime.prepared->buffers[0] : nullptr);
+                uploadSurface(runtime.repairedGpu, runtime.result.repaired, stage, runtime.prepared ? &runtime.prepared->buffers[1] : nullptr);
                 runtime.uploadedStages |= stage;
+                if (stage & comparisonSource) { runtime.prepared.reset(); }
             } catch (const std::exception& error) {
                 invalidateGpu(stage); runtime.failedStages |= stage; runtime.attemptedSignature = wanted;
                 if (stage == comparisonIntersections) { phase(IntersectionPhase::failed, error.what()); }
@@ -1490,6 +1523,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
 
 static void destroyComparisonRuntime(ComparisonRuntime &runtime)
 {
+    runtime.preparationStop.request_stop();
+    if (runtime.preparationWorker.valid()) { runtime.preparationWorker.wait(); }
     runtime.intersection.stop.request_stop();
     if (runtime.intersection.worker.valid()) { runtime.intersection.worker.wait(); }
     if (runtime.worker.valid())
@@ -1512,7 +1547,10 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
     for (const auto& comparison : state.comparisons) {
         auto& runtime = runtimes.objects[comparison.objectId];
         size_t active = 0;
-        for (const auto& item : runtimes.objects) { active += item.second.worker.valid(); active += item.second.intersection.worker.valid(); }
+        for (const auto& item : runtimes.objects) {
+            active += item.second.preparationWorker.valid();
+            active += item.second.worker.valid(); active += item.second.intersection.worker.valid();
+        }
         updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
         validateComparisonDiagnosticFocus(state, runtime.result,
             runtime.ready ? runtime.resultSignature : 0, comparison.objectId);
@@ -1521,7 +1559,7 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
 
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes)
 {
-    for (auto& [id, runtime] : runtimes.objects) { (void)id; runtime.stop.request_stop(); }
+    for (auto& [id, runtime] : runtimes.objects) { (void)id; runtime.preparationStop.request_stop(); runtime.stop.request_stop(); }
     for (auto& [id, runtime] : runtimes.objects) { (void)id; destroyComparisonRuntime(runtime); }
     runtimes.objects.clear();
     if (woby::graphics::isValid(runtimes.program)) { woby::graphics::destroy(runtimes.program); runtimes.program = WOBY_GPU_INVALID_HANDLE; }

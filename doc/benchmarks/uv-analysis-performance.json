@@ -1,0 +1,540 @@
+{
+  "source_commit": "0ff49bc3f9e3c5bcb08a6f6e1528ac7250d8850e",
+  "date": "2026-10-02",
+  "build": "Release, Visual Studio 2026, vs2026-vcpkg",
+  "hardware": "Ryzen 7 5800H; RTX 3070 Laptop GPU; NVIDIA driver 616.92",
+  "renderer": "NoGraphicsAPI Vulkan",
+  "model": "D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj",
+  "model_bytes": 75585857,
+  "vertices": 547469,
+  "triangles": 1054542,
+  "groups": 65,
+  "method": [
+    "Three fresh desktop viewer processes; default 1280x720 logical window; default panes visible.",
+    "Four-sample MSAA and VSync requested by the app; no refresh-rate cap inferred from observed FPS.",
+    "Two-second warm-up, at least six seconds of sparse performance polling per scenario.",
+    "FPS is frame-counter delta divided by elapsed query midpoint time; GPU times are asynchronous whole-frame backend timestamps.",
+    "Analysis source hidden, analysis selected, helpers hidden; surfaces framed isometrically, layouts framed front-on.",
+    "UV layouts omit parts missing UVs. Camera is fitted independently for each representation; workloads and projected coverage differ.",
+    "Quality metric edits measured in separated layout. Operation ready latency includes CLI/RPC overhead, scheduling, result serialization and buffer preparation, not GPU completion.",
+    "First-round screenshots at 1920x1800 occur outside timing windows; they are not the desktop measurement resolution.",
+    "Medians/min/max below summarize three independent runs, not a complete per-frame distribution. No concurrent builds/tests during measurements.",
+    "Creation uses application defaults: UV starts in layout with edges; UV quality starts in surface mode without edges. Camera payloads match across all three rounds for every scenario."
+  ],
+  "findings": [
+    {
+      "source": "src/main.cpp:3229",
+      "finding": "Scene bounds recalculated unconditionally on every frame."
+    },
+    {
+      "source": "src/main.cpp:644",
+      "finding": "Visible camera toolbar independently computes selected object bounds on every frame."
+    },
+    {
+      "source": "src/comparison_scene.cpp:398",
+      "finding": "Ordinary UV layout bounds transform every indexed triangle corner and scan UV extents."
+    },
+    {
+      "source": "src/comparison_scene.cpp:391",
+      "finding": "Separated bounds rebuild comparisonWorldMesh; UV quality also reruns analyzeUvQuality at line 342."
+    },
+    {
+      "source": "src/comparison_scene.cpp:359",
+      "finding": "Quality metric participates in geometry signature, so metric changes invalidate and rebuild geometry."
+    }
+  ],
+  "validation": "Debug and Release builds completed without warnings; all 744 Debug CTest tests passed. No production implementation changes.",
+  "reproduce": "uv run tests/uv_analysis_performance.py build/vs2026-vcpkg/bin/Release/woby.exe D:/temp/obj_tests/uploads_files_2720101_BusGameMap.obj build/uv-analysis-performance-new --rounds 3 --seconds 6",
+  "scenarios": {
+    "solid": {
+      "fps": {
+        "median": 329.7995,
+        "min": 327.106,
+        "max": 330.2889
+      },
+      "frame_ms": {
+        "median": 3.0654,
+        "min": 3.0469,
+        "max": 3.1486
+      },
+      "gpu_ms": {
+        "median": 0.471,
+        "min": 0.4669,
+        "max": 0.4721
+      },
+      "imgui_build_ms": {
+        "median": 0.1585,
+        "min": 0.1569,
+        "max": 0.1667
+      },
+      "scene_state_ms": {
+        "median": 0.0249,
+        "min": 0.0248,
+        "max": 0.0252
+      },
+      "sample_counts": [
+        38,
+        37,
+        38
+      ]
+    },
+    "source_grid": {
+      "fps": {
+        "median": 330.0034,
+        "min": 329.262,
+        "max": 332.1846
+      },
+      "frame_ms": {
+        "median": 3.1041,
+        "min": 3.0996,
+        "max": 3.1153
+      },
+      "gpu_ms": {
+        "median": 0.4833,
+        "min": 0.4823,
+        "max": 0.4854
+      },
+      "imgui_build_ms": {
+        "median": 0.163,
+        "min": 0.1622,
+        "max": 0.1639
+      },
+      "scene_state_ms": {
+        "median": 0.025,
+        "min": 0.0249,
+        "max": 0.025
+      },
+      "sample_counts": [
+        37,
+        37,
+        38
+      ]
+    },
+    "uv_layout_edges": {
+      "fps": {
+        "median": 3.1798,
+        "min": 3.1771,
+        "max": 3.2466
+      },
+      "frame_ms": {
+        "median": 313.0152,
+        "min": 304.894,
+        "max": 315.1336
+      },
+      "gpu_ms": {
+        "median": 20.1974,
+        "min": 20.182,
+        "max": 20.2179
+      },
+      "imgui_build_ms": {
+        "median": 162.0147,
+        "min": 150.6262,
+        "max": 162.0433
+      },
+      "scene_state_ms": {
+        "median": 151.4155,
+        "min": 149.6483,
+        "max": 152.0695
+      },
+      "sample_counts": [
+        20,
+        20,
+        20
+      ]
+    },
+    "uv_quality_layout_edges": {
+      "fps": {
+        "median": 3.1768,
+        "min": 3.152,
+        "max": 3.2533
+      },
+      "frame_ms": {
+        "median": 314.0783,
+        "min": 309.0679,
+        "max": 316.7232
+      },
+      "gpu_ms": {
+        "median": 21.6054,
+        "min": 21.4333,
+        "max": 21.6172
+      },
+      "imgui_build_ms": {
+        "median": 162.116,
+        "min": 152.9484,
+        "max": 163.4405
+      },
+      "scene_state_ms": {
+        "median": 151.5904,
+        "min": 150.4888,
+        "max": 153.3458
+      },
+      "sample_counts": [
+        19,
+        20,
+        20
+      ]
+    },
+    "uv_quality_separated_edges": {
+      "fps": {
+        "median": 0.9277,
+        "min": 0.9269,
+        "max": 0.942
+      },
+      "frame_ms": {
+        "median": 1153.6786,
+        "min": 1136.2426,
+        "max": 1157.7165
+      },
+      "gpu_ms": {
+        "median": 29.9464,
+        "min": 29.5506,
+        "max": 30.2546
+      },
+      "imgui_build_ms": {
+        "median": 574.9827,
+        "min": 565.642,
+        "max": 581.5667
+      },
+      "scene_state_ms": {
+        "median": 572.0655,
+        "min": 568.6778,
+        "max": 577.0082
+      },
+      "sample_counts": [
+        6,
+        6,
+        6
+      ]
+    },
+    "uv_quality_surface": {
+      "fps": {
+        "median": 329.3547,
+        "min": 328.9156,
+        "max": 329.6
+      },
+      "frame_ms": {
+        "median": 3.1701,
+        "min": 3.0822,
+        "max": 3.2584
+      },
+      "gpu_ms": {
+        "median": 0.5949,
+        "min": 0.5878,
+        "max": 0.598
+      },
+      "imgui_build_ms": {
+        "median": 0.49,
+        "min": 0.48,
+        "max": 0.5011
+      },
+      "scene_state_ms": {
+        "median": 0.0518,
+        "min": 0.0497,
+        "max": 0.0523
+      },
+      "sample_counts": [
+        38,
+        36,
+        39
+      ]
+    },
+    "uv_quality_surface_edges": {
+      "fps": {
+        "median": 330.2577,
+        "min": 329.9657,
+        "max": 330.6172
+      },
+      "frame_ms": {
+        "median": 3.1178,
+        "min": 3.0523,
+        "max": 3.1659
+      },
+      "gpu_ms": {
+        "median": 1.952,
+        "min": 1.9507,
+        "max": 1.9584
+      },
+      "imgui_build_ms": {
+        "median": 0.4963,
+        "min": 0.4881,
+        "max": 0.5024
+      },
+      "scene_state_ms": {
+        "median": 0.0514,
+        "min": 0.0502,
+        "max": 0.0516
+      },
+      "sample_counts": [
+        39,
+        37,
+        38
+      ]
+    },
+    "uv_separated_edges": {
+      "fps": {
+        "median": 3.492,
+        "min": 3.4596,
+        "max": 3.5474
+      },
+      "frame_ms": {
+        "median": 283.3403,
+        "min": 278.7194,
+        "max": 283.3531
+      },
+      "gpu_ms": {
+        "median": 21.2265,
+        "min": 21.0811,
+        "max": 21.3842
+      },
+      "imgui_build_ms": {
+        "median": 140.5329,
+        "min": 138.9598,
+        "max": 141.791
+      },
+      "scene_state_ms": {
+        "median": 140.9236,
+        "min": 138.4025,
+        "max": 141.1153
+      },
+      "sample_counts": [
+        21,
+        21,
+        22
+      ]
+    },
+    "uv_surface": {
+      "fps": {
+        "median": 329.1564,
+        "min": 328.923,
+        "max": 329.8042
+      },
+      "frame_ms": {
+        "median": 3.1242,
+        "min": 3.0293,
+        "max": 3.2075
+      },
+      "gpu_ms": {
+        "median": 0.5366,
+        "min": 0.5304,
+        "max": 0.5366
+      },
+      "imgui_build_ms": {
+        "median": 0.4417,
+        "min": 0.4352,
+        "max": 0.4594
+      },
+      "scene_state_ms": {
+        "median": 0.0529,
+        "min": 0.0505,
+        "max": 0.0531
+      },
+      "sample_counts": [
+        35,
+        37,
+        35
+      ]
+    },
+    "uv_surface_edges": {
+      "fps": {
+        "median": 329.8911,
+        "min": 329.2329,
+        "max": 330.77
+      },
+      "frame_ms": {
+        "median": 3.1095,
+        "min": 3.1079,
+        "max": 3.1126
+      },
+      "gpu_ms": {
+        "median": 1.8831,
+        "min": 1.8821,
+        "max": 1.8842
+      },
+      "imgui_build_ms": {
+        "median": 0.4468,
+        "min": 0.4345,
+        "max": 0.4554
+      },
+      "scene_state_ms": {
+        "median": 0.0521,
+        "min": 0.0502,
+        "max": 0.0531
+      },
+      "sample_counts": [
+        37,
+        37,
+        36
+      ]
+    }
+  },
+  "operations": {
+    "grid_color": {
+      "ready_ms": {
+        "median": 1000.458,
+        "min": 968.8191,
+        "max": 1003.3122
+      }
+    },
+    "grid_density": {
+      "ready_ms": {
+        "median": 994.4751,
+        "min": 955.0973,
+        "max": 1020.759
+      }
+    },
+    "import": {
+      "ready_ms": {
+        "median": 1592.6469,
+        "min": 910.4946,
+        "max": 1778.0804
+      }
+    },
+    "metric_angle": {
+      "ready_ms": {
+        "median": 4868.1023,
+        "min": 4859.3785,
+        "max": 4936.0621
+      }
+    },
+    "metric_area": {
+      "ready_ms": {
+        "median": 4873.7728,
+        "min": 4838.1393,
+        "max": 4882.0726
+      }
+    },
+    "metric_orientation": {
+      "ready_ms": {
+        "median": 4870.1209,
+        "min": 4866.7526,
+        "max": 4911.4406
+      }
+    },
+    "solid_frame_camera": {
+      "ready_ms": {
+        "median": 55.9035,
+        "min": 54.6656,
+        "max": 59.4236
+      }
+    },
+    "source_grid_frame_camera": {
+      "ready_ms": {
+        "median": 60.5463,
+        "min": 45.2226,
+        "max": 61.3974
+      }
+    },
+    "uv_create": {
+      "ready_ms": {
+        "median": 1057.3127,
+        "min": 1046.9767,
+        "max": 1111.509
+      }
+    },
+    "uv_layout": {
+      "ready_ms": {
+        "median": 1043.3454,
+        "min": 1031.7788,
+        "max": 1055.8699
+      }
+    },
+    "uv_layout_edges_frame_camera": {
+      "ready_ms": {
+        "median": 479.182,
+        "min": 453.1506,
+        "max": 483.3375
+      }
+    },
+    "uv_quality_create": {
+      "ready_ms": {
+        "median": 901.9778,
+        "min": 775.5724,
+        "max": 928.959
+      }
+    },
+    "uv_quality_layout": {
+      "ready_ms": {
+        "median": 1598.9252,
+        "min": 1557.1115,
+        "max": 1610.3588
+      }
+    },
+    "uv_quality_layout_edges_frame_camera": {
+      "ready_ms": {
+        "median": 477.8453,
+        "min": 453.4845,
+        "max": 479.11
+      }
+    },
+    "uv_quality_separated": {
+      "ready_ms": {
+        "median": 4067.3425,
+        "min": 4048.6689,
+        "max": 4087.8319
+      }
+    },
+    "uv_quality_separated_edges_frame_camera": {
+      "ready_ms": {
+        "median": 1703.9547,
+        "min": 1698.2656,
+        "max": 1737.2227
+      }
+    },
+    "uv_quality_surface": {
+      "ready_ms": {
+        "median": 166.8497,
+        "min": 153.9388,
+        "max": 234.7384
+      }
+    },
+    "uv_quality_surface_edges_frame_camera": {
+      "ready_ms": {
+        "median": 62.5045,
+        "min": 61.7105,
+        "max": 72.6126
+      }
+    },
+    "uv_quality_surface_frame_camera": {
+      "ready_ms": {
+        "median": 70.3918,
+        "min": 69.8696,
+        "max": 78.5439
+      }
+    },
+    "uv_separated": {
+      "ready_ms": {
+        "median": 1270.877,
+        "min": 1267.0592,
+        "max": 1300.2344
+      }
+    },
+    "uv_separated_edges_frame_camera": {
+      "ready_ms": {
+        "median": 422.2965,
+        "min": 419.3307,
+        "max": 427.5815
+      }
+    },
+    "uv_surface": {
+      "ready_ms": {
+        "median": 480.7666,
+        "min": 475.4719,
+        "max": 529.4809
+      }
+    },
+    "uv_surface_edges_frame_camera": {
+      "ready_ms": {
+        "median": 56.1381,
+        "min": 51.8773,
+        "max": 63.4702
+      }
+    },
+    "uv_surface_frame_camera": {
+      "ready_ms": {
+        "median": 75.8608,
+        "min": 62.0997,
+        "max": 88.2539
+      }
+    }
+  }
+}

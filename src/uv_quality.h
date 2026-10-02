@@ -2,6 +2,7 @@
 
 #include "comparison_settings.h"
 #include "model_mesh.h"
+#include <stop_token>
 
 namespace woby {
 
@@ -20,7 +21,8 @@ struct UvQuality {
     size_t missing = 0, collapsed = 0, degenerateSurface = 0, mixedOrientationPatches = 0;
 };
 
-[[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric);
-[[nodiscard]] std::vector<Vertex> uvQualityVertices(const Mesh& display);
+[[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric,
+    std::stop_token stop = {});
+[[nodiscard]] std::vector<Vertex> uvQualityVertices(const Mesh& display, std::stop_token stop = {});
 
 } // namespace woby

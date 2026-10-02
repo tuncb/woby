@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <stdexcept>
 
 namespace woby {
 namespace {
@@ -18,8 +19,9 @@ double crossLength(const Coordinate& a, const Coordinate& b)
 double angle(const Coordinate& a, const Coordinate& b) { return std::atan2(crossLength(a,b), dot(a,b)); }
 }
 
-UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric)
+UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric, std::stop_token stop)
 {
+    if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
     UvQuality result;
     result.normalization = normalization;
     result.metric = metric;
@@ -29,6 +31,7 @@ UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, 
         double worldArea = 0, uvArea = 0;
         bool positive = false, negative = false;
         for (size_t t = begin; t < end; ++t) {
+            if (t % 4096 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
             auto& q = result.triangles.at(t);
             q.partId = node.sourceObjectId; q.triangle = t-begin+1;
             if (!node.hasTexcoords) { q.missing = true; ++result.missing; continue; }
@@ -63,6 +66,7 @@ UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, 
         const double baselineLog2 = normalization == UvAreaNormalization::perPatch && worldArea > 0
             ? std::log2(uvArea)-std::log2(worldArea) : 0;
         for (size_t t = begin; t < end; ++t) {
+            if (t % 4096 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
             auto& q = result.triangles[t];
             q.mixedOrientation = positive && negative && q.orientation != 0;
             if (q.missing || q.collapsed || q.degenerateSurface) { continue; }
@@ -72,13 +76,15 @@ UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, 
     return result;
 }
 
-std::vector<Vertex> uvQualityVertices(const Mesh& display)
+std::vector<Vertex> uvQualityVertices(const Mesh& display, std::stop_token stop)
 {
+    if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
     std::vector<Vertex> result;
     if (!display.uvQuality) { return result; }
     result.reserve(display.indices.size());
     for (const auto& node : display.nodes) {
         for (size_t i = 0; i < node.indexCount; i += 3) {
+            if (i % 12288 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
             const auto& q = display.uvQuality->triangles.at(node.uvQualityOffset+i/3);
             float value = 0;
             if (display.uvQuality->metric == UvQualityMetric::angle) { value = static_cast<float>(q.angleDegrees/90); }

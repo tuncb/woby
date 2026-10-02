@@ -37,6 +37,8 @@ Any new user-editable scene property must be handled in three places: UiState, u
 Transformation functions should be deterministic, free functions over structs, with no ImGui/SDL/bgfx dependencies.
 Clamp and validate state at operation/load boundaries, not in rendering code.
 Render code should only draw from the already-updated state; it should not change logical state.
+Cache reusable derived results and invalidate them when their inputs change; do not recalculate them every frame.
+Keep expensive CPU work that can run asynchronously off the render/UI thread. Use owned snapshots for workers and publish only results that still match the current inputs.
 
 # Code style rules
 
