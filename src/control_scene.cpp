@@ -128,14 +128,16 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             return {{"settings", fileInfo(file)}, {"importerId", file.importerId},
                 {"vertexCount", file.mesh.vertices.size()}, {"triangleCount", file.mesh.indices.size() / 3},
                 {"lineSegmentCount", file.mesh.lineIndices.size() / 2},
+                {"pointCount", file.mesh.pointIndices.size()},
                 {"groupCount", file.groupSettings.size()}, {"localBounds", originalBoundsInfo(file.mesh, file.mesh.bounds.radius)}};
         }
         for (size_t index = 0; index < file.groupSettings.size(); ++index) {
             const auto& group = file.groupSettings[index];
             if (group.objectId == id) {
                 return {{"settings", groupInfo(group)}, {"triangleCount", file.mesh.nodes.at(index).indexCount / 3},
-                    {"primitive", file.mesh.nodes[index].lineIndexCount ? "lines" : "triangles"},
+                    {"primitive", file.mesh.nodes[index].pointIndexCount ? "points" : file.mesh.nodes[index].lineIndexCount ? "lines" : "triangles"},
                     {"lineSegmentCount", file.mesh.nodes[index].lineIndexCount / 2},
+                    {"pointCount", file.mesh.nodes[index].pointIndexCount},
                     {"hasTexcoords", file.mesh.nodes.at(index).hasTexcoords},
                     {"localBounds", group.localBoundsValid ? originalBoundsInfo(file.mesh, group.localBounds.radius, &file.mesh.nodes[index]) : Json(nullptr)}};
             }
@@ -172,7 +174,8 @@ Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdForma
         } else {
             const auto& group = file.groupSettings.at(node.groupIndex);
             result["kind"] = "group";
-            result["primitive"] = file.mesh.nodes.at(node.groupIndex).lineIndexCount ? "lines" : "triangles";
+            const auto& meshNode = file.mesh.nodes.at(node.groupIndex);
+            result["primitive"] = meshNode.pointIndexCount ? "points" : meshNode.lineIndexCount ? "lines" : "triangles";
             result["fileId"] = formatId(file.objectId);
             result["settings"] = groupInfo(group);
             groupTransformMatrix(group, local.data());
@@ -255,10 +258,11 @@ void editTransform(Target& target, const ControlOperation& command)
 
 Json controlSceneInfo(const UiState& state)
 {
-    size_t vertices = 0, triangles = 0, lineSegments = 0;
+    size_t vertices = 0, triangles = 0, lineSegments = 0, points = 0;
     for (const auto& file : state.files) {
         vertices += file.mesh.vertices.size(); triangles += file.mesh.indices.size() / 3;
         lineSegments += file.mesh.lineIndices.size() / 2;
+        points += file.mesh.pointIndices.size();
     }
     Json modes = Json::object();
     const size_t groups = totalGroupCount(state);
@@ -266,7 +270,7 @@ Json controlSceneInfo(const UiState& state)
     modes["triangles"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::triangles), groups);
     modes["vertices"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::vertices), groups);
     return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"analysisCount", state.comparisons.size()}, {"annotationCount", state.annotations.size()}, {"groupCount", groups},
-        {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles}, {"lineSegmentCount", lineSegments},
+        {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles}, {"lineSegmentCount", lineSegments}, {"pointCount", points},
         {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
         {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
         {"coordinateOrigin", state.coordinateOrigin.value_or(Coordinate{})},

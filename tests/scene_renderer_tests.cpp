@@ -180,5 +180,38 @@ TEST_CASE("GPU uploads reject invalid indices and ranges before allocating")
         "Scene contains an invalid primitive range.");
     mesh.lineIndices.push_back(2);
     CHECK_THROWS_WITH((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()),
-        "Scene needs valid triangles or line segments.");
+        "Scene needs valid triangles, line segments or points.");
+}
+
+
+TEST_CASE("GPU standalone points use point buffers without triangle or line buffers")
+{
+    RendererFixture fixture;
+    woby::graphics::Init init; init.type = woby::graphics::RendererType::Noop;
+    init.resolution.width = init.resolution.height = 1;
+    fixture.initialized = woby::graphics::init(init);
+    REQUIRE(fixture.initialized);
+    woby::Mesh mesh; mesh.vertices.resize(3);
+    mesh.pointIndices = {2,0,2,1};
+    woby::MeshNode first; first.name = "first"; first.pointIndexCount = 3;
+    woby::MeshNode second; second.name = "second"; second.pointIndexOffset = 3; second.pointIndexCount = 1;
+    mesh.nodes = {first, second};
+    SUBCASE("valid point geometry") {
+        fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout(), woby::gpuMeshPoints);
+        CHECK(woby::graphics::isValid(fixture.mesh.pointIdBuffer));
+        CHECK_FALSE(woby::graphics::isValid(fixture.mesh.triangleIndexBuffer));
+        CHECK_FALSE(woby::graphics::isValid(fixture.mesh.importedLineBuffer));
+        CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{2,0,1});
+        REQUIRE(fixture.mesh.nodeRanges.size() == 2);
+        CHECK(fixture.mesh.nodeRanges[0].pointIndexCount == 2);
+        CHECK(fixture.mesh.nodeRanges[1].pointIndexOffset == 2);
+        CHECK(fixture.mesh.nodeRanges[1].pointIndexCount == 1);
+        return;
+    }
+    SUBCASE("invalid vertex") { mesh.pointIndices[0] = 3; }
+    SUBCASE("invalid range") { mesh.nodes[1].pointIndexCount = 2; }
+    SUBCASE("mixed primitives in one node") {
+        mesh.lineIndices = {0,1}; mesh.nodes[0].lineIndexCount = 2;
+    }
+    CHECK_THROWS_AS((void)woby::createGpuMesh(mesh, woby::meshVertexLayout()), std::runtime_error);
 }

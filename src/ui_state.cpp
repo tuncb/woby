@@ -470,13 +470,14 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
     std::vector<UiGroupState> settings;
     settings.reserve(mesh.nodes.size());
     size_t completed = 0, total = 0;
-    for (const auto& node : mesh.nodes) { total += size_t(node.indexCount) + node.lineIndexCount; }
+    for (const auto& node : mesh.nodes) { total += size_t(node.indexCount) + node.lineIndexCount + node.pointIndexCount; }
     reportModelLoadProgress(progress, ModelLoadStage::groups, 0, total);
 
     for (size_t groupIndex = 0; groupIndex < mesh.nodes.size(); ++groupIndex) {
         UiGroupState group;
         group.color = defaultGroupColor(firstColorIndex + groupIndex);
         const auto& node = mesh.nodes[groupIndex];
+        if (node.pointIndexCount) { group.showSolidMesh = false; group.showVertices = true; }
         setGroupVisible(group, node.defaultVisible);
         if (node.defaultColor) {
             const auto& color = *node.defaultColor;
@@ -487,7 +488,7 @@ std::vector<UiGroupState> createUiGroupStates(const Mesh& mesh, size_t firstColo
         group.localBoundsValid = true;
         group.originalBounds = originalMeshBounds(mesh, &mesh.nodes[groupIndex]);
         group.center = group.localBounds.center;
-        completed += size_t(node.indexCount) + node.lineIndexCount;
+        completed += size_t(node.indexCount) + node.lineIndexCount + node.pointIndexCount;
         settings.push_back(group);
     }
 
@@ -842,6 +843,7 @@ SceneDocument createSceneDocument(const UiState& state)
             SceneGroupRecord groupRecord;
             groupRecord.name = file.mesh.nodes[groupIndex].name;
             groupRecord.lineGroup = file.mesh.nodes[groupIndex].lineIndexCount != 0;
+            groupRecord.pointGroup = file.mesh.nodes[groupIndex].pointIndexCount != 0;
             groupRecord.settings = sceneGroupSettings(file.groupSettings[groupIndex]);
             fileRecord.groups.push_back(std::move(groupRecord));
         }
@@ -870,13 +872,15 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
         file.fileSettings.center = file.mesh.bounds.center;
         file.fileSettings.coordinateOffset = file.mesh.origin;
     }
-    if (!record.importerId.empty()) {
+    if (!record.importerId.empty() || std::any_of(record.groups.begin(), record.groups.end(),
+            [](const SceneGroupRecord& group) { return group.lineGroup || group.pointGroup; })) {
         if (record.importerId != file.importerId || record.groups.size() != file.mesh.nodes.size()) {
             throw std::runtime_error("Saved importer or group layout does not match the imported file.");
         }
         for (size_t i = 0; i < record.groups.size(); ++i) {
             if (record.groups[i].name != file.mesh.nodes[i].name
-                || record.groups[i].lineGroup != (file.mesh.nodes[i].lineIndexCount != 0)) {
+                || record.groups[i].lineGroup != (file.mesh.nodes[i].lineIndexCount != 0)
+                || record.groups[i].pointGroup != (file.mesh.nodes[i].pointIndexCount != 0)) {
                 throw std::runtime_error("Importer group order changed; cannot restore saved group settings.");
             }
         }

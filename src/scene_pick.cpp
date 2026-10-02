@@ -55,7 +55,8 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     const auto& group = file.groupSettings[groupIndex];
     const auto& node = file.mesh.nodes[groupIndex];
     opacity *= group.opacity;
-    if (!includeHidden && (!group.visible || opacity <= 0.0f || (!node.lineIndexCount && !group.showSolidMesh && !group.showTriangles && !group.showVertices))) { return; }
+    if (!includeHidden && (!group.visible || opacity <= 0.0f
+        || (node.pointIndexCount ? !group.showVertices : (!node.lineIndexCount && !group.showSolidMesh && !group.showTriangles && !group.showVertices)))) { return; }
     PickMatrix local;
     groupTransformMatrix(group, local.data());
     ScenePickPart part;
@@ -65,11 +66,13 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     part.indexCount = node.indexCount;
     part.lineIndexOffset = node.lineIndexOffset;
     part.lineIndexCount = node.lineIndexCount;
+    part.pointIndexOffset = node.pointIndexOffset;
+    part.pointIndexCount = node.pointIndexCount;
     part.lineWidth = node.lineIndexCount ? group.lines.width : 0;
     part.model = compose(parent, local);
     if (group.localBoundsValid) { part.bounds = group.localBounds; }
-    part.solid = !node.lineIndexCount && group.showSolidMesh;
-    part.edges = node.lineIndexCount || group.showTriangles;
+    part.solid = node.indexCount && group.showSolidMesh;
+    part.edges = node.lineIndexCount || (node.indexCount && group.showTriangles);
     part.edgeXray = node.lineIndexCount ? !group.lines.depthTest : true;
     part.vertices = group.showVertices;
     part.opacity = opacity;
@@ -369,6 +372,16 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             const auto clip = [&](const Point& p) { return transform(mvp, {p[0], p[1], p[2], 1}); };
             if (part.mesh) {
                 const auto& mesh = *part.mesh;
+                if (part.pointIndexCount && part.vertices) {
+                    for (const auto index : scenePartIndices(part)) {
+                        if (index >= mesh.vertices.size()) { continue; }
+                        const auto p = clip(meshPosition(mesh, index));
+                        if (!inside(p, view.homogeneousDepth)) { continue; }
+                        const auto xy = screen(p, view);
+                        const double radius = std::max(part.pointSize * .5, 3.0 * view.pixelScale);
+                        if (std::hypot(xy[0] - point[0], xy[1] - point[1]) <= radius) { closest(pointDepth, xy[2]); }
+                    }
+                }
                 if (part.lineIndexCount) {
                     const auto indices = scenePartIndices(part);
                     for (size_t i = 0; i + 1 < indices.size(); i += 2) {
@@ -459,9 +472,9 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
 std::span<const uint32_t> scenePartIndices(const ScenePickPart& part)
 {
     if (!part.mesh) { return {}; }
-    const auto& indices = part.lineIndexCount ? part.mesh->lineIndices : part.mesh->indices;
-    const auto begin = std::min(part.lineIndexCount ? part.lineIndexOffset : part.indexOffset, indices.size());
-    const auto count = std::min(part.lineIndexCount ? part.lineIndexCount : part.indexCount, indices.size() - begin);
+    const auto& indices = part.pointIndexCount ? part.mesh->pointIndices : part.lineIndexCount ? part.mesh->lineIndices : part.mesh->indices;
+    const auto begin = std::min(part.pointIndexCount ? part.pointIndexOffset : part.lineIndexCount ? part.lineIndexOffset : part.indexOffset, indices.size());
+    const auto count = std::min(part.pointIndexCount ? part.pointIndexCount : part.lineIndexCount ? part.lineIndexCount : part.indexCount, indices.size() - begin);
     return std::span<const uint32_t>(indices).subspan(begin, count);
 }
 
@@ -491,7 +504,7 @@ void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::
 {
     lines.clear();
     for (const auto& part : parts) {
-        if (!part.selected || !part.mesh || (part.indexCount == 0 && part.lineIndexCount == 0)) { continue; }
+        if (!part.selected || !part.mesh || (part.indexCount == 0 && part.lineIndexCount == 0 && part.pointIndexCount == 0)) { continue; }
         auto bounds = part.bounds;
         if (!bounds) {
             const auto& mesh = *part.mesh;

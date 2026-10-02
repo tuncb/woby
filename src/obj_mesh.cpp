@@ -9,6 +9,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 namespace woby {
@@ -161,24 +162,39 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     source->points = std::move(sourcePoints);
     reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, source->points.size(), source->points.size());
     VertexIndexTable vertexMap;
-    size_t indexCount = 0;
+    size_t indexCount = 0, lineIndexCount = 0, pointIndexCount = 0;
     for (const auto& shape : shapes) {
         indexCount += shape.mesh.indices.size();
+        pointIndexCount += shape.points.indices.size();
+        size_t lineVertices = 0;
+        for (const auto count : shape.lines.num_line_vertices) {
+            if (count < 2) { throw std::runtime_error("OBJ polyline needs at least two vertices."); }
+            lineVertices += static_cast<size_t>(count);
+            lineIndexCount += (static_cast<size_t>(count) - 1) * 2;
+        }
+        if (lineVertices != shape.lines.indices.size()) { throw std::runtime_error("Invalid OBJ polyline range."); }
     }
-    if (indexCount > std::numeric_limits<uint32_t>::max()
-        || source->points.size() > std::numeric_limits<uint32_t>::max()) {
+    // Vertex-only OBJ files are commonly used as point clouds. In files with
+    // primitives, only explicit p records become standalone point geometry.
+    const bool vertexCloud = indexCount == 0 && lineIndexCount == 0 && pointIndexCount == 0;
+    if (vertexCloud) { pointIndexCount = source->points.size(); }
+    const size_t totalIndices = indexCount + lineIndexCount + pointIndexCount;
+    if (totalIndices > std::numeric_limits<uint32_t>::max()
+        || source->points.size() > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
         throw std::runtime_error("OBJ exceeds the supported vertex or index range.");
     }
     // Position count is only an estimate: normal/UV seams can split vertices.
-    const size_t vertexCapacity = std::min(attrib.positions.size() / 3u, indexCount);
+    const size_t vertexCapacity = std::min(attrib.positions.size() / 3u, totalIndices);
     mesh.indices.reserve(indexCount);
+    mesh.lineIndices.reserve(lineIndexCount);
+    mesh.pointIndices.reserve(pointIndexCount);
     mesh.vertices.reserve(vertexCapacity);
     mesh.precisePositions.reserve(vertexCapacity);
     mesh.nodes.reserve(shapes.size());
     source->indices.reserve(indexCount);
-    reserveIndexTable(vertexMap, source->points.size(), indexCount,
+    reserveIndexTable(vertexMap, source->points.size(), totalIndices,
         attrib.normals.empty() && attrib.texcoords.empty());
-    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, indexCount);
+    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
         const auto& shape = shapes[shapeIndex];
@@ -191,7 +207,7 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
                 const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
                 hasTexcoords = hasTexcoords && std::isfinite(attrib.texcoords[uv]) && std::isfinite(attrib.texcoords[uv + 1u]);
             }
-            if (mesh.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, mesh.indices.size(), indexCount); }
+            if (mesh.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, mesh.indices.size(), totalIndices); }
             if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= source->points.size()) {
                 throw std::runtime_error("OBJ contains an invalid source position index.");
             }
@@ -245,12 +261,73 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
         }
     }
 
-    if (empty(mesh)) {
-        throw std::runtime_error("OBJ did not contain renderable triangles: " + pathToUtf8(path));
+    // Append new primitive groups after all face groups, preserving existing
+    // face group indexes and saved appearance in older mixed-geometry scenes.
+    std::unordered_set<std::string> names;
+    for (const auto& node : mesh.nodes) { names.insert(node.name); }
+    const auto groupName = [&](const std::string& base) {
+        std::string name = base;
+        for (size_t suffix = 2; !names.insert(name).second; ++suffix) { name = base + " (" + std::to_string(suffix) + ")"; }
+        return name;
+    };
+    size_t primitiveVisits = 0;
+    const auto primitiveVertex = [&](int positionIndex) {
+        if (positionIndex < 0 || static_cast<size_t>(positionIndex) >= source->points.size()) {
+            throw std::runtime_error("OBJ contains an invalid source position index.");
+        }
+        const auto mapped = vertexIndex(vertexMap, {positionIndex, -1, -1});
+        if (mapped == mesh.vertices.size()) {
+            const auto& point = source->points[static_cast<size_t>(positionIndex)];
+            mesh.precisePositions.push_back(point);
+            // Unlit primitives do not need normals. A valid placeholder avoids
+            // triggering regeneration of authored face normals in mixed files.
+            mesh.vertices.push_back({renderPosition(point), {0, 0, 1}, {}});
+        }
+        const size_t completed = mesh.indices.size() + mesh.lineIndices.size() + mesh.pointIndices.size();
+        if (primitiveVisits++ % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, completed, totalIndices); }
+        return mapped;
+    };
+    for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
+        const auto& shape = shapes[shapeIndex];
+        const auto base = shape.name.empty() ? "shape " + std::to_string(shapeIndex + 1) : shape.name;
+        if (!shape.lines.indices.empty()) {
+            MeshNode node;
+            node.name = groupName(base + (shape.mesh.indices.empty() ? "" : " (lines)"));
+            node.lineIndexOffset = static_cast<uint32_t>(mesh.lineIndices.size());
+            size_t begin = 0;
+            for (const auto count : shape.lines.num_line_vertices) {
+                auto previous = primitiveVertex(shape.lines.indices[begin].position_index);
+                for (size_t i = 1; i < static_cast<size_t>(count); ++i) {
+                    const auto next = primitiveVertex(shape.lines.indices[begin + i].position_index);
+                    mesh.lineIndices.push_back(previous);
+                    mesh.lineIndices.push_back(next);
+                    previous = next;
+                }
+                begin += static_cast<size_t>(count);
+            }
+            node.lineIndexCount = static_cast<uint32_t>(mesh.lineIndices.size()) - node.lineIndexOffset;
+            mesh.nodes.push_back(std::move(node));
+        }
+        if (!shape.points.indices.empty()) {
+            MeshNode node;
+            node.name = groupName(base + (shape.mesh.indices.empty() && shape.lines.indices.empty() ? "" : " (points)"));
+            node.pointIndexOffset = static_cast<uint32_t>(mesh.pointIndices.size());
+            for (const auto& index : shape.points.indices) { mesh.pointIndices.push_back(primitiveVertex(index.position_index)); }
+            node.pointIndexCount = static_cast<uint32_t>(mesh.pointIndices.size()) - node.pointIndexOffset;
+            mesh.nodes.push_back(std::move(node));
+        }
     }
+    if (vertexCloud && !source->points.empty()) {
+        MeshNode node;
+        node.name = "Points";
+        for (size_t i = 0; i < source->points.size(); ++i) { mesh.pointIndices.push_back(primitiveVertex(static_cast<int>(i))); }
+        node.pointIndexCount = static_cast<uint32_t>(mesh.pointIndices.size());
+        mesh.nodes.push_back(std::move(node));
+    }
+    if (empty(mesh)) { throw std::runtime_error("OBJ did not contain renderable geometry: " + pathToUtf8(path)); }
 
     mesh.sourceData = std::move(source);
-    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, indexCount, indexCount);
+    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, totalIndices, totalIndices);
     finalizeMesh(mesh, true, progress);
     return mesh;
 }

@@ -109,7 +109,7 @@ importer_id = "org.woby.example.off"
 The DLL path and binary are not embedded in a scene. Opening a scene never loads
 a DLL by a path from that scene. The matching importer must already be registered
 on that machine. Missing importers fail scene loading before the existing scene
-is replaced. Scenes save as version 17 and include independent analysis
+is replaced. Scenes save as version 20 and include independent analysis
 objects in `[[analyses]]` records referencing saved file/group indexes.
 
 Saved group settings are indexed. Importers must preserve unique group names and
@@ -361,7 +361,8 @@ zero-based indices into **the same vertex table as the triangles**. Each pair
 is an independent segment: a polyline `(a,b,c)` becomes `(a,b,b,c)`. There are
 no implicit closing edges. Degenerate or zero projected-length segments are
 accepted but do not draw. Curved geometry must be sampled into segments by the
-importer. This extension does not change the built-in OBJ or STL readers.
+importer. The built-in OBJ reader also supports polylines and point geometry;
+STL remains triangle-only. The plugin ABI continues to expose triangles and lines.
 
 ```c
 static const uint32_t segments[] = {0, 1, 1, 2};

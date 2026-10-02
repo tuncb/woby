@@ -821,8 +821,12 @@ void drawGroupControls(
     drawClippedTextItem("##name", woby::meshNodeDisplayName(node).c_str(), ImGui::GetContentRegionAvail().x,
         woby::sceneObjectSelected(state, settings.objectId), badge);
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip(node.lineIndexCount ? "%s\nVertices: %u  Line segments: %u" : "%s\nVertices: %u  Triangles: %u",
-            woby::meshNodeDisplayName(node).c_str(), range.pointIndexCount, node.lineIndexCount ? node.lineIndexCount / 2u : node.indexCount / 3u);
+        if (node.pointIndexCount) {
+            ImGui::SetTooltip("%s\nPoints: %u", woby::meshNodeDisplayName(node).c_str(), node.pointIndexCount);
+        } else {
+            ImGui::SetTooltip(node.lineIndexCount ? "%s\nVertices: %u  Line segments: %u" : "%s\nVertices: %u  Triangles: %u",
+                woby::meshNodeDisplayName(node).c_str(), range.pointIndexCount, node.lineIndexCount ? node.lineIndexCount / 2u : node.indexCount / 3u);
+        }
     }
     drawSceneItemInteraction(state, settings.objectId, false);
     ImGui::PopID();

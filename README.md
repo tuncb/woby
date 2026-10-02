@@ -5,6 +5,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ## Features
 
 - Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
+- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Curves and freeform surfaces are not supported. STL remains triangle-only.
 - Add file formats with user-supplied importer packages in the portable `importers` folder, or register libraries through the CLI.
 - Open, save, and drag in `.woby` scene files with persisted model paths, scene tree hierarchy, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.

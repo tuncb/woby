@@ -1,6 +1,12 @@
 #include "model_load.h"
 #include "obj_mesh.h"
 #include "utf8_path.h"
+#include "background_load.h"
+#include "control_scene.h"
+#include "scene_dimensions.h"
+#include "scene_history.h"
+#include "scene_pick.h"
+#include "ui_operations.h"
 
 #include <doctest/doctest.h>
 
@@ -8,6 +14,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 
 namespace {
@@ -20,7 +27,7 @@ struct ObjTestDirectory {
         const auto prefix = "woby_obj_loader_"
             + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
         for (size_t attempt = 0;; ++attempt) {
-            path = std::filesystem::temp_directory_path() / (prefix + "_" + std::to_string(attempt));
+            path = std::filesystem::absolute(std::filesystem::temp_directory_path()) / (prefix + "_" + std::to_string(attempt));
             if (std::filesystem::create_directory(path)) { break; }
         }
     }
@@ -118,7 +125,7 @@ TEST_CASE("OBJ loader preserves texcoords with flipped V")
 
 }
 
-TEST_CASE("OBJ loader rejects files without renderable triangles")
+TEST_CASE("OBJ loader accepts vertex-only point clouds")
 {
     const ObjTestDirectory fixture;
     const auto& root = fixture.path;
@@ -130,7 +137,15 @@ TEST_CASE("OBJ loader rejects files without renderable triangles")
         "v 1 0 0\n"
         "v 0 1 0\n");
 
-    CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
+    const auto mesh = woby::loadObjMesh(path);
+    CHECK_FALSE(woby::empty(mesh));
+    CHECK(mesh.indices.empty());
+    CHECK(mesh.lineIndices.empty());
+    CHECK(mesh.pointIndices == std::vector<uint32_t>{0, 1, 2});
+    REQUIRE(mesh.nodes.size() == 1);
+    CHECK(mesh.nodes[0].pointIndexCount == 3);
+    CHECK(mesh.sourceData->indices.empty());
+    CHECK(mesh.bounds.max == std::array<float, 3>{1, 1, 0});
 
 }
 
@@ -463,11 +478,196 @@ TEST_CASE("OBJ errors preserve Unicode filenames")
     const auto path = fixture.path / std::filesystem::path(u8"model_\u6a21\u578b.obj");
     SUBCASE("missing file") {}
     SUBCASE("malformed file") { writeText(path, "v invalid 0 0\n"); }
-    SUBCASE("empty geometry") { writeText(path, "v 0 0 0\n"); }
+    SUBCASE("empty geometry") { writeText(path, "# no geometry\n"); }
     try {
         loadObjAndDiscard(path);
         FAIL("Expected an OBJ load error");
     } catch (const std::runtime_error& error) {
         CHECK(std::string(error.what()).find(woby::pathToUtf8(path)) != std::string::npos);
     }
+}
+
+
+TEST_CASE("OBJ polylines preserve connectivity negative indices and separate groups")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "lines.obj";
+    writeText(path, "v 0 0 0\nv 2 0 0\nv 2 3 0\nv 0 3 0\nvt 0 0\nvt 1 0\n"
+        "g boundary\nl 1/1 2/2 3/1\nl -1 -4\ng diagonal\nl 2 4\n");
+    const auto mesh = woby::loadObjMesh(path);
+    CHECK_FALSE(woby::empty(mesh));
+    CHECK(mesh.indices.empty());
+    CHECK(mesh.pointIndices.empty());
+    CHECK(mesh.lineIndices == std::vector<uint32_t>{0,1,1,2,3,0,1,3});
+    REQUIRE(mesh.nodes.size() == 2);
+    CHECK(mesh.nodes[0].name == "boundary");
+    CHECK(mesh.nodes[0].lineIndexCount == 6);
+    CHECK(mesh.nodes[1].name == "diagonal");
+    CHECK(mesh.nodes[1].lineIndexOffset == 6);
+    CHECK(mesh.nodes[1].lineIndexCount == 2);
+    CHECK_FALSE(mesh.nodes[0].hasTexcoords);
+    CHECK(mesh.sourceData->indices.empty());
+    CHECK(woby::originalMeshBounds(mesh)[1] == woby::Coordinate{2,3,0});
+}
+
+TEST_CASE("OBJ points select explicit vertices and preserve source coordinates")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "points.obj";
+    writeText(path, "v 1000000000 0 0\nv 1000000000.125 1 0\nv 1000000005 9 0\n"
+        "g samples\np 2 -3\ng shared\np 1\n");
+    const auto mesh = woby::loadObjMesh(path);
+    REQUIRE(mesh.nodes.size() == 2);
+    CHECK(mesh.nodes[0].name == "samples");
+    CHECK(mesh.nodes[0].pointIndexCount == 2);
+    CHECK(mesh.nodes[1].pointIndexOffset == 2);
+    CHECK(mesh.pointIndices == std::vector<uint32_t>{0,1,1});
+    CHECK(mesh.vertices.size() == 2);
+    CHECK(mesh.sourceData->points.size() == 3);
+    CHECK(woby::originalMeshBounds(mesh)[1] == woby::Coordinate{1000000000.125,1,0});
+    CHECK(woby::originalMeshBounds(mesh, &mesh.nodes[1])[0] == woby::Coordinate{1000000000,0,0});
+}
+
+TEST_CASE("Mixed OBJ keeps face groups first and preserves normals and triangle provenance")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "mixed.obj";
+    writeText(path, "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 2 2 0\nv 90 90 90\n"
+        "vn 0 1 0\ng mixed\nf 1//1 2//1 3//1\nl 1 4\np 4\n"
+        "g mixed (lines)\nf 1//1 2//1 3//1\n");
+    const auto mesh = woby::loadObjMesh(path);
+    REQUIRE(mesh.nodes.size() == 4);
+    CHECK(mesh.nodes[0].name == "mixed");
+    CHECK(mesh.nodes[1].name == "mixed (lines)");
+    CHECK(mesh.nodes[2].name == "mixed (lines) (2)");
+    CHECK(mesh.nodes[3].name == "mixed (points)");
+    CHECK(mesh.indices.size() == 6);
+    CHECK(mesh.lineIndices.size() == 2);
+    CHECK(mesh.pointIndices.size() == 1);
+    CHECK(mesh.nodes[2].indexCount == 0);
+    CHECK(mesh.nodes[3].indexCount == 0);
+    CHECK(mesh.sourceData->indices == std::vector<uint32_t>{0,1,2,0,1,2});
+    for (const auto i : mesh.indices) { CHECK(mesh.vertices[i].normal == std::array<float,3>{0,1,0}); }
+    CHECK(mesh.bounds.max == std::array<float,3>{2,2,0});
+}
+
+TEST_CASE("OBJ rejects empty geometry and malformed point or line references")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "invalid.obj";
+    for (const auto* primitive : {"p 0\n", "p 4\n", "p -4\n", "l 0 1\n", "l 1 4\n", "l -4 -1\n", "l 1\n"}) {
+        CAPTURE(primitive);
+        const std::string text = std::string("v 0 0 0\nv 1 0 0\nv 0 1 0\n") + primitive;
+        writeText(path, text.c_str());
+        CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
+    }
+    writeText(path, "# empty\n");
+    CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
+}
+
+TEST_CASE("OBJ point and line parts support picking dimensions and appearance controls")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "picking.obj";
+    writeText(path, "v 0 0 .4\nv .8 0 .4\nv -.8 -.5 .4\nv .8 -.5 .4\n"
+        "g samples\np 1 2\ng wire\nl 3 4\n");
+    woby::UiState state;
+    state.files.push_back(woby::createUiFileState(path, woby::loadObjMesh(path), 0));
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    woby::assignSceneObjectIds(state);
+    REQUIRE(state.files[0].groupSettings.size() == 2);
+    const auto points = state.files[0].groupSettings[0].objectId;
+    const auto lines = state.files[0].groupSettings[1].objectId;
+    CHECK(state.files[0].groupSettings[0].showVertices);
+    woby::ScenePickView view;
+    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    view.width = view.height = 100;
+    CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {50,50}) == points);
+    CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {50,75}) == lines);
+    CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {70,50}) == woby::invalidSceneObjectId);
+    CHECK(woby::comparisonObjectParts(state, {state.files[0].objectId}).empty());
+    woby::selectSceneObject(state, points);
+    const auto parts = woby::scenePickParts(state);
+    const auto dimensions = woby::sceneDimensions(parts);
+    REQUIRE(dimensions);
+    CHECK(dimensions->lengths[0] == doctest::Approx(.8));
+    CHECK(woby::sceneSelectionLines(parts).size() == 24);
+    CHECK_FALSE(woby::selectedObjectProperty(state, woby::UiObjectProperty::solidMesh).available);
+    CHECK_FALSE(woby::selectedObjectProperty(state, woby::UiObjectProperty::lineWidth).available);
+    woby::setSelectedObjectProperty(state, woby::UiObjectProperty::vertices, 0);
+    CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {50,50}) == woby::invalidSceneObjectId);
+    woby::resetSelectedObjectProperties(state, woby::UiPropertyGroup::appearance);
+    CHECK(state.files[0].groupSettings[0].showVertices);
+    CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {50,50}) == points);
+    const auto details = woby::controlObjectDetails(state, points, [](auto id) { return std::to_string(id); });
+    CHECK(details.at("primitive") == "points");
+    CHECK(details.at("pointCount") == 2);
+    CHECK(woby::controlSceneInfo(state).at("pointCount") == 2);
+}
+
+TEST_CASE("OBJ mixed primitive appearance survives scene loading views and undo")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "mixed.obj";
+    writeText(path, "v 0 0 0\nv 1 0 0\nv 0 1 0\ng mixed\nf 1 2 3\nl 1 2\np 3\n");
+    auto batch = woby::loadModelBatchCpu({path}, 0, {}, {});
+    REQUIRE(batch.files.size() == 1);
+    woby::UiState state; state.files = std::move(batch.files);
+    woby::appendDefaultSceneNodesForFiles(state, 0);
+    const auto clean = woby::createSceneDocument(state);
+    woby::SceneHistory history; woby::resetSceneHistory(history, state);
+    const auto points = state.files[0].groupSettings[2].objectId;
+    const auto lines = state.files[0].groupSettings[1].objectId;
+    woby::selectSceneObject(state, points);
+    woby::setSelectedObjectProperty(state, woby::UiObjectProperty::vertexSize, 3);
+    woby::setSelectedObjectProperty(state, woby::UiObjectProperty::red, .7f);
+    REQUIRE(woby::setObjectLineStyle(state, {lines}, 8.0f, false));
+    const auto changed = woby::createSceneDocument(state);
+    CHECK(changed.files[0].groups[2].pointGroup);
+    CHECK(changed.files[0].groups[1].lineGroup);
+    REQUIRE(woby::recordSceneHistory(history, state));
+    auto undo = woby::prepareSceneHistoryStep(history, state, clean, false); REQUIRE(undo);
+    woby::commitSceneHistoryStep(history, state, std::move(*undo), false);
+    CHECK(woby::createSceneDocument(state) == clean);
+    auto redo = woby::prepareSceneHistoryStep(history, state, clean, true); REQUIRE(redo);
+    woby::commitSceneHistoryStep(history, state, std::move(*redo), true);
+    CHECK(woby::createSceneDocument(state) == changed);
+    const auto view = woby::createView(state);
+    woby::setSelectedObjectProperty(state, woby::UiObjectProperty::vertices, 0);
+    woby::applyView(state, view);
+    CHECK(state.files[0].groupSettings[2].showVertices);
+    const auto saved = woby::createSceneDocument(state);
+    const auto scenePath = fixture.path / "points.woby";
+    woby::writeSceneDocument(scenePath, saved);
+    auto loaded = woby::loadSceneCpu(scenePath, {}, {});
+    auto restored = woby::prepareSceneReplacement(state, std::move(loaded.files), loaded.document);
+    CHECK(woby::createSceneDocument(restored) == saved);
+    auto mismatched = saved.files[0]; mismatched.groups[2].pointGroup = false;
+    CHECK_THROWS_AS(woby::applySceneFileRecord(restored.files[0], mismatched), std::runtime_error);
+}
+
+
+TEST_CASE("OBJ non-triangle import stays cancellable after an odd number of face indices")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "cancel.obj";
+    const char* primitive = "l 1 2\n";
+    SUBCASE("polylines") {}
+    SUBCASE("points") { primitive = "p 1\n"; }
+    {
+        std::ofstream stream(path);
+        stream << "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n";
+        for (size_t i = 0; i < 20000; ++i) { stream << primitive; }
+    }
+    bool canceled = false;
+    woby::ImportCallbacks callbacks;
+    callbacks.stageProgress = [&](const woby::ModelLoadProgress& progress) {
+        if (progress.stage == woby::ModelLoadStage::buildingMesh
+            && progress.completed > 3 && progress.completed < progress.total) { canceled = true; }
+    };
+    callbacks.canceled = [&] { return canceled; };
+    const auto loaded = woby::loadModel(path, {}, callbacks);
+    CHECK(canceled);
+    CHECK(loaded.canceled);
+    CHECK(woby::empty(loaded.mesh));
 }

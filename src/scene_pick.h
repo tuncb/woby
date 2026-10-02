@@ -40,6 +40,7 @@ struct ScenePickPart {
     size_t lineIndexOffset = 0, lineIndexCount = 0;
     float lineWidth = 0;
     bool annotationOverlay = false;
+    size_t pointIndexOffset = 0, pointIndexCount = 0;
 };
 
 [[nodiscard]] std::span<const uint32_t> scenePartIndices(const ScenePickPart& part);

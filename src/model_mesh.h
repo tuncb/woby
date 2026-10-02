@@ -42,6 +42,8 @@ struct MeshNode {
     uint32_t lineIndexCount = 0; // Line groups have indexCount == 0.
     uint64_t sourceObjectId = 0; // Analysis copy: linked source patch, never an importer identity.
     size_t uvQualityOffset = 0; // Triangle offset before optional UV layout filtering.
+    uint32_t pointIndexOffset = 0;
+    uint32_t pointIndexCount = 0; // Standalone points; each node has only one primitive type.
 };
 
 [[nodiscard]] inline const std::string& meshNodeDisplayName(const MeshNode& node)
@@ -89,6 +91,7 @@ struct Mesh {
     std::vector<MeshHierarchyNode> hierarchy; // Validated source defaults; editable tree lives in UiState.
     std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
     std::shared_ptr<const UvQuality> uvQuality;
+    std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
 };
 
 [[nodiscard]] std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node);
