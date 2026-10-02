@@ -38,6 +38,7 @@
     },
     "boost-multiprecision",
     "boost-unordered",
+    "cdt",
     "doctest"
   ],
   "features": {

@@ -23,7 +23,7 @@ inline const char* modelLoadStageName(ModelLoadStage stage)
     case ModelLoadStage::reading: return "Reading and parsing geometry";
     case ModelLoadStage::triangulating: return "Triangulating faces";
     case ModelLoadStage::sourcePositions: return "Validating source positions";
-    case ModelLoadStage::buildingMesh: return "Building vertices and triangles";
+    case ModelLoadStage::buildingMesh: return "Building model geometry";
     case ModelLoadStage::normals: return "Checking and generating normals";
     case ModelLoadStage::bounds: return "Calculating model bounds";
     case ModelLoadStage::groups: return "Preparing model groups";

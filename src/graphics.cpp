@@ -104,7 +104,7 @@ struct Encoder
 {
     WobyRoot root{};
     std::array<float, 16> model{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-    Geometry vertices, indices, points;
+    Geometry vertices, indices, points, freeform;
     uint32_t vertexCount = 0, instances = 1;
     uint64_t state = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A;
     gpu::Scissor scissor{};
@@ -163,6 +163,7 @@ struct ReadRequest
     std::shared_ptr<Texture> texture;
     void *destination = nullptr;
     uint32_t ready = 0;
+    std::shared_ptr<Buffer> buffer;
 };
 struct Readback
 {
@@ -645,6 +646,7 @@ WobyRoot rootData(const Encoder &encoder, const View &view)
     root.vertices = static_cast<float *>(encoder.vertices.gpu);
     root.stride = encoder.vertices.stride / 4;
     root.pointIds = static_cast<uint32_t *>(encoder.points.gpu);
+    root.freeform = static_cast<float *>(encoder.freeform.gpu);
     for (size_t i = 0; i < encoder.textures.size(); ++i)
         if (encoder.textures[i])
         {
@@ -1121,8 +1123,9 @@ void setIndexBuffer(const TransientIndexBuffer *b, uint32_t start, uint32_t coun
 }
 void setBuffer(uint8_t binding, VertexBufferHandle h, Access::Enum)
 {
-    require(binding == 0, "Unexpected vertex storage binding");
-    setVertexBuffer(0, h);
+    require(binding == 0 || binding == 2, "Unexpected vertex storage binding");
+    if (binding == 0) { setVertexBuffer(0, h); }
+    else { state().encoder.freeform = geometry(resource(state().vertexBuffers, h), 0, UINT32_MAX); }
 }
 void setBuffer(uint8_t binding, IndexBufferHandle h, Access::Enum)
 {
@@ -1284,6 +1287,21 @@ uint32_t readTexture(TextureHandle handle, void *destination)
     return ready;
 }
 
+uint32_t readBuffer(VertexBufferHandle handle, void *destination)
+{
+    beginFrame();
+    const uint32_t ready = state().frameNumber + 3;
+    state().reads.push_back({{}, destination, ready, resource(state().vertexBuffers, handle)});
+    return ready;
+}
+uint32_t readBuffer(IndexBufferHandle handle, void *destination)
+{
+    beginFrame();
+    const uint32_t ready = state().frameNumber + 3;
+    state().reads.push_back({{}, destination, ready, resource(state().indexBuffers, handle)});
+    return ready;
+}
+
 uint32_t frame()
 {
     beginFrame();
@@ -1391,12 +1409,17 @@ uint32_t frame()
     const auto signal = ++c.submitted;
     for (const auto &read : c.reads)
     {
-        const uint32_t bytes = uint32_t(read.texture->width) * read.texture->height * pixelBytes(read.texture->format);
+        const uint32_t bytes = read.buffer ? read.buffer->bytes : uint32_t(read.texture->width) * read.texture->height * pixelBytes(read.texture->format);
         auto heap = gpu::create_gpu_heap(c.device, (uint64_t(bytes) + 15) & ~uint64_t{15}, gpu::MemoryType::readback);
         require(heap.range.cpu != nullptr, "GPU readback allocation failed");
-        gpu::copy_texture_to_memory(commands, read.texture->image->placed.texture, {heap.range.gpu, bytes});
+        if (read.buffer) {
+            gpu::copy_memory(commands, {read.buffer->heap.range.gpu, bytes}, {heap.range.gpu, bytes});
+            f.retained.push_back(read.buffer);
+        } else {
+            gpu::copy_texture_to_memory(commands, read.texture->image->placed.texture, {heap.range.gpu, bytes});
+            f.retained.push_back(read.texture);
+        }
         c.readbacks.push_back({heap, read.destination, signal, read.ready, bytes});
-        f.retained.push_back(read.texture);
     }
     c.reads.clear();
     if (swap.render_view)

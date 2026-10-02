@@ -232,4 +232,8 @@ void dispatch(ViewId, ProgramHandle, uint32_t x, uint32_t y = 1, uint32_t z = 1)
 void blit(ViewId, TextureHandle destination, uint16_t x, uint16_t y, TextureHandle source, uint16_t sourceX = 0,
           uint16_t sourceY = 0, uint16_t width = UINT16_MAX, uint16_t height = UINT16_MAX);
 uint32_t readTexture(TextureHandle, void *destination);
+// Copies the complete buffer after this frame's recorded work; destination must
+// remain alive until the returned frame number, matching readTexture.
+uint32_t readBuffer(VertexBufferHandle, void *destination);
+uint32_t readBuffer(IndexBufferHandle, void *destination);
 } // namespace woby::graphics

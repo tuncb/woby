@@ -49,6 +49,7 @@ struct SceneGroupRecord {
     std::string name;
     SceneGroupSettings settings;
     bool lineGroup = false;
+    bool pointGroup = false;
 
     friend bool operator==(const SceneGroupRecord&, const SceneGroupRecord&) = default;
 };

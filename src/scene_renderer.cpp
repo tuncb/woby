@@ -275,13 +275,16 @@ GpuMesh createGpuMesh(
     const auto vertexBytes = sceneBufferBytes(mesh.vertices.size(), sizeof(Vertex));
     const auto indexBytes = sceneBufferBytes(mesh.indices.size(), sizeof(uint32_t));
     if (empty(mesh) || mesh.indices.size() % 3 != 0 || mesh.lineIndices.size() % 2 != 0) {
-        throw std::runtime_error("Scene needs valid triangles or line segments.");
+        throw std::runtime_error("Scene needs valid triangles, line segments or points.");
     }
     for (const auto index : mesh.indices) {
         if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid vertex index."); }
     }
     for (const auto index : mesh.lineIndices) {
         if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid line vertex index."); }
+    }
+    for (const auto index : mesh.pointIndices) {
+        if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid point vertex index."); }
     }
     gpuMesh.nodeRanges.reserve(mesh.nodes.size());
     // Keep compact CPU point ranges for picking and geometry tooltips, even
@@ -294,7 +297,9 @@ GpuMesh createGpuMesh(
             || node.indexOffset % 3 != 0 || node.indexCount % 3 != 0
             || size_t(node.lineIndexOffset) + node.lineIndexCount > mesh.lineIndices.size()
             || node.lineIndexOffset % 2 != 0 || node.lineIndexCount % 2 != 0
-            || (node.indexCount && node.lineIndexCount)) {
+            || size_t(node.pointIndexOffset) + node.pointIndexCount > mesh.pointIndices.size()
+            || (node.indexCount && node.lineIndexCount)
+            || (node.pointIndexCount && (node.indexCount || node.lineIndexCount))) {
             throw std::runtime_error("Scene contains an invalid primitive range.");
         }
         GpuNodeRange range;

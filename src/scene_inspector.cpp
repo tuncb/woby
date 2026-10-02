@@ -161,13 +161,15 @@ void drawGeometry(const UiState& state, SceneDimensionsCache& dimensionsCache)
             ImGui::Text("%zu parts | %zu vertices | %zu triangles", file.groupSettings.size(),
                 file.mesh.vertices.size(), file.mesh.indices.size() / 3u);
             if (!file.mesh.lineIndices.empty()) { ImGui::Text("%zu line segments", file.mesh.lineIndices.size() / 2u); }
+            if (!file.mesh.pointIndices.empty()) { ImGui::Text("%zu points", file.mesh.pointIndices.size()); }
             bounds = originalMeshBounds(file.mesh);
             break;
         }
         for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
             if (file.groupSettings[i].objectId == id) {
                 const auto& node = file.mesh.nodes[i];
-                if (node.lineIndexCount) { ImGui::Text("%u line segments", node.lineIndexCount / 2u); }
+                if (node.pointIndexCount) { ImGui::Text("%u points", node.pointIndexCount); }
+                else if (node.lineIndexCount) { ImGui::Text("%u line segments", node.lineIndexCount / 2u); }
                 else { ImGui::Text("%u triangles", node.indexCount / 3u); }
                 if (file.groupSettings[i].localBoundsValid) { bounds = file.groupSettings[i].originalBounds;
                     if (!bounds) { bounds = originalMeshBounds(file.mesh, &file.mesh.nodes[i]); } }

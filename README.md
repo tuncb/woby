@@ -5,6 +5,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ## Features
 
 - Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
+- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Bézier and B-spline/NURBS curves and surfaces with trim boundaries and holes are supported (degrees 1–8, positive rational weights). STL remains triangle-only.
 - Add file formats with user-supplied importer packages in the portable `importers` folder, or register libraries through the CLI.
 - Open, save, and drag in `.woby` scene files with persisted model paths, scene tree hierarchy, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
@@ -138,8 +139,8 @@ File/folder and multiple selections edit parts with complete UVs; parts with mis
 or incomplete UVs keep normal shading. All-zero supplied UVs are still valid.
 The grid shows the tessellation's interpolated UV mapping, not an exact CAD surface.
 Settings support Undo/Redo, saved Views, `.woby` persistence, and PNG exports.
-Existing scenes start with the grid off. Importer plugins use ABI 3; see the
-[importer API documentation](doc/importers.md) for migration and optional point IDs.
+Existing scenes start with the grid off. Importer plugins use ABI 4; see the
+[importer API documentation](doc/importers.md) for migration, points, splines, trimming, and optional point IDs.
 
 **Display > Show dimensions** adds labeled dimension lines beside the visible selected
 geometry. One visible part is measured along its own directions, including all parent
@@ -149,7 +150,7 @@ and edges that are too small or off-screen to label. **Properties > Geometry** s
 the same sizes, followed by original local bounds for a single file or part.
 Enabling the grid displays **Grid spacing** using the same spacing as the drawn lines.
 Woby automatically establishes a working origin for models far from zero. OBJ,
-ASCII STL, and importer ABI 3 positions retain double precision through import
+ASCII STL, and importer ABI 4 positions retain double precision through import
 and analysis; float GPU positions are relative to a per-file origin. A shared
 scene origin keeps files aligned and remains fixed when adding, hiding, or
 removing files. Properties and annotation coordinates show original coordinates.
@@ -185,6 +186,54 @@ the camera, `Q`/`E` move vertically, and Shift speeds movement up. Camera keys a
 paused while editing fields, using Ctrl/Alt/Super commands, or displaying dialogs
 and popups. Escape dismisses context menus and cancels discard confirmations;
 outside editing and popups it clears the selection.
+
+### OBJ freeform geometry
+
+`cstype bezier` and `cstype bspline`, optionally `rat`, support `deg`, `curv`,
+`surf`, `parm u/v`, and `end`. Negative control indexes, continued lines, surface
+UVs, and authored normals are supported. Control nets remain available internally;
+control points are not displayed as an implicit point cloud.
+
+A compute shader evaluates the control net and generates cached vertices and
+indices for the existing render paths. The CPU selects a fixed grid of 32
+segments per nonzero knot span (one for degree-one curves), evaluates basis
+tables in double precision, and keeps matching geometry for picking, bounds,
+annotations, and analysis. These operations therefore use a tessellated
+approximation, not exact CAD geometry. Inputs unsafe for GPU floats retain the
+CPU result. Freeform imports are limited to two million source positions and two
+million generated vertices per file. Generated samples get deterministic synthetic
+analysis point IDs after the original OBJ position records; triangle IDs refer to
+the tessellated mesh.
+
+Curve parts use line controls; surface parts use the usual mesh controls. Saved
+scenes reference the original OBJ and reproduce the same tessellation on reload.
+Trimmed surfaces support `vp`, `curv2`, `trim`, and `hole`, including rational
+trimming curves, reversed curve intervals, and multiple regions. Each `trim`
+starts a region; following `hole` statements belong to that region. A hole without
+an explicit outer loop uses the surface's parameter rectangle. UV parameter
+coordinates are independent of texture UVs. Open, intersecting, touching, overlapping,
+or out-of-domain boundaries fail with a file/line diagnostic.
+
+The CPU samples positive-weight trimming curves adaptively, using a normalized UV
+control-hull tolerance of 1e-5 and a mapped midpoint error of 1e-4 of the surface
+control-box diagonal (minimum 1e-12). CDT constrains trim boundaries and the existing
+surface grid, then removes triangles outside retained regions. The compute shader
+evaluates these irregular samples while retaining the CPU triangle connectivity;
+holes also remain empty for picking, wireframes, bounds, and analysis. Untrimmed
+geometry keeps its existing grid and ordering. Sampling is bounded to 4096 control
+points per trimming curve, 16384 sampled boundary vertices per patch, and 24
+subdivision levels. A conservative two-million-vertex work estimate also limits
+boundary/grid intersections before triangulation. These limits report errors
+rather than silently filling holes or dropping regions.
+
+Try [the trimmed-surface sample](assets/samples/freeform-trimmed.obj).
+CDT and its geometric predicates are used unmodified through vcpkg; their license
+notices ship in `assets/licenses`.
+
+Camera-adaptive refinement, crack stitching between independent patches, special
+curves/points (`scrv`, `sp`), surface connectivity (`con`), and other OBJ bases are
+not supported yet. Unsupported freeform statements fail with a file/line diagnostic
+instead of silently importing incomplete geometry.
 
 ## Command Line
 

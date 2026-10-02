@@ -37,6 +37,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(CDT CONFIG REQUIRED)
 find_package(Boost CONFIG REQUIRED COMPONENTS multiprecision unordered)
 find_package(CURL REQUIRED)
 find_package(LibArchive REQUIRED)
@@ -167,6 +168,9 @@ add_executable(woby
     src/model_mesh.cpp
     src/model_mesh.h
     src/obj_mesh.cpp
+    src/obj_freeform.cpp
+    src/freeform.cpp
+    src/freeform_trim.cpp
     src/obj_mesh.h
     src/performance_log.cpp
     src/performance_log.h
@@ -180,6 +184,7 @@ add_executable(woby
     src/scene_file.cpp
     src/scene_file.h
     src/scene_renderer.cpp
+    src/freeform_gpu.cpp
     src/scene_renderer.h
     src/scene_screenshot.cpp
     src/scene_screenshot.h
@@ -209,6 +214,7 @@ target_include_directories(woby SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thir
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby PRIVATE
+    CDT::CDT
     Boost::multiprecision
     Boost::unordered
     woby_update
@@ -272,11 +278,11 @@ endif()
 if(WOBY_BUILD_BENCHMARKS)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp
-        src/model_mesh.cpp src/obj_mesh.cpp src/mesh_comparison.cpp
+        src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_comparison.cpp
         src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
-    target_link_libraries(woby_benchmarks PRIVATE Threads::Threads Boost::multiprecision)
+    target_link_libraries(woby_benchmarks PRIVATE Threads::Threads CDT::CDT Boost::multiprecision)
     woby_enable_project_warnings(woby_benchmarks)
     list(APPEND woby_runtime_targets woby_benchmarks)
     if(WOBY_BUILD_HASH_BENCHMARKS)
@@ -296,13 +302,13 @@ if(WOBY_BUILD_BENCHMARKS)
         foreach(backend IN ITEMS boost ankerl)
             set(target "woby_benchmarks_${backend}")
             add_executable(${target} tests/performance_benchmarks.cpp ${hash_probe_sources}
-                src/model_mesh.cpp src/obj_mesh.cpp src/mesh_degenerates.cpp
+                src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_degenerates.cpp
                 src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
             target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/tests")
             target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
             target_compile_definitions(${target} PRIVATE "WOBY_BENCHMARK_${backend}=1")
             target_link_libraries(${target} PRIVATE Threads::Threads
-                Boost::multiprecision Boost::unordered unordered_dense::unordered_dense)
+                CDT::CDT Boost::multiprecision Boost::unordered unordered_dense::unordered_dense)
             woby_enable_project_warnings(${target})
             list(APPEND woby_runtime_targets ${target})
         endforeach()
@@ -319,13 +325,17 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_camera_smoke.py" "$<TARGET_FILE:woby>" --headless)
         add_test(NAME woby_vertex_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_vertex_render_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_obj_primitives_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_obj_primitives_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_freeform_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_freeform_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_uv_grid_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_grid_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_uv_grid_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_obj_primitives_render woby_freeform_render woby_uv_grid_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -431,6 +441,9 @@ if(BUILD_TESTING)
         src/model_mesh.cpp
         src/model_mesh.h
         src/obj_mesh.cpp
+        src/obj_freeform.cpp
+        src/freeform.cpp
+        src/freeform_trim.cpp
         src/obj_mesh.h
         src/performance_log.cpp
         src/performance_log.h
@@ -448,6 +461,7 @@ if(BUILD_TESTING)
         src/graphics_helpers.cpp
         src/graphics_helpers.h
         src/scene_renderer.cpp
+        src/freeform_gpu.cpp
         src/scene_renderer.h
         src/stl_mesh.cpp
         src/stl_mesh.h
@@ -464,6 +478,7 @@ if(BUILD_TESTING)
         tests/control_tests.cpp
         tests/importer_tests.cpp
         tests/importer_lines_tests.cpp
+        tests/importer_geometry_tests.cpp
         tests/importer_point_ids_tests.cpp
         tests/automation_tests.cpp
         tests/background_load_tests.cpp
@@ -479,6 +494,8 @@ if(BUILD_TESTING)
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
+        tests/freeform_tests.cpp
+        tests/freeform_trim_tests.cpp
         tests/scene_file_edge_tests.cpp
         tests/stl_mesh_tests.cpp
         tests/ui_operations_tests.cpp
@@ -490,13 +507,14 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp)
+        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp)
     endif()
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(woby_tests PRIVATE
+        CDT::CDT
         Boost::multiprecision
         Boost::unordered
         woby_update
@@ -525,6 +543,7 @@ if(BUILD_TESTING)
     add_library(woby_importer_fixture SHARED tests/importer_fixture.cpp)
     add_library(woby_importer_hierarchy_fixture SHARED tests/importer_hierarchy_fixture.cpp)
     add_library(woby_importer_lines_fixture SHARED tests/importer_lines_fixture.cpp)
+    add_library(woby_importer_geometry_fixture SHARED tests/importer_geometry_fixture.cpp)
     add_library(woby_importer_point_ids_fixture SHARED tests/importer_point_ids_fixture.cpp)
     add_library(woby_importer_bad_abi SHARED tests/importer_fixture.cpp)
     add_library(woby_importer_conflict SHARED tests/importer_fixture.cpp)
@@ -533,7 +552,7 @@ if(BUILD_TESTING)
     target_compile_definitions(woby_importer_bad_abi PRIVATE WOBY_TEST_BAD_ABI)
     target_compile_definitions(woby_importer_conflict PRIVATE WOBY_TEST_CONFLICT)
     target_compile_definitions(woby_importer_reserved PRIVATE WOBY_TEST_RESERVED)
-    foreach(fixture IN ITEMS woby_importer_fixture woby_importer_hierarchy_fixture woby_importer_lines_fixture woby_importer_point_ids_fixture woby_importer_bad_abi woby_importer_missing_export woby_importer_conflict woby_importer_reserved)
+    foreach(fixture IN ITEMS woby_importer_fixture woby_importer_hierarchy_fixture woby_importer_lines_fixture woby_importer_geometry_fixture woby_importer_point_ids_fixture woby_importer_bad_abi woby_importer_missing_export woby_importer_conflict woby_importer_reserved)
         target_include_directories(${fixture} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
         target_compile_definitions(${fixture} PRIVATE WOBY_IMPORTER_BUILD)
         target_compile_features(${fixture} PRIVATE cxx_std_20)
@@ -557,7 +576,7 @@ if(BUILD_TESTING)
             "$<TARGET_FILE:woby_importer_lines_fixture>")
         set_tests_properties(woby_ctl_lines PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
-    add_dependencies(woby_tests woby woby_importer_fixture woby_importer_hierarchy_fixture woby_importer_lines_fixture woby_importer_point_ids_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
+    add_dependencies(woby_tests woby woby_importer_fixture woby_importer_hierarchy_fixture woby_importer_lines_fixture woby_importer_geometry_fixture woby_importer_point_ids_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
     target_compile_definitions(woby_tests PRIVATE
         WOBY_TEST_APP="$<TARGET_FILE:woby>"
         WOBY_TEST_ICON_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons"
@@ -565,6 +584,7 @@ if(BUILD_TESTING)
         WOBY_TEST_IMPORTER="$<TARGET_FILE:woby_importer_fixture>"
         WOBY_TEST_HIERARCHY_IMPORTER="$<TARGET_FILE:woby_importer_hierarchy_fixture>"
         WOBY_TEST_LINES_IMPORTER="$<TARGET_FILE:woby_importer_lines_fixture>"
+        WOBY_TEST_GEOMETRY_IMPORTER="$<TARGET_FILE:woby_importer_geometry_fixture>"
         WOBY_TEST_POINT_IDS_IMPORTER="$<TARGET_FILE:woby_importer_point_ids_fixture>"
         WOBY_TEST_CONFLICT_IMPORTER="$<TARGET_FILE:woby_importer_conflict>"
         WOBY_TEST_RESERVED_IMPORTER="$<TARGET_FILE:woby_importer_reserved>"

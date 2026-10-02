@@ -170,7 +170,8 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
         for (const auto& file : state.files) {
             for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
                 if (isUvProperty(property) ? file.mesh.nodes[i].hasTexcoords
-                    : (lines ? file.mesh.nodes[i].lineIndexCount != 0 : file.mesh.nodes[i].lineIndexCount == 0)) { eligible.insert(file.groupSettings[i].objectId); }
+                    : (lines ? file.mesh.nodes[i].lineIndexCount != 0
+                        : file.mesh.nodes[i].lineIndexCount == 0 && file.mesh.nodes[i].pointIndexCount == 0)) { eligible.insert(file.groupSettings[i].objectId); }
             }
         }
         std::erase_if(targets, [&](SceneObjectId id) { return !eligible.contains(id); });
@@ -465,13 +466,15 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
         size_t colorIndex = 0;
         for (auto& file : state.files) {
             if (vertices.contains(file.objectId)) { setFileVertexSizeScale(file, 1.0f); }
-            for (auto& part : file.groupSettings) {
+            for (size_t i = 0; i < file.groupSettings.size(); ++i) {
+                auto& part = file.groupSettings[i];
                 if (parts.contains(part.objectId)) {
+                    const bool points = i < file.mesh.nodes.size() && file.mesh.nodes[i].pointIndexCount != 0;
                     resetGroupColor(part, colorIndex);
                     setGroupVertexSizeScale(part, 1.0f);
-                    setGroupRenderMode(part, UiRenderMode::solidMesh, true);
+                    setGroupRenderMode(part, UiRenderMode::solidMesh, !points);
                     setGroupRenderMode(part, UiRenderMode::triangles, false);
-                    setGroupRenderMode(part, UiRenderMode::vertices, false);
+                    setGroupRenderMode(part, UiRenderMode::vertices, points);
                     setGroupUvGrid(part, {});
                     setGroupLineStyle(part, {});
                 }

@@ -76,7 +76,7 @@ void WOBY_IMPORT_CALL releaseFixture(WobyImportResult* result)
 const WobyImporterApi api = {
     sizeof(WobyImporterApi),
 #ifdef WOBY_TEST_BAD_ABI
-    2u, // Previous ABI must be rejected by the ABI 3 host.
+    3u, // Previous ABI must be rejected by the ABI 4 host.
 #else
     WOBY_IMPORTER_ABI_VERSION,
 #endif

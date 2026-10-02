@@ -269,10 +269,8 @@ TEST_CASE("background model batch loader cancels between files")
 
 TEST_CASE("background model batch loader reports skipped and failed files")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_background_model_batch_failures";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const BatchTestDirectory fixture;
+    const auto root = std::filesystem::absolute(fixture.path);
     const std::filesystem::path validPath = root / "triangle.stl";
     const std::filesystem::path invalidPath = root / "empty.obj";
     const std::filesystem::path skippedPath = root / "ignored.txt";
@@ -280,9 +278,6 @@ TEST_CASE("background model batch loader reports skipped and failed files")
     {
         std::ofstream stream(invalidPath, std::ios::trunc);
         stream << "o empty\n";
-        stream << "v 0 0 0\n";
-        stream << "v 1 0 0\n";
-        stream << "v 0 1 0\n";
     }
     {
         std::ofstream stream(skippedPath, std::ios::trunc);
@@ -304,12 +299,11 @@ TEST_CASE("background model batch loader reports skipped and failed files")
     CHECK_FALSE(result.outcomes[1].error.empty());
     CHECK(result.skippedCount == 1u);
     CHECK(result.files.size() == 1u);
-    CHECK(result.lastError.find("OBJ did not contain renderable triangles") != std::string::npos);
+    CHECK(result.lastError.find("OBJ did not contain renderable geometry") != std::string::npos);
     CHECK(result.status.find("Added 1 model file") != std::string::npos);
     CHECK(result.status.find("skipped 1 non-model") != std::string::npos);
     CHECK(result.status.find("failed 1") != std::string::npos);
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("background model batch loader cancels after completed files")

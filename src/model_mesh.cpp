@@ -180,14 +180,14 @@ void rebaseMesh(Mesh& mesh, const Coordinate& origin)
 
 bool empty(const Mesh& mesh) noexcept
 {
-    return mesh.vertices.empty() || (mesh.indices.empty() && mesh.lineIndices.empty());
+    return mesh.vertices.empty() || (mesh.indices.empty() && mesh.lineIndices.empty() && mesh.pointIndices.empty());
 }
 
 std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node)
 {
-    const auto& indices = node.lineIndexCount ? mesh.lineIndices : mesh.indices;
-    const size_t offset = node.lineIndexCount ? node.lineIndexOffset : node.indexOffset;
-    const size_t count = node.lineIndexCount ? node.lineIndexCount : node.indexCount;
+    const auto& indices = node.pointIndexCount ? mesh.pointIndices : node.lineIndexCount ? mesh.lineIndices : mesh.indices;
+    const size_t offset = node.pointIndexCount ? node.pointIndexOffset : node.lineIndexCount ? node.lineIndexOffset : node.indexOffset;
+    const size_t count = node.pointIndexCount ? node.pointIndexCount : node.lineIndexCount ? node.lineIndexCount : node.indexCount;
     if (offset > indices.size() || count > indices.size() - offset) {
         throw std::runtime_error("Invalid model group index range.");
     }
@@ -306,7 +306,7 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance, std::span<const 
 void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoadProgressCallback& progress)
 {
     if (empty(mesh)) {
-        throw std::runtime_error("Mesh did not contain renderable triangles or lines.");
+        throw std::runtime_error("Mesh did not contain renderable triangles, lines or points.");
     }
 
     reportModelLoadProgress(progress, ModelLoadStage::normals);

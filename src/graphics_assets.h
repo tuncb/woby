@@ -27,5 +27,6 @@ inline constexpr std::array nativeShaderNames{
     "fs_marker_highlight_msaa",
     "cs_marker_lookup_single",
     "cs_marker_lookup_msaa",
+    "cs_freeform",
 };
 }
