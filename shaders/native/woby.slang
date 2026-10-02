@@ -245,8 +245,11 @@ uint ffHeader(uint slot) { return asuint(root.freeform[slot]); }
 float3 ffVector(uint offset) { return float3(root.freeform[offset],root.freeform[offset+1],root.freeform[offset+2]); }
 [numthreads(64,1,1)] void cs_freeform(uint3 thread : SV_DispatchThreadID) {
     uint nu=ffHeader(4), nv=ffHeader(5), id=thread.x;
-    if (id>=nu*nv) return;
-    uint x=id%nu, y=id/nu, bu=ffHeader(9)+x*19, bv=ffHeader(10)+y*19;
+    bool trimmed=ffHeader(15)!=0;
+    if (id>=(trimmed ? ffHeader(14) : nu*nv)) return;
+    uint x=trimmed ? asuint(root.freeform[ffHeader(13)+id*2]) : id%nu;
+    uint y=trimmed ? asuint(root.freeform[ffHeader(13)+id*2+1]) : id/nu;
+    uint bu=ffHeader(9)+x*19, bv=ffHeader(10)+y*19;
     uint firstU=asuint(root.freeform[bu]), firstV=asuint(root.freeform[bv]);
     uint controls=ffHeader(8), countU=ffHeader(2), pu=ffHeader(0), pv=ffHeader(1);
     float3 reference=ffVector(controls+(firstV*countU+firstU)*9);
@@ -281,6 +284,9 @@ float3 ffVector(uint offset) { return float3(root.freeform[offset],root.freeform
     }
     root.vertices[output]=position.x; root.vertices[output+1]=position.y; root.vertices[output+2]=position.z;
     if (ffHeader(11)!=0) { root.vertices[output+6]=uv.x; root.vertices[output+7]=1-uv.y; }
+    // Trim connectivity is supplied by CPU constrained triangulation. Never
+    // overwrite it with rectangular cells, which would fill the holes again.
+    if (trimmed) return;
     uint a=ffHeader(6)+id;
     if (ffHeader(3)!=0) {
         if (x+1<nu && y+1<nv) {

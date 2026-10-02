@@ -1,0 +1,42 @@
+# A curved Bezier sheet with a rational circular hole in parameter space.
+# The trimming curve is not standalone line geometry.
+vp .75 .5 1
+vp .75 .75 .7071067811865476
+vp .5 .75 1
+vp .25 .75 .7071067811865476
+vp .25 .5 1
+vp .25 .25 .7071067811865476
+vp .5 .25 1
+vp .75 .25 .7071067811865476
+cstype rat bspline
+deg 2
+curv2 1 2 3 4 5 6 7 8 1
+parm u 0 0 0 1 1 2 2 3 3 4 4 4
+end
+
+v -1 -1 0
+v 0 -1 0
+v 1 -1 0
+v -1 0 0
+v 0 0 1
+v 1 0 0
+v -1 1 0
+v 0 1 0
+v 1 1 0
+vt 0 0
+vt .5 0
+vt 1 0
+vt 0 .5
+vt .5 .5
+vt 1 .5
+vt 0 1
+vt .5 1
+vt 1 1
+g Curved sheet with circular hole
+cstype bezier
+deg 2 2
+surf 0 1 0 1 1/1 2/2 3/3 4/4 5/5 6/6 7/7 8/8 9/9
+parm u 0 1
+parm v 0 1
+hole 4 0 1
+end

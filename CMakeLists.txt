@@ -37,6 +37,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(CDT CONFIG REQUIRED)
 find_package(Boost CONFIG REQUIRED COMPONENTS multiprecision unordered)
 find_package(CURL REQUIRED)
 find_package(LibArchive REQUIRED)
@@ -169,6 +170,7 @@ add_executable(woby
     src/obj_mesh.cpp
     src/obj_freeform.cpp
     src/freeform.cpp
+    src/freeform_trim.cpp
     src/obj_mesh.h
     src/performance_log.cpp
     src/performance_log.h
@@ -212,6 +214,7 @@ target_include_directories(woby SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thir
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(woby PRIVATE
+    CDT::CDT
     Boost::multiprecision
     Boost::unordered
     woby_update
@@ -275,11 +278,11 @@ endif()
 if(WOBY_BUILD_BENCHMARKS)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp
-        src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/mesh_comparison.cpp
+        src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_comparison.cpp
         src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
-    target_link_libraries(woby_benchmarks PRIVATE Threads::Threads Boost::multiprecision)
+    target_link_libraries(woby_benchmarks PRIVATE Threads::Threads CDT::CDT Boost::multiprecision)
     woby_enable_project_warnings(woby_benchmarks)
     list(APPEND woby_runtime_targets woby_benchmarks)
     if(WOBY_BUILD_HASH_BENCHMARKS)
@@ -299,13 +302,13 @@ if(WOBY_BUILD_BENCHMARKS)
         foreach(backend IN ITEMS boost ankerl)
             set(target "woby_benchmarks_${backend}")
             add_executable(${target} tests/performance_benchmarks.cpp ${hash_probe_sources}
-                src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/mesh_degenerates.cpp
+                src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_degenerates.cpp
                 src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
             target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/tests")
             target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
             target_compile_definitions(${target} PRIVATE "WOBY_BENCHMARK_${backend}=1")
             target_link_libraries(${target} PRIVATE Threads::Threads
-                Boost::multiprecision Boost::unordered unordered_dense::unordered_dense)
+                CDT::CDT Boost::multiprecision Boost::unordered unordered_dense::unordered_dense)
             woby_enable_project_warnings(${target})
             list(APPEND woby_runtime_targets ${target})
         endforeach()
@@ -440,6 +443,7 @@ if(BUILD_TESTING)
         src/obj_mesh.cpp
         src/obj_freeform.cpp
         src/freeform.cpp
+        src/freeform_trim.cpp
         src/obj_mesh.h
         src/performance_log.cpp
         src/performance_log.h
@@ -490,6 +494,7 @@ if(BUILD_TESTING)
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
         tests/freeform_tests.cpp
+        tests/freeform_trim_tests.cpp
         tests/scene_file_edge_tests.cpp
         tests/stl_mesh_tests.cpp
         tests/ui_operations_tests.cpp
@@ -508,6 +513,7 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     target_link_libraries(woby_tests PRIVATE
+        CDT::CDT
         Boost::multiprecision
         Boost::unordered
         woby_update

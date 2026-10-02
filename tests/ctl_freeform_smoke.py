@@ -11,6 +11,52 @@ from PIL import ImageChops
 from ctl_headless_smoke import capture, session
 
 
+def trimmed_scene(executable, root):
+    model = root / "trimmed.obj"
+    # A rational circle in parameter space, over a curved Bezier panel. The
+    # equally sized green panel behind it is visible only through the hole.
+    model.write_text(
+        "vp .75 .5 1\nvp .75 .75 .7071067811865476\nvp .5 .75 1\n"
+        "vp .25 .75 .7071067811865476\nvp .25 .5 1\nvp .25 .25 .7071067811865476\n"
+        "vp .5 .25 1\nvp .75 .25 .7071067811865476\n"
+        "cstype rat bspline\ndeg 2\ncurv2 1 2 3 4 5 6 7 8 1\n"
+        "parm u 0 0 0 1 1 2 2 3 3 4 4 4\nend\n"
+        + "".join(f"v {x} {y} {0.5 if x == 0 and y == 0 else .2}\n"
+                  for y in (-.7, 0, .7) for x in (-.7, 0, .7))
+        + "g trimmed\ncstype bezier\ndeg 2 2\nsurf 0 1 0 1 1 2 3 4 5 6 7 8 9\n"
+        "parm u 0 1\nparm v 0 1\nhole 4 0 -1\nend\n"
+        "v -.7 -.7 0\nv .7 -.7 0\nv .7 .7 0\nv -.7 .7 0\ng behind\nf 10 11 12 13\n",
+        encoding="utf-8")
+    saved = root / "trimmed.woby"
+    env = dict(os.environ, SDL_VIDEO_DRIVER="woby-test-no-video-driver")
+    with session(executable, root, env, "--file", model) as (ctl, viewer):
+        ids = {item["name"]: item["id"] for item in ctl("objects")["objects"] if item["kind"] == "group"}
+        assert set(ids) == {"trimmed", "behind"}, ids
+        for helper in ("grid", "origin", "dimensions"):
+            ctl(helper, "set", "--visible", "false")
+        ctl("up-axis", "set", "y")
+        ctl("camera", "look-at", "--eye", 0, 0, 4, "--target", 0, 0, 0)
+        ctl("color", "set", ids["trimmed"], "--rgb", 1, 0, 0)
+        ctl("color", "set", ids["behind"], "--rgb", 0, 1, 0)
+        picture = capture(ctl, root / "trimmed.png")
+        colors = picture.getcolors(picture.width * picture.height)
+        assert sum(n for n, (r, g, b) in colors if r > g + 80 and r > b + 80) > 10000
+        assert sum(n for n, (r, g, b) in colors if g > r + 80 and g > b + 80) > 5000
+        assert ctl("stats")["lineSegmentCount"] == 0
+        ctl("color", "set", ids["behind"], "--rgb", 0, 0, 1)
+        changed = capture(ctl, root / "trimmed-changed.png")
+        assert ImageChops.difference(picture, changed).getbbox() is not None
+        ctl("scene", "undo")
+        assert ImageChops.difference(picture, capture(ctl, root / "trimmed-undo.png")).getbbox() is None
+        ctl("scene", "save-as", saved)
+        ctl("quit")
+        assert viewer.wait(timeout=15) == 0
+    with session(executable, root, env, "--scene", saved) as (ctl, viewer):
+        assert ImageChops.difference(picture, capture(ctl, root / "trimmed-restored.png")).getbbox() is None
+        ctl("quit")
+        assert viewer.wait(timeout=15) == 0
+
+
 def main():
     executable = Path(sys.argv[1]).resolve()
     with tempfile.TemporaryDirectory(prefix="woby freeform ") as directory:
@@ -48,7 +94,8 @@ def main():
             assert ImageChops.difference(picture, restored).getbbox() is None
             ctl("quit")
             assert viewer.wait(timeout=15) == 0
-    print("Freeform render smoke passed: surface, curve, controls, and scene reload.")
+        trimmed_scene(executable, root)
+    print("Freeform render smoke passed: surfaces, curves, rational trimming, undo, and scene reload.")
 
 
 if __name__ == "__main__":

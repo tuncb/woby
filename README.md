@@ -5,7 +5,7 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 ## Features
 
 - Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
-- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Bézier and B-spline/NURBS curves and untrimmed surfaces are supported (degrees 1–8, positive rational weights). STL remains triangle-only.
+- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Bézier and B-spline/NURBS curves and surfaces with trim boundaries and holes are supported (degrees 1–8, positive rational weights). STL remains triangle-only.
 - Add file formats with user-supplied importer packages in the portable `importers` folder, or register libraries through the CLI.
 - Open, save, and drag in `.woby` scene files with persisted model paths, scene tree hierarchy, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
@@ -205,8 +205,31 @@ the tessellated mesh.
 
 Curve parts use line controls; surface parts use the usual mesh controls. Saved
 scenes reference the original OBJ and reproduce the same tessellation on reload.
-Camera-adaptive refinement, crack stitching between independent patches, trimmed
-surfaces (`trim`, `hole`, `curv2`), surface connectivity, and other OBJ bases are
+Trimmed surfaces support `vp`, `curv2`, `trim`, and `hole`, including rational
+trimming curves, reversed curve intervals, and multiple regions. Each `trim`
+starts a region; following `hole` statements belong to that region. A hole without
+an explicit outer loop uses the surface's parameter rectangle. UV parameter
+coordinates are independent of texture UVs. Open, intersecting, touching, overlapping,
+or out-of-domain boundaries fail with a file/line diagnostic.
+
+The CPU samples positive-weight trimming curves adaptively, using a normalized UV
+control-hull tolerance of 1e-5 and a mapped midpoint error of 1e-4 of the surface
+control-box diagonal (minimum 1e-12). CDT constrains trim boundaries and the existing
+surface grid, then removes triangles outside retained regions. The compute shader
+evaluates these irregular samples while retaining the CPU triangle connectivity;
+holes also remain empty for picking, wireframes, bounds, and analysis. Untrimmed
+geometry keeps its existing grid and ordering. Sampling is bounded to 4096 control
+points per trimming curve, 16384 sampled boundary vertices per patch, and 24
+subdivision levels. A conservative two-million-vertex work estimate also limits
+boundary/grid intersections before triangulation. These limits report errors
+rather than silently filling holes or dropping regions.
+
+Try [the trimmed-surface sample](assets/samples/freeform-trimmed.obj).
+CDT and its geometric predicates are used unmodified through vcpkg; their license
+notices ship in `assets/licenses`.
+
+Camera-adaptive refinement, crack stitching between independent patches, special
+curves/points (`scrv`, `sp`), surface connectivity (`con`), and other OBJ bases are
 not supported yet. Unsupported freeform statements fail with a file/line diagnostic
 instead of silently importing incomplete geometry.
 

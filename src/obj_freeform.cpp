@@ -64,7 +64,7 @@ void bezierKnots(std::vector<double>& parameters, uint32_t p)
     parameters = std::move(knots);
 }
 
-void finish(FreeformPatch& patch, bool bezier)
+void finish(FreeformPatch& patch, bool bezier, bool parameterCurve = false)
 {
     if (bezier) {
         bezierKnots(patch.knotsU,patch.degreeU);
@@ -75,6 +75,7 @@ void finish(FreeformPatch& patch, bool bezier)
     }
     patch.countU = static_cast<uint32_t>(patch.knotsU.size() - patch.degreeU - 1);
     patch.countV = patch.surface ? static_cast<uint32_t>(patch.knotsV.size() - patch.degreeV - 1) : 1;
+    if (parameterCurve) { patch.domainU = {patch.knotsU[patch.degreeU],patch.knotsU[patch.countU]}; }
     validateFreeformPatch(patch);
 }
 } // namespace
@@ -101,7 +102,10 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
     ObjFreeformInput result;
     std::vector<std::array<double,4>> positions;
     std::vector<std::array<double,2>> texcoords;
-    std::vector<Coordinate> normals;
+    std::vector<Coordinate> normals, parameters;
+    std::vector<std::shared_ptr<const FreeformPatch>> parameterCurves;
+    bool parameterCurve = false;
+    std::shared_ptr<FreeformTrimming> trimming;
     size_t lineNumber = 0, statementLine = 0;
     std::string currentName, type;
     bool rational = false;
@@ -127,10 +131,10 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
             bool keep = true;
             if (!words.empty()) {
                 const auto& key = words[0];
-                if (key == "trim" || key == "hole" || key == "curv2" || key == "scrv" || key == "sp" || key == "con") {
-                    throw std::runtime_error("Unsupported OBJ freeform statement '" + key + "': trimming and surface connectivity are not supported.");
+                if (key == "scrv" || key == "sp" || key == "con") {
+                    throw std::runtime_error("Unsupported OBJ freeform statement '" + key + "': special curves, special points and surface connectivity are not supported.");
                 }
-                if (active && key != "parm" && key != "end") { throw std::runtime_error("Expected parm or end in a freeform body."); }
+                if (active && key != "parm" && key != "end" && key != "trim" && key != "hole") { throw std::runtime_error("Unexpected statement in a freeform body."); }
                 if (key == "v") {
                     if (words.size() != 4 && words.size() != 5 && words.size() != 7 && words.size() != 8) { throw std::runtime_error("Invalid OBJ vertex."); }
                     positions.push_back({number(words[1]),number(words[2]),number(words[3]),words.size() == 5 ? number(words[4]) : 1});
@@ -147,7 +151,8 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
                     normals.push_back({number(words[1]), number(words[2]), number(words[3])});
                 } else if (key == "vp") {
                     if (words.size() < 2 || words.size() > 4) { throw std::runtime_error("Invalid parameter vertex."); }
-                    for (size_t i = 1; i < words.size(); ++i) { (void)number(words[i]); }
+                    parameters.push_back({number(words[1]),words.size() > 2 ? number(words[2]) : 0,words.size() > 3 ? number(words[3]) : 1});
+                    if (parameters.size() > maxFreeformVertices) { throw std::runtime_error("OBJ parameter vertex table exceeds the limit."); }
                     keep = false;
                 } else if (key == "g" || key == "o") {
                     currentName.clear();
@@ -161,6 +166,40 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
                 } else if (key == "deg") {
                     if (words.size() != 2 && words.size() != 3) { throw std::runtime_error("Invalid deg statement."); }
                     degreeU = degree(words[1]); degreeV = words.size() == 3 ? degree(words[2]) : 0; keep = false;
+                } else if (key == "curv2") {
+                    if (type.empty() || degreeU == 0 || words.size() < 3 || words.size() > 4097) {
+                        throw std::runtime_error("Trimming curves require cstype, deg and 2 to 4096 control points.");
+                    }
+                    active.emplace(); parameterCurve = true;
+                    active->degreeU = degreeU;
+                    for (size_t i = 1; i < words.size(); ++i) {
+                        const auto& p = parameters.at(reference(words[i],parameters.size()));
+                        active->controls.push_back({p[0],p[1],0,rational ? p[2] : 1});
+                    }
+                    keep = false;
+                } else if (key == "trim" || key == "hole") {
+                    if (!active || !active->surface || words.size() < 4 || (words.size()-1)%3 != 0) {
+                        throw std::runtime_error("Trimming requires a surface and parameter-range/curve-reference triples.");
+                    }
+                    if (!trimming) {
+                        trimming = std::make_shared<FreeformTrimming>(); trimming->sourceFile = pathToUtf8(path);
+                        active->trimming = trimming;
+                    }
+                    if (key == "trim" || trimming->regions.empty()) { trimming->regions.emplace_back(); trimming->regions.back().outer.sourceLine = statementLine; }
+                    if (trimming->regions.size() > 256) { throw std::runtime_error("Too many trim regions."); }
+                    FreeformTrimLoop loop; loop.sourceLine = statementLine;
+                    for (size_t i = 1; i < words.size(); i += 3) {
+                        FreeformTrimSegment segment{parameterCurves.at(reference(words[i+2],parameterCurves.size())),{number(words[i]),number(words[i+1])}};
+                        const auto& domain = segment.curve->domainU;
+                        if (segment.interval[0] == segment.interval[1] || std::min(segment.interval[0],segment.interval[1]) < domain[0]
+                            || std::max(segment.interval[0],segment.interval[1]) > domain[1]) {
+                            throw std::runtime_error("Trimming curve interval is outside its active knot range.");
+                        }
+                        loop.segments.push_back(std::move(segment));
+                    }
+                    if (key == "trim") { trimming->regions.back().outer = std::move(loop); }
+                    else { trimming->regions.back().holes.push_back(std::move(loop)); }
+                    keep = false;
                 } else if (key == "curv" || key == "surf") {
                     const bool surface = key == "surf";
                     const size_t first = surface ? 5 : 3;
@@ -196,8 +235,10 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
                     keep = false;
                 } else if (key == "end") {
                     if (!active || words.size() != 1) { throw std::runtime_error("Unexpected freeform end statement."); }
-                    finish(*active,type == "bezier");
-                    result.patches.push_back(std::move(*active)); active.reset(); keep = false;
+                    finish(*active,type == "bezier",parameterCurve);
+                    if (parameterCurve) { parameterCurves.push_back(std::make_shared<const FreeformPatch>(std::move(*active))); }
+                    else { result.patches.push_back(std::move(*active)); }
+                    active.reset(); trimming.reset(); parameterCurve = false; keep = false;
                 } else if (objFreeformStatement(logical)) {
                     throw std::runtime_error("Unsupported OBJ freeform statement '" + key + "'.");
                 }

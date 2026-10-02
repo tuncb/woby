@@ -1,4 +1,5 @@
 #include "freeform_gpu.h"
+#include "freeform_trim_fixture.h"
 #include "graphics_helpers.h"
 #include <doctest/doctest.h>
 #include <cmath>
@@ -16,7 +17,7 @@ TEST_CASE("Native freeform compute matches CPU rational surfaces curves and topo
     device.initialized=g::init({}); REQUIRE(device.initialized);
     const auto program=g::createProgram(woby::loadShader(std::filesystem::path(WOBY_TEST_ASSET_DIRECTORY)
         / "shaders" / woby::rendererShaderFolder(g::getRendererType()) / "cs_freeform.bin"),true);
-    for (bool authored : {false,true}) {
+    for (bool trimmed : {false,true}) for (bool authored : {false,true}) {
         woby::FreeformPatch surface;
         surface.surface=true; surface.degreeU=2; surface.degreeV=1; surface.countU=3; surface.countV=2;
         surface.knotsU={10,10,10,14,14,14}; surface.knotsV={-2,-2,2,2};
@@ -30,7 +31,12 @@ TEST_CASE("Native freeform compute matches CPU rational surfaces curves and topo
                 if (authored) { surface.normals.push_back({0,0,-1}); }
             }
         }
-        auto curve=surface; curve.surface=false; curve.degreeV=0; curve.countV=1;
+        if (trimmed) {
+            auto trim=std::make_shared<woby::FreeformTrimming>();
+            trim->regions.push_back({{}, {trimPolygon({{11,-.5},{13,-.5},{13,1.5},{11,1.5}})}});
+            surface.trimming=trim;
+        }
+        auto curve=surface; curve.trimming.reset(); curve.surface=false; curve.degreeV=0; curve.countV=1;
         curve.controls.resize(3); curve.normals.clear(); curve.texcoords.clear(); curve.knotsV.clear();
         woby::Mesh mesh;
         // Existing polygon data must survive compute writes at nonzero offsets.
@@ -44,7 +50,7 @@ TEST_CASE("Native freeform compute matches CPU rational surfaces curves and topo
         for (size_t i=3;i<mesh.freeform->grids[1].vertexOffset;++i) { initial[i].normal={0,0,0}; }
         const auto vb=g::createVertexBuffer(g::copy(initial.data(),static_cast<uint32_t>(initial.size()*sizeof(woby::Vertex))),{32});
         auto triangleInput=mesh.indices, lineInput=mesh.lineIndices;
-        std::fill(triangleInput.begin()+3,triangleInput.end(),0);
+        if (!trimmed) { std::fill(triangleInput.begin()+3,triangleInput.end(),0); }
         std::fill(lineInput.begin()+2,lineInput.end(),0);
         const auto ib=g::createIndexBuffer(g::copy(triangleInput.data(),static_cast<uint32_t>(triangleInput.size()*4)),WOBY_GPU_BUFFER_INDEX32);
         const auto lb=g::createIndexBuffer(g::copy(lineInput.data(),static_cast<uint32_t>(lineInput.size()*4)),WOBY_GPU_BUFFER_INDEX32);
@@ -56,7 +62,7 @@ TEST_CASE("Native freeform compute matches CPU rational surfaces curves and topo
         while (g::frame()<ready) {}
         CHECK(triangles==mesh.indices); CHECK(lines==mesh.lineIndices);
         for (size_t i=0;i<output.size();++i) {
-            CAPTURE(i); CAPTURE(authored);
+            CAPTURE(i); CAPTURE(authored); CAPTURE(trimmed);
             for (size_t k=0;k<3;++k) {
                 CHECK(output[i].position[k]==doctest::Approx(mesh.vertices[i].position[k]).epsilon(2e-5));
                 CHECK(output[i].normal[k]==doctest::Approx(mesh.vertices[i].normal[k]).epsilon(2e-5));

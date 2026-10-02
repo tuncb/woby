@@ -50,8 +50,23 @@ std::vector<float> packFreeformGpu(const FreeformPatch& patch, const FreeformGri
             for (double a : b.derivatives) { value(a*extent); }
         }
     };
-    axis(grid.u,false); axis(grid.v,true);
-    return safe ? data : std::vector<float>{};
+    if (grid.samples.empty()) { axis(grid.u,false); axis(grid.v,true); }
+    else {
+        std::vector<double> u,v;
+        for (const auto& sample:grid.samples) { u.push_back(sample[0]); v.push_back(sample[1]); }
+        const auto unique=[](auto& values) {
+            std::sort(values.begin(),values.end()); values.erase(std::unique(values.begin(),values.end()),values.end());
+        };
+        unique(u); unique(v);
+        axis(u,false); axis(v,true);
+        header(13,data.size()); header(14,grid.samples.size()); header(15,1);
+        for (const auto& sample:grid.samples) {
+            data.push_back(std::bit_cast<float>(static_cast<uint32_t>(std::lower_bound(u.begin(),u.end(),sample[0])-u.begin())));
+            data.push_back(std::bit_cast<float>(static_cast<uint32_t>(std::lower_bound(v.begin(),v.end(),sample[1])-v.begin())));
+        }
+    }
+    if (!safe) { return {}; }
+    return data;
 }
 
 void dispatchFreeformGpu(const Mesh& mesh, graphics::VertexBufferHandle vertices,
@@ -70,7 +85,7 @@ void dispatchFreeformGpu(const Mesh& mesh, graphics::VertexBufferHandle vertices
             graphics::setBuffer(0,vertices,graphics::Access::ReadWrite);
             graphics::setBuffer(1,patch.surface ? triangles : lines,graphics::Access::Write);
             graphics::setBuffer(2,input,graphics::Access::Read);
-            graphics::dispatch(view,program,static_cast<uint32_t>((grid.u.size()*grid.v.size()+63)/64));
+            graphics::dispatch(view,program,static_cast<uint32_t>((freeformVertexCount(grid)+63)/64));
         } catch (...) { graphics::destroy(input); throw; }
         // Recorded dispatches retain their resources through GPU completion.
         graphics::destroy(input);

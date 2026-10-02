@@ -1,4 +1,5 @@
 #include "freeform.h"
+#include "freeform_trim.h"
 
 #include <algorithm>
 #include <cmath>
@@ -221,7 +222,8 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         FreeformGrid grid;
         grid.u = gridParameters(patch.knotsU, patch.degreeU, patch.domainU, patch.surface);
         grid.v = patch.surface ? gridParameters(patch.knotsV, patch.degreeV, patch.domainV, true) : std::vector<double>{0};
-        const size_t count = grid.u.size() * grid.v.size();
+        triangulateFreeformTrim(patch,grid,progress);
+        const size_t count = freeformVertexCount(grid);
         if (count > maxFreeformVertices - total) { throw std::runtime_error("Freeform tessellation exceeds the vertex limit."); }
         total += count;
         geometry->grids.push_back(std::move(grid));
@@ -240,19 +242,23 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         grid.groupIndex = static_cast<uint32_t>(mesh.nodes.size());
         grid.indexOffset = static_cast<uint32_t>(patch.surface ? mesh.indices.size() : mesh.lineIndices.size());
         const auto sourceOffset = static_cast<uint32_t>(source->points.size());
-        for (const double v : grid.v) {
-            for (const double u : grid.u) {
-                if (completed % 1024 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, completed, total); }
-                const auto sample = evaluateFreeform(patch,u,v);
-                const auto point = relativePosition(sample.position, mesh.origin);
-                Vertex vertex{renderPosition(point), freeformNormal(patch,u,v), {}};
-                if (!patch.texcoords.empty()) { vertex.texcoord = {static_cast<float>(sample.texcoord[0]), 1-static_cast<float>(sample.texcoord[1])}; }
-                mesh.vertices.push_back(vertex); mesh.precisePositions.push_back(point); source->points.push_back(point);
-                ++completed;
-            }
+        const auto appendVertex = [&](double u,double v) {
+            if (completed % 1024 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, completed, total); }
+            const auto sample = evaluateFreeform(patch,u,v);
+            const auto point = relativePosition(sample.position, mesh.origin);
+            Vertex vertex{renderPosition(point), freeformNormal(patch,u,v), {}};
+            if (!patch.texcoords.empty()) { vertex.texcoord = {static_cast<float>(sample.texcoord[0]), 1-static_cast<float>(sample.texcoord[1])}; }
+            mesh.vertices.push_back(vertex); mesh.precisePositions.push_back(point); source->points.push_back(point);
+            ++completed;
+        };
+        if (!grid.samples.empty()) {
+            for (const auto& uv:grid.samples) { appendVertex(uv[0],uv[1]); }
+            for (auto index:grid.triangles) { mesh.indices.push_back(grid.vertexOffset+index); source->indices.push_back(sourceOffset+index); }
+        } else {
+            for (const double v:grid.v) for (const double u:grid.u) { appendVertex(u,v); }
         }
         const uint32_t nu = static_cast<uint32_t>(grid.u.size()), nv = static_cast<uint32_t>(grid.v.size());
-        for (uint32_t y = 0; y < (patch.surface ? nv-1 : 1); ++y) {
+        for (uint32_t y = 0; grid.samples.empty() && y < (patch.surface ? nv-1 : 1); ++y) {
             for (uint32_t x = 0; x + 1 < nu; ++x) {
                 const uint32_t a = y*nu + x;
                 if (patch.surface) {
