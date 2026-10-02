@@ -49,7 +49,6 @@ struct ComparisonInputSnapshot {
     std::vector<UiFileState> files;
     std::array<std::vector<ComparisonInputPart>, 2> parts;
     ComparisonSettings settings;
-    SceneUpAxis upAxis = SceneUpAxis::z;
     Coordinate origin{};
 };
 

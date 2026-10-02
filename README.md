@@ -122,10 +122,12 @@ outline, mixed toggles have a minus, and selected objects have an outline, so th
 **Create analysis > UV analysis** (the file's analysis button or scene-tree context
 menu) creates a separate view beside the original mesh. UV analysis has its own
 source, position, grid density, and edge controls, separate from **Mesh analysis**.
-Choose **2D UV layout** to inspect existing islands in the XY plane, or **3D surface
+Choose **2D UV layout** to inspect existing islands in the world XZ plane, or **3D surface
 with UV grid** to inspect stretching on a copy of the source. The layout uses one
 uniform display scale, preserving island proportions, overlaps, and UV tile offsets;
-it does not generate new UVs. Parts without complete UVs are omitted from the layout
+it does not generate new UVs. Switching Y/Z up changes the camera orientation for
+both the source and UV view; it does not rotate the UV plane independently.
+Parts without complete UVs are omitted from the layout
 and retain normal shading in the 3D view. Existing analyses remain Mesh analyses.
 
 **Properties > Appearance > UV grid** also draws cyan constant-U lines and orange

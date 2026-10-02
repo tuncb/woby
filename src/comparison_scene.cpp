@@ -127,7 +127,7 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
 }
 } // namespace
 
-Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated, std::stop_token stop)
+Mesh uvLayoutMesh(const Mesh& source, bool separated, std::stop_token stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     UvExtent extent;
@@ -142,7 +142,7 @@ Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated, std::s
     result.origin = source.origin;
     result.uvQuality = source.uvQuality;
     if (extent.min[0] > extent.max[0]) { return result; }
-    const auto frame = uvLayoutFrame(source.bounds, extent, upAxis);
+    const auto frame = uvLayoutFrame(source.bounds, extent);
     constexpr auto missing = std::numeric_limits<uint32_t>::max();
     std::vector<uint32_t> remap(source.vertices.size(), missing);
     size_t patch = 0;
@@ -167,8 +167,7 @@ Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated, std::s
             if (mapped == missing || (separated && mapped < firstVertex)) {
                 auto vertex = source.vertices[sourceIndex];
                 vertex.position = uvPatchPosition(placement, vertex.texcoord);
-                vertex.normal = upAxis == SceneUpAxis::y ? std::array<float, 3>{0, 0, 1}
-                    : std::array<float, 3>{0, -1, 0};
+                vertex.normal = {0, -1, 0};
                 mapped = static_cast<uint32_t>(result.vertices.size());
                 result.vertices.push_back(vertex);
                 result.precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
@@ -295,7 +294,7 @@ static void validateComparisonInput(const UiState& state, ComparisonSide side, S
 
 template <typename Visit>
 static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSettings& settings,
-    SceneUpAxis upAxis, const Coordinate& origin, std::stop_token stop)
+    const Coordinate& origin, std::stop_token stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     Mesh result;
@@ -348,7 +347,7 @@ static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSetting
         result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, settings.uvNormalization, settings.uvMetric, stop));
     }
     if (isUvAnalysis(settings.type) && settings.uvView == UvView::layout) {
-        return uvLayoutMesh(result, upAxis, settings.uvSeparated, stop);
+        return uvLayoutMesh(result, settings.uvSeparated, stop);
     }
     return result;
 }
@@ -357,14 +356,13 @@ Mesh comparisonWorldMesh(const UiState& state, ComparisonSide side, SceneObjectI
 {
     validateComparisonInput(state, side, id);
     return buildComparisonWorldMesh([&](const auto& visitor) { visitParts(state, side, id, visitor); },
-        comparisonSettings(state, id), state.upAxis, state.coordinateOrigin.value_or(Coordinate{}), {});
+        comparisonSettings(state, id), state.coordinateOrigin.value_or(Coordinate{}), {});
 }
 
 ComparisonInputSnapshot snapshotComparisonInputs(const UiState& state, SceneObjectId id)
 {
     ComparisonInputSnapshot snapshot;
     snapshot.settings = comparisonSettings(state, id);
-    snapshot.upAxis = state.upAxis;
     snapshot.origin = state.coordinateOrigin.value_or(Coordinate{});
     boost::unordered_flat_map<SceneObjectId, size_t> files;
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
@@ -390,7 +388,7 @@ Mesh comparisonWorldMesh(const ComparisonInputSnapshot& snapshot, ComparisonSide
         for (const auto& part : parts) {
             visitor(snapshot.files.at(part.fileIndex), part.groupIndex, part.parent.data());
         }
-    }, snapshot.settings, snapshot.upAxis, snapshot.origin, stop);
+    }, snapshot.settings, snapshot.origin, stop);
 }
 
 PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot& snapshot, std::stop_token stop)
@@ -437,7 +435,6 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
             hashCombine(seed, static_cast<uint64_t>(settings.uvMetric));
             hashCombine(seed, static_cast<uint64_t>(settings.uvNormalization));
         }
-        if (settings.uvView == UvView::layout) { hashCombine(seed, static_cast<uint64_t>(state.upAxis)); }
     }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         hashCombine(seed, static_cast<uint64_t>(side));
@@ -503,7 +500,7 @@ static std::optional<Bounds> calculateComparisonDisplayBounds(const UiState& sta
         });
         if (uv.min[0] > uv.max[0]) { return std::nullopt; }
         for (size_t k = 0; k < 3; ++k) { source.center[k] = (source.min[k] + source.max[k]) * .5f; }
-        const auto frame = uvLayoutFrame(source, uv, state.upAxis);
+        const auto frame = uvLayoutFrame(source, uv);
         std::vector<Vertex> corners;
         if (!comparison->settings.uvSeparated) {
             corners.resize(2);
