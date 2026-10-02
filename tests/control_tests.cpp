@@ -2,6 +2,8 @@
 #include "comparison_scene.h"
 #include "command_line.h"
 #include "ui_operations.h"
+#include "automation_registry.h"
+#include "scene_history.h"
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
 #include <cmath>
@@ -43,6 +45,26 @@ Json run(woby::UiState& state, const woby::SceneDocument& clean, const std::stri
     if (command.object) { command.memberId = std::stoull(*command.object); }
     return woby::applyControlSceneOperation(state, clean, command, formatId, 200, 800);
 }
+
+struct IsolationFixture {
+    std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+        / ("woby-isolation-" + woby::automationRandomHex(8));
+    woby::UiState state;
+    IsolationFixture()
+    {
+        std::filesystem::create_directory(root);
+        woby::Mesh mesh;
+        mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        mesh.indices = {0, 1, 2, 0, 1, 2, 0, 1, 2};
+        mesh.nodes = {{"P", 0, 3}, {"Q", 3, 3}, {"Nonmember", 6, 3}};
+        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        state.files.push_back(woby::createUiFileState(root / "selected" / "mesh.obj", mesh, 0));
+        state.files.push_back(woby::createUiFileState(root / "other" / "mesh.obj", std::move(mesh), 1));
+        woby::appendFolderTreeSceneNode(state, root / "selected", 0, 1);
+        woby::appendFolderTreeSceneNode(state, root / "other", 1, 1);
+    }
+    ~IsolationFixture() { std::error_code ignored; std::filesystem::remove_all(root, ignored); }
+};
 }
 
 TEST_CASE("ctl parses every extended command family with explicit units and reordered common options")
@@ -614,6 +636,124 @@ TEST_CASE("ctl analysis enable supports whole sides and validates inputs before 
     CHECK(disabled["object"]["a"][1]["enabled"] == false);
     CHECK(disabled["object"]["a"][1]["missing"] == true);
     run(state, clean, "analysis.enable", {{"side", "a"}, {"enabled", true}}, id);
+    CHECK(woby::createSceneDocument(state) == clean);
+}
+
+TEST_CASE("ctl mesh isolation scopes group file and folder inputs to existing members on either side")
+{
+    IsolationFixture fixture;
+    auto& state = fixture.state;
+    const auto p = state.files[0].groupSettings[0].objectId;
+    const auto q = state.files[0].groupSettings[1].objectId;
+    const auto excluded = state.files[0].groupSettings[2].objectId;
+    const auto r = state.files[1].groupSettings[0].objectId;
+    const auto id = woby::createComparison(state), other = woby::createComparison(state);
+    for (const auto analysis : {id, other}) {
+        for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+            woby::setComparisonObjects(state, {p, q, r}, side, true, analysis);
+        }
+    }
+    // Existing source visibility must not affect inclusion or be changed by isolation.
+    state.files[0].groupSettings[0].visible = false;
+    const auto clean = woby::createSceneDocument(state);
+    const auto signature = woby::comparisonGeometrySignature(state, id);
+    const auto otherSignature = woby::comparisonGeometrySignature(state, other);
+    for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+        const auto opposite = side == woby::ComparisonSide::a ? woby::ComparisonSide::b : woby::ComparisonSide::a;
+        const std::string sideName = side == woby::ComparisonSide::a ? "a" : "b";
+        for (const auto input : {p, state.files[0].objectId, state.sceneNodes[0].objectId}) {
+            CAPTURE(sideName);
+            CAPTURE(input);
+            woby::setComparisonObjectsEnabled(state, {p}, side, false, id);
+            const auto parsed = parse({"analysis", "enable", formatId(id), "--side", sideName,
+                "--object", formatId(input), "--enabled", "true", "--isolate", "true"});
+            const auto changed = run(state, clean, "analysis.enable", woby::controlOperationParams(parsed.operation), id);
+            CHECK(changed["dirty"] == true);
+            CHECK(woby::comparisonPartEnabled(state, p, side, id));
+            CHECK(woby::comparisonPartEnabled(state, q, side, id) == (input != p));
+            CHECK_FALSE(woby::comparisonPartEnabled(state, r, side, id));
+            CHECK_FALSE(woby::comparisonContains(state, excluded, side, id));
+            CHECK(woby::comparisonMemberIds(state, side, id, false).size() == 3);
+            CHECK(woby::enabledComparisonPartCount(state, opposite, id) == 3);
+            CHECK(woby::comparisonWorldMesh(state, side, id).indices.size() == (input == p ? 3 : 6));
+            CHECK(woby::comparisonWorldMesh(state, opposite, id).indices.size() == 9);
+            CHECK(woby::comparisonGeometrySignature(state, id) != signature);
+            CHECK(woby::comparisonGeometrySignature(state, other) == otherSignature);
+            CHECK(woby::createSceneDocument(state).files == clean.files);
+            CHECK(woby::createSceneDocument(state).comparisons[1] == clean.comparisons[1]);
+            const auto isolated = woby::createSceneDocument(state);
+            run(state, clean, "analysis.enable", woby::controlOperationParams(parsed.operation), id);
+            CHECK(woby::createSceneDocument(state) == isolated);
+            run(state, clean, "analysis.enable", {{"side", sideName}, {"enabled", true}}, id);
+            CHECK(woby::createSceneDocument(state) == clean);
+            CHECK(woby::comparisonGeometrySignature(state, id) == signature);
+        }
+    }
+}
+
+TEST_CASE("ctl isolation rejects invalid requests atomically and keeps UV side restrictions")
+{
+    IsolationFixture fixture;
+    auto& state = fixture.state;
+    const auto p = state.files[0].groupSettings[0].objectId;
+    const auto q = state.files[0].groupSettings[1].objectId;
+    for (const auto type : {woby::AnalysisType::mesh, woby::AnalysisType::uv, woby::AnalysisType::uvQuality}) {
+        const auto id = woby::createComparison(state, type);
+        woby::setComparisonObjects(state, {p}, woby::ComparisonSide::a, true, id);
+        if (type == woby::AnalysisType::mesh) { woby::setComparisonObjects(state, {q}, woby::ComparisonSide::b, true, id); }
+        const auto clean = woby::createSceneDocument(state);
+        const auto& method = *woby::findControlMethod("analysis.enable");
+        for (const auto& params : std::vector<Json>{
+            {{"side", "a"}, {"enabled", true}, {"isolate", true}},
+            {{"side", "a"}, {"object", formatId(p)}, {"enabled", false}, {"isolate", true}},
+            {{"side", "a"}, {"object", formatId(p)}, {"isolate", true}},
+            {{"side", "invalid"}, {"object", formatId(p)}, {"enabled", true}, {"isolate", true}}}) {
+            auto supplied = params; supplied["target"] = formatId(id);
+            CHECK_THROWS(woby::parseControlOperation(method, supplied));
+        }
+        CHECK_THROWS_WITH_AS(run(state, clean, "analysis.enable",
+            {{"side", "a"}, {"object", formatId(q)}, {"enabled", true}, {"isolate", true}}, id),
+            "Object is not a member of the selected analysis side.", std::invalid_argument);
+        CHECK_THROWS(run(state, clean, "analysis.enable",
+            {{"side", "b"}, {"object", formatId(p)}, {"enabled", true}, {"isolate", true}}, id));
+        CHECK(woby::createSceneDocument(state) == clean);
+        woby::isolateComparisonObjects(state, {q}, woby::ComparisonSide::a, id);
+        CHECK(woby::createSceneDocument(state) == clean);
+    }
+}
+
+TEST_CASE("mesh isolation disables missing members and survives scene persistence and undo redo")
+{
+    IsolationFixture fixture;
+    auto& state = fixture.state;
+    const auto p = state.files[0].groupSettings[0].objectId;
+    const auto id = woby::createComparison(state);
+    woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::b, true, id);
+    const auto missing = state.nextObjectId + 100;
+    woby::findComparison(state, id)->b.push_back({missing, "Missing part"});
+    const auto clean = woby::createSceneDocument(state);
+    woby::SceneHistory history;
+    woby::resetSceneHistory(history, state);
+    run(state, clean, "analysis.enable", {{"side", "b"}, {"object", formatId(p)}, {"enabled", true}, {"isolate", true}}, id);
+    CHECK_FALSE(woby::comparisonPartEnabled(state, missing, woby::ComparisonSide::b, id));
+    CHECK(woby::comparisonMemberIds(state, woby::ComparisonSide::b, id, false).size() == 4);
+    const auto isolated = woby::createSceneDocument(state);
+    REQUIRE(woby::recordSceneHistory(history, state));
+    auto undo = woby::prepareSceneHistoryStep(history, state, clean, false);
+    REQUIRE(undo.has_value());
+    woby::commitSceneHistoryStep(history, state, std::move(*undo), false);
+    CHECK(woby::createSceneDocument(state) == clean);
+    auto redo = woby::prepareSceneHistoryStep(history, state, clean, true);
+    REQUIRE(redo.has_value());
+    woby::commitSceneHistoryStep(history, state, std::move(*redo), true);
+    CHECK(woby::createSceneDocument(state) == isolated);
+    const auto path = fixture.root / "isolated.woby";
+    woby::writeSceneDocument(path, isolated);
+    const auto saved = woby::readSceneDocument(path);
+    const auto restored = woby::prepareSceneReplacement(state, state.files, saved);
+    CHECK(woby::createSceneDocument(restored).comparisons == isolated.comparisons);
+    run(state, clean, "analysis.enable", {{"side", "b"}, {"enabled", true}}, id);
+    CHECK(woby::comparisonPartEnabled(state, missing, woby::ComparisonSide::b, id));
     CHECK(woby::createSceneDocument(state) == clean);
 }
 

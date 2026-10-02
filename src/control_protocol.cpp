@@ -327,7 +327,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     if (command.uvColor && *command.uvColor != "grid" && *command.uvColor != "u" && *command.uvColor != "v") { throw std::invalid_argument("uvColor must be grid, u or v."); }
     if (command.uvMetric && *command.uvMetric != "angle" && *command.uvMetric != "area" && *command.uvMetric != "orientation") { throw std::invalid_argument("uvMetric must be angle, area or orientation."); }
     if (command.uvNormalization && *command.uvNormalization != "per_patch" && *command.uvNormalization != "absolute") { throw std::invalid_argument("uvNormalization must be per_patch or absolute."); }
-    if (command.isolate.value_or(false) && (!command.object || command.enabled != true || command.side != "a")) { throw std::invalid_argument("isolate requires --object, --side a and --enabled true."); }
+    if (command.isolate.value_or(false) && (!command.object || command.enabled != true)) { throw std::invalid_argument("isolate requires --object and --enabled true."); }
     if (command.uvView && *command.uvView != "layout" && *command.uvView != "surface") { throw std::invalid_argument("uvView must be layout or surface."); }
     if ((command.type == "uv" || command.type == "uv_quality") && command.b) { throw std::invalid_argument("UV analysis uses one source input: --a."); }
     if (command.shape && *command.shape != "line" && *command.shape != "rectangle") { throw std::invalid_argument("shape must be line or rectangle."); }

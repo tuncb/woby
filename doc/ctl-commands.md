@@ -183,7 +183,7 @@ Manual run/cancel requests do not change these saved preferences.
 | `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
 | `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode automatic\|original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
-| `analysis enable ANALYSIS_ID --side a\|b --enabled BOOL [--object OBJECT_ID]` | `analysis.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. Membership is preserved. |
+| `analysis enable ANALYSIS_ID --side a\|b --enabled BOOL [--object OBJECT_ID] [--isolate BOOL]` | `analysis.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. `--isolate true` requires an object and `--enabled true`; enables only its members on that side. Mesh supports A/B; UV supports A only. Membership is preserved. |
 | `analysis remove ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.remove` | Remove the input's current triangular parts from the selected side. |
 | `analysis clear ANALYSIS_ID --side a\|b` | `analysis.clear` | Clear the entire side, including missing references. |
 | `analysis swap ANALYSIS_ID` | `analysis.swap` | Swap the A/B input lists. |
@@ -381,11 +381,25 @@ analyses are unaffected. An input with no members on that side is a no-op.
 entry in `a` and `b`. RPC uses `analysis.enable` with `target`, `side`, boolean
 `enabled`, and optional `object`.
 
+Add `--isolate true` with `--object OBJECT_ID --enabled true` to enable only that
+object's existing members on the selected side, disabling every other member there.
+Files and folders include their descendant parts already on that side; isolation
+never adds membership. Objects with no members on that side are rejected before
+any changes. Mesh analyses support either side; UV analyses support A only. The
+other side, other analyses, and source visibility are unchanged. This changes
+analysis inputs and results, following the existing automatic/manual update settings.
+RPC uses the optional boolean `isolate`. Enable the whole side to include all
+members again; this does not restore a previous mixed enablement selection.
+
 ```powershell
 woby.exe ctl --instance review analysis enable ANALYSIS_ID --side a --object OBJECT_ID --enabled false
 woby.exe ctl --instance review analysis enable ANALYSIS_ID --side a --object OBJECT_ID --enabled true
 # Disable every member on side B.
 woby.exe ctl --instance review analysis enable ANALYSIS_ID --side b --enabled false
+# Analyze only one object's members on side A.
+woby.exe ctl --instance review analysis enable ANALYSIS_ID --side a --object OBJECT_ID --enabled true --isolate true
+# Include every member on side A again.
+woby.exe ctl --instance review analysis enable ANALYSIS_ID --side a --enabled true
 ```
 
 Measurements reuse the viewer's caches for the current transformed A/B geometry and

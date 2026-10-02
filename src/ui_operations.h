@@ -115,9 +115,12 @@ void setSelectedObjectsVisible(UiState& state, bool visible);
 [[nodiscard]] bool comparisonPartEnabled(const UiState& state, SceneObjectId part, ComparisonSide side,
     SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] size_t enabledComparisonPartCount(const UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
+// Isolate existing members on one side; an empty object list enables the whole side.
+// Nonmembers leave the side unchanged. UV analyses support side A only.
+void isolateComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, SceneObjectId id);
+void isolateUvObjects(UiState& state, const std::vector<SceneObjectId>& objects, SceneObjectId id);
 // Toggle existing members only. Files and folders include their descendants;
 // an empty object list toggles the entire side, including missing references.
-void isolateUvObjects(UiState& state, const std::vector<SceneObjectId>& objects, SceneObjectId id);
 void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side,
     bool enabled, SceneObjectId id = invalidSceneObjectId);
 enum class ComparisonMembershipAction { unavailable, add, remove };

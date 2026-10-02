@@ -233,13 +233,27 @@ size_t enabledComparisonPartCount(const UiState& state, ComparisonSide side, Sce
 
 void isolateUvObjects(UiState& state, const std::vector<SceneObjectId>& objects, SceneObjectId id)
 {
-    auto* analysis = findComparison(state,id);
+    const auto* analysis = findComparison(state,id);
     if (!analysis || !isUvAnalysis(analysis->settings.type)) { return; }
-    const auto included = comparisonObjectParts(state,objects);
-    if (!objects.empty() && std::none_of(analysis->a.begin(),analysis->a.end(),[&](const auto& p) {
-        return std::binary_search(included.begin(),included.end(),p.objectId);
+    isolateComparisonObjects(state, objects, ComparisonSide::a, id);
+}
+
+void isolateComparisonObjects(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side, SceneObjectId id)
+{
+    auto* analysis = findComparison(state, id);
+    if (!analysis || (isUvAnalysis(analysis->settings.type) && side != ComparisonSide::a)) { return; }
+    const auto included = comparisonObjectParts(state, objects);
+    auto& members = side == ComparisonSide::a ? analysis->a : analysis->b;
+    if (!objects.empty() && std::none_of(members.begin(), members.end(), [&](const auto& part) {
+        return std::binary_search(included.begin(), included.end(), part.objectId);
     })) { return; }
-    for (auto& part : analysis->a) { part.enabled = objects.empty() || std::binary_search(included.begin(),included.end(),part.objectId); }
+    bool changed = false;
+    for (auto& part : members) {
+        const bool enabled = objects.empty() || std::binary_search(included.begin(), included.end(), part.objectId);
+        changed = changed || part.enabled != enabled;
+        part.enabled = enabled;
+    }
+    if (!changed) { return; }
     recalculateSceneBounds(state);
     markSceneDirty(state);
 }

@@ -287,6 +287,9 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
             if (ImGui::MenuItem("Select source patch")) { selectSceneObject(state,node.objectId); }
             if (ImGui::MenuItem("Isolate patch in analysis")) { isolateUvObjects(state,{node.objectId},id); }
             if (ImGui::MenuItem("Show all patches")) { isolateUvObjects(state,{},id); }
+        } else {
+            if (ImGui::MenuItem("Enable only this object")) { isolateComparisonObjects(state, {node.objectId}, side, id); }
+            if (ImGui::MenuItem("Enable all on this side")) { setComparisonObjectsEnabled(state, {}, side, true, id); }
         }
         const char* label = side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
         if (ImGui::MenuItem(label)) { setComparisonObjects(state, {node.objectId}, side, false, id); }

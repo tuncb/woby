@@ -481,11 +481,10 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.action == A::comparisonClear) { clearComparisonGroup(state, side, id); }
             else if (command.action == A::comparisonEnable) {
                 if (command.isolate.value_or(false)) {
-                    if (!isUvAnalysis(comparisonSettings(state,id).type)) { throw std::invalid_argument("Patch isolation requires a UV analysis."); }
-                    const auto members = comparisonMemberIds(state,ComparisonSide::a,id,false);
+                    const auto members = comparisonMemberIds(state,side,id,false);
                     const auto candidates = comparisonObjectParts(state,{command.memberId});
-                    if (std::none_of(candidates.begin(),candidates.end(),[&](auto p) { return std::binary_search(members.begin(),members.end(),p); })) { throw std::invalid_argument("Object is not a member of this UV analysis."); }
-                    isolateUvObjects(state,{command.memberId},id);
+                    if (std::none_of(candidates.begin(),candidates.end(),[&](auto p) { return std::binary_search(members.begin(),members.end(),p); })) { throw std::invalid_argument("Object is not a member of the selected analysis side."); }
+                    isolateComparisonObjects(state,{command.memberId},side,id);
                 } else setComparisonObjectsEnabled(state, command.object ? std::vector<SceneObjectId>{command.memberId}
                     : std::vector<SceneObjectId>{}, side, *command.enabled, id);
             }
