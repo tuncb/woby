@@ -39,6 +39,8 @@ SceneObjectId createComparison(UiState& state, AnalysisType type = AnalysisType:
 // Checks/quality/UV combine selected sources; comparison assigns up to two sources in click order.
 SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task);
 void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task);
+void setAnalysisTaskFilter(UiState& state, AnalysisTask task);
+void setDiagnosticFilter(UiState& state, DiagnosticGroup group, bool findingsOnly);
 SceneObjectId duplicateComparison(UiState& state, SceneObjectId id);
 void removeComparison(UiState& state, SceneObjectId id);
 void renameComparison(UiState& state, SceneObjectId id, const std::string& name);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mesh_comparison.h"
+#include "analysis_presentation.h"
 #include "comparison_scene.h"
 #include "scene_renderer.h"
 
@@ -49,6 +50,8 @@ struct ComparisonRuntime
 {
     uint64_t sidebarRevision = uint64_t(-1);
     std::array<ComparisonInputSummary, 2> sidebarInputs;
+    std::string sidebarSources;
+    std::array<std::array<DiagnosticSummary, 2>, diagnosticCategoryCount> diagnosticSummaries{};
     std::stop_source preparationStop;
     std::future<std::shared_ptr<const PreparedComparisonInputs>> preparationWorker;
     uint64_t preparationSignature = 0;

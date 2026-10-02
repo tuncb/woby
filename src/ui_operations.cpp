@@ -339,6 +339,19 @@ void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task)
     setComparisonSettings(state, settings, id);
 }
 
+void setAnalysisTaskFilter(UiState& state, AnalysisTask task)
+{
+    state.analysisTaskFilter = task >= AnalysisTask::automatic && task <= AnalysisTask::uvInspection
+        ? task : AnalysisTask::automatic;
+}
+
+void setDiagnosticFilter(UiState& state, DiagnosticGroup group, bool findingsOnly)
+{
+    state.diagnosticGroupFilter = group >= DiagnosticGroup::all && group <= DiagnosticGroup::intersections
+        ? group : DiagnosticGroup::all;
+    state.diagnosticFindingsOnly = findingsOnly;
+}
+
 SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task)
 {
     if (task < AnalysisTask::meshChecks || task > AnalysisTask::uvInspection) { return invalidSceneObjectId; }
@@ -364,6 +377,7 @@ SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task)
         return other.objectId != id && other.name == name;
     })) { name = base + " " + std::to_string(suffix++); }
     renameComparison(state, id, name);
+    setAnalysisTaskFilter(state, AnalysisTask::automatic);
     if (!sources.empty()) { frameCameraToScene(state); }
     return id;
 }
@@ -1652,6 +1666,9 @@ UiState prepareSceneReplacement(const UiState& current,
     prepared.viewerPaneVisible = current.viewerPaneVisible;
     prepared.propertiesPaneVisible = current.propertiesPaneVisible;
     prepared.propertiesPaneWidth = current.propertiesPaneWidth;
+    prepared.analysisTaskFilter = current.analysisTaskFilter;
+    prepared.diagnosticGroupFilter = current.diagnosticGroupFilter;
+    prepared.diagnosticFindingsOnly = current.diagnosticFindingsOnly;
     prepared.nextObjectId = current.nextObjectId;
     prepared.nextViewId = current.nextViewId;
     prepared.sceneGeneration = current.sceneGeneration + 1;

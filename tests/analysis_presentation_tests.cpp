@@ -138,3 +138,71 @@ TEST_CASE("analysis task switches preserve inputs thresholds and user names")
     CHECK(comparisonSettings(f.state, id).diagnosticSide == ComparisonSide::b);
 }
 
+TEST_CASE("diagnostic summaries distinguish incomplete checks from zero findings")
+{
+    SurfaceComparison surface;
+    surface.duplicates.points.availableSources = 1;
+    const auto category = DiagnosticCategory::duplicatePoints;
+    const auto ready = diagnosticSummary(surface, category, IntersectionPhase::complete, true);
+    CHECK(ready.state == AnalysisResultState::ready);
+    CHECK(diagnosticSummaryText(ready) == "0");
+    CHECK(diagnosticSummary(surface, category, IntersectionPhase::complete, false).state == AnalysisResultState::outdated);
+    const std::array phases = {IntersectionPhase::notChecked, IntersectionPhase::queued, IntersectionPhase::running,
+        IntersectionPhase::outdated, IntersectionPhase::canceled, IntersectionPhase::failed};
+    const std::array states = {AnalysisResultState::notRun, AnalysisResultState::queued, AnalysisResultState::running,
+        AnalysisResultState::outdated, AnalysisResultState::canceled, AnalysisResultState::failed};
+    for (size_t i = 0; i < phases.size(); ++i) {
+        const auto pending = diagnosticSummary(surface, category, phases[i], false);
+        CHECK(pending.state == states[i]);
+        CHECK(diagnosticMatchesFilter(DiagnosticGroup::all, true, category, ready, pending, true, true));
+        CHECK(diagnosticSummaryText(pending) != "0");
+    }
+    CHECK_FALSE(diagnosticMatchesFilter(DiagnosticGroup::all, true, category, ready, ready, true, true));
+    surface.duplicates.points.duplicateCount = 12;
+    surface.duplicates.points.findings.resize(3);
+    auto findings = diagnosticSummary(surface, category, IntersectionPhase::complete, true);
+    CHECK(findings.count == 12); // Counts are extra records, not duplicate groups.
+    CHECK(diagnosticMatchesFilter(DiagnosticGroup::duplicates, true, category, findings, ready, true, false));
+    CHECK_FALSE(diagnosticMatchesFilter(DiagnosticGroup::topology, false, category, findings, ready, true, true));
+    surface.duplicates.points.unavailableSources = 1;
+    CHECK(diagnosticSummary(surface, category, IntersectionPhase::complete, true).state == AnalysisResultState::partial);
+    surface.duplicates.points.availableSources = 0;
+    CHECK(diagnosticSummary(surface, category, IntersectionPhase::complete, true).state == AnalysisResultState::unavailable);
+}
+
+TEST_CASE("limited intersections and unavailable fin measurements cannot look clean")
+{
+    SurfaceComparison surface;
+    surface.intersections.availableSources = 1;
+    surface.intersections.truncated = true;
+    const auto partial = diagnosticSummary(surface, DiagnosticCategory::selfIntersections, IntersectionPhase::complete, true);
+    CHECK(partial.state == AnalysisResultState::partial);
+    CHECK(diagnosticSummaryText(partial) == "0+ Partial");
+    CHECK(diagnosticMatchesFilter(DiagnosticGroup::intersections, true, DiagnosticCategory::selfIntersections,
+        partial, {}, true, false));
+    surface.topology.availableSources = 2;
+    surface.topology.unavailableFinAreaSources = 2;
+    CHECK(diagnosticSummary(surface, DiagnosticCategory::fins, IntersectionPhase::complete, true).state == AnalysisResultState::unavailable);
+    surface.topology.unavailableFinAreaSources = 1;
+    CHECK(diagnosticSummary(surface, DiagnosticCategory::fins, IntersectionPhase::complete, true).state == AnalysisResultState::partial);
+}
+
+TEST_CASE("analysis browser filters are validated session preferences")
+{
+    AnalysisFixture f;
+    const auto document = createSceneDocument(f.state);
+    const auto revision = f.state.sceneEditRevision;
+    setAnalysisTaskFilter(f.state, AnalysisTask::meshQuality);
+    setDiagnosticFilter(f.state, DiagnosticGroup::duplicates, true);
+    CHECK(createSceneDocument(f.state) == document);
+    CHECK(f.state.sceneEditRevision == revision);
+    const auto restored = prepareSceneReplacement(f.state, {}, createSceneDocument(UiState{}));
+    CHECK(restored.analysisTaskFilter == AnalysisTask::meshQuality);
+    CHECK(restored.diagnosticGroupFilter == DiagnosticGroup::duplicates);
+    CHECK(restored.diagnosticFindingsOnly);
+    setAnalysisTaskFilter(f.state, static_cast<AnalysisTask>(999));
+    setDiagnosticFilter(f.state, static_cast<DiagnosticGroup>(999), false);
+    CHECK(f.state.analysisTaskFilter == AnalysisTask::automatic);
+    CHECK(f.state.diagnosticGroupFilter == DiagnosticGroup::all);
+}
+

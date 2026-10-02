@@ -1,4 +1,5 @@
 #include "analysis_presentation.h"
+#include <algorithm>
 
 namespace woby {
 
@@ -58,6 +59,102 @@ ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, Analysis
         }
     }
     return normalizedComparisonSettings(settings);
+}
+
+
+const char* analysisResultStateLabel(AnalysisResultState state)
+{
+    switch (state) {
+    case AnalysisResultState::ready: return "Ready";
+    case AnalysisResultState::notRun: return "Not run";
+    case AnalysisResultState::queued: return "Queued";
+    case AnalysisResultState::running: return "Running";
+    case AnalysisResultState::outdated: return "Outdated";
+    case AnalysisResultState::canceled: return "Canceled";
+    case AnalysisResultState::failed: return "Failed";
+    case AnalysisResultState::partial: return "Partial";
+    case AnalysisResultState::unavailable: return "Unavailable";
+    }
+    return "Unavailable";
+}
+
+DiagnosticGroup diagnosticGroup(DiagnosticCategory category)
+{
+    switch (category) {
+    case DiagnosticCategory::boundary: case DiagnosticCategory::nonManifold:
+    case DiagnosticCategory::winding: case DiagnosticCategory::nonManifoldVertices:
+    case DiagnosticCategory::holes: case DiagnosticCategory::fins: return DiagnosticGroup::topology;
+    case DiagnosticCategory::duplicatePoints: case DiagnosticCategory::duplicateTriangles: return DiagnosticGroup::duplicates;
+    case DiagnosticCategory::degenerateTriangles: return DiagnosticGroup::degenerates;
+    case DiagnosticCategory::selfIntersections: return DiagnosticGroup::intersections;
+    }
+    return DiagnosticGroup::all;
+}
+
+DiagnosticSummary diagnosticSummary(const SurfaceComparison& surface, DiagnosticCategory category,
+    IntersectionPhase phase, bool current)
+{
+    DiagnosticSummary summary;
+    switch (phase) {
+    case IntersectionPhase::notChecked: return summary;
+    case IntersectionPhase::queued: summary.state = AnalysisResultState::queued; return summary;
+    case IntersectionPhase::running: summary.state = AnalysisResultState::running; return summary;
+    case IntersectionPhase::outdated: summary.state = AnalysisResultState::outdated; return summary;
+    case IntersectionPhase::canceled: summary.state = AnalysisResultState::canceled; return summary;
+    case IntersectionPhase::failed: summary.state = AnalysisResultState::failed; return summary;
+    case IntersectionPhase::complete: break;
+    }
+    if (!current) { summary.state = AnalysisResultState::outdated; return summary; }
+    size_t available = surface.topology.availableSources, unavailable = surface.topology.unavailableSources;
+    bool limited = false;
+    switch (category) {
+    case DiagnosticCategory::boundary: summary.count = surface.topology.boundaries.size(); break;
+    case DiagnosticCategory::nonManifold: summary.count = surface.topology.nonManifoldEdges.size(); break;
+    case DiagnosticCategory::winding: summary.count = surface.topology.windingFaces.size(); break;
+    case DiagnosticCategory::nonManifoldVertices: summary.count = surface.topology.nonManifoldVertices.size(); break;
+    case DiagnosticCategory::holes: summary.count = surface.topology.holes.size(); break;
+    case DiagnosticCategory::fins:
+        summary.count = surface.topology.fins.size();
+        unavailable += surface.topology.unavailableFinAreaSources;
+        available -= std::min(available, surface.topology.unavailableFinAreaSources);
+        break;
+    case DiagnosticCategory::duplicatePoints: case DiagnosticCategory::duplicateTriangles: {
+        const auto& result = category == DiagnosticCategory::duplicatePoints ? surface.duplicates.points : surface.duplicates.triangles;
+        summary.count = result.duplicateCount; available = result.availableSources; unavailable = result.unavailableSources;
+        break;
+    }
+    case DiagnosticCategory::degenerateTriangles:
+        summary.count = surface.degenerates.findings.size();
+        available = surface.degenerates.availableSources; unavailable = surface.degenerates.unavailableSources;
+        break;
+    case DiagnosticCategory::selfIntersections:
+        summary.count = surface.intersections.findings.size();
+        available = surface.intersections.availableSources; unavailable = surface.intersections.unavailableSources;
+        limited = surface.intersections.truncated;
+        break;
+    }
+    summary.state = unavailable && !available ? AnalysisResultState::unavailable
+        : unavailable || limited ? AnalysisResultState::partial : AnalysisResultState::ready;
+    return summary;
+}
+
+bool diagnosticMatchesFilter(DiagnosticGroup group, bool findingsOnly, DiagnosticCategory category,
+    const DiagnosticSummary& a, const DiagnosticSummary& b, bool hasA, bool hasB)
+{
+    if (group != DiagnosticGroup::all && diagnosticGroup(category) != group) { return false; }
+    if (!findingsOnly || (!hasA && !hasB)) { return true; }
+    // Incomplete checks remain visible: zero known findings does not mean a clean result.
+    const auto needsReview = [](const DiagnosticSummary& value) {
+        return value.state != AnalysisResultState::ready || value.count != 0;
+    };
+    return (hasA && needsReview(a)) || (hasB && needsReview(b));
+}
+
+std::string diagnosticSummaryText(const DiagnosticSummary& summary)
+{
+    if (summary.state == AnalysisResultState::ready) { return std::to_string(summary.count); }
+    if (summary.state == AnalysisResultState::partial) { return std::to_string(summary.count) + "+ Partial"; }
+    return analysisResultStateLabel(summary.state);
 }
 
 } // namespace woby

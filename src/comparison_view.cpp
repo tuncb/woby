@@ -542,54 +542,33 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }
         ImGui::TableNextColumn();
         ImGui::AlignTextToFramePadding();
-        if (!current) {
-            const char* status = detector.phase == IntersectionPhase::queued ? "Queued" : detector.phase == IntersectionPhase::running ? "Checking..."
-                : detector.phase == IntersectionPhase::outdated ? "Out of date" : detector.phase == IntersectionPhase::canceled ? "Canceled"
-                : detector.phase == IntersectionPhase::failed ? "Failed" : "Not run";
-            ImGui::TextWrapped("%s", status);
-            if (ImGui::IsItemHovered()) {
-                if (detector.hasResult) { ImGui::SetTooltip("Previous result: %zu known findings. Update to inspect the current geometry.", detector.knownCounts[side == ComparisonSide::a ? 0 : 1]); }
-                if (!detector.error.empty()) { ImGui::SetTooltip("%s", detector.error.c_str()); }
+        const auto& surface = side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired;
+        const auto summary = diagnosticSummary(surface, category, detector.phase, current);
+        const auto text = diagnosticSummaryText(summary);
+        ImGui::TextWrapped("%s", text.c_str());
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28);
+            ImGui::Text("Status: %s", analysisResultStateLabel(summary.state));
+            if (!current && detector.hasResult) {
+                ImGui::Text("Previous result: %zu known findings.", detector.knownCounts[side == ComparisonSide::a ? 0 : 1]);
             }
-        }
-        else if (intersection) {
-            const auto& result = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).intersections;
-            if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
-            else { ImGui::Text("%zu%s", result.findings.size(), result.truncated || result.unavailableSources ? "+" : ""); }
-            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%zu known face pairs; %zu known affected faces.\nStatus: %s\n%zu collapsed faces excluded.\nExact intersections, including coplanar overlap; valid shared features excluded.", result.findings.size(), result.affectedFaces, intersectionStatus(result), result.excludedCollapsedFaces); }
-        }
-        else if (degenerate) {
-            const auto& result = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).degenerates;
-            if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
-            else { ImGui::Text("%zu%s", result.findings.size(), result.unavailableSources ? "*" : ""); }
-            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%zu collapsed / collinear; %zu needles; %zu caps\nReason counts overlap; each triangle instance counted once.\nStatus: %s", result.collapsedCount, result.needleCount, result.capCount, degenerateStatus(result)); }
-        }
-        else if (!duplicate) {
-            const auto& topology = (side == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).topology;
-            const size_t unavailableAreas = fins ? topology.unavailableFinAreaSources : 0;
-            if ((topology.unavailableSources || unavailableAreas) && topology.availableSources <= unavailableAreas) { ImGui::TextDisabled("N/A"); }
-            else {
-                const auto count = category == DiagnosticCategory::winding ? topology.windingFaces.size()
-                    : comparisonDiagnosticEdges(runtime.result, side, category).size();
-                ImGui::Text("%zu%s", count, topology.unavailableSources || unavailableAreas ? "*" : "");
+            if (!detector.error.empty()) { ImGui::TextWrapped("%s", detector.error.c_str()); }
+            if (current && duplicate) {
+                const auto& result = comparisonDuplicates(runtime.result, side, category);
+                ImGui::Text("%zu extra records in %zu groups; %zu unavailable sources.",
+                    result.duplicateCount, result.findings.size(), result.unavailableSources);
+            } else if (current && intersection) {
+                ImGui::Text("%zu known face pairs; %zu affected faces.", surface.intersections.findings.size(), surface.intersections.affectedFaces);
+                if (surface.intersections.truncated) { ImGui::TextWrapped("%s", surface.intersections.truncationReason.c_str()); }
+            } else if (current && degenerate) {
+                ImGui::Text("%zu collapsed / collinear; %zu needles; %zu caps.", surface.degenerates.collapsedCount,
+                    surface.degenerates.needleCount, surface.degenerates.capCount);
+                ImGui::TextWrapped("Reason counts may overlap. Each triangle is counted once.");
             }
-            if (ImGui::IsItemHovered()) {
-                if (vertex) { ImGui::SetTooltip("One connected vertex link required. Endpoints of non-manifold edges are excluded."); }
-                else if (fins) { ImGui::SetTooltip("Woby fin candidates: split at non-manifold edges; physical boundary is not one simple loop. Area ratio <= %.6g.", settings.topologyInspection.finMaxAreaRatio); }
-                else if (holes) { ImGui::SetTooltip("Simple boundary loops with loop/component bounding-box diagonal ratio <= %.6g. Larger openings remain boundary findings.", settings.topologyInspection.holeSizeRatioTolerance); }
-                else { ImGui::SetTooltip("Status: %s\n%zu collapsed faces excluded from topology\n%zu unavailable sources\nWinding reports both incident faces, not a unique erroneous face.\n%zu conflict edges; %zu orientation contradiction witnesses",
-                    topologyStatus(topology), topology.excludedCollapsedFaces, topology.unavailableSources,
-                    topology.windingEdges.size(), topology.orientationContradictions); }
-            }
-        }
-        else {
-            const auto& result = comparisonDuplicates(runtime.result, side, category);
-            if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
-            else { ImGui::Text("%zu%s", result.duplicateCount, result.unavailableSources ? "*" : ""); }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%zu extra records in %zu groups\n%zu unavailable sources\nStatus: %s",
-                    result.duplicateCount, result.findings.size(), result.unavailableSources, duplicateStatus(result));
-            }
+            ImGui::TextWrapped("%s", diagnosticHint(category));
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
         }
     }
     ImGui::TableNextColumn();
@@ -989,6 +968,15 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity.\nExact positions join exactly equal world coordinates within a file, with no epsilon.");
     }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
+    int group = static_cast<int>(state.diagnosticGroupFilter);
+    const char* groups[] = {"All check groups", "Topology", "Duplicates", "Degenerate triangles", "Intersections"};
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::Combo("##check_group", &group, groups, 5)) {
+        setDiagnosticFilter(state, static_cast<DiagnosticGroup>(group), state.diagnosticFindingsOnly);
+    }
+    bool findingsOnly = state.diagnosticFindingsOnly;
+    if (ImGui::Checkbox("With findings", &findingsOnly)) { setDiagnosticFilter(state, state.diagnosticGroupFilter, findingsOnly); }
+    setLastItemTooltip("Hide only completed checks with zero findings. Incomplete and unavailable checks stay visible.");
     constexpr struct {
         const char* name;
         DiagnosticCategory category;
@@ -1016,7 +1004,17 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::TableSetupColumn("Show", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
-        for (const auto& row : rows) { diagnosticRow(state, runtime, current, row.name, row.category, hasA, hasB, id); }
+        size_t shown = 0;
+        for (const auto& row : rows) {
+            const auto phase = comparisonDetectorStatus(runtime.result, row.category).phase;
+            const bool rowCurrent = comparisonDetectorReady(runtime, state, id, row.category);
+            const auto a = diagnosticSummary(runtime.result.original, row.category, phase, rowCurrent);
+            const auto b = diagnosticSummary(runtime.result.repaired, row.category, phase, rowCurrent);
+            if (!diagnosticMatchesFilter(state.diagnosticGroupFilter, findingsOnly, row.category, a, b, hasA, hasB)) { continue; }
+            diagnosticRow(state, runtime, rowCurrent, row.name, row.category, hasA, hasB, id);
+            ++shown;
+        }
+        if (!shown) { ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TableNextColumn(); ImGui::TextWrapped("No findings match this filter."); }
         ImGui::EndTable();
     }
     ImGui::SeparatorText("Findings");
@@ -1026,6 +1024,12 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     }
     const auto& findings = comparisonDiagnosticEdges(runtime.result, selected.diagnosticSide, selected.diagnosticCategory);
     const bool ready = comparisonDetectorReady(runtime, state, id, selected.diagnosticCategory);
+    const auto selectedPhase = comparisonDetectorStatus(runtime.result, selected.diagnosticCategory).phase;
+    const auto selectedSummary = diagnosticSummary(selected.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired,
+        selected.diagnosticCategory, selectedPhase, ready);
+    ImGui::TextWrapped("%s | %s", selected.diagnosticSide == ComparisonSide::a ? "Input A" : "Input B",
+        selectedSummary.state == AnalysisResultState::ready && !selectedSummary.count ? "No findings" : analysisResultStateLabel(selectedSummary.state));
+    if (selectedSummary.state == AnalysisResultState::partial) { ImGui::TextWrapped("Known findings only. Some sources or candidate pairs were not checked."); }
     ImGui::BeginDisabled(!ready || findings.empty());
     int step = 0;
     if (ImGui::Button("Previous finding")) { step = -1; }
@@ -1542,9 +1546,23 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
         if (runtime.sidebarRevision != state.sceneEditRevision) {
             runtime.sidebarInputs = {comparisonInputSummary(state, ComparisonSide::a, comparison.objectId),
                 comparisonInputSummary(state, ComparisonSide::b, comparison.objectId)};
+            const auto& a = runtime.sidebarInputs[0];
+            const auto& b = runtime.sidebarInputs[1];
+            runtime.sidebarSources = a.enabledPartCount && b.enabledPartCount ? a.sourceNames + " / " + b.sourceNames
+                : b.enabledPartCount ? b.sourceNames : a.sourceNames;
             runtime.sidebarRevision = state.sceneEditRevision;
         }
         updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
+        for (size_t index = 0; index < diagnosticCategoryCount; ++index) {
+            const auto category = static_cast<DiagnosticCategory>(index);
+            const auto phase = comparisonDetectorStatus(runtime.result, category).phase;
+            const auto stage = comparisonDiagnosticStage(category);
+            const bool current = runtime.resultSignature && runtime.resultSignature == runtime.cache.signature
+                && (runtime.cache.completed & stage) == stage;
+            runtime.diagnosticSummaries[index] = {
+                diagnosticSummary(runtime.result.original, category, phase, current),
+                diagnosticSummary(runtime.result.repaired, category, phase, current)};
+        }
         validateComparisonDiagnosticFocus(state, runtime.result,
             runtime.ready ? runtime.resultSignature : 0, comparison.objectId);
     }
@@ -2315,9 +2333,22 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         ImGui::EndTable();
     }
     if (!open) { return; }
+    if (state.comparisons.size() > 4 || state.analysisTaskFilter != AnalysisTask::automatic) {
+        int filter = static_cast<int>(state.analysisTaskFilter);
+        const char* filters[] = {"All analysis tasks", "Mesh checks", "Mesh quality", "Surface comparison", "UV inspection"};
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::Combo("##analysis_filter", &filter, filters, 5)) { setAnalysisTaskFilter(state, static_cast<AnalysisTask>(filter)); }
+    }
     if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + Analysis."); }
+    size_t displayed = 0;
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;
+        const auto foundRuntime = runtimes.objects.find(id);
+        const bool bothInputs = foundRuntime != runtimes.objects.end()
+            && foundRuntime->second.sidebarInputs[0].enabledPartCount && foundRuntime->second.sidebarInputs[1].enabledPartCount;
+        if (state.analysisTaskFilter != AnalysisTask::automatic
+            && analysisTask(comparison.settings, bothInputs) != state.analysisTaskFilter) { continue; }
+        ++displayed;
         const auto label = std::to_string(id);
         ImGui::PushID(label.c_str());
         auto settings = comparison.settings;
@@ -2385,15 +2416,41 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                 else if (runtime->preparationWorker.valid() || runtime->worker.valid() || runtime->intersection.worker.valid()) { status = "Running"; }
                 else if (!runtime->ready) { status = settings.enabled ? "Queued" : "Not run"; }
                 else { status = "Ready"; }
+                if (task == AnalysisTask::meshChecks && runtime->ready && canInspectComparison(state, id)) {
+                    for (const auto phase : {AnalysisResultState::notRun, AnalysisResultState::unavailable,
+                            AnalysisResultState::partial, AnalysisResultState::canceled, AnalysisResultState::outdated,
+                            AnalysisResultState::queued, AnalysisResultState::running, AnalysisResultState::failed}) {
+                        for (const auto& check : runtime->diagnosticSummaries) {
+                            if ((hasA && check[0].state == phase) || (hasB && check[1].state == phase)) {
+                                status = analysisResultStateLabel(phase);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             ImGui::TextDisabled("| %s", status);
             if (currentInputs) {
                 const auto& a = runtime->sidebarInputs[0];
                 const auto& b = runtime->sidebarInputs[1];
-                const auto sources = hasA && hasB ? a.sourceNames + " / " + b.sourceNames
-                    : hasB ? b.sourceNames : a.sourceNames;
+                if (task == AnalysisTask::meshChecks && (hasA || hasB)) {
+                    size_t withFindings = 0, notRun = 0, incomplete = 0;
+                    for (const auto& check : runtime->diagnosticSummaries) {
+                        const bool finding = (hasA && check[0].count != 0) || (hasB && check[1].count != 0);
+                        withFindings += finding;
+                        notRun += (hasA && check[0].state == AnalysisResultState::notRun)
+                            || (hasB && check[1].state == AnalysisResultState::notRun);
+                        const auto unfinished = [](AnalysisResultState phase) {
+                            return phase != AnalysisResultState::ready && phase != AnalysisResultState::notRun;
+                        };
+                        incomplete += (hasA && unfinished(check[0].state)) || (hasB && unfinished(check[1].state));
+                    }
+                    ImGui::SetCursorPosX(textStart);
+                    ImGui::TextWrapped("%zu checks with findings | %zu not run%s", withFindings, notRun,
+                        incomplete ? " | incomplete results" : "");
+                }
                 ImGui::SetCursorPosX(textStart);
-                drawObjectIdentityRow("Sources", sources.c_str());
+                drawObjectIdentityRow("Sources", runtime->sidebarSources.c_str());
                 if (!canInspectComparison(state, id)) {
                     setLastItemTooltip((a.issue + "\n" + b.issue).c_str());
                 }
@@ -2403,5 +2460,6 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         ImGui::PopID();
         if (changed) { break; }
     }
+    if (!displayed && !state.comparisons.empty()) { ImGui::TextDisabled("No analyses match this task."); }
 }
 } // namespace woby
