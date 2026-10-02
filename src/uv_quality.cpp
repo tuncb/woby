@@ -69,11 +69,35 @@ UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, 
             if (t % 4096 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
             auto& q = result.triangles[t];
             q.mixedOrientation = positive && negative && q.orientation != 0;
+            if (q.missing || q.collapsed || q.degenerateSurface || q.mixedOrientation) { result.findings.push_back(t); }
             if (q.missing || q.collapsed || q.degenerateSurface) { continue; }
             q.areaLog2 = std::log2(q.uvArea)-std::log2(q.surfaceArea)-baselineLog2;
         }
     }
     return result;
+}
+
+const char* uvFindingLabel(const UvTriangleQuality& triangle)
+{
+    if (triangle.missing) { return "Missing UVs"; }
+    if (triangle.collapsed) { return "Collapsed UV"; }
+    if (triangle.degenerateSurface) { return "Degenerate surface"; }
+    return "Mixed orientation";
+}
+
+std::optional<std::array<std::array<float, 3>, 3>> uvFindingGeometry(const Mesh& display, size_t finding)
+{
+    if (!display.uvQuality || finding >= display.uvQuality->findings.size()) { return {}; }
+    const auto& triangle = display.uvQuality->triangles.at(display.uvQuality->findings[finding]);
+    for (const auto& node : display.nodes) {
+        if (node.sourceObjectId != triangle.partId || !triangle.triangle || triangle.triangle > node.indexCount / 3) { continue; }
+        std::array<std::array<float, 3>, 3> result;
+        for (size_t k = 0; k < 3; ++k) {
+            result[k] = display.vertices.at(display.indices.at(node.indexOffset + (triangle.triangle - 1) * 3 + k)).position;
+        }
+        return result;
+    }
+    return {};
 }
 
 std::vector<Vertex> uvQualityVertices(const Mesh& display, std::stop_token stop)

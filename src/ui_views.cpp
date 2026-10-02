@@ -109,27 +109,27 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
         }
         ImGui::EndChild();
         if (!flowing) {
-        ImGui::InvisibleButton("views_objects_divider", ImVec2(-1.0f, dividerHeight));
-        const bool hovered = ImGui::IsItemHovered();
-        const bool active = ImGui::IsItemActive();
-        const ImVec2 dividerMin = ImGui::GetItemRectMin();
-        const ImVec2 dividerMax = ImGui::GetItemRectMax();
-        const float dividerY = (dividerMin.y + dividerMax.y) * 0.5f;
-        ImGui::GetWindowDrawList()->AddLine(
-            ImVec2(dividerMin.x, dividerY), ImVec2(dividerMax.x, dividerY),
-            ImGui::GetColorU32(active ? ImGuiCol_SeparatorActive
-                : hovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
-        if (hovered || active) { ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS); }
-        if (hovered) {
-            ImGui::SetTooltip("Drag to resize Views and Objects. Double-click to reset.");
-            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                layout.preferredHeight = 0.0f;
+            ImGui::InvisibleButton("views_objects_divider", ImVec2(-1.0f, dividerHeight));
+            const bool hovered = ImGui::IsItemHovered();
+            const bool active = ImGui::IsItemActive();
+            const ImVec2 dividerMin = ImGui::GetItemRectMin();
+            const ImVec2 dividerMax = ImGui::GetItemRectMax();
+            const float dividerY = (dividerMin.y + dividerMax.y) * 0.5f;
+            ImGui::GetWindowDrawList()->AddLine(
+                ImVec2(dividerMin.x, dividerY), ImVec2(dividerMax.x, dividerY),
+                ImGui::GetColorU32(active ? ImGuiCol_SeparatorActive
+                    : hovered ? ImGuiCol_SeparatorHovered : ImGuiCol_Separator));
+            if (hovered || active) { ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS); }
+            if (hovered) {
+                ImGui::SetTooltip("Drag to resize Views and Objects. Double-click to reset.");
+                if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    layout.preferredHeight = 0.0f;
+                }
             }
-        }
-        if (active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-            layout.preferredHeight = viewListHeight(height + ImGui::GetIO().MouseDelta.y,
-                automaticHeight, minimumHeight, availableHeight);
-        }
+            if (active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                layout.preferredHeight = viewListHeight(height + ImGui::GetIO().MouseDelta.y,
+                    automaticHeight, minimumHeight, availableHeight);
+            }
         }
     }
     ImGui::PopID();

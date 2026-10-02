@@ -2,6 +2,7 @@
 #include "analysis_presentation.h"
 #include "comparison_scene.h"
 #include "mesh_comparison.h"
+#include "uv_quality.h"
 
 #include <algorithm>
 #include <cmath>
@@ -389,6 +390,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     auto copy = *source;
     copy.diagnosticFocus.reset();
     copy.pendingDiagnosticFocus.reset();
+    copy.uvFindingFocus.reset();
     copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
     copy.detectorRequests = {};
     copy.objectId = invalidSceneObjectId;
@@ -450,7 +452,70 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
 void frameComparison(UiState& state, SceneObjectId id)
 {
     resetComparisonDiagnosticFocus(state, id);
+    if (auto* comparison = findComparison(state, id)) { comparison->uvFindingFocus.reset(); }
     if (const auto bounds = comparisonDisplayBounds(state, id)) { frameComparisonBounds(state, *bounds); }
+}
+
+const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison || !comparison->settings.enabled || comparison->settings.type != AnalysisType::uvQuality
+        || !comparison->uvFindingFocus || !comparison->uvFindingFocus->geometry || !resultSignature
+        || comparison->uvFindingFocus->signature != resultSignature
+        || resultSignature != comparisonGeometrySignature(state, id)) { return nullptr; }
+    return &*comparison->uvFindingFocus;
+}
+
+void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t resultSignature, SceneObjectId id)
+{
+    auto* comparison = findComparison(state, id);
+    if (!comparison || !comparison->uvFindingFocus) { return; }
+    auto& focus = comparison->uvFindingFocus;
+    if (!comparison->settings.enabled || comparison->settings.type != AnalysisType::uvQuality
+        || focus->signature != comparisonGeometrySignature(state, id)) { focus.reset(); return; }
+    if (focus->geometry || resultSignature != focus->signature) { return; }
+    focus->geometry = uvFindingGeometry(display, focus->index);
+    if (!focus->geometry) { focus.reset(); return; }
+    std::vector<Vertex> vertices(3);
+    for (size_t k = 0; k < vertices.size(); ++k) {
+        vertices[k].position = (*focus->geometry)[k];
+        for (size_t axis = 0; axis < 3; ++axis) { vertices[k].position[axis] += comparison->translation[axis]; }
+    }
+    auto bounds = calculateBounds(vertices);
+    bounds.radius *= 1.2f;
+    if (bounds.min == bounds.max) {
+        if (const auto context = comparisonDisplayBounds(state, id)) { bounds.radius = std::max(bounds.radius, context->radius * .06f); }
+    }
+    auto camera = frameCameraBounds(bounds, state.upAxis);
+    camera.nearPlane = std::min(camera.nearPlane, bounds.radius * .1f);
+    state.camera = fitCameraBounds(camera, bounds);
+}
+
+void selectUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, size_t index, SceneObjectId id)
+{
+    auto* comparison = findComparison(state, id);
+    if (!comparison || !comparison->settings.enabled || comparison->settings.type != AnalysisType::uvQuality
+        || !resultSignature || resultSignature != comparisonGeometrySignature(state, id)
+        || !display.uvQuality || index >= display.uvQuality->findings.size()) { return; }
+    const auto& triangle = display.uvQuality->triangles.at(display.uvQuality->findings[index]);
+    if (comparison->settings.uvView == UvView::layout && (triangle.missing || triangle.collapsed)) {
+        auto settings = comparison->settings;
+        settings.uvView = UvView::surface;
+        setComparisonSettings(state, settings, id);
+    }
+    comparison->uvFindingFocus = UvFindingFocus{comparisonGeometrySignature(state, id), index, {}};
+    selectSceneObject(state, id);
+    validateUvFindingFocus(state, display, resultSignature, id);
+}
+
+void navigateUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, int step, SceneObjectId id)
+{
+    if (!display.uvQuality || display.uvQuality->findings.empty()) { return; }
+    const auto count = display.uvQuality->findings.size();
+    const auto* focus = focusedUvFinding(state, resultSignature, id);
+    const size_t index = !focus ? (step < 0 ? count - 1 : 0)
+        : step < 0 ? (focus->index + count - 1) % count : (focus->index + 1) % count;
+    selectUvFinding(state, display, resultSignature, index, id);
 }
 
 namespace {
@@ -1765,6 +1830,10 @@ void markSceneDirty(UiState& state)
         }
         if (comparison.diagnosticFocus && !diagnosticFocusCurrent(state, comparison)) {
             comparison.diagnosticFocus.reset();
+        }
+        if (comparison.uvFindingFocus && (!comparison.settings.enabled || comparison.settings.type != AnalysisType::uvQuality
+                || comparison.uvFindingFocus->signature != comparisonGeometrySignature(state, comparison.objectId))) {
+            comparison.uvFindingFocus.reset();
         }
     }
     notifySceneEdit(state);

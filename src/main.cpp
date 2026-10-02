@@ -771,7 +771,7 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         ImGui::EndDragDropSource();
     }
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
-        if (ImGui::BeginMenu("Create analysis", woby::canCompareSceneSelection(state))) {
+        if (ImGui::BeginMenu("Create analysis", !woby::comparisonObjectParts(state, state.selectedSceneObjects).empty())) {
             woby::drawAnalysisCreationMenu(state);
             ImGui::EndMenu();
         }

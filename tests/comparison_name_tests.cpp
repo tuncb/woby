@@ -5,6 +5,7 @@
 #include "ui_icon_controls.h"
 #include "ui_popup_controls.h"
 #include "ui_views.h"
+#include "uv_quality.h"
 
 #include <doctest/doctest.h>
 #include <imgui.h>
@@ -186,6 +187,49 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
     CHECK((contents.find("Area-weighted mean") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
     CHECK(contents.find("Placement") != std::string::npos);
     CHECK(contents.find("Result position") == std::string::npos);
+}
+
+TEST_CASE("analysis UV inspector shows all findings and only relevant normalization controls")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    for (int i = 0; i < 125; ++i) { mesh.indices.insert(mesh.indices.end(), {0, 1, 2}); }
+    mesh.nodes.push_back({"Missing UV patch", 0, 375});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, f.id);
+    auto settings = woby::comparisonSettings(f.state, f.id);
+    settings.type = woby::AnalysisType::uvQuality;
+    settings.uvView = woby::UvView::surface;
+    SUBCASE("angle") { settings.uvMetric = woby::UvQualityMetric::angle; }
+    SUBCASE("area") { settings.uvMetric = woby::UvQualityMetric::area; }
+    SUBCASE("orientation") { settings.uvMetric = woby::UvQualityMetric::orientation; }
+    woby::setComparisonSettings(f.state, settings, f.id);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.cache = {runtime.resultSignature, woby::comparisonSource};
+    runtime.result.original.source = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id);
+    std::string contents;
+    const auto before = woby::createSceneDocument(f.state);
+    for (int frame = 0; frame < 2; ++frame) {
+        ImGui::NewFrame(); ImGui::SetNextWindowSize({360, 1800});
+        ImGui::Begin("UV task inspector"); ImGui::LogToBuffer(0);
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = f.context->LogBuffer.c_str(); ImGui::LogFinish(); ImGui::End(); ImGui::EndFrame();
+    }
+    INFO(contents);
+    CHECK(contents.find("Layout") != std::string::npos);
+    CHECK(contents.find("Distortion") != std::string::npos);
+    CHECK(contents.find("Missing UV triangles") != std::string::npos);
+    CHECK(contents.find("125 | Missing UVs") != std::string::npos);
+    CHECK(contents.find("Full result") != std::string::npos);
+    CHECK(contents.find("Diagnostics") == std::string::npos);
+    CHECK((contents.find("Area normalization") != std::string::npos) == (settings.uvMetric == woby::UvQualityMetric::area));
+    CHECK(woby::createSceneDocument(f.state) == before);
 }
 
 TEST_CASE("analysis properties distinguish queued calculating failed and inactive results")

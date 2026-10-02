@@ -997,3 +997,103 @@ TEST_CASE("UV analysis controls validate types and reject incompatible edits ato
     CHECK(woby::createSceneDocument(f.state) == before);
     CHECK_THROWS(woby::parseControlOperation(set, {{"target", format(id)}, {"uvView", "invalid"}}));
 }
+
+TEST_CASE("UV findings include every affected triangle and retain source identities after layout filtering")
+{
+    UvFixture f;
+    auto& mesh = f.state.files[0].mesh;
+    // More than the old UI limit, including missing UVs and collapsed coordinates.
+    mesh.indices.clear();
+    for (size_t i = 0; i < 125; ++i) { mesh.indices.insert(mesh.indices.end(), {0, 1, 2}); }
+    mesh.nodes = {{"missing", 0, 180}, {"collapsed", 180, 195}};
+    mesh.nodes[0].sourceObjectId = 41;
+    mesh.nodes[1].sourceObjectId = 42; mesh.nodes[1].hasTexcoords = true;
+    for (auto& vertex : mesh.vertices) { vertex.texcoord = {0, 0}; }
+    mesh.nodes[1].uvQualityOffset = 60;
+    mesh.uvQuality = std::make_shared<const woby::UvQuality>(woby::analyzeUvQuality(mesh,
+        woby::UvAreaNormalization::perPatch, woby::UvQualityMetric::angle));
+    const auto& quality = *mesh.uvQuality;
+    REQUIRE(quality.findings.size() == 125);
+    CHECK(quality.missing == 60);
+    CHECK(quality.collapsed == 65);
+    CHECK(quality.triangles[quality.findings.back()].triangle == 65);
+    CHECK(quality.triangles[quality.findings.back()].partId == 42);
+    CHECK(woby::uvFindingGeometry(mesh, 124).has_value());
+    CHECK_FALSE(woby::uvFindingGeometry(mesh, 125));
+    const auto layout = woby::uvLayoutMesh(mesh, true);
+    CHECK_FALSE(woby::uvFindingGeometry(layout, 0));
+    REQUIRE(woby::uvFindingGeometry(layout, 124));
+    CHECK((*woby::uvFindingGeometry(layout, 124))[0] == layout.vertices[layout.indices[0]].position);
+}
+
+TEST_CASE("UV navigation opens missing UVs in 3D without leaving the analysis inspector")
+{
+    UvFixture f;
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(f.state, id);
+    settings.uvView = woby::UvView::layout;
+    woby::setComparisonSettings(f.state, settings, id);
+    woby::setComparisonTranslation(f.state, id, {12, 3, 7});
+    const auto layout = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, id);
+    const auto oldSignature = woby::comparisonGeometrySignature(f.state, id);
+    REQUIRE(layout.uvQuality);
+    REQUIRE(layout.uvQuality->findings.size() == 1);
+    woby::selectUvFinding(f.state, layout, oldSignature, 0, id);
+    CHECK(woby::comparisonSettings(f.state, id).uvView == woby::UvView::surface);
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{id});
+    REQUIRE(woby::findComparison(f.state, id)->uvFindingFocus);
+    CHECK_FALSE(woby::focusedUvFinding(f.state, oldSignature, id));
+    woby::validateUvFindingFocus(f.state, layout, oldSignature, id);
+    REQUIRE(woby::findComparison(f.state, id)->uvFindingFocus); // Retain pending focus until new results arrive.
+    const auto surface = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, id);
+    const auto signature = woby::comparisonGeometrySignature(f.state, id);
+    woby::validateUvFindingFocus(f.state, surface, signature, id);
+    REQUIRE(woby::focusedUvFinding(f.state, signature, id));
+    CHECK(f.state.camera.target[0] == doctest::Approx(12.5));
+    CHECK(f.state.camera.target[1] == doctest::Approx(3.5));
+    CHECK(f.state.camera.target[2] == doctest::Approx(7));
+    const auto document = woby::createSceneDocument(f.state);
+    for (int step : {-1, 1}) {
+        woby::navigateUvFinding(f.state, surface, signature, step, id);
+        REQUIRE(woby::focusedUvFinding(f.state, signature, id));
+        CHECK(woby::focusedUvFinding(f.state, signature, id)->index == 0);
+    }
+    CHECK(woby::createSceneDocument(f.state) == document);
+    const auto copyId = woby::duplicateComparison(f.state, id);
+    CHECK_FALSE(woby::findComparison(f.state, copyId)->uvFindingFocus);
+    woby::frameComparison(f.state, id);
+    CHECK_FALSE(woby::findComparison(f.state, id)->uvFindingFocus);
+    woby::selectUvFinding(f.state, surface, signature, 0, id);
+    settings = woby::comparisonSettings(f.state, id); settings.uvMetric = woby::UvQualityMetric::area;
+    woby::setComparisonSettings(f.state, settings, id);
+    CHECK_FALSE(woby::focusedUvFinding(f.state, signature, id));
+    CHECK_FALSE(woby::findComparison(f.state, id)->uvFindingFocus); // Invalidated at the operation boundary.
+    woby::validateUvFindingFocus(f.state, surface, signature, id);
+    CHECK_FALSE(woby::findComparison(f.state, id)->uvFindingFocus);
+    woby::selectUvFinding(f.state, surface, signature, 0, id);
+    CHECK_FALSE(woby::findComparison(f.state, id)->uvFindingFocus); // Reject stale clicks.
+}
+
+TEST_CASE("UV finding navigation wraps through the complete list beyond one hundred entries")
+{
+    UvFixture f;
+    auto& mesh = f.state.files[0].mesh;
+    mesh.nodes[2].indexCount = 375;
+    for (size_t i = 1; i < 125; ++i) { mesh.indices.insert(mesh.indices.end(), {0, 1, 2}); }
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    const auto display = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, id);
+    const auto signature = woby::comparisonGeometrySignature(f.state, id);
+    woby::navigateUvFinding(f.state, display, signature, -1, id);
+    REQUIRE(woby::focusedUvFinding(f.state, signature, id));
+    CHECK(woby::focusedUvFinding(f.state, signature, id)->index == 124);
+    woby::navigateUvFinding(f.state, display, signature, 1, id);
+    CHECK(woby::focusedUvFinding(f.state, signature, id)->index == 0);
+    woby::navigateUvFinding(f.state, display, signature, 1, id);
+    CHECK(woby::focusedUvFinding(f.state, signature, id)->index == 1);
+    const auto selection = f.state.selectedSceneObjects;
+    woby::selectUvFinding(f.state, display, signature, 125, id);
+    CHECK(woby::focusedUvFinding(f.state, signature, id)->index == 1);
+    CHECK(f.state.selectedSceneObjects == selection);
+}

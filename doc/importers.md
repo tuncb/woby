@@ -110,8 +110,11 @@ importer_id = "org.woby.example.off"
 The DLL path and binary are not embedded in a scene. Opening a scene never loads
 a DLL by a path from that scene. The matching importer must already be registered
 on that machine. Missing importers fail scene loading before the existing scene
-is replaced. Scenes save as version 20 and include independent analysis
+is replaced. Scenes save as version 21 and include independent analysis
 objects in `[[analyses]]` records referencing saved file/group indexes.
+The optional `analysis_task` field records the inspector category (`mesh_checks`,
+`mesh_quality`, `surface_comparison`, or `uv_inspection`). Older scenes infer the
+category from their existing analysis type, display mode, and inputs.
 
 Saved group settings are indexed. Importers must preserve unique group names and
 their order for the same file across versions. Reopening rejects a changed group

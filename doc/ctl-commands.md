@@ -490,7 +490,13 @@ outside the range use endpoint colors. The existing `uvGrid` switch enables any
 of these coloring modes, preserving older scenes and commands. Parent edits apply
 to UV-bearing descendants, retaining individual child overrides in saved scenes.
 
-`uv_quality` is a separate, single-input analysis, initially showing the 3D surface.
+`uv_quality` is a single-input analysis, initially showing the 3D surface.
+The UV inspection UI can switch between Layout (`uv`) and Distortion (`uv_quality`)
+while retaining inputs and display settings. Its finding list includes missing UVs
+and has no 100-finding cutoff. Selecting a finding frames and highlights its triangle
+without leaving the analysis inspector; missing or collapsed UVs open in 3D.
+Previous/Next finding wraps through the list, and Full result clears the highlight.
+Finding selection is temporary; analysis settings still support scenes, views, and undo.
 It supports `uvView`, `uvSeparated`, `uvLinkedSelection`, and `showEdges`, but uses
 metric heatmaps instead of grid or parameter colors. `uvMetric` accepts:
 

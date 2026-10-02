@@ -113,6 +113,13 @@ struct DiagnosticFocus {
     DiagnosticCategory category = DiagnosticCategory::boundary;
 };
 
+struct UvFindingFocus {
+    uint64_t signature = 0;
+    size_t index = 0;
+    // Empty while switching from layout to the 3D surface for a missing/collapsed UV.
+    std::optional<std::array<std::array<float, 3>, 3>> geometry;
+};
+
 struct UiComparison {
     SceneObjectId objectId = invalidSceneObjectId;
     std::string name;
@@ -123,6 +130,7 @@ struct UiComparison {
     std::optional<DiagnosticFocus> diagnosticFocus;
     // View selection waiting for matching detector results; never drawn directly.
     std::optional<DiagnosticFocus> pendingDiagnosticFocus;
+    std::optional<UvFindingFocus> uvFindingFocus;
     // One-shot inspection commands, excluded from scene files and history.
     uint64_t intersectionRequestRevision = 0;
     bool cancelIntersections = false;

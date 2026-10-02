@@ -175,6 +175,7 @@ void restoreViewDiagnostics(UiState& state, const std::vector<ViewDiagnosticSele
         auto* comparison = findComparison(state, selection.comparisonId);
         if (!comparison) { continue; }
         resetComparisonDiagnosticFocus(state, comparison->objectId);
+        comparison->uvFindingFocus.reset();
         const auto signature = comparisonGeometrySignature(state, comparison->objectId);
         if (selection.index && comparison->settings.enabled && signature != 0) {
             comparison->pendingDiagnosticFocus = DiagnosticFocus{signature, *selection.index,

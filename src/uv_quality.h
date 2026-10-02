@@ -16,6 +16,8 @@ struct UvTriangleQuality {
 
 struct UvQuality {
     std::vector<UvTriangleQuality> triangles;
+    // Computed once on the worker; UI navigation never scans all triangles.
+    std::vector<size_t> findings;
     UvAreaNormalization normalization = UvAreaNormalization::perPatch;
     UvQualityMetric metric = UvQualityMetric::angle;
     size_t missing = 0, collapsed = 0, degenerateSurface = 0, mixedOrientationPatches = 0;
@@ -24,5 +26,7 @@ struct UvQuality {
 [[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric,
     std::stop_token stop = {});
 [[nodiscard]] std::vector<Vertex> uvQualityVertices(const Mesh& display, std::stop_token stop = {});
+[[nodiscard]] const char* uvFindingLabel(const UvTriangleQuality& triangle);
+[[nodiscard]] std::optional<std::array<std::array<float, 3>, 3>> uvFindingGeometry(const Mesh& display, size_t finding);
 
 } // namespace woby

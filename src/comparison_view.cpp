@@ -957,7 +957,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         "Whole-file inspection includes unused points; selected parts include referenced points. "
         "OBJ IDs precede UV/normal splitting. Triangle IDs identify generated triangles, not original polygons. "
         "Plugin IDs describe the importer vertex table. "
-        "An asterisk indicates partial results; hover the count for details.");
+        "Partial results show a known count followed by '+ Partial'; hover the count for details.");
     int topologyMode = static_cast<int>(settings.topologyMode);
     if (ImGui::Combo("Topology", &topologyMode, "Original indices\0Exact positions\0")) {
         settings.topologyMode = static_cast<TopologyMode>(topologyMode);
@@ -1001,7 +1001,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         const float countWidth = ImGui::GetFontSize() * 3.5f;
         if (hasA) { ImGui::TableSetupColumn(hasB ? "A" : "Count", ImGuiTableColumnFlags_WidthFixed, countWidth); }
         if (hasB) { ImGui::TableSetupColumn(hasA ? "B" : "Count", ImGuiTableColumnFlags_WidthFixed, countWidth); }
-        ImGui::TableSetupColumn("Show", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
+        ImGui::TableSetupColumn("##visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
         size_t shown = 0;
@@ -1565,6 +1565,8 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
         }
         validateComparisonDiagnosticFocus(state, runtime.result,
             runtime.ready ? runtime.resultSignature : 0, comparison.objectId);
+        validateUvFindingFocus(state, runtime.result.original.source,
+            runtime.ready ? runtime.resultSignature : 0, comparison.objectId);
     }
 }
 
@@ -1753,6 +1755,159 @@ void drawSurfaceQualityStatistics(const MeshComparison& result, const Comparison
     ImGui::TextWrapped("%.5g to %.5g; vertical maximum %.3g%%", distribution.minimum, distribution.maximum, peak);
 }
 
+void drawUvFindings(UiState& state, const Mesh& display, uint64_t signature, SceneObjectId id)
+{
+    const auto& quality = *display.uvQuality;
+    ImGui::SeparatorText("Findings");
+    ImGui::TextWrapped("%zu triangles with findings", quality.findings.size());
+    if (quality.findings.empty()) { ImGui::TextDisabled("No findings in the checked UV categories."); return; }
+    bool scrollToFocus = false;
+    if (ImGui::Button("Previous finding")) { navigateUvFinding(state, display, signature, -1, id); scrollToFocus = true; }
+    ImGui::SameLine();
+    if (ImGui::Button("Next finding")) { navigateUvFinding(state, display, signature, 1, id); scrollToFocus = true; }
+    const auto* focus = focusedUvFinding(state, signature, id);
+    if (focus) {
+        const auto& triangle = quality.triangles[quality.findings[focus->index]];
+        const auto source = findSceneObject(state, triangle.partId);
+        ImGui::TextWrapped("%zu / %zu | %s / triangle %zu", focus->index + 1, quality.findings.size(),
+            source ? source->name.c_str() : "Missing patch", triangle.triangle);
+        if (triangle.missing) { ImGui::TextUnformatted("Missing UVs"); }
+        if (triangle.collapsed) { ImGui::TextUnformatted("Collapsed UV triangle"); }
+        if (triangle.degenerateSurface) { ImGui::TextUnformatted("Degenerate surface triangle"); }
+        if (triangle.mixedOrientation) { ImGui::TextUnformatted("Mixed orientation within this patch"); }
+        if (!triangle.missing && !triangle.collapsed && !triangle.degenerateSurface) {
+            ImGui::TextWrapped("Angle: %.4g deg | log2 area ratio: %.4g", triangle.angleDegrees, triangle.areaLog2);
+        }
+    }
+    ImGui::TextWrapped("Selecting a finding frames and highlights its triangle. Missing or collapsed UVs open in 3D.");
+    const float rowHeight = ImGui::GetTextLineHeightWithSpacing();
+    if (ImGui::BeginChild("UV finding list", {0, rowHeight * 7}, ImGuiChildFlags_Borders)) {
+        if (scrollToFocus && focus) { ImGui::SetScrollY(static_cast<float>(focus->index) * rowHeight); }
+        ImGuiListClipper clipper;
+        clipper.Begin(static_cast<int>(std::min(quality.findings.size(), static_cast<size_t>(INT_MAX))), rowHeight);
+        while (clipper.Step()) {
+            for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) {
+                const auto index = static_cast<size_t>(row);
+                const auto& triangle = quality.triangles[quality.findings[index]];
+                const auto label = std::to_string(index + 1) + " | " + uvFindingLabel(triangle);
+                // Selection can replace the focus, so never retain its pointer across a click.
+                const auto* selected = focusedUvFinding(state, signature, id);
+                if (ImGui::Selectable(label.c_str(), selected && selected->index == index)) {
+                    selectUvFinding(state, display, signature, index, id);
+                }
+                if (ImGui::IsItemHovered()) {
+                    const auto source = findSceneObject(state, triangle.partId);
+                    ImGui::SetTooltip("%s / triangle %zu", source ? source->name.c_str() : "Missing patch", triangle.triangle);
+                }
+            }
+        }
+    }
+    ImGui::EndChild();
+}
+
+void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId id)
+{
+    auto settings = comparisonSettings(state, id);
+    const auto initial = settings;
+    ImGui::SeparatorText("Tool");
+    if (ImGui::RadioButton("Layout", settings.type == AnalysisType::uv)) { settings.type = AnalysisType::uv; }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Distortion", settings.type == AnalysisType::uvQuality)) { settings.type = AnalysisType::uvQuality; }
+    ImGui::TextUnformatted("View");
+    int viewMode = static_cast<int>(settings.uvView);
+    const char* views[] = {"2D UV layout", "3D surface"};
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::Combo("##uv_view", &viewMode, views, 2)) { settings.uvView = static_cast<UvView>(viewMode); }
+    if (settings.type == AnalysisType::uvQuality) {
+        ImGui::TextUnformatted("Metric");
+        int metric = static_cast<int>(settings.uvMetric);
+        const char* metrics[] = {"Angle distortion", "Area stretch", "UV orientation"};
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::Combo("##uv_metric", &metric, metrics, 3)) { settings.uvMetric = static_cast<UvQualityMetric>(metric); }
+        if (settings.uvMetric == UvQualityMetric::area) {
+            ImGui::TextUnformatted("Area normalization");
+            int normalization = static_cast<int>(settings.uvNormalization);
+            const char* normalizations[] = {"Per patch (relative)", "Absolute UV / world area"};
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::Combo("##uv_normalization", &normalization, normalizations, 2)) {
+                settings.uvNormalization = static_cast<UvAreaNormalization>(normalization);
+            }
+        }
+    } else {
+        drawVisibilityField("UV coloring", settings.uvGrid.enabled);
+        int mode = static_cast<int>(settings.uvGrid.mode);
+        const char* modes[] = {"Grid", "U gradient", "V gradient"};
+        ImGui::TextUnformatted("Color"); ImGui::SetNextItemWidth(-1);
+        if (ImGui::Combo("##uv_color", &mode, modes, 3)) { settings.uvGrid.mode = static_cast<UvColorMode>(mode); }
+        if (mode == 0) {
+            ImGui::InputFloat("U cells / UV unit", &settings.uvGrid.densityU, 0, 0, "%.5g");
+            ImGui::InputFloat("V cells / UV unit", &settings.uvGrid.densityV, 0, 0, "%.5g");
+        } else {
+            ImGui::InputFloat("Range minimum", &settings.uvGrid.minimum, 0, 0, "%.5g");
+            ImGui::InputFloat("Range maximum", &settings.uvGrid.maximum, 0, 0, "%.5g");
+        }
+    }
+    if (ImGui::CollapsingHeader("Display options")) {
+        ImGui::BeginDisabled(settings.uvView != UvView::layout);
+        ImGui::Checkbox("Separate patches", &settings.uvSeparated);
+        ImGui::EndDisabled();
+        ImGui::Checkbox("Link patch selection to source", &settings.uvLinkedSelection);
+        drawVisibilityField("Triangle edges", settings.showEdges);
+        if (ImGui::Button("Show all patches")) { isolateUvObjects(state, {}, id); }
+        ImGui::TextWrapped("Right-click an input to isolate it. Layout separation preserves a common scale and the original UVs.");
+    }
+    if (settings != initial) { setComparisonSettings(state, settings, id); }
+    ImGui::SeparatorText("Results");
+    ImGui::BeginDisabled(!canInspectComparison(state, id));
+    if (ImGui::Button("Full result")) { frameComparison(state, id); }
+    ImGui::SameLine();
+    if (ImGui::Button("Fit scene")) { frameCameraToScene(state); }
+    ImGui::EndDisabled();
+    if (settings.type == AnalysisType::uvQuality) {
+        ImGui::TextUnformatted("Legend"); ImGui::SameLine();
+        drawInformationIcon("uv_legend_info", "UV colors",
+            settings.uvMetric == UvQualityMetric::angle ? "Maximum corner angle difference per triangle. Blue: 0 degrees; yellow: 45; red: 90 or more."
+            : settings.uvMetric == UvQualityMetric::area ? "Magnitude of area stretch or compression. Blue: ratio 1; red: ratio 8 or 1/8 and beyond. Per-patch mode divides by total UV area / total surface area."
+            : "Positive and negative winding are both valid. A uniformly mirrored patch is valid; mixed signs within a patch need inspection.");
+        const float height = drawUvQualityLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
+            ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), settings.uvMetric);
+        ImGui::Dummy({0, height});
+        ImGui::PushTextWrapPos();
+        ImGui::TextColored({1, 0, 1, 1}, "Collapsed UV");
+        ImGui::TextColored({.56f, .61f, .67f, 1}, "Missing UV / degenerate surface");
+        ImGui::PopTextWrapPos();
+    } else if (settings.uvGrid.mode == UvColorMode::grid) {
+        ImGui::TextColored({.12f, .78f, .92f, 1}, "Cyan: constant U");
+        ImGui::TextColored({1, .55f, .16f, 1}, "Orange: constant V");
+    } else {
+        ImGui::TextWrapped("Blue: %.5g | Yellow: %.5g", settings.uvGrid.minimum, settings.uvGrid.maximum);
+    }
+    if (!comparisonStagesReady(runtime, state, id, comparisonSource)) {
+        ImGui::TextDisabled("Results are not current. See activity above."); return;
+    }
+    const auto& display = runtime.result.original.source;
+    if (settings.type == AnalysisType::uvQuality && display.uvQuality) {
+        const auto& quality = *display.uvQuality;
+        if (ImGui::BeginTable("UV result summary", 2, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 4);
+            const auto row = [](const char* label, size_t count) {
+                ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextWrapped("%s", label);
+                ImGui::TableNextColumn(); ImGui::Text("%zu", count);
+            };
+            row("Triangles checked", quality.triangles.size());
+            row("Collapsed UV triangles", quality.collapsed);
+            row("Patches with mixed orientation", quality.mixedOrientationPatches);
+            row("Missing UV triangles", quality.missing);
+            row("Degenerate surface triangles", quality.degenerateSurface);
+            ImGui::EndTable();
+        }
+        drawUvFindings(state, display, runtime.resultSignature, id);
+    } else if (display.nodes.empty()) {
+        ImGui::TextWrapped("No UV coordinates to display. Add a source with UVs or choose the 3D surface view.");
+    }
+}
+
 void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObjectId id)
 {
     const auto* comparison = findComparison(state, id);
@@ -1784,82 +1939,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     const bool resultReady = comparisonStagesReady(runtime, state, id, comparisonDistance);
     membershipTree(state, ComparisonSide::a, id);
     if (isUvAnalysis(comparison->settings.type)) {
-        auto settings = comparisonSettings(state, id);
-        const auto initial = settings;
-        ImGui::SeparatorText("UV view");
-        int viewMode = static_cast<int>(settings.uvView);
-        const char* views[] = {"2D UV layout", "3D surface"};
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::Combo("##uv_view", &viewMode, views, 2)) { settings.uvView = static_cast<UvView>(viewMode); }
-        ImGui::BeginDisabled(settings.uvView != UvView::layout);
-        ImGui::Checkbox("Separate patches", &settings.uvSeparated);
-        ImGui::EndDisabled();
-        ImGui::Checkbox("Link patch selection to source", &settings.uvLinkedSelection);
-        if (ImGui::Button("Show all patches")) { isolateUvObjects(state,{},id); }
-        ImGui::TextWrapped("Right-click a source entry above to isolate it. Selecting a patch in either view highlights its source and UV copy.");
-        if (settings.type == AnalysisType::uvQuality) {
-            int metric = static_cast<int>(settings.uvMetric);
-            const char* metrics[] = {"Angle distortion", "Area stretch", "UV orientation"};
-            if (ImGui::Combo("Metric",&metric,metrics,3)) { settings.uvMetric = static_cast<UvQualityMetric>(metric); }
-            int normalization = static_cast<int>(settings.uvNormalization);
-            const char* normalizations[] = {"Per patch (relative)", "Absolute UV / world area"};
-            if (ImGui::Combo("Area normalization",&normalization,normalizations,2)) { settings.uvNormalization = static_cast<UvAreaNormalization>(normalization); }
-            ImGui::TextWrapped(metric == 0 ? "Blue: 0 degrees; yellow: 45; red: 90 or more. Maximum corner angle difference per triangle."
-                : metric == 1 ? "Blue: ratio 1; red: ratio 8 or 1/8 and beyond. Per-patch mode divides by total UV area / total surface area."
-                : "Blue: positive UV winding; red: negative. Uniformly mirrored patches are valid; mixed signs within a patch need inspection.");
-            ImGui::TextWrapped("Magenta: collapsed UV triangles. Gray: missing UVs or degenerate 3D triangles. Separate domains may overlap; overlap is not classified as an error.");
-            if (comparisonStagesReady(runtime,state,id,comparisonSource) && runtime.result.original.source.uvQuality) {
-                const auto& q = *runtime.result.original.source.uvQuality;
-                ImGui::TextWrapped("%zu collapsed UV triangles; %zu patches with mixed orientation; %zu missing UV triangles; %zu degenerate surface triangles",
-                    q.collapsed,q.mixedOrientationPatches,q.missing,q.degenerateSurface);
-                if (ImGui::TreeNode("UV findings")) {
-                    size_t shown = 0;
-                    for (const auto& t : q.triangles) {
-                        if (!t.collapsed && !t.mixedOrientation && !t.degenerateSurface) { continue; }
-                        if (shown++ == 100) { ImGui::TextDisabled("First 100 shown. Isolate a patch to narrow the list."); break; }
-                        ImGui::PushID(static_cast<int>(shown));
-                        const auto object = findSceneObject(state,t.partId);
-                        const auto label = (object ? object->name : "Missing patch") + " / triangle " + std::to_string(t.triangle)
-                            + (t.collapsed ? " : collapsed UV" : t.degenerateSurface ? " : degenerate surface" : " : mixed orientation");
-                        if (ImGui::Selectable(label.c_str())) { selectSceneObject(state,t.partId); }
-                        ImGui::PopID();
-                    }
-                    ImGui::TreePop();
-                }
-            }
-        } else {
-            drawVisibilityField("UV coloring",settings.uvGrid.enabled);
-            int mode = static_cast<int>(settings.uvGrid.mode);
-            const char* modes[] = {"Grid", "U gradient", "V gradient"};
-            if (ImGui::Combo("Color",&mode,modes,3)) { settings.uvGrid.mode = static_cast<UvColorMode>(mode); }
-            if (mode == 0) {
-                ImGui::InputFloat("U cells / UV unit",&settings.uvGrid.densityU,0,0,"%.5g");
-                ImGui::InputFloat("V cells / UV unit",&settings.uvGrid.densityV,0,0,"%.5g");
-                ImGui::TextColored({.12f,.78f,.92f,1},"Cyan: constant U");
-                ImGui::TextColored({1,.55f,.16f,1},"Orange: constant V");
-            } else {
-                ImGui::InputFloat("Blue: range minimum",&settings.uvGrid.minimum,0,0,"%.5g");
-                ImGui::InputFloat("Yellow: range maximum",&settings.uvGrid.maximum,0,0,"%.5g");
-                ImGui::TextWrapped("The parameter range is explicit; values outside it use the endpoint colors.");
-            }
-        }
-        drawVisibilityField("Triangle edges",settings.showEdges);
-        if (settings != initial) { setComparisonSettings(state,settings,id); }
-        ImGui::TextWrapped(settings.uvSeparated && settings.uvView == UvView::layout
-            ? "Display-only patch separation: common scale, original UVs retained."
-            : "Existing parameter coordinates, including values outside 0-1. Shared domains can overlap. Collapsed UV triangles have no visible area in layout; inspect them on the 3D surface.");
-        const auto members = comparisonMemberIds(state, ComparisonSide::a, id);
-        size_t supplied = 0, missing = 0;
-        for (const auto& file : state.files) {
-            for (size_t i = 0; i < file.groupSettings.size(); ++i) {
-                if (std::binary_search(members.begin(), members.end(), file.groupSettings[i].objectId)) {
-                    if (file.mesh.nodes[i].hasTexcoords) { ++supplied; } else { ++missing; }
-                }
-            }
-        }
-        ImGui::TextWrapped("%zu parts with UVs; %zu without complete UVs", supplied, missing);
-        if (!supplied) { ImGui::TextWrapped("No UV coordinates to display. Add a source with UVs or use the 3D surface view."); }
-        if (ImGui::Button("Fit mesh and UV view")) { frameCameraToScene(state); }
+        drawUvInspector(state, runtime, id);
         return;
     }
     membershipTree(state, ComparisonSide::b, id);
@@ -1941,6 +2021,12 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (settings != initial)
     {
         setComparisonSettings(state, settings, id);
+    }
+    if (task != AnalysisTask::meshChecks) {
+        ImGui::SeparatorText("Results");
+        ImGui::BeginDisabled(!valid);
+        if (ImGui::Button("Full result")) { frameComparison(state, id); }
+        ImGui::EndDisabled();
     }
     if (both && comparisonSettings(state, id).mode == ComparisonMode::distance) {
         const auto currentSettings = comparisonSettings(state, id);
@@ -2169,16 +2255,23 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
         if (it == runtimes.objects.end() || !it->second.ready) { continue; }
         const auto* edge = focusedComparisonDiagnostic(state, it->second.result,
             it->second.resultSignature, comparison.objectId);
-        if (!edge) { continue; }
+        const auto* uv = focusedUvFinding(state, it->second.resultSignature, comparison.objectId);
+        if (!edge && !uv) { continue; }
         auto& points = scratch.focusPoints;
         auto& faceFill = scratch.positions;
         points.clear();
         faceFill.clear();
-        const auto& focus = *comparison.diagnosticFocus;
+        const auto focus = comparison.diagnosticFocus.value_or(DiagnosticFocus{});
         const bool duplicatePoints = focus.category == DiagnosticCategory::duplicatePoints;
         const bool duplicateTriangles = focus.category == DiagnosticCategory::duplicateTriangles;
         const float radius = state.camera.distance * .015f;
-        if (duplicatePoints || duplicateTriangles) {
+        if (uv) {
+            faceFill.assign(uv->geometry->begin(), uv->geometry->end());
+            for (size_t k = 0; k < 3; ++k) {
+                points.push_back((*uv->geometry)[k]); points.push_back((*uv->geometry)[(k + 1) % 3]);
+            }
+            appendCross(points, (*uv->geometry)[0], radius);
+        } else if (duplicatePoints || duplicateTriangles) {
             const auto& finding = comparisonDuplicates(it->second.result, focus.side, focus.category).findings.at(focus.index);
             if (duplicatePoints) {
                 for (const auto& point : finding.geometry) { appendCross(points, point, radius); }
@@ -2422,7 +2515,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                             AnalysisResultState::queued, AnalysisResultState::running, AnalysisResultState::failed}) {
                         for (const auto& check : runtime->diagnosticSummaries) {
                             if ((hasA && check[0].state == phase) || (hasB && check[1].state == phase)) {
-                                status = analysisResultStateLabel(phase);
+                                status = phase == AnalysisResultState::notRun ? "Checks pending" : analysisResultStateLabel(phase);
                                 break;
                             }
                         }

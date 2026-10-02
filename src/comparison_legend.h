@@ -9,4 +9,5 @@ float drawComparisonLegend(ImDrawList& draw, ImVec2 position, float width, float
     const ComparisonSettings& settings);
 float drawSurfaceQualityLegend(ImDrawList& draw, ImVec2 position, float width, float fontSize,
     SurfaceQualityMetric metric, const QualityDistribution& distribution);
+float drawUvQualityLegend(ImDrawList& draw, ImVec2 position, float width, float fontSize, UvQualityMetric metric);
 }

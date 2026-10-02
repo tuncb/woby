@@ -47,6 +47,11 @@ void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
 void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array<float, 3>& translation);
 void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 void frameComparison(UiState& state, SceneObjectId id);
+// UV navigation retains the analysis inspector and uses only matching results.
+[[nodiscard]] const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id);
+void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t resultSignature, SceneObjectId id);
+void selectUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, size_t index, SceneObjectId id);
+void navigateUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, int step, SceneObjectId id);
 // A zero/stale result signature is unavailable. Navigation wraps within one side/category.
 [[nodiscard]] const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
     const MeshComparison& result, uint64_t resultSignature, SceneObjectId id);
