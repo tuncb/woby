@@ -27,8 +27,8 @@ struct TrimContext {
     double spatialTolerance=0;
 };
 [[noreturn]] void fail(const TrimContext& c, const std::string& reason) {
-    throw std::runtime_error("Invalid OBJ trimming: " + c.patch.trimming->sourceFile
-        + " (line " + std::to_string(c.line) + "): " + reason);
+    throw std::runtime_error("Invalid freeform trimming: " + c.patch.trimming->sourceFile
+        + (c.line ? " (line " + std::to_string(c.line) + ")" : "") + ": " + reason);
 }
 double distance(const UV& a,const UV& b) { return std::hypot(a[0]-b[0],a[1]-b[1]); }
 UV normalized(const FreeformPatch& p,const Coordinate& a) {

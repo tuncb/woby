@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-#define WOBY_IMPORTER_ABI_VERSION 3u
+#define WOBY_IMPORTER_ABI_VERSION 4u
 #define WOBY_IMPORT_OK 0u
 #define WOBY_IMPORT_ERROR 1u
 #define WOBY_IMPORT_CANCELED 2u
@@ -148,6 +148,104 @@ typedef struct WobyImporterApiWithPointIds {
      * Metadata is prepared in import_file and borrowed until release_result. */
     const WobyImportPointIds* (WOBY_IMPORT_CALL *get_point_ids)(const WobyImportResult*);
 } WobyImporterApiWithPointIds;
+
+/* Explicit points (including point clouds) reference the shared vertex table.
+ * Groups partition indices individually. Zero groups generates "Points".
+ * These are drawable points, independent of the source-identity get_point_ids. */
+typedef struct WobyImportPoints {
+    uint32_t struct_size;
+    const uint32_t* indices;
+    uint32_t index_count;
+    const WobyImportGroup* groups;
+    uint32_t group_count;
+} WobyImportPoints;
+
+#define WOBY_IMPORT_SPLINE_CURVE 0u
+#define WOBY_IMPORT_SPLINE_SURFACE 1u
+
+/* Euclidean original-file coordinates, NOT multiplied by weight. Use weight=1
+ * for nonrational geometry. UVs use OBJ's convention (host flips V for display).
+ * normal/texcoord are used only when the corresponding spline flag is set. */
+typedef struct WobyImportControlPoint {
+    double position[3];
+    double weight;
+    double texcoord[2];
+    double normal[3];
+} WobyImportControlPoint;
+
+/* Canonical B-spline representation, also covering Bezier and NURBS.
+ * Bezier: count=degree+1, knots=[a repeated degree+1, b repeated degree+1].
+ * Tensor-product controls are U-fastest: controls[v * count_u + u].
+ * All degrees are 1..8. Curves use degree_v=0, count_v=1, knot_count_v=0.
+ * Weights must be positive and finite; flags are HAS_NORMALS/HAS_TEXCOORDS.
+ * A knot vector has count+degree+1 entries, finite and nondecreasing.
+ * Domains are increasing subranges of [knots[degree], knots[count]]. */
+typedef struct WobyImportSpline {
+    uint32_t struct_size;
+    uint32_t kind;
+    uint32_t flags;
+    uint32_t degree_u, degree_v;
+    uint32_t count_u, count_v;
+    const WobyImportControlPoint* controls;
+    uint32_t control_count;
+    const double* knots_u;
+    uint32_t knot_count_u;
+    const double* knots_v;
+    uint32_t knot_count_v;
+    double domain_u[2], domain_v[2];
+} WobyImportSpline;
+
+/* Trim curves are defined separately in WobyImportFreeform.trim_curves using
+ * position=(u,v,0), kind=CURVE, flags=0 and at most 4096 controls per curve.
+ * They do not create drawable groups.
+ * Intervals can run forwards or backwards inside the trim curve's domain. */
+typedef struct WobyImportTrimSegment {
+    uint32_t curve_index;
+    double interval[2];
+} WobyImportTrimSegment;
+
+typedef struct WobyImportTrimLoop {
+    const WobyImportTrimSegment* segments;
+    uint32_t segment_count;
+} WobyImportTrimLoop;
+
+typedef struct WobyImportTrimRegion {
+    /* Empty outer means the surface's parameter rectangle. Holes must be nonempty.
+     * Loops must be closed and simple; boundaries must not touch or intersect.
+     * Winding is irrelevant. Multiple disjoint regions are supported. */
+    WobyImportTrimLoop outer;
+    const WobyImportTrimLoop* holes;
+    uint32_t hole_count;
+} WobyImportTrimRegion;
+
+typedef struct WobyImportFreeformPatch {
+    /* One stable named group per patch, with the usual color/visibility flags.
+     * index_offset and index_count must both be zero: the host tessellates it. */
+    WobyImportGroup group;
+    WobyImportSpline spline;
+    const WobyImportTrimRegion* regions;
+    uint32_t region_count; /* Zero means untrimmed. Curves must use zero. */
+} WobyImportFreeformPatch;
+
+typedef struct WobyImportFreeform {
+    uint32_t struct_size;
+    const WobyImportFreeformPatch* patches;
+    uint32_t patch_count;
+    const WobyImportSpline* trim_curves;
+    uint32_t trim_curve_count;
+} WobyImportFreeform;
+
+typedef struct WobyImporterApiWithGeometry {
+    /* Set base.base.base.base.struct_size to sizeof(WobyImporterApiWithGeometry)
+     * and return &base.base.base.base. All optional callbacks can be NULL.
+     * Hierarchy order: triangle groups, line groups, point groups, then patches
+     * in array order (curves and surfaces interleaved). Includes default groups.
+     * A freeform-only result may leave the base vertex/index buffers empty. */
+    WobyImporterApiWithPointIds base;
+    /* Borrowed data prepared in import_file, valid until release_result. */
+    const WobyImportPoints* (WOBY_IMPORT_CALL *get_points)(const WobyImportResult*);
+    const WobyImportFreeform* (WOBY_IMPORT_CALL *get_freeform)(const WobyImportResult*);
+} WobyImporterApiWithGeometry;
 
 typedef const WobyImporterApi* (WOBY_IMPORT_CALL *WobyGetImporterApi)(uint32_t host_abi_version);
 

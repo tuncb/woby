@@ -213,7 +213,9 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
     auto geometry = std::make_shared<FreeformGeometry>();
     geometry->patches = std::move(patches);
     auto source = mesh.sourceData ? std::make_shared<SourceMeshData>(*mesh.sourceData) : std::make_shared<SourceMeshData>();
-    source->provenance = SourceProvenance::objPositions;
+    if (!mesh.sourceData) { source->provenance = SourceProvenance::objPositions; }
+    std::unordered_set<uint64_t> usedIds(source->originalPointIds.begin(), source->originalPointIds.end());
+    uint64_t nextId = 0;
     std::unordered_set<std::string> names;
     for (const auto& node : mesh.nodes) { names.insert(node.name); }
     size_t total = 0;
@@ -249,6 +251,10 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
             Vertex vertex{renderPosition(point), freeformNormal(patch,u,v), {}};
             if (!patch.texcoords.empty()) { vertex.texcoord = {static_cast<float>(sample.texcoord[0]), 1-static_cast<float>(sample.texcoord[1])}; }
             mesh.vertices.push_back(vertex); mesh.precisePositions.push_back(point); source->points.push_back(point);
+            if (!usedIds.empty()) {
+                while (usedIds.contains(nextId)) { ++nextId; }
+                source->originalPointIds.push_back(nextId++);
+            }
             ++completed;
         };
         if (!grid.samples.empty()) {
