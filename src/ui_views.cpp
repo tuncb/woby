@@ -16,7 +16,7 @@ float viewListHeight(float preferredHeight, float automaticHeight,
         std::min(minimumHeight, maximum), maximum);
 }
 
-void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float reservedHeight)
+void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float reservedHeight, bool flowing)
 {
     if (edit.generation != state.sceneGeneration || (edit.id && !findView(state, edit.id))) {
         edit = {};
@@ -47,7 +47,7 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
             + ImGui::GetStyle().WindowPadding.y;
         const float availableHeight = ImGui::GetContentRegionAvail().y - reservedHeight
             - dividerHeight - ImGui::GetStyle().ItemSpacing.y;
-        const float height = viewListHeight(layout.preferredHeight, automaticHeight,
+        const float height = flowing ? automaticHeight : viewListHeight(layout.preferredHeight, automaticHeight,
             minimumHeight, availableHeight);
         if (ImGui::BeginChild("view_rows", ImVec2(0, height))) {
             if (state.views.empty()) { ImGui::TextDisabled("Use + to save the current view."); }
@@ -108,6 +108,7 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
             }
         }
         ImGui::EndChild();
+        if (!flowing) {
         ImGui::InvisibleButton("views_objects_divider", ImVec2(-1.0f, dividerHeight));
         const bool hovered = ImGui::IsItemHovered();
         const bool active = ImGui::IsItemActive();
@@ -128,6 +129,7 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
         if (active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
             layout.preferredHeight = viewListHeight(height + ImGui::GetIO().MouseDelta.y,
                 automaticHeight, minimumHeight, availableHeight);
+        }
         }
     }
     ImGui::PopID();

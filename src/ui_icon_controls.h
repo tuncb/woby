@@ -17,7 +17,7 @@ float informationIconSize();
 void setLastItemTooltip(const char* text);
 // Draw last in a row; reserve its size plus ItemSpacing.x beside stretch controls.
 void drawInformationIcon(const char* id, const char* title, const char* text);
-bool drawInformationHeader(const char* label, const char* title, const char* text);
+bool drawInformationHeader(const char* label, const char* title, const char* text, bool defaultOpen = true);
 bool drawRenderModeIconButton(const char* id, const char* icon, const char* tooltip,
     RenderModeState state, bool disabled);
 bool drawCameraViewButton(const char* id, CameraView view, const char* tooltip);

@@ -638,6 +638,16 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.intersections.limits.pairs = std::min(settings.intersections.limits.pairs, size_t{2147483647});
     settings.intersections.limits.candidateTests = std::min(settings.intersections.limits.candidateTests, size_t{2147483647});
     if (isUvAnalysis(settings.type)) { settings.mode = ComparisonMode::original; }
+    if (settings.task < AnalysisTask::automatic || settings.task > AnalysisTask::uvInspection) {
+        settings.task = AnalysisTask::automatic;
+    }
+    if (settings.task != AnalysisTask::automatic) {
+        if (isUvAnalysis(settings.type)) { settings.task = AnalysisTask::uvInspection; }
+        else if (settings.mode == ComparisonMode::surfaceQuality) { settings.task = AnalysisTask::meshQuality; }
+        else if (settings.mode == ComparisonMode::distance || settings.mode == ComparisonMode::overlay) {
+            settings.task = AnalysisTask::surfaceComparison;
+        } else if (settings.task != AnalysisTask::surfaceComparison) { settings.task = AnalysisTask::meshChecks; }
+    }
     return settings;
 }
 

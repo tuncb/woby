@@ -230,7 +230,7 @@ void drawInformationIcon(const char* id, const char* title, const char* text)
     ImGui::PopID();
 }
 
-bool drawInformationHeader(const char* label, const char* title, const char* text)
+bool drawInformationHeader(const char* label, const char* title, const char* text, bool defaultOpen)
 {
     bool open = false;
     // Separate columns keep the passive hint out of the header's toggle hit area.
@@ -242,7 +242,7 @@ bool drawInformationHeader(const char* label, const char* title, const char* tex
             informationIconSize() + ImGui::GetStyle().ItemSpacing.x);
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        open = ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen);
+        open = ImGui::CollapsingHeader(label, defaultOpen ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
         const float headerHeight = ImGui::GetItemRectSize().y;
         ImGui::TableNextColumn();
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (headerHeight - informationIconSize()) * 0.5f));

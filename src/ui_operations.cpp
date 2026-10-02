@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "analysis_presentation.h"
 #include "comparison_scene.h"
 #include "mesh_comparison.h"
 
@@ -321,6 +322,49 @@ SceneObjectId createComparison(UiState& state, AnalysisType type)
     const auto id = state.comparisons.back().objectId;
     selectSceneObject(state, id);
     markSceneDirty(state);
+    return id;
+}
+
+void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task)
+{
+    const auto* comparison = findComparison(state, id);
+    if (!comparison) { return; }
+    // Changing mesh/UV domains uses a new analysis so no input is silently discarded.
+    if (isUvAnalysis(comparison->settings.type) != (task == AnalysisTask::uvInspection)) { return; }
+    const auto settings = settingsForAnalysisTask(comparison->settings, task,
+        enabledComparisonPartCount(state, ComparisonSide::a, id) != 0,
+        enabledComparisonPartCount(state, ComparisonSide::b, id) != 0);
+    if (settings == comparison->settings) { return; }
+    resetComparisonDiagnosticFocus(state, id);
+    setComparisonSettings(state, settings, id);
+}
+
+SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task)
+{
+    if (task < AnalysisTask::meshChecks || task > AnalysisTask::uvInspection) { return invalidSceneObjectId; }
+    const auto selected = state.selectedSceneObjects;
+    std::vector<SceneObjectId> sources;
+    for (const auto id : selected) {
+        if (!comparisonObjectParts(state, {id}).empty()) { sources.push_back(id); }
+    }
+    if (task == AnalysisTask::surfaceComparison && sources.size() > 2) { return invalidSceneObjectId; }
+    const auto id = createComparison(state, task == AnalysisTask::uvInspection ? AnalysisType::uv : AnalysisType::mesh);
+    if (task == AnalysisTask::surfaceComparison) {
+        if (!sources.empty()) { setComparisonObjects(state, {sources[0]}, ComparisonSide::a, true, id); }
+        if (sources.size() == 2) { setComparisonObjects(state, {sources[1]}, ComparisonSide::b, true, id); }
+    } else { setComparisonObjects(state, sources, ComparisonSide::a, true, id); }
+    setAnalysisTask(state, id, task);
+    std::string base = analysisTaskLabel(task);
+    if (!sources.empty()) {
+        if (const auto source = findSceneObject(state, sources[0])) { base += " - " + source->name; }
+    }
+    auto name = base;
+    size_t suffix = 2;
+    while (std::any_of(state.comparisons.begin(), state.comparisons.end(), [&](const UiComparison& other) {
+        return other.objectId != id && other.name == name;
+    })) { name = base + " " + std::to_string(suffix++); }
+    renameComparison(state, id, name);
+    if (!sources.empty()) { frameCameraToScene(state); }
     return id;
 }
 

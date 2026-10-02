@@ -1236,7 +1236,7 @@ TEST_CASE("annotation bridges survive editing transforms scene files and history
     const auto path = fixture.root / "bridges.woby";
     const auto document = createSceneDocument(fixture.state);
     writeSceneDocument(path, document);
-    { std::ifstream stream(path); std::string line; std::getline(stream, line); std::getline(stream, line); CHECK(line == "version = 20"); }
+    { std::ifstream stream(path); std::string line; std::getline(stream, line); std::getline(stream, line); CHECK(line == "version = 21"); }
     const auto read = readSceneDocument(path);
     CHECK(read.annotations == document.annotations);
     const auto restored = prepareSceneReplacement(fixture.state, fixture.state.files, read);

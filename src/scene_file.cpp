@@ -1,4 +1,5 @@
 #include "scene_file.h"
+#include "analysis_presentation.h"
 #include "utf8_path.h"
 
 #include <algorithm>
@@ -485,6 +486,14 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "translation") { record.translation = parseTomlFloat3(value);
     } else if (key == "analysis_enabled") {
         record.settings.enabled = parseTomlBool(value);
+    } else if (key == "analysis_task") {
+        const auto task = parseTomlString(value);
+        bool found = false;
+        for (const auto candidate : {AnalysisTask::automatic, AnalysisTask::meshChecks, AnalysisTask::meshQuality,
+                AnalysisTask::surfaceComparison, AnalysisTask::uvInspection}) {
+            if (task == analysisTaskKey(candidate)) { record.settings.task = candidate; found = true; break; }
+        }
+        if (!found) { throw std::runtime_error("Unknown analysis task."); }
     } else if (key == "analysis_type") {
         const auto type = parseTomlString(value);
         if (type == "mesh") { record.settings.type = AnalysisType::mesh; }
@@ -609,6 +618,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     }
     stream << "analysis_enabled = " << (comparison.enabled ? "true" : "false") << "\n";
     stream << "analysis_type = \"" << analysisTypeKey(comparison.type) << "\"\n";
+    stream << "analysis_task = \"" << analysisTaskKey(comparison.task) << "\"\n";
     stream << "analysis_uv_separated = " << (comparison.uvSeparated ? "true" : "false") << "\n";
     stream << "analysis_uv_linked_selection = " << (comparison.uvLinkedSelection ? "true" : "false") << "\n";
     stream << "analysis_uv_metric = \"" << (comparison.uvMetric == UvQualityMetric::area ? "area" : comparison.uvMetric == UvQualityMetric::orientation ? "orientation" : "angle") << "\"\n";
@@ -889,7 +899,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1182,7 +1192,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 20\n";
+    stream << "version = 21\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';

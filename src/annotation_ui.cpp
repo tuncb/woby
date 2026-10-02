@@ -178,7 +178,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
         && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
         beginRename(state.selectedSceneObjects.front());
     }
-    ImGui::SeparatorText("Annotations");
+    if (!ImGui::CollapsingHeader("Annotations", state.annotations.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen)) { return; }
     SceneObjectId remove = 0;
     SceneObjectId duplicate = 0;
     for (const auto& item : state.annotations) {

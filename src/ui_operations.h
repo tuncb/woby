@@ -36,6 +36,9 @@ void loadSceneViews(UiState& state, const SceneDocument& document);
     SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] size_t missingComparisonPartCount(const UiState& state, SceneObjectId id = invalidSceneObjectId);
 SceneObjectId createComparison(UiState& state, AnalysisType type = AnalysisType::mesh);
+// Checks/quality/UV combine selected sources; comparison assigns up to two sources in click order.
+SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task);
+void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task);
 SceneObjectId duplicateComparison(UiState& state, SceneObjectId id);
 void removeComparison(UiState& state, SceneObjectId id);
 void renameComparison(UiState& state, SceneObjectId id, const std::string& name);

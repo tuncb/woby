@@ -772,9 +772,7 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
     }
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
         if (ImGui::BeginMenu("Create analysis", woby::canCompareSceneSelection(state))) {
-            if (ImGui::MenuItem("Mesh analysis")) { woby::compareSceneSelection(state); }
-            if (ImGui::MenuItem("UV analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uv); }
-            if (ImGui::MenuItem("UV quality analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uvQuality); }
+            woby::drawAnalysisCreationMenu(state);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Analysis membership", !state.comparisons.empty())) {
@@ -914,9 +912,7 @@ void drawSceneTreeNode(
         }
         ImGui::SetNextWindowPos({ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y}, ImGuiCond_Appearing);
         if (ImGui::BeginPopup("analysis_type")) {
-            if (ImGui::MenuItem("Mesh analysis")) { woby::compareSceneSelection(state); }
-            if (ImGui::MenuItem("UV analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uv); }
-            if (ImGui::MenuItem("UV quality analysis")) { woby::compareSceneSelection(state, woby::AnalysisType::uvQuality); }
+            woby::drawAnalysisCreationMenu(state);
             ImGui::EndPopup();
         }
         ImGui::SameLine(removeControlStartX, 0.0f);
@@ -3006,7 +3002,7 @@ int main(int argc, char** argv)
                             + ImGui::GetStyle().ItemSpacing.y + 1.0f;
                         const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
                             "Inspection presets apply to all current parts and hide grid and origin. "
-                            "Visibility and transforms stay as set.\n\nVertex size sets the base vertex point size for all groups.");
+                            "Visibility and transforms stay as set.\n\nVertex size sets the base vertex point size for all groups.", false);
                     if (scenePaneOpen) {
                         ImGui::SetNextItemWidth(-1.0f);
                         if (ImGui::BeginCombo("##inspection_preset", "Inspection presets")) {
@@ -3125,47 +3121,35 @@ int main(int argc, char** argv)
                         }
                     }
 
-                    ImGui::BeginDisabled(fileActionsDisabled()
-                        || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
-                    woby::drawViews(ui, viewNameEdit, viewListLayout,
-                        statusHeight + ImGui::GetFrameHeight() * 2.0f
-                            + ImGui::GetStyle().ItemSpacing.y * 3.0f);
-                    ImGui::EndDisabled();
-
-                    const std::string filesPaneTitle = "Objects (" + std::to_string(files.size()) + " files)##Files";
-                    if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
-                    if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
-                    const bool filesPaneOpen = ImGui::CollapsingHeader(
-                        filesPaneTitle.c_str(),
-                        ImGuiTreeNodeFlags_DefaultOpen);
-                    if (filesPaneOpen) {
-                        const float filesContentHeight = std::max(
-                            ImGui::GetContentRegionAvail().y - statusHeight - ImGui::GetStyle().ItemSpacing.y,
-                            ImGui::GetFrameHeight());
-                        if (ImGui::BeginChild(
-                                "FilesContent",
-                                ImVec2(0.0f, filesContentHeight),
-                                ImGuiChildFlags_None)) {
-                            if (files.empty() && ui.comparisons.empty()) {
-                                ImGui::TextDisabled("No objects yet.");
-                            }
+                    const float contentHeight = std::max(ImGui::GetFrameHeight(),
+                        ImGui::GetContentRegionAvail().y - statusHeight - ImGui::GetStyle().ItemSpacing.y);
+                    if (ImGui::BeginChild("SceneObjects", {0, contentHeight})) {
+                        const std::string filesPaneTitle = "Models (" + std::to_string(files.size()) + " files)##Files";
+                        if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
+                        if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
+                        if (ImGui::CollapsingHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                            if (files.empty()) { ImGui::TextDisabled("No models yet."); }
                             std::optional<size_t> removeFileIndex;
                             for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                                 ImGui::PushID(static_cast<int>(nodeIndex));
                                 drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath);
                                 ImGui::PopID();
                             }
-                            woby::drawComparisonObjects(ui, comparisonNameEdit);
-                            woby::drawAnnotationObjects(ui, annotationNameEdit);
-                            canvasSelectionPath.clear();
                             if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
                                 const std::string removedName = fileDisplayName(files[removeFileIndex.value()].path);
                                 removeModelFile(ui, runtimes, removeFileIndex.value(), annotationPreparation);
                                 setToastMessage(toast, "Removed " + removedName);
                             }
                         }
-                        ImGui::EndChild();
+                        canvasSelectionPath.clear();
+                        woby::drawComparisonObjects(ui, comparisonNameEdit, comparison);
+                        woby::drawAnnotationObjects(ui, annotationNameEdit);
+                        ImGui::BeginDisabled(fileActionsDisabled()
+                            || sceneScreenshot.captureRequested || sceneScreenshot.readbackPending);
+                        woby::drawViews(ui, viewNameEdit, viewListLayout, 0, true);
+                        ImGui::EndDisabled();
                     }
+                    ImGui::EndChild();
                     ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(),
                         ImGui::GetWindowHeight() - ImGui::GetStyle().WindowPadding.y
                             - statusHeight));

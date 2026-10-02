@@ -47,6 +47,8 @@ struct IntersectionRuntime {
 
 struct ComparisonRuntime
 {
+    uint64_t sidebarRevision = uint64_t(-1);
+    std::array<ComparisonInputSummary, 2> sidebarInputs;
     std::stop_source preparationStop;
     std::future<std::shared_ptr<const PreparedComparisonInputs>> preparationWorker;
     uint64_t preparationSignature = 0;
@@ -100,7 +102,8 @@ struct ComparisonNameEdit {
     const UiState& state, SceneObjectId id);
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
-void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit);
+void drawAnalysisCreationMenu(UiState& state);
+void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes = {});
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,
     woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch,

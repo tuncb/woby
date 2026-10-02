@@ -1,5 +1,6 @@
 #include "marker_pick.h"
 #include "comparison_view.h"
+#include "analysis_presentation.h"
 #include "comparison_scene.h"
 #include "comparison_legend.h"
 #include "ui_operations.h"
@@ -1549,6 +1550,11 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
             active += item.second.preparationWorker.valid();
             active += item.second.worker.valid(); active += item.second.intersection.worker.valid();
         }
+        if (runtime.sidebarRevision != state.sceneEditRevision) {
+            runtime.sidebarInputs = {comparisonInputSummary(state, ComparisonSide::a, comparison.objectId),
+                comparisonInputSummary(state, ComparisonSide::b, comparison.objectId)};
+            runtime.sidebarRevision = state.sceneEditRevision;
+        }
         updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
         validateComparisonDiagnosticFocus(state, runtime.result,
             runtime.ready ? runtime.resultSignature : 0, comparison.objectId);
@@ -2267,7 +2273,18 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
     }
 }
 
-void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
+void drawAnalysisCreationMenu(UiState& state)
+{
+    for (const auto task : {AnalysisTask::meshChecks, AnalysisTask::meshQuality,
+            AnalysisTask::surfaceComparison, AnalysisTask::uvInspection}) {
+        const bool allowed = task != AnalysisTask::surfaceComparison || state.selectedSceneObjects.size() <= 2;
+        const char* label = task == AnalysisTask::surfaceComparison ? "Surface comparison" : analysisTaskLabel(task);
+        if (ImGui::MenuItem(label, nullptr, false, allowed)) { createAnalysisFromSelection(state, task); }
+        if (!allowed) { setLastItemTooltip("Select up to two sources, in A then B order."); }
+    }
+}
+
+void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes)
 {
     if (edit.lastFrame != ImGui::GetFrameCount() - 1
         || (edit.objectId != invalidSceneObjectId && !findComparison(state, edit.objectId))) {
@@ -2289,20 +2306,36 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
         && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
         beginRename(state.selectedSceneObjects.front());
     }
-    ImGui::SeparatorText("Analyses");
+    bool open = false;
+    if (ImGui::BeginTable("analysis_header", 2, ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("create", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("+ Analysis").x + ImGui::GetStyle().FramePadding.x * 2);
+        ImGui::TableNextRow(); ImGui::TableNextColumn();
+        open = ImGui::CollapsingHeader("Analyses", ImGuiTreeNodeFlags_DefaultOpen);
+        ImGui::TableNextColumn();
+        if (ImGui::Button("+ Analysis")) { ImGui::OpenPopup("create_analysis"); }
+        const auto anchor = ImGui::GetItemRectMax();
+        ImGui::SetNextWindowPos({anchor.x, anchor.y + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing, {1, 0});
+        if (ImGui::BeginPopup("create_analysis")) {
+            drawAnalysisCreationMenu(state);
+            ImGui::EndPopup();
+        }
+        ImGui::EndTable();
+    }
+    if (!open) { return; }
+    if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + Analysis."); }
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;
         const auto label = std::to_string(id);
         ImGui::PushID(label.c_str());
-        const float removeX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         auto settings = comparison.settings;
         if (drawVisibilityButton("visible", settings.enabled, "analysis")) {
             settings.enabled = !settings.enabled;
             setComparisonSettings(state, settings, id);
         }
         ImGui::SameLine();
-        // Keep long names and their hit targets out of the remove button's column.
-        const float nameWidth = std::max(1.0f, removeX - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
+        const float textStart = ImGui::GetCursorPosX();
+        const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
         bool changed = false;
         if (edit.objectId == id) {
             const bool focusing = edit.focus;
@@ -2342,23 +2375,38 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit)
             }
         }
         if (!changed) {
-            ImGui::SameLine(removeX, 0.0f);
-            if (drawRemoveButton("remove", "Remove analysis from scene")) {
-                removeComparison(state, id);
-                changed = true;
+            const auto found = runtimes.objects.find(id);
+            const auto* runtime = found == runtimes.objects.end() ? nullptr : &found->second;
+            const bool currentInputs = runtime && runtime->sidebarRevision == state.sceneEditRevision;
+            const bool hasA = currentInputs && runtime->sidebarInputs[0].enabledPartCount != 0;
+            const bool hasB = currentInputs && runtime->sidebarInputs[1].enabledPartCount != 0;
+            const auto task = analysisTask(settings, hasA && hasB);
+            ImGui::SetCursorPosX(textStart);
+            ImGui::TextDisabled("%s", analysisTaskLabel(task));
+            ImGui::SameLine();
+            const char* status = "Updating...";
+            if (currentInputs) {
+                if (!hasA && !hasB) { status = "Needs inputs"; }
+                else if (task == AnalysisTask::surfaceComparison && !(hasA && hasB)) { status = "Needs second input"; }
+                else if (!canInspectComparison(state, id)) { status = "Missing source"; }
+                else if (!runtime->error.empty()) { status = "Failed"; }
+                else if (runtime->preparationWorker.valid() || runtime->worker.valid() || runtime->intersection.worker.valid()) { status = "Running"; }
+                else if (!runtime->ready) { status = settings.enabled ? "Queued" : "Not run"; }
+                else { status = "Ready"; }
             }
-        }
-        if (!changed && !canInspectComparison(state, id)) {
-            for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
-                const auto summary = comparisonInputSummary(state, side, id);
-                if (summary.issue.empty()) { continue; }
-                const auto& members = side == ComparisonSide::a ? comparison.a : comparison.b;
-                ImGui::TextDisabled("    Input %s: %s", side == ComparisonSide::a ? "A" : "B",
-                    members.empty() ? "empty" : summary.enabledPartCount == 0 ? "off / unavailable" : "missing / invalid source");
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("%s", summary.issue.c_str());
+            ImGui::TextDisabled("| %s", status);
+            if (currentInputs) {
+                const auto& a = runtime->sidebarInputs[0];
+                const auto& b = runtime->sidebarInputs[1];
+                const auto sources = hasA && hasB ? a.sourceNames + " / " + b.sourceNames
+                    : hasB ? b.sourceNames : a.sourceNames;
+                ImGui::SetCursorPosX(textStart);
+                drawObjectIdentityRow("Sources", sources.c_str());
+                if (!canInspectComparison(state, id)) {
+                    setLastItemTooltip((a.issue + "\n" + b.issue).c_str());
                 }
             }
+            ImGui::Spacing();
         }
         ImGui::PopID();
         if (changed) { break; }

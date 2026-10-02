@@ -19,6 +19,6 @@ struct ViewListLayout {
 
 [[nodiscard]] float viewListHeight(float preferredHeight, float automaticHeight,
     float minimumHeight, float availableHeight);
-void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float reservedHeight);
+void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float reservedHeight, bool flowing = false);
 
 } // namespace woby

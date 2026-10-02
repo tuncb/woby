@@ -104,6 +104,7 @@ add_executable(woby
     src/uv_quality.cpp
     src/comparison_scene.cpp
     src/ui_views.cpp
+    src/analysis_presentation.cpp
     src/comparison_view.cpp
     src/control_importers.cpp
     src/control_importers.h
@@ -375,6 +376,8 @@ if(BUILD_TESTING)
         tests/update_tests.cpp
         src/comparison_report.cpp
         src/ui_views.cpp
+        src/analysis_presentation.cpp
+        tests/analysis_presentation_tests.cpp
         src/comparison_view.cpp
         src/comparison_legend.cpp
         src/surface_mesh_quality.cpp
