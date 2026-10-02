@@ -545,8 +545,8 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         if (!current) {
             const char* status = detector.phase == IntersectionPhase::queued ? "Queued" : detector.phase == IntersectionPhase::running ? "Checking..."
                 : detector.phase == IntersectionPhase::outdated ? "Out of date" : detector.phase == IntersectionPhase::canceled ? "Canceled"
-                : detector.phase == IntersectionPhase::failed ? "Failed" : "Not checked";
-            ImGui::TextDisabled("%s", status);
+                : detector.phase == IntersectionPhase::failed ? "Failed" : "Not run";
+            ImGui::TextWrapped("%s", status);
             if (ImGui::IsItemHovered()) {
                 if (detector.hasResult) { ImGui::SetTooltip("Previous result: %zu known findings. Update to inspect the current geometry.", detector.knownCounts[side == ComparisonSide::a ? 0 : 1]); }
                 if (!detector.error.empty()) { ImGui::SetTooltip("%s", detector.error.c_str()); }
@@ -610,27 +610,6 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         else { settings.showNonManifold = visible; }
     }
     if (settings != initial) { setComparisonSettings(state, settings, id); }
-    ImGui::TableNextColumn();
-    const auto& findings = comparisonDiagnosticEdges(runtime.result, settings.diagnosticSide, category);
-    ImGui::BeginDisabled(!current || findings.empty());
-    int step = 0;
-    if (ImGui::ArrowButton("previous", ImGuiDir_Left)) { step = -1; }
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Previous %s on %s", fins ? "patch" : intersection ? "face pair" : vertex ? "vertex" : holes ? "loop" : degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
-    }
-    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-    if (ImGui::ArrowButton("next", ImGuiDir_Right)) { step = 1; }
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-        ImGui::SetTooltip("Next %s on %s", fins ? "patch" : intersection ? "face pair" : vertex ? "vertex" : holes ? "loop" : degenerate ? "triangle" : duplicate ? "duplicate group" : "edge", settings.diagnosticSide == ComparisonSide::a ? "A" : "B");
-    }
-    ImGui::EndDisabled();
-    if (step != 0) {
-        if (settings.diagnosticCategory != category) {
-            settings.diagnosticCategory = category;
-            setComparisonSettings(state, settings, id);
-        }
-        navigateComparisonDiagnostic(state, runtime.result, runtime.resultSignature, step, id);
-    }
     ImGui::TableNextColumn();
     drawDiagnosticSettingsPopup(state, id, category, name);
     ImGui::PopID();
@@ -977,11 +956,13 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     ImGui::SameLine();
     if (ImGui::RadioButton("A##diagnostics", settings.diagnosticSide == ComparisonSide::a)) {
         settings.diagnosticSide = ComparisonSide::a;
+        settings.mode = ComparisonMode::original;
     }
     setLastItemTooltip("Inspect mesh diagnostics for input A.");
     ImGui::SameLine();
     if (ImGui::RadioButton("B##diagnostics", settings.diagnosticSide == ComparisonSide::b)) {
         settings.diagnosticSide = ComparisonSide::b;
+        settings.mode = ComparisonMode::repaired;
     }
     setLastItemTooltip("Inspect mesh diagnostics for input B.");
     if (settings != initial) { setComparisonSettings(state, settings, id); }
@@ -1023,30 +1004,39 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         {"Degenerate triangles", DiagnosticCategory::degenerateTriangles},
         {"Self-intersections", DiagnosticCategory::selfIntersections},
     };
-    float findingWidth = ImGui::CalcTextSize("Finding").x;
-    for (const auto& row : rows) { findingWidth = std::max(findingWidth, ImGui::CalcTextSize(row.name).x); }
-    // Keep labels on one line and scroll the columns before a narrow pane squeezes them.
-    // Size the scrolling child to the rows so the properties pane retains vertical scrolling.
-    const auto& style = ImGui::GetStyle();
-    const float rowHeight = std::max(renderModeButtonSize(), ImGui::GetFrameHeight()) + 2 * style.CellPadding.y;
-    const float tableHeight = ImGui::GetTextLineHeight() + 2 * style.CellPadding.y
-        + static_cast<float>(std::size(rows)) * rowHeight + style.ScrollbarSize;
-    if (ImGui::BeginTable("Analysis diagnostics", 5 + static_cast<int>(hasA) + static_cast<int>(hasB),
-            ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV
-                | ImGuiTableFlags_ScrollX, {0, tableHeight})) {
-        ImGui::TableSetupColumn("Update", ImGuiTableColumnFlags_WidthFixed,
-            std::max(renderModeButtonSize(), ImGui::CalcTextSize("Update").x));
-        ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize, findingWidth);
-        if (hasA) { ImGui::TableSetupColumn(hasB ? "Count A" : "Count", ImGuiTableColumnFlags_WidthFixed, std::max(ImGui::GetFontSize() * 4, ImGui::CalcTextSize("Not checked").x)); }
-        if (hasB) { ImGui::TableSetupColumn(hasA ? "Count B" : "Count", ImGuiTableColumnFlags_WidthFixed, std::max(ImGui::GetFontSize() * 4, ImGui::CalcTextSize("Not checked").x)); }
-        ImGui::TableSetupColumn("Show", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("##navigation", ImGuiTableColumnFlags_WidthFixed,
-            2 * ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x);
+    // Fixed icon/count columns and a wrapping name use the available pane width.
+    // Only the outer inspector scrolls, so row controls are always reachable.
+    if (ImGui::BeginTable("Analysis diagnostics", 3 + static_cast<int>(hasA) + static_cast<int>(hasB) + 1,
+            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableSetupColumn("Run", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
+        ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthStretch);
+        const float countWidth = ImGui::GetFontSize() * 3.5f;
+        if (hasA) { ImGui::TableSetupColumn(hasB ? "A" : "Count", ImGuiTableColumnFlags_WidthFixed, countWidth); }
+        if (hasB) { ImGui::TableSetupColumn(hasA ? "B" : "Count", ImGuiTableColumnFlags_WidthFixed, countWidth); }
+        ImGui::TableSetupColumn("Show", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
         for (const auto& row : rows) { diagnosticRow(state, runtime, current, row.name, row.category, hasA, hasB, id); }
         ImGui::EndTable();
     }
+    ImGui::SeparatorText("Findings");
+    const auto selected = comparisonSettings(state, id);
+    for (const auto& row : rows) {
+        if (row.category == selected.diagnosticCategory) { ImGui::TextUnformatted(row.name); break; }
+    }
+    const auto& findings = comparisonDiagnosticEdges(runtime.result, selected.diagnosticSide, selected.diagnosticCategory);
+    const bool ready = comparisonDetectorReady(runtime, state, id, selected.diagnosticCategory);
+    ImGui::BeginDisabled(!ready || findings.empty());
+    int step = 0;
+    if (ImGui::Button("Previous finding")) { step = -1; }
+    ImGui::SameLine();
+    if (ImGui::Button("Next finding")) { step = 1; }
+    ImGui::EndDisabled();
+    if (step) { navigateComparisonDiagnostic(state, runtime.result, runtime.resultSignature, step, id); }
+    ImGui::BeginDisabled(!comparisonStagesReady(runtime, state, id, comparisonSource));
+    if (ImGui::Button("Full result")) { frameComparison(state, id); }
+    setLastItemTooltip("Clear finding focus and frame the full analysis result.");
+    ImGui::EndDisabled();
     current = comparisonStagesReady(runtime, state, id, comparisonSource);
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
     const auto* comparison = findComparison(state, id);
@@ -1071,10 +1061,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     drawIntersectionFindings(state, runtime, current, id);
     drawTopologyFindings(state, runtime, current, id);
     drawTopologyInspectionFindings(state, runtime, current, id);
-    ImGui::BeginDisabled(!current);
-    if (ImGui::Button("Full result")) { frameComparison(state, id); }
-    setLastItemTooltip("Clear the focused finding and fit the full analysis result in the viewer.");
-    ImGui::EndDisabled();
+
 }
 
 void submitEdges(woby::graphics::ViewId view, woby::graphics::VertexBufferHandle vertices, woby::graphics::ProgramHandle program,
