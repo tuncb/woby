@@ -214,6 +214,9 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     for (const auto& item : params.items()) {
         if (item.key() != method.positional
             && std::find(method.options.begin(), method.options.end(), item.key()) == method.options.end()) {
+            if (method.action == ControlAction::comparisonSet && item.key() == "translation") {
+                throw std::invalid_argument("analysis.set does not accept translation. Use transform.set with the analysis ID as target and translation: [X, Y, Z] (display offset only).");
+            }
             throw std::invalid_argument("Unknown " + method.method + " parameter: " + item.key());
         }
     }
@@ -388,6 +391,8 @@ std::string controlMethodUsage(const ControlMethod& method)
         else if (method.action == ControlAction::visibility || method.action == ControlAction::render
             || method.action == ControlAction::vertexSize) { result += " TARGET"; }
         else if (method.action == ControlAction::modelRemove) { result += " FILE_ID"; }
+        else if (method.action == ControlAction::transformGet || method.action == ControlAction::transformSet
+            || method.action == ControlAction::transformReset) { result += " OBJECT_ID|ANALYSIS_ID"; }
         else { result += " OBJECT_ID"; }
     }
     for (const auto& name : method.options) {
@@ -402,6 +407,8 @@ std::string controlMethodUsage(const ControlMethod& method)
         }
         if (!required) { result += "]"; }
     }
+    if (method.action == ControlAction::transformSet) { result += " (analyses: --translation only, display offset)"; }
+    if (method.action == ControlAction::transformReset) { result += " (analyses: reset display offset)"; }
     return result;
 }
 
@@ -511,6 +518,9 @@ bool parseExtendedControlArguments(int argc, char** argv, ControlArguments& argu
             continue;
         }
         auto option = std::find_if(selected->options.begin(), selected->options.end(), [&](const auto& name) { return cliOption(name) == word; });
+        if (selected->action == ControlAction::comparisonSet && word == "--translation") {
+            throw std::runtime_error("analysis set does not accept --translation. Use transform set ANALYSIS_ID --translation X Y Z (display offset only).");
+        }
         if (option == selected->options.end() || params.contains(*option)) { throw std::runtime_error("Unexpected or repeated option: " + word); }
         const auto& name = *option;
         if (name == "tree" || name == "remember") { params[name] = true; continue; }

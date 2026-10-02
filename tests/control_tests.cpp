@@ -142,6 +142,27 @@ TEST_CASE("ctl surface quality options preserve values through CLI and protocol 
     CHECK(woby::controlOperationParams(roundtrip) == expected);
 }
 
+TEST_CASE("ctl redirects misplaced analysis translation to transform set")
+{
+    CHECK_THROWS_WITH_AS(parse({"analysis", "set", "analysis", "--translation", "1", "2", "3"}),
+        "analysis set does not accept --translation. Use transform set ANALYSIS_ID --translation X Y Z (display offset only).",
+        std::runtime_error);
+    CHECK_THROWS_WITH_AS(woby::parseControlOperation(*woby::findControlMethod("analysis.set"),
+        {{"target", "analysis"}, {"translation", {1, 2, 3}}}),
+        "analysis.set does not accept translation. Use transform.set with the analysis ID as target and translation: [X, Y, Z] (display offset only).",
+        std::invalid_argument);
+
+    CHECK_THROWS_WITH_AS(parse({"analysis", "set", "analysis", "--unknown", "true"}),
+        "Unexpected or repeated option: --unknown", std::runtime_error);
+    CHECK_THROWS_WITH_AS(woby::parseControlOperation(*woby::findControlMethod("analysis.set"),
+        {{"target", "analysis"}, {"unknown", true}}),
+        "Unknown analysis.set parameter: unknown", std::invalid_argument);
+
+    const auto parsed = parse({"transform", "set", "analysis", "--translation", "1", "2", "3"});
+    CHECK(parsed.operation.action == woby::ControlAction::transformSet);
+    CHECK(woby::controlOperationParams(parsed.operation) == Json{{"target", "analysis"}, {"translation", {1, 2, 3}}});
+}
+
 TEST_CASE("ctl rejects ambiguous incomplete conflicting and nonfinite edit parameters")
 {
     for (const auto& words : std::vector<std::vector<std::string>>{
