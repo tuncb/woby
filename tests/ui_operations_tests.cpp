@@ -1060,10 +1060,11 @@ TEST_CASE("scene bounds include folder scene node transforms")
 
 TEST_CASE("folder tree scene nodes preserve selected root hierarchy")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_folder_tree_scene_node";
+    const std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+        / ("woby_folder_tree_scene_node_" + std::to_string(std::random_device{}())
+            + "_" + std::to_string(std::random_device{}()));
     const std::string firstPath = (root / "alpha" / "one.obj").string();
-    const std::string secondPath = (root / "alpha" / "nested" / "two.stl").string();
+    const std::string secondPath = (root / "alpha" / "nested" / "two.obj").string();
     const std::string thirdPath = (root / "root.obj").string();
 
     woby::UiState state;

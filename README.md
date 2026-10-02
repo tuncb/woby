@@ -4,8 +4,8 @@ woby is a desktop OBJ scene viewer for loading, inspecting, arranging, and savin
 
 ## Features
 
-- Load Wavefront OBJ and STL model files from the UI, command line, drag and drop, or recursive folder import.
-- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Bézier and B-spline/NURBS curves and surfaces with trim boundaries and holes are supported (degrees 1–8, positive rational weights). STL remains triangle-only.
+- Load Wavefront OBJ model files from the UI, command line, drag and drop, or recursive folder import.
+- OBJ supports polygon faces (triangulated on import), polylines (`l`), explicit points (`p`), and vertex-only point clouds. Mixed geometry has separate selectable face, line, and point parts. Points appear by default and use the vertex visibility and size controls; lines use line width and depth-test controls. Bézier and B-spline/NURBS curves and surfaces with trim boundaries and holes are supported (degrees 1–8, positive rational weights).
 - Add file formats with user-supplied importer packages in the portable `importers` folder, or register libraries through the CLI.
 - Open, save, and drag in `.woby` scene files with persisted model paths, scene tree hierarchy, helper visibility, up-axis, render modes, transforms, opacity, color, and vertex-size settings.
 - Inspect scenes with mouse and keyboard camera controls for orbit, pan, roll, dolly, local movement, and quick reframe.
@@ -83,7 +83,7 @@ Active text fields use their own text undo.
 From the CLI, use `woby ctl --instance ID scene undo` or
 `woby ctl --instance ID scene redo` to trigger one step in the same history.
 
-Use Add models for OBJ, STL, or installed importer formats, and Open Scene for
+Use Add models for OBJ or installed importer formats, and Open Scene for
 saved `.woby` scenes. The empty viewport offers both actions and accepts dropped
 model files, folders, and scenes. Add model folder imports models recursively.
 
@@ -149,14 +149,13 @@ directions. X/Y/Z sizes also appear at the bottom of the viewport, including zer
 and edges that are too small or off-screen to label. **Properties > Geometry** shows
 the same sizes, followed by original local bounds for a single file or part.
 Enabling the grid displays **Grid spacing** using the same spacing as the drawn lines.
-Woby automatically establishes a working origin for models far from zero. OBJ,
-ASCII STL, and importer ABI 4 positions retain double precision through import
+Woby automatically establishes a working origin for models far from zero. OBJ
+and importer ABI 4 positions retain double precision through import
 and analysis; float GPU positions are relative to a per-file origin. A shared
 scene origin keeps files aligned and remains fixed when adding, hiding, or
 removing files. Properties and annotation coordinates show original coordinates.
 Scene files save both origins so saved views and annotation frames remain stable.
-Binary STL coordinates are already floats in the file; lost source detail cannot
-be recovered. Very large scene extents may still exceed float display precision.
+Very large scene extents may still exceed float display precision.
 
 All values are raw coordinates, without unit conversion. Dimension visibility is
 saved in `.woby` files and supports Undo/Redo; selection remains transient. Scene
@@ -380,7 +379,6 @@ optimization. Highlights follow all selected part transforms and the result posi
 OBJ IDs use position records (before UV/normal splits); triangle IDs refer to
 triangulated output, not original polygons. Importer IDs refer to its returned vertex
 table, which may differ from original file IDs. Source positions retain double precision.
-STL repeated corners are informational; its source-ID triangle check is unavailable.
 Unavailable, partial, and not-checked results are explicitly labeled. The existing
 **Geometric duplicate triangles** count keeps its coordinate-based definition.
 
@@ -748,8 +746,8 @@ The list is paged and includes generated triangle IDs and part IDs.
 
 The selected topology mode determines shared vertices/edges. Valid shared features
 are excluded; overlap beyond them and coincident duplicate faces are included.
-Automatic mode uses original indices for indexed input and exact positions for
-STL. Separate source files are checked independently. Coordinates include source
+Original indices are the default; exact-position topology can join equal coordinates.
+Separate source files are checked independently. Coordinates include source
 transforms and exclude analysis offsets. Collapsed faces are excluded and counted
 separately. No proximity tolerance is used.
 

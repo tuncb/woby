@@ -145,7 +145,7 @@ The source-position copy, tuple-to-vertex hash table, mesh construction, normal
 generation, bounds passes, and meshoptimizer compaction in woby are serial.
 Loading on a background thread keeps the UI responsive but does not parallelize
 these steps. Separate files larger than 1 MiB are processed sequentially. The
-up-to-four-file prefetch applies only to small OBJ/STL files in batches of at
+up-to-four-file prefetch applies only to small OBJ files in batches of at
 least eight, so it does not help this dataset.
 
 ### SIMD

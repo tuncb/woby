@@ -488,11 +488,10 @@ const char* diagnosticHint(DiagnosticCategory category)
             "Both incident triangles are reported; this does not identify which one should be flipped.";
     case DiagnosticCategory::duplicatePoints:
         return "Finds separate point records with exactly equal source coordinates within a file. "
-            "Copies marked with the same original point ID by an importer count as one point. "
-            "Repeated STL corners are informational because STL stores corners separately for each triangle.";
+            "Copies marked with the same original point ID by an importer count as one point.";
     case DiagnosticCategory::duplicateTriangles:
         return "Finds triangles that reuse the same three source point indices within a file, "
-            "including reversed winding. This check is unavailable for STL.";
+            "including reversed winding.";
     case DiagnosticCategory::degenerateTriangles:
         return "Finds collapsed or collinear triangles, thin needles with a large edge-length ratio, "
             "and flat caps with a large maximum angle. Settings control the needle and cap thresholds.";
@@ -583,10 +582,10 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         else {
             const auto& result = comparisonDuplicates(runtime.result, side, category);
             if (result.unavailableSources && !result.availableSources) { ImGui::TextDisabled("N/A"); }
-            else { ImGui::Text("%zu%s", result.duplicateCount, result.unavailableSources || result.informationalCount ? "*" : ""); }
+            else { ImGui::Text("%zu%s", result.duplicateCount, result.unavailableSources ? "*" : ""); }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%zu extra records in %zu groups\n%zu informational STL corners\n%zu unavailable sources\nStatus: %s",
-                    result.duplicateCount, result.findings.size(), result.informationalCount, result.unavailableSources, duplicateStatus(result));
+                ImGui::SetTooltip("%zu extra records in %zu groups\n%zu unavailable sources\nStatus: %s",
+                    result.duplicateCount, result.findings.size(), result.unavailableSources, duplicateStatus(result));
             }
         }
     }
@@ -644,11 +643,10 @@ void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, boo
     current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current || !hasTarget) { return; }
     if (result.unavailableSources) {
-        ImGui::TextWrapped("%zu source(s) unavailable: %s", result.unavailableSources,
-            points ? "original source records were not retained." : "STL has no shared point IDs, or source records were not retained.");
+        ImGui::TextWrapped("%zu source(s) unavailable: original source records were not retained.", result.unavailableSources);
     }
-    ImGui::TextWrapped("%zu extra %s in %zu group%s%s", result.duplicateCount, points ? "points" : "triangles",
-        result.findings.size(), result.findings.size() == 1 ? "" : "s", result.informationalCount ? " (includes informational STL groups)" : "");
+    ImGui::TextWrapped("%zu extra %s in %zu group%s", result.duplicateCount, points ? "points" : "triangles",
+        result.findings.size(), result.findings.size() == 1 ? "" : "s");
     if (result.findings.empty()) { return; }
     const auto* comparison = findComparison(state, id);
     const auto selected = comparison->diagnosticFocus ? comparison->diagnosticFocus->index : size_t{0};
@@ -781,7 +779,7 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
     ImGui::EndDisabled();
     if (comparison->diagnosticFocus && comparison->diagnosticFocus->index < result.findings.size()) {
         const auto& finding = result.findings[comparison->diagnosticFocus->index];
-        ImGui::TextWrapped("%s - %s", finding.source.c_str(), triangleProvenanceName(finding.provenance));
+        ImGui::TextWrapped("%s - %s", finding.source.c_str(), sourceProvenanceName(finding.provenance));
         ImGui::TextWrapped("Generated triangle %zu (1-based), part %llu", finding.triangleId+1, static_cast<unsigned long long>(finding.partId));
         if (std::isfinite(finding.reasons.edgeRatio)) { ImGui::Text("Edge ratio: %.8g", finding.reasons.edgeRatio); }
         else { ImGui::TextUnformatted("Edge ratio: unavailable or exceeds numeric range"); }
@@ -878,7 +876,7 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
         const auto& finding = topology.nonManifoldVertices[selected];
         const auto& source = topology.sources[finding.source];
         const auto& vertex = source.vertices[finding.vertex];
-        ImGui::TextWrapped("%zu link components; %zu incident faces; %zu source point references. %s", finding.linkComponents, vertex.faces.size(), vertex.references.size(), triangleProvenanceName(source.provenance));
+        ImGui::TextWrapped("%zu link components; %zu incident faces; %zu source point references. %s", finding.linkComponents, vertex.faces.size(), vertex.references.size(), sourceProvenanceName(source.provenance));
         for (size_t i = 0; i < std::min(size_t{100}, vertex.faces.size()); ++i) {
             const auto& ref = source.faces[vertex.faces[i]].reference;
             ImGui::Text("Triangle %zu, part %llu", ref.triangleId+1, static_cast<unsigned long long>(ref.partId));
@@ -899,7 +897,7 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     const auto& topology = surface.topology;
     ImGui::TextWrapped("Topology: %s; files inspected separately. Status: %s. Collapsed faces excluded: %zu.",
         topologyModeName(topology.mode), topologyStatus(topology), topology.excludedCollapsedFaces);
-    if (topology.unavailableSources) { ImGui::TextWrapped("%zu sources unavailable. Original-index topology requires indexed input; use Automatic or Exact positions for STL.", topology.unavailableSources); }
+    if (topology.unavailableSources) { ImGui::TextWrapped("%zu sources unavailable. Original source records were not retained.", topology.unavailableSources); }
     const auto& findings = topologyFindings(topology, category);
     if (findings.empty()) { return; }
     if (category == DiagnosticCategory::winding) {
@@ -941,7 +939,7 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     const auto& finding = findings.at(comparison->diagnosticFocus->index);
     const auto& source = topology.sources[finding.source];
     const auto& edge = source.edges[finding.edge];
-    ImGui::TextWrapped("%s: %s (%s)", source.source.c_str(), topologyModeName(source.mode), triangleProvenanceName(source.provenance));
+    ImGui::TextWrapped("%s: %s (%s)", source.source.c_str(), topologyModeName(source.mode), sourceProvenanceName(source.provenance));
     if (edge.orientationContradiction) { ImGui::TextWrapped("Orientation contradiction: manifold flip constraints cannot all be satisfied in this region."); }
     if (ImGui::BeginChild("incident_faces", {0, ImGui::GetTextLineHeightWithSpacing()*5}, ImGuiChildFlags_Borders)) {
         ImGuiListClipper clipper;
@@ -986,7 +984,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
-        "Topology is inspected separately within each source file. Automatic uses original indices for indexed input and exact positions for STL. "
+        "Topology is inspected separately within each source file. Original indices preserve source connectivity; exact positions join equal coordinates. "
         "Open boundaries may be intentional. Run Self-intersections to check crossings and coplanar overlap.\n\n"
         "Use each row's arrows to inspect edges or duplicate groups on the chosen target. "
         "Navigation wraps; right starts at the first finding and left at the last.\n\n"
@@ -995,16 +993,16 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         "Counts are extra records; navigation visits groups. No tolerance is applied.\n\n"
         "Whole-file inspection includes unused points; selected parts include referenced points. "
         "OBJ IDs precede UV/normal splitting. Triangle IDs identify generated triangles, not original polygons. "
-        "Plugin IDs describe the importer vertex table. STL corners are informational; its source-ID triangle check is unavailable. "
-        "An asterisk indicates informational or partial results; hover the count for details.");
+        "Plugin IDs describe the importer vertex table. "
+        "An asterisk indicates partial results; hover the count for details.");
     int topologyMode = static_cast<int>(settings.topologyMode);
-    if (ImGui::Combo("Topology", &topologyMode, "Automatic\0Original indices\0Exact positions\0")) {
+    if (ImGui::Combo("Topology", &topologyMode, "Original indices\0Exact positions\0")) {
         settings.topologyMode = static_cast<TopologyMode>(topologyMode);
         setComparisonSettings(state, settings, id);
         current = false;
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity; unavailable for STL.\nExact positions join exactly equal world coordinates within a file, with no epsilon.\nAutomatic selects original indices except for STL.");
+        ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity.\nExact positions join exactly equal world coordinates within a file, with no epsilon.");
     }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
     constexpr struct {

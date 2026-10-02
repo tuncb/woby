@@ -123,7 +123,7 @@ SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token s
             edges.push_back({a, b, face});
         }
     }
-    // Exact geometric welding matches OBJ/STL seam handling in topology inspection.
+    // Exact geometric welding matches OBJ seam handling in topology inspection.
     // Boundary/non-manifold edges do not define a unique neighbor pair.
     size_t comparisons = 0;
     std::sort(edges.begin(), edges.end(), [&](const Edge& a, const Edge& b) {

@@ -23,7 +23,7 @@ use direct lookup; files with attribute arrays hash only alternate tuples for
 each position.
 
 `SourceMeshData::points` now stores `std::array<float, 3>`: **12 bytes per
-point instead of 24**. OBJ, STL, and plugin import paths already supply float
+point instead of 24**. OBJ and plugin import paths already supply float
 coordinates, so storing their values as doubles had added no input precision.
 All source positions, including unused OBJ positions, and original triangle
 indices remain available to diagnostics. GPU vertex/index layouts are unchanged.

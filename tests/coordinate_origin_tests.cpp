@@ -5,7 +5,6 @@
 #include <nlohmann/json.hpp>
 #include "importer_host.h"
 #include "obj_mesh.h"
-#include "stl_mesh.h"
 #include "scene_dimensions.h"
 #include "scene_history.h"
 #include "surface_annotation.h"
@@ -134,7 +133,7 @@ TEST_CASE("coordinate origin is preserved through scene save load and history")
     CHECK_THROWS(static_cast<void>(woby::readSceneDocument(fixture.root/"bad.woby")));
 }
 
-TEST_CASE("coordinate origin preserves double importer positions and ASCII STL positions")
+TEST_CASE("coordinate origin preserves double importer positions")
 {
     WobyImportVertex vertices[] = {{{8000000,8000000,8000000},{},{}},
         {{8000000.01,8000000,8000000},{},{}},{{8000000,8000000.01,8000000},{},{}}};
@@ -145,14 +144,6 @@ TEST_CASE("coordinate origin preserves double importer positions and ASCII STL p
     const auto imported = woby::copyImportedMesh(input);
     CHECK(imported.bounds.radius < .02);
     CHECK(imported.precisePositions[1][0]-imported.precisePositions[0][0] == doctest::Approx(.01).epsilon(1e-7));
-    CoordinateFixture fixture;
-    const auto path = fixture.root/"far.stl";
-    std::ofstream(path) << "solid far\nfacet normal 0 0 0\nouter loop\nvertex 8000000 8000000 8000000\n"
-        "vertex 8000000.01 8000000 8000000\nvertex 8000000 8000000.01 8000000\nendloop\nendfacet\nendsolid\n";
-    const auto stl = woby::loadStlMesh(path);
-    CHECK(stl.bounds.radius < .02);
-    CHECK(stl.vertices[0].normal[2] == doctest::Approx(1));
-    CHECK(stl.sourceData->points[1][0]-stl.sourceData->points[0][0] == doctest::Approx(.01).epsilon(1e-7));
 }
 
 TEST_CASE("coordinate origin aligns independently loaded meshes for direct comparisons")

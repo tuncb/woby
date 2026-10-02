@@ -357,7 +357,7 @@ void loadImporter(const std::filesystem::path& path)
         if (extension.empty() || extension.size() > 32u
             || !std::all_of(extension.begin(), extension.end(), [](char c) {
                 return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
-            }) || extension == "obj" || extension == "stl" || extension == "woby") {
+            }) || extension == "obj" || extension == "woby") {
             throw std::runtime_error("Invalid or reserved importer extension: " + extension);
         }
         if (std::find(entry.info.extensions.begin(), entry.info.extensions.end(), extension) != entry.info.extensions.end()) {

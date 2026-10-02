@@ -35,7 +35,6 @@ struct MeshDegenerates {
 
 [[nodiscard]] DegenerateSettings normalizedDegenerateSettings(DegenerateSettings settings);
 [[nodiscard]] bool sameDegenerateThresholds(const DegenerateSettings& a, const DegenerateSettings& b);
-[[nodiscard]] const char* triangleProvenanceName(SourceProvenance provenance);
 [[nodiscard]] const char* degenerateStatus(const MeshDegenerates& result);
 [[nodiscard]] TriangleDegeneracy classifyDegenerateTriangle(
     const std::array<std::array<double, 3>, 3>& points, const DegenerateSettings& settings);

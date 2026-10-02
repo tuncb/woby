@@ -93,7 +93,7 @@ struct ComparisonCacheStatus {
     uint64_t signature = 0;
     uint32_t completed = 0;
     DegenerateSettings degenerates;
-    TopologyMode topologyMode = TopologyMode::automatic;
+    TopologyMode topologyMode = TopologyMode::originalIndex;
 };
 [[nodiscard]] uint32_t requestedComparisonStages(const ComparisonSettings& settings, bool bothInputs,
     bool fullResults = false);
@@ -105,7 +105,7 @@ bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature);
 bool resetComparisonDegenerateCache(ComparisonCacheStatus& cache, DegenerateSettings settings);
 bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mode);
 [[nodiscard]] MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired,
-    uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::automatic, IntersectionLimits intersectionLimits = {});
+    uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::originalIndex, IntersectionLimits intersectionLimits = {});
 // Rejects stale worker results; moves only the stages produced by that worker.
 bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache, MeshComparison update,
     uint64_t signature, uint32_t stages);
@@ -124,7 +124,7 @@ void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings 
                                            const std::array<float, 3> &b, const std::array<float, 3> &c);
 [[nodiscard]] MeshDiagnostics inspectMesh(const Mesh &mesh, std::stop_token stop = {});
 // One empty mesh requests topology inspection only; no distance samples are produced.
-[[nodiscard]] MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::automatic);
+[[nodiscard]] MeshComparison compareMeshes(const Mesh &original, const Mesh &repaired, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::originalIndex);
 [[nodiscard]] double surfacePercentAboveTolerance(const SurfaceComparison &surface, double tolerance);
 
 } // namespace woby

@@ -5,7 +5,6 @@
 #include "comparison_report.h"
 #include "control_scene.h"
 #include "obj_mesh.h"
-#include "stl_mesh.h"
 #include "importer_host.h"
 #include "scene_history.h"
 #include "ui_operations.h"
@@ -119,21 +118,23 @@ TEST_CASE("source duplicate triangles include all permutations and repeated coll
     CHECK(result.triangles.findings[0].geometry.size() == 3);
 }
 
-TEST_CASE("source duplicate status distinguishes STL unsupported disabled and invalid inputs")
+TEST_CASE("source duplicate status distinguishes missing source records disabled and invalid inputs")
 {
     auto data = triangle();
-    data->provenance = woby::SourceProvenance::stlCorners;
     data->points.push_back({0,0,0});
     auto input = inputFor(data);
     auto result = woby::inspectDuplicates(input);
-    CHECK(result.points.duplicateCount == 0);
-    CHECK(result.points.informationalCount == 1);
+    CHECK(result.points.duplicateCount == 1);
+    CHECK(std::string(woby::duplicateStatus(result.triangles)) == "complete");
+    input.sources[0].data.reset();
+    result = woby::inspectDuplicates(input);
     CHECK(std::string(woby::duplicateStatus(result.triangles)) == "unavailable");
     auto other = inputFor(triangle()).sources[0]; other.fileId = 2;
     input.sources.push_back(other);
     CHECK(std::string(woby::duplicateStatus(woby::inspectDuplicates(input).triangles)) == "partial");
     input.settings.triangles = false;
     CHECK(std::string(woby::duplicateStatus(woby::inspectDuplicates(input).triangles)) == "disabled");
+    input.sources[0].data = data;
     data->points[0][0] = std::numeric_limits<float>::quiet_NaN();
     CHECK_THROWS((void)woby::inspectDuplicates(input));
     data->points[0][0] = 0;
@@ -181,26 +182,6 @@ TEST_CASE("OBJ source duplicates survive seams and include unused records")
     const auto polygon = woby::loadObjMesh(fixture.write("quad.obj", "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nf 1 2 3 4\n"));
     CHECK(polygon.sourceData->indices.size() == 6);
     CHECK(woby::inspectDuplicates(inputFor(polygon.sourceData)).triangles.duplicateCount == 0);
-}
-
-TEST_CASE("ASCII STL retains separate render and source corners for identical triangles")
-{
-    Fixture fixture;
-    const auto mesh = woby::loadStlMesh(fixture.write("sample.stl", "solid test\n"
-        "facet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\n"
-        "facet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid test\n"));
-    REQUIRE(mesh.sourceData);
-    REQUIRE(mesh.vertices.size() == 6);
-    CHECK(mesh.indices == std::vector<uint32_t>{0, 1, 2, 3, 4, 5});
-    for (size_t i = 0; i < 3; ++i) {
-        CHECK(mesh.vertices[i].position == mesh.vertices[i + 3].position);
-        CHECK(mesh.vertices[i].normal == mesh.vertices[i + 3].normal);
-    }
-    CHECK(mesh.sourceData->points.size() == 6);
-    CHECK(mesh.sourceData->indices == mesh.indices);
-    const auto result = woby::inspectDuplicates(inputFor(mesh.sourceData));
-    CHECK(result.points.informationalCount == 3);
-    CHECK(std::string(woby::duplicateStatus(result.triangles)) == "unavailable");
 }
 
 TEST_CASE("importer duplicate records are owned before buffers are released")

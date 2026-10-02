@@ -27,7 +27,7 @@ struct MeshIntersections {
     IntersectionPhase phase = IntersectionPhase::notChecked;
     bool hasResult = false;
     std::string error;
-    TopologyMode mode = TopologyMode::automatic;
+    TopologyMode mode = TopologyMode::originalIndex;
     size_t availableSources = 0, unavailableSources = 0, excludedCollapsedFaces = 0;
     size_t candidateTests = 0, affectedFaces = 0;
     bool truncated = false;

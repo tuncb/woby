@@ -66,7 +66,7 @@ nlohmann::json jsonFor(const MeshTopology& topology, const char* detector)
 
 TEST_CASE("shared topology retains disk incidence links boundaries and closed components")
 {
-    for (const auto mode : {TopologyMode::automatic, TopologyMode::originalIndex, TopologyMode::exactPosition}) {
+    for (const auto mode : {TopologyMode::originalIndex, TopologyMode::exactPosition}) {
         const auto disk = buildMeshTopology({sourceFor()}, mode);
         REQUIRE(disk.sources.size() == 1);
         const auto& source = disk.sources[0];
@@ -94,21 +94,26 @@ TEST_CASE("topology distinguishes original IDs exact positions signed zero and n
     CHECK(buildMeshTopology({near}, TopologyMode::exactPosition).sources[0].vertices.size() == 5);
 }
 
-TEST_CASE("topology defaults for STL are explicit and unavailable is not a clean result")
+TEST_CASE("topology defaults preserve indexed sources and missing records remain unavailable")
 {
-    auto stl = sourceFor(); auto data = std::make_shared<SourceMeshData>(*stl.data);
-    data->provenance = SourceProvenance::stlCorners; stl.data = data;
-    auto result = buildMeshTopology({stl});
-    CHECK(result.sources[0].mode == TopologyMode::exactPosition); CHECK(result.availableSources == 1);
-    result = buildMeshTopology({stl}, TopologyMode::originalIndex);
-    CHECK(std::string(topologyStatus(result)) == "unavailable");
-    CHECK(jsonFor(result, "non_manifold_edges")["count"].is_null());
-    auto obj = sourceFor(); obj.fileId = 3;
-    result = buildMeshTopology({stl, obj}, TopologyMode::originalIndex);
-    CHECK(std::string(topologyStatus(result)) == "partial");
-    CHECK(result.availableSources == 1); CHECK(result.unavailableSources == 1);
-    obj.data.reset();
-    CHECK(buildMeshTopology({obj}).unavailableSources == 1);
+    for (const auto provenance : {SourceProvenance::objPositions, SourceProvenance::importerVertices}) {
+        auto source = sourceFor();
+        auto data = std::make_shared<SourceMeshData>(*source.data);
+        data->provenance = provenance; source.data = data;
+        auto result = buildMeshTopology({source});
+        CHECK(result.mode == TopologyMode::originalIndex);
+        REQUIRE(result.sources.size() == 1);
+        CHECK(result.sources[0].mode == TopologyMode::originalIndex);
+        CHECK(result.availableSources == 1);
+        CHECK(std::string(topologyStatus(result)) == "complete");
+        auto missing = source; missing.fileId = 3; missing.data.reset();
+        result = buildMeshTopology({missing});
+        CHECK(std::string(topologyStatus(result)) == "unavailable");
+        CHECK(jsonFor(result, "non_manifold_edges")["count"].is_null());
+        result = buildMeshTopology({source, missing});
+        CHECK(std::string(topologyStatus(result)) == "partial");
+        CHECK(result.availableSources == 1); CHECK(result.unavailableSources == 1);
+    }
 }
 
 TEST_CASE("topology promotes source floats before large translations")
@@ -223,7 +228,7 @@ TEST_CASE("topology mode changes invalidate only topology and reject stale stage
     REQUIRE(applyComparisonStages(result, cache, computeComparisonStages(mesh, mesh, comparisonTopology, {}, {}, TopologyMode::exactPosition), 17, comparisonTopology));
     CHECK(cache.completed == stages); CHECK(result.original.distances.data() == distances); CHECK(result.original.quality.triangles.data() == quality);
     CHECK_FALSE(resetComparisonTopologyCache(cache, TopologyMode::exactPosition));
-    CHECK(normalizedTopologyMode(static_cast<TopologyMode>(99)) == TopologyMode::automatic);
+    CHECK(normalizedTopologyMode(static_cast<TopologyMode>(99)) == TopologyMode::originalIndex);
 }
 
 TEST_CASE("topology settings navigation CLI and independent visibility roundtrip through scene operations")
@@ -240,6 +245,10 @@ TEST_CASE("topology settings navigation CLI and independent visibility roundtrip
     selectComparisonDiagnostic(state, result, signature, 0, id); REQUIRE(findComparison(state, id)->diagnosticFocus);
     CHECK(state.camera.target[0] == doctest::Approx(100.5));
     const auto clean = createSceneDocument(state);
+    CHECK(comparisonSettings(state, id).topologyMode == TopologyMode::originalIndex);
+    const auto defaultScene = fixture.root/"default.woby";
+    writeSceneDocument(defaultScene, clean);
+    CHECK(readSceneDocument(defaultScene).comparisons[0].settings.topologyMode == TopologyMode::originalIndex);
     auto command = parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"}, {"showNonManifold", false}, {"showWinding", true}, {"topologyMode", "exact_position"}});
     CHECK(controlOperationParams(command)["topologyMode"] == "exact_position"); command.objectId = id;
     (void)applyControlSceneOperation(state, clean, command, [](auto value) { return std::to_string(value); }, 200, 800);
@@ -251,9 +260,14 @@ TEST_CASE("topology settings navigation CLI and independent visibility roundtrip
     CHECK_FALSE(comparisonResultsReady(runtime, state, id));
     const auto saved = fixture.root/"scene.woby"; writeSceneDocument(saved, createSceneDocument(state));
     CHECK(readSceneDocument(saved).comparisons[0].settings == comparisonSettings(state, id));
+    CHECK(parseTopologyMode("original_index") == TopologyMode::originalIndex);
+    CHECK(parseTopologyMode("exact_position") == TopologyMode::exactPosition);
+    CHECK_THROWS((void)parseTopologyMode("automatic"));
+    CHECK_THROWS(parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"}, {"topologyMode", "automatic"}}));
     CHECK_THROWS(parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"}, {"topologyMode", "near"}}));
     CHECK_THROWS(parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"}, {"showWinding", "true"}}));
     CHECK_THROWS((void)readSceneDocument(fixture.write("bad.woby", "version = 10\n[[analyses]]\ntopology_mode = \"near\"\n")));
+    CHECK_THROWS((void)readSceneDocument(fixture.write("bad.woby", "version = 10\n[[analyses]]\ntopology_mode = \"automatic\"\n")));
 }
 
 TEST_CASE("old scenes migrate combined visibility including saved views independent of key order")
@@ -566,7 +580,7 @@ DuplicateSource threeFinSource()
 }
 TEST_CASE("fin candidates separate attached patches from closed shells and intentional sheets")
 {
-    for (const auto mode : {TopologyMode::automatic, TopologyMode::originalIndex, TopologyMode::exactPosition}) {
+    for (const auto mode : {TopologyMode::originalIndex, TopologyMode::exactPosition}) {
         auto topology = buildMeshTopology({attachedFinSource()}, mode);
         REQUIRE(topology.finPatches.size() == 2); REQUIRE(topology.fins.size() == 1);
         const auto& fin = topology.finPatches[topology.fins[0]];
@@ -639,11 +653,8 @@ TEST_CASE("fin source isolation transforms unavailable input collapse and cancel
     auto missing = sourceFor(); missing.fileId = 50; missing.data.reset();
     auto json = jsonFor(buildMeshTopology({missing}), "fins"); CHECK(json["count"].is_null()); CHECK(json["status"] == "unavailable");
     json = jsonFor(buildMeshTopology({source, missing}), "fins"); CHECK(json["count"].is_null()); CHECK(json["status"] == "partial"); CHECK(json["knownCount"] == 3);
-    auto stl = attachedFinSource(); auto data = std::make_shared<SourceMeshData>(*stl.data); data->provenance = SourceProvenance::stlCorners; stl.data = data;
-    CHECK(buildMeshTopology({stl}).fins.size() == 1);
-    CHECK(jsonFor(buildMeshTopology({stl}, TopologyMode::originalIndex), "fins")["status"] == "unavailable");
     std::stop_source stop; stop.request_stop();
-    CHECK_THROWS((void)buildMeshTopology({source}, TopologyMode::automatic, stop.get_token()));
+    CHECK_THROWS((void)buildMeshTopology({source}, TopologyMode::originalIndex, stop.get_token()));
     CHECK_THROWS((void)filterTopologyFindings(topology, {}, stop.get_token()));
 }
 TEST_CASE("fin JSON output bounds patches and source face references")

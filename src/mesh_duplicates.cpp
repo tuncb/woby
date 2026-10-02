@@ -50,7 +50,6 @@ const char* sourceProvenanceName(SourceProvenance provenance)
 {
     switch (provenance) {
     case SourceProvenance::objPositions: return "OBJ position records / generated triangles";
-    case SourceProvenance::stlCorners: return "STL facet corners (informational)";
     case SourceProvenance::importerVertices: return "Importer vertex table / generated triangles";
     }
     return "Unknown";
@@ -80,12 +79,8 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
         if (!data.originalPointIds.empty() && data.originalPointIds.size() != data.points.size()) {
             throw std::invalid_argument("Invalid source point ID count.");
         }
-        const bool stl = data.provenance == SourceProvenance::stlCorners;
         if (result.points.enabled) { ++result.points.availableSources; }
-        if (result.triangles.enabled) {
-            if (stl) { ++result.triangles.unavailableSources; }
-            else { ++result.triangles.availableSources; }
-        }
+        if (result.triangles.enabled) { ++result.triangles.availableSources; }
         if (data.indices.size() % 3 != 0) { throw std::invalid_argument("Invalid source triangle indices."); }
         for (const auto& point : data.points) {
             canceled(stop);
@@ -105,7 +100,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             pointParts.entries.reserve(data.points.size());
             seen.assign(data.points.size(), noOccurrence);
         }
-        if (result.triangles.enabled && !stl) {
+        if (result.triangles.enabled) {
             faceParts.heads.assign(data.indices.size() / 3, noOccurrence);
             faceParts.entries.reserve(data.indices.size() / 3);
         }
@@ -179,14 +174,13 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
                     }
                 }
                 value.geometry.assign(positions.begin(), positions.end());
-                if (stl) { result.points.informationalCount += value.members.size() - 1; }
-                else { result.points.duplicateCount += value.members.size() - 1; }
+                result.points.duplicateCount += value.members.size() - 1;
                 found.push_back(std::move(value));
             }
             std::sort(found.begin(), found.end(), [&](const auto& a, const auto& b) { canceled(stop); return a.members.front().id < b.members.front().id; });
             for (auto& value : found) { result.points.findings.push_back(std::move(value)); }
         }
-        if (result.triangles.enabled && !stl) {
+        if (result.triangles.enabled) {
             const auto triple = [&](size_t id) { return std::array<uint32_t, 3>{data.indices[id*3], data.indices[id*3+1], data.indices[id*3+2]}; };
             std::vector<std::array<uint32_t, 3>> keys(faceParts.heads.size());
             std::vector<size_t> starts(data.points.size() + 1);

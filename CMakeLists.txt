@@ -190,8 +190,6 @@ add_executable(woby
     src/scene_screenshot.h
     src/scene_objects.cpp
     src/scene_objects.h
-    src/stl_mesh.cpp
-    src/stl_mesh.h
     src/ui_operations.cpp
     src/ui_view_operations.cpp
     src/ui_property_operations.cpp
@@ -463,8 +461,6 @@ if(BUILD_TESTING)
         src/scene_renderer.cpp
         src/freeform_gpu.cpp
         src/scene_renderer.h
-        src/stl_mesh.cpp
-        src/stl_mesh.h
         src/ui_operations.cpp
         src/ui_view_operations.cpp
         src/ui_property_operations.cpp
@@ -497,7 +493,6 @@ if(BUILD_TESTING)
         tests/freeform_tests.cpp
         tests/freeform_trim_tests.cpp
         tests/scene_file_edge_tests.cpp
-        tests/stl_mesh_tests.cpp
         tests/ui_operations_tests.cpp
         tests/ui_view_tests.cpp
         tests/uv_grid_tests.cpp

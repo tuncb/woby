@@ -199,8 +199,8 @@ void showModelFileDialog(SDL_Window* window, ModelFileDialogState& state)
             return;
         }
         prepareFallback(state.fallback, ManualPathKind::models);
-        state.filterNames = {"3D Models", "Wavefront OBJ", "STL"};
-        state.filterPatterns = {"obj;stl", "obj", "stl"};
+        state.filterNames = {"3D Models", "Wavefront OBJ"};
+        state.filterPatterns = {"obj", "obj"};
         for (const auto& importer : loadedImporters()) {
             std::string pattern;
             for (const auto& extension : importer.extensions) {

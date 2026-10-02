@@ -181,7 +181,7 @@ Manual run/cancel requests do not change these saved preferences.
 | --- | --- | --- |
 | `analysis create [--type mesh|uv|uv_quality] [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
 | `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
-| `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode automatic\|original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
+| `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
 | `analysis enable ANALYSIS_ID --side a\|b --enabled BOOL [--object OBJECT_ID] [--isolate BOOL]` | `analysis.enable` | Enable or disable existing members on one side. Accepts a file, folder, or triangular mesh group; omit `--object` to change the whole side. `--isolate true` requires an object and `--enabled true`; enables only its members on that side. Mesh supports A/B; UV supports A only. Membership is preserved. |
 | `analysis remove ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.remove` | Remove the input's current triangular parts from the selected side. |
@@ -209,10 +209,9 @@ The RPC names are `duplicatePoints`, `duplicateTriangles`, `showDuplicatePoints`
 and `showDuplicateTriangles`. The first two enable computation; Show changes only
 presentation. These checks have no tolerance parameter.
 
-Topology inspection uses `--topology-mode automatic|original_index|exact_position`.
-Automatic preserves original source indices for OBJ and importer vertex tables, and
-uses exact-position topology for STL. Explicit original-index mode is unavailable
-for STL. All modes inspect selected parts separately within each source file;
+Topology inspection uses `--topology-mode original_index|exact_position`.
+Original-index mode is the default and preserves source indices for OBJ and importer
+vertex tables. Both modes inspect selected parts separately within each source file;
 coincident points in different files are never joined. Original source point IDs
 are partitioned by world transform when parts move independently. Exact-position
 mode joins exactly equal double-precision world positions, normalizing signed zero,
@@ -289,8 +288,7 @@ navigation and explains excluded boundaries. Reports include counts and threshol
 Each populated side of `analysis results --json` includes `detectors` schema version
 1, with `duplicate_points` and `duplicate_tris`. `count` counts extra source records
 and is null until a current check completes, or for unavailable or partial results; `knownDuplicateCount`
-reports findings from supported sources, and `informationalCount` separately counts
-STL corner repetitions. Completed results have status `complete`, `unavailable`, or `partial`.
+reports findings from available sources. Completed results have status `complete`, `unavailable`, or `partial`.
 Pending, stale, stopped, and failed checks use the detector lifecycle statuses listed above, with separate previous `knownCount` values.
 Detector failures are returned as failed statuses; source or measurement failures fail the request. Source and generated triangle IDs are 1-based.
 The response includes up to 100 groups per detector and 100 members per group, with
@@ -332,7 +330,7 @@ available sources. Incomplete, unavailable, or partial results have `count: null
 Detection uses retained source records transformed into world coordinates in
 double precision, excluding the analysis display offset. Detail already lost in the source format
 cannot be recovered. Counts refer to source triangle / transformed part instances;
-overlapping selections do not multiply counts. STL facets are supported. Missing
+overlapping selections do not multiply counts. Missing
 source records report unavailable rather than zero defects. Legacy
 `diagnostics.degenerateTriangles` and `surfaceMeshQuality.degenerateTriangles`
 retain their numerical-collapse definitions.
@@ -779,7 +777,7 @@ Checks are exact for finite double world coordinates, within each source file:
 coplanar overlap and unrelated-topology contact are included; valid shared vertices
 and edges are excluded. Duplicate faces are included even with matching vertex IDs.
 Source transforms apply; display offsets do not. Collapsed faces are excluded.
-STL original-index mode is unavailable. No proximity epsilon is used.
+No proximity epsilon is used.
 
 
 ## Complete diagnostic data, pagination, and export

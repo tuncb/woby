@@ -345,8 +345,8 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     if (command.detector && std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), *command.detector) == diagnosticCategoryKeys.end()) {
         throw std::invalid_argument("Unknown detector. Use a detector key from analysis.results.");
     }
-    if (command.topologyMode && *command.topologyMode != "automatic" && *command.topologyMode != "original_index" && *command.topologyMode != "exact_position") {
-        throw std::invalid_argument("topologyMode must be automatic, original_index, or exact_position.");
+    if (command.topologyMode && *command.topologyMode != "original_index" && *command.topologyMode != "exact_position") {
+        throw std::invalid_argument("topologyMode must be original_index or exact_position.");
     }
     if (command.side && *command.side != "a" && *command.side != "b") { throw std::invalid_argument("side must be a or b."); }
 #define INTEGER_FIELD(field, maximum) if (params.contains(#field)) { \

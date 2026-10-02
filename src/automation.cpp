@@ -1103,7 +1103,7 @@ void printCommandLineHelp()
         "Load an importer with --plugin PATH at startup or importers add PATH in a running viewer.\n"
         "Then use --file PATH or model add PATH. Hierarchy and line groups supplied by the plugin\n"
         "are imported automatically; no extra hierarchy or line-import switch is needed.\n"
-        "OBJ imports faces, polylines (l), points (p), and vertex-only point clouds. STL imports triangles.\n"
+        "OBJ imports faces, polylines (l), points (p), and vertex-only point clouds.\n"
         "Mixed geometry is split into triangle, line and point groups. Points use the vertex display controls.\n"
         "scene tree reports nested folders, parentId and each group's primitive (triangles|lines|points).\n"
         "object GROUP_ID reports geometry and settings; object FILE_ID and stats include lineSegmentCount and pointCount.\n"

@@ -78,7 +78,7 @@ These explicit scans retain their existing loose-library behavior; use portable
 packages above to select an entry library without scanning its dependencies.
 Loading the same physical file more than once has no effect. Duplicate importer
 IDs and extension conflicts are reported, with the earlier registration retained.
-OBJ, STL, and the `.woby` scene extension are reserved.
+OBJ and the `.woby` scene extension are reserved.
 
 Startup options apply only to that launch. Use `wobyctl importers add PATH --remember`
 to load a library and save its absolute path for future launches. Registrations are
@@ -366,7 +366,6 @@ no implicit closing edges. Degenerate or zero projected-length segments are
 accepted but do not draw. Importers can sample curves into segments themselves
 or return exact spline controls through the freeform extension below. The plugin
 ABI exposes all geometry types currently supported by the built-in OBJ reader.
-STL remains triangle-only.
 
 ```c
 static const uint32_t segments[] = {0, 1, 1, 2};

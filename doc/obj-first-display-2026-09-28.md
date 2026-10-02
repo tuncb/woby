@@ -123,7 +123,7 @@ and UI-file preparation. GPU preparation and scene commit happen on the main
 thread. This improves responsiveness, not the CPU parallelism of mapping,
 normals, caches or bounds. Batches of large files are loaded sequentially and
 committed after preparation. There is bounded look-ahead for up to four small
-OBJ/STL inputs (<=1 MiB, batches of at least eight); it does not apply to these
+OBJ inputs (<=1 MiB, batches of at least eight); it does not apply to these
 five large models.
 
 ## Where to investigate improvements

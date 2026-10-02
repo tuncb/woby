@@ -10,7 +10,7 @@
 
 namespace woby {
 
-enum class SourceProvenance { objPositions, stlCorners, importerVertices };
+enum class SourceProvenance { objPositions, importerVertices };
 
 // Captured before render optimization. Triangle IDs refer to generated triangles,
 // not original polygons. Positions retain double precision in the mesh local frame.
@@ -72,7 +72,7 @@ struct DuplicateFinding {
 struct DuplicateResult {
     bool enabled = true;
     size_t unavailableSources = 0, availableSources = 0;
-    size_t duplicateCount = 0, informationalCount = 0;
+    size_t duplicateCount = 0;
     std::vector<DuplicateFinding> findings;
 };
 

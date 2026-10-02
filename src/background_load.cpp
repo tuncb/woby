@@ -50,7 +50,7 @@ void prefetchSmallModels(PrefetchedLoads& loads, size_t current, size_t total, c
         auto& pending = loads.pending[i % loads.pending.size()];
         if (pending.valid()) { continue; }
         const auto path = pathAt(i);
-        if (!path || (!isObjPath(*path) && !isStlPath(*path))) { break; }
+        if (!path || !isObjPath(*path)) { break; }
         std::error_code error;
         const auto bytes = std::filesystem::file_size(*path, error);
         if (error || bytes > 1024 * 1024) { break; }

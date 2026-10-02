@@ -75,7 +75,7 @@ struct ComparisonSettings
     bool showWinding = true;
     bool autoUpdateBoundaries = true, autoUpdateNonManifold = true, autoUpdateWinding = true;
     TopologyInspectionSettings topologyInspection;
-    TopologyMode topologyMode = TopologyMode::automatic;
+    TopologyMode topologyMode = TopologyMode::originalIndex;
     ComparisonSide diagnosticSide = ComparisonSide::a;
     DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;
     SurfaceQualitySettings quality;

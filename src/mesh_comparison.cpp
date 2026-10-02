@@ -691,7 +691,7 @@ MeshDiagnostics inspectTriangles(const Mesh& mesh, std::stop_token stop)
         throw std::runtime_error("Analysis needs nonempty triangular meshes.");
     }
     MeshDiagnostics result;
-    // Preserve first-use geometric IDs, including OBJ/STL seams and signed zero.
+    // Preserve first-use geometric IDs, including OBJ seams and signed zero.
     AnalysisIndex<double, 3> vertexIds;
     reserveAnalysisIndex(vertexIds, mesh.vertices.size());
     constexpr size_t missing = std::numeric_limits<size_t>::max();

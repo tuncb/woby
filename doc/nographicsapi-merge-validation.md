@@ -26,7 +26,7 @@ requirement and main's version were both retained.
 | Analysis and annotations | Distance/overlay/quality modes, topology, holes, fins, degenerates, intersections, detector cancellation/invalidation, and large translated annotation surfaces with both up axes passed. |
 | Startup exports | Four fresh desktop processes produced eight successful initial/repeated annotated PNGs. |
 | Shipped sample scenes | All nine loaded, exported, saved and reopened. Twelve individual report variants produced exactly identical RGB pixels after reload. |
-| Import formats and resource reuse | ASCII and binary STL, Unicode paths, and 20 OBJ load/render/remove cycles passed; solid/edge/vertex captures stayed identical across cycles. |
+| Import formats and resource reuse | Unicode paths and 20 OBJ load/render/remove cycles passed; solid/edge/vertex captures stayed identical across cycles. |
 | Many-object stress | 2,500 models imported in 12.32 seconds; render-mode changes, exports, save and reopen passed. |
 | Large-model stress | BusGameMap (1,054,542 triangles, 2.26-second import) and Powerplant (12,759,246 triangles, 36.86-second import) passed solid, edge, vertex, orbit and PNG export checks. |
 | Historical updater | Actual retained 0.21.3 viewer/helper passed missing-compatibility rejection, corruption rejection, health-check rollback, migration to the merged build, and a subsequent native-only update; user fixture files were preserved. |

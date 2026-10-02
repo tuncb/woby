@@ -321,7 +321,7 @@ struct AutomationComparisonRuntime {
     uint32_t stages = 0;
     woby::DegenerateSettings degenerates;
     woby::TopologyInspectionSettings topologyInspection;
-    woby::TopologyMode topologyMode = woby::TopologyMode::automatic;
+    woby::TopologyMode topologyMode = woby::TopologyMode::originalIndex;
 };
 
 struct ResolvedModelInputGroup {
@@ -3210,7 +3210,7 @@ int main(int argc, char** argv)
                         setLastItemTooltip("Open scene (Ctrl+O)");
                         ImGui::EndDisabled();
                         ImGui::Spacing();
-                        ImGui::TextWrapped("Models: OBJ, STL and installed importer formats. Scenes: .woby.");
+                        ImGui::TextWrapped("Models: OBJ and installed importer formats. Scenes: .woby.");
                         ImGui::TextWrapped("Tip: drop model files, folders or a .woby scene into this window.");
                     }
                     ImGui::End();

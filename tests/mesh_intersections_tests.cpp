@@ -148,9 +148,6 @@ TEST_CASE("intersection source scope topology capabilities transforms and cancel
     CHECK(inspectIntersections(buildMeshTopology({a})).findings.size() == 1);
     a.parts[1].transform[12] = 20;
     CHECK(inspectIntersections(buildMeshTopology({a})).findings.empty());
-    auto stl = source; auto data = std::make_shared<SourceMeshData>(*source.data); data->provenance = SourceProvenance::stlCorners; stl.data = data;
-    CHECK(inspectIntersections(buildMeshTopology({stl})).findings.size() == 1);
-    CHECK(std::string(intersectionStatus(inspectIntersections(buildMeshTopology({stl},TopologyMode::originalIndex)))) == "unavailable");
     const auto seam = sourceFor({{0,0,0},{2,0,0},{0,2,0},{0,0,0},{2,0,0},{0,-2,0}}, {0,1,2,3,4,5});
     CHECK(inspectIntersections(buildMeshTopology({seam})).findings.size() == 1);
     CHECK(inspectIntersections(buildMeshTopology({seam},TopologyMode::exactPosition)).findings.empty());

@@ -34,10 +34,6 @@ bool sameDegenerateThresholds(const DegenerateSettings& a, const DegenerateSetti
 {
     return a.needleThresholdRatio == b.needleThresholdRatio && a.capMinAngleDegrees == b.capMinAngleDegrees;
 }
-const char* triangleProvenanceName(SourceProvenance provenance)
-{
-    return provenance == SourceProvenance::stlCorners ? "STL facets / generated triangles" : sourceProvenanceName(provenance);
-}
 const char* degenerateStatus(const MeshDegenerates& result)
 {
     if (!result.settings.enabled) { return "disabled"; }

@@ -43,13 +43,12 @@ Tests cover crossing/contained/shared-feature/near-miss cases, source isolation,
 transforms, topology modes, cancellation, limits, caches, and persistence.
 An independent layered-triangle oracle validates BVH pair collection.
 
-The first slice preserves OBJ position records, STL corners, and importer vertex
+The first slice preserves OBJ position records and importer vertex
 buffers; adds per-analysis exact source checks, grouped navigation/highlighting,
 Run/Show controls, scene version 8, and bounded CLI findings. Triangle IDs identify
 generated triangles; original polygon provenance remains follow-up work. Detection
 is per source file over selected parts, including unused points for whole-file
-inspection. STL corner repetitions are informational and its source-ID triangle
-check is unavailable. Legacy geometric counts retain their meanings.
+inspection. Legacy geometric counts retain their meanings.
 
 Distance, legacy topology, quality, duplicates, and degenerate findings now retain
 independent CPU stages and GPU uploads. Run toggles reuse completed stages; Show
@@ -64,14 +63,13 @@ strict configurable thresholds, source triangle/part references, Run/Show contro
 paged navigation, face overlays, reports, and scene version 9 (loading v2–v8).
 It uses retained source data and double-precision world transforms, excluding
 analysis display offsets. Each source triangle / transformed part is counted once
-in the union, including repeated faces and STL facets. Existing numerical-collapse
+in the union, including repeated faces. Existing numerical-collapse
 counts retain their meanings. This does not implement shared topology.
 
 The topology slice adds retained per-source edge incidence, vertex links, boundary
-graphs, edge-connected components, and manifold orientation constraints. Automatic
-mode chooses original indices for indexed input and exact positions for STL;
-explicit original-index mode is unavailable for STL. Files remain separate in every
-mode (combined-source welding is not exposed in this slice). World positions use
+graphs, edge-connected components, and manifold orientation constraints. Original
+indices are the default; exact-position topology is optional. Files remain separate
+in every mode (combined-source welding is not exposed in this slice). World positions use
 doubles from retained source records, and original IDs are partitioned by transform.
 Collapsed faces are excluded and counted; nondegenerate duplicates retain incidence.
 Boundary and non-manifold edge findings retain all incident triangle/part references.
@@ -119,15 +117,11 @@ components, and inverted shells are follow-up scope, not requirements for #41.
    source point IDs. Store analysis coordinates as doubles, while documenting
    that promoting an imported float does not recover source-file precision.
 2. Keep original topology separate from a derived, exact-position-welded topology.
-   Indexed input defaults to original topology. STL defaults to exact-position
-   topology within a source file because STL has no shared point-index topology.
-   Offer original-index/exact-position analysis modes where applicable. Never weld
-   separate source files implicitly; explicitly selected combined analysis can do
+   Input defaults to original topology. Offer original-index/exact-position analysis
+   modes. Never weld separate source files implicitly; explicitly selected combined analysis can do
    so. Every result records its scope and topology mode.
 3. Duplicate-point and duplicate-triangle definitions always use imported source
-   records, independently of topology mode. STL index-based duplicate-triangle
-   detection is unavailable; geometric duplicates can still be reported. STL
-   repeated corner coordinates are informational, not automatically defects.
+   records, independently of topology mode.
    Existing importer ABI v1 exposes the plugin's vertex table, not necessarily
    original file identities: label this provenance accurately without changing
    the ABI in this issue.
@@ -183,7 +177,7 @@ The issue also references GMM sweeps without an implementation in this repositor
 ## PR 1: Preserve analysis input and source references
 
 Touchpoints: `src/model_mesh.h`, `src/model_mesh.cpp`, `src/obj_mesh.cpp`,
-`src/stl_mesh.cpp`, `src/importer_host.cpp`, `src/background_load.*`, and
+`src/importer_host.cpp`, `src/background_load.*`, and
 `src/comparison_scene.*`. Proposed new files: `src/mesh_analysis_input.h/.cpp`.
 
 - Add immutable analysis input owned with each loaded mesh, captured before
@@ -192,8 +186,7 @@ Touchpoints: `src/model_mesh.h`, `src/model_mesh.cpp`, `src/obj_mesh.cpp`,
   unreferenced source points. Capture original polygon-to-triangle provenance during
   triangulation; diagnostics operate on generated triangles but identify the parent
   face. Do not promise original polygon IDs if the triangulator mapping is absent.
-- For STL, preserve facet/corner references and explicitly describe derived topology.
-  For plugins, capture the returned vertex/index table before optimization and before
+- For plugins, capture the returned vertex/index table before optimization and before
   plugin memory is released. Keep ABI v1 working.
 - Build analysis snapshots alongside analysis world geometry, with stable local
   triangle ordering and references scoped by source object and part instance.
@@ -202,7 +195,7 @@ Touchpoints: `src/model_mesh.h`, `src/model_mesh.cpp`, `src/obj_mesh.cpp`,
   source-point scope; whole-file inspection can include unused imported points.
 
 Acceptance: fixtures cover OBJ UV/normal seams, distinct coincident source points,
-triangulated polygons, STL facets, plugin buffers, independent part transforms,
+triangulated polygons, plugin buffers, independent part transforms,
 and analysis offsets. Render optimization must not change analysis identities;
 rendered geometry and current distance results must remain unchanged.
 

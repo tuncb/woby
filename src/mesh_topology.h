@@ -5,7 +5,7 @@
 
 namespace woby {
 
-enum class TopologyMode { automatic, originalIndex, exactPosition };
+enum class TopologyMode { originalIndex, exactPosition };
 [[nodiscard]] TopologyMode normalizedTopologyMode(TopologyMode mode);
 [[nodiscard]] const char* topologyModeName(TopologyMode mode);
 [[nodiscard]] TopologyMode parseTopologyMode(const std::string& name);
@@ -92,7 +92,7 @@ struct TopologyFinPatch {
     bool candidate = false;
 };
 struct MeshTopology {
-    TopologyMode mode = TopologyMode::automatic;
+    TopologyMode mode = TopologyMode::originalIndex;
     size_t availableSources = 0, unavailableSources = 0, excludedCollapsedFaces = 0;
     std::vector<SourceTopology> sources;
     std::vector<TopologyEdgeFinding> boundaries, nonManifoldEdges, windingEdges;
@@ -117,6 +117,6 @@ bool filterTopologyFindings(MeshTopology& topology, TopologyInspectionSettings s
 // Pure, source-scoped topology. Source files are never welded together.
 // Original IDs are partitioned by world transform; exact-position keys use doubles.
 [[nodiscard]] MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources,
-    TopologyMode mode = TopologyMode::automatic, std::stop_token stop = {});
+    TopologyMode mode = TopologyMode::originalIndex, std::stop_token stop = {});
 
 } // namespace woby

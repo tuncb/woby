@@ -45,7 +45,7 @@ TEST_CASE("manual paths accept quoted UTF-8 filenames and multiple models withou
 {
     PathFixtures fixture;
     const auto first = fixture.root / woby::pathFromUtf8("caf\xc3\xa9 model.obj");
-    const auto second = fixture.root / "second model.stl";
+    const auto second = fixture.root / "second model.obj";
     createFile(first);
     createFile(second);
     woby::ManualPathDialog dialog;

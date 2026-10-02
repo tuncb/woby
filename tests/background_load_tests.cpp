@@ -40,32 +40,18 @@ void writeTriangleObj(const std::filesystem::path& path)
     stream << "f 1 2 3\n";
 }
 
-void writeTriangleStl(const std::filesystem::path& path)
-{
-    std::ofstream stream(path, std::ios::trunc);
-    stream << "solid triangle_stl\n";
-    stream << "  facet normal 0 0 1\n";
-    stream << "    outer loop\n";
-    stream << "      vertex 0 0 0\n";
-    stream << "      vertex 1 0 0\n";
-    stream << "      vertex 0 1 0\n";
-    stream << "    endloop\n";
-    stream << "  endfacet\n";
-    stream << "endsolid triangle_stl\n";
-}
-
 } // namespace
 
 TEST_CASE("prefetched model batches preserve ordering colors and failures across ring reuse")
 {
     const BatchTestDirectory fixture;
-    const auto obj = fixture.path / "triangle.obj", stl = fixture.path / "triangle.stl";
+    const auto obj = fixture.path / "triangle.obj", second = fixture.path / "second.obj";
     const auto invalid = fixture.path / "invalid.obj", skipped = fixture.path / "ignored.txt";
     writeTriangleObj(obj);
-    writeTriangleStl(stl);
+    writeTriangleObj(second);
     { std::ofstream file(invalid); file << "v invalid 0 0\n"; }
     const std::vector<std::filesystem::path> paths = {
-        obj, obj, stl, invalid, obj, skipped, stl, obj, obj, stl, obj, stl, obj};
+        obj, obj, second, invalid, obj, skipped, second, obj, obj, second, obj, second, obj};
     const auto coordinator = std::this_thread::get_id();
     std::vector<size_t> progress;
     const auto result = woby::loadModelBatchCpu(paths, 7, [&](const auto& update) {
@@ -163,15 +149,13 @@ TEST_CASE("scene models retain per record settings and cancellation order")
 
 TEST_CASE("background model batch loader creates UI file states")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_background_model_batch_loader";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const BatchTestDirectory fixture;
+    const auto& root = fixture.path;
     const std::filesystem::path objPath = root / "triangle.obj";
-    const std::filesystem::path stlPath = root / "triangle.stl";
+    const std::filesystem::path secondPath = root / "second.obj";
     const std::filesystem::path skippedPath = root / "ignored.txt";
     writeTriangleObj(objPath);
-    writeTriangleStl(stlPath);
+    writeTriangleObj(secondPath);
     {
         std::ofstream stream(skippedPath, std::ios::trunc);
         stream << "ignored\n";
@@ -179,7 +163,7 @@ TEST_CASE("background model batch loader creates UI file states")
 
     std::vector<woby::BackgroundLoadProgress> progressUpdates;
     const woby::ModelBatchCpuLoadResult result = woby::loadModelBatchCpu(
-        {objPath, stlPath, skippedPath},
+        {objPath, secondPath, skippedPath},
         5u,
         [&progressUpdates](const woby::BackgroundLoadProgress& progress) {
             progressUpdates.push_back(progress);
@@ -201,24 +185,20 @@ TEST_CASE("background model batch loader creates UI file states")
     CHECK(result.files[0].mesh.vertices.size() == 3u);
     REQUIRE(result.files[0].groupSettings.size() == 1u);
     CHECK(result.files[0].groupSettings[0].color == woby::defaultGroupColor(5u));
-    CHECK(result.files[1].path == stlPath);
+    CHECK(result.files[1].path == secondPath);
     REQUIRE(result.files[1].groupSettings.size() == 1u);
     CHECK(result.files[1].groupSettings[0].color == woby::defaultGroupColor(6u));
     REQUIRE_FALSE(progressUpdates.empty());
     CHECK(progressUpdates[0].currentPath == objPath);
-
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("background scene loader applies persisted file settings")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_background_scene_loader";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
-    const std::filesystem::path objPath = root / "triangle.stl";
+    const BatchTestDirectory fixture;
+    const auto& root = fixture.path;
+    const std::filesystem::path objPath = root / "triangle.obj";
     const std::filesystem::path scenePath = root / "scene.woby";
-    writeTriangleStl(objPath);
+    writeTriangleObj(objPath);
 
     woby::SceneDocument document;
     document.showGrid = false;
@@ -239,16 +219,12 @@ TEST_CASE("background scene loader applies persisted file settings")
     CHECK_FALSE(result.files[0].fileSettings.visible);
     REQUIRE(result.files[0].groupSettings.size() == 1u);
     CHECK_FALSE(result.files[0].groupSettings[0].visible);
-
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("background model batch loader cancels between files")
 {
-    const std::filesystem::path root = std::filesystem::temp_directory_path()
-        / "woby_background_model_batch_cancel";
-    std::filesystem::remove_all(root);
-    std::filesystem::create_directories(root);
+    const BatchTestDirectory fixture;
+    const auto& root = fixture.path;
     const std::filesystem::path objPath = root / "triangle.obj";
     writeTriangleObj(objPath);
 
@@ -263,18 +239,16 @@ TEST_CASE("background model batch loader cancels between files")
     CHECK(result.canceled);
     CHECK(result.files.empty());
     CHECK(result.status.find("canceled") != std::string::npos);
-
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("background model batch loader reports skipped and failed files")
 {
     const BatchTestDirectory fixture;
     const auto root = std::filesystem::absolute(fixture.path);
-    const std::filesystem::path validPath = root / "triangle.stl";
+    const std::filesystem::path validPath = root / "triangle.obj";
     const std::filesystem::path invalidPath = root / "empty.obj";
     const std::filesystem::path skippedPath = root / "ignored.txt";
-    writeTriangleStl(validPath);
+    writeTriangleObj(validPath);
     {
         std::ofstream stream(invalidPath, std::ios::trunc);
         stream << "o empty\n";
@@ -303,17 +277,16 @@ TEST_CASE("background model batch loader reports skipped and failed files")
     CHECK(result.status.find("Added 1 model file") != std::string::npos);
     CHECK(result.status.find("skipped 1 non-model") != std::string::npos);
     CHECK(result.status.find("failed 1") != std::string::npos);
-
 }
 
 TEST_CASE("background model batch loader cancels after completed files")
 {
     const BatchTestDirectory fixture;
     const auto& root = fixture.path;
-    const std::filesystem::path firstPath = root / "one.stl";
-    const std::filesystem::path secondPath = root / "two.stl";
-    writeTriangleStl(firstPath);
-    writeTriangleStl(secondPath);
+    const std::filesystem::path firstPath = root / "one.obj";
+    const std::filesystem::path secondPath = root / "two.obj";
+    writeTriangleObj(firstPath);
+    writeTriangleObj(secondPath);
 
     bool cancel = false;
     const woby::ModelBatchCpuLoadResult result = woby::loadModelBatchCpu(
@@ -330,18 +303,17 @@ TEST_CASE("background model batch loader cancels after completed files")
     REQUIRE(result.outcomes.size() == 2u);
     CHECK(result.outcomes[0].state == "loaded");
     CHECK(result.outcomes[1].state == "not-started");
-
 }
 
 TEST_CASE("background scene loader cancels after completed files")
 {
     const BatchTestDirectory fixture;
     const auto& root = fixture.path;
-    const std::filesystem::path firstPath = root / "one.stl";
-    const std::filesystem::path secondPath = root / "two.stl";
+    const std::filesystem::path firstPath = root / "one.obj";
+    const std::filesystem::path secondPath = root / "two.obj";
     const std::filesystem::path scenePath = root / "scene.woby";
-    writeTriangleStl(firstPath);
-    writeTriangleStl(secondPath);
+    writeTriangleObj(firstPath);
+    writeTriangleObj(secondPath);
 
     woby::SceneDocument document;
     woby::SceneFileRecord firstRecord;
@@ -361,5 +333,4 @@ TEST_CASE("background scene loader cancels after completed files")
     CHECK(result.canceled);
     REQUIRE(result.files.size() == 1u);
     CHECK(result.files[0].path == firstPath);
-
 }

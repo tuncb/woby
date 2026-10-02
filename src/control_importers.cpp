@@ -15,7 +15,7 @@ Json controlImporterInfo(const std::vector<std::filesystem::path>& remembered)
             {"path", pathToUtf8(importer.path)}, {"extensions", importer.extensions}});
     }
     for (const auto& path : remembered) { registrations.push_back(pathToUtf8(path)); }
-    return {{"builtinExtensions", {".obj", ".stl"}}, {"loaded", loaded}, {"remembered", registrations}};
+    return {{"builtinExtensions", {".obj"}}, {"loaded", loaded}, {"remembered", registrations}};
 }
 
 Json applyControlImporterOperation(const ControlOperation& command,

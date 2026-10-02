@@ -76,8 +76,7 @@ std::vector<std::string> comparisonReportLines(
             if (surface->source.indices.empty()) { continue; }
             const auto append = [&](const char* name, const DuplicateResult& duplicates) {
                 if (!duplicates.enabled) { return; }
-                lines.push_back(label + " " + name + ": " + std::to_string(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")"
-                    + (duplicates.informationalCount ? "; " + std::to_string(duplicates.informationalCount) + " informational STL corners" : ""));
+                lines.push_back(label + " " + name + ": " + std::to_string(duplicates.duplicateCount) + " (" + duplicateStatus(duplicates) + ")");
             };
             const char* detectorNames[] = {"boundary edges", "non-manifold edges", "inconsistent triangles", "duplicate points",
                 "source-ID duplicate triangles", "degenerate triangles", "non-manifold vertices", "holes", "fin candidates"};

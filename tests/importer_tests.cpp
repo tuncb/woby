@@ -855,3 +855,27 @@ TEST_CASE("Imported hidden hierarchy initializes ancestors and folder imports su
     REQUIRE(woby::removeFileFromState(state, 0));
     CHECK(state.sceneNodes.empty());
 }
+
+TEST_CASE("built-in model loading rejects STL through direct batch and scene entry points")
+{
+    ImporterTestScope scope;
+    CHECK(woby::controlImporterInfo({})["builtinExtensions"] == nlohmann::json::array({".obj"}));
+    for (const auto* name : {"triangle.stl", "triangle.STL"}) {
+        const auto path = scope.root / name;
+        writeFile(path, "solid triangle\nfacet normal 0 0 1\nouter loop\n"
+            "vertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid triangle\n");
+        CHECK_FALSE(woby::isModelPath(path));
+        CHECK_THROWS_WITH_AS((void)woby::loadModel(path), doctest::Contains("Unsupported model file extension"), std::runtime_error);
+        CHECK_THROWS_WITH_AS((void)woby::loadModelMesh(path), doctest::Contains("Unsupported model file extension"), std::runtime_error);
+        const auto batch = woby::loadModelBatchCpu({path}, 0, {}, {});
+        CHECK(batch.skippedCount == 1);
+        CHECK(batch.addedCount == 0);
+        CHECK(batch.files.empty());
+        woby::SceneDocument document;
+        woby::SceneFileRecord record; record.path = path;
+        document.files.push_back(record);
+        const auto scene = scope.root / "scene.woby";
+        woby::writeSceneDocument(scene, document);
+        CHECK_THROWS_WITH_AS((void)woby::loadSceneCpu(scene, {}, {}), doctest::Contains("Unsupported model file extension"), std::runtime_error);
+    }
+}

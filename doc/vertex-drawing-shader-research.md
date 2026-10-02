@@ -87,9 +87,8 @@ use a separate drawing path.
 Marker identity is significant. `appendPointIndicesForRange` walks each group's
 triangle indices in order and keeps the first occurrence of each **render
 vertex ID**. It does not merge equal positions. OBJ normal/UV seams can create
-different IDs at the same position, and STL imports create separate triangle
-corners. An ID shared by two groups appears in both groups' lists so each can
-have its own transform, color, opacity, and visibility. Thus `P` can exceed `V`.
+different IDs at the same position. An ID shared by two groups appears in both
+groups' lists so each can have its own transform, color, opacity, and visibility. Thus `P` can exceed `V`.
 Unused source positions are absent from ordinary vertex display, even though
 diagnostics can inspect them. Switching to source positions or global
 position deduplication would change current behavior.

@@ -26,14 +26,9 @@ bool isObjPath(const std::filesystem::path& path)
     return lowercase(path.extension().string()) == ".obj";
 }
 
-bool isStlPath(const std::filesystem::path& path)
-{
-    return lowercase(path.extension().string()) == ".stl";
-}
-
 bool isModelPath(const std::filesystem::path& path)
 {
-    return isObjPath(path) || isStlPath(path) || hasImporterForPath(path);
+    return isObjPath(path) || hasImporterForPath(path);
 }
 
 bool isWobyPath(const std::filesystem::path& path)
@@ -73,18 +68,6 @@ std::vector<std::filesystem::path> collectModelPathsRecursive(
 
     std::sort(modelPaths.begin(), modelPaths.end());
     return modelPaths;
-}
-
-std::vector<std::filesystem::path> collectObjPathsRecursive(
-    const std::filesystem::path& folder)
-{
-    std::vector<std::filesystem::path> objPaths;
-    for (const auto& path : collectModelPathsRecursive(folder)) {
-        if (isObjPath(path)) {
-            objPaths.push_back(path);
-        }
-    }
-    return objPaths;
 }
 
 } // namespace woby

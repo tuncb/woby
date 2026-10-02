@@ -85,7 +85,7 @@ showed only a modest improvement from buffering, so buffering alone should not
 be credited with the whole batch-loading improvement.
 
 For batches of at least eight files, `background_load.cpp` keeps at most four
-small built-in OBJ/STL loads in flight. Hardware with fewer available cores falls
+small built-in OBJ loads in flight. Hardware with fewer available cores falls
 back to fewer workers or serial execution. Large inputs and plugin imports form
 serial boundaries, avoiding nested large-parser fan-out and preserving plugin
 callbacks. The coordinator consumes futures in input order: colors, per-file
@@ -327,7 +327,7 @@ readiness and frame stalls rather than raw storage bandwidth.
 [Microsoft's DirectStorage 1.4 announcement](https://devblogs.microsoft.com/directx/directstorage-1-4-release-adds-support-for-zstandard/).
 
 Use separate corpus buckets for many tiny files, single huge meshes, assemblies
-with repeated geometry, heavily seamed OBJ, large binary STL, and plugin imports.
+with repeated geometry, heavily seamed OBJ and plugin imports.
 Collect cold and warm loads, time to first useful frame, cancellation latency,
 peak committed memory, peak GPU residency, and frame-tail latency. A fast median
 alone is insufficient evidence for a smooth interactive experience.

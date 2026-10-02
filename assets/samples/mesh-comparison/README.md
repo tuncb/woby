@@ -55,7 +55,7 @@ Prototype limits:
   between samples. Mean, P95, and area percentages use sample surface area.
 - Distances are unsigned and no automatic alignment or Boolean union is performed.
   Overlapping and internal surfaces remain part of the analysis.
-- Edge diagnostics merge exactly equal positions to handle split OBJ/STL
+- Edge diagnostics merge exactly equal positions to handle split OBJ
   vertices, including coincident edges across different parts; they do not merge
   nearby unequal positions. Degenerate faces are
   counted separately and excluded from edge incidence checks.

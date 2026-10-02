@@ -51,7 +51,7 @@ Node topologyBase(const MeshTopology& t)
     array(n, "sources", t.sources.size(), [&t](size_t i) {
         const auto& s = t.sources[i];
         return scalar({{"sourceId", std::to_string(s.fileId)}, {"source", s.source},
-            {"provenance", triangleProvenanceName(s.provenance)}, {"topologyMode", topologyModeName(s.mode)},
+            {"provenance", sourceProvenanceName(s.provenance)}, {"topologyMode", topologyModeName(s.mode)},
             {"status", s.available ? "complete" : "unavailable"}, {"excludedCollapsedFaces", s.excludedCollapsedFaces}});
     }, "sourcesTruncated");
     return n;
@@ -65,7 +65,7 @@ Node topologyEdges(const MeshTopology& t, const std::vector<TopologyEdgeFinding>
     array(n, "findings", findings.size(), [&t, &findings](size_t i) {
         const auto& f = findings[i]; const auto& s = t.sources[f.source]; const auto& e = s.edges[f.edge];
         auto item = scalar({{"sourceId", std::to_string(s.fileId)}, {"source", s.source}, {"edgeId", f.edge + 1},
-            {"topologyMode", topologyModeName(s.mode)}, {"provenance", triangleProvenanceName(s.provenance)},
+            {"topologyMode", topologyModeName(s.mode)}, {"provenance", sourceProvenanceName(s.provenance)},
             {"incidentFaceCount", e.incidentFaces.size()}, {"sameDirection", e.windingConflict}, {"orientationContradiction", e.orientationContradiction}});
         array(item, "incidentFaces", e.incidentFaces.size(), [&s, &e](size_t k) {
             const auto& use = e.incidentFaces[k]; auto v = face(s.faces[use.face].reference); v["forward"] = use.forward; return scalar(std::move(v));
@@ -148,7 +148,7 @@ Node fins(const MeshTopology& t)
         {"denominatorDefinition", "largest physical-boundary-bearing split patch per source, before boundary-shape filtering"}});
     array(n, "findings", count, [&t](size_t i) {
         const auto& p = t.finPatches[t.fins[i]]; const auto& s = t.sources[p.source];
-        auto item = scalar({{"sourceId", std::to_string(s.fileId)}, {"source", s.source}, {"provenance", triangleProvenanceName(s.provenance)},
+        auto item = scalar({{"sourceId", std::to_string(s.fileId)}, {"source", s.source}, {"provenance", sourceProvenanceName(s.provenance)},
             {"patchId", p.patch + 1}, {"topologyMode", topologyModeName(s.mode)}, {"splitComponentCount", p.splitComponentCount},
             {"boundaryKind", finBoundaryKindName(p.boundary)}, {"boundaryComponentCount", p.boundaryComponents},
             {"area", p.area}, {"denominatorArea", p.denominatorArea}, {"areaRatio", p.areaRatio}, {"faceCount", p.faces.size()},
@@ -173,7 +173,7 @@ Node intersections(const MeshIntersections& r)
         {"pairLimit", r.limits.pairs}, {"candidateLimit", r.limits.candidateTests},
         {"truncationReason", enabled && r.truncated ? Json(r.truncationReason) : Json(nullptr)}});
     array(n, "findings", enabled ? r.findings.size() : 0, [&r](size_t i) {
-        const auto& f = r.findings[i]; return scalar({{"source", f.source}, {"provenance", triangleProvenanceName(f.provenance)},
+        const auto& f = r.findings[i]; return scalar({{"source", f.source}, {"provenance", sourceProvenanceName(f.provenance)},
             {"topologyMode", topologyModeName(f.mode)}, {"faces", {face(f.faces[0]), face(f.faces[1])}}});
     }, "findingsTruncated", 100, enabled && r.truncated);
     return n;
@@ -189,7 +189,7 @@ Node degenerates(const MeshDegenerates& r)
         {"reasonCounts", {{"collapsed", enabled ? r.collapsedCount : 0}, {"needle", enabled ? r.needleCount : 0}, {"cap", enabled ? r.capCount : 0}}}});
     array(n, "findings", enabled ? r.findings.size() : 0, [&r](size_t i) {
         const auto& f = r.findings[i]; return scalar({{"sourceId", std::to_string(f.fileId)}, {"partId", std::to_string(f.partId)},
-            {"source", f.source}, {"provenance", triangleProvenanceName(f.provenance)}, {"triangleId", f.triangleId + 1},
+            {"source", f.source}, {"provenance", sourceProvenanceName(f.provenance)}, {"triangleId", f.triangleId + 1},
             {"reasons", {{"collapsed", f.reasons.collapsed}, {"needle", f.reasons.needle}, {"cap", f.reasons.cap}}},
             {"edgeRatio", std::isfinite(f.reasons.edgeRatio) ? Json(f.reasons.edgeRatio) : Json(nullptr)},
             {"maximumAngleDegrees", std::isfinite(f.reasons.maximumAngleDegrees) ? Json(f.reasons.maximumAngleDegrees) : Json(nullptr)}});
@@ -199,11 +199,11 @@ Node degenerates(const MeshDegenerates& r)
 Node duplicates(const DuplicateResult& r)
 {
     if (!r.enabled) {
-        auto n = scalar({{"status", "disabled"}, {"count", nullptr}, {"knownDuplicateCount", 0}, {"informationalCount", 0}, {"unavailableSources", 0}, {"groupCount", 0}});
+        auto n = scalar({{"status", "disabled"}, {"count", nullptr}, {"knownDuplicateCount", 0}, {"unavailableSources", 0}, {"groupCount", 0}});
         array(n, "findings", 0, {}, "findingsTruncated"); return n;
     }
     auto n = scalar({{"status", duplicateStatus(r)}, {"count", !r.unavailableSources ? Json(r.duplicateCount) : Json(nullptr)},
-        {"knownDuplicateCount", r.duplicateCount}, {"informationalCount", r.informationalCount}, {"unavailableSources", r.unavailableSources}, {"groupCount", r.findings.size()}});
+        {"knownDuplicateCount", r.duplicateCount}, {"unavailableSources", r.unavailableSources}, {"groupCount", r.findings.size()}});
     array(n, "findings", r.findings.size(), [&r](size_t i) {
         const auto& f = r.findings[i]; auto item = scalar({{"sourceId", std::to_string(f.fileId)}, {"source", f.source},
             {"provenance", sourceProvenanceName(f.provenance)}, {"representativeId", f.members.front().id + 1}, {"memberCount", f.members.size()}});

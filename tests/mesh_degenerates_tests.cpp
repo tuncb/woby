@@ -163,7 +163,7 @@ TEST_CASE("degenerate analysis promotes source floats before large translations"
     CHECK(result.findings.empty());
 }
 
-TEST_CASE("degenerate source findings preserve instances scope ordering and STL support")
+TEST_CASE("degenerate source findings preserve instances scope ordering")
 {
     auto source = sourceFor({{{0,0,0}, {1,0,0}, {0,1,0}}});
     auto thin = source.parts[0]; thin.partId = 8; thin.transform[5] = .0001f; thin.transform[12] = 10;
@@ -179,7 +179,7 @@ TEST_CASE("degenerate source findings preserve instances scope ordering and STL 
     source = sourceFor({{{0,0,0}, {1,0,0}, {2,0,0}}});
     auto data = std::make_shared<SourceMeshData>(*source.data);
     data->indices.insert(data->indices.end(), {0,2,1});
-    data->provenance = SourceProvenance::stlCorners; source.data = data;
+    source.data = data;
     source.parts[0].indexCount = 6;
     auto other = source; other.fileId = 20;
     const auto all = inspectDegenerates({other, source}, {});

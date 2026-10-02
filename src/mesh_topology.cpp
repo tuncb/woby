@@ -255,9 +255,6 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
     if (!source.data) { result.available = false; return result; }
     const auto& data = *source.data;
     result.provenance = data.provenance;
-    if (mode == TopologyMode::automatic) {
-        result.mode = data.provenance == SourceProvenance::stlCorners ? TopologyMode::exactPosition : TopologyMode::originalIndex;
-    }
     if (data.indices.size() % 3) { throw std::invalid_argument("Invalid source triangle indices."); }
     for (const auto& point : data.points) {
         canceled(stop);
@@ -274,10 +271,6 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
             || part.indexCount > data.indices.size() - part.firstIndex) { throw std::invalid_argument("Invalid source part range."); }
         for (const auto value : part.transform) { if (!std::isfinite(value)) { throw std::invalid_argument("Non-finite source transform."); } }
         parts.push_back(&part);
-    }
-    if (result.mode == TopologyMode::originalIndex && data.provenance == SourceProvenance::stlCorners) {
-        result.available = false;
-        return result;
     }
     std::sort(parts.begin(), parts.end(), [&](const auto* a, const auto* b) {
         canceled(stop);
@@ -504,23 +497,21 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
 }
 TopologyMode normalizedTopologyMode(TopologyMode mode)
 {
-    return mode == TopologyMode::originalIndex || mode == TopologyMode::exactPosition ? mode : TopologyMode::automatic;
+    return mode == TopologyMode::exactPosition ? mode : TopologyMode::originalIndex;
 }
 const char* topologyModeName(TopologyMode mode)
 {
     switch (mode) {
-    case TopologyMode::automatic: return "automatic";
     case TopologyMode::originalIndex: return "original_index";
     case TopologyMode::exactPosition: return "exact_position";
     }
-    return "automatic";
+    return "original_index";
 }
 TopologyMode parseTopologyMode(const std::string& name)
 {
-    if (name == "automatic") { return TopologyMode::automatic; }
     if (name == "original_index") { return TopologyMode::originalIndex; }
     if (name == "exact_position") { return TopologyMode::exactPosition; }
-    throw std::invalid_argument("Unknown topology mode. Use automatic, original_index, or exact_position.");
+    throw std::invalid_argument("Unknown topology mode. Use original_index or exact_position.");
 }
 const char* topologyStatus(const MeshTopology& topology)
 {
