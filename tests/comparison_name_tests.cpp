@@ -145,6 +145,49 @@ TEST_CASE("analysis input groups start collapsed")
     CHECK(contents.find("second-input-part") == std::string::npos);
 }
 
+TEST_CASE("analysis inspectors keep measurements separate from diagnostic findings")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, mesh, 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
+        woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, side, true, f.id);
+    }
+    auto task = woby::AnalysisTask::meshChecks;
+    SUBCASE("checks") {}
+    SUBCASE("quality") { task = woby::AnalysisTask::meshQuality; }
+    SUBCASE("comparison") { task = woby::AnalysisTask::surfaceComparison; }
+    woby::setAnalysisTask(f.state, f.id, task);
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.cache = {runtime.resultSignature, woby::comparisonSource | woby::comparisonQuality | woby::comparisonDistance};
+    runtime.result = woby::computeComparisonStages(mesh, mesh, runtime.cache.completed);
+    std::string contents;
+    for (int frame = 0; frame < 2; ++frame) {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize({600, 1800});
+        ImGui::Begin("Task inspector");
+        ImGui::LogToBuffer(0);
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        ImGui::End();
+        ImGui::EndFrame();
+    }
+    INFO(contents);
+    CHECK((contents.find("Diagnostics") != std::string::npos) == (task == woby::AnalysisTask::meshChecks));
+    CHECK((contents.find("Size limits") != std::string::npos) == (task == woby::AnalysisTask::meshQuality));
+    CHECK((contents.find("Area-weighted mean") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
+    CHECK(contents.find("Placement") != std::string::npos);
+    CHECK(contents.find("Result position") == std::string::npos);
+}
+
 TEST_CASE("analysis properties distinguish queued calculating failed and inactive results")
 {
     ComparisonNameFixture f;
@@ -232,13 +275,14 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
         ImGui::End();
         ImGui::EndFrame();
     }
-    CHECK(contents.find("Result position") != std::string::npos);
+    CHECK(contents.find("Placement") != std::string::npos);
     CHECK(contents.find("Frame result") == std::string::npos);
     CHECK(contents.find("Result ready") == std::string::npos);
     for (const auto* label : {"Queued...", "Calculating analysis...", "Analysis failed"}) {
         CHECK((contents.find(label) != std::string::npos) == (std::string(status) == label));
     }
-    CHECK(contents.find("Diagnostics") != std::string::npos);
+    CHECK((contents.find("Diagnostics") != std::string::npos)
+        == (woby::comparisonSettings(f.state, f.id).mode != woby::ComparisonMode::surfaceQuality));
     CHECK(contents.find("Updating...") == std::string::npos);
     CHECK((contents.find("Retry") != std::string::npos) == (std::string(status) == "Analysis failed"));
 }

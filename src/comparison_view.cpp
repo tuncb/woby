@@ -337,7 +337,9 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
         }
         ImGui::EndPopup();
     }
+    drawObjectIdentityRow("Sources", summary.sourceNames.c_str());
     if (!open) {
+        if (!summary.issue.empty() && !members.empty()) { ImGui::TextWrapped("%s", summary.issue.c_str()); }
         ImGui::PopID();
         return;
     }
@@ -1750,31 +1752,31 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(comparison->settings.type == AnalysisType::uvQuality ? "UV quality analysis" : isUvAnalysis(comparison->settings.type) ? "UV analysis" : "Mesh analysis");
-    ImGui::SameLine();
+    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
+    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
+    const bool both = hasA && hasB;
+    auto task = analysisTask(comparison->settings, both);
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
-    ImGui::SetNextItemWidth(-informationIconSize() - ImGui::GetStyle().ItemSpacing.x);
+    ImGui::SetNextItemWidth(-1);
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
+    if (!isUvAnalysis(comparison->settings.type)) {
+        const AnalysisTask tasks[] = {AnalysisTask::meshChecks, AnalysisTask::meshQuality, AnalysisTask::surfaceComparison};
+        const char* labels[] = {"Mesh checks", "Mesh quality", "Surface comparison"};
+        int selectedTask = task == AnalysisTask::meshQuality ? 1 : task == AnalysisTask::surfaceComparison ? 2 : 0;
+        ImGui::TextUnformatted("Analysis task");
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::Combo("##analysis_task", &selectedTask, labels, 3)) {
+            setAnalysisTask(state, id, tasks[selectedTask]);
+            task = tasks[selectedTask];
+        }
+    } else { ImGui::TextUnformatted("UV inspection"); }
+    ImGui::SeparatorText("Inputs");
     ImGui::SameLine();
     drawInformationIcon("comparison_info", "Analysis inputs",
-        isUvAnalysis(comparison->settings.type) ?
-        "An independent UV view beside the source mesh. Drag mesh parts onto Source to include them. "
-        "Source visibility and appearance remain independent. Parts without complete UVs appear only in the 3D view." :
-        "Combined surfaces at scene positions. Hidden members are included. "
-        "Other scene objects retain their own appearance.\n\n"
-        "Use Analysis membership in the scene tree context menu, or drag sources onto group A or B. "
-        "Right-click a group to clear it, or a source below to remove it.\n\n"
-        "One input enables surface inspection. Add a second input for surface distance and overlay.");
+        "Drag models onto an input, or use Analysis membership in the model context menu. "
+        "Hidden source models are included. Expand an input to enable, isolate, or remove its parts.");
     const bool resultReady = comparisonStagesReady(runtime, state, id, comparisonDistance);
-    auto translation = comparison->translation;
-    ImGui::TextUnformatted("Result position");
-    ImGui::SameLine();
-    drawInformationIcon("position_info", "Result position", "Display offset only.");
-    ImGui::SetNextItemWidth(-1.0f);
-    if (ImGui::DragFloat3("##result_position", translation.data(), .1f)) { setComparisonTranslation(state, id, translation); }
-    ImGui::Separator();
     membershipTree(state, ComparisonSide::a, id);
     if (isUvAnalysis(comparison->settings.type)) {
         auto settings = comparisonSettings(state, id);
@@ -1857,31 +1859,23 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     membershipTree(state, ComparisonSide::b, id);
     ImGui::Separator();
-    if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
-    setLastItemTooltip("Exchange inputs A and B while keeping the measurement direction.");
-    ImGui::SameLine();
-    drawInformationIcon("swap_info", "Swap inputs", "Swap exchanges assignments; measurement direction stays the same.");
+    if (both && ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
+    if (both) { setLastItemTooltip("Exchange inputs A and B while keeping the measurement direction."); }
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool valid = canInspectComparison(state, id);
-    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
-    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
-    const bool both = hasA && hasB;
     {
-        const char *modes[] = {"Surface distance", "Group A", "Group B", "Overlay", "Surface mesh quality"};
-        if (both) {
-            int mode = static_cast<int>(settings.mode);
+        if (task == AnalysisTask::surfaceComparison) {
+            ImGui::SeparatorText("Display");
+            const char* modes[] = {"Distance heatmap", "Input A", "Input B", "Overlay"};
+            int mode = settings.mode == ComparisonMode::surfaceQuality ? 0 : static_cast<int>(settings.mode);
             ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("##comparison_mode", &mode, modes, 5)) {
+            if (ImGui::Combo("##comparison_mode", &mode, modes, 4)) {
+                settings.task = AnalysisTask::surfaceComparison;
                 settings.mode = static_cast<ComparisonMode>(mode);
+                resetComparisonDiagnosticFocus(state, id);
             }
-        } else if (valid) {
-            int mode = settings.mode == ComparisonMode::surfaceQuality ? 1 : 0;
-            const char* singleModes[] = {hasA ? "Group A surface" : "Group B surface", "Surface mesh quality"};
-            ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("##comparison_mode", &mode, singleModes, 2)) {
-                settings.mode = mode == 1 ? ComparisonMode::surfaceQuality : hasA ? ComparisonMode::original : ComparisonMode::repaired;
-            }
+            if (!both) { ImGui::TextWrapped("Add a second input for surface comparison. Available input geometry remains visible."); }
         }
         if (both && settings.mode == ComparisonMode::distance)
         {
@@ -1914,7 +1908,8 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             ImGui::EndDisabled();
 
         }
-        if (settings.mode == ComparisonMode::surfaceQuality) {
+        if (task == AnalysisTask::meshQuality) {
+            ImGui::SeparatorText("Metric");
             int metric = static_cast<int>(settings.quality.metric);
             const char* metrics[] = {"Longest edge", "Equivalent size", "Shape quality", "Local size jump"};
             ImGui::SetNextItemWidth(-1);
@@ -1957,9 +1952,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         ImGui::Dummy({0, legendHeight});
     }
     const bool validVisible = valid && comparisonSettings(state, id).enabled;
-    drawDiagnosticNavigation(state, runtime, validVisible, hasA, hasB, id);
+    if (task == AnalysisTask::meshChecks) { drawDiagnosticNavigation(state, runtime, validVisible, hasA, hasB, id); }
     if (!validVisible) { return; }
-    if (settings.mode == ComparisonMode::surfaceQuality) {
+    if (task == AnalysisTask::meshQuality) {
         const bool qualityReady = comparisonStagesReady(runtime, state, id, comparisonQuality);
         if (qualityReady) { drawSurfaceQualityStatistics(runtime.result, comparisonSettings(state, id), hasA, hasB); }
         drawSurfaceQualitySizeLimits(state, id, qualityReady ? &runtime.result : nullptr, hasA, hasB);
@@ -1979,6 +1974,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         ImGui::TextWrapped("Area-weighted P95: %.5g", surface.percentile95);
         ImGui::TextWrapped("Area above tolerance: %.2f%%", surfacePercentAboveTolerance(surface, comparisonSettings(state, id).tolerance));
     }
+    if (task != AnalysisTask::meshChecks) { return; }
     const auto &a = runtime.result.original.diagnostics;
     const auto &b = runtime.result.repaired.diagnostics;
     if (!comparisonStagesReady(runtime, state, id, comparisonTopology)) { return; }
@@ -2002,6 +1998,15 @@ void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes)
     drawComparisonActivity(state, runtimes.objects[id], id);
     if (ImGui::BeginChild("comparison_properties")) {
         drawComparisonContents(state, runtimes.objects[id], id);
+        ImGui::Separator();
+        if (ImGui::CollapsingHeader("Placement")) {
+            auto translation = findComparison(state, id)->translation;
+            ImGui::TextWrapped("Display offset only; source measurements stay unchanged.");
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::DragFloat3("Result position", translation.data(), .1f)) {
+                setComparisonTranslation(state, id, translation);
+            }
+        }
     }
     ImGui::EndChild();
     ImGui::PopID();

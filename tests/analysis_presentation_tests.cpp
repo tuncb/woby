@@ -106,3 +106,35 @@ TEST_CASE("analysis task and display survive scene and saved view round trips")
     CHECK_THROWS((void)readSceneDocument(path));
 }
 
+TEST_CASE("analysis task switches preserve inputs thresholds and user names")
+{
+    AnalysisFixture f;
+    selectSceneObject(f.state, f.state.files[1].objectId);
+    const auto id = createAnalysisFromSelection(f.state, AnalysisTask::meshChecks);
+    auto settings = comparisonSettings(f.state, id);
+    settings.tolerance = .123f;
+    settings.quality.maximumSize = 7;
+    setComparisonSettings(f.state, settings, id);
+    renameComparison(f.state, id, "My inspection");
+    const auto members = findComparison(f.state, id)->a;
+    setAnalysisTask(f.state, id, AnalysisTask::meshQuality);
+    CHECK(comparisonSettings(f.state, id).mode == ComparisonMode::surfaceQuality);
+    CHECK(comparisonSettings(f.state, id).quality.onOriginal);
+    setAnalysisTask(f.state, id, AnalysisTask::surfaceComparison);
+    CHECK(comparisonSettings(f.state, id).mode == ComparisonMode::distance);
+    CHECK(analysisTask(comparisonSettings(f.state, id), false) == AnalysisTask::surfaceComparison);
+    setAnalysisTask(f.state, id, AnalysisTask::meshChecks);
+    CHECK(comparisonSettings(f.state, id).mode == ComparisonMode::original);
+    CHECK(comparisonSettings(f.state, id).tolerance == doctest::Approx(.123));
+    CHECK(comparisonSettings(f.state, id).quality.maximumSize == 7);
+    CHECK(findComparison(f.state, id)->a == members);
+    CHECK(findComparison(f.state, id)->name == "My inspection");
+    clearComparisonGroup(f.state, ComparisonSide::a, id);
+    setComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::b, true, id);
+    setAnalysisTask(f.state, id, AnalysisTask::meshQuality);
+    CHECK_FALSE(comparisonSettings(f.state, id).quality.onOriginal);
+    setAnalysisTask(f.state, id, AnalysisTask::meshChecks);
+    CHECK(comparisonSettings(f.state, id).mode == ComparisonMode::repaired);
+    CHECK(comparisonSettings(f.state, id).diagnosticSide == ComparisonSide::b);
+}
+
