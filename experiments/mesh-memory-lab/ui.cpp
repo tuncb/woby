@@ -27,8 +27,9 @@ void markRow(bool active)
     if (active) { ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(38, 85, 75, 150)); }
 }
 void at(ImDrawList* draw, ImVec2 pos, ImVec4 c, const char* text) { draw->AddText(pos, color(c), text); }
-void workflowDiagram(UiState& state, const Workflow& workflow, const Trace* trace)
+bool workflowDiagram(UiState& state, const Workflow& workflow, const Trace* trace)
 {
+    bool clicked = false;
     const auto origin = ImGui::GetCursorScreenPos();
     auto* draw = ImGui::GetWindowDrawList();
     const auto point = [&](const WorkflowNode& node) {
@@ -83,13 +84,14 @@ void workflowDiagram(UiState& state, const Workflow& workflow, const Trace* trac
         }
         ImGui::PushID(static_cast<int>(i)); ImGui::SetCursorScreenPos(p);
         if (ImGui::InvisibleButton("node",{workflowCardWidth,workflowCardHeight},ImGuiButtonFlags_EnableNav)) {
-            selectWorkflowNode(state,workflow,i);
+            selectWorkflowNode(state,workflow,i); clicked = true;
         }
         if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\n%s",node.title.c_str(),node.summary.c_str()); }
         ImGui::PopID();
     }
     ImGui::SetCursorScreenPos(origin);
     ImGui::Dummy({workflow.extent[0]+4,workflow.extent[1]+4});
+    return clicked;
 }
 
 void sourceTable(UiState& state, const Trace& trace, bool parsing)
@@ -547,8 +549,44 @@ void configureStyle(UiRuntime& runtime, const std::filesystem::path& assets)
     s.Colors[ImGuiCol_HeaderActive] = {0.20f,0.37f,0.34f,1};
     s.Colors[ImGuiCol_TableHeaderBg] = {0.10f,0.15f,0.18f,1};
 }
-void drawUi(UiRuntime& runtime, UiState& state, const WorkflowLibrary& library,
-    const GpuCapture& gpu, Viewport& view, UiActions& actions)
+void drawWorkflowInspector(UiState& state, const WorkflowEntry& entry, const GpuCapture& gpu, Viewport& view)
+{
+    const auto& workflow = *entry.document;
+    const float leftWidth = ImGui::GetContentRegionAvail().x*.64f;
+    const auto& node = workflow.nodes[state.workflowNode];
+    ImGui::BeginChild("inspector",{leftWidth,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::TextColored(node.transformer ? amber : blue,"%s",node.title.c_str());
+    label(node.description.c_str()); ImGui::Spacing();
+    if (entry.trace && node.inspector) { details(state,*entry.trace,gpu); }
+    else {
+        ImGui::Separator(); heading("CONNECTIONS");
+        for (const auto& edge : workflow.edges) {
+            if (edge.from != state.workflowNode && edge.to != state.workflowNode) { continue; }
+            const size_t target = edge.from == state.workflowNode ? edge.to : edge.from;
+            const auto text = std::string(edge.from == state.workflowNode ? "To: " : "From: ") + workflow.nodes[target].title;
+            ImGui::PushID(static_cast<int>(&edge-workflow.edges.data()));
+            if (ImGui::Selectable(text.c_str())) { selectWorkflowNode(state,workflow,target); }
+            if (!edge.label.empty()) { label(edge.label.c_str()); }
+            ImGui::PopID();
+        }
+    }
+    ImGui::EndChild(); ImGui::SameLine();
+    ImGui::BeginChild("selected-datum",{0,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+    if (entry.trace) { focus(state,*entry.trace,gpu,view); }
+    else {
+        heading("WORKFLOW OUTLINE");
+        label("Select a stage here or in the diagram.");
+        for (size_t i = 0; i < workflow.nodes.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(workflow.nodes[i].title.c_str(),state.workflowNode == i)) { selectWorkflowNode(state,workflow,i); }
+            ImGui::PopID();
+        }
+    }
+    ImGui::EndChild();
+}
+
+void drawUi(UiRuntime& runtime, WorkspaceState& state, const WorkflowLibrary& library,
+    const std::array<GpuCapture, 2>& gpu, Viewport& view, UiActions& actions)
 {
     const auto& io = ImGui::GetIO();
     ImGui::SetNextWindowPos({0,0}); ImGui::SetNextWindowSize(io.DisplaySize);
@@ -556,78 +594,108 @@ void drawUi(UiRuntime& runtime, UiState& state, const WorkflowLibrary& library,
     ImGui::PushFont(runtime.title); ImGui::TextUnformatted("Mesh memory lab"); ImGui::PopFont();
     ImGui::SameLine(); ImGui::TextColored(muted,"  WORKFLOW LIBRARY");
     ImGui::Spacing();
-    ImGui::BeginChild("library",{212,0},ImGuiChildFlags_Borders);
+    ImGui::BeginChild("library",{230,0},ImGuiChildFlags_Borders);
     heading("WORKFLOWS");
     ImGui::BeginDisabled(runtime.loading);
     if (ImGui::Button("Reload folder")) { actions.reload = true; }
+    if (ImGui::Button(state.chooseComparison ? "Cancel selection" : (state.paneCount == 2 ? "Replace bottom" : "Add comparison"))) {
+        setComparisonSelection(state,!state.chooseComparison);
+    }
     ImGui::EndDisabled();
     if (runtime.loading) { label("Loading workflows..."); }
+    if (state.chooseComparison) { ImGui::TextColored(mint,"Select the bottom workflow."); }
     ImGui::Spacing();
-    for (size_t i = 0; i < library.entries.size(); ++i) {
-        const auto& entry = library.entries[i];
-        const auto name = entry.document ? entry.document->title : woby::pathToUtf8(entry.path.filename());
-        ImGui::PushID(static_cast<int>(i));
-        ImGui::BeginDisabled(runtime.loading || !entry.document);
-        if (ImGui::Selectable(name.c_str(),i == state.workflow && entry.document.has_value(),0,{0,24})) { actions.workflow = i; }
-        ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s\n%s",woby::pathToUtf8(entry.path.filename()).c_str(),
-                entry.document ? entry.document->description.c_str() : entry.error.c_str());
+    for (const auto& group : library.groups) {
+        const auto name = woby::pathToUtf8(group.folder);
+        const bool grouped = !name.empty();
+        if (grouped && !ImGui::TreeNodeEx(name.c_str(),ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) { continue; }
+        for (const auto i : group.entries) {
+            const auto& entry = library.entries[i];
+            const auto title = entry.document ? entry.document->title : woby::pathToUtf8(entry.path.filename());
+            const bool selected = i == state.panes[state.activePane].workflow;
+            ImGui::PushID(static_cast<int>(i));
+            ImGui::BeginDisabled(runtime.loading || !entry.document);
+            if (ImGui::Selectable(title.c_str(),selected && entry.document.has_value(),0,{0,24})) {
+                actions.open = OpenWorkflowRequest{i,state.chooseComparison ? size_t{1} : state.activePane};
+            }
+            if (ImGui::BeginPopupContextItem("open-workflow")) {
+                if (ImGui::MenuItem("Open on top")) { actions.open = OpenWorkflowRequest{i,0}; }
+                if (ImGui::MenuItem("Open below")) { actions.open = OpenWorkflowRequest{i,1}; }
+                ImGui::EndPopup();
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s\n%s",woby::pathToUtf8(entry.relativePath).c_str(),
+                    entry.document ? entry.document->description.c_str() : entry.error.c_str());
+            }
+            if (!entry.error.empty()) { ImGui::TextColored(amber,"Could not load"); }
+            ImGui::PopID();
         }
-        if (!entry.error.empty()) { ImGui::TextColored(amber,"Could not load"); }
-        ImGui::Spacing(); ImGui::PopID();
+        if (grouped) { ImGui::TreePop(); }
+        ImGui::Spacing();
     }
-    if (library.entries.empty()) { label("No .meshflow files in this folder. Add a workflow and reload."); }
+    if (library.entries.empty()) { label("No .meshflow files. Add workflows here or in commit subfolders, then reload."); }
     ImGui::Separator(); label("Folder");
     ImGui::TextWrapped("%s",woby::pathToUtf8(library.directory).c_str());
     ImGui::EndChild(); ImGui::SameLine();
     ImGui::BeginChild("workspace",{0,0});
     if (!runtime.message.empty()) { ImGui::TextWrapped("%s",runtime.message.c_str()); }
-    if (state.workflow < library.entries.size() && library.entries[state.workflow].document) {
-        const auto& entry = library.entries[state.workflow]; const auto& workflow = *entry.document;
-        ImGui::TextColored(mint,"%s",workflow.title.c_str());
-        ImGui::SameLine(); ImGui::BeginDisabled(runtime.loading);
-        if (ImGui::SmallButton("Save copy")) { actions.saveCopy = true; }
-        ImGui::EndDisabled();
-        label(workflow.description.c_str());
+    const bool comparing = state.paneCount == 2;
+    if (comparing) {
+        ImGui::TextColored(mint,"TOP / BOTTOM COMPARISON");
+        ImGui::SameLine();
         ImGui::PushFont(runtime.mono);
-        ImGui::BeginChild("diagram",{0,330},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
-        workflowDiagram(state,workflow,entry.trace.get());
-        ImGui::EndChild();
-        const float height = ImGui::GetContentRegionAvail().y;
-        const float leftWidth = entry.trace ? ImGui::GetContentRegionAvail().x*.63f : ImGui::GetContentRegionAvail().x*.66f;
-        const auto& node = workflow.nodes[state.workflowNode];
-        ImGui::BeginChild("inspector",{leftWidth,height},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
-        ImGui::TextColored(node.transformer ? amber : blue,"%s",node.title.c_str());
-        label(node.description.c_str()); ImGui::Spacing();
-        if (entry.trace && node.inspector) { details(state,*entry.trace,gpu); }
-        else {
-            ImGui::Separator(); heading("CONNECTIONS");
-            for (const auto& edge : workflow.edges) {
-                if (edge.from != state.workflowNode && edge.to != state.workflowNode) { continue; }
-                const size_t target = edge.from == state.workflowNode ? edge.to : edge.from;
-                const auto text = std::string(edge.from == state.workflowNode ? "To: " : "From: ") + workflow.nodes[target].title;
-                ImGui::PushID(static_cast<int>(&edge-workflow.edges.data()));
-                if (ImGui::Selectable(text.c_str())) { selectWorkflowNode(state,workflow,target); }
-                if (!edge.label.empty()) { label(edge.label.c_str()); }
-                ImGui::PopID();
-            }
+        if (ImGui::SmallButton(state.showInspector ? "\xef\x81\xae Inspector###toggle-inspector" : "\xef\x81\xb0 Inspector###toggle-inspector")) {
+            setWorkflowInspectorVisible(state,!state.showInspector);
         }
-        ImGui::EndChild(); ImGui::SameLine();
-        ImGui::BeginChild("selected-datum",{0,height},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
-        if (entry.trace) { focus(state,*entry.trace,gpu,view); }
-        else {
-            heading("WORKFLOW OUTLINE");
-            label("Select a stage here or in the diagram.");
-            for (size_t i = 0; i < workflow.nodes.size(); ++i) {
-                ImGui::PushID(static_cast<int>(i));
-                if (ImGui::Selectable(workflow.nodes[i].title.c_str(),state.workflowNode == i)) { selectWorkflowNode(state,workflow,i); }
-                ImGui::PopID();
-            }
-            ImGui::Spacing(); label("This workflow describes a process. It has no embedded mesh to inspect.");
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s inspector",state.showInspector ? "Hide" : "Show"); }
+        ImGui::PopFont();
+    }
+    const bool inspect = !comparing || state.showInspector;
+    const float available = ImGui::GetContentRegionAvail().y;
+    const float gap = ImGui::GetStyle().ItemSpacing.y;
+    const float diagramsHeight = comparing ? (inspect ? std::max(300.0f,available*.60f) : available)
+        : std::min(398.0f,available*.55f);
+    const float paneHeight = (diagramsHeight-gap*static_cast<float>(state.paneCount-1))/static_cast<float>(state.paneCount);
+    ImGui::BeginChild("panes",{0,diagramsHeight},0,ImGuiWindowFlags_NoScrollbar);
+    for (size_t pane = 0; pane < state.paneCount; ++pane) {
+        auto& selection = state.panes[pane];
+        if (selection.workflow >= library.entries.size() || !library.entries[selection.workflow].document) {
+            label("Select a valid workflow from the library."); continue;
         }
-        ImGui::EndChild(); ImGui::PopFont();
-    } else { label("Select a valid workflow from the library. File errors are shown beside their entries."); }
+        const auto& entry = library.entries[selection.workflow]; const auto& workflow = *entry.document;
+        ImGui::PushID(static_cast<int>(pane));
+        ImGui::PushStyleColor(ImGuiCol_Border,comparing && state.activePane == pane ? mint : ImGui::GetStyleColorVec4(ImGuiCol_Border));
+        ImGui::BeginChild("pane",{0,paneHeight},ImGuiChildFlags_Borders,ImGuiWindowFlags_NoScrollbar);
+        ImGui::PopStyleColor();
+        if (comparing) { ImGui::TextColored(pane == 0 ? blue : amber,"%s",pane == 0 ? "TOP" : "BOTTOM"); ImGui::SameLine(); }
+        ImGui::TextColored(mint,"%s",workflow.title.c_str());
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s",workflow.description.c_str()); }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Inspect")) {
+            focusWorkflowPane(state,pane); setWorkflowInspectorVisible(state,true);
+        }
+        ImGui::SameLine(); ImGui::BeginDisabled(runtime.loading);
+        if (ImGui::SmallButton("Save copy")) { actions.saveCopy = pane; }
+        if (comparing) { ImGui::SameLine(); if (ImGui::SmallButton("Close")) { actions.close = pane; } }
+        ImGui::EndDisabled();
+        label(woby::pathToUtf8(entry.relativePath).c_str());
+        ImGui::PushFont(runtime.mono);
+        ImGui::PushID(woby::pathToUtf8(entry.relativePath).c_str());
+        ImGui::BeginChild("diagram",{0,0},0,ImGuiWindowFlags_HorizontalScrollbar);
+        if (workflowDiagram(selection,workflow,entry.trace.get())) { focusWorkflowPane(state,pane); }
+        ImGui::EndChild(); ImGui::PopID(); ImGui::PopFont();
+        ImGui::EndChild(); ImGui::PopID();
+    }
+    ImGui::EndChild();
+    auto& active = state.panes[state.activePane];
+    if (inspect && active.workflow < library.entries.size() && library.entries[active.workflow].document) {
+        ImGui::PushID(static_cast<int>(state.activePane));
+        ImGui::PushFont(runtime.mono);
+        ImGui::BeginChild("workflow-inspector",{0,0});
+        drawWorkflowInspector(active,library.entries[active.workflow],gpu[state.activePane],view);
+        ImGui::EndChild(); ImGui::PopFont(); ImGui::PopID();
+    }
     ImGui::EndChild(); ImGui::End();
 }
 } // namespace mesh_lab

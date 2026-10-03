@@ -6,6 +6,7 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <iterator>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -166,17 +167,25 @@ void saveWorkflow(const std::filesystem::path& path, const Workflow& workflow)
 WorkflowLibrary loadWorkflowLibrary(const std::filesystem::path& directory)
 {
     WorkflowLibrary result;
-    result.directory = std::filesystem::absolute(directory);
+    result.directory = std::filesystem::absolute(directory).lexically_normal();
     std::vector<std::filesystem::path> paths;
-    for (const auto& file : std::filesystem::directory_iterator(result.directory)) {
+    // Directory symlinks are deliberately not followed, so snapshots cannot
+    // cause recursive cycles or scan unrelated directory trees.
+    for (const auto& file : std::filesystem::recursive_directory_iterator(result.directory)) {
         auto extension = woby::pathToUtf8(file.path().extension());
         std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        if (file.is_regular_file() && extension == ".meshflow") { paths.push_back(file.path()); }
+        if (file.is_regular_file() && extension == ".meshflow") {
+            paths.push_back(file.path());
+            if (paths.size() > 256) { throw std::runtime_error("A workflow library may contain at most 256 .meshflow files."); }
+        }
     }
     std::sort(paths.begin(), paths.end());
-    if (paths.size() > 256) { throw std::runtime_error("A workflow folder may contain at most 256 .meshflow files."); }
     for (const auto& path : paths) {
-        WorkflowEntry entry; entry.path = path;
+        WorkflowEntry entry; entry.path = path; entry.relativePath = path.lexically_relative(result.directory);
+        const auto folder = entry.relativePath.has_parent_path() ? *entry.relativePath.begin() : std::filesystem::path{};
+        auto group = std::find_if(result.groups.begin(), result.groups.end(), [&](const auto& g) { return g.folder == folder; });
+        if (group == result.groups.end()) { result.groups.push_back({folder,{}}); group = std::prev(result.groups.end()); }
+        group->entries.push_back(result.entries.size());
         try {
             auto document = loadWorkflow(path);
             if (!document.objSource.empty()) { entry.trace = std::make_shared<const Trace>(traceObjSource(document.objSource, document.title)); }
@@ -185,5 +194,45 @@ WorkflowLibrary loadWorkflowLibrary(const std::filesystem::path& directory)
         result.entries.push_back(std::move(entry));
     }
     return result;
+}
+
+std::filesystem::path saveWorkflowCopy(const WorkflowEntry& entry)
+{
+    if (!entry.document) { throw std::runtime_error("Cannot copy an invalid workflow."); }
+    const auto stem = woby::pathToUtf8(entry.path.stem());
+    for (size_t i = 1;; ++i) {
+        const auto destination = entry.path.parent_path() / woby::pathFromUtf8(stem + "-copy-" + std::to_string(i) + ".meshflow");
+        if (!std::filesystem::exists(destination)) {
+            auto document = *entry.document;
+            if (document.title.size() <= 113) { document.title += " (copy)"; }
+            saveWorkflow(destination, document);
+            return destination;
+        }
+    }
+}
+
+size_t findWorkflow(const WorkflowLibrary& library, std::string_view name)
+{
+    const auto requested = woby::pathFromUtf8(name).lexically_normal();
+    size_t found = noWorkflow;
+    for (size_t i = 0; i < library.entries.size(); ++i) {
+        const auto& entry = library.entries[i];
+        if (name.empty()) { if (entry.document) { return i; } continue; }
+        if (entry.relativePath == requested) {
+            if (!entry.document) { throw std::runtime_error(entry.error); }
+            return i;
+        }
+    }
+    if (name.empty()) { return noWorkflow; }
+    if (!requested.has_parent_path()) {
+        for (size_t i = 0; i < library.entries.size(); ++i) {
+            if (library.entries[i].path.filename() != requested) { continue; }
+            if (found != noWorkflow) { throw std::runtime_error("Ambiguous workflow name; use commit-folder/file.meshflow: " + std::string(name)); }
+            found = i;
+        }
+    }
+    if (found == noWorkflow) { throw std::runtime_error("Workflow not found: " + std::string(name)); }
+    if (!library.entries[found].document) { throw std::runtime_error(library.entries[found].error); }
+    return found;
 }
 } // namespace mesh_lab

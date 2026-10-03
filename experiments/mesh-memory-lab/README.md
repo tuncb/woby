@@ -35,16 +35,25 @@ CI can enable the same option with the existing `ninja-vcpkg` preset.
 
 ## Select and store workflows
 
-Use the **Workflows** pane to select a diagram. Click a node or an outline entry
-to inspect it. Live mesh workflows retain the linked source/vertex/byte inspector
-and GPU viewport. Selection and camera state reset when switching workflows.
+Use the **Workflows** pane to select a diagram. Subfolders under the chosen root
+appear as commit groups. Click **Add comparison** and choose another workflow
+to show two diagrams stacked top and bottom. Their headers identify the commit
+paths; matching filenames in different folders remain independent.
 
-**Save copy** writes a new `.meshflow` file into the active folder and selects it.
+Click a node or an outline entry to select it. **Inspect** opens the focused
+pane's source/vertex/byte inspector and GPU viewport. Each pane keeps its own
+selection and camera. **Close** expands the remaining diagram back to one view.
+Right-click a library item for explicit **Open on top** / **Open below** actions.
+
+**Save copy** writes a new `.meshflow` file into that workflow's original commit
+folder and selects it in the same pane.
 Existing files are never overwritten. Edit the JSON file to change its nodes,
 connections, or embedded sample, then use **Reload folder**. Diagram editing is
 file-based; the app does not execute the operations described by arbitrary nodes.
 Malformed files are listed with an error tooltip while valid workflows stay usable.
 Reloading and OBJ capture run on a worker and publish one complete library snapshot.
+Both open files are restored by relative path; newly added files cannot redirect
+an existing selection to another commit.
 
 Builds stage the repository examples into `workflows/` beside the executable.
 That directory is the default library, regardless of the working directory.

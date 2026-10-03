@@ -22,13 +22,14 @@ add_dependencies(mesh_memory_lab woby_assets)
 woby_enable_project_warnings(mesh_memory_lab)
 
 # Keep the library next to the executable, independent of the working directory.
-file(GLOB workflow_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/workflows/*.meshflow")
+file(GLOB_RECURSE workflow_files CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/workflows/*.meshflow")
 set(workflow_outputs)
 foreach(source IN LISTS workflow_files)
-    get_filename_component(name "${source}" NAME)
+    file(RELATIVE_PATH name "${CMAKE_CURRENT_SOURCE_DIR}/workflows" "${source}")
     set(destination "${WOBY_RUNTIME_DIRECTORY}/workflows/${name}")
+    get_filename_component(destination_directory "${destination}" DIRECTORY)
     add_custom_command(OUTPUT "${destination}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory "${WOBY_RUNTIME_DIRECTORY}/workflows"
+        COMMAND "${CMAKE_COMMAND}" -E make_directory "${destination_directory}"
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${source}" "${destination}"
         DEPENDS "${source}" VERBATIM)
     list(APPEND workflow_outputs "${destination}")

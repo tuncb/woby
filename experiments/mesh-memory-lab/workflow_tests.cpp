@@ -4,6 +4,7 @@
 #include <doctest/doctest.h>
 #include <chrono>
 #include <fstream>
+#include <iterator>
 #include <limits>
 
 namespace {
@@ -20,7 +21,9 @@ struct WorkflowFixture {
     ~WorkflowFixture() { std::error_code error; std::filesystem::remove_all(root, error); }
     void write(const std::string& filename, const std::string& content) const
     {
-        std::ofstream file(root / woby::pathFromUtf8(filename), std::ios::binary); file << content;
+        const auto path = root / woby::pathFromUtf8(filename);
+        std::filesystem::create_directories(path.parent_path());
+        std::ofstream file(path, std::ios::binary); file << content;
     }
 };
 std::string diagram()
@@ -33,6 +36,156 @@ std::string diagram()
             {"id":"output","title":"Output","kind":"data","position":[480,0]}],
         "edges":[{"from":"input","to":"check"},{"from":"check","to":"output","label":"current"},
             {"from":"check","to":"input","label":"retry"}]})";
+}
+
+TEST_CASE("Commit folders retain relative identities and reject ambiguous workflow filenames")
+{
+    WorkflowFixture fixture;
+    fixture.write("notes.meshflow",diagram());
+    fixture.write("a1b2/mesh.meshflow",diagram());
+    fixture.write("a1b2/broken.meshflow","{}");
+    fixture.write("c3d4/mesh.meshflow",diagram());
+    fixture.write("c3d4/nested/extra.meshflow",diagram());
+    const auto library = mesh_lab::loadWorkflowLibrary(fixture.root);
+    REQUIRE(library.entries.size() == 5);
+    REQUIRE(library.groups.size() == 3);
+    const auto top = mesh_lab::findWorkflow(library,"a1b2/mesh.meshflow");
+    const auto bottom = mesh_lab::findWorkflow(library,"c3d4/mesh.meshflow");
+    CHECK(top != bottom);
+    CHECK(library.entries[top].relativePath == std::filesystem::path("a1b2/mesh.meshflow"));
+    CHECK(library.entries[bottom].path == fixture.root / "c3d4/mesh.meshflow");
+    CHECK(mesh_lab::findWorkflow(library,"c3d4/./mesh.meshflow") == bottom);
+    CHECK(mesh_lab::findWorkflow(library,"extra.meshflow") == mesh_lab::findWorkflow(library,"c3d4/nested/extra.meshflow"));
+    CHECK_THROWS_WITH((void)mesh_lab::findWorkflow(library,"mesh.meshflow"),
+        "Ambiguous workflow name; use commit-folder/file.meshflow: mesh.meshflow");
+    CHECK_THROWS((void)mesh_lab::findWorkflow(library,"a1b2/broken.meshflow"));
+    CHECK_THROWS((void)mesh_lab::findWorkflow(library,"missing/mesh.meshflow"));
+    size_t grouped = 0;
+    for (const auto& group : library.groups) {
+        for (const auto index : group.entries) {
+            REQUIRE(index < library.entries.size());
+            const auto& path = library.entries[index].relativePath;
+            CHECK((group.folder.empty() ? path.parent_path().empty() : *path.begin() == group.folder));
+            ++grouped;
+        }
+    }
+    CHECK(grouped == library.entries.size());
+    fixture.write("mesh.meshflow",diagram());
+    const auto withRoot = mesh_lab::loadWorkflowLibrary(fixture.root);
+    CHECK(withRoot.entries[mesh_lab::findWorkflow(withRoot,"mesh.meshflow")].relativePath == "mesh.meshflow");
+}
+
+TEST_CASE("Top and bottom panes keep independent selections and close without losing the survivor")
+{
+    WorkflowFixture fixture;
+    fixture.write("commit-a/mesh.meshflow",diagram());
+    fixture.write("commit-b/mesh.meshflow",diagram());
+    const auto library = mesh_lab::loadWorkflowLibrary(fixture.root);
+    mesh_lab::WorkspaceState state;
+    mesh_lab::openWorkflowPane(state,library,0,0);
+    mesh_lab::selectWorkflowNode(state.panes[0],*library.entries[0].document,2);
+    mesh_lab::selectComponent(state.panes[0],7);
+    mesh_lab::orbit(state.panes[0],1,.1f,2);
+    mesh_lab::setComparisonSelection(state,true);
+    mesh_lab::openWorkflowPane(state,library,1,1);
+    CHECK(state.paneCount == 2);
+    CHECK(state.activePane == 1);
+    CHECK_FALSE(state.chooseComparison);
+    CHECK(state.panes[0].workflowNode == 2);
+    CHECK(state.panes[0].component == 7);
+    CHECK(state.panes[0].zoom == 2);
+    CHECK(state.panes[1].workflowNode == 1);
+    CHECK(state.panes[1].component == 0);
+    CHECK(state.panes[1].zoom == 1);
+    mesh_lab::selectWorkflowNode(state.panes[1],*library.entries[1].document,0);
+    mesh_lab::focusWorkflowPane(state,0);
+    mesh_lab::setWorkflowInspectorVisible(state,true);
+    mesh_lab::openWorkflowPane(state,library,999,1);
+    mesh_lab::openWorkflowPane(state,library,0,2);
+    mesh_lab::focusWorkflowPane(state,2);
+    CHECK(state.activePane == 0);
+    CHECK(state.panes[1].workflow == 1);
+    mesh_lab::closeWorkflowPane(state,0);
+    CHECK(state.paneCount == 1);
+    CHECK(state.panes[0].workflow == 1);
+    CHECK(state.panes[0].workflowNode == 0);
+    CHECK(state.panes[1].workflow == mesh_lab::noWorkflow);
+    CHECK(state.activePane == 0);
+    mesh_lab::openWorkflowPane(state,library,0,1);
+    mesh_lab::closeWorkflowPane(state,1);
+    CHECK(state.panes[0].workflow == 1);
+    CHECK(state.panes[0].workflowNode == 0);
+    CHECK(state.paneCount == 1);
+    state = {};
+    mesh_lab::openWorkflowPane(state,library,1,1);
+    CHECK(state.paneCount == 1);
+    CHECK(state.panes[0].workflow == 1);
+}
+
+TEST_CASE("Library refresh preserves both relative paths and clamps changed live captures")
+{
+    WorkflowFixture fixture;
+    auto document = mesh_lab::parseWorkflow(diagram());
+    document.objSource = std::string(mesh_lab::internalObjSource());
+    fixture.write("commit-a/mesh.meshflow",mesh_lab::serializeWorkflow(document));
+    fixture.write("commit-b/mesh.meshflow",diagram());
+    const auto previous = mesh_lab::loadWorkflowLibrary(fixture.root);
+    mesh_lab::WorkspaceState state;
+    mesh_lab::openWorkflowPane(state,previous,0,0);
+    mesh_lab::selectWorkflowNode(state.panes[0],*previous.entries[0].document,0);
+    mesh_lab::selectTriangle(state.panes[0],*previous.entries[0].trace,3);
+    mesh_lab::selectComponent(state.panes[0],7);
+    mesh_lab::orbit(state.panes[0],1,.1f,2);
+    mesh_lab::openWorkflowPane(state,previous,1,1);
+    mesh_lab::selectWorkflowNode(state.panes[1],*previous.entries[1].document,2);
+    fixture.write("00-added.meshflow",diagram());
+    document.objSource = "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n";
+    std::swap(document.nodes[0],document.nodes[1]);
+    fixture.write("commit-a/mesh.meshflow",mesh_lab::serializeWorkflow(document));
+    const auto next = mesh_lab::loadWorkflowLibrary(fixture.root);
+    const auto restored = mesh_lab::reconcileWorkspace(state,previous,next);
+    CHECK(restored.paneCount == 2);
+    CHECK(restored.activePane == 1);
+    CHECK(restored.panes[0].workflow == mesh_lab::findWorkflow(next,"commit-a/mesh.meshflow"));
+    CHECK(restored.panes[1].workflow == mesh_lab::findWorkflow(next,"commit-b/mesh.meshflow"));
+    CHECK(restored.panes[0].workflowNode == 1);
+    CHECK(restored.panes[0].triangle == 0);
+    CHECK(restored.panes[0].component == 7);
+    CHECK(restored.panes[0].zoom == 2);
+    CHECK(restored.panes[1].workflowNode == 2);
+    fixture.write("commit-a/mesh.meshflow","{}");
+    const auto damaged = mesh_lab::loadWorkflowLibrary(fixture.root);
+    const auto remaining = mesh_lab::reconcileWorkspace(restored,next,damaged);
+    CHECK(remaining.paneCount == 1);
+    CHECK(remaining.activePane == 0);
+    CHECK(remaining.panes[0].workflow == mesh_lab::findWorkflow(damaged,"commit-b/mesh.meshflow"));
+    CHECK(remaining.panes[0].workflowNode == 2);
+    const auto emptyRoot = fixture.root / "empty";
+    std::filesystem::create_directory(emptyRoot);
+    const auto empty = mesh_lab::loadWorkflowLibrary(emptyRoot);
+    const auto cleared = mesh_lab::reconcileWorkspace(remaining,damaged,empty);
+    CHECK(cleared.paneCount == 1);
+    CHECK(cleared.activePane == 0);
+    CHECK(cleared.panes[0].workflow == mesh_lab::noWorkflow);
+}
+
+TEST_CASE("Save copy stays inside the selected commit folder and leaves sibling snapshots alone")
+{
+    WorkflowFixture fixture;
+    fixture.write("commit-a/mesh.meshflow",diagram());
+    fixture.write("commit-b/mesh.meshflow",diagram());
+    const auto library = mesh_lab::loadWorkflowLibrary(fixture.root);
+    const auto index = mesh_lab::findWorkflow(library,"commit-b/mesh.meshflow");
+    const auto first = mesh_lab::saveWorkflowCopy(library.entries[index]);
+    const auto second = mesh_lab::saveWorkflowCopy(library.entries[index]);
+    CHECK(first != second);
+    CHECK(first.parent_path() == fixture.root / "commit-b");
+    CHECK(second.parent_path() == fixture.root / "commit-b");
+    CHECK_FALSE(std::filesystem::exists(fixture.root / first.filename()));
+    CHECK_FALSE(std::filesystem::exists(fixture.root / "commit-a" / first.filename()));
+    CHECK(mesh_lab::loadWorkflow(first).nodes.size() == 3);
+    CHECK(mesh_lab::loadWorkflow(fixture.root / "commit-a/mesh.meshflow").title == "Branching example");
+    CHECK(mesh_lab::loadWorkflow(fixture.root / "commit-b/mesh.meshflow").title == "Branching example");
 }
 std::string replace(std::string value, const std::string& from, const std::string& to)
 {

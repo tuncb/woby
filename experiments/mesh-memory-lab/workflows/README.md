@@ -1,9 +1,52 @@
 # Mesh lab workflow files
 
 Store new workflows in this folder as UTF-8 JSON with the `.meshflow` extension.
-The app discovers files in its active folder, sorted by filename. Discovery is
-not recursive. Build staging copies these examples into `workflows/` beside the
-executable; `--workflows-dir` selects another folder.
+The app discovers files recursively in its active folder, sorted by path. Each
+immediate subfolder is a commit group in the library pane; use commit hashes or
+descriptive revision names as folder names. Files at the root continue to work.
+Directory symlinks are not followed. Build staging preserves the folder structure
+under `workflows/` beside the executable; `--workflows-dir` selects another root.
+
+## Compare commit snapshots
+
+For example, keep the same workflow filename in each commit folder:
+
+```text
+workflows/
+  a1b2c3d/
+    mesh-pipeline.meshflow
+    background-loading.meshflow
+  e4f5a6b/
+    mesh-pipeline.meshflow
+    background-loading.meshflow
+```
+
+Open the first workflow, click **Add comparison**, then select the second.
+The two diagrams stack **top / bottom**, with their relative paths shown in
+the headers. You can also right-click any workflow and choose **Open on top**
+or **Open below**. Clicking a node focuses that pane; selecting a library item
+then replaces the focused pane. **Replace bottom** explicitly selects a new
+bottom workflow.
+
+Use **Inspect** in either header, or the **Inspector** eye button, to reveal the focused
+workflow's details and live mesh. Each pane keeps its own selected node, corner,
+vertex field, camera, and GPU capture. **Close** removes either pane and expands
+the survivor. Reload keeps both selected relative paths, even when new files
+change their ordering, and clamps selections if a mesh changes. Removed or
+invalid selections close; any surviving workflow stays open.
+
+Folders are snapshots you provide; the app does not check out Git commits or
+generate an automatic diff. The `.meshflow` format remains version 1.
+
+```powershell
+mesh_memory_lab.exe --workflows-dir D:/my-workflows `
+  --workflow a1b2c3d/mesh-pipeline.meshflow `
+  --compare e4f5a6b/mesh-pipeline.meshflow
+```
+
+Use relative paths for duplicate filenames. A bare filename selects a root file
+or a unique match; ambiguous filenames are rejected. `--inspect top|bottom`
+opens the corresponding inspector when launching a comparison.
 
 ## Minimal diagram
 
@@ -62,7 +105,7 @@ Each edge requires `from` and `to` node IDs and may have a `label` (120 bytes).
 Branches, cycles, and disconnected nodes are supported; duplicate connections,
 self-connections, unknown IDs, and unknown fields are rejected. Required strings
 cannot be blank; strings cannot contain null characters. Files are limited to
-2 MiB and folders to 256 workflow files. Unsupported versions produce a clear
+2 MiB and libraries to 256 workflow files across all commit folders. Unsupported versions produce a clear
 error rather than being interpreted as version 1.
 
 ## Live mesh inspection
@@ -94,6 +137,6 @@ production pipeline. GPU handles, readback bytes, calculated payload sizes, and
 runtime jobs are rebuilt from the source and are never serialized.
 
 **Save copy** serializes the selected document to a fresh `-copy-N.meshflow`
-file, preserving its diagram and embedded sample. The active selection and
+file in the original workflow's commit folder, preserving its diagram and embedded sample. The active selection and
 camera are temporary inspector state. Edit the saved file and use **Reload
 folder** to refresh the library.

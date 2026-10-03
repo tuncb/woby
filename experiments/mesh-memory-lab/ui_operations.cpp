@@ -3,6 +3,60 @@
 #include <cmath>
 
 namespace mesh_lab {
+void openWorkflowPane(WorkspaceState& state, const WorkflowLibrary& library, size_t workflow, size_t pane)
+{
+    if (pane >= state.panes.size() || workflow >= library.entries.size() || !library.entries[workflow].document) { return; }
+    if (pane == 1 && state.panes[0].workflow == noWorkflow) { pane = 0; }
+    selectWorkflow(state.panes[pane], library, workflow);
+    state.paneCount = std::max(state.paneCount, pane + 1);
+    state.activePane = pane;
+    state.chooseComparison = false;
+}
+void closeWorkflowPane(WorkspaceState& state, size_t pane)
+{
+    if (state.paneCount != 2 || pane >= state.paneCount) { return; }
+    if (pane == 0) { state.panes[0] = state.panes[1]; }
+    state.panes[1] = {};
+    state.paneCount = 1; state.activePane = 0; state.chooseComparison = false;
+}
+void focusWorkflowPane(WorkspaceState& state, size_t pane)
+{
+    if (pane < state.paneCount) { state.activePane = pane; }
+}
+void setComparisonSelection(WorkspaceState& state, bool enabled) { state.chooseComparison = enabled; }
+void setWorkflowInspectorVisible(WorkspaceState& state, bool visible) { state.showInspector = visible; }
+
+WorkspaceState reconcileWorkspace(const WorkspaceState& state, const WorkflowLibrary& previous, const WorkflowLibrary& next)
+{
+    WorkspaceState result;
+    result.showInspector = state.showInspector;
+    size_t retained = 0;
+    for (size_t pane = 0; pane < state.paneCount; ++pane) {
+        const auto& old = state.panes[pane];
+        if (old.workflow >= previous.entries.size()) { continue; }
+        const auto& previousEntry = previous.entries[old.workflow];
+        for (size_t i = 0; i < next.entries.size(); ++i) {
+            const auto& entry = next.entries[i];
+            if (!entry.document || entry.relativePath != previousEntry.relativePath) { continue; }
+            auto& restored = result.panes[retained];
+            selectWorkflow(restored, next, i);
+            restored.yaw = old.yaw; restored.pitch = old.pitch; restored.zoom = old.zoom;
+            selectComponent(restored, old.component); selectCorner(restored, old.corner);
+            if (entry.trace) { selectTriangle(restored, *entry.trace, old.triangle); }
+            if (previousEntry.document && old.workflowNode < previousEntry.document->nodes.size()) {
+                const auto& nodeId = previousEntry.document->nodes[old.workflowNode].id;
+                for (size_t n = 0; n < entry.document->nodes.size(); ++n) {
+                    if (entry.document->nodes[n].id == nodeId) { selectWorkflowNode(restored, *entry.document, n); break; }
+                }
+            }
+            if (pane == state.activePane) { result.activePane = retained; }
+            ++retained; break;
+        }
+    }
+    result.paneCount = std::max(size_t{1}, retained);
+    if (retained == 0) { selectWorkflow(result.panes[0], next, findWorkflow(next, {})); }
+    return result;
+}
 void selectWorkflowNode(UiState& state, const Workflow& workflow, size_t index)
 {
     if (index >= workflow.nodes.size()) { return; }

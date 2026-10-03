@@ -20,7 +20,8 @@ constexpr g::ViewId uiView = 200;
 struct Options {
     bool smoke = false;
     std::filesystem::path screenshot, workflowsDirectory;
-    std::string workflow;
+    std::string workflow, comparison;
+    std::optional<size_t> inspectPane;
     std::optional<mesh_lab::Node> node;
     size_t triangle = 2, corner = 0;
     int width = 1600, height = 1000, frameLimit = 0;
@@ -38,6 +39,12 @@ Options options(int argc, char** argv)
         else if (arg == "--screenshot") { result.screenshot = std::filesystem::absolute(woby::pathFromUtf8(value())); }
         else if (arg == "--workflows-dir") { result.workflowsDirectory = std::filesystem::absolute(woby::pathFromUtf8(value())); }
         else if (arg == "--workflow") { result.workflow = value(); }
+        else if (arg == "--compare") { result.comparison = value(); }
+        else if (arg == "--inspect") {
+            const auto pane = value();
+            if (pane != "top" && pane != "bottom") { throw std::runtime_error("--inspect expects top or bottom."); }
+            result.inspectPane = pane == "top" ? 0 : 1;
+        }
         else if (arg == "--triangle") { result.triangle = std::stoull(value()); }
         else if (arg == "--corner") { result.corner = std::stoull(value()); }
         else if (arg == "--width") { result.width = std::stoi(value()); }
@@ -51,7 +58,8 @@ Options options(int argc, char** argv)
             if (!found) { throw std::runtime_error("Unknown pipeline node: " + key); }
         } else if (arg == "--help") {
             std::puts("mesh_memory_lab: saved workflow diagrams and live mesh inspection\n"
-                "  [--workflows-dir folder] [--workflow filename.meshflow]\n"
+                "  [--workflows-dir folder] [--workflow commit/file.meshflow]\n"
+                "  [--compare commit/file.meshflow] [--inspect top|bottom]\n"
                 "  [--screenshot absolute.png] [--smoke] [--frames N]\n"
                 "  [--node source|parse|attributes|triangulate|corners|pack|mesh|upload|gpu]\n"
                 "  [--triangle N] [--corner N] [--width 1600] [--height 1000]");
@@ -60,6 +68,9 @@ Options options(int argc, char** argv)
     }
     if (result.width < 1200 || result.width > 4096 || result.height < 860 || result.height > 2160) {
         throw std::runtime_error("Inspector dimensions must be 1200..4096 x 860..2160.");
+    }
+    if (result.inspectPane == 1 && result.comparison.empty()) {
+        throw std::runtime_error("--inspect bottom requires --compare.");
     }
     return result;
 }
@@ -87,7 +98,8 @@ int main(int argc, char** argv)
     woby::initializeConsole();
     SDL_Window* window = nullptr;
     bool sdlInitialized = false, graphicsInitialized = false, imguiInitialized = false, platformInitialized = false, uiRendererInitialized = false;
-    mesh_lab::GpuCapture capture;
+    std::array<mesh_lab::GpuCapture, 2> captures;
+    auto& capture = captures[0];
     mesh_lab::Viewport viewport;
     g::TextureHandle output;
     g::FrameBufferHandle outputTarget;
@@ -100,21 +112,15 @@ int main(int argc, char** argv)
         auto library = std::async(std::launch::async, [workflowDirectory] {
             return mesh_lab::loadWorkflowLibrary(workflowDirectory);
         }).get();
-        mesh_lab::UiState state;
-        const auto choose = [&](const std::string& filename) {
-            size_t selected = library.entries.size();
-            for (size_t i = 0; i < library.entries.size(); ++i) {
-                if (woby::pathToUtf8(library.entries[i].path.filename()) == filename) {
-                    if (!library.entries[i].document) { throw std::runtime_error(library.entries[i].error); }
-                    return i;
-                }
-                if (selected == library.entries.size() && library.entries[i].document) { selected = i; }
-            }
-            if (!filename.empty()) { throw std::runtime_error("Workflow not found: " + filename); }
-            return selected;
-        };
-        const auto initialWorkflow = choose(config.workflow);
-        mesh_lab::selectWorkflow(state,library,initialWorkflow);
+        mesh_lab::WorkspaceState workspace;
+        auto& state = workspace.panes[0];
+        const auto initialWorkflow = mesh_lab::findWorkflow(library,config.workflow);
+        mesh_lab::openWorkflowPane(workspace,library,initialWorkflow,0);
+        if (!config.comparison.empty()) {
+            mesh_lab::openWorkflowPane(workspace,library,mesh_lab::findWorkflow(library,config.comparison),1);
+        }
+        mesh_lab::focusWorkflowPane(workspace,config.inspectPane.value_or(0));
+        if (config.inspectPane) { mesh_lab::setWorkflowInspectorVisible(workspace,true); }
         if (!SDL_Init(headless ? 0 : SDL_INIT_VIDEO)) { throw std::runtime_error(SDL_GetError()); }
         sdlInitialized = true;
         if (!headless) {
@@ -166,24 +172,48 @@ int main(int argc, char** argv)
                     entry.document->title.c_str(), trace.mesh.vertices.size(), trace.triangles.size(), capture.vertexReadback.size()+capture.indexReadback.size());
             }
         } else {
-            const auto currentTrace = [&]() -> const mesh_lab::Trace* {
-                return state.workflow < library.entries.size() ? library.entries[state.workflow].trace.get() : nullptr;
+            const auto currentTrace = [&](size_t pane) -> const mesh_lab::Trace* {
+                const auto index = workspace.panes[pane].workflow;
+                return index < library.entries.size() ? library.entries[index].trace.get() : nullptr;
             };
-            if (initialWorkflow < library.entries.size()) {
+            const auto uploadWorkspace = [&](const mesh_lab::WorkflowLibrary& source, const mesh_lab::WorkspaceState& selection) {
+                for (size_t pane = 0; pane < captures.size(); ++pane) {
+                    const auto index = selection.panes[pane].workflow;
+                    if (pane < selection.paneCount && index < source.entries.size() && source.entries[index].trace) {
+                        mesh_lab::upload(captures[pane],*source.entries[index].trace);
+                    } else { mesh_lab::destroy(captures[pane]); }
+                }
+            };
+            const auto readbacksComplete = [&]() {
+                return std::all_of(captures.begin(),captures.end(),[](const auto& gpu) {
+                    return !g::isValid(gpu.vertices) || gpu.complete;
+                });
+            };
+            const auto verifyCaptures = [&]() {
+                for (const auto& gpu : captures) {
+                    if (g::isValid(gpu.vertices) && !gpu.matches) { throw std::runtime_error("Workflow capture has a GPU byte mismatch."); }
+                }
+            };
+            auto& initial = workspace.panes[workspace.activePane];
+            if (initial.workflow < library.entries.size()) {
                 if (config.node) {
-                    const auto& workflow = *library.entries[state.workflow].document;
+                    const auto& workflow = *library.entries[initial.workflow].document;
                     for (size_t i = 0; i < workflow.nodes.size(); ++i) {
-                        if (workflow.nodes[i].inspector == config.node) { mesh_lab::selectWorkflowNode(state,workflow,i); break; }
+                        if (workflow.nodes[i].inspector == config.node) { mesh_lab::selectWorkflowNode(initial,workflow,i); break; }
                     }
                 }
-                if (const auto* trace = currentTrace()) {
-                    mesh_lab::selectTriangle(state, *trace, config.triangle); mesh_lab::selectCorner(state, config.corner);
-                    mesh_lab::upload(capture, *trace);
+                if (const auto* trace = currentTrace(workspace.activePane)) {
+                    mesh_lab::selectTriangle(initial,*trace,config.triangle); mesh_lab::selectCorner(initial,config.corner);
                 }
             }
-            struct LibraryResult { mesh_lab::WorkflowLibrary library; std::string selected; };
+            uploadWorkspace(library,workspace);
+            struct LibraryResult {
+                mesh_lab::WorkflowLibrary library;
+                std::optional<std::filesystem::path> selected;
+                size_t pane = 0;
+            };
             std::future<LibraryResult> libraryJob;
-            std::optional<size_t> requestedWorkflow;
+            mesh_lab::UiActions pending;
             IMGUI_CHECKVERSION(); ImGui::CreateContext(); imguiInitialized = true;
             mesh_lab::UiRuntime ui;
             mesh_lab::configureStyle(ui, assets);
@@ -202,35 +232,41 @@ int main(int argc, char** argv)
             bool running = true;
             int frames = 0, drawableWidth = config.width, drawableHeight = config.height;
             while (running) {
-                const bool canSwitch = !g::isValid(capture.vertices) || capture.complete;
+                const bool canSwitch = readbacksComplete();
                 if (canSwitch && libraryJob.valid() && libraryJob.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-                    try {
-                        auto result = libraryJob.get();
-                        library = std::move(result.library);
-                        size_t selected = library.entries.size();
-                        for (size_t i = 0; i < library.entries.size(); ++i) {
-                            if (!library.entries[i].document) { continue; }
-                            if (selected == library.entries.size()) { selected = i; }
-                            if (woby::pathToUtf8(library.entries[i].path.filename()) == result.selected) { selected = i; break; }
-                        }
-                        state = {};
-                        requestedWorkflow = selected;
-                        ui.message = "Workflow folder loaded.";
-                        if (selected == library.entries.size()) { mesh_lab::destroy(capture); }
-                    } catch (const std::exception& error) { ui.message = error.what(); }
+                    std::optional<LibraryResult> result;
+                    try { result = libraryJob.get(); }
+                    catch (const std::exception& error) { ui.message = error.what(); }
                     ui.loading = false;
-                }
-                if (canSwitch && requestedWorkflow) {
-                    const auto index = *requestedWorkflow; requestedWorkflow.reset();
-                    if (index < library.entries.size() && library.entries[index].document) {
-                        try {
-                            if (library.entries[index].trace) { mesh_lab::upload(capture,*library.entries[index].trace); }
-                            else { mesh_lab::destroy(capture); }
-                            mesh_lab::selectWorkflow(state,library,index);
-                        } catch (const std::exception& error) {
-                            // Resource allocation failures must not pair new CPU data with old GPU bytes.
-                            throw std::runtime_error(std::string("Cannot activate workflow: ") + error.what());
+                    if (result) {
+                        auto restored = mesh_lab::reconcileWorkspace(workspace,library,result->library);
+                        if (result->selected) {
+                            mesh_lab::openWorkflowPane(restored,result->library,
+                                mesh_lab::findWorkflow(result->library,woby::pathToUtf8(*result->selected)),result->pane);
                         }
+                        // GPU allocation failures leave the frame loop before any
+                        // inspector can pair old bytes with the new CPU snapshots.
+                        uploadWorkspace(result->library,restored);
+                        library = std::move(result->library); workspace = restored;
+                        ui.message = result->selected ? "Workflow copy saved." : "Workflow folder loaded.";
+                    }
+                }
+                if (canSwitch && pending.close) {
+                    const auto pane = *pending.close; pending.close.reset();
+                    if (workspace.paneCount == 2 && pane < 2) {
+                        mesh_lab::destroy(captures[pane]);
+                        if (pane == 0) { captures[0] = std::move(captures[1]); captures[1] = {}; }
+                        mesh_lab::closeWorkflowPane(workspace,pane);
+                    }
+                }
+                if (canSwitch && pending.open) {
+                    const auto request = *pending.open; pending.open.reset();
+                    const auto index = request.workflow;
+                    const auto pane = request.pane == 1 && workspace.panes[0].workflow == mesh_lab::noWorkflow ? 0 : request.pane;
+                    if (pane < captures.size() && index < library.entries.size() && library.entries[index].document) {
+                        if (library.entries[index].trace) { mesh_lab::upload(captures[pane],*library.entries[index].trace); }
+                        else { mesh_lab::destroy(captures[pane]); }
+                        mesh_lab::openWorkflowPane(workspace,library,index,pane);
                     }
                 }
                 SDL_Event event;
@@ -251,44 +287,42 @@ int main(int argc, char** argv)
                 }
                 ImGui::NewFrame();
                 mesh_lab::UiActions actions;
-                mesh_lab::drawUi(ui, state, library, capture, viewport, actions);
-                if (const auto* trace = currentTrace()) { mesh_lab::renderViewport(viewport, capture, *trace, state); }
-                if (actions.workflow) { requestedWorkflow = actions.workflow; }
+                mesh_lab::drawUi(ui,workspace,library,captures,viewport,actions);
+                if (workspace.paneCount == 1 || workspace.showInspector) {
+                    if (const auto* trace = currentTrace(workspace.activePane)) {
+                        mesh_lab::renderViewport(viewport,captures[workspace.activePane],*trace,workspace.panes[workspace.activePane]);
+                    }
+                }
+                if (actions.open) { pending.open = actions.open; }
+                if (actions.close) { pending.close = actions.close; }
                 if ((actions.reload || actions.saveCopy) && !libraryJob.valid()) {
                     const auto directory = library.directory;
-                    const bool hasSelection = state.workflow < library.entries.size() && library.entries[state.workflow].document;
-                    const auto filename = hasSelection ? woby::pathToUtf8(library.entries[state.workflow].path.filename()) : std::string{};
-                    const auto copy = actions.saveCopy && hasSelection ? library.entries[state.workflow].document : std::optional<mesh_lab::Workflow>{};
-                    requestedWorkflow.reset(); ui.loading = true; ui.message.clear();
-                    libraryJob = std::async(std::launch::async,[directory,filename,copy] {
-                        std::string selected = filename;
-                        if (copy) {
-                            const auto stem = woby::pathToUtf8(woby::pathFromUtf8(filename).stem());
-                            for (size_t i = 1;; ++i) {
-                                selected = stem + "-copy-" + std::to_string(i) + ".meshflow";
-                                const auto destination = directory / woby::pathFromUtf8(selected);
-                                if (!std::filesystem::exists(destination)) {
-                                    auto document = *copy; document.title += " (copy)";
-                                    mesh_lab::saveWorkflow(destination,document); break;
-                                }
-                            }
-                        }
-                        return LibraryResult{mesh_lab::loadWorkflowLibrary(directory),selected};
+                    const auto pane = actions.saveCopy.value_or(workspace.activePane);
+                    const auto index = workspace.panes[pane].workflow;
+                    const auto copy = actions.saveCopy && index < library.entries.size()
+                        ? std::optional<mesh_lab::WorkflowEntry>{library.entries[index]} : std::nullopt;
+                    pending = {}; ui.loading = true; ui.message.clear();
+                    libraryJob = std::async(std::launch::async,[directory,pane,copy] {
+                        std::optional<std::filesystem::path> selected;
+                        if (copy) { selected = mesh_lab::saveWorkflowCopy(*copy).lexically_relative(directory); }
+                        return LibraryResult{mesh_lab::loadWorkflowLibrary(directory),selected,pane};
                     });
                 }
                 ImGui::Render(); woby::imgui_graphics::render(ImGui::GetDrawData());
                 const auto frame = g::frame();
-                if (g::isValid(capture.vertices)) { mesh_lab::pollReadback(capture,frame); }
-                const bool ready = !g::isValid(capture.vertices) || capture.complete;
+                for (auto& gpu : captures) {
+                    if (g::isValid(gpu.vertices)) { mesh_lab::pollReadback(gpu,frame); }
+                }
+                const bool ready = readbacksComplete();
                 ++frames;
                 if (headless && frames >= 8 && ready) {
-                    if (g::isValid(capture.vertices) && !capture.matches) { throw std::runtime_error("Screenshot capture has a GPU byte mismatch."); }
+                    verifyCaptures();
                     savePng(config.screenshot, output, config.width, config.height);
                     std::printf("Saved %s; workflow rendered.\n", woby::pathToUtf8(config.screenshot).c_str());
                     running = false;
                 }
                 if (config.frameLimit > 0 && frames >= config.frameLimit && ready) {
-                    if (g::isValid(capture.vertices) && !capture.matches) { throw std::runtime_error("Native presentation has a GPU byte mismatch."); }
+                    verifyCaptures();
                     std::printf("Presented %d frames; workflow rendered.\n", frames);
                     running = false;
                 }
@@ -306,7 +340,8 @@ int main(int argc, char** argv)
         if (uiRendererInitialized) { woby::imgui_graphics::shutdown(); }
         if (platformInitialized) { ImGui_ImplSDL3_Shutdown(); }
         if (imguiInitialized) { ImGui::DestroyContext(); }
-        mesh_lab::destroy(viewport); mesh_lab::destroy(capture);
+        mesh_lab::destroy(viewport);
+        for (auto& gpu : captures) { mesh_lab::destroy(gpu); }
         if (g::isValid(outputTarget)) { g::destroy(outputTarget); }
         if (g::isValid(output)) { g::destroy(output); }
         g::shutdown();
