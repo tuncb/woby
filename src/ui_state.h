@@ -120,6 +120,13 @@ struct UvFindingFocus {
     std::optional<std::array<std::array<float, 3>, 3>> geometry;
 };
 
+struct UvProbe {
+    uint64_t signature = 0;
+    SceneObjectId partId = 0;
+    size_t triangle = 0; // One based within the source part.
+    std::array<double,3> barycentric{1.0/3,1.0/3,1.0/3};
+};
+
 struct UiComparison {
     SceneObjectId objectId = invalidSceneObjectId;
     std::string name;
@@ -128,6 +135,7 @@ struct UiComparison {
     std::array<float, 3> translation{};
     std::vector<UiComparisonPart> a, b;
     std::optional<DiagnosticFocus> diagnosticFocus;
+    std::optional<UvProbe> uvProbe; // Transient inspection selection, excluded from scene/history.
     // View selection waiting for matching detector results; never drawn directly.
     std::optional<DiagnosticFocus> pendingDiagnosticFocus;
     std::optional<UvFindingFocus> uvFindingFocus;

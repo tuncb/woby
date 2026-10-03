@@ -102,15 +102,18 @@ add_executable(woby
     src/mesh_duplicates.cpp
     src/mesh_comparison.cpp
     src/uv_quality.cpp
+    src/uv_overlap.cpp
     src/comparison_scene.cpp
     src/ui_views.cpp
     src/analysis_presentation.cpp
     src/comparison_view.cpp
+    src/uv_quality_view.cpp
     src/control_importers.cpp
     src/control_importers.h
     src/analysis_results.cpp
     src/analysis_results.h
     src/control_scene.cpp
+    src/control_uv.cpp
     src/control_annotation.cpp
     src/control_scene.h
     src/background_load.cpp
@@ -278,6 +281,7 @@ if(WOBY_BUILD_BENCHMARKS)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp
         src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_comparison.cpp
+        src/uv_quality.cpp src/uv_overlap.cpp
         src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
@@ -302,6 +306,7 @@ if(WOBY_BUILD_BENCHMARKS)
             set(target "woby_benchmarks_${backend}")
             add_executable(${target} tests/performance_benchmarks.cpp ${hash_probe_sources}
                 src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_degenerates.cpp
+                src/uv_quality.cpp src/uv_overlap.cpp
                 src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
             target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/tests")
             target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
@@ -330,11 +335,13 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_freeform_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_uv_grid_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_grid_smoke.py" "$<TARGET_FILE:woby>")
+        add_test(NAME woby_uv_quality_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_quality_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_obj_primitives_render woby_freeform_render woby_uv_grid_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_obj_primitives_render woby_freeform_render woby_uv_grid_render woby_uv_quality_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -379,6 +386,7 @@ if(BUILD_TESTING)
         src/analysis_presentation.cpp
         tests/analysis_presentation_tests.cpp
         src/comparison_view.cpp
+        src/uv_quality_view.cpp
         src/comparison_legend.cpp
         src/surface_mesh_quality.cpp
         src/mesh_intersections.cpp
@@ -387,6 +395,7 @@ if(BUILD_TESTING)
         src/mesh_duplicates.cpp
         src/mesh_comparison.cpp
         src/uv_quality.cpp
+        src/uv_overlap.cpp
         src/comparison_scene.cpp
         tests/mesh_intersections_tests.cpp
         tests/mesh_topology_tests.cpp
@@ -398,6 +407,7 @@ if(BUILD_TESTING)
         src/analysis_results.cpp
         src/analysis_results.h
         src/control_scene.cpp
+        src/control_uv.cpp
         src/control_annotation.cpp
         src/control_scene.h
         src/background_load.cpp
@@ -499,6 +509,7 @@ if(BUILD_TESTING)
         tests/ui_operations_tests.cpp
         tests/ui_view_tests.cpp
         tests/uv_grid_tests.cpp
+        tests/uv_quality_tests.cpp
     )
 
     if(WOBY_BUILD_HASH_BENCHMARKS)

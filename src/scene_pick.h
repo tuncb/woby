@@ -41,6 +41,7 @@ struct ScenePickPart {
     float lineWidth = 0;
     bool annotationOverlay = false;
     size_t pointIndexOffset = 0, pointIndexCount = 0;
+    SceneObjectId analysisId = 0; // Linked analysis copy; zero for source geometry.
 };
 
 [[nodiscard]] std::span<const uint32_t> scenePartIndices(const ScenePickPart& part);
@@ -66,8 +67,15 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     const ComparisonSettings& settings, const MeshComparison& result, bool selected);
 // Opaque surfaces occlude; x-ray lines follow draw order. Transparent surfaces
 // are selectable but do not write depth, matching the scene's rendering policy.
+struct SceneTriangleHit {
+    SceneObjectId partId = 0, analysisId = 0;
+    size_t triangle = 0;
+    std::array<double,3> barycentric{};
+};
 [[nodiscard]] SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, PickPoint point);
+    const ScenePickView& view, PickPoint point, SceneTriangleHit* triangle = nullptr);
+void uvProbeLines(std::span<const ScenePickPart> parts, const UiState& state,
+    std::vector<std::array<float,3>>& lines);
 [[nodiscard]] std::vector<std::array<float, 3>> sceneSelectionLines(std::span<const ScenePickPart> parts);
 void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::array<float, 3>>& lines);
 

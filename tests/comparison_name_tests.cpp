@@ -530,6 +530,9 @@ TEST_CASE("analysis UV inspector shows all findings and only relevant normalizat
     SUBCASE("angle") { settings.uvMetric = woby::UvQualityMetric::angle; }
     SUBCASE("area") { settings.uvMetric = woby::UvQualityMetric::area; }
     SUBCASE("orientation") { settings.uvMetric = woby::UvQualityMetric::orientation; }
+    SUBCASE("anisotropy") { settings.uvMetric = woby::UvQualityMetric::anisotropy; }
+    SUBCASE("minimum stretch") { settings.uvMetric = woby::UvQualityMetric::minStretch; }
+    SUBCASE("overlap") { settings.uvMetric = woby::UvQualityMetric::overlap; }
     woby::setComparisonSettings(f.state, settings, f.id);
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
@@ -552,7 +555,8 @@ TEST_CASE("analysis UV inspector shows all findings and only relevant normalizat
     CHECK(contents.find("125 | Missing UVs") != std::string::npos);
     CHECK(contents.find("Full result") != std::string::npos);
     CHECK(contents.find("Diagnostics") == std::string::npos);
-    CHECK((contents.find("Area normalization") != std::string::npos) == (settings.uvMetric == woby::UvQualityMetric::area));
+    CHECK((contents.find("Area / stretch scale") != std::string::npos)
+        == (settings.uvMetric == woby::UvQualityMetric::area || settings.uvMetric == woby::UvQualityMetric::minStretch));
     CHECK(woby::createSceneDocument(f.state) == before);
 }
 

@@ -38,6 +38,9 @@ struct ComparisonInputSummary
 [[nodiscard]] Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id);
+// Source triangle in scene coordinates, independent of analysis display/layout and visibility.
+[[nodiscard]] std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
+    const UiState& state, SceneObjectId analysisId, SceneObjectId partId, size_t triangle);
 
 struct ComparisonInputPart {
     size_t fileIndex = 0, groupIndex = 0;

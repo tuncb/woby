@@ -163,8 +163,14 @@ def layout_orientation(executable, root, env):
                         label = f"{kind}-{mode}-separated-{separated}-{index}-{axis}"
                         image = capture(ctl, root / f"layout-{label}.png")
                         def footprint(rendered):
+                            scene_area = (0, 0, rendered.width - int(rendered.width * .43), rendered.height)
+                            rendered = rendered.crop(scene_area)
                             red, green, blue = rendered.split()
                             maximum = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+                            if kind == "uv_quality" and mode == "area":
+                                # Ratio 1 is neutral gray in the signed area
+                                # palette, so chroma cannot identify the mesh.
+                                return maximum.point(lambda value: 255 if value > 100 else 0)
                             minimum = ImageChops.darker(ImageChops.darker(red, green), blue)
                             chroma = ImageChops.subtract(maximum, minimum)
                             return chroma.point(lambda value: 255 if value > 30 else 0)
@@ -261,19 +267,32 @@ def inspection_demo(executable, output, env):
         ctl("analysis","set",quality,"--uv-grid","true",code=-32602)
         ctl("analysis","set",layout,"--uv-metric","area",code=-32602)
         ctl("scene","save-as",saved,"--overwrite")
+        expected_statistics = ctl("analysis","results",quality)["uvQuality"]["statistics"]
         expected = capture(ctl,output / "09-final.png")
         for analysis in (quality, layout):
             ctl("analysis","enable",analysis,"--side","a","--object",groups[1],"--enabled","true","--isolate","true")
         ctl("transform","set",layout,"--translation",-3,0,0)
         ctl("camera","look-at","--eye",-2.8,-10.5,1.2,"--target",-2.8,0,0)
         ctl("camera","set","--distance",10.5,"--fov-degrees",50)
-        isolated = capture(ctl,output / "10-isolated-patch.png")
-        assert sum(count for count,(r,g,b) in isolated.getcolors(isolated.width*isolated.height) if r > 200 and g < 100 and b < 60) > 500
+        capture(ctl,output / "10-isolated-patch.png")
+        # Signed area colors show strong compression in blue. Hide the layout
+        # gradient so it cannot satisfy the quality-color check by itself.
+        ctl("visibility","set",layout,"--visible","false")
+        compressed = capture(ctl,output / "isolated-compression.png")
+        assert ctl("analysis","results",quality)["uvQuality"]["minimumAreaLog2"] < -3
+        assert sum(count for count,(r,g,b) in compressed.getcolors(compressed.width*compressed.height) if b > 200 and r < 100 and g < 160) > 500
+        ctl("visibility","set",layout,"--visible","true")
         ctl("scene","save-as",output / "uv-isolated.woby","--overwrite")
         ctl("quit")
         assert viewer.wait(timeout=15) == 0
     with session(executable,output,env,"--scene",saved) as (ctl,viewer):
-        assert ImageChops.difference(expected,capture(ctl,output / "inspection-reloaded.png")).getbbox() is None
+        restored = capture(ctl,output / "inspection-reloaded.png")
+        quality = next(o["id"] for o in ctl("objects")["objects"] if o["kind"] == "analysis" and o["name"] == "UV quality")
+        assert ctl("analysis","results",quality)["uvQuality"]["statistics"] == expected_statistics
+        # Font-atlas edge filtering can change a few legend pixels across
+        # processes. Compare the scene exactly and its measurements above.
+        scene_area = (0, 0, expected.width - int(expected.width * .43), expected.height)
+        assert ImageChops.difference(expected.crop(scene_area), restored.crop(scene_area)).getbbox() is None
         ctl("quit")
         assert viewer.wait(timeout=15) == 0
 

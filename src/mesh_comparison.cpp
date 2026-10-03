@@ -1,3 +1,4 @@
+#include "uv_quality.h"
 #include "mesh_comparison.h"
 #include "comparison_settings.h"
 #include "parallel_work.h"
@@ -610,7 +611,13 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
         && settings.type != AnalysisType::surfaceComparison) { settings.type = AnalysisType::mesh; }
     if (settings.uvView != UvView::layout && settings.uvView != UvView::surface) { settings.uvView = UvView::layout; }
     settings.uvGrid = normalizedUvGrid(settings.uvGrid);
-    if (settings.uvMetric != UvQualityMetric::area && settings.uvMetric != UvQualityMetric::orientation) { settings.uvMetric = UvQualityMetric::angle; }
+    if (settings.uvMetric < UvQualityMetric::angle || settings.uvMetric > UvQualityMetric::overlap) { settings.uvMetric = UvQualityMetric::angle; }
+    if (!std::isfinite(settings.uvThreshold) || settings.uvThreshold < 0) { settings.uvThreshold = 2; }
+    if (!std::isfinite(settings.uvNearCollapse) || settings.uvNearCollapse <= 0) { settings.uvNearCollapse = .01f; }
+    if (settings.uvOverlapScope != UvOverlapScope::selectedPatches) { settings.uvOverlapScope = UvOverlapScope::perPatch; }
+    if (!std::isfinite(settings.uvRangeMinimum) || !std::isfinite(settings.uvRangeMaximum)
+        || settings.uvRangeMinimum > settings.uvRangeMaximum) { settings.uvRangeEnabled = false; settings.uvRangeMinimum = 0; settings.uvRangeMaximum = 1; }
+    if (settings.uvMetric == UvQualityMetric::overlap) { settings.uvOverlapEnabled = true; }
     if (settings.uvNormalization != UvAreaNormalization::absolute) { settings.uvNormalization = UvAreaNormalization::perPatch; }
     if (settings.diagnosticSide != ComparisonSide::a && settings.diagnosticSide != ComparisonSide::b) {
         settings.diagnosticSide = ComparisonSide::a;
@@ -1021,7 +1028,15 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     }
     const auto inspect = [&](const Mesh& mesh, SurfaceComparison& surface) {
         checkCanceled(stop);
-        if (stages & comparisonSource) { surface.source.uvQuality = mesh.uvQuality; }
+        if ((stages & comparisonSource) && mesh.uvQuality) {
+            if (mesh.uvQuality->overlapChecked || !mesh.uvQuality->settings.uvOverlapEnabled) {
+                surface.source.uvQuality = mesh.uvQuality;
+            } else {
+                auto quality = std::make_shared<UvQuality>(*mesh.uvQuality);
+                inspectUvOverlaps(*quality, stop);
+                surface.source.uvQuality = std::move(quality);
+            }
+        }
         if (mesh.vertices.empty() && mesh.indices.empty()) {
             if (stages & comparisonIntersections) {
                 surface.intersections.phase = IntersectionPhase::complete;
@@ -1035,7 +1050,6 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             surface.source.indices = copyWithCancellation(mesh.indices, stop);
             surface.source.nodes = copyWithCancellation(mesh.nodes, stop);
             surface.source.bounds = mesh.bounds;
-            surface.source.uvQuality = mesh.uvQuality;
             surface.source.origin = mesh.origin;
             surface.source.precisePositions = copyWithCancellation(mesh.precisePositions, stop);
         }

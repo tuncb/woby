@@ -85,7 +85,9 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
             return {{"settings", {{"visible", settings.enabled}, {"translation", comparison->translation},
                 {"type", analysisTypeKey(settings.type)},
                 {"uvSeparated",settings.uvSeparated}, {"uvLinkedSelection",settings.uvLinkedSelection},
-                {"uvMetric",settings.uvMetric == UvQualityMetric::area ? "area" : settings.uvMetric == UvQualityMetric::orientation ? "orientation" : "angle"},
+                {"uvMetric",uvQualityMetricKey(settings.uvMetric)},
+                {"uvThresholdEnabled",settings.uvThresholdEnabled}, {"uvOverlapEnabled",settings.uvOverlapEnabled}, {"uvRangeEnabled",settings.uvRangeEnabled}, {"uvThreshold",settings.uvThreshold}, {"uvNearCollapse",settings.uvNearCollapse}, {"uvRangeMinimum",settings.uvRangeMinimum}, {"uvRangeMaximum",settings.uvRangeMaximum},
+                {"uvOverlapScope",settings.uvOverlapScope == UvOverlapScope::selectedPatches ? "selected_patches" : "per_patch"},
                 {"uvNormalization",settings.uvNormalization == UvAreaNormalization::absolute ? "absolute" : "per_patch"},
                 {"uvColor",uvColorModeKey(settings.uvGrid.mode)}, {"uvMinimum",settings.uvGrid.minimum}, {"uvMaximum",settings.uvGrid.maximum},
                 {"uvView", settings.uvView == UvView::layout ? "layout" : "surface"},
@@ -412,18 +414,28 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
                 for (auto it = params.begin(); it != params.end(); ++it) {
                     if (it.key() != "target" && it.key() != "name" && it.key() != "visible" && it.key() != "showEdges"
                         && it.key() != "uvSeparated" && it.key() != "uvLinkedSelection" && it.key() != "uvColor" && it.key() != "uvMinimum" && it.key() != "uvMaximum" && it.key() != "uvMetric" && it.key() != "uvNormalization"
+                        && it.key() != "uvThresholdEnabled" && it.key() != "uvOverlapEnabled" && it.key() != "uvRangeEnabled" && it.key() != "uvThreshold" && it.key() != "uvNearCollapse" && it.key() != "uvRangeMinimum" && it.key() != "uvRangeMaximum" && it.key() != "uvOverlapScope"
                         && it.key() != "uvView" && it.key() != "uvGrid" && it.key() != "uvDensityU" && it.key() != "uvDensityV") {
                         throw std::invalid_argument("UV analysis supports UV display, quality and source controls only.");
                     }
                 }
-            } else if (command.uvSeparated || command.uvLinkedSelection || command.uvMetric || command.uvNormalization || command.uvColor || command.uvMinimum || command.uvMaximum || command.uvView || command.uvGrid || command.uvDensityU || command.uvDensityV) {
+            } else if (command.uvThresholdEnabled || command.uvOverlapEnabled || command.uvRangeEnabled || command.uvThreshold || command.uvNearCollapse || command.uvRangeMinimum || command.uvRangeMaximum || command.uvOverlapScope || command.uvSeparated || command.uvLinkedSelection || command.uvMetric || command.uvNormalization || command.uvColor || command.uvMinimum || command.uvMaximum || command.uvView || command.uvGrid || command.uvDensityU || command.uvDensityV) {
                 throw std::invalid_argument("UV controls require --type uv or --type uv_quality.");
             }
-            if ((command.uvMetric || command.uvNormalization) && settings.type != AnalysisType::uvQuality) { throw std::invalid_argument("UV quality settings require --type uv_quality."); }
+            if ((command.uvThresholdEnabled || command.uvOverlapEnabled || command.uvRangeEnabled || command.uvThreshold || command.uvNearCollapse || command.uvRangeMinimum || command.uvRangeMaximum || command.uvOverlapScope || command.uvMetric || command.uvNormalization) && settings.type != AnalysisType::uvQuality) { throw std::invalid_argument("UV quality settings require --type uv_quality."); }
             if (settings.type == AnalysisType::uvQuality && (command.uvColor || command.uvMinimum || command.uvMaximum || command.uvGrid || command.uvDensityU || command.uvDensityV)) { throw std::invalid_argument("UV quality uses metric heatmaps; use --type uv for grid and parameter colors."); }
+            if (command.uvThresholdEnabled) { settings.uvThresholdEnabled = *command.uvThresholdEnabled; }
+            if (command.uvOverlapEnabled) { settings.uvOverlapEnabled = *command.uvOverlapEnabled; }
+            if (command.uvRangeEnabled) { settings.uvRangeEnabled = *command.uvRangeEnabled; }
+            if (command.uvThreshold) { settings.uvThreshold = *command.uvThreshold; }
+            if (command.uvNearCollapse) { settings.uvNearCollapse = *command.uvNearCollapse; }
+            if (command.uvRangeMinimum) { settings.uvRangeMinimum = *command.uvRangeMinimum; }
+            if (command.uvRangeMaximum) { settings.uvRangeMaximum = *command.uvRangeMaximum; }
+            if (command.uvOverlapScope) { settings.uvOverlapScope = *command.uvOverlapScope == "selected_patches" ? UvOverlapScope::selectedPatches : UvOverlapScope::perPatch; }
+            if (settings.uvRangeMinimum > settings.uvRangeMaximum) { throw std::invalid_argument("UV highlight maximum must be at least minimum."); }
             if (command.uvSeparated) { settings.uvSeparated = *command.uvSeparated; }
             if (command.uvLinkedSelection) { settings.uvLinkedSelection = *command.uvLinkedSelection; }
-            if (command.uvMetric) { settings.uvMetric = *command.uvMetric == "area" ? UvQualityMetric::area : *command.uvMetric == "orientation" ? UvQualityMetric::orientation : UvQualityMetric::angle; }
+            if (command.uvMetric) { settings.uvMetric = parseUvQualityMetric(*command.uvMetric); }
             if (command.uvNormalization) { settings.uvNormalization = *command.uvNormalization == "absolute" ? UvAreaNormalization::absolute : UvAreaNormalization::perPatch; }
             if (command.uvColor) { settings.uvGrid.mode = *command.uvColor == "u" ? UvColorMode::u : *command.uvColor == "v" ? UvColorMode::v : UvColorMode::grid; }
             if (command.uvMinimum) { settings.uvGrid.minimum = *command.uvMinimum; }
@@ -634,6 +646,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::annotationReshape: case A::annotationMove: case A::annotationDelete:
     case A::comparisonFindings: case A::comparisonExport: case A::comparisonExportStatus: case A::comparisonExportCancel:
     case A::comparisonResults: case A::comparisonFocus: case A::sceneUndo: case A::sceneRedo:
+    case A::comparisonUvTriangles: case A::comparisonUvProbe: case A::comparisonUvProbeGet: case A::comparisonUvProbeClear:
         throw std::invalid_argument("Command requires a runtime adapter.");
     case A::comparisonCreate: case A::comparisonDelete: case A::comparisonSet: case A::comparisonAdd:
     case A::comparisonRemove: case A::comparisonClear: case A::comparisonSwap: case A::comparisonEnable: case A::comparisonRun: case A::comparisonCancel:
@@ -690,7 +703,7 @@ Json controlFocusComparisonDiagnostic(UiState& state, const MeshComparison& resu
         {"camera", controlCameraInfo(state)}};
 }
 
-Json controlComparisonResults(const MeshComparison& result, double tolerance, bool includeDetectors)
+Json controlComparisonResults(const MeshComparison& result, double tolerance, bool includeDetectors, const ObjectIdFormatter& formatId)
 {
     const auto surface = [&result, tolerance, includeDetectors](const SurfaceComparison& value) {
         const auto& diagnostics = value.diagnostics;
@@ -741,13 +754,40 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
             if (++count > 1000) { continue; }
             findings.push_back({{"sourcePartId",t.partId}, {"triangle",t.triangle}, {"collapsedUv",t.collapsed},
                 {"degenerateSurface",t.degenerateSurface}, {"mixedOrientation",t.mixedOrientation}, {"orientation",t.orientation}});
+            if (formatId) { findings.back()["sourceObject"] = formatId(t.partId); }
         }
+        Json pairs = Json::array();
+        for (const auto& pair : q.overlaps) {
+            const auto& first = q.triangles[pair.first]; const auto& second = q.triangles[pair.second];
+            pairs.push_back({{"firstPartId",first.partId},{"firstTriangle",first.triangle},
+                {"secondPartId",second.partId},{"secondTriangle",second.triangle},{"crossPatch",pair.crossPatch}});
+            if (formatId) {
+                pairs.back()["firstObject"] = formatId(first.partId);
+                pairs.back()["secondObject"] = formatId(second.partId);
+            }
+        }
+        const auto& stats = q.statistics;
         answer["uvQuality"] = {{"normalization",q.normalization == UvAreaNormalization::perPatch ? "per_patch" : "absolute"},
             {"collapsedTriangles",q.collapsed}, {"missingUvTriangles",q.missing}, {"degenerateSurfaceTriangles",q.degenerateSurface},
             {"mixedOrientationPatches",q.mixedOrientationPatches}, {"validTriangles",valid},
             {"maximumAngleDegrees",valid ? Json(angleMax) : Json(nullptr)},
             {"minimumAreaLog2",valid ? Json(areaMin) : Json(nullptr)}, {"maximumAreaLog2",valid ? Json(areaMax) : Json(nullptr)},
-            {"findings",std::move(findings)}, {"findingCount",count}, {"findingsTruncated",count > 1000}};
+            {"findings",std::move(findings)}, {"findingCount",count}, {"findingsTruncated",count > 1000},
+            {"metric",uvQualityMetricKey(q.metric)}, {"convention","surface_to_uv"},
+            {"statistics",{{"count",stats.count},{"minimum",stats.count ? Json(stats.minimum) : Json(nullptr)},
+                {"median",stats.count ? Json(stats.median) : Json(nullptr)}, {"p95",stats.count ? Json(stats.percentile95) : Json(nullptr)},
+                {"maximum",stats.count ? Json(stats.maximum) : Json(nullptr)}, {"threshold",q.settings.uvThreshold},
+                {"thresholdCount",stats.thresholdCount}, {"thresholdAreaPercent",stats.thresholdAreaPercent},
+                {"thresholdEnabled",q.settings.uvThresholdEnabled},
+                {"highlightedCount",stats.highlightedCount}, {"highlightedAreaPercent",stats.highlightedAreaPercent},
+                {"rangeEnabled",q.settings.uvRangeEnabled}, {"rangeMinimum",q.settings.uvRangeMinimum}, {"rangeMaximum",q.settings.uvRangeMaximum},
+                {"nearCollapseCount",stats.nearCollapseCount}, {"nearCollapseThreshold",q.settings.uvNearCollapse}}},
+            {"histogram",{{"minimum",stats.histogramMinimum},{"maximum",stats.histogramMaximum},
+                {"counts",stats.counts},{"surfaceAreas",stats.areas}}},
+            {"overlaps",{{"checked",q.overlapChecked},{"truncated",q.overlapTruncated},
+                {"scope",q.settings.uvOverlapScope == UvOverlapScope::selectedPatches ? "selected_patches" : "per_patch"},
+                {"affectedTriangles",q.overlappingTriangles},{"crossPatchPairs",q.crossPatchPairs},
+                {"candidateCount",q.overlapCandidates},{"pairs",std::move(pairs)}}}};
     }
     return answer;
 

@@ -1,3 +1,4 @@
+#include "uv_quality_view.h"
 #include "marker_pick.h"
 #include "comparison_view.h"
 #include "analysis_presentation.h"
@@ -1746,7 +1747,7 @@ void drawUvFindings(UiState& state, const Mesh& display, uint64_t signature, Sce
             for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) {
                 const auto index = static_cast<size_t>(row);
                 const auto& triangle = quality.triangles[quality.findings[index]];
-                const auto label = std::to_string(index + 1) + " | " + uvFindingLabel(triangle);
+                const auto label = std::to_string(index + 1) + " | " + uvFindingLabel(triangle, quality.settings);
                 // Selection can replace the focus, so never retain its pointer across a click.
                 const auto* selected = focusedUvFinding(state, signature, id);
                 if (ImGui::Selectable(label.c_str(), selected && selected->index == index)) {
@@ -1776,20 +1777,9 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     ImGui::SetNextItemWidth(-1);
     if (ImGui::Combo("##uv_view", &viewMode, views, 2)) { settings.uvView = static_cast<UvView>(viewMode); }
     if (settings.type == AnalysisType::uvQuality) {
-        ImGui::TextUnformatted("Metric");
-        int metric = static_cast<int>(settings.uvMetric);
-        const char* metrics[] = {"Angle distortion", "Area stretch", "UV orientation"};
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::Combo("##uv_metric", &metric, metrics, 3)) { settings.uvMetric = static_cast<UvQualityMetric>(metric); }
-        if (settings.uvMetric == UvQualityMetric::area) {
-            ImGui::TextUnformatted("Area normalization");
-            int normalization = static_cast<int>(settings.uvNormalization);
-            const char* normalizations[] = {"Per patch (relative)", "Absolute UV / world area"};
-            ImGui::SetNextItemWidth(-1);
-            if (ImGui::Combo("##uv_normalization", &normalization, normalizations, 2)) {
-                settings.uvNormalization = static_cast<UvAreaNormalization>(normalization);
-            }
-        }
+        const auto* quality = comparisonStagesReady(runtime, state, id, comparisonSource)
+            ? runtime.result.original.source.uvQuality.get() : nullptr;
+        drawUvQualityControls(state, settings, quality, id);
     } else {
         drawVisibilityField("UV coloring", settings.uvGrid.enabled);
         int mode = static_cast<int>(settings.uvGrid.mode);
@@ -1822,10 +1812,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     ImGui::EndDisabled();
     if (settings.type == AnalysisType::uvQuality) {
         ImGui::TextUnformatted("Legend"); ImGui::SameLine();
-        drawInformationIcon("uv_legend_info", "UV colors",
-            settings.uvMetric == UvQualityMetric::angle ? "Maximum corner angle difference per triangle. Blue: 0 degrees; yellow: 45; red: 90 or more."
-            : settings.uvMetric == UvQualityMetric::area ? "Magnitude of area stretch or compression. Blue: ratio 1; red: ratio 8 or 1/8 and beyond. Per-patch mode divides by total UV area / total surface area."
-            : "Positive and negative winding are both valid. A uniformly mirrored patch is valid; mixed signs within a patch need inspection.");
+        drawInformationIcon("uv_legend_info", "UV colors", uvQualityLegend(settings.uvMetric));
         const float height = drawUvQualityLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
             ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), settings.uvMetric);
         ImGui::Dummy({0, height});
@@ -2075,7 +2062,7 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
         const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
         for (const auto& node : runtime.result.original.source.nodes) {
             const bool uvQuality = settings.type == AnalysisType::uvQuality;
-            const auto uv = uvQuality ? std::array<float,4>{0,0,6,0} : uvColorParameters(settings.uvGrid,node.hasTexcoords,true);
+            const auto uv = uvQuality ? std::array<float,4>{0,0,6,settings.uvMetric == UvQualityMetric::area ? 1.0f : 0.0f} : uvColorParameters(settings.uvGrid,node.hasTexcoords,true);
             woby::graphics::setTransform(identity);
             woby::graphics::setUniform(runtimes.parameters, uv.data());
             woby::graphics::setUniform(colorUniform, gray.data());

@@ -1,5 +1,6 @@
 #include "comparison_legend.h"
 #include "comparison_report.h"
+#include "uv_quality.h"
 
 #include <algorithm>
 
@@ -7,14 +8,19 @@ namespace woby {
 float drawUvQualityLegend(ImDrawList& draw, ImVec2 position, float width, float fontSize, UvQualityMetric metric)
 {
     for (int i = 0; i < 64; ++i) {
-        const double value = metric == UvQualityMetric::orientation ? (i < 32 ? 0.0 : 1.0) : static_cast<double>(i) / 63;
-        const auto c = surfaceQualityColor(value, SurfaceQualityMetric::longestEdge);
+        const double value = metric == UvQualityMetric::orientation ? (i < 32 ? 0.0 : 1.0)
+            : metric == UvQualityMetric::overlap ? (i < 21 ? 0.0 : i < 43 ? .5 : 1.0) : static_cast<double>(i) / 63;
+        const auto c = uvQualityColor(value, metric == UvQualityMetric::area);
         draw.AddRectFilled({position.x + width * static_cast<float>(i) / 64, position.y},
             {position.x + width * static_cast<float>(i + 1) / 64, position.y + fontSize},
             ImGui::ColorConvertFloat4ToU32({c[0], c[1], c[2], 1}));
     }
-    const char* left = metric == UvQualityMetric::angle ? "0 deg" : metric == UvQualityMetric::area ? "Ratio 1" : "Positive";
-    const char* right = metric == UvQualityMetric::angle ? ">= 90 deg" : metric == UvQualityMetric::area ? ">= 8 or <= 1/8" : "Negative";
+    const char* left = metric == UvQualityMetric::angle ? "0 deg" : metric == UvQualityMetric::area ? "<= 1/8"
+        : metric == UvQualityMetric::anisotropy ? "1" : metric == UvQualityMetric::minStretch ? ">= 1"
+        : metric == UvQualityMetric::overlap ? "None" : "Positive";
+    const char* right = metric == UvQualityMetric::angle ? ">= 90 deg" : metric == UvQualityMetric::area ? ">= 8"
+        : metric == UvQualityMetric::anisotropy ? ">= 64" : metric == UvQualityMetric::minStretch ? "<= 0.01"
+        : metric == UvQualityMetric::overlap ? "Within patch" : "Negative";
     draw.AddText(ImGui::GetFont(), fontSize, {position.x, position.y + fontSize + 4}, IM_COL32_WHITE, left);
     const float rightWidth = ImGui::GetFont()->CalcTextSizeA(fontSize, 10000, 0, right).x;
     draw.AddText(ImGui::GetFont(), fontSize, {position.x + std::max(0.0f, width - rightWidth), position.y + fontSize + 4},

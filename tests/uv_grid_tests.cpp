@@ -155,6 +155,11 @@ TEST_CASE("UV bounds cache ignores presentation and quality edits and is absent 
     }
     settings.uvMetric = woby::UvQualityMetric::area;
     settings.uvNormalization = woby::UvAreaNormalization::absolute;
+    settings.uvOverlapEnabled = true;
+    settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+    settings.uvThresholdEnabled = true; settings.uvThreshold = 3;
+    settings.uvNearCollapse = .02f;
+    settings.uvRangeEnabled = true; settings.uvRangeMinimum = -2; settings.uvRangeMaximum = 2;
     settings.uvGrid.densityU = 17;
     settings.showEdges = !settings.showEdges;
     woby::setComparisonSettings(state, settings, id);
@@ -289,7 +294,40 @@ TEST_CASE("UV worker snapshot owns inputs and prepares matching geometry quality
     CHECK_THROWS((void)woby::prepareUvComparisonInputs(snapshot, stop.get_token()));
     CHECK_THROWS((void)woby::uvLayoutMesh(expected, true, stop.get_token()));
     CHECK_THROWS((void)woby::analyzeUvQuality(expected, settings.uvNormalization, settings.uvMetric, stop.get_token()));
+    CHECK_THROWS((void)woby::analyzeUvQuality(expected, settings, stop.get_token()));
     CHECK_THROWS((void)woby::uvQualityVertices(expected, stop.get_token()));
+}
+
+TEST_CASE("UV worker prepares overlap colors and cached findings before publishing source results")
+{
+    UvFixture f;
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(f.state, id);
+    settings.uvMetric = woby::UvQualityMetric::overlap;
+    settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+    settings.uvRangeEnabled = true; settings.uvRangeMinimum = .5f; settings.uvRangeMaximum = .5f;
+    SUBCASE("surface") { settings.uvView = woby::UvView::surface; }
+    SUBCASE("separated layout") { settings.uvView = woby::UvView::layout; settings.uvSeparated = true; }
+    woby::setComparisonSettings(f.state, settings, id);
+    const auto prepared = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
+    const auto& mesh = (*prepared.meshes)[0];
+    REQUIRE(mesh.uvQuality);
+    CHECK(mesh.uvQuality->overlapChecked);
+    CHECK(mesh.uvQuality->crossPatchPairs == 1);
+    CHECK(mesh.uvQuality->statistics.highlightedCount == 2);
+    CHECK(mesh.uvQuality->findings == std::vector<size_t>{0, 1, 2});
+    REQUIRE(prepared.buffers[0].quality.size() >= 6);
+    for (size_t i = 0; i < 6; ++i) {
+        CHECK(prepared.buffers[0].quality[i].texcoord == std::array<float, 2>{.5f, 1});
+    }
+    const auto result = woby::computeComparisonStages(mesh, {}, woby::comparisonSource);
+    CHECK(result.original.source.uvQuality == mesh.uvQuality);
+    woby::selectUvFinding(f.state, mesh, woby::comparisonGeometrySignature(f.state, id), 0, id);
+    const auto* comparison = woby::findComparison(f.state, id);
+    REQUIRE(comparison->uvProbe);
+    CHECK(comparison->uvProbe->partId == f.state.files[0].groupSettings[0].objectId);
+    CHECK(comparison->uvProbe->triangle == 1);
 }
 
 TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes edited metrics")
@@ -1096,4 +1134,288 @@ TEST_CASE("UV finding navigation wraps through the complete list beyond one hund
     woby::selectUvFinding(f.state, display, signature, 125, id);
     CHECK(woby::focusedUvFinding(f.state, signature, id)->index == 1);
     CHECK(f.state.selectedSceneObjects == selection);
+}
+
+TEST_CASE("Extended UV quality settings persist through scenes views and undo redo")
+{
+    UvFixture f;
+    auto& state = f.state;
+    const auto id = woby::createComparison(state,woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(state,{state.files[0].objectId},woby::ComparisonSide::a,true,id);
+    auto settings = woby::comparisonSettings(state,id);
+    settings.uvThresholdEnabled = true; settings.uvThreshold = 3.25f;
+    settings.uvNearCollapse = .002f; settings.uvOverlapEnabled = true;
+    settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+    settings.uvRangeEnabled = true; settings.uvRangeMinimum = -1.5f; settings.uvRangeMaximum = 2.5f;
+    for (auto metric : {woby::UvQualityMetric::anisotropy,woby::UvQualityMetric::minStretch,woby::UvQualityMetric::overlap}) {
+        settings.uvMetric = metric;
+        woby::setComparisonSettings(state,settings,id);
+        const auto saved = woby::createSceneDocument(state);
+        const auto path = f.root / "extended-quality.woby";
+        woby::writeSceneDocument(path,saved);
+        auto restored = woby::readSceneDocument(path);
+        for (auto& file : restored.files) { file.path = woby::sceneAbsolutePath(path,file.path); }
+        CHECK(restored == saved);
+    }
+    const auto view = woby::createView(state);
+    settings.uvMetric = woby::UvQualityMetric::angle; settings.uvThreshold = 45;
+    settings.uvOverlapScope = woby::UvOverlapScope::perPatch;
+    settings.uvRangeEnabled = false;
+    woby::setComparisonSettings(state,settings,id);
+    woby::applyView(state,view);
+    CHECK(woby::comparisonSettings(state,id).uvMetric == woby::UvQualityMetric::overlap);
+    CHECK(woby::comparisonSettings(state,id).uvThreshold == 3.25f);
+    CHECK(woby::comparisonSettings(state,id).uvRangeEnabled);
+    const auto saved = woby::createSceneDocument(state);
+    woby::SceneHistory history; woby::resetSceneHistory(history,state);
+    woby::setComparisonSettings(state,settings,id);
+    const auto changed = woby::createSceneDocument(state);
+    REQUIRE(woby::recordSceneHistory(history,state));
+    auto step = woby::prepareSceneHistoryStep(history,state,saved,false);
+    REQUIRE(step); woby::commitSceneHistoryStep(history,state,std::move(*step),false);
+    CHECK(woby::createSceneDocument(state) == saved);
+    step = woby::prepareSceneHistoryStep(history,state,saved,true);
+    REQUIRE(step); woby::commitSceneHistoryStep(history,state,std::move(*step),true);
+    CHECK(woby::createSceneDocument(state) == changed);
+    settings.uvThreshold = -1; settings.uvNearCollapse = std::numeric_limits<float>::infinity();
+    settings.uvRangeEnabled = true; settings.uvRangeMinimum = 2; settings.uvRangeMaximum = 1;
+    woby::setComparisonSettings(state,settings,id);
+    const auto valid = woby::comparisonSettings(state,id);
+    CHECK(valid.uvThreshold == 2); CHECK(valid.uvNearCollapse == .01f); CHECK_FALSE(valid.uvRangeEnabled);
+}
+
+TEST_CASE("Extended UV CLI settings reject invalid input without partial changes")
+{
+    UvFixture f;
+    const auto clean = woby::createSceneDocument(f.state);
+    const auto id = woby::createComparison(f.state,woby::AnalysisType::uvQuality);
+    const auto format = [](woby::SceneObjectId value) { return std::to_string(value); };
+    const auto& method = woby::controlMethod(woby::ControlAction::comparisonSet);
+    const nlohmann::json params = {{"target",format(id)},{"uvMetric","anisotropy"},
+        {"uvThresholdEnabled",true},{"uvThreshold",5},{"uvNearCollapse",.001},
+        {"uvOverlapEnabled",true},{"uvOverlapScope","selected_patches"},
+        {"uvRangeEnabled",true},{"uvRangeMinimum",2},{"uvRangeMaximum",8}};
+    auto command = woby::parseControlOperation(method,params); command.objectId = id;
+    CHECK(woby::controlOperationParams(command)["uvOverlapScope"] == "selected_patches");
+    (void)woby::applyControlSceneOperation(f.state,clean,command,format,200,800);
+    const auto settings = woby::comparisonSettings(f.state,id);
+    CHECK(settings.uvMetric == woby::UvQualityMetric::anisotropy);
+    CHECK(settings.uvThreshold == 5); CHECK(settings.uvOverlapScope == woby::UvOverlapScope::selectedPatches);
+    const auto saved = woby::createSceneDocument(f.state);
+    command.uvRangeMinimum = 20.0f; command.name = "Must not change";
+    CHECK_THROWS((void)woby::applyControlSceneOperation(f.state,clean,command,format,200,800));
+    CHECK(woby::createSceneDocument(f.state) == saved);
+    CHECK_THROWS(woby::parseControlOperation(method,{{"target",format(id)},{"uvThreshold",-1}}));
+    CHECK_THROWS(woby::parseControlOperation(method,{{"target",format(id)},{"uvNearCollapse",0}}));
+    CHECK_THROWS(woby::parseControlOperation(method,{{"target",format(id)},{"uvOverlapScope","all"}}));
+    const auto meshId = woby::createComparison(f.state,woby::AnalysisType::mesh);
+    command = woby::parseControlOperation(method,params); command.objectId = meshId;
+    CHECK_THROWS((void)woby::applyControlSceneOperation(f.state,clean,command,format,200,800));
+    const auto uvId = woby::createComparison(f.state,woby::AnalysisType::uv);
+    command.objectId = uvId;
+    CHECK_THROWS((void)woby::applyControlSceneOperation(f.state,clean,command,format,200,800));
+}
+
+TEST_CASE("UV triangle probes link barycentric points on source and separated layouts")
+{
+    UvFixture f;
+    auto& state = f.state;
+    const auto id = woby::createComparison(state,woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(state,{state.files[0].objectId},woby::ComparisonSide::a,true,id);
+    const auto sourceId = state.files[0].groupSettings[0].objectId;
+    auto settings = woby::comparisonSettings(state,id);
+    settings.uvView = woby::UvView::layout; settings.uvSeparated = true;
+    woby::setComparisonSettings(state,settings,id);
+    auto parts = woby::scenePickParts(state);
+    std::erase_if(parts,[&](const auto& p) { return p.objectId != sourceId; });
+    woby::ScenePickView view;
+    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data()); view.width = view.height = 100;
+    woby::SceneTriangleHit hit;
+    CHECK(woby::pickSceneObject(parts,view,{60,35},&hit) == sourceId);
+    REQUIRE(hit.triangle == 1); CHECK(hit.analysisId == 0);
+    CHECK(hit.barycentric[0] == doctest::Approx(.5));
+    CHECK(hit.barycentric[1] == doctest::Approx(.2)); CHECK(hit.barycentric[2] == doctest::Approx(.3));
+    const auto saved = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state); const auto revision = state.sceneEditRevision;
+    REQUIRE(woby::setUvProbe(state,id,sourceId,hit.triangle,hit.barycentric));
+    CHECK_FALSE(state.isDirty); CHECK(state.sceneEditRevision == revision);
+    CHECK(woby::createSceneDocument(state) == saved);
+    CHECK_FALSE(woby::setUvProbe(state,id,sourceId,999,{1,0,0}));
+    CHECK_FALSE(woby::setUvProbe(state,id,sourceId,1,{1,1,1}));
+    const auto mesh = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id);
+    const auto result = woby::computeComparisonStages(mesh,{},woby::comparisonSource);
+    woby::appendComparisonPickParts(parts,*woby::findComparison(state,id),settings,result,false);
+    std::vector<std::array<float,3>> lines;
+    woby::uvProbeLines(parts,state,lines);
+    REQUIRE(lines.size() == 24); // Three triangle edges + a point cross in each view.
+    CHECK(lines[0] != lines[12]);
+    // Pick the actual separated 2D copy and recover its source triangle/point.
+    state.upAxis = woby::SceneUpAxis::y;
+    // Layout stays in world XZ, regardless of the selected scene up axis.
+    view.view = {1,0,0,0, 0,0,-1,0, 0,1,0,0, 0,0,1,1};
+    woby::setComparisonTranslation(state,id,{0,0,0});
+    const auto layout = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id);
+    const auto layoutResult = woby::computeComparisonStages(layout,{},woby::comparisonSource);
+    parts.clear();
+    woby::appendComparisonPickParts(parts,*woby::findComparison(state,id),settings,layoutResult,false);
+    std::array<double,3> point{};
+    const std::array<double,3> weights{.5,.2,.3};
+    for (size_t k=0;k<3;++k) {
+        const auto p = woby::meshPosition(layout,layout.indices[k]);
+        for (size_t j=0;j<3;++j) { point[j] += p[j]*weights[k]; }
+    }
+    CHECK(woby::pickSceneObject(parts,view,{static_cast<float>(50+50*point[0]),static_cast<float>(50-50*point[2])},&hit) == sourceId);
+    CHECK(hit.analysisId == id); CHECK(hit.triangle == 1);
+    for (size_t k=0;k<3;++k) { CHECK(hit.barycentric[k] == doctest::Approx(weights[k])); }
+    REQUIRE(woby::setUvProbe(state,id,sourceId,hit.triangle,hit.barycentric));
+    const auto copy = woby::duplicateComparison(state,id);
+    CHECK_FALSE(woby::findComparison(state,copy)->uvProbe);
+    woby::removeComparison(state,copy);
+    // Geometry changes invalidate the transient probe rather than moving it to another triangle.
+    settings.uvSeparated = false; woby::setComparisonSettings(state,settings,id);
+    woby::uvProbeLines(parts,state,lines); CHECK(lines.empty());
+    woby::clearSceneSelection(state); CHECK_FALSE(woby::findComparison(state,id)->uvProbe);
+    woby::isolateUvObjects(state,{state.files[0].groupSettings[1].objectId},id);
+    CHECK_FALSE(woby::setUvProbe(state,id,sourceId,1,weights));
+}
+
+
+TEST_CASE("UV CLI commands preserve barycentric precision and validate pages")
+{
+    using A = woby::ControlAction;
+    using Json = nlohmann::json;
+    std::vector<std::string> words = {"woby", "ctl", "--instance", "uv", "analysis", "uv-probe", "analysis",
+        "--object", "part", "--index", "1", "--barycentric", "0.1", "0.2", "0.7"};
+    std::vector<char*> argv;
+    for (auto& word : words) { argv.push_back(word.data()); }
+    const auto parsed = woby::parseCommandLine(static_cast<int>(argv.size()), argv.data());
+    REQUIRE(parsed.control.operation.barycentric);
+    CHECK(parsed.control.operation.action == A::comparisonUvProbe);
+    CHECK(*parsed.control.operation.barycentric == std::array<double,3>{.1,.2,.7});
+    const auto params = woby::controlOperationParams(parsed.control.operation);
+    CHECK(woby::parseControlOperation(woby::controlMethod(A::comparisonUvProbe),params).barycentric
+        == parsed.control.operation.barycentric);
+    const auto& method = woby::controlMethod(A::comparisonUvProbe);
+    CHECK_THROWS(woby::parseControlOperation(method, {{"target","analysis"},{"object","part"}}));
+    for (const auto& value : {Json::array({.5,.5}), Json::array({1,1,1}), Json::array({-1,1,1}),
+        Json::array({0,0,std::numeric_limits<double>::infinity()}), Json::array({"x",0,1})}) {
+        CHECK_THROWS(woby::parseControlOperation(method,
+            {{"target","analysis"},{"object","part"},{"index",1},{"barycentric",value}}));
+    }
+    CHECK_THROWS(woby::parseControlOperation(method, {{"target","analysis"},{"object","part"},{"index",0}}));
+    for (const auto action : {A::comparisonUvProbeGet, A::comparisonUvProbeClear, A::comparisonUvTriangles}) {
+        const auto& m = woby::controlMethod(action);
+        CHECK(woby::findControlMethod(m.method) == &m);
+        CHECK(woby::parseControlOperation(m, {{"target","analysis"}}).action == action);
+    }
+    const auto& page = woby::controlMethod(A::comparisonUvTriangles);
+    CHECK_THROWS(woby::parseControlOperation(page, {{"target","analysis"},{"limit",0}}));
+    CHECK_THROWS(woby::parseControlOperation(page, {{"target","analysis"},{"limit",101}}));
+    CHECK_THROWS(woby::parseControlOperation(page, {{"target","analysis"},{"offset",-1}}));
+}
+
+TEST_CASE("UV CLI pages expose valid metrics highlights missing data and usable source IDs")
+{
+    UvFixture f;
+    const auto id = woby::createComparison(f.state,woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state,{f.state.files[0].objectId},woby::ComparisonSide::a,true,id);
+    auto settings = woby::comparisonSettings(f.state,id);
+    settings.uvMetric = woby::UvQualityMetric::anisotropy;
+    settings.uvRangeEnabled = true; settings.uvRangeMinimum = 1; settings.uvRangeMaximum = 1;
+    settings.uvOverlapEnabled = true; settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+    woby::setComparisonSettings(f.state,settings,id);
+    const auto mesh = woby::comparisonWorldMesh(f.state,woby::ComparisonSide::a,id);
+    const auto result = woby::computeComparisonStages(mesh,{},woby::comparisonSource);
+    const auto& q = *result.original.source.uvQuality;
+    const auto format = [](woby::SceneObjectId part) { return "part-"+std::to_string(part); };
+    const auto page = woby::controlUvTrianglePage(q,0,1,format);
+    CHECK(page["total"] == 3); CHECK(page["nextOffset"] == 1);
+    REQUIRE(page["items"].size() == 1);
+    const auto& t = page["items"][0];
+    CHECK(t["sourcePartId"] == format(f.state.files[0].groupSettings[0].objectId));
+    CHECK(t["triangle"] == 1); CHECK(t["anisotropy"] == 1); CHECK(t["areaLog2"] == 0);
+    CHECK(t["highlighted"] == true); CHECK(t["nearCollapse"] == false);
+    CHECK(t["crossPatchOverlap"] == true); CHECK(t["overlapping"] == false);
+    CHECK(page["overlapChecked"] == true); CHECK(page["overlapTruncated"] == false);
+    const auto missing = woby::controlUvTrianglePage(q,2,100,format);
+    CHECK(missing["nextOffset"].is_null()); REQUIRE(missing["items"].size() == 1);
+    CHECK(missing["items"][0]["missingUv"] == true); CHECK(missing["items"][0]["value"].is_null());
+    CHECK(missing["items"][0]["minStretch"].is_null()); CHECK(missing["items"][0]["uvVertices"].is_null());
+    CHECK_FALSE(missing["items"][0]["highlighted"].get<bool>());
+    CHECK(woby::controlUvTrianglePage(q,std::numeric_limits<size_t>::max(),100,format)["items"].empty());
+    CHECK_THROWS(woby::controlUvTrianglePage(q,0,0,format));
+    CHECK_THROWS(woby::controlUvTrianglePage(q,0,101,format));
+    const auto report = woby::controlComparisonResults(result,.001,true,format)["uvQuality"];
+    CHECK(report["statistics"]["highlightedCount"] == 2);
+    CHECK(report["statistics"]["highlightedAreaPercent"] == 100);
+    REQUIRE(report["overlaps"]["pairs"].size() == 1);
+    CHECK(report["overlaps"]["pairs"][0]["firstObject"] == t["sourcePartId"]);
+    const auto unchecked = woby::controlUvTrianglePage(*mesh.uvQuality,0,1,format);
+    CHECK(unchecked["items"][0]["overlapping"].is_null());
+}
+
+TEST_CASE("UV CLI probes link transformed source and layout points without editing the document")
+{
+    using A = woby::ControlAction;
+    UvFixture f;
+    auto& state = f.state;
+    state.files[0].fileSettings.translation = {1,2,3};
+    state.files[0].groupSettings[0].translation = {10,20,30};
+    state.sceneNodes[0].settings.translation = {4,5,6};
+    const auto id = woby::createComparison(state,woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(state,{state.files[0].objectId},woby::ComparisonSide::a,true,id);
+    auto settings = woby::comparisonSettings(state,id);
+    settings.uvView = woby::UvView::layout; settings.uvSeparated = true;
+    woby::setComparisonSettings(state,settings,id);
+    woby::setComparisonTranslation(state,id,{50,60,70});
+    const auto part = state.files[0].groupSettings[0].objectId;
+    const auto format = [](woby::SceneObjectId object) { return std::to_string(object); };
+    auto set = woby::parseControlOperation(woby::controlMethod(A::comparisonUvProbe),
+        {{"target",format(id)},{"object",format(part)},{"index",1},{"barycentric",{.5,.2,.3}}});
+    set.objectId = id; set.memberId = part;
+    auto get = set; get.action = A::comparisonUvProbeGet;
+    auto clear = set; clear.action = A::comparisonUvProbeClear;
+    CHECK(woby::controlUvProbe(state,nullptr,0,get,format)["probe"].is_null());
+    CHECK_THROWS(woby::controlUvProbe(state,nullptr,0,set,format));
+    const auto mesh = woby::comparisonWorldMesh(state,woby::ComparisonSide::a,id);
+    const auto result = woby::computeComparisonStages(mesh,{},woby::comparisonSource);
+    const auto signature = woby::comparisonGeometrySignature(state,id);
+    const auto saved = woby::createSceneDocument(state);
+    woby::clearSceneDirty(state); const auto revision = state.sceneEditRevision;
+    const auto answer = woby::controlUvProbe(state,&result,signature,set,format);
+    const auto& probe = answer["probe"];
+    REQUIRE_FALSE(probe.is_null()); CHECK(answer["stale"] == false);
+    CHECK(probe["metric"] == "angle"); CHECK(probe["convention"] == "surface_to_uv");
+    CHECK(probe["normalization"] == "per_patch");
+    CHECK(probe["sourcePartId"] == format(part)); CHECK(probe["triangle"] == 1);
+    CHECK(probe["uv"][0].get<double>() == doctest::Approx(.2));
+    CHECK(probe["uv"][1].get<double>() == doctest::Approx(.3));
+    CHECK(probe["surfacePosition"][0].get<double>() == doctest::Approx(15.2));
+    CHECK(probe["surfacePosition"][1].get<double>() == doctest::Approx(27.3));
+    CHECK(probe["surfacePosition"][2].get<double>() == doctest::Approx(39));
+    CHECK(probe["displayPosition"] != probe["surfacePosition"]);
+    CHECK(woby::controlUvProbe(state,&result,signature,get,format) == answer);
+    CHECK_FALSE(state.isDirty); CHECK(state.sceneEditRevision == revision);
+    CHECK(woby::createSceneDocument(state) == saved);
+    auto invalid = set; invalid.index = 999;
+    CHECK_THROWS(woby::controlUvProbe(state,&result,signature,invalid,format));
+    invalid = set; invalid.barycentric = std::array<double,3>{1,1,1};
+    CHECK_THROWS(woby::controlUvProbe(state,&result,signature,invalid,format));
+    CHECK(woby::controlUvProbe(state,&result,signature,get,format) == answer);
+    const auto unavailable = woby::controlUvProbe(state,nullptr,0,get,format);
+    CHECK(unavailable["stale"] == true); CHECK(unavailable["probe"].is_null());
+    settings.uvLinkedSelection = false; woby::setComparisonSettings(state,settings,id);
+    CHECK(woby::controlUvProbe(state,&result,signature,get,format)["stale"] == true);
+    CHECK_THROWS(woby::controlUvProbe(state,&result,signature,set,format));
+    CHECK(woby::controlUvProbe(state,nullptr,0,clear,format)["probe"].is_null());
+    CHECK_FALSE(woby::findComparison(state,id)->uvProbe);
+    CHECK(woby::controlUvProbe(state,nullptr,0,get,format)["stale"] == false);
+    settings.uvLinkedSelection = true; woby::setComparisonSettings(state,settings,id);
+    set.barycentric.reset();
+    const auto centroid = woby::controlUvProbe(state,&result,woby::comparisonGeometrySignature(state,id),set,format);
+    CHECK(centroid["probe"]["uv"][0].get<double>() == doctest::Approx(1.0/3));
+    woby::isolateUvObjects(state,{state.files[0].groupSettings[1].objectId},id);
+    CHECK_THROWS(woby::controlUvProbe(state,&result,woby::comparisonGeometrySignature(state,id),set,format));
+    auto wrong = get; wrong.objectId = woby::createComparison(state,woby::AnalysisType::mesh);
+    CHECK_THROWS(woby::controlUvProbe(state,nullptr,0,wrong,format));
 }

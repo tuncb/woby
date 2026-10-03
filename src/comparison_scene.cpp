@@ -127,6 +127,27 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
 }
 } // namespace
 
+std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
+    const UiState& state, SceneObjectId analysisId, SceneObjectId partId, size_t triangle)
+{
+    std::optional<std::array<Coordinate, 3>> result;
+    visitParts(state, ComparisonSide::a, analysisId, [&](const UiFileState& file, size_t groupIndex, const double* parent) {
+        if (file.groupSettings[groupIndex].objectId != partId) { return; }
+        const auto& node = file.mesh.nodes[groupIndex];
+        if (triangle == 0 || triangle > node.indexCount / 3) { return; }
+        double local[16], model[16];
+        groupTransformMatrix(file.groupSettings[groupIndex], local);
+        coordinateMultiply(model, parent, local);
+        std::array<Coordinate, 3> points;
+        for (size_t k = 0; k < 3; ++k) {
+            points[k] = transformCoordinate(model, meshPosition(file.mesh,
+                file.mesh.indices.at(node.indexOffset + (triangle - 1) * 3 + k)));
+        }
+        result = points;
+    });
+    return result;
+}
+
 Mesh uvLayoutMesh(const Mesh& source, bool separated, std::stop_token stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
@@ -348,7 +369,7 @@ static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSetting
         if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
     });
     if (settings.type == AnalysisType::uvQuality) {
-        result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, settings.uvNormalization, settings.uvMetric, stop));
+        result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, settings, stop));
     }
     if (isUvAnalysis(settings.type) && settings.uvView == UvView::layout) {
         return uvLayoutMesh(result, settings.uvSeparated, stop);
@@ -407,6 +428,11 @@ PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot
         auto& mesh = (*meshes)[side];
         auto& buffers = result.buffers[side];
         mesh = comparisonWorldMesh(snapshot, side == 0 ? ComparisonSide::a : ComparisonSide::b, stop);
+        if (mesh.uvQuality) {
+            auto quality = std::make_shared<UvQuality>(*mesh.uvQuality);
+            inspectUvOverlaps(*quality, stop);
+            mesh.uvQuality = std::move(quality);
+        }
         if (mesh.indices.empty()) { continue; }
         // Match the previous upload path: quality uses the original normals,
         // while the indexed surface uses generated smooth normals.
@@ -438,6 +464,12 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
         if (!boundsOnly) {
             hashCombine(seed, static_cast<uint64_t>(settings.uvMetric));
             hashCombine(seed, static_cast<uint64_t>(settings.uvNormalization));
+            hashCombine(seed, settings.uvOverlapEnabled);
+            hashCombine(seed, static_cast<uint64_t>(settings.uvOverlapScope));
+            hashCombine(seed, settings.uvThresholdEnabled);
+            hashDouble(seed, settings.uvThreshold); hashDouble(seed, settings.uvNearCollapse);
+            hashCombine(seed, settings.uvRangeEnabled);
+            hashDouble(seed, settings.uvRangeMinimum); hashDouble(seed, settings.uvRangeMaximum);
         }
     }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {

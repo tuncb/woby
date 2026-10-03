@@ -134,6 +134,39 @@ both the source and UV view; it does not rotate the UV plane independently.
 Parts without complete UVs are omitted from the layout
 and retain normal shading in the 3D view. Existing analyses remain Mesh analyses.
 
+All UV diagnostics are also available through the [CLI](doc/ctl-commands.md#patch-inspection-gradients-and-uv-quality), including paged triangle measurements and linked point probes.
+
+**Create analysis > UV quality analysis** measures the supplied triangle mapping.
+Choose angle distortion, signed area stretch, UV orientation, stretch anisotropy,
+minimum local stretch, or UV overlaps. Area retains the **UV / surface area**
+convention: blue means compression, neutral means ratio 1, red means expansion.
+Stretch also maps surface space to UV space. Per-patch normalization divides
+area by total valid UV / surface area, and singular values by its square root;
+absolute mode retains UV units per surface unit. Anisotropy is independent of
+uniform scaling. These are mesh UV measurements, not exact CAD derivatives.
+
+Numeric metrics show minimum/median/P95/maximum and face/physical-area histograms.
+Thresholds report affected face counts and the percentage of valid surface area.
+Minimum stretch uses a lower threshold; signed area uses absolute log2 magnitude.
+Click a histogram bin to highlight its range in cyan; Clear histogram selection
+returns to threshold highlighting. Collapsed UVs remain magenta and unavailable
+measurements gray. Near-collapse counts exclude already collapsed triangles.
+
+With linked selection enabled, click a solid triangle on the source or analysis
+to mark the corresponding triangle and point in both views. Properties shows UV
+coordinates and measurements. Finding rows probe the triangle centroid. Probes
+are transient, do not dirty the scene, and become invalid when analysis geometry
+or measurement settings change. Inspect collapsed UVs in the 3D view.
+
+Overlap checks are optional, automatically enabled by the overlap metric, and run
+on the analysis worker. The settings icon chooses each imported patch independently
+(default), or selected patches sharing a domain. Cross-patch overlaps can be
+intentional. Display separation never changes this calculation. Shared edges and
+vertices are excluded; positive-area intersections, containment, and coincident
+triangles are included. Results stop at 2,000,000 broad-phase candidates or 10,000
+stored pairs and explicitly report a partial result; isolate fewer patches to
+narrow the check. Settings support Undo/Redo, saved Views, and `.woby` persistence.
+
 **Properties > Appearance > UV grid** also draws cyan constant-U lines and orange
 constant-V lines on solid surfaces. U and V density are independent cell counts
 per UV unit (0.1 to 1000, initially 10); type a value and press Enter. Coordinates
