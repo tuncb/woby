@@ -115,6 +115,11 @@ objects in `[[analyses]]` records referencing saved file/group indexes.
 The optional `analysis_task` field records the inspector category (`mesh_checks`,
 `mesh_quality`, `surface_comparison`, or `uv_inspection`). Older scenes infer the
 category from their existing analysis type, display mode, and inputs.
+Mesh checks use one Sources list. Selecting this task or loading an explicitly
+saved `mesh_checks` analysis consolidates A and B into A, preserving disabled
+parts and saved-view source states. A repeated part is enabled if either input
+enabled it. Legacy two-input analyses keep separate inputs in Surface comparison
+or Mesh quality until Mesh checks is selected.
 
 Saved group settings are indexed. Importers must preserve unique group names and
 their order for the same file across versions. Reopening rejects a changed group

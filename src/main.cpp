@@ -779,12 +779,16 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
             for (const auto& comparisonObject : state.comparisons) {
                 ImGui::PushID(std::to_string(comparisonObject.objectId).c_str());
                 if (ImGui::BeginMenu(comparisonObject.name.c_str())) {
+                    const bool singleSource = woby::isUvAnalysis(comparisonObject.settings.type)
+                        || woby::comparisonTask(state, comparisonObject.objectId) == woby::AnalysisTask::meshChecks;
+                    const auto sourceSide = !woby::isUvAnalysis(comparisonObject.settings.type) && comparisonObject.a.empty()
+                        && !comparisonObject.b.empty() ? woby::ComparisonSide::b : woby::ComparisonSide::a;
                     for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {
-                        if (woby::isUvAnalysis(comparisonObject.settings.type) && side == woby::ComparisonSide::b) { continue; }
+                        if (singleSource && side != sourceSide) { continue; }
                         const auto action = woby::comparisonMembershipAction(state, state.selectedSceneObjects, side, comparisonObject.objectId);
                         const bool remove = action == woby::ComparisonMembershipAction::remove;
-                        const char* label = woby::isUvAnalysis(comparisonObject.settings.type)
-                            ? (remove ? "Remove from source" : "Add to source") : side == woby::ComparisonSide::a
+                        const char* label = singleSource
+                            ? (remove ? "Remove from sources" : "Add to sources") : side == woby::ComparisonSide::a
                             ? (remove ? "Remove from A" : "Add to A") : (remove ? "Remove from B" : "Add to B");
                         if (ImGui::MenuItem(label, nullptr, false, action != woby::ComparisonMembershipAction::unavailable)) {
                             woby::setComparisonObjects(state, state.selectedSceneObjects, side, !remove, comparisonObject.objectId);

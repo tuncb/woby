@@ -292,9 +292,12 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
             if (ImGui::MenuItem("Show all patches")) { isolateUvObjects(state,{},id); }
         } else {
             if (ImGui::MenuItem("Enable only this object")) { isolateComparisonObjects(state, {node.objectId}, side, id); }
-            if (ImGui::MenuItem("Enable all on this side")) { setComparisonObjectsEnabled(state, {}, side, true, id); }
+            if (ImGui::MenuItem(comparisonTask(state, id) == AnalysisTask::meshChecks ? "Enable all sources" : "Enable all on this side")) {
+                setComparisonObjectsEnabled(state, {}, side, true, id);
+            }
         }
-        const char* label = side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
+        const bool sources = isUvAnalysis(comparisonSettings(state, id).type) || comparisonTask(state, id) == AnalysisTask::meshChecks;
+        const char* label = sources ? "Remove from sources" : side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
         if (ImGui::MenuItem(label)) { setComparisonObjects(state, {node.objectId}, side, false, id); }
         ImGui::EndPopup();
     }
@@ -308,7 +311,8 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
 void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
 {
     const bool uv = isUvAnalysis(comparisonSettings(state, id).type);
-    const char* label = uv ? "Source" : side == ComparisonSide::a ? "Group A" : "Group B";
+    const bool checks = comparisonTask(state, id) == AnalysisTask::meshChecks;
+    const char* label = checks ? "Sources" : uv ? "Source" : side == ComparisonSide::a ? "Group A" : "Group B";
     ImGui::PushID(label);
     comparisonEnabledCheckbox(state, side, id, {});
     const auto summary = comparisonInputSummary(state, side, id);
@@ -331,7 +335,7 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
     const auto* comparison = findComparison(state, id);
     const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
     if (ImGui::BeginPopupContextItem("group_actions")) {
-        if (ImGui::MenuItem(uv ? "Clear source" : side == ComparisonSide::a ? "Clear group A" : "Clear group B",
+        if (ImGui::MenuItem(checks ? "Clear sources" : uv ? "Clear source" : side == ComparisonSide::a ? "Clear group A" : "Clear group B",
                 nullptr, false, !members.empty())) {
             clearComparisonGroup(state, side, id);
         }
@@ -538,6 +542,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         ImGui::EndTooltip();
     }
     current = comparisonDetectorReady(runtime, state, id, category);
+    if (!hasA && !hasB) { ImGui::TableNextColumn(); ImGui::TextDisabled("--"); }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }
         ImGui::TableNextColumn();
@@ -927,30 +932,13 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     if (drawVisibilityIconField("all diagnostics", allVisible, visibleCount > 0 && !allVisible)) {
         setComparisonDiagnosticsVisible(state, allVisible, id);
     }
-    ImGui::SameLine(0, ImGui::GetStyle().ItemSpacing.x * 2);
     auto settings = comparisonSettings(state, id);
-    const auto initial = settings;
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Target");
-    ImGui::SameLine();
-    if (ImGui::RadioButton("A##diagnostics", settings.diagnosticSide == ComparisonSide::a)) {
-        settings.diagnosticSide = ComparisonSide::a;
-        settings.mode = ComparisonMode::original;
-    }
-    setLastItemTooltip("Inspect mesh diagnostics for input A.");
-    ImGui::SameLine();
-    if (ImGui::RadioButton("B##diagnostics", settings.diagnosticSide == ComparisonSide::b)) {
-        settings.diagnosticSide = ComparisonSide::b;
-        settings.mode = ComparisonMode::repaired;
-    }
-    setLastItemTooltip("Inspect mesh diagnostics for input B.");
-    if (settings != initial) { setComparisonSettings(state, settings, id); }
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
         "Topology is inspected separately within each source file. Original indices preserve source connectivity; exact positions join equal coordinates. "
         "Open boundaries may be intentional. Run Self-intersections to check crossings and coplanar overlap.\n\n"
-        "Use each row's arrows to inspect edges or duplicate groups on the chosen target. "
-        "Navigation wraps; right starts at the first finding and left at the last.\n\n"
+        "Use Previous finding and Next finding to inspect edges or duplicate groups across the sources. "
+        "Navigation wraps; Next starts at the first finding and Previous at the last.\n\n"
         "Duplicate points use exactly equal imported coordinates within each source file. "
         "Duplicate triangles use the same three source point IDs regardless of winding. "
         "Counts are extra records; navigation visits groups. No tolerance is applied.\n\n"
@@ -994,13 +982,12 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     };
     // Fixed icon/count columns and a wrapping name use the available pane width.
     // Only the outer inspector scrolls, so row controls are always reachable.
-    if (ImGui::BeginTable("Analysis diagnostics", 3 + static_cast<int>(hasA) + static_cast<int>(hasB) + 1,
+    if (ImGui::BeginTable("Analysis diagnostics", 5,
             ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_NoSavedSettings)) {
         ImGui::TableSetupColumn("Run", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("Finding", ImGuiTableColumnFlags_WidthStretch);
         const float countWidth = ImGui::GetFontSize() * 3.5f;
-        if (hasA) { ImGui::TableSetupColumn(hasB ? "A" : "Count", ImGuiTableColumnFlags_WidthFixed, countWidth); }
-        if (hasB) { ImGui::TableSetupColumn(hasA ? "B" : "Count", ImGuiTableColumnFlags_WidthFixed, countWidth); }
+        ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, countWidth);
         ImGui::TableSetupColumn("##visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
@@ -1027,7 +1014,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     const auto selectedPhase = comparisonDetectorStatus(runtime.result, selected.diagnosticCategory).phase;
     const auto selectedSummary = diagnosticSummary(selected.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired,
         selected.diagnosticCategory, selectedPhase, ready);
-    ImGui::TextWrapped("%s | %s", selected.diagnosticSide == ComparisonSide::a ? "Input A" : "Input B",
+    ImGui::TextWrapped("%s",
         selectedSummary.state == AnalysisResultState::ready && !selectedSummary.count ? "No findings" : analysisResultStateLabel(selectedSummary.state));
     if (selectedSummary.state == AnalysisResultState::partial) { ImGui::TextWrapped("Known findings only. Some sources or candidate pairs were not checked."); }
     ImGui::BeginDisabled(!ready || findings.empty());
@@ -1912,10 +1899,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
-    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
-    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
-    const bool both = hasA && hasB;
-    auto task = analysisTask(comparison->settings, both);
+    auto task = comparisonTask(state, id);
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
     ImGui::SetNextItemWidth(-1);
@@ -1931,21 +1915,27 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             task = tasks[selectedTask];
         }
     } else { ImGui::TextUnformatted("UV inspection"); }
-    ImGui::SeparatorText("Inputs");
+    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
+    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
+    const bool both = hasA && hasB;
+    ImGui::SeparatorText(task == AnalysisTask::meshChecks ? "Sources" : "Inputs");
     ImGui::SameLine();
     drawInformationIcon("comparison_info", "Analysis inputs",
-        "Drag models onto an input, or use Analysis membership in the model context menu. "
-        "Hidden source models are included. Expand an input to enable, isolate, or remove its parts.");
+        task == AnalysisTask::meshChecks
+            ? "Drag models onto Sources, or use Analysis membership in the model context menu. Hidden models are included. Expand Sources to enable, isolate, or remove parts."
+            : "Drag models onto an input, or use Analysis membership in the model context menu. Hidden source models are included. Expand an input to enable, isolate, or remove its parts.");
     const bool resultReady = comparisonStagesReady(runtime, state, id, comparisonDistance);
-    membershipTree(state, ComparisonSide::a, id);
+    membershipTree(state, task == AnalysisTask::meshChecks && comparison->a.empty() && !comparison->b.empty() ? ComparisonSide::b : ComparisonSide::a, id);
     if (isUvAnalysis(comparison->settings.type)) {
         drawUvInspector(state, runtime, id);
         return;
     }
-    membershipTree(state, ComparisonSide::b, id);
+    if (task != AnalysisTask::meshChecks) { membershipTree(state, ComparisonSide::b, id); }
     ImGui::Separator();
-    if (both && ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
-    if (both) { setLastItemTooltip("Exchange inputs A and B while keeping the measurement direction."); }
+    if (task != AnalysisTask::meshChecks && both) {
+        if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
+        setLastItemTooltip("Exchange inputs A and B while keeping the measurement direction.");
+    }
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
     const bool valid = canInspectComparison(state, id);
@@ -2403,7 +2393,7 @@ static void drawComparisonObjectHint(const UiState& state, const UiComparison& c
     const bool currentInputs = runtime && runtime->sidebarRevision == state.sceneEditRevision;
     const bool hasA = currentInputs && runtime->sidebarInputs[0].enabledPartCount != 0;
     const bool hasB = currentInputs && runtime->sidebarInputs[1].enabledPartCount != 0;
-    const auto task = analysisTask(settings, hasA && hasB);
+    const auto task = comparisonTask(state, id);
     ImGui::TextDisabled("%s", analysisTaskLabel(task));
     ImGui::SameLine();
     const char* status = "Updating...";

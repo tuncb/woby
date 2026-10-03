@@ -244,6 +244,7 @@ void isolateComparisonObjects(UiState& state, const std::vector<SceneObjectId>& 
 {
     auto* analysis = findComparison(state, id);
     if (!analysis || (isUvAnalysis(analysis->settings.type) && side != ComparisonSide::a)) { return; }
+    if (analysis->settings.task == AnalysisTask::meshChecks) { side = ComparisonSide::a; }
     const auto included = comparisonObjectParts(state, objects);
     auto& members = side == ComparisonSide::a ? analysis->a : analysis->b;
     if (!objects.empty() && std::none_of(members.begin(), members.end(), [&](const auto& part) {
@@ -265,6 +266,7 @@ void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId
 {
     auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
+    if (comparison->settings.task == AnalysisTask::meshChecks) { side = ComparisonSide::a; }
     const auto parts = comparisonObjectParts(state, objects);
     auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
     bool changed = false;
@@ -326,6 +328,66 @@ SceneObjectId createComparison(UiState& state, AnalysisType type)
     return id;
 }
 
+AnalysisTask comparisonTask(const UiState& state, SceneObjectId id)
+{
+    const auto* comparison = findComparison(state, id);
+    return comparison ? analysisTask(comparison->settings, !comparison->a.empty() && !comparison->b.empty()) : AnalysisTask::automatic;
+}
+
+void normalizeMeshCheckSources(UiState& state, SceneObjectId id)
+{
+    auto* comparison = findComparison(state, id);
+    if (!comparison || comparisonTask(state, id) != AnalysisTask::meshChecks) { return; }
+    if (comparison->settings.task == AnalysisTask::automatic) {
+        comparison->settings.diagnosticSide = comparison->a.empty() && !comparison->b.empty() ? ComparisonSide::b : ComparisonSide::a;
+        return;
+    }
+    comparison->settings.mode = ComparisonMode::original;
+    comparison->settings.diagnosticSide = ComparisonSide::a;
+    if (comparison->b.empty()) { return; }
+    boost::unordered_flat_map<SceneObjectId, size_t> sourceIndex;
+    for (size_t i = 0; i < comparison->a.size(); ++i) {
+        if (comparison->a[i].objectId) { sourceIndex.emplace(comparison->a[i].objectId, i); }
+    }
+    for (const auto& part : comparison->b) {
+        const auto found = sourceIndex.find(part.objectId);
+        if (part.objectId && found != sourceIndex.end()) { comparison->a[found->second].enabled |= part.enabled; }
+        else {
+            if (part.objectId) { sourceIndex.emplace(part.objectId, comparison->a.size()); }
+            comparison->a.push_back(part); // Keep missing references separately so they remain repairable.
+        }
+    }
+    comparison->b.clear();
+    comparison->diagnosticFocus.reset();
+    comparison->pendingDiagnosticFocus.reset();
+    comparison->boundsCache.reset();
+    for (auto& view : state.views) {
+        boost::unordered_flat_map<SceneObjectId, size_t> indices;
+        std::vector<UiViewPart> parts;
+        parts.reserve(view.parts.size());
+        for (auto part : view.parts) {
+            if (part.comparisonId == id) {
+                part.side = ComparisonSide::a;
+                if (const auto found = indices.find(part.partId); found != indices.end()) {
+                    parts[found->second].enabled |= part.enabled;
+                    continue;
+                }
+                indices.emplace(part.partId, parts.size());
+            }
+            parts.push_back(part);
+        }
+        view.parts = std::move(parts);
+        for (auto& object : view.objects) {
+            if (object.objectId != id) { continue; }
+            object.settings.diagnosticIndex.reset();
+            object.settings.comparison.diagnosticSide = ComparisonSide::a;
+            if (object.settings.comparison.task == AnalysisTask::meshChecks) {
+                object.settings.comparison.mode = ComparisonMode::original;
+            }
+        }
+    }
+}
+
 void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task)
 {
     const auto* comparison = findComparison(state, id);
@@ -335,7 +397,7 @@ void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task)
     const auto settings = settingsForAnalysisTask(comparison->settings, task,
         enabledComparisonPartCount(state, ComparisonSide::a, id) != 0,
         enabledComparisonPartCount(state, ComparisonSide::b, id) != 0);
-    if (settings == comparison->settings) { return; }
+    if (settings == comparison->settings && (task != AnalysisTask::meshChecks || comparison->b.empty())) { return; }
     resetComparisonDiagnosticFocus(state, id);
     setComparisonSettings(state, settings, id);
 }
@@ -830,6 +892,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
             resetComparisonDiagnosticFocus(state, id);
         }
         comparison->settings = normalizedComparisonSettings(settings);
+        normalizeMeshCheckSources(state, comparison->objectId);
         if (comparison->settings.enabled && !wasEnabled) { setPropertiesPaneVisible(state, true); }
         recalculateSceneBounds(state);
         markSceneDirty(state);
@@ -859,6 +922,7 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
     auto* comparison = findComparison(state, id);
     if (!comparison) { return; }
     if (isUvAnalysis(comparison->settings.type) && side == ComparisonSide::b) { return; }
+    if (comparison->settings.task == AnalysisTask::meshChecks) { side = ComparisonSide::a; }
     auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
     if (member) {
         const auto existing = comparisonMemberIds(state, side, comparison->objectId, false);
@@ -879,6 +943,7 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
         });
     }
     if (member) { setPropertiesPaneVisible(state, true); }
+    normalizeMeshCheckSources(state, comparison->objectId);
     recalculateSceneBounds(state);
     markSceneDirty(state);
 }
@@ -886,12 +951,14 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
 void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id)
 {
     if (auto* comparison = findComparison(state, id)) {
+        if (comparison->settings.task == AnalysisTask::meshChecks) { side = ComparisonSide::a; }
         auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
         const auto available = comparableScenePartIds(state);
         std::erase_if(members, [&](const UiComparisonPart& part) {
             return !std::binary_search(available.begin(), available.end(), part.objectId)
                 && comparisonObjectParts(state, {part.objectId}).empty();
         });
+        normalizeMeshCheckSources(state, comparison->objectId);
         recalculateSceneBounds(state);
         markSceneDirty(state);
     }
@@ -900,7 +967,9 @@ void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObje
 void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id)
 {
     if (auto* comparison = findComparison(state, id)) {
+        if (comparison->settings.task == AnalysisTask::meshChecks) { side = ComparisonSide::a; }
         (side == ComparisonSide::a ? comparison->a : comparison->b).clear();
+        normalizeMeshCheckSources(state, comparison->objectId);
         recalculateSceneBounds(state);
         markSceneDirty(state);
     }
@@ -909,8 +978,9 @@ void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id)
 void swapComparisonGroups(UiState& state, SceneObjectId id)
 {
     if (auto* comparison = findComparison(state, id)) {
-        if (isUvAnalysis(comparison->settings.type)) { return; }
+        if (isUvAnalysis(comparison->settings.type) || comparison->settings.task == AnalysisTask::meshChecks) { return; }
         std::swap(comparison->a, comparison->b);
+        normalizeMeshCheckSources(state, comparison->objectId);
         recalculateSceneBounds(state);
         markSceneDirty(state);
     }
@@ -1805,6 +1875,7 @@ UiState prepareSceneReplacement(const UiState& current,
     }
     loadSceneAnnotations(prepared, document);
     loadSceneViews(prepared, document);
+    for (const auto& comparison : prepared.comparisons) { normalizeMeshCheckSources(prepared, comparison.objectId); }
     if (!prepared.comparisons.empty()) { prepared.activeComparisonId = prepared.comparisons.front().objectId; }
     recalculateSceneBounds(prepared);
     prepared.camera = document.camera ? normalizedSceneCamera(*document.camera)

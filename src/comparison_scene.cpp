@@ -255,6 +255,7 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
         result.enabledPartCount += root.enabledPartCount;
         appendNames(appendNames, root);
     }
+    const bool checks = comparisonTask(state, id) == AnalysisTask::meshChecks;
     const std::string label = side == ComparisonSide::a ? "A" : "B";
     if (const auto* comparison = findComparison(state, id)) {
         const auto available = comparableScenePartIds(state);
@@ -262,17 +263,20 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
         for (const auto& member : members) {
             if (!member.enabled || std::binary_search(available.begin(), available.end(), member.objectId)
                 || !comparisonObjectParts(state, {member.objectId}).empty()) { continue; }
-            if (result.issue.empty()) { result.issue = "Input " + label + " has missing or invalid references: "; }
+            if (result.issue.empty()) { result.issue = checks ? "Sources have missing or invalid references: "
+                : "Input " + label + " has missing or invalid references: "; }
             else { result.issue += ", "; }
             result.issue += member.name.empty() ? "Unnamed part" : member.name;
         }
     }
     if (!result.issue.empty()) { result.issue += ". Restore the source or remove missing references below."; }
     else if (result.partCount == 0) {
-        result.issue = "Input " + label + " is empty. Use Analysis membership in the scene tree context menu.";
+        result.issue = checks ? "No sources. Use Analysis membership in the scene tree context menu."
+            : "Input " + label + " is empty. Use Analysis membership in the scene tree context menu.";
     }
     else if (result.enabledPartCount == 0) {
-        result.issue = "Input " + label + " is turned off. Check an item to include it in the analysis.";
+        result.issue = checks ? "All sources are turned off. Check an item to include it in the analysis."
+            : "Input " + label + " is turned off. Check an item to include it in the analysis.";
     }
     if (result.sourceNames.empty()) { result.sourceNames = "No available sources"; }
     return result;

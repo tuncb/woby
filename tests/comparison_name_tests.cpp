@@ -925,10 +925,11 @@ TEST_CASE("analysis rename normalizes empty input and ignores missing objects")
 TEST_CASE("diagnostics keep run visibility and settings independent with nearby popups")
 {
     ComparisonNameFixture f;
-    bool hasA = true, hasB = false, finSettings = false;
+    bool hasA = true, hasB = false, finSettings = false, legacy = false;
     SUBCASE("fin settings") { finSettings = true; }
     SUBCASE("one input A") {}
     SUBCASE("one input B") { hasA = false; hasB = true; }
+    SUBCASE("legacy input B") { hasA = false; hasB = true; legacy = true; }
     SUBCASE("two inputs") { hasB = true; }
     SUBCASE("no inputs") { hasA = hasB = false; }
     woby::Mesh mesh;
@@ -943,6 +944,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     if (hasB) { woby::setComparisonObjects(f.state, {part}, woby::ComparisonSide::b, true, f.id); }
     auto settings = woby::comparisonSettings(f.state, f.id);
     settings.mode = woby::ComparisonMode::original;
+    settings.task = legacy ? woby::AnalysisTask::automatic : woby::AnalysisTask::meshChecks;
     woby::setComparisonSettings(f.state, settings, f.id);
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
@@ -1005,11 +1007,16 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     const auto headingRow = contents.substr(diagnosticsHeading,
         contents.find('\n', diagnosticsHeading) - diagnosticsHeading);
     const auto targetLabel = headingRow.find("Target");
-    REQUIRE(targetLabel != std::string::npos);
-    CHECK(headingRow.find("A", targetLabel) != std::string::npos);
-    CHECK(headingRow.find("B", targetLabel) != std::string::npos);
-    CHECK((contents.find(hasA && hasB ? "| A |" : "Count") != std::string::npos) == (hasA || hasB));
-    CHECK((contents.find("| B |") != std::string::npos) == (hasA && hasB));
+    CHECK(targetLabel == std::string::npos);
+    CHECK(contents.find("Count") != std::string::npos);
+    CHECK(contents.find("| A |") == std::string::npos);
+    CHECK(contents.find("| B |") == std::string::npos);
+    CHECK(contents.find("Sources") != std::string::npos);
+    CHECK(contents.find("Group A") == std::string::npos);
+    CHECK(contents.find("Group B") == std::string::npos);
+    CHECK(contents.find("Input A") == std::string::npos);
+    CHECK(contents.find("Input B") == std::string::npos);
+    CHECK(contents.find("Swap inputs") == std::string::npos);
     CHECK(contents.find("\xef\x80\x93") != std::string::npos); // Settings glyph.
     REQUIRE((diagnostics->Flags & ImGuiTableFlags_ScrollX) == 0);
     auto& io = ImGui::GetIO();
@@ -1187,6 +1194,7 @@ TEST_CASE("diagnostics keep readable labels and reachable controls as properties
     if (hasB) { woby::setComparisonObjects(f.state, {part}, woby::ComparisonSide::b, true, f.id); }
     auto settings = woby::comparisonSettings(f.state, f.id);
     settings.mode = woby::ComparisonMode::original;
+    settings.task = woby::AnalysisTask::meshChecks;
     woby::setComparisonSettings(f.state, settings, f.id);
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
@@ -1216,7 +1224,7 @@ TEST_CASE("diagnostics keep readable labels and reachable controls as properties
         CAPTURE(hasA);
         CAPTURE(hasB);
         REQUIRE(diagnostics);
-        CHECK(diagnostics->ColumnsCount == 4 + static_cast<int>(hasA) + static_cast<int>(hasB));
+        CHECK(diagnostics->ColumnsCount == 5);
         const float findingWidth = diagnostics->Columns[1].WorkMaxX - diagnostics->Columns[1].WorkMinX;
         CHECK(findingWidth > 0);
         CHECK((diagnostics->Flags & ImGuiTableFlags_ScrollX) == 0);

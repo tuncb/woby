@@ -469,7 +469,7 @@ TEST_CASE("diagnostic target and category persist while result focus is session 
     settings.diagnosticSide = static_cast<woby::ComparisonSide>(-1);
     settings.diagnosticCategory = static_cast<woby::DiagnosticCategory>(100);
     woby::setComparisonSettings(state, settings, id);
-    CHECK(woby::comparisonSettings(state, id).diagnosticSide == woby::ComparisonSide::a);
+    CHECK(woby::comparisonSettings(state, id).diagnosticSide == woby::ComparisonSide::b); // Follow the only source.
     CHECK(woby::comparisonSettings(state, id).diagnosticCategory == woby::DiagnosticCategory::boundary);
 }
 
@@ -477,6 +477,7 @@ TEST_CASE("analysis input summaries identify sides sources and invalid reference
 {
     auto state = stateWithFiles(2);
     const auto id = woby::createComparison(state);
+    woby::setAnalysisTask(state, id, woby::AnalysisTask::surfaceComparison);
     CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::a, id).issue.find("Input A is empty") != std::string::npos);
     CHECK(woby::comparisonInputSummary(state, woby::ComparisonSide::b, id).issue.find("Input B is empty") != std::string::npos);
     woby::UiSceneNode folder;

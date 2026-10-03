@@ -2,8 +2,10 @@
 #include "ui_operations.h"
 #include "obj_mesh.h"
 #include "scene_history.h"
+#include "comparison_scene.h"
 
 #include <doctest/doctest.h>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <random>
@@ -31,6 +33,8 @@ TEST_CASE("analysis tasks infer legacy intent without changing settings")
 {
     ComparisonSettings settings;
     CHECK(analysisTask(settings, false) == AnalysisTask::meshChecks);
+    CHECK(analysisTask(settings, true) == AnalysisTask::surfaceComparison);
+    settings.mode = ComparisonMode::original;
     CHECK(analysisTask(settings, true) == AnalysisTask::surfaceComparison);
     settings.mode = ComparisonMode::surfaceQuality;
     CHECK(analysisTask(settings, false) == AnalysisTask::meshQuality);
@@ -130,12 +134,141 @@ TEST_CASE("analysis task switches preserve inputs thresholds and user names")
     CHECK(findComparison(f.state, id)->a == members);
     CHECK(findComparison(f.state, id)->name == "My inspection");
     clearComparisonGroup(f.state, ComparisonSide::a, id);
+    setAnalysisTask(f.state, id, AnalysisTask::surfaceComparison);
     setComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::b, true, id);
     setAnalysisTask(f.state, id, AnalysisTask::meshQuality);
     CHECK_FALSE(comparisonSettings(f.state, id).quality.onOriginal);
     setAnalysisTask(f.state, id, AnalysisTask::meshChecks);
-    CHECK(comparisonSettings(f.state, id).mode == ComparisonMode::repaired);
+    CHECK(comparisonSettings(f.state, id).mode == ComparisonMode::original);
+    CHECK(comparisonSettings(f.state, id).diagnosticSide == ComparisonSide::a);
+    CHECK(findComparison(f.state, id)->b.empty());
+}
+
+TEST_CASE("mesh checks consolidate sources preserve disabled and missing parts and support undo")
+{
+    AnalysisFixture f;
+    const auto id = createComparison(f.state);
+    const auto first = f.state.files[0].objectId, second = f.state.files[1].objectId, third = f.state.files[2].objectId;
+    setComparisonObjects(f.state, {first, third}, ComparisonSide::a, true, id);
+    setComparisonObjects(f.state, {first, second}, ComparisonSide::b, true, id);
+    setComparisonObjectsEnabled(f.state, {first, third}, ComparisonSide::a, false, id);
+    auto* comparison = findComparison(f.state, id);
+    comparison->a.push_back({invalidSceneObjectId, "Missing A", false});
+    comparison->b.push_back({invalidSceneObjectId, "Missing B", false});
+    comparison->diagnosticFocus = DiagnosticFocus{1, 0, ComparisonSide::b, DiagnosticCategory::boundary};
+    const auto before = createSceneDocument(f.state);
+    SceneHistory history; resetSceneHistory(history, f.state);
+    const auto view = createView(f.state);
+    setAnalysisTask(f.state, id, AnalysisTask::meshChecks);
+    comparison = findComparison(f.state, id);
+    CHECK(comparison->b.empty());
+    CHECK(comparison->a.size() == 5);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::a, id) == 3);
+    CHECK(enabledComparisonPartCount(f.state, ComparisonSide::a, id) == 2);
+    CHECK_FALSE(comparison->diagnosticFocus);
+    CHECK(comparison->a[comparison->a.size() - 1].name == "Missing B");
+    CHECK_FALSE(comparisonPartEnabled(f.state, f.state.files[2].groupSettings[0].objectId, ComparisonSide::a, id));
+    applyView(f.state, view);
+    CHECK(enabledComparisonPartCount(f.state, ComparisonSide::a, id) == 2);
+    CHECK(std::all_of(findView(f.state, view)->parts.begin(), findView(f.state, view)->parts.end(),
+        [](const UiViewPart& part) { return part.side == ComparisonSide::a; }));
+    // Applying an earlier view can restore its task, but cannot resurrect removed membership sides.
+    setAnalysisTask(f.state, id, AnalysisTask::meshChecks);
+    const auto mesh = comparisonWorldMesh(f.state, ComparisonSide::a, id);
+    CHECK(mesh.indices.size() == 6);
+    REQUIRE(recordSceneHistory(history, f.state));
+    auto undo = prepareSceneHistoryStep(history, f.state, before, false);
+    REQUIRE(undo);
+    commitSceneHistoryStep(history, f.state, std::move(*undo), false);
+    CHECK(createSceneDocument(f.state).comparisons == before.comparisons);
+}
+
+TEST_CASE("mesh checks load both legacy member lists and retain merged sources through save and views")
+{
+    AnalysisFixture f;
+    const auto id = createComparison(f.state);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::a, true, id);
+    setComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::b, true, id);
+    setComparisonObjectsEnabled(f.state, {}, ComparisonSide::b, false, id);
+    // This represents an older Mesh checks scene with two input lists.
+    findComparison(f.state, id)->settings.task = AnalysisTask::meshChecks;
+    findComparison(f.state, id)->settings.mode = ComparisonMode::original;
+    const auto view = createView(f.state);
+    const auto path = f.root / "mesh-checks.woby";
+    writeSceneDocument(path, createSceneDocument(f.state));
+    auto document = readSceneDocument(path);
+    for (auto& file : document.files) { file.path = sceneAbsolutePath(path, file.path); }
+    auto loaded = prepareSceneReplacement(f.state, f.state.files, document);
+    const auto loadedId = loaded.comparisons.front().objectId;
+    CHECK(loaded.comparisons.front().b.empty());
+    CHECK(comparisonPartCount(loaded, ComparisonSide::a, loadedId) == 2);
+    CHECK(enabledComparisonPartCount(loaded, ComparisonSide::a, loadedId) == 1);
+    setComparisonObjectsEnabled(loaded, {}, ComparisonSide::a, true, loadedId);
+    applyView(loaded, loaded.views.front().id);
+    CHECK(loaded.comparisons.front().b.empty());
+    CHECK(enabledComparisonPartCount(loaded, ComparisonSide::a, loadedId) == 1);
+    writeSceneDocument(path, createSceneDocument(loaded));
+    const auto saved = readSceneDocument(path);
+    CHECK(saved.comparisons.front().a.size() == 2);
+    CHECK(saved.comparisons.front().b.empty());
+    CHECK(findView(f.state, view));
+}
+
+TEST_CASE("legacy single B sources remain navigable and comparison categories do not change when inputs are disabled")
+{
+    AnalysisFixture f;
+    const auto id = createComparison(f.state);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, id);
+    CHECK(comparisonTask(f.state, id) == AnalysisTask::meshChecks);
     CHECK(comparisonSettings(f.state, id).diagnosticSide == ComparisonSide::b);
+    const auto result = compareMeshes({}, comparisonWorldMesh(f.state, ComparisonSide::b, id));
+    navigateComparisonDiagnostic(f.state, result, comparisonGeometrySignature(f.state, id), 1, id);
+    REQUIRE(findComparison(f.state, id)->diagnosticFocus);
+    CHECK(findComparison(f.state, id)->diagnosticFocus->side == ComparisonSide::b);
+    setComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::a, true, id);
+    auto settings = comparisonSettings(f.state, id); settings.mode = ComparisonMode::original;
+    settings.diagnosticSide = ComparisonSide::a;
+    setComparisonSettings(f.state, settings, id);
+    CHECK(comparisonTask(f.state, id) == AnalysisTask::surfaceComparison);
+    setComparisonObjectsEnabled(f.state, {}, ComparisonSide::b, false, id);
+    CHECK(comparisonTask(f.state, id) == AnalysisTask::surfaceComparison);
+    CHECK_FALSE(findComparison(f.state, id)->b.empty());
+    clearComparisonGroup(f.state, ComparisonSide::a, id);
+    CHECK(comparisonSettings(f.state, id).diagnosticSide == ComparisonSide::b);
+    setComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::a, true, id);
+    setAnalysisTask(f.state, id, AnalysisTask::meshChecks);
+    setComparisonObjects(f.state, {f.state.files[2].objectId}, ComparisonSide::b, true, id);
+    CHECK(findComparison(f.state, id)->b.empty());
+    CHECK(comparisonPartCount(f.state, ComparisonSide::a, id) == 3);
+}
+
+TEST_CASE("mesh checks source controls edit the single list and describe it without side labels")
+{
+    AnalysisFixture f;
+    selectSceneObject(f.state, f.state.files[0].objectId);
+    const auto id = createAnalysisFromSelection(f.state, AnalysisTask::meshChecks);
+    setComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::b, true, id);
+    setComparisonObjectsEnabled(f.state, {}, ComparisonSide::b, false, id);
+    CHECK(enabledComparisonPartCount(f.state, ComparisonSide::a, id) == 0);
+    CHECK(comparisonInputSummary(f.state, ComparisonSide::a, id).issue.find("All sources are turned off") == 0);
+    isolateComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::b, id);
+    CHECK(enabledComparisonPartCount(f.state, ComparisonSide::a, id) == 1);
+    CHECK(comparisonPartEnabled(f.state, f.state.files[1].groupSettings[0].objectId, ComparisonSide::a, id));
+    const auto before = createSceneDocument(f.state);
+    const auto revision = f.state.sceneEditRevision;
+    swapComparisonGroups(f.state, id);
+    CHECK(createSceneDocument(f.state) == before);
+    CHECK(f.state.sceneEditRevision == revision);
+    findComparison(f.state, id)->a.push_back({invalidSceneObjectId, "Missing source", true});
+    CHECK(comparisonInputSummary(f.state, ComparisonSide::a, id).issue.find("Sources have missing") == 0);
+    removeMissingComparisonParts(f.state, ComparisonSide::b, id);
+    CHECK(findComparison(f.state, id)->a.size() == 2);
+    setComparisonObjects(f.state, {f.state.files[1].objectId}, ComparisonSide::b, false, id);
+    CHECK(comparisonPartCount(f.state, ComparisonSide::a, id) == 1);
+    clearComparisonGroup(f.state, ComparisonSide::b, id);
+    CHECK(findComparison(f.state, id)->a.empty());
+    CHECK(findComparison(f.state, id)->b.empty());
+    CHECK(comparisonInputSummary(f.state, ComparisonSide::a, id).issue.find("No sources") == 0);
 }
 
 TEST_CASE("diagnostic summaries distinguish incomplete checks from zero findings")

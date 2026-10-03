@@ -8,7 +8,7 @@ AnalysisTask analysisTask(const ComparisonSettings& settings, bool bothInputs)
     if (isUvAnalysis(settings.type)) { return AnalysisTask::uvInspection; }
     if (settings.task != AnalysisTask::automatic) { return settings.task; }
     if (settings.mode == ComparisonMode::surfaceQuality) { return AnalysisTask::meshQuality; }
-    if (bothInputs && (settings.mode == ComparisonMode::distance || settings.mode == ComparisonMode::overlay)) {
+    if (bothInputs) {
         return AnalysisTask::surfaceComparison;
     }
     return AnalysisTask::meshChecks;
@@ -46,8 +46,8 @@ ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, Analysis
         settings.type = AnalysisType::mesh;
         switch (task) {
         case AnalysisTask::meshChecks:
-            settings.mode = !hasA && hasB ? ComparisonMode::repaired : ComparisonMode::original;
-            settings.diagnosticSide = !hasA && hasB ? ComparisonSide::b : ComparisonSide::a;
+            settings.mode = ComparisonMode::original;
+            settings.diagnosticSide = ComparisonSide::a;
             break;
         case AnalysisTask::meshQuality:
             settings.mode = ComparisonMode::surfaceQuality;
