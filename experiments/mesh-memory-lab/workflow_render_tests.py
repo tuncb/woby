@@ -57,18 +57,18 @@ with tempfile.TemporaryDirectory(prefix="meshflow render ") as directory:
         assert len(data) > 10000, "Expected a rendered inspector, not an empty image"
 
     comparisons = [
-        ("commit-a/pipeline.meshflow", "commit-b/pipeline.meshflow", None),
-        ("commit-a/pipeline.meshflow", "commit-b/pipeline.meshflow", "bottom"),
-        ("commit-b/pipeline.meshflow", "commit-a/pipeline.meshflow", "top"),
-        ("commit-a/pipeline.meshflow", "02-background-loading.meshflow", None),
+        ("commit-a/pipeline.meshflow", "commit-b/pipeline.meshflow", []),
+        ("commit-a/pipeline.meshflow", "commit-b/pipeline.meshflow", ["--inspect", "bottom", "--inspector-tab", "mesh"]),
+        ("commit-b/pipeline.meshflow", "commit-a/pipeline.meshflow", ["--inspect", "top", "--inspector-tab", "bytes"]),
+        ("commit-a/pipeline.meshflow", "02-background-loading.meshflow", ["--inspector-tab", "mesh"]),
+        ("commit-a/pipeline.meshflow", "commit-b/pipeline.meshflow", ["--hide-library"]),
+        ("commit-a/pipeline.meshflow", "commit-b/pipeline.meshflow", ["--hide-inspectors"]),
     ]
-    for index, (top, bottom, inspector) in enumerate(comparisons):
+    for index, (top, bottom, extra) in enumerate(comparisons):
         image = root / f"comparison-{index}.png"
         args = [str(app), "--workflows-dir", str(library), "--workflow", top,
                 "--compare", bottom, "--width", "1200", "--height", "860",
-                "--screenshot", str(image)]
-        if inspector:
-            args += ["--inspect", inspector]
+                "--screenshot", str(image), *extra]
         result = subprocess.run(args, cwd=root, capture_output=True, text=True, timeout=30)
         assert result.returncode == 0, result
         data = image.read_bytes()

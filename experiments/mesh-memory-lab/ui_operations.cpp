@@ -25,11 +25,37 @@ void focusWorkflowPane(WorkspaceState& state, size_t pane)
 }
 void setComparisonSelection(WorkspaceState& state, bool enabled) { state.chooseComparison = enabled; }
 void setWorkflowInspectorVisible(WorkspaceState& state, bool visible) { state.showInspector = visible; }
+void setWorkflowLibraryVisible(WorkspaceState& state, bool visible) { state.showLibrary = visible; }
+void setInspectorFraction(WorkspaceState& state, float fraction)
+{
+    if (std::isfinite(fraction)) { state.inspectorFraction = std::clamp(fraction,.35f,.70f); }
+}
+void selectInspectorTab(UiState& state, InspectorTab tab, bool hasMesh)
+{
+    if (tab == InspectorTab::stage || tab == InspectorTab::mesh || tab == InspectorTab::bytes) {
+        state.inspectorTab = !hasMesh && tab == InspectorTab::bytes ? InspectorTab::stage : tab;
+    }
+}
+void setDiagramFit(UiState& state, bool fit) { state.fitDiagram = fit; }
+float workflowDiagramScale(const Workflow& workflow, std::array<float, 2> available, bool fit)
+{
+    if (!fit) { return 1; }
+    float scale = 1;
+    for (size_t axis = 0; axis < available.size(); ++axis) {
+        if (std::isfinite(available[axis])) {
+            scale = std::min(scale, std::max(0.0f, available[axis]) / (workflow.extent[axis] + 4));
+        }
+    }
+    // Keep very large arbitrary graphs navigable by scrolling at a usable size.
+    return std::clamp(scale, .35f, 1.0f);
+}
 
 WorkspaceState reconcileWorkspace(const WorkspaceState& state, const WorkflowLibrary& previous, const WorkflowLibrary& next)
 {
     WorkspaceState result;
     result.showInspector = state.showInspector;
+    result.showLibrary = state.showLibrary;
+    setInspectorFraction(result,state.inspectorFraction);
     size_t retained = 0;
     for (size_t pane = 0; pane < state.paneCount; ++pane) {
         const auto& old = state.panes[pane];
@@ -41,6 +67,7 @@ WorkspaceState reconcileWorkspace(const WorkspaceState& state, const WorkflowLib
             auto& restored = result.panes[retained];
             selectWorkflow(restored, next, i);
             restored.yaw = old.yaw; restored.pitch = old.pitch; restored.zoom = old.zoom;
+            selectInspectorTab(restored, old.inspectorTab, entry.trace != nullptr); setDiagramFit(restored, old.fitDiagram);
             selectComponent(restored, old.component); selectCorner(restored, old.corner);
             if (entry.trace) { selectTriangle(restored, *entry.trace, old.triangle); }
             if (previousEntry.document && old.workflowNode < previousEntry.document->nodes.size()) {

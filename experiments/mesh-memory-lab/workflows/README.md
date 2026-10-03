@@ -28,9 +28,13 @@ or **Open below**. Clicking a node focuses that pane; selecting a library item
 then replaces the focused pane. **Replace bottom** explicitly selects a new
 bottom workflow.
 
-Use **Inspect** in either header, or the **Inspector** eye button, to reveal the focused
-workflow's details and live mesh. Each pane keeps its own selected node, corner,
-vertex field, camera, and GPU capture. **Close** removes either pane and expands
+Both diagrams have their own inspector on the right. Switch between **Stage**,
+**Mesh**, and **Bytes** (or **Outline** for diagrams without a mesh). Drag either
+vertical divider to resize both inspectors. The **Library** eye button frees
+sidebar space, and **Inspectors** hides or shows both inspectors. **100%** and
+**Fit** switch between full diagram cards and a compact overview.
+Each pane keeps its own tab, selected node, corner, vertex field, camera, and
+GPU capture. **Close** removes either pane and expands
 the survivor. Reload keeps both selected relative paths, even when new files
 change their ordering, and clamps selections if a mesh changes. Removed or
 invalid selections close; any surviving workflow stays open.
@@ -46,7 +50,9 @@ mesh_memory_lab.exe --workflows-dir D:/my-workflows `
 
 Use relative paths for duplicate filenames. A bare filename selects a root file
 or a unique match; ambiguous filenames are rejected. `--inspect top|bottom`
-opens the corresponding inspector when launching a comparison.
+focuses the corresponding pane when launching a comparison. Both inspectors
+are visible by default. `--inspector-tab stage|mesh|bytes` selects their initial
+tabs; `--hide-library` and `--hide-inspectors` control initial panel visibility.
 
 ## Minimal diagram
 

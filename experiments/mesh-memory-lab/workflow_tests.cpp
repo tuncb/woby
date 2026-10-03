@@ -122,6 +122,75 @@ TEST_CASE("Top and bottom panes keep independent selections and close without lo
     CHECK(state.panes[0].workflow == 1);
 }
 
+TEST_CASE("Comparison inspectors retain independent tabs and fit choices through refresh and close")
+{
+    WorkflowFixture fixture;
+    auto document = mesh_lab::parseWorkflow(diagram());
+    document.objSource = std::string(mesh_lab::internalObjSource());
+    fixture.write("commit-a/mesh.meshflow",mesh_lab::serializeWorkflow(document));
+    fixture.write("commit-b/mesh.meshflow",mesh_lab::serializeWorkflow(document));
+    const auto library = mesh_lab::loadWorkflowLibrary(fixture.root);
+    mesh_lab::WorkspaceState state;
+    CHECK(state.showInspector);
+    mesh_lab::openWorkflowPane(state,library,0,0);
+    mesh_lab::openWorkflowPane(state,library,1,1);
+    mesh_lab::selectInspectorTab(state.panes[0],mesh_lab::InspectorTab::mesh);
+    mesh_lab::selectInspectorTab(state.panes[1],mesh_lab::InspectorTab::bytes);
+    mesh_lab::selectInspectorTab(state.panes[1],static_cast<mesh_lab::InspectorTab>(999));
+    mesh_lab::setDiagramFit(state.panes[1],false);
+    mesh_lab::setWorkflowLibraryVisible(state,false);
+    mesh_lab::setWorkflowInspectorVisible(state,false);
+    mesh_lab::setInspectorFraction(state,.62f);
+    const auto refreshed = mesh_lab::reconcileWorkspace(state,library,library);
+    CHECK(refreshed.panes[0].inspectorTab == mesh_lab::InspectorTab::mesh);
+    CHECK(refreshed.panes[1].inspectorTab == mesh_lab::InspectorTab::bytes);
+    CHECK(refreshed.panes[0].fitDiagram);
+    CHECK_FALSE(refreshed.panes[1].fitDiagram);
+    CHECK_FALSE(refreshed.showInspector);
+    CHECK_FALSE(refreshed.showLibrary);
+    CHECK(refreshed.inspectorFraction == doctest::Approx(.62f));
+    fixture.write("commit-b/mesh.meshflow",diagram());
+    const auto withoutMesh = mesh_lab::loadWorkflowLibrary(fixture.root);
+    CHECK(mesh_lab::reconcileWorkspace(state,library,withoutMesh).panes[1].inspectorTab == mesh_lab::InspectorTab::stage);
+    mesh_lab::closeWorkflowPane(state,0);
+    CHECK(state.panes[0].inspectorTab == mesh_lab::InspectorTab::bytes);
+    CHECK_FALSE(state.panes[0].fitDiagram);
+    mesh_lab::openWorkflowPane(state,library,0,1);
+    CHECK(state.panes[1].inspectorTab == mesh_lab::InspectorTab::stage);
+    CHECK(state.panes[1].fitDiagram);
+    CHECK(state.panes[0].inspectorTab == mesh_lab::InspectorTab::bytes);
+    mesh_lab::selectInspectorTab(state.panes[0],mesh_lab::InspectorTab::bytes,false);
+    CHECK(state.panes[0].inspectorTab == mesh_lab::InspectorTab::stage);
+    mesh_lab::selectInspectorTab(state.panes[0],mesh_lab::InspectorTab::mesh,false);
+    CHECK(state.panes[0].inspectorTab == mesh_lab::InspectorTab::mesh);
+}
+
+TEST_CASE("Inspector resizing preserves usable panes and ignores non-finite input")
+{
+    mesh_lab::WorkspaceState state;
+    mesh_lab::setInspectorFraction(state,-1);
+    CHECK(state.inspectorFraction == doctest::Approx(.35f));
+    mesh_lab::setInspectorFraction(state,2);
+    CHECK(state.inspectorFraction == doctest::Approx(.70f));
+    mesh_lab::setInspectorFraction(state,.6f);
+    mesh_lab::setInspectorFraction(state,std::numeric_limits<float>::infinity());
+    mesh_lab::setInspectorFraction(state,std::numeric_limits<float>::quiet_NaN());
+    CHECK(state.inspectorFraction == doctest::Approx(.6f));
+}
+
+TEST_CASE("Diagram fit honors both dimensions and keeps oversized graphs scrollable")
+{
+    const auto workflow = mesh_lab::parseWorkflow(diagram());
+    const std::array full{workflow.extent[0]+4,workflow.extent[1]+4};
+    CHECK(mesh_lab::workflowDiagramScale(workflow,full,true) == 1);
+    CHECK(mesh_lab::workflowDiagramScale(workflow,{full[0]*.6f,full[1]},true) == doctest::Approx(.6f));
+    CHECK(mesh_lab::workflowDiagramScale(workflow,{full[0],full[1]*.5f},true) == doctest::Approx(.5f));
+    CHECK(mesh_lab::workflowDiagramScale(workflow,{full[0]*2,full[1]*2},true) == 1);
+    CHECK(mesh_lab::workflowDiagramScale(workflow,{0,-1},true) == doctest::Approx(.35f));
+    CHECK(mesh_lab::workflowDiagramScale(workflow,{0,0},false) == 1);
+    CHECK(mesh_lab::workflowDiagramScale(workflow,{std::numeric_limits<float>::quiet_NaN(),full[1]},true) == 1);
+}
+
 TEST_CASE("Library refresh preserves both relative paths and clamps changed live captures")
 {
     WorkflowFixture fixture;

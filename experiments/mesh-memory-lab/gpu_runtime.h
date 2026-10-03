@@ -29,6 +29,7 @@ void pollReadback(GpuCapture& gpu, uint32_t frame);
 void destroy(GpuCapture& gpu);
 void initViewport(Viewport& view, const std::filesystem::path& assets);
 void resizeViewport(Viewport& view, uint16_t width, uint16_t height);
-void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& trace, const UiState& state);
+void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& trace, const UiState& state,
+    woby::graphics::ViewId viewId = 0);
 void destroy(Viewport& view);
 } // namespace mesh_lab

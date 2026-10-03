@@ -91,18 +91,18 @@ std::array<float, 2> projectVertex(const ViewMatrices& matrices, const woby::Ver
     const auto projected = bx::mulH(camera, matrices.projection.data());
     return {(projected.x + 1) * 0.5f, (1 - projected.y) * 0.5f};
 }
-void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& trace, const UiState& state)
+void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& trace, const UiState& state, g::ViewId viewId)
 {
     if (!g::isValid(view.target)) { return; }
     const auto matrices = viewMatrices(trace, state, static_cast<float>(view.width) / static_cast<float>(view.height), g::getCaps()->homogeneousDepth);
     float model[16];
     bx::mtxIdentity(model);
-    g::setViewFrameBuffer(0, view.target);
-    g::setViewRect(0, 0, 0, view.width, view.height);
-    g::setViewClear(0, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x111920ff);
-    g::setViewTransform(0, matrices.view.data(), matrices.projection.data());
-    g::setViewMode(0, g::ViewMode::Sequential);
-    g::touch(0);
+    g::setViewFrameBuffer(viewId, view.target);
+    g::setViewRect(viewId, 0, 0, view.width, view.height);
+    g::setViewClear(viewId, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x111920ff);
+    g::setViewTransform(viewId, matrices.view.data(), matrices.projection.data());
+    g::setViewMode(viewId, g::ViewMode::Sequential);
+    g::touch(viewId);
     const std::array<float, 4> base{0.33f, 0.47f, 0.57f, 1.0f}, selected{0.27f, 0.9f, 0.7f, 1.0f};
     const auto submit = [&](const auto& color, uint32_t first, uint32_t count) {
         g::setTransform(model);
@@ -110,7 +110,7 @@ void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& tr
         g::setIndexBuffer(gpu.indices, first, count);
         g::setUniform(view.colorUniform, color.data());
         g::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_WRITE_Z | WOBY_GPU_STATE_DEPTH_TEST_LEQUAL);
-        g::submit(0, view.program);
+        g::submit(viewId, view.program);
     };
     submit(base, 0, static_cast<uint32_t>(trace.mesh.indices.size()));
     submit(selected, static_cast<uint32_t>(state.triangle * 3), 3);

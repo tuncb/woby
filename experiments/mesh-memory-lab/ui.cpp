@@ -2,6 +2,7 @@
 #include "utf8_path.h"
 #include <algorithm>
 #include <bit>
+#include <cfloat>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -27,25 +28,33 @@ void markRow(bool active)
     if (active) { ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(38, 85, 75, 150)); }
 }
 void at(ImDrawList* draw, ImVec2 pos, ImVec4 c, const char* text) { draw->AddText(pos, color(c), text); }
+bool dataTable(const char* id, int columns, ImGuiTableFlags flags, ImVec2 size = {})
+{
+    return ImGui::BeginTable(id,columns,flags | ImGuiTableFlags_ScrollX | ImGuiTableFlags_SizingStretchProp,
+        size,std::max(700.0f,ImGui::GetContentRegionAvail().x));
+}
 bool workflowDiagram(UiState& state, const Workflow& workflow, const Trace* trace)
 {
     bool clicked = false;
     const auto origin = ImGui::GetCursorScreenPos();
+    const auto available = ImGui::GetContentRegionAvail();
+    const float scale = workflowDiagramScale(workflow,{available.x,available.y},state.fitDiagram);
+    const float cardWidth = workflowCardWidth*scale, cardHeight = workflowCardHeight*scale;
     auto* draw = ImGui::GetWindowDrawList();
     const auto point = [&](const WorkflowNode& node) {
-        return ImVec2{origin.x + node.position[0], origin.y + node.position[1]};
+        return ImVec2{origin.x + node.position[0]*scale, origin.y + node.position[1]*scale};
     };
     for (const auto& edge : workflow.edges) {
         const auto a = point(workflow.nodes[edge.from]), b = point(workflow.nodes[edge.to]);
-        ImVec2 from{a.x + workflowCardWidth*.5f, a.y + workflowCardHeight*.5f};
-        ImVec2 to{b.x + workflowCardWidth*.5f, b.y + workflowCardHeight*.5f};
+        ImVec2 from{a.x + cardWidth*.5f, a.y + cardHeight*.5f};
+        ImVec2 to{b.x + cardWidth*.5f, b.y + cardHeight*.5f};
         const float dx = to.x-from.x, dy = to.y-from.y;
         if (std::abs(dx)/workflowCardWidth >= std::abs(dy)/workflowCardHeight) {
-            from.x += std::copysign(workflowCardWidth*.5f, dx);
-            to.x -= std::copysign(workflowCardWidth*.5f, dx);
+            from.x += std::copysign(cardWidth*.5f, dx);
+            to.x -= std::copysign(cardWidth*.5f, dx);
         } else {
-            from.y += std::copysign(workflowCardHeight*.5f, dy);
-            to.y -= std::copysign(workflowCardHeight*.5f, dy);
+            from.y += std::copysign(cardHeight*.5f, dy);
+            to.y -= std::copysign(cardHeight*.5f, dy);
         }
         const bool selected = state.workflowNode == edge.from || state.workflowNode == edge.to;
         const auto shade = selected ? mint : muted;
@@ -57,46 +66,53 @@ bool workflowDiagram(UiState& state, const Workflow& workflow, const Trace* trac
                 {to.x-unit.x*8+unit.y*4,to.y-unit.y*8-unit.x*4}, color(shade));
         }
         if (!edge.label.empty()) {
-            const auto size = ImGui::CalcTextSize(edge.label.c_str());
-            const ImVec2 p{(from.x+to.x-size.x)*.5f,(from.y+to.y)*.5f-18};
+            const float fontSize = std::max(10.0f,ImGui::GetFontSize()*scale);
+            const auto size = ImGui::GetFont()->CalcTextSizeA(fontSize,FLT_MAX,0,edge.label.c_str());
+            const ImVec2 p{(from.x+to.x-size.x)*.5f,(from.y+to.y)*.5f-size.y-2};
             draw->AddRectFilled({p.x-3,p.y-2},{p.x+size.x+3,p.y+size.y+2},IM_COL32(19,26,32,255));
-            at(draw,p,shade,edge.label.c_str());
+            draw->AddText(nullptr,fontSize,p,color(shade),edge.label.c_str());
         }
     }
     for (size_t i = 0; i < workflow.nodes.size(); ++i) {
         const auto& node = workflow.nodes[i]; const auto p = point(node);
         const auto accent = node.transformer ? amber : blue;
         const bool selected = state.workflowNode == i;
-        draw->AddRectFilled(p,{p.x+workflowCardWidth,p.y+workflowCardHeight},
+        draw->AddRectFilled(p,{p.x+cardWidth,p.y+cardHeight},
             selected ? IM_COL32(30,52,64,255) : IM_COL32(23,34,44,255),6);
-        draw->AddRect(p,{p.x+workflowCardWidth,p.y+workflowCardHeight},
+        draw->AddRect(p,{p.x+cardWidth,p.y+cardHeight},
             selected ? color(accent) : IM_COL32(52,65,75,255),6,0,selected ? 2.0f : 1.0f);
-        const ImVec4 clip{p.x+8,p.y+4,p.x+workflowCardWidth-8,p.y+workflowCardHeight-4};
+        const ImVec4 clip{p.x+4,p.y+4,p.x+cardWidth-4,p.y+cardHeight-4};
         const auto text = [&](float y, ImVec4 shade, const char* value, float wrap = 0) {
-            draw->AddText(nullptr,0,{p.x+12,p.y+y},color(shade),value,nullptr,wrap,&clip);
+            draw->AddText(nullptr,ImGui::GetFontSize()*scale,{p.x+12*scale,p.y+y*scale},color(shade),value,nullptr,wrap*scale,&clip);
         };
-        text(10,accent,node.transformer ? "f(x) TRANSFORM" : "DATA");
-        text(32,ink,node.title.c_str());
-        text(55,muted,node.summary.c_str(),workflowCardWidth-24);
-        if (trace && node.inspector && !node.transformer) {
-            char bytes[48]; std::snprintf(bytes,sizeof(bytes),"%zu B payload",payloadBytes(*node.inspector,*trace));
-            text(86,mint,bytes);
+        if (scale < .8f) {
+            // A readable overview keeps titles; the inspector and tooltip hold details.
+            const float fontSize = std::max(11.0f,ImGui::GetFontSize()*scale);
+            draw->AddText(nullptr,fontSize,{p.x+6,p.y+8},color(selected ? accent : ink),node.title.c_str(),nullptr,cardWidth-12,&clip);
+        } else {
+            text(10,accent,node.transformer ? "f(x) TRANSFORM" : "DATA");
+            text(32,ink,node.title.c_str());
+            text(55,muted,node.summary.c_str(),workflowCardWidth-24);
+            if (trace && node.inspector && !node.transformer) {
+                char bytes[48]; std::snprintf(bytes,sizeof(bytes),"%zu B payload",payloadBytes(*node.inspector,*trace));
+                text(86,mint,bytes);
+            }
         }
         ImGui::PushID(static_cast<int>(i)); ImGui::SetCursorScreenPos(p);
-        if (ImGui::InvisibleButton("node",{workflowCardWidth,workflowCardHeight},ImGuiButtonFlags_EnableNav)) {
+        if (ImGui::InvisibleButton("node",{cardWidth,cardHeight},ImGuiButtonFlags_EnableNav)) {
             selectWorkflowNode(state,workflow,i); clicked = true;
         }
         if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\n%s",node.title.c_str(),node.summary.c_str()); }
         ImGui::PopID();
     }
     ImGui::SetCursorScreenPos(origin);
-    ImGui::Dummy({workflow.extent[0]+4,workflow.extent[1]+4});
+    ImGui::Dummy({(workflow.extent[0]+4)*scale,(workflow.extent[1]+4)*scale});
     return clicked;
 }
 
 void sourceTable(UiState& state, const Trace& trace, bool parsing)
 {
-    if (ImGui::BeginTable("source", parsing ? 4 : 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable, {0,-1})) {
+    if (dataTable("source", parsing ? 4 : 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable, {0,-1})) {
         ImGui::TableSetupColumn("Line", ImGuiTableColumnFlags_WidthFixed, 42);
         ImGui::TableSetupColumn("+byte", ImGuiTableColumnFlags_WidthFixed, 62);
         ImGui::TableSetupColumn("Embedded OBJ text");
@@ -124,7 +140,7 @@ void sourceTable(UiState& state, const Trace& trace, bool parsing)
 }
 void positionsTable(UiState& state, const Trace& trace, bool localized)
 {
-    if (ImGui::BeginTable("positions",localized ? 5 : 4,ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+    if (dataTable("positions",localized ? 5 : 4,ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("source ID"); ImGui::TableSetupColumn("x / float64");
         ImGui::TableSetupColumn("y"); ImGui::TableSetupColumn("z");
         if (localized) { ImGui::TableSetupColumn("local x = source - origin"); }
@@ -150,7 +166,7 @@ void attributePools(UiState& state, const Trace& trace)
     positionsTable(state,trace,false);
     heading("Normals / float32 x3 + texcoords / float32 x2");
     ImGui::Text("%zu normals / %zu B    %zu UVs / %zu B",trace.normals.size(),trace.normals.size()*12,trace.texcoords.size(),trace.texcoords.size()*8);
-    if (ImGui::BeginTable("attributes",4,ImGuiTableFlags_RowBg)) {
+    if (dataTable("attributes",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"array / index","values","+byte","used by selected corner"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow(); const auto key = trace.vertexKeys[selectedVertex(state,trace)];
         for (size_t i = 0; i < trace.normals.size()+trace.texcoords.size(); ++i) {
@@ -174,7 +190,7 @@ void attributePools(UiState& state, const Trace& trace)
     }
     heading("Original polygon corners / independent p,n,uv indices");
     ImGui::Text("%zu corners x %zu B",trace.originalCorners,sizeof(Corner));
-    if (ImGui::BeginTable("polygon-corners",4,ImGuiTableFlags_RowBg)) {
+    if (dataTable("polygon-corners",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"face","corner","p / n / uv","corner payload +byte"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow(); size_t offset = 0;
         for (size_t f = 0; f < trace.faces.size(); ++f) {
@@ -197,7 +213,7 @@ void attributePools(UiState& state, const Trace& trace)
 }
 void cornerTable(UiState& state, const Trace& trace, bool packing)
 {
-    if (ImGui::BeginTable("corners",packing ? 6 : 5,ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,{0,-1})) {
+    if (dataTable("corners",packing ? 6 : 5,ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY,{0,-1})) {
         for (const auto* name : {"corner","face -> triangle","p / n / uv","render vertex","+byte"}) { ImGui::TableSetupColumn(name); }
         if (packing) { ImGui::TableSetupColumn("intern result"); }
         ImGui::TableSetupScrollFreeze(0,1); ImGui::TableHeadersRow();
@@ -224,7 +240,7 @@ void meshTable(UiState& state, const Trace& trace)
     label("woby::Vertex = { float position[3]; float normal[3]; float texcoord[2]; }");
     ImGui::Text("stride 32 / align %zu / offsets: position 0, normal 12, texcoord 24",alignof(woby::Vertex));
     ImGui::Spacing();
-    if (ImGui::BeginTable("vertices",5,ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable,{0,282})) {
+    if (dataTable("vertices",5,ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable,{0,282})) {
         for (const auto* name : {"vertex / +byte","source tuple p,n,uv","position / f32","normal / f32","UV / f32"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableSetupScrollFreeze(0,1); ImGui::TableHeadersRow();
         const auto selected = selectedVertex(state,trace);
@@ -247,7 +263,7 @@ void meshTable(UiState& state, const Trace& trace)
     ImGui::Text("sourceData.indices %zu x 4 B     corner -> source position",trace.mesh.sourceData->indices.size());
     ImGui::Text("%zu B total CPU payload; headers and capacity are excluded.",payloadBytes(Node::mesh,trace));
     heading("Render indices versus original position indices / 4 B per element");
-    if (ImGui::BeginTable("cpu-indices",4,ImGuiTableFlags_RowBg)) {
+    if (dataTable("cpu-indices",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"triangle","+byte","mesh.indices / render ID","sourceData.indices / source ID"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
         for (size_t t = 0; t < trace.triangles.size(); ++t) {
@@ -263,7 +279,7 @@ void meshTable(UiState& state, const Trace& trace)
         ImGui::EndTable();
     }
     heading("Double sidecars / same local frame, two identity domains");
-    if (ImGui::BeginTable("sidecars",4,ImGuiTableFlags_RowBg)) {
+    if (dataTable("sidecars",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"render vertex / +byte","precisePositions[v]","source position / +byte","sourceData.points[p]"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
         for (size_t v = 0; v < trace.mesh.vertices.size(); ++v) {
@@ -281,7 +297,7 @@ void meshTable(UiState& state, const Trace& trace)
 }
 void triangleIndices(UiState& state, const Trace& trace, const GpuCapture& gpu)
 {
-    if (ImGui::BeginTable("indices",5,ImGuiTableFlags_RowBg)) {
+    if (dataTable("indices",5,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"primitive","IB +byte","uint32[3] / vertex IDs","VB offsets / bytes","GPU readback"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
         for (size_t t = 0; t < trace.triangles.size(); ++t) {
@@ -310,7 +326,7 @@ void uploadPanel(UiState& state, const Trace& trace, const GpuCapture& gpu)
     ImGui::TextColored(amber,"Copy %zu B of render data; retain %zu B of CPU arrays.",payloadBytes(Node::gpu,trace),payloadBytes(Node::mesh,trace));
     label("Upload copies bytes. It does not move the vectors or upload their pointers, size or capacity.");
     heading("Ownership across the transfer");
-    if (ImGui::BeginTable("ownership",4,ImGuiTableFlags_RowBg)) {
+    if (dataTable("ownership",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"allocation","element type","payload","lifetime"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
         allocation("mesh.vertices","Vertex",trace.mesh.vertices.size(),32,"CPU capture");
@@ -353,7 +369,7 @@ void splitPanel(UiState& state, const Trace& trace)
     label("Per axis: rebase to the bounds center when |center| >= 65536. local = original - origin.");
     positionsTable(state,trace,true);
     heading("2. RapidOBJ polygon triangulation / same winding, independent corner attributes");
-    if (ImGui::BeginTable("faces",3,ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+    if (dataTable("faces",3,ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("original face / source corners"); ImGui::TableSetupColumn("output triangle"); ImGui::TableSetupColumn("position IDs");
         ImGui::TableHeadersRow();
         for (size_t t = 0; t < trace.triangles.size(); ++t) {
@@ -370,28 +386,32 @@ void splitPanel(UiState& state, const Trace& trace)
     label("Quad rule: choose diagonal 0-2 only when it is shorter than 1-3; ties use 1-3.");
     ImGui::Text("Positions stay shared: %zu polygon corners -> %zu triangle corners.",trace.originalCorners,trace.mesh.indices.size());
 }
-void packPanel(UiState& state, const Trace& trace)
+void packPanel(UiState& state, const Trace& trace, bool compact)
 {
     ImGui::TextColored(amber,"%zu corners -> %zu vertices + %zu indices",trace.mesh.indices.size(),trace.mesh.vertices.size(),trace.mesh.indices.size());
     ImGui::Text("%zu source positions have multiple render identities.",trace.splitPositions);
-    ImGui::TextUnformatted("id = vertexIndex({corner.position, corner.normal, corner.texcoord});\n"
-        "if (firstUse) emit Vertex{float(localPosition), resolvedNormal, resolvedUV};\n"
-        "indices.push_back(id); // first-use order; no index-buffer reordering");
-    ImGui::Spacing();
-    label("INSERT allocates a 32 B record; REUSE emits only a 4 B index. Double positions stay in CPU sidecars.");
+    if (!compact || ImGui::CollapsingHeader("Packing rule")) {
+        ImGui::TextUnformatted("id = vertexIndex({corner.position, corner.normal, corner.texcoord});\n"
+            "if (firstUse) emit Vertex{float(localPosition), resolvedNormal, resolvedUV};\n"
+            "indices.push_back(id); // first-use order; no index-buffer reordering");
+        ImGui::Spacing();
+        label("INSERT allocates a 32 B record; REUSE emits only a 4 B index. Double positions stay in CPU sidecars.");
+    }
     ImGui::Spacing(); cornerTable(state,trace,true);
 }
-void details(UiState& state, const Trace& trace, const GpuCapture& gpu)
+void details(UiState& state, const Trace& trace, const GpuCapture& gpu, bool compact = false)
 {
     const auto& node = pipeline[static_cast<size_t>(state.node)];
-    ImGui::TextColored(node.transformer ? amber : blue,"%s",node.transformer ? "TRANSFORMER" : "DATA");
-    ImGui::SameLine(); ImGui::TextUnformatted(node.title); ImGui::SameLine(); label(node.caption);
-    if (node.transformer) {
-        const auto ends = transformationEndpoints(node.id);
-        ImGui::TextColored(muted,"%s (%zu B) -> %s (%zu B)",pipeline[static_cast<size_t>(ends[0])].title,payloadBytes(ends[0],trace),
-            pipeline[static_cast<size_t>(ends[1])].title,payloadBytes(ends[1],trace));
-    } else { ImGui::TextColored(muted,"%zu B of array payload / click a record to follow its identity",payloadBytes(node.id,trace)); }
-    ImGui::Separator(); ImGui::Spacing();
+    if (!compact) {
+        ImGui::TextColored(node.transformer ? amber : blue,"%s",node.transformer ? "TRANSFORMER" : "DATA");
+        ImGui::SameLine(); ImGui::TextUnformatted(node.title); ImGui::SameLine(); label(node.caption);
+        if (node.transformer) {
+            const auto ends = transformationEndpoints(node.id);
+            ImGui::TextColored(muted,"%s (%zu B) -> %s (%zu B)",pipeline[static_cast<size_t>(ends[0])].title,payloadBytes(ends[0],trace),
+                pipeline[static_cast<size_t>(ends[1])].title,payloadBytes(ends[1],trace));
+        } else { ImGui::TextColored(muted,"%zu B of array payload / click a record to follow its identity",payloadBytes(node.id,trace)); }
+        ImGui::Separator(); ImGui::Spacing();
+    }
     switch (node.id) {
     case Node::source:
         label("Embedded ASCII OBJ. Line numbers and byte offsets refer to this exact string.");
@@ -408,7 +428,7 @@ void details(UiState& state, const Trace& trace, const GpuCapture& gpu)
         label("Tuple notation below is p / n / uv. Each consecutive triple is one triangle.");
         ImGui::Text("%zu B of attributes and triangle corners. Polygon provenance is separate.",payloadBytes(Node::corners,trace));
         ImGui::Spacing(); cornerTable(state,trace,false); break;
-    case Node::pack: packPanel(state,trace); break;
+    case Node::pack: packPanel(state,trace,compact); break;
     case Node::mesh: meshTable(state,trace); break;
     case Node::upload: uploadPanel(state,trace,gpu); break;
     case Node::gpu: gpuPanel(state,trace,gpu); break;
@@ -416,10 +436,11 @@ void details(UiState& state, const Trace& trace, const GpuCapture& gpu)
     }
 }
 
-void geometry(UiState& state, const Trace& trace, Viewport& view)
+void geometry(UiState& state, const Trace& trace, Viewport& view, float height)
 {
-    const ImVec2 canvas{ImGui::GetContentRegionAvail().x, 132};
-    resizeViewport(view, static_cast<uint16_t>(std::clamp(canvas.x, 1.0f, 2048.0f)), 132);
+    const ImVec2 canvas{ImGui::GetContentRegionAvail().x, height};
+    resizeViewport(view, static_cast<uint16_t>(std::clamp(canvas.x, 1.0f, 2048.0f)),
+        static_cast<uint16_t>(std::clamp(canvas.y, 1.0f, 2048.0f)));
     const auto start = ImGui::GetCursorScreenPos();
     ImGui::Image(static_cast<ImTextureID>(view.color.idx)+1, canvas);
     if (ImGui::IsItemHovered()) {
@@ -501,10 +522,9 @@ void byteFields(UiState& state, const Trace& trace, const GpuCapture& gpu)
         } else { label("No source UV; the packed record contains the loader fallback."); }
     }
 }
-void focus(UiState& state, const Trace& trace, const GpuCapture& gpu, Viewport& view)
+void meshSelection(UiState& state, const Trace& trace, Viewport& view, bool expand = false)
 {
-    ImGui::TextColored(mint,"FOLLOW A DATUM"); ImGui::SameLine(); label("selection links every stage");
-    geometry(state,trace,view);
+    geometry(state,trace,view,expand ? std::max(132.0f,ImGui::GetContentRegionAvail().y-100) : 132);
     int triangle = static_cast<int>(state.triangle); ImGui::SetNextItemWidth(115);
     if (ImGui::SliderInt("T",&triangle,0,static_cast<int>(trace.triangles.size())-1)) { selectTriangle(state,trace,static_cast<size_t>(triangle)); }
     for (size_t c = 0; c < 3; ++c) {
@@ -513,12 +533,17 @@ void focus(UiState& state, const Trace& trace, const GpuCapture& gpu, Viewport& 
     }
     const auto v = selectedVertex(state,trace); const auto key = trace.vertexKeys[v];
     const auto face = trace.triangles[state.triangle].face;
-    ImGui::Text("F%zu -> T%zu.c%zu -> (p%d,n%d,uv%d) -> v%u",face,state.triangle,state.corner,key.position,key.normal,key.texcoord,v);
+    ImGui::TextWrapped("F%zu -> T%zu.c%zu -> (p%d,n%d,uv%d) -> v%u",face,state.triangle,state.corner,key.position,key.normal,key.texcoord,v);
     label("Same source position:");
     for (const auto alias : trace.positionVertices[static_cast<size_t>(key.position)]) {
         ImGui::SameLine(); char name[20]; std::snprintf(name,sizeof(name),"v%u",alias);
         if (ImGui::SmallButton(name)) { selectVertex(state,trace,alias); }
     }
+}
+void focus(UiState& state, const Trace& trace, const GpuCapture& gpu, Viewport& view)
+{
+    ImGui::TextColored(mint,"FOLLOW A DATUM"); ImGui::SameLine(); label("selection links every stage");
+    meshSelection(state,trace,view);
     ImGui::Separator(); byteFields(state,trace,gpu);
 }
 
@@ -549,15 +574,14 @@ void configureStyle(UiRuntime& runtime, const std::filesystem::path& assets)
     s.Colors[ImGuiCol_HeaderActive] = {0.20f,0.37f,0.34f,1};
     s.Colors[ImGuiCol_TableHeaderBg] = {0.10f,0.15f,0.18f,1};
 }
-void drawWorkflowInspector(UiState& state, const WorkflowEntry& entry, const GpuCapture& gpu, Viewport& view)
+void stageInspector(UiState& state, const WorkflowEntry& entry, const GpuCapture& gpu, bool compact)
 {
     const auto& workflow = *entry.document;
-    const float leftWidth = ImGui::GetContentRegionAvail().x*.64f;
     const auto& node = workflow.nodes[state.workflowNode];
-    ImGui::BeginChild("inspector",{leftWidth,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::PushTextWrapPos();
     ImGui::TextColored(node.transformer ? amber : blue,"%s",node.title.c_str());
-    label(node.description.c_str()); ImGui::Spacing();
-    if (entry.trace && node.inspector) { details(state,*entry.trace,gpu); }
+    if (!compact || !entry.trace || !node.inspector || ImGui::CollapsingHeader("About this stage")) { label(node.description.c_str()); }
+    if (entry.trace && node.inspector) { details(state,*entry.trace,gpu,compact); }
     else {
         ImGui::Separator(); heading("CONNECTIONS");
         for (const auto& edge : workflow.edges) {
@@ -570,92 +594,126 @@ void drawWorkflowInspector(UiState& state, const WorkflowEntry& entry, const Gpu
             ImGui::PopID();
         }
     }
+    ImGui::PopTextWrapPos();
+}
+void workflowOutline(UiState& state, const Workflow& workflow)
+{
+    label("Select a stage here or in the diagram.");
+    for (size_t i = 0; i < workflow.nodes.size(); ++i) {
+        ImGui::PushID(static_cast<int>(i));
+        if (ImGui::Selectable(workflow.nodes[i].title.c_str(),state.workflowNode == i)) { selectWorkflowNode(state,workflow,i); }
+        ImGui::PopID();
+    }
+}
+void drawWorkflowInspector(UiState& state, const WorkflowEntry& entry, const GpuCapture& gpu, Viewport& view)
+{
+    const float leftWidth = ImGui::GetContentRegionAvail().x*.64f;
+    ImGui::BeginChild("inspector",{leftWidth,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+    stageInspector(state,entry,gpu,false);
     ImGui::EndChild(); ImGui::SameLine();
     ImGui::BeginChild("selected-datum",{0,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
     if (entry.trace) { focus(state,*entry.trace,gpu,view); }
-    else {
-        heading("WORKFLOW OUTLINE");
-        label("Select a stage here or in the diagram.");
-        for (size_t i = 0; i < workflow.nodes.size(); ++i) {
-            ImGui::PushID(static_cast<int>(i));
-            if (ImGui::Selectable(workflow.nodes[i].title.c_str(),state.workflowNode == i)) { selectWorkflowNode(state,workflow,i); }
-            ImGui::PopID();
-        }
-    }
+    else { workflowOutline(state,*entry.document); }
     ImGui::EndChild();
+}
+bool compactInspector(UiState& state, const WorkflowEntry& entry, const GpuCapture& gpu, Viewport& view)
+{
+    const auto tab = [&](const char* title, InspectorTab value) {
+        const bool selected = state.inspectorTab == value;
+        if (selected) { ImGui::PushStyleColor(ImGuiCol_Button,ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive)); }
+        if (ImGui::SmallButton(title)) { selectInspectorTab(state,value,entry.trace != nullptr); }
+        if (selected) { ImGui::PopStyleColor(); }
+    };
+    tab("Stage",InspectorTab::stage); ImGui::SameLine();
+    tab(entry.trace ? "Mesh" : "Outline",InspectorTab::mesh);
+    if (entry.trace) { ImGui::SameLine(); tab("Bytes",InspectorTab::bytes); }
+    ImGui::Separator();
+    const bool meshVisible = entry.trace && state.inspectorTab == InspectorTab::mesh;
+    ImGui::PushID(static_cast<int>(state.inspectorTab));
+    ImGui::BeginChild("tab-content",{0,0},0,ImGuiWindowFlags_HorizontalScrollbar);
+    if (state.inspectorTab == InspectorTab::stage) { stageInspector(state,entry,gpu,true); }
+    else if (!entry.trace) { workflowOutline(state,*entry.document); }
+    else if (meshVisible) { meshSelection(state,*entry.trace,view,true); }
+    else { byteFields(state,*entry.trace,gpu); }
+    ImGui::EndChild(); ImGui::PopID();
+    return meshVisible;
 }
 
 void drawUi(UiRuntime& runtime, WorkspaceState& state, const WorkflowLibrary& library,
-    const std::array<GpuCapture, 2>& gpu, Viewport& view, UiActions& actions)
+    const std::array<GpuCapture, 2>& gpu, std::array<Viewport, 2>& views, UiActions& actions)
 {
+    runtime.viewportVisible = {};
     const auto& io = ImGui::GetIO();
     ImGui::SetNextWindowPos({0,0}); ImGui::SetNextWindowSize(io.DisplaySize);
     ImGui::Begin("Mesh memory lab",nullptr,ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
     ImGui::PushFont(runtime.title); ImGui::TextUnformatted("Mesh memory lab"); ImGui::PopFont();
-    ImGui::SameLine(); ImGui::TextColored(muted,"  WORKFLOW LIBRARY");
-    ImGui::Spacing();
-    ImGui::BeginChild("library",{230,0},ImGuiChildFlags_Borders);
-    heading("WORKFLOWS");
-    ImGui::BeginDisabled(runtime.loading);
-    if (ImGui::Button("Reload folder")) { actions.reload = true; }
-    if (ImGui::Button(state.chooseComparison ? "Cancel selection" : (state.paneCount == 2 ? "Replace bottom" : "Add comparison"))) {
-        setComparisonSelection(state,!state.chooseComparison);
+    ImGui::SameLine(); ImGui::PushFont(runtime.mono);
+    if (ImGui::SmallButton(state.showLibrary ? "\xef\x81\xae Library###toggle-library" : "\xef\x81\xb0 Library###toggle-library")) {
+        setWorkflowLibraryVisible(state,!state.showLibrary);
     }
-    ImGui::EndDisabled();
-    if (runtime.loading) { label("Loading workflows..."); }
-    if (state.chooseComparison) { ImGui::TextColored(mint,"Select the bottom workflow."); }
-    ImGui::Spacing();
-    for (const auto& group : library.groups) {
-        const auto name = woby::pathToUtf8(group.folder);
-        const bool grouped = !name.empty();
-        if (grouped && !ImGui::TreeNodeEx(name.c_str(),ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) { continue; }
-        for (const auto i : group.entries) {
-            const auto& entry = library.entries[i];
-            const auto title = entry.document ? entry.document->title : woby::pathToUtf8(entry.path.filename());
-            const bool selected = i == state.panes[state.activePane].workflow;
-            ImGui::PushID(static_cast<int>(i));
-            ImGui::BeginDisabled(runtime.loading || !entry.document);
-            if (ImGui::Selectable(title.c_str(),selected && entry.document.has_value(),0,{0,24})) {
-                actions.open = OpenWorkflowRequest{i,state.chooseComparison ? size_t{1} : state.activePane};
-            }
-            if (ImGui::BeginPopupContextItem("open-workflow")) {
-                if (ImGui::MenuItem("Open on top")) { actions.open = OpenWorkflowRequest{i,0}; }
-                if (ImGui::MenuItem("Open below")) { actions.open = OpenWorkflowRequest{i,1}; }
-                ImGui::EndPopup();
-            }
-            ImGui::EndDisabled();
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                ImGui::SetTooltip("%s\n%s",woby::pathToUtf8(entry.relativePath).c_str(),
-                    entry.document ? entry.document->description.c_str() : entry.error.c_str());
-            }
-            if (!entry.error.empty()) { ImGui::TextColored(amber,"Could not load"); }
-            ImGui::PopID();
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s workflow library",state.showLibrary ? "Hide" : "Show"); }
+    if (state.paneCount == 2) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton(state.showInspector ? "\xef\x81\xae Inspectors###toggle-inspector" : "\xef\x81\xb0 Inspectors###toggle-inspector")) {
+            setWorkflowInspectorVisible(state,!state.showInspector);
         }
-        if (grouped) { ImGui::TreePop(); }
-        ImGui::Spacing();
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s both inspectors",state.showInspector ? "Hide" : "Show"); }
     }
-    if (library.entries.empty()) { label("No .meshflow files. Add workflows here or in commit subfolders, then reload."); }
-    ImGui::Separator(); label("Folder");
-    ImGui::TextWrapped("%s",woby::pathToUtf8(library.directory).c_str());
-    ImGui::EndChild(); ImGui::SameLine();
+    ImGui::PopFont();
+    ImGui::Spacing();
+    if (state.showLibrary) {
+        ImGui::BeginChild("library",{230,0},ImGuiChildFlags_Borders);
+        heading("WORKFLOWS");
+        ImGui::BeginDisabled(runtime.loading);
+        if (ImGui::Button("Reload folder")) { actions.reload = true; }
+        if (ImGui::Button(state.chooseComparison ? "Cancel selection" : (state.paneCount == 2 ? "Replace bottom" : "Add comparison"))) {
+            setComparisonSelection(state,!state.chooseComparison);
+        }
+        ImGui::EndDisabled();
+        if (runtime.loading) { label("Loading workflows..."); }
+        if (state.chooseComparison) { ImGui::TextColored(mint,"Select the bottom workflow."); }
+        ImGui::Spacing();
+        for (const auto& group : library.groups) {
+            const auto name = woby::pathToUtf8(group.folder);
+            const bool grouped = !name.empty();
+            if (grouped && !ImGui::TreeNodeEx(name.c_str(),ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) { continue; }
+            for (const auto i : group.entries) {
+                const auto& entry = library.entries[i];
+                const auto title = entry.document ? entry.document->title : woby::pathToUtf8(entry.path.filename());
+                const bool selected = i == state.panes[state.activePane].workflow;
+                ImGui::PushID(static_cast<int>(i));
+                ImGui::BeginDisabled(runtime.loading || !entry.document);
+                if (ImGui::Selectable(title.c_str(),selected && entry.document.has_value(),0,{0,24})) {
+                    actions.open = OpenWorkflowRequest{i,state.chooseComparison ? size_t{1} : state.activePane};
+                }
+                if (ImGui::BeginPopupContextItem("open-workflow")) {
+                    if (ImGui::MenuItem("Open on top")) { actions.open = OpenWorkflowRequest{i,0}; }
+                    if (ImGui::MenuItem("Open below")) { actions.open = OpenWorkflowRequest{i,1}; }
+                    ImGui::EndPopup();
+                }
+                ImGui::EndDisabled();
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip("%s\n%s",woby::pathToUtf8(entry.relativePath).c_str(),
+                        entry.document ? entry.document->description.c_str() : entry.error.c_str());
+                }
+                if (!entry.error.empty()) { ImGui::TextColored(amber,"Could not load"); }
+                ImGui::PopID();
+            }
+            if (grouped) { ImGui::TreePop(); }
+            ImGui::Spacing();
+        }
+        if (library.entries.empty()) { label("No .meshflow files. Add workflows here or in commit subfolders, then reload."); }
+        ImGui::Separator(); label("Folder");
+        ImGui::TextWrapped("%s",woby::pathToUtf8(library.directory).c_str());
+        ImGui::EndChild(); ImGui::SameLine();
+    }
     ImGui::BeginChild("workspace",{0,0});
     if (!runtime.message.empty()) { ImGui::TextWrapped("%s",runtime.message.c_str()); }
     const bool comparing = state.paneCount == 2;
-    if (comparing) {
-        ImGui::TextColored(mint,"TOP / BOTTOM COMPARISON");
-        ImGui::SameLine();
-        ImGui::PushFont(runtime.mono);
-        if (ImGui::SmallButton(state.showInspector ? "\xef\x81\xae Inspector###toggle-inspector" : "\xef\x81\xb0 Inspector###toggle-inspector")) {
-            setWorkflowInspectorVisible(state,!state.showInspector);
-        }
-        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s inspector",state.showInspector ? "Hide" : "Show"); }
-        ImGui::PopFont();
-    }
     const bool inspect = !comparing || state.showInspector;
     const float available = ImGui::GetContentRegionAvail().y;
     const float gap = ImGui::GetStyle().ItemSpacing.y;
-    const float diagramsHeight = comparing ? (inspect ? std::max(300.0f,available*.60f) : available)
-        : std::min(398.0f,available*.55f);
+    const float diagramsHeight = comparing ? available : std::min(398.0f,available*.55f);
     const float paneHeight = (diagramsHeight-gap*static_cast<float>(state.paneCount-1))/static_cast<float>(state.paneCount);
     ImGui::BeginChild("panes",{0,diagramsHeight},0,ImGuiWindowFlags_NoScrollbar);
     for (size_t pane = 0; pane < state.paneCount; ++pane) {
@@ -665,6 +723,10 @@ void drawUi(UiRuntime& runtime, WorkspaceState& state, const WorkflowLibrary& li
         }
         const auto& entry = library.entries[selection.workflow]; const auto& workflow = *entry.document;
         ImGui::PushID(static_cast<int>(pane));
+        if (comparing) {
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2{10,8});
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,ImVec2{8,5});
+        }
         ImGui::PushStyleColor(ImGuiCol_Border,comparing && state.activePane == pane ? mint : ImGui::GetStyleColorVec4(ImGuiCol_Border));
         ImGui::BeginChild("pane",{0,paneHeight},ImGuiChildFlags_Borders,ImGuiWindowFlags_NoScrollbar);
         ImGui::PopStyleColor();
@@ -672,28 +734,58 @@ void drawUi(UiRuntime& runtime, WorkspaceState& state, const WorkflowLibrary& li
         ImGui::TextColored(mint,"%s",workflow.title.c_str());
         if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s",workflow.description.c_str()); }
         ImGui::SameLine();
-        if (ImGui::SmallButton("Inspect")) {
-            focusWorkflowPane(state,pane); setWorkflowInspectorVisible(state,true);
+        if (ImGui::SmallButton(selection.fitDiagram ? "100%" : "Fit")) { setDiagramFit(selection,!selection.fitDiagram); }
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip(selection.fitDiagram ? "Full-size cards with scrolling" : "Fit diagram to available space"); }
+        if (comparing && !inspect) {
+            ImGui::SameLine(); if (ImGui::SmallButton("Inspect")) {
+                focusWorkflowPane(state,pane); setWorkflowInspectorVisible(state,true);
+            }
         }
         ImGui::SameLine(); ImGui::BeginDisabled(runtime.loading);
         if (ImGui::SmallButton("Save copy")) { actions.saveCopy = pane; }
         if (comparing) { ImGui::SameLine(); if (ImGui::SmallButton("Close")) { actions.close = pane; } }
         ImGui::EndDisabled();
-        label(woby::pathToUtf8(entry.relativePath).c_str());
+        ImGui::TextColored(muted,"%s",woby::pathToUtf8(entry.relativePath).c_str());
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s",woby::pathToUtf8(entry.relativePath).c_str()); }
         ImGui::PushFont(runtime.mono);
         ImGui::PushID(woby::pathToUtf8(entry.relativePath).c_str());
-        ImGui::BeginChild("diagram",{0,0},0,ImGuiWindowFlags_HorizontalScrollbar);
-        if (workflowDiagram(selection,workflow,entry.trace.get())) { focusWorkflowPane(state,pane); }
-        ImGui::EndChild(); ImGui::PopID(); ImGui::PopFont();
-        ImGui::EndChild(); ImGui::PopID();
+        const float contentWidth = ImGui::GetContentRegionAvail().x;
+        const float inspectorWidth = contentWidth*state.inspectorFraction;
+        const float diagramWidth = comparing && inspect ? std::max(1.0f,contentWidth-inspectorWidth-22) : 0;
+        ImGui::BeginChild("diagram",{diagramWidth,0},0,ImGuiWindowFlags_HorizontalScrollbar);
+        if (workflowDiagram(selection,workflow,entry.trace.get())) {
+            focusWorkflowPane(state,pane); selectInspectorTab(selection,InspectorTab::stage);
+        }
+        ImGui::EndChild();
+        if (comparing && inspect) {
+            ImGui::SameLine();
+            const auto divider = ImGui::GetCursorScreenPos();
+            const float height = ImGui::GetContentRegionAvail().y;
+            ImGui::InvisibleButton("resize-inspectors",{6,height});
+            const bool resizing = ImGui::IsItemActive();
+            ImGui::GetWindowDrawList()->AddLine({divider.x+3,divider.y},{divider.x+3,divider.y+height},color(resizing ? mint : muted));
+            if (resizing || ImGui::IsItemHovered()) { ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW); }
+            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Drag to resize both inspectors"); }
+            if (resizing) { setInspectorFraction(state,state.inspectorFraction-ImGui::GetIO().MouseDelta.x/contentWidth); }
+            ImGui::SameLine();
+            ImGui::BeginChild("compact-inspector",{0,0},ImGuiChildFlags_Borders,ImGuiWindowFlags_NoScrollbar);
+            runtime.viewportVisible[pane] = compactInspector(selection,entry,gpu[pane],views[pane]);
+            if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows)) { focusWorkflowPane(state,pane); }
+            ImGui::EndChild();
+        }
+        ImGui::PopID(); ImGui::PopFont();
+        ImGui::EndChild();
+        if (comparing) { ImGui::PopStyleVar(2); }
+        ImGui::PopID();
     }
     ImGui::EndChild();
     auto& active = state.panes[state.activePane];
-    if (inspect && active.workflow < library.entries.size() && library.entries[active.workflow].document) {
+    if (!comparing && active.workflow < library.entries.size() && library.entries[active.workflow].document) {
         ImGui::PushID(static_cast<int>(state.activePane));
         ImGui::PushFont(runtime.mono);
         ImGui::BeginChild("workflow-inspector",{0,0});
-        drawWorkflowInspector(active,library.entries[active.workflow],gpu[state.activePane],view);
+        drawWorkflowInspector(active,library.entries[active.workflow],gpu[state.activePane],views[state.activePane]);
+        runtime.viewportVisible[state.activePane] = library.entries[active.workflow].trace != nullptr;
         ImGui::EndChild(); ImGui::PopFont(); ImGui::PopID();
     }
     ImGui::EndChild(); ImGui::End();

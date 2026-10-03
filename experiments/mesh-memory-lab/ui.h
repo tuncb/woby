@@ -8,6 +8,7 @@ struct UiRuntime {
     ImFont* mono = nullptr;
     ImFont* title = nullptr;
     bool loading = false;
+    std::array<bool, 2> viewportVisible{};
     std::string message;
 };
 struct OpenWorkflowRequest { size_t workflow = noWorkflow, pane = 0; };
@@ -18,5 +19,5 @@ struct UiActions {
 };
 void configureStyle(UiRuntime& runtime, const std::filesystem::path& assets);
 void drawUi(UiRuntime& runtime, WorkspaceState& state, const WorkflowLibrary& library,
-    const std::array<GpuCapture, 2>& gpu, Viewport& view, UiActions& actions);
+    const std::array<GpuCapture, 2>& gpu, std::array<Viewport, 2>& views, UiActions& actions);
 } // namespace mesh_lab

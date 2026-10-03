@@ -22,6 +22,8 @@ struct Options {
     std::filesystem::path screenshot, workflowsDirectory;
     std::string workflow, comparison;
     std::optional<size_t> inspectPane;
+    mesh_lab::InspectorTab inspectorTab = mesh_lab::InspectorTab::stage;
+    bool hideLibrary = false, hideInspectors = false;
     std::optional<mesh_lab::Node> node;
     size_t triangle = 2, corner = 0;
     int width = 1600, height = 1000, frameLimit = 0;
@@ -40,6 +42,15 @@ Options options(int argc, char** argv)
         else if (arg == "--workflows-dir") { result.workflowsDirectory = std::filesystem::absolute(woby::pathFromUtf8(value())); }
         else if (arg == "--workflow") { result.workflow = value(); }
         else if (arg == "--compare") { result.comparison = value(); }
+        else if (arg == "--hide-library") { result.hideLibrary = true; }
+        else if (arg == "--hide-inspectors") { result.hideInspectors = true; }
+        else if (arg == "--inspector-tab") {
+            const auto tab = value();
+            if (tab == "stage") { result.inspectorTab = mesh_lab::InspectorTab::stage; }
+            else if (tab == "mesh") { result.inspectorTab = mesh_lab::InspectorTab::mesh; }
+            else if (tab == "bytes") { result.inspectorTab = mesh_lab::InspectorTab::bytes; }
+            else { throw std::runtime_error("--inspector-tab expects stage, mesh or bytes."); }
+        }
         else if (arg == "--inspect") {
             const auto pane = value();
             if (pane != "top" && pane != "bottom") { throw std::runtime_error("--inspect expects top or bottom."); }
@@ -60,6 +71,7 @@ Options options(int argc, char** argv)
             std::puts("mesh_memory_lab: saved workflow diagrams and live mesh inspection\n"
                 "  [--workflows-dir folder] [--workflow commit/file.meshflow]\n"
                 "  [--compare commit/file.meshflow] [--inspect top|bottom]\n"
+                "  [--inspector-tab stage|mesh|bytes] [--hide-library] [--hide-inspectors]\n"
                 "  [--screenshot absolute.png] [--smoke] [--frames N]\n"
                 "  [--node source|parse|attributes|triangulate|corners|pack|mesh|upload|gpu]\n"
                 "  [--triangle N] [--corner N] [--width 1600] [--height 1000]");
@@ -100,7 +112,8 @@ int main(int argc, char** argv)
     bool sdlInitialized = false, graphicsInitialized = false, imguiInitialized = false, platformInitialized = false, uiRendererInitialized = false;
     std::array<mesh_lab::GpuCapture, 2> captures;
     auto& capture = captures[0];
-    mesh_lab::Viewport viewport;
+    std::array<mesh_lab::Viewport, 2> viewports;
+    auto& viewport = viewports[0];
     g::TextureHandle output;
     g::FrameBufferHandle outputTarget;
     int exitCode = 0;
@@ -120,7 +133,12 @@ int main(int argc, char** argv)
             mesh_lab::openWorkflowPane(workspace,library,mesh_lab::findWorkflow(library,config.comparison),1);
         }
         mesh_lab::focusWorkflowPane(workspace,config.inspectPane.value_or(0));
-        if (config.inspectPane) { mesh_lab::setWorkflowInspectorVisible(workspace,true); }
+        mesh_lab::setWorkflowInspectorVisible(workspace,!config.hideInspectors);
+        mesh_lab::setWorkflowLibraryVisible(workspace,!config.hideLibrary);
+        for (auto& pane : workspace.panes) {
+            const bool hasMesh = pane.workflow < library.entries.size() && library.entries[pane.workflow].trace;
+            mesh_lab::selectInspectorTab(pane,config.inspectorTab,hasMesh);
+        }
         if (!SDL_Init(headless ? 0 : SDL_INIT_VIDEO)) { throw std::runtime_error(SDL_GetError()); }
         sdlInitialized = true;
         if (!headless) {
@@ -142,7 +160,7 @@ int main(int argc, char** argv)
         if (!g::init(init)) { throw std::runtime_error(g::initializationError()); }
         graphicsInitialized = true;
         const std::filesystem::path assets = std::filesystem::path(SDL_GetBasePath()) / "assets";
-        mesh_lab::initViewport(viewport, assets);
+        for (auto& view : viewports) { mesh_lab::initViewport(view, assets); }
         if (config.smoke) {
             mesh_lab::resizeViewport(viewport, 320, 240);
             if (library.entries.empty()) { throw std::runtime_error("No workflows to validate."); }
@@ -168,6 +186,23 @@ int main(int argc, char** argv)
                     if (pixels[p] != 0x11 || pixels[p+1] != 0x19 || pixels[p+2] != 0x20) { ++shaded; }
                 }
                 if (shaded < 100) { throw std::runtime_error("GPU viewport did not rasterize the mesh."); }
+                // Both targets must match isolated rendering, even when submitted together.
+                // This catches reused view IDs/framebuffers and camera state leaking across panes.
+                auto other = state; mesh_lab::orbit(other,.8f,.2f,1);
+                mesh_lab::resizeViewport(viewports[1],320,240);
+                mesh_lab::renderViewport(viewports[1],capture,trace,other,1);
+                std::vector<uint8_t> expectedBottom(pixels.size());
+                auto bottomReady = g::readTexture(viewports[1].color,expectedBottom.data());
+                while (g::frame() < bottomReady) {}
+                mesh_lab::renderViewport(viewport,capture,trace,state,0);
+                mesh_lab::renderViewport(viewports[1],capture,trace,other,1);
+                std::vector<uint8_t> topPixels(pixels.size()), bottomPixels(pixels.size());
+                const auto topReady = g::readTexture(viewport.color,topPixels.data());
+                bottomReady = g::readTexture(viewports[1].color,bottomPixels.data());
+                while (g::frame() < std::max(topReady,bottomReady)) {}
+                if (topPixels != pixels || bottomPixels != expectedBottom) {
+                    throw std::runtime_error("Simultaneous mesh viewports differ from isolated rendering.");
+                }
                 std::printf("PASS %s: %zu vertices, %zu triangles, %zu verified GPU bytes\n",
                     entry.document->title.c_str(), trace.mesh.vertices.size(), trace.triangles.size(), capture.vertexReadback.size()+capture.indexReadback.size());
             }
@@ -287,10 +322,10 @@ int main(int argc, char** argv)
                 }
                 ImGui::NewFrame();
                 mesh_lab::UiActions actions;
-                mesh_lab::drawUi(ui,workspace,library,captures,viewport,actions);
-                if (workspace.paneCount == 1 || workspace.showInspector) {
-                    if (const auto* trace = currentTrace(workspace.activePane)) {
-                        mesh_lab::renderViewport(viewport,captures[workspace.activePane],*trace,workspace.panes[workspace.activePane]);
+                mesh_lab::drawUi(ui,workspace,library,captures,viewports,actions);
+                for (size_t pane = 0; pane < workspace.paneCount; ++pane) {
+                    if (const auto* trace = currentTrace(pane); trace && ui.viewportVisible[pane]) {
+                        mesh_lab::renderViewport(viewports[pane],captures[pane],*trace,workspace.panes[pane],static_cast<g::ViewId>(pane));
                     }
                 }
                 if (actions.open) { pending.open = actions.open; }
@@ -340,7 +375,7 @@ int main(int argc, char** argv)
         if (uiRendererInitialized) { woby::imgui_graphics::shutdown(); }
         if (platformInitialized) { ImGui_ImplSDL3_Shutdown(); }
         if (imguiInitialized) { ImGui::DestroyContext(); }
-        mesh_lab::destroy(viewport);
+        for (auto& view : viewports) { mesh_lab::destroy(view); }
         for (auto& gpu : captures) { mesh_lab::destroy(gpu); }
         if (g::isValid(outputTarget)) { g::destroy(outputTarget); }
         if (g::isValid(output)) { g::destroy(output); }

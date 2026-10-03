@@ -40,9 +40,19 @@ appear as commit groups. Click **Add comparison** and choose another workflow
 to show two diagrams stacked top and bottom. Their headers identify the commit
 paths; matching filenames in different folders remain independent.
 
-Click a node or an outline entry to select it. **Inspect** opens the focused
-pane's source/vertex/byte inspector and GPU viewport. Each pane keeps its own
-selection and camera. **Close** expands the remaining diagram back to one view.
+Click a node or an outline entry to select it. Comparisons show an inspector
+beside each diagram. **Stage** shows the selected node's details, **Mesh** shows
+its live viewport and triangle/corner controls, and **Bytes** shows the linked
+vertex fields. Diagram-only workflows have an **Outline** tab instead of mesh
+tabs. Tabs, selections, scrolling, and cameras are independent in each pane.
+
+Drag either vertical divider to resize both inspectors together. The **Library**
+eye button hides the sidebar; **Inspectors** hides both inspectors to expand the
+diagrams. Diagrams fit their available space by default, using title-only cards
+at small sizes; hover for summaries. **100%** restores full cards with scrolling,
+and **Fit** returns to the overview. Extra stage explanations can be expanded,
+and wide data tables scroll horizontally. **Close** expands the remaining
+diagram back to one view with its full inspector.
 Right-click a library item for explicit **Open on top** / **Open below** actions.
 
 **Save copy** writes a new `.meshflow` file into that workflow's original commit
@@ -163,6 +173,9 @@ For a headless screenshot:
 ```
 
 `--node` accepts `source|parse|attributes|triangulate|corners|pack|mesh|upload|gpu`.
+For comparisons, `--inspector-tab stage|mesh|bytes` chooses the initial tabs,
+`--inspect top|bottom` chooses the focused pane, and `--hide-library` or
+`--hide-inspectors` starts with those panels hidden.
 Other switches: `--width`, `--height`, `--frames N` (exit after N native frames),
 and `--smoke` (GPU validation).
 
