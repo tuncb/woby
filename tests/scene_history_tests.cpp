@@ -135,7 +135,7 @@ TEST_CASE("scene history records scene operation notifications while already dir
         [](auto& state) { woby::setSelectedObjectProperty(state, woby::UiObjectProperty::opacity, 0.5f); },
         [](auto& state) { woby::resetSelectedObjectProperties(state, woby::UiPropertyGroup::transform); },
         [](auto& state) { woby::setSelectedObjectsVisible(state, false); },
-        [](auto& state) { woby::applyInspectionPreset(state, woby::UiInspectionPreset::vertices); },
+        [](auto& state) { woby::setAllSceneRenderModes(state, woby::UiRenderMode::vertices, true); },
     };
     HistoryFixture f;
     for (size_t index = 0; index < edits.size(); ++index) {

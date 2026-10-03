@@ -24,7 +24,7 @@ bool drawCameraViewButton(const char* id, CameraView view, const char* tooltip);
 bool drawTriStateMasterIconButton(const char* id, const char* icon, const char* label,
     size_t enabledCount, size_t totalCount);
 bool drawTriStateVisibilityButton(const char* id, const char* label,
-    size_t visibleCount, size_t totalCount);
+    size_t visibleCount, size_t totalCount, const char* itemLabel = "groups");
 bool drawVisibilityButton(const char* id, bool visible, const char* itemName);
 // Edit a local value; callers apply it through ui_operations when this returns true.
 bool drawVisibilityField(const char* label, bool& visible, bool mixed = false);

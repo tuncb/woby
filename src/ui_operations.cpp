@@ -1252,21 +1252,6 @@ void setUiScale(UiState& state, float scale)
     state.uiScale = std::clamp(finiteOr(scale, 1.0f), 1.0f, 2.0f);
 }
 
-void applyInspectionPreset(UiState& state, UiInspectionPreset preset)
-{
-    switch (preset) {
-    case UiInspectionPreset::solid:
-    case UiInspectionPreset::edges:
-    case UiInspectionPreset::vertices: break;
-    default: return;
-    }
-    setAllSceneRenderModes(state, UiRenderMode::solidMesh, true);
-    setAllSceneRenderModes(state, UiRenderMode::triangles, preset != UiInspectionPreset::solid);
-    setAllSceneRenderModes(state, UiRenderMode::vertices, preset == UiInspectionPreset::vertices);
-    setShowOrigin(state, false);
-    setShowGrid(state, false);
-}
-
 void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled)
 {
     bool changed = false;
@@ -1320,13 +1305,9 @@ void toggleFileVisible(UiFileState& file)
     setFileVisible(file, countVisibleFileGroups(file) != file.groupSettings.size());
 }
 
-void setAllSceneVisible(UiState& state, bool visible)
+static bool setAllModelVisibility(UiState& state, bool visible)
 {
     bool changed = false;
-    for (auto& comparison : state.comparisons) {
-        changed = changed || comparison.settings.enabled != visible;
-        comparison.settings.enabled = visible;
-    }
     for (auto& node : state.sceneNodes) {
         changed = setFolderNodesVisible(node, visible) || changed;
     }
@@ -1338,9 +1319,45 @@ void setAllSceneVisible(UiState& state, bool visible)
         setFileVisible(file, visible);
     }
     refreshSceneTreeFolderVisibility(state);
-    if (changed) {
-        markSceneDirty(state);
+    return changed;
+}
+
+static bool setAllComparisonVisibility(UiState& state, bool visible)
+{
+    bool changed = false;
+    for (auto& comparison : state.comparisons) {
+        changed = changed || comparison.settings.enabled != visible;
+        comparison.settings.enabled = visible;
+        if (!visible) {
+            comparison.diagnosticFocus.reset();
+            comparison.pendingDiagnosticFocus.reset();
+            comparison.uvFindingFocus.reset();
+        }
     }
+    return changed;
+}
+
+void setAllModelsVisible(UiState& state, bool visible)
+{
+    if (!setAllModelVisibility(state, visible)) { return; }
+    recalculateSceneBounds(state);
+    markSceneDirty(state);
+}
+
+void setAllComparisonsVisible(UiState& state, bool visible)
+{
+    if (!setAllComparisonVisibility(state, visible)) { return; }
+    recalculateSceneBounds(state);
+    markSceneDirty(state);
+}
+
+void setAllSceneVisible(UiState& state, bool visible)
+{
+    const bool modelsChanged = setAllModelVisibility(state, visible);
+    const bool comparisonsChanged = setAllComparisonVisibility(state, visible);
+    if (!modelsChanged && !comparisonsChanged) { return; }
+    recalculateSceneBounds(state);
+    markSceneDirty(state);
 }
 
 static void setSceneNodeSubtreeVisibleRecursive(UiState& state, UiSceneNode& node, bool visible)

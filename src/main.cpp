@@ -3001,16 +3001,9 @@ int main(int argc, char** argv)
                         const float statusHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f
                             + ImGui::GetStyle().ItemSpacing.y + 1.0f;
                         const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
-                            "Inspection presets apply to all current parts and hide grid and origin. "
-                            "Visibility and transforms stay as set.\n\nVertex size sets the base vertex point size for all groups.", false);
+                            "Solid mesh, triangle edges, and vertices apply to all current model parts.\n\n"
+                            "Vertex size sets the base vertex point size for all groups.", false);
                     if (scenePaneOpen) {
-                        ImGui::SetNextItemWidth(-1.0f);
-                        if (ImGui::BeginCombo("##inspection_preset", "Inspection presets")) {
-                            if (ImGui::Selectable("Solid")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::solid); }
-                            if (ImGui::Selectable("Solid + edges")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::edges); }
-                            if (ImGui::Selectable("Solid + edges + vertices")) { woby::applyInspectionPreset(ui, woby::UiInspectionPreset::vertices); }
-                            ImGui::EndCombo();
-                        }
                         const float sceneContentHeight = renderModeButtonSize() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
                         if (ImGui::BeginChild(
                                 "SceneContent",
@@ -3035,15 +3028,6 @@ int main(int argc, char** argv)
                                 woby::toggleShowGrid(ui);
                             }
                             const size_t groupCount = woby::totalGroupCount(ui);
-                            const size_t visibleCount = woby::countVisibleSceneGroups(ui);
-                            if (drawTriStateVisibilityButton(
-                                    "visible",
-                                    "Scene",
-                                    visibleCount,
-                                    groupCount)) {
-                                woby::setAllSceneVisible(ui, visibleCount != groupCount);
-                            }
-                            ImGui::SameLine();
                             const size_t solidMeshCount = woby::countEnabledSceneRenderMode(
                                 ui,
                                 woby::UiRenderMode::solidMesh);
@@ -3126,8 +3110,22 @@ int main(int argc, char** argv)
                     if (ImGui::BeginChild("SceneObjects", {0, contentHeight})) {
                         const std::string filesPaneTitle = "Models (" + std::to_string(files.size()) + " files)##Files";
                         if (!canvasSelectionPath.empty() && !woby::sceneObjectSelected(ui, canvasSelectionPath.back())) { canvasSelectionPath.clear(); }
-                        if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
-                        if (ImGui::CollapsingHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                        bool modelsOpen = false;
+                        if (ImGui::BeginTable("models_header", 2, ImGuiTableFlags_SizingStretchProp)) {
+                            ImGui::TableSetupColumn("visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
+                            ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
+                            ImGui::TableNextRow(); ImGui::TableNextColumn();
+                            const auto groupCount = woby::totalGroupCount(ui);
+                            const auto visibleCount = woby::countVisibleSceneGroups(ui);
+                            if (drawTriStateVisibilityButton("models_visible", "Models", visibleCount, groupCount, "parts")) {
+                                woby::setAllModelsVisible(ui, visibleCount != groupCount);
+                            }
+                            ImGui::TableNextColumn();
+                            if (!canvasSelectionPath.empty()) { ImGui::SetNextItemOpen(true); }
+                            modelsOpen = ImGui::CollapsingHeader(filesPaneTitle.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                            ImGui::EndTable();
+                        }
+                        if (modelsOpen) {
                             if (files.empty()) { ImGui::TextDisabled("No models yet."); }
                             std::optional<size_t> removeFileIndex;
                             for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {

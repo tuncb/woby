@@ -178,7 +178,21 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
         && ImGui::IsKeyPressed(ImGuiKey_F2, false)) {
         beginRename(state.selectedSceneObjects.front());
     }
-    if (!ImGui::CollapsingHeader("Annotations", state.annotations.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen)) { return; }
+    bool open = false;
+    if (ImGui::BeginTable("annotations_header", 2, ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
+        ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableNextRow(); ImGui::TableNextColumn();
+        const auto visible = static_cast<size_t>(std::count_if(state.annotations.begin(), state.annotations.end(),
+            [](const auto& item) { return item.settings.visible; }));
+        if (drawTriStateVisibilityButton("annotations_visible", "Annotations", visible, state.annotations.size(), "annotations")) {
+            setAllAnnotationsVisible(state, visible != state.annotations.size());
+        }
+        ImGui::TableNextColumn();
+        open = ImGui::CollapsingHeader("Annotations", state.annotations.empty() ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_DefaultOpen);
+        ImGui::EndTable();
+    }
+    if (!open) { return; }
     SceneObjectId remove = 0;
     SceneObjectId duplicate = 0;
     for (const auto& item : state.annotations) {

@@ -57,8 +57,6 @@ struct ComparisonNameFixture {
         ImGui::SetNextWindowSize(ImVec2(500, 400));
         ImGui::Begin("Scene");
         const auto origin = ImGui::GetCursorScreenPos();
-        row = ImVec2(origin.x + 100, origin.y + ImGui::GetStyle().ItemSpacing.y
-            + ImGui::GetTextLineHeightWithSpacing() + woby::renderModeButtonSize() * 0.5f);
         if (showViews) {
             ImGui::LogToBuffer();
             woby::drawViews(state, viewEdit, viewLayout, 80.0f);
@@ -72,6 +70,10 @@ struct ComparisonNameFixture {
             }
         }
         woby::drawComparisonObjects(state, edit);
+        if (const auto* table = ImGui::TableFindByID(ImGui::GetID("analysis_header"))) {
+            row = ImVec2(origin.x + 100, table->OuterRect.Max.y + ImGui::GetStyle().ItemSpacing.y
+                + woby::renderModeButtonSize() * 0.5f);
+        }
         ImGui::End();
         ImGui::EndFrame();
     }
@@ -108,6 +110,80 @@ struct ComparisonNameFixture {
     }
 };
 } // namespace
+
+TEST_CASE("analysis compact add button opens an anchored menu while the section is collapsed")
+{
+    ComparisonNameFixture f;
+    auto* window = ImGui::FindWindowByName("Scene");
+    REQUIRE(window);
+    const auto header = window->GetID("Analyses");
+    window->StateStorage.SetInt(header, 0);
+    f.frame(); f.frame();
+    const auto* table = ImGui::TableFindByID(window->GetID("analysis_header"));
+    REQUIRE(table);
+    const float size = woby::renderModeButtonSize();
+    const ImVec2 buttonMin{table->Columns[2].WorkMinX, table->OuterRect.Min.y + ImGui::GetStyle().CellPadding.y};
+    CHECK(table->Columns[2].WidthGiven == doctest::Approx(size));
+    const auto count = f.state.comparisons.size();
+    f.click({buttonMin.x + size * .5f, buttonMin.y + size * .5f});
+    f.frame(); f.frame(); // Let the auto-sized popup settle before checking or clicking it.
+    REQUIRE(f.context->OpenPopupStack.Size == 1);
+    auto* popup = f.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    CHECK(popup->Pos.y >= buttonMin.y + size);
+    CHECK(popup->Pos.y <= buttonMin.y + size + ImGui::GetStyle().ItemSpacing.y + 1);
+    CHECK(window->StateStorage.GetInt(header, 1) == 0);
+    f.click({popup->Pos.x + ImGui::GetStyle().WindowPadding.x + 30,
+        popup->Pos.y + ImGui::GetStyle().WindowPadding.y + ImGui::GetTextLineHeight() * .5f});
+    REQUIRE(f.state.comparisons.size() == count + 1);
+    CHECK(f.state.comparisons.back().settings.task == woby::AnalysisTask::meshChecks);
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.state.comparisons.back().objectId});
+}
+
+TEST_CASE("analysis header eye controls every analysis independently of collapse and task filter")
+{
+    ComparisonNameFixture f;
+    const auto other = woby::createAnalysisFromSelection(f.state, woby::AnalysisTask::uvInspection);
+    auto settings = woby::comparisonSettings(f.state, other);
+    settings.enabled = false;
+    woby::setComparisonSettings(f.state, settings, other);
+    woby::setAnalysisTaskFilter(f.state, woby::AnalysisTask::meshChecks);
+    auto* window = ImGui::FindWindowByName("Scene");
+    REQUIRE(window);
+    const auto header = window->GetID("Analyses");
+    SUBCASE("collapsed") { window->StateStorage.SetInt(header, 0); }
+    SUBCASE("expanded and filtered") { window->StateStorage.SetInt(header, 1); }
+    const auto open = window->StateStorage.GetInt(header);
+    f.frame(); f.frame();
+    const auto* table = ImGui::TableFindByID(window->GetID("analysis_header"));
+    REQUIRE(table);
+    const float size = woby::renderModeButtonSize();
+    CHECK(table->Columns[0].WidthGiven == doctest::Approx(size));
+    const ImVec2 eye{table->Columns[0].WorkMinX + size * .5f,
+        table->OuterRect.Min.y + ImGui::GetStyle().CellPadding.y + size * .5f};
+    const auto selection = f.state.selectedSceneObjects;
+    const auto revision = f.state.sceneEditRevision;
+    f.click(eye); // Mixed -> show all, including the analysis outside the filter.
+    CHECK(woby::comparisonSettings(f.state, f.id).enabled);
+    CHECK(woby::comparisonSettings(f.state, other).enabled);
+    CHECK(f.state.sceneEditRevision == revision + 1);
+    f.click(eye);
+    CHECK_FALSE(woby::comparisonSettings(f.state, f.id).enabled);
+    CHECK_FALSE(woby::comparisonSettings(f.state, other).enabled);
+    CHECK(f.state.sceneEditRevision == revision + 2);
+    f.click(eye);
+    CHECK(woby::comparisonSettings(f.state, f.id).enabled);
+    CHECK(woby::comparisonSettings(f.state, other).enabled);
+    CHECK(f.state.selectedSceneObjects == selection);
+    CHECK(window->StateStorage.GetInt(header) == open);
+    CHECK(f.state.analysisTaskFilter == woby::AnalysisTask::meshChecks);
+    woby::removeComparison(f.state, f.id);
+    woby::removeComparison(f.state, other);
+    const auto emptyRevision = f.state.sceneEditRevision;
+    f.frame(); f.click(eye);
+    CHECK(f.state.sceneEditRevision == emptyRevision);
+    CHECK(window->StateStorage.GetInt(header) == open);
+}
 
 TEST_CASE("analysis input groups start collapsed")
 {

@@ -63,6 +63,7 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
 void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,
     uint64_t resultSignature, int step, SceneObjectId id);
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id = invalidSceneObjectId);
+void setAllComparisonsVisible(UiState& state, bool visible);
 [[nodiscard]] size_t countVisibleComparisonDiagnostics(const ComparisonSettings& settings);
 // Batch the existing saved visibility flags; hiding also clears highlighted findings.
 void setComparisonDiagnosticsVisible(UiState& state, bool visible, SceneObjectId id = invalidSceneObjectId);
@@ -155,9 +156,6 @@ enum class UiRenderMode {
     vertices,
 };
 
-enum class UiInspectionPreset { solid, edges, vertices };
-// Presets edit the existing persisted display properties on all current parts.
-void applyInspectionPreset(UiState& state, UiInspectionPreset preset);
 void setUiScale(UiState& state, float scale);
 
 [[nodiscard]] size_t totalGroupCount(const std::vector<UiFileState>& files);
@@ -189,6 +187,8 @@ void setSceneNodeSubtreeRenderMode(
 void setFileVisible(UiFileState& file, bool visible);
 void toggleFileVisible(UiFileState& file);
 void setAllSceneVisible(UiState& state, bool visible);
+// Model section only: folders, files and parts, leaving analyses and annotations intact.
+void setAllModelsVisible(UiState& state, bool visible);
 void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible);
 void setGroupVisible(UiGroupState& group, bool visible);
 void toggleGroupVisible(UiGroupState& group);
@@ -286,6 +286,7 @@ SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationG
 SceneObjectId duplicateAnnotation(UiState& state, SceneObjectId id);
 void renameAnnotation(UiState& state, SceneObjectId id, const std::string& name);
 void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings settings);
+void setAllAnnotationsVisible(UiState& state, bool visible);
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry);
 void deleteAnnotation(UiState& state, SceneObjectId id);
 void validateAnnotationTargets(UiState& state);

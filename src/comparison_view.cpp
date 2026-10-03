@@ -2410,15 +2410,25 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         beginRename(state.selectedSceneObjects.front());
     }
     bool open = false;
-    if (ImGui::BeginTable("analysis_header", 2, ImGuiTableFlags_SizingStretchProp)) {
+    if (ImGui::BeginTable("analysis_header", 3, ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("create", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("+ Analysis").x + ImGui::GetStyle().FramePadding.x * 2);
+        ImGui::TableSetupColumn("create", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableNextRow(); ImGui::TableNextColumn();
+        const auto visible = static_cast<size_t>(std::count_if(state.comparisons.begin(), state.comparisons.end(),
+            [](const auto& item) { return item.settings.enabled; }));
+        if (drawTriStateVisibilityButton("analyses_visible", "Analyses", visible, state.comparisons.size(), "analyses")) {
+            setAllComparisonsVisible(state, visible != state.comparisons.size());
+        }
+        ImGui::TableNextColumn();
         open = ImGui::CollapsingHeader("Analyses", ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::TableNextColumn();
-        if (ImGui::Button("+ Analysis")) { ImGui::OpenPopup("create_analysis"); }
-        const auto anchor = ImGui::GetItemRectMax();
-        ImGui::SetNextWindowPos({anchor.x, anchor.y + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing, {1, 0});
+        const auto buttonPosition = ImGui::GetCursorScreenPos();
+        if (drawRenderModeIconButton("create_analysis", "+", "Create an analysis", RenderModeState::off, false)) {
+            ImGui::OpenPopup("create_analysis");
+        }
+        ImGui::SetNextWindowPos({buttonPosition.x + renderModeButtonSize(),
+            buttonPosition.y + renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y}, ImGuiCond_Appearing, {1, 0});
         if (ImGui::BeginPopup("create_analysis")) {
             drawAnalysisCreationMenu(state);
             ImGui::EndPopup();
@@ -2432,7 +2442,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         ImGui::SetNextItemWidth(-1);
         if (ImGui::Combo("##analysis_filter", &filter, filters, 5)) { setAnalysisTaskFilter(state, static_cast<AnalysisTask>(filter)); }
     }
-    if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + Analysis."); }
+    if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + to create an analysis."); }
     size_t displayed = 0;
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;

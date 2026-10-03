@@ -240,6 +240,16 @@ void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings 
         if (item.objectId == id && item.settings != settings) { item.settings = std::move(settings); markSceneDirty(state); return; }
     }
 }
+void setAllAnnotationsVisible(UiState& state, bool visible)
+{
+    bool changed = false;
+    for (auto& item : state.annotations) {
+        changed = changed || item.settings.visible != visible;
+        item.settings.visible = visible;
+    }
+    if (changed) { markSceneDirty(state); }
+}
+
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry)
 {
     validateAnnotationGeometry(geometry);

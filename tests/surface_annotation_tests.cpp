@@ -3,6 +3,7 @@
 #include "annotation_ui.h"
 #include "scene_scale_overlay.h"
 #include "ui_operations.h"
+#include "ui_icon_controls.h"
 #include "scene_history.h"
 #include "automation_registry.h"
 #include "control_scene.h"
@@ -567,6 +568,126 @@ TEST_CASE("annotation tool buttons disable until geometry preparation finishes")
     CHECK_FALSE(fixture.interaction.tool);
     fixture.click(fixture.lineButton);
     CHECK(fixture.interaction.tool == AnnotationShape::line);
+}
+
+TEST_CASE("section visibility batches persist independently and undo in one step")
+{
+    Fixture fixture;
+    auto& state = fixture.state;
+    const auto annotation = fixture.add();
+    const auto otherAnnotation = duplicateAnnotation(state, annotation);
+    auto style = findAnnotation(state, otherAnnotation)->settings;
+    style.visible = false;
+    setAnnotationSettings(state, otherAnnotation, style);
+    const auto analysis = createComparison(state);
+    createComparison(state, AnalysisType::uvQuality);
+    auto settings = comparisonSettings(state, analysis);
+    settings.enabled = false;
+    setComparisonSettings(state, settings, analysis);
+    state.files.push_back(createUiFileState(fixture.root / "second.obj", surface(), 1));
+    state.sceneNodes.clear();
+    appendFolderTreeSceneNode(state, fixture.root, 0, state.files.size());
+    setGroupVisible(state, state.files[0], state.files[0].groupSettings[0], false);
+    createView(state);
+    selectSceneObject(state, annotation);
+    const auto selection = state.selectedSceneObjects;
+    const auto view = state.activeViewId;
+    const auto clean = createSceneDocument(state);
+    clearSceneDirty(state);
+    SceneHistory history; resetSceneHistory(history, state);
+    void (*setVisible)(UiState&, bool) = nullptr;
+    SUBCASE("models") { setVisible = setAllModelsVisible; }
+    SUBCASE("analyses") { setVisible = setAllComparisonsVisible; }
+    SUBCASE("annotations") { setVisible = setAllAnnotationsVisible; }
+    REQUIRE(setVisible);
+    const auto revision = state.sceneEditRevision;
+    setVisible(state, false);
+    CHECK(state.sceneEditRevision == revision + 1);
+    CHECK(state.isDirty);
+    CHECK(state.selectedSceneObjects == selection);
+    CHECK(state.activeViewId == view);
+    const auto hidden = createSceneDocument(state);
+    CHECK(hidden.views == clean.views);
+    if (setVisible == setAllModelsVisible) {
+        CHECK(countVisibleSceneGroups(state) == 0);
+        for (const auto& file : state.files) {
+            CHECK_FALSE(file.fileSettings.visible);
+            for (const auto& group : file.groupSettings) { CHECK_FALSE(group.visible); }
+        }
+        CHECK_FALSE(state.sceneNodes.front().settings.visible);
+    } else { CHECK(hidden.files == clean.files); CHECK(hidden.nodes == clean.nodes); }
+    if (setVisible == setAllComparisonsVisible) {
+        for (const auto& item : state.comparisons) { CHECK_FALSE(item.settings.enabled); }
+    } else { CHECK(hidden.comparisons == clean.comparisons); }
+    if (setVisible == setAllAnnotationsVisible) {
+        for (const auto& item : state.annotations) { CHECK_FALSE(item.settings.visible); }
+    } else { CHECK(hidden.annotations == clean.annotations); }
+    REQUIRE(recordSceneHistory(history, state));
+    setVisible(state, false);
+    CHECK(state.sceneEditRevision == revision + 1);
+    CHECK_FALSE(recordSceneHistory(history, state));
+    CHECK(history.cursor == 1);
+    auto restored = prepareSceneHistoryStep(history, state, clean, false);
+    REQUIRE(restored); commitSceneHistoryStep(history, state, std::move(*restored), false);
+    CHECK(sceneContentEqual(createSceneDocument(state), clean));
+    restored = prepareSceneHistoryStep(history, state, clean, true);
+    REQUIRE(restored); commitSceneHistoryStep(history, state, std::move(*restored), true);
+    CHECK(sceneContentEqual(createSceneDocument(state), hidden));
+    std::filesystem::create_directories(fixture.root);
+    const auto path = fixture.root / "visibility.woby";
+    writeSceneDocument(path, hidden);
+    auto read = readSceneDocument(path);
+    for (auto& file : read.files) { file.path = sceneAbsolutePath(path, file.path); }
+    CHECK(read == hidden);
+    setVisible(state, true);
+    if (setVisible == setAllModelsVisible) {
+        CHECK(countVisibleSceneGroups(state) == totalGroupCount(state));
+        CHECK(state.sceneNodes.front().settings.visible);
+    } else if (setVisible == setAllComparisonsVisible) {
+        for (const auto& item : state.comparisons) { CHECK(item.settings.enabled); }
+    } else {
+        for (const auto& item : state.annotations) { CHECK(item.settings.visible); }
+    }
+}
+
+TEST_CASE("annotation header eye remains independent of the collapsed bar")
+{
+    AnnotationUiFixture fixture;
+    const auto id = fixture.scene.add();
+    const auto other = duplicateAnnotation(fixture.scene.state, id);
+    auto settings = findAnnotation(fixture.scene.state, id)->settings;
+    settings.visible = false;
+    setAnnotationSettings(fixture.scene.state, id, settings);
+    fixture.showObjects = true;
+    auto* window = ImGui::FindWindowByName("Tools");
+    REQUIRE(window);
+    const auto header = window->GetID("Annotations");
+    SUBCASE("collapsed") { window->StateStorage.SetInt(header, 0); }
+    SUBCASE("expanded") { window->StateStorage.SetInt(header, 1); }
+    const auto open = window->StateStorage.GetInt(header);
+    fixture.frame(); fixture.frame();
+    const auto* table = ImGui::TableFindByID(window->GetID("annotations_header"));
+    REQUIRE(table);
+    const float size = renderModeButtonSize();
+    CHECK(table->Columns[0].WidthGiven == doctest::Approx(size));
+    const ImVec2 eye{table->Columns[0].WorkMinX + size * .5f,
+        table->OuterRect.Min.y + ImGui::GetStyle().CellPadding.y + size * .5f};
+    fixture.click(eye);
+    CHECK(findAnnotation(fixture.scene.state, id)->settings.visible);
+    CHECK(findAnnotation(fixture.scene.state, other)->settings.visible);
+    fixture.click(eye);
+    CHECK_FALSE(findAnnotation(fixture.scene.state, id)->settings.visible);
+    CHECK_FALSE(findAnnotation(fixture.scene.state, other)->settings.visible);
+    fixture.click(eye);
+    CHECK(findAnnotation(fixture.scene.state, id)->settings.visible);
+    CHECK(findAnnotation(fixture.scene.state, other)->settings.visible);
+    CHECK(window->StateStorage.GetInt(header) == open);
+    deleteAnnotation(fixture.scene.state, id);
+    deleteAnnotation(fixture.scene.state, other);
+    const auto revision = fixture.scene.state.sceneEditRevision;
+    fixture.frame(); fixture.click(eye);
+    CHECK(fixture.scene.state.sceneEditRevision == revision);
+    CHECK(window->StateStorage.GetInt(header) == open);
 }
 
 TEST_CASE("annotation row eye toggles visibility and X deletes long named items with undo")

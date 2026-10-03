@@ -319,7 +319,8 @@ bool drawTriStateVisibilityButton(
     const char* id,
     const char* label,
     size_t visibleCount,
-    size_t totalCount)
+    size_t totalCount,
+    const char* itemLabel)
 {
     const RenderModeState state = renderModeState(visibleCount, totalCount);
     const std::string tooltip = std::string(label)
@@ -327,7 +328,8 @@ bool drawTriStateVisibilityButton(
         + std::to_string(visibleCount)
         + " of "
         + std::to_string(totalCount)
-        + " groups shown";
+        + " " + itemLabel + " shown. "
+        + (state == RenderModeState::on ? "Click to hide all." : "Click to show all.");
 
     return drawVisibilityIconButton(
         id,

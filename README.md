@@ -114,10 +114,13 @@ no visible selection to frame.
 
 New scenes and newly added models start with solid surfaces, with edges, vertices,
 grid, and origin helpers off. Existing `.woby` scenes retain their saved appearance,
-including the defaults of older scene files. **Display > Inspection presets** offers
-**Solid**, **Solid + edges**, and **Solid + edges + vertices** for all current parts;
-each hides the helpers while preserving visibility, transforms, colors, and opacity.
-The individual display controls remain available. Enabled icon toggles have an
+including the defaults of older scene files. The **Solid mesh**, **Triangle edges**,
+and **Vertices** buttons in **Display** control all current model parts independently.
+The eyes to the left of **Models**, **Analyses**, and **Annotations** show or hide
+all items in their own section, including when the section is collapsed. Mixed
+visibility becomes fully shown on the next click. **Views** uses its collapse arrow
+to hide the saved-view list. The **+** beside **Analyses** opens the analysis creation menu.
+Enabled icon toggles have an
 outline, mixed toggles have a minus, and selected objects have an outline, so these states are distinguishable without color.
 
 **Create analysis > UV analysis** (the file's analysis button or scene-tree context

@@ -865,6 +865,31 @@ TEST_CASE("scene render mode operations update all groups")
     CHECK(woby::countEnabledSceneRenderMode(state, woby::UiRenderMode::solidMesh) == 2u);
 }
 
+TEST_CASE("section visibility ignores empty sections and clears hidden analysis highlights")
+{
+    woby::UiState state;
+    const auto emptyRevision = state.sceneEditRevision;
+    for (const bool visible : {false, true}) {
+        woby::setAllModelsVisible(state, visible);
+        woby::setAllComparisonsVisible(state, visible);
+        woby::setAllAnnotationsVisible(state, visible);
+    }
+    CHECK(state.sceneEditRevision == emptyRevision);
+    CHECK_FALSE(state.isDirty);
+    const auto id = woby::createComparison(state);
+    auto* comparison = woby::findComparison(state, id);
+    comparison->diagnosticFocus = woby::DiagnosticFocus{};
+    comparison->pendingDiagnosticFocus = woby::DiagnosticFocus{};
+    comparison->uvFindingFocus = woby::UvFindingFocus{};
+    woby::setAllComparisonsVisible(state, false);
+    CHECK_FALSE(comparison->diagnosticFocus);
+    CHECK_FALSE(comparison->pendingDiagnosticFocus);
+    CHECK_FALSE(comparison->uvFindingFocus);
+    const auto revision = state.sceneEditRevision;
+    woby::setAllComparisonsVisible(state, false);
+    CHECK(state.sceneEditRevision == revision);
+}
+
 TEST_CASE("visibility master operations update descendant groups")
 {
     woby::UiState state;
@@ -2004,50 +2029,6 @@ TEST_CASE("new scenes show the grid and legacy scene display defaults are retain
     CHECK(fresh.showGrid);
     CHECK(fresh.files.empty());
     CHECK_FALSE(fresh.isDirty);
-}
-
-TEST_CASE("inspection presets edit persisted display flags without changing other properties")
-{
-    using Preset = woby::UiInspectionPreset;
-    for (const auto preset : {Preset::solid, Preset::edges, Preset::vertices}) {
-        woby::UiState state;
-        state.files.push_back(makeFile("a.obj", "a", 0.0f, 1.0f, 0u));
-        state.files.push_back(makeFile("b.obj", "b", 2.0f, 3.0f, 1u));
-        state.showGrid = true;
-        state.showOrigin = true;
-        woby::setGroupVisible(state, state.files[0], state.files[0].groupSettings[0], false);
-        state.files[1].groupSettings[0].translation = {2, 3, 4};
-        state.files[1].groupSettings[0].opacity = .4f;
-        woby::appendDefaultSceneNodesForFiles(state, 0u);
-        auto expected = woby::createSceneDocument(state);
-        expected.showGrid = false;
-        expected.showOrigin = false;
-        for (auto& file : expected.files) {
-            for (auto& group : file.groups) {
-                group.settings.showSolidMesh = true;
-                group.settings.showTriangles = preset != Preset::solid;
-                group.settings.showVertices = preset == Preset::vertices;
-            }
-        }
-        woby::applyInspectionPreset(state, preset);
-        CHECK(state.isDirty);
-        CHECK(woby::createSceneDocument(state) == expected);
-        woby::clearSceneDirty(state);
-        woby::applyInspectionPreset(state, preset);
-        CHECK_FALSE(state.isDirty);
-        // Reload through the existing save/load mapping, with no preset-specific state.
-        auto loaded = state.files;
-        for (size_t i = 0; i < loaded.size(); ++i) { woby::applySceneFileRecord(loaded[i], expected.files[i]); }
-        const auto restored = woby::prepareSceneReplacement(state, loaded, expected);
-        CHECK(woby::createSceneDocument(restored) == expected);
-    }
-    woby::UiState empty;
-    woby::applyInspectionPreset(empty, Preset::solid);
-    CHECK(empty.isDirty);
-    CHECK_FALSE(empty.showGrid);
-    const auto before = woby::createSceneDocument(empty);
-    woby::applyInspectionPreset(empty, static_cast<Preset>(99));
-    CHECK(woby::createSceneDocument(empty) == before);
 }
 
 TEST_CASE("UI scale is bounded and survives scene replacement without dirtying documents")
