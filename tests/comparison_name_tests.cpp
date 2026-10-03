@@ -111,6 +111,85 @@ struct ComparisonNameFixture {
 };
 } // namespace
 
+TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, f.id);
+    woby::renameComparison(f.state, f.id, "Inspection one");
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    runtime.ready = true;
+    runtime.sidebarInputs[0].enabledPartCount = 1;
+    runtime.sidebarSources = "inspection-source.obj";
+    for (auto& check : runtime.diagnosticSummaries) { check[0].state = woby::AnalysisResultState::ready; }
+    runtime.diagnosticSummaries[0][0].count = 3;
+    runtime.diagnosticSummaries[1][0].state = woby::AnalysisResultState::notRun;
+    const char* expectedTask = "Mesh checks";
+    const char* expectedStatus = "Checks pending";
+    bool missing = false;
+    SUBCASE("checks include the finding summary") {}
+    SUBCASE("quality includes the result status") {
+        woby::setAnalysisTask(f.state, f.id, woby::AnalysisTask::meshQuality);
+        expectedTask = "Mesh quality"; expectedStatus = "Ready";
+    }
+    SUBCASE("input issues appear directly in the hint") {
+        woby::clearComparisonGroup(f.state, woby::ComparisonSide::a, f.id);
+        runtime.sidebarInputs[0].enabledPartCount = 0;
+        runtime.sidebarInputs[0].issue = "Add an enabled source to this input.";
+        expectedStatus = "Needs inputs"; missing = true;
+    }
+    runtime.sidebarRevision = f.state.sceneEditRevision;
+    std::string contents;
+    float endY = 0;
+    ImVec2 row;
+    const auto frame = [&] {
+        ImGui::NewFrame(); ImGui::SetNextWindowPos({20, 20}); ImGui::SetNextWindowSize({500, 400});
+        ImGui::Begin("Compact analysis rows"); ImGui::LogToBuffer(0);
+        woby::drawComparisonObjects(f.state, f.edit, runtimes);
+        const auto minimum = ImGui::GetItemRectMin();
+        row = {minimum.x + 80, minimum.y + woby::renderModeButtonSize() * .5f};
+        endY = ImGui::GetCursorPosY();
+        contents = f.context->LogBuffer.c_str(); ImGui::LogFinish(); ImGui::End(); ImGui::EndFrame();
+    };
+    ImGui::GetIO().AddMousePosEvent(-1000, -1000);
+    frame(); frame();
+    const auto oneRowEnd = endY;
+    CHECK(contents.find("Inspection one") != std::string::npos);
+    CHECK(contents.find(expectedTask) == std::string::npos);
+    CHECK(contents.find("Sources:") == std::string::npos);
+    CHECK(contents.find("checks with findings") == std::string::npos);
+    const auto before = woby::createSceneDocument(f.state);
+    const auto revision = f.state.sceneEditRevision;
+    ImGui::GetIO().AddMousePosEvent(row.x, row.y);
+    frame(); frame();
+    INFO(contents);
+    CHECK(contents.find(expectedTask) != std::string::npos);
+    CHECK(contents.find(expectedStatus) != std::string::npos);
+    CHECK(contents.find("Sources: inspection-source.obj") != std::string::npos);
+    CHECK(contents.find("Double-click to rename") != std::string::npos);
+    if (missing) { CHECK(contents.find(runtime.sidebarInputs[0].issue) != std::string::npos); }
+    else if (woby::comparisonSettings(f.state, f.id).mode != woby::ComparisonMode::surfaceQuality) {
+        CHECK(contents.find("1 checks with findings | 1 not run") != std::string::npos);
+    }
+    CHECK(endY == doctest::Approx(oneRowEnd));
+    CHECK(woby::createSceneDocument(f.state) == before);
+    CHECK(f.state.sceneEditRevision == revision);
+    ImGui::GetIO().AddMousePosEvent(-1000, -1000);
+    const auto second = woby::createComparison(f.state);
+    woby::renameComparison(f.state, second, "Inspection two");
+    frame(); frame();
+    CHECK(contents.find("Inspection two") != std::string::npos);
+    CHECK(contents.find("Sources:") == std::string::npos);
+    CHECK(endY - oneRowEnd == doctest::Approx(woby::renderModeButtonSize() + ImGui::GetStyle().ItemSpacing.y));
+}
+
 TEST_CASE("analysis compact add button opens an anchored menu while the section is collapsed")
 {
     ComparisonNameFixture f;

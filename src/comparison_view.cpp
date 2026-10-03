@@ -2387,6 +2387,73 @@ void drawAnalysisCreationMenu(UiState& state)
     }
 }
 
+static void drawComparisonObjectHint(const UiState& state, const UiComparison& comparison, const ComparisonRuntime* runtime)
+{
+    if (!ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) { return; }
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 40);
+    ImGui::TextUnformatted(comparison.name.c_str());
+    const auto id = comparison.objectId;
+    const auto& settings = comparison.settings;
+    const bool currentInputs = runtime && runtime->sidebarRevision == state.sceneEditRevision;
+    const bool hasA = currentInputs && runtime->sidebarInputs[0].enabledPartCount != 0;
+    const bool hasB = currentInputs && runtime->sidebarInputs[1].enabledPartCount != 0;
+    const auto task = analysisTask(settings, hasA && hasB);
+    ImGui::TextDisabled("%s", analysisTaskLabel(task));
+    ImGui::SameLine();
+    const char* status = "Updating...";
+    if (currentInputs) {
+        if (!hasA && !hasB) { status = "Needs inputs"; }
+        else if (task == AnalysisTask::surfaceComparison && !(hasA && hasB)) { status = "Needs second input"; }
+        else if (!canInspectComparison(state, id)) { status = "Missing source"; }
+        else if (!runtime->error.empty()) { status = "Failed"; }
+        else if (runtime->preparationWorker.valid() || runtime->worker.valid() || runtime->intersection.worker.valid()) { status = "Running"; }
+        else if (!runtime->ready) { status = settings.enabled ? "Queued" : "Not run"; }
+        else { status = "Ready"; }
+        if (task == AnalysisTask::meshChecks && runtime->ready && canInspectComparison(state, id)) {
+            for (const auto phase : {AnalysisResultState::notRun, AnalysisResultState::unavailable,
+                    AnalysisResultState::partial, AnalysisResultState::canceled, AnalysisResultState::outdated,
+                    AnalysisResultState::queued, AnalysisResultState::running, AnalysisResultState::failed}) {
+                for (const auto& check : runtime->diagnosticSummaries) {
+                    if ((hasA && check[0].state == phase) || (hasB && check[1].state == phase)) {
+                        status = phase == AnalysisResultState::notRun ? "Checks pending" : analysisResultStateLabel(phase);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    ImGui::TextDisabled("| %s", status);
+    if (currentInputs) {
+        const auto& a = runtime->sidebarInputs[0];
+        const auto& b = runtime->sidebarInputs[1];
+        if (task == AnalysisTask::meshChecks && (hasA || hasB)) {
+            size_t withFindings = 0, notRun = 0, incomplete = 0;
+            for (const auto& check : runtime->diagnosticSummaries) {
+                const bool finding = (hasA && check[0].count != 0) || (hasB && check[1].count != 0);
+                withFindings += finding;
+                notRun += (hasA && check[0].state == AnalysisResultState::notRun)
+                    || (hasB && check[1].state == AnalysisResultState::notRun);
+                const auto unfinished = [](AnalysisResultState phase) {
+                    return phase != AnalysisResultState::ready && phase != AnalysisResultState::notRun;
+                };
+                incomplete += (hasA && unfinished(check[0].state)) || (hasB && unfinished(check[1].state));
+            }
+            ImGui::TextWrapped("%zu checks with findings | %zu not run%s", withFindings, notRun,
+                incomplete ? " | incomplete results" : "");
+        }
+        ImGui::TextWrapped("Sources: %s", runtime->sidebarSources.c_str());
+        if (!canInspectComparison(state, id)) {
+            if (!a.issue.empty()) { ImGui::TextWrapped("%s", a.issue.c_str()); }
+            if (!b.issue.empty()) { ImGui::TextWrapped("%s", b.issue.c_str()); }
+        }
+    }
+    ImGui::Separator();
+    ImGui::TextUnformatted("Select this analysis. Double-click to rename.");
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+}
+
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes)
 {
     if (edit.lastFrame != ImGui::GetFrameCount() - 1
@@ -2460,7 +2527,6 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
             setComparisonSettings(state, settings, id);
         }
         ImGui::SameLine();
-        const float textStart = ImGui::GetCursorPosX();
         const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
         bool changed = false;
         if (edit.objectId == id) {
@@ -2484,7 +2550,7 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                 selectSceneObject(state, id, ImGui::GetIO().KeyCtrl);
             }
             if (selected) { drawSceneItemOutline(); }
-            setLastItemTooltip((comparison.name + "\nSelect this analysis. Double-click to rename.").c_str());
+            drawComparisonObjectHint(state, comparison, foundRuntime == runtimes.objects.end() ? nullptr : &foundRuntime->second);
             if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)
                 && !ImGui::GetIO().KeyCtrl && !ImGui::GetIO().KeyShift) {
                 beginRename(id);
@@ -2499,66 +2565,6 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                 if (ImGui::MenuItem("Delete analysis")) { removeComparison(state, id); changed = true; }
                 ImGui::EndPopup();
             }
-        }
-        if (!changed) {
-            const auto found = runtimes.objects.find(id);
-            const auto* runtime = found == runtimes.objects.end() ? nullptr : &found->second;
-            const bool currentInputs = runtime && runtime->sidebarRevision == state.sceneEditRevision;
-            const bool hasA = currentInputs && runtime->sidebarInputs[0].enabledPartCount != 0;
-            const bool hasB = currentInputs && runtime->sidebarInputs[1].enabledPartCount != 0;
-            const auto task = analysisTask(settings, hasA && hasB);
-            ImGui::SetCursorPosX(textStart);
-            ImGui::TextDisabled("%s", analysisTaskLabel(task));
-            ImGui::SameLine();
-            const char* status = "Updating...";
-            if (currentInputs) {
-                if (!hasA && !hasB) { status = "Needs inputs"; }
-                else if (task == AnalysisTask::surfaceComparison && !(hasA && hasB)) { status = "Needs second input"; }
-                else if (!canInspectComparison(state, id)) { status = "Missing source"; }
-                else if (!runtime->error.empty()) { status = "Failed"; }
-                else if (runtime->preparationWorker.valid() || runtime->worker.valid() || runtime->intersection.worker.valid()) { status = "Running"; }
-                else if (!runtime->ready) { status = settings.enabled ? "Queued" : "Not run"; }
-                else { status = "Ready"; }
-                if (task == AnalysisTask::meshChecks && runtime->ready && canInspectComparison(state, id)) {
-                    for (const auto phase : {AnalysisResultState::notRun, AnalysisResultState::unavailable,
-                            AnalysisResultState::partial, AnalysisResultState::canceled, AnalysisResultState::outdated,
-                            AnalysisResultState::queued, AnalysisResultState::running, AnalysisResultState::failed}) {
-                        for (const auto& check : runtime->diagnosticSummaries) {
-                            if ((hasA && check[0].state == phase) || (hasB && check[1].state == phase)) {
-                                status = phase == AnalysisResultState::notRun ? "Checks pending" : analysisResultStateLabel(phase);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            ImGui::TextDisabled("| %s", status);
-            if (currentInputs) {
-                const auto& a = runtime->sidebarInputs[0];
-                const auto& b = runtime->sidebarInputs[1];
-                if (task == AnalysisTask::meshChecks && (hasA || hasB)) {
-                    size_t withFindings = 0, notRun = 0, incomplete = 0;
-                    for (const auto& check : runtime->diagnosticSummaries) {
-                        const bool finding = (hasA && check[0].count != 0) || (hasB && check[1].count != 0);
-                        withFindings += finding;
-                        notRun += (hasA && check[0].state == AnalysisResultState::notRun)
-                            || (hasB && check[1].state == AnalysisResultState::notRun);
-                        const auto unfinished = [](AnalysisResultState phase) {
-                            return phase != AnalysisResultState::ready && phase != AnalysisResultState::notRun;
-                        };
-                        incomplete += (hasA && unfinished(check[0].state)) || (hasB && unfinished(check[1].state));
-                    }
-                    ImGui::SetCursorPosX(textStart);
-                    ImGui::TextWrapped("%zu checks with findings | %zu not run%s", withFindings, notRun,
-                        incomplete ? " | incomplete results" : "");
-                }
-                ImGui::SetCursorPosX(textStart);
-                drawObjectIdentityRow("Sources", runtime->sidebarSources.c_str());
-                if (!canInspectComparison(state, id)) {
-                    setLastItemTooltip((a.issue + "\n" + b.issue).c_str());
-                }
-            }
-            ImGui::Spacing();
         }
         ImGui::PopID();
         if (changed) { break; }
