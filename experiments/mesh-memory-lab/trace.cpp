@@ -17,6 +17,7 @@ static_assert(sizeof(woby::Vertex) == 32);
 static_assert(offsetof(woby::Vertex, normal) == 12);
 static_assert(offsetof(woby::Vertex, texcoord) == 24);
 static_assert(sizeof(woby::Coordinate) == 24);
+static_assert(sizeof(Corner) == 12);
 
 Corner corner(const rapidobj::Index& index)
 {
@@ -40,11 +41,12 @@ template<typename T> std::vector<uint8_t> bytes(const std::vector<T>& input)
 }
 } // namespace
 
-Trace loadTrace(const std::filesystem::path& path)
+static Trace captureSource(std::string source, woby::Mesh mesh, std::string name)
 {
     Trace trace;
-    trace.name = woby::pathToUtf8(path.filename());
-    trace.source = readSource(path);
+    trace.name = std::move(name);
+    trace.source = std::move(source);
+    trace.mesh = std::move(mesh);
     size_t offset = 0;
     int positionId = 0, uvId = 0, normalId = 0, faceId = 0;
     std::vector<size_t> faceLines;
@@ -73,8 +75,7 @@ Trace loadTrace(const std::filesystem::path& path)
     }
     std::istringstream stream(trace.source);
     // Triangulate requires the per-face material array, which Ignore omits.
-    auto parsed = rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::SearchPath(
-        std::filesystem::absolute(path).parent_path(), rapidobj::Load::Optional));
+    auto parsed = rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::String(""));
     if (parsed.error) { throw std::runtime_error("OBJ parse error: " + parsed.error.code.message()); }
     for (size_t i = 0; i < parsed.attributes.positions.size(); i += 3) {
         const woby::Coordinate point{parsed.attributes.positions[i], parsed.attributes.positions[i+1], parsed.attributes.positions[i+2]};
@@ -109,11 +110,10 @@ Trace loadTrace(const std::filesystem::path& path)
     const auto origin = woby::coordinateOrigin(trace.positions);
     for (size_t i = 0; i < trace.positions.size(); ++i) {
         const auto local = woby::relativePosition(trace.positions[i], origin);
+        trace.localPositions.push_back(local);
         for (size_t axis = 0; axis < 3; ++axis) { parsed.attributes.positions[i*3+axis] = local[axis]; }
     }
     if (!rapidobj::Triangulate(parsed)) { throw std::runtime_error("RapidOBJ could not triangulate the source."); }
-    trace.mesh = woby::loadObjMesh(std::filesystem::absolute(path));
-    if (trace.source != readSource(path)) { throw std::runtime_error("The file changed during capture. Reload it."); }
     if (trace.mesh.indices.size() != triangleCount * 3 || !trace.mesh.lineIndices.empty() || !trace.mesh.pointIndices.empty()) {
         throw std::runtime_error("Production mesh and polygon trace disagree.");
     }
@@ -135,6 +135,7 @@ Trace loadTrace(const std::filesystem::path& path)
                     throw std::runtime_error("Source-to-render index correspondence failed.");
                 }
                 if (seen[vertex] && trace.vertexKeys[vertex] != key) { throw std::runtime_error("Vertex tuple correspondence failed."); }
+                trace.vertexEvents.push_back({vertex, !seen[vertex]});
                 seen[vertex] = true;
                 trace.vertexKeys[vertex] = key;
                 const auto local = woby::relativePosition(trace.positions[static_cast<size_t>(key.position)], origin);
@@ -150,6 +151,20 @@ Trace loadTrace(const std::filesystem::path& path)
     }
     for (const auto& vertices : trace.positionVertices) { if (vertices.size() > 1) { ++trace.splitPositions; } }
     return trace;
+}
+
+Trace loadTrace(const std::filesystem::path& path)
+{
+    auto source = readSource(path);
+    auto mesh = woby::loadObjMesh(std::filesystem::absolute(path));
+    if (source != readSource(path)) { throw std::runtime_error("The file changed during capture. Reload it."); }
+    return captureSource(std::move(source), std::move(mesh), woby::pathToUtf8(path.filename()));
+}
+
+Trace internalExample()
+{
+    const auto text = internalObjSource();
+    return captureSource(std::string(text), woby::loadObjMeshText(text), "Folded sheet");
 }
 
 std::vector<uint8_t> vertexBytes(const Trace& trace) { return bytes(trace.mesh.vertices); }

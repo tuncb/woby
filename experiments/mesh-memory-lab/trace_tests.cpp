@@ -1,5 +1,6 @@
 #include "trace.h"
 #include "ui_state.h"
+#include "obj_mesh.h"
 #include <doctest/doctest.h>
 #include <bit>
 #include <chrono>
@@ -139,8 +140,8 @@ TEST_CASE("Selection and camera operations enforce valid inspector state")
     CHECK(state.pitch == doctest::Approx(1.45f)); CHECK(state.zoom == 4.0f);
     mesh_lab::orbit(state, 0, 0, std::numeric_limits<float>::quiet_NaN());
     CHECK(state.zoom == 4.0f);
-    mesh_lab::selectStage(state, static_cast<mesh_lab::Stage>(100));
-    CHECK(state.stage == mesh_lab::Stage::vertices);
+    mesh_lab::selectNode(state, static_cast<mesh_lab::Node>(100));
+    CHECK(state.node == mesh_lab::Node::pack);
     CHECK_FALSE(mesh_lab::lineRelated(trace, 999, 0));
 }
 TEST_CASE("Malformed and unsupported captures fail before GPU allocation")
@@ -163,4 +164,82 @@ TEST_CASE("Multiple shapes and CRLF keep correct source byte and face offsets")
     CHECK(trace.faces[0].line == 4);
     CHECK(trace.faces[1].line == 6);
     CHECK(trace.mesh.nodes.size() == 2);
+}
+
+TEST_CASE("The internal example exposes rebasing triangulation and seam identity")
+{
+    const auto trace = mesh_lab::internalExample();
+    CHECK(trace.positions.size() == 6);
+    CHECK(trace.faces.size() == 2);
+    CHECK(trace.originalCorners == 8);
+    CHECK(trace.triangles.size() == 4);
+    CHECK(trace.mesh.vertices.size() == 8);
+    CHECK(trace.splitPositions == 2);
+    CHECK_FALSE(trace.generatedNormals);
+    CHECK(trace.mesh.origin[0] > 1.0e9);
+    for (size_t i = 0; i < trace.positions.size(); ++i) {
+        CHECK(trace.localPositions[i] == woby::relativePosition(trace.positions[i], trace.mesh.origin));
+    }
+    CHECK(static_cast<float>(trace.positions[0][0]) == static_cast<float>(trace.positions[1][0]));
+    CHECK(trace.localPositions[0][0] != trace.localPositions[1][0]);
+    CHECK(trace.positionVertices[2].size() == 2);
+    CHECK(trace.positionVertices[3].size() == 2);
+}
+TEST_CASE("Intern events reconstruct actual first-use IDs and reuse decisions")
+{
+    const auto trace = mesh_lab::internalExample();
+    std::vector<bool> seen(trace.mesh.vertices.size()); size_t inserts = 0, reused = 0;
+    REQUIRE(trace.vertexEvents.size() == trace.mesh.indices.size());
+    for (size_t i = 0; i < trace.vertexEvents.size(); ++i) {
+        const auto event = trace.vertexEvents[i];
+        CHECK(event.vertex == trace.mesh.indices[i]);
+        CHECK(event.created == !seen[event.vertex]);
+        if (event.created) { CHECK(event.vertex == inserts); ++inserts; }
+        else { ++reused; }
+        seen[event.vertex] = true;
+    }
+    CHECK(inserts == 8); CHECK(reused == 4);
+}
+TEST_CASE("Pipeline edges alternate data and transformers with exact payload sizes")
+{
+    using mesh_lab::Node;
+    const auto trace = mesh_lab::internalExample();
+    CHECK(mesh_lab::payloadBytes(Node::attributes,trace) == 328);
+    CHECK(mesh_lab::payloadBytes(Node::corners,trace) == 376);
+    CHECK(mesh_lab::payloadBytes(Node::mesh,trace) == 688);
+    CHECK(mesh_lab::payloadBytes(Node::gpu,trace) == 304);
+    CHECK(mesh_lab::payloadBytes(Node::source,trace) == trace.source.size());
+    for (size_t i = 0; i < mesh_lab::pipeline.size(); ++i) {
+        const auto& node = mesh_lab::pipeline[i];
+        CHECK(static_cast<size_t>(node.id) == i);
+        CHECK(node.transformer == (i%2 == 1));
+        if (node.transformer) {
+            const auto edges = mesh_lab::transformationEndpoints(node.id);
+            CHECK(static_cast<size_t>(edges[0]) == i-1);
+            CHECK(static_cast<size_t>(edges[1]) == i+1);
+        }
+    }
+    CHECK_THROWS_AS((void)mesh_lab::payloadBytes(Node::parse,trace), std::invalid_argument);
+    CHECK_THROWS_AS((void)mesh_lab::transformationEndpoints(Node::mesh), std::invalid_argument);
+    CHECK_THROWS_AS((void)mesh_lab::transformationEndpoints(Node::count), std::invalid_argument);
+    mesh_lab::UiState state;
+    mesh_lab::selectNode(state,Node::upload); CHECK(state.node == Node::upload);
+    mesh_lab::selectPosition(state,trace,3);
+    CHECK(trace.vertexKeys[mesh_lab::selectedVertex(state,trace)].position == 3);
+    mesh_lab::selectPosition(state,trace,999);
+    CHECK(trace.vertexKeys[mesh_lab::selectedVertex(state,trace)].position == 3);
+}
+TEST_CASE("In-memory OBJ construction matches production file import")
+{
+    Fixture fixture;
+    const auto source = mesh_lab::internalObjSource();
+    const auto memory = woby::loadObjMeshText(source);
+    const auto file = woby::loadObjMesh(fixture.write(std::string(source)));
+    CHECK(memory.indices == file.indices);
+    CHECK(memory.precisePositions == file.precisePositions);
+    CHECK(memory.origin == file.origin);
+    REQUIRE(memory.vertices.size() == file.vertices.size());
+    CHECK(std::memcmp(memory.vertices.data(),file.vertices.data(),memory.vertices.size()*sizeof(woby::Vertex)) == 0);
+    CHECK_THROWS((void)woby::loadObjMeshText("v 0 0 0\nf 1 2 3\n"));
+    CHECK_THROWS((void)woby::loadObjMeshText("# empty\n"));
 }

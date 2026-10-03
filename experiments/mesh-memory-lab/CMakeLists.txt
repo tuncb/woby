@@ -1,5 +1,5 @@
 add_library(mesh_memory_trace STATIC
-    trace.cpp ui_operations.cpp
+    trace.cpp example.cpp pipeline.cpp ui_operations.cpp
     ${PROJECT_SOURCE_DIR}/src/obj_mesh.cpp
     ${PROJECT_SOURCE_DIR}/src/model_mesh.cpp
     ${PROJECT_SOURCE_DIR}/src/obj_freeform.cpp
@@ -18,8 +18,6 @@ if(WIN32)
     set_target_properties(mesh_memory_lab PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 target_link_libraries(mesh_memory_lab PRIVATE mesh_memory_trace woby_graphics woby_math SDL3::SDL3 imgui::imgui)
-target_compile_definitions(mesh_memory_lab PRIVATE
-    MESH_LAB_SAMPLE_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/samples")
 add_dependencies(mesh_memory_lab woby_assets)
 woby_enable_project_warnings(mesh_memory_lab)
 

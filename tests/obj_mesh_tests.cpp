@@ -60,6 +60,44 @@ void loadObjAndDiscard(const std::filesystem::path& path)
 
 } // namespace
 
+TEST_CASE("OBJ text import shares polygon construction with file import")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "memory-parity.obj";
+    constexpr auto text = "o rebased_quad\n"
+        "v 1000000000 -2 0\nv 1000000002 -2 0\n"
+        "v 1000000002 2 0\nv 1000000000 2 0\n"
+        "vt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\n"
+        "f -4/1 -3/2 -2/3 -1/4\n";
+    writeText(path, text);
+    const auto fileMesh = woby::loadObjMesh(path);
+    const auto memoryMesh = woby::loadObjMeshText(text);
+    REQUIRE(memoryMesh.vertices.size() == 4);
+    REQUIRE(memoryMesh.indices.size() == 6);
+    CHECK(memoryMesh.indices == fileMesh.indices);
+    CHECK(memoryMesh.origin == fileMesh.origin);
+    CHECK(memoryMesh.origin[0] == 1000000001.0);
+    CHECK(memoryMesh.precisePositions == fileMesh.precisePositions);
+    REQUIRE(memoryMesh.sourceData);
+    CHECK(memoryMesh.sourceData->points == fileMesh.sourceData->points);
+    CHECK(memoryMesh.sourceData->indices == fileMesh.sourceData->indices);
+    REQUIRE(memoryMesh.nodes.size() == 1);
+    CHECK(memoryMesh.nodes[0].name == "rebased_quad");
+    for (size_t i = 0; i < memoryMesh.vertices.size(); ++i) {
+        CHECK(memoryMesh.vertices[i].position == fileMesh.vertices[i].position);
+        CHECK(memoryMesh.vertices[i].normal == fileMesh.vertices[i].normal);
+        CHECK(memoryMesh.vertices[i].texcoord == fileMesh.vertices[i].texcoord);
+        CHECK(woby::validNormal(memoryMesh.vertices[i].normal));
+    }
+}
+
+TEST_CASE("OBJ text import reports invalid input without filesystem fallback")
+{
+    CHECK_THROWS_AS((void)woby::loadObjMeshText(""), std::runtime_error);
+    CHECK_THROWS_AS((void)woby::loadObjMeshText("v 0 0 0\nf 1 2 3\n"), std::runtime_error);
+    CHECK_THROWS_AS((void)woby::loadObjMeshText("v not_a_number 0 0\n"), std::runtime_error);
+}
+
 TEST_CASE("OBJ loader creates one mesh node per shape")
 {
     const ObjTestDirectory fixture;

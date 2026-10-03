@@ -13,10 +13,11 @@ assert struct.unpack_from("<H", binary, pe + 24 + 68)[0] == 2, "Expected Windows
 
 result = subprocess.run([app, "--help"], capture_output=True, text=True, timeout=10)
 assert result.returncode == 0, result
-assert "mesh_memory_lab [file.obj]" in result.stdout, result
+assert "one internal folded-sheet example" in result.stdout, result
 assert "--screenshot" in result.stdout and "--smoke" in result.stdout, result
 assert not result.stderr, result
 help_text = result.stdout
+assert "--sample" not in help_text and "[file.obj]" not in help_text
 
 result = subprocess.run([app, "--unknown-option"], capture_output=True, text=True, timeout=10)
 assert result.returncode == 1, result

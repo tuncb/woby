@@ -34,9 +34,15 @@ void selectLine(UiState& state, const Trace& trace, size_t line)
         }
     }
 }
-void selectStage(UiState& state, Stage stage)
+void selectNode(UiState& state, Node node)
 {
-    if (stage >= Stage::source && stage <= Stage::gpu) { state.stage = stage; }
+    if (node >= Node::source && node < Node::count) { state.node = node; }
+}
+void selectPosition(UiState& state, const Trace& trace, size_t position)
+{
+    if (position < trace.positionVertices.size() && !trace.positionVertices[position].empty()) {
+        selectVertex(state, trace, trace.positionVertices[position].front());
+    }
 }
 void orbit(UiState& state, float yawDelta, float pitchDelta, float zoomFactor)
 {

@@ -119,21 +119,9 @@ rapidobj::Result parseObj(const std::filesystem::path& path)
     return rapidobj::ParseFile(path, rapidobj::MaterialLibrary::Default(rapidobj::Load::Optional));
 }
 
-} // namespace
-
-Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
+Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPatches,
+    const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
 {
-    // Missing material libraries must not prevent importing the geometry.
-    reportModelLoadProgress(progress, ModelLoadStage::reading);
-    auto result = parseObj(path);
-    std::vector<FreeformPatch> freeformPatches;
-    if (result.error && objFreeformStatement(result.error.line)) {
-        auto input = readObjFreeform(path, progress);
-        std::istringstream stream(std::move(input.polygonText));
-        result = rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::SearchPath(
-            std::filesystem::absolute(path).parent_path(), rapidobj::Load::Optional));
-        freeformPatches = std::move(input.patches);
-    }
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
         if (result.error) {
@@ -344,6 +332,33 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
         finalizeMesh(mesh, false, progress);
     }
     return mesh;
+}
+
+} // namespace
+
+Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
+{
+    reportModelLoadProgress(progress, ModelLoadStage::reading);
+    auto result = parseObj(path);
+    std::vector<FreeformPatch> freeformPatches;
+    if (result.error && objFreeformStatement(result.error.line)) {
+        auto input = readObjFreeform(path, progress);
+        std::istringstream stream(std::move(input.polygonText));
+        result = rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::SearchPath(
+            std::filesystem::absolute(path).parent_path(), rapidobj::Load::Optional));
+        freeformPatches = std::move(input.patches);
+    }
+    return buildObjMesh(std::move(result), std::move(freeformPatches), path, progress);
+}
+
+Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress)
+{
+    reportModelLoadProgress(progress, ModelLoadStage::reading);
+    std::istringstream stream{std::string(text)};
+    // An empty supplied library retains per-face material IDs for Triangulate,
+    // unlike MaterialLibrary::Ignore, without consulting the filesystem.
+    auto result = rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::String(""));
+    return buildObjMesh(std::move(result), {}, "<memory>", progress);
 }
 
 } // namespace woby

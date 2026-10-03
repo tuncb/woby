@@ -6,10 +6,8 @@
 #include <SDL3/SDL_main.h>
 #include <imgui_impl_sdl3.h>
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstdio>
-#include <future>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -19,11 +17,10 @@ namespace g = woby::graphics;
 constexpr g::ViewId uiView = 200;
 struct Options {
     bool smoke = false;
-    std::filesystem::path input = std::filesystem::path(MESH_LAB_SAMPLE_DIRECTORY) / "uv-seam.obj";
     std::filesystem::path screenshot;
-    mesh_lab::Stage stage = mesh_lab::Stage::vertices;
-    size_t triangle = 0, corner = 0;
-    int width = 1520, height = 1000, frameLimit = 0;
+    mesh_lab::Node node = mesh_lab::Node::pack;
+    size_t triangle = 2, corner = 0;
+    int width = 1600, height = 1000, frameLimit = 0;
 };
 Options options(int argc, char** argv)
 {
@@ -36,26 +33,24 @@ Options options(int argc, char** argv)
         };
         if (arg == "--smoke") { result.smoke = true; }
         else if (arg == "--screenshot") { result.screenshot = std::filesystem::absolute(woby::pathFromUtf8(value())); }
-        else if (arg == "--sample") { result.input = std::filesystem::path(MESH_LAB_SAMPLE_DIRECTORY) / woby::pathFromUtf8(value()); }
         else if (arg == "--triangle") { result.triangle = std::stoull(value()); }
         else if (arg == "--corner") { result.corner = std::stoull(value()); }
         else if (arg == "--width") { result.width = std::stoi(value()); }
         else if (arg == "--height") { result.height = std::stoi(value()); }
         else if (arg == "--frames") { result.frameLimit = std::stoi(value()); }
-        else if (arg == "--stage") {
-            const auto stage = value();
-            if (stage == "source") { result.stage = mesh_lab::Stage::source; }
-            else if (stage == "corners") { result.stage = mesh_lab::Stage::corners; }
-            else if (stage == "vertices") { result.stage = mesh_lab::Stage::vertices; }
-            else if (stage == "gpu") { result.stage = mesh_lab::Stage::gpu; }
-            else { throw std::runtime_error("Stage must be source, corners, vertices, or gpu."); }
+        else if (arg == "--node") {
+            const auto key = value(); bool found = false;
+            for (const auto& node : mesh_lab::pipeline) {
+                if (key == node.key) { result.node = node.id; found = true; break; }
+            }
+            if (!found) { throw std::runtime_error("Unknown pipeline node: " + key); }
         } else if (arg == "--help") {
-            std::puts("mesh_memory_lab [file.obj] [--sample name.obj] [--smoke]\n"
-                "  [--screenshot absolute.png] [--stage source|corners|vertices|gpu]\n"
-                "  [--triangle N] [--corner N] [--width 1520] [--height 1000] [--frames N]");
+            std::puts("mesh_memory_lab: one internal folded-sheet example\n"
+                "  [--screenshot absolute.png] [--smoke] [--frames N]\n"
+                "  [--node source|parse|attributes|triangulate|corners|pack|mesh|upload|gpu]\n"
+                "  [--triangle N] [--corner N] [--width 1600] [--height 1000]");
             std::exit(0);
-        } else if (!arg.starts_with("--")) { result.input = std::filesystem::absolute(woby::pathFromUtf8(arg)); }
-        else { throw std::runtime_error("Unknown argument: " + arg); }
+        } else { throw std::runtime_error("Unknown argument: " + arg); }
     }
     if (result.width < 1200 || result.width > 4096 || result.height < 860 || result.height > 2160) {
         throw std::runtime_error("Inspector dimensions must be 1200..4096 x 860..2160.");
@@ -118,8 +113,8 @@ int main(int argc, char** argv)
         mesh_lab::initViewport(viewport, assets);
         if (config.smoke) {
             mesh_lab::resizeViewport(viewport, 320, 240);
-            for (const auto* sample : mesh_lab::sampleFiles) {
-                const auto trace = mesh_lab::loadTrace(std::filesystem::path(MESH_LAB_SAMPLE_DIRECTORY) / sample);
+            {
+                const auto trace = mesh_lab::internalExample();
                 mesh_lab::upload(capture, trace); finishReadback(capture);
                 const mesh_lab::UiState state;
                 const auto matrices = mesh_lab::viewMatrices(trace, state, 4.0f / 3.0f, g::getCaps()->homogeneousDepth);
@@ -137,13 +132,13 @@ int main(int argc, char** argv)
                     if (pixels[p] != 0x11 || pixels[p+1] != 0x19 || pixels[p+2] != 0x20) { ++shaded; }
                 }
                 if (shaded < 100) { throw std::runtime_error("GPU viewport did not rasterize the mesh."); }
-                std::printf("PASS %s: %zu vertices, %zu triangles, %zu verified GPU bytes\n", sample,
+                std::printf("PASS internal example: %zu vertices, %zu triangles, %zu verified GPU bytes\n",
                     trace.mesh.vertices.size(), trace.triangles.size(), capture.vertexReadback.size()+capture.indexReadback.size());
             }
         } else {
-            auto trace = std::make_shared<const mesh_lab::Trace>(mesh_lab::loadTrace(config.input));
+            const auto trace = std::make_shared<const mesh_lab::Trace>(mesh_lab::internalExample());
             mesh_lab::UiState state;
-            mesh_lab::selectStage(state, config.stage);
+            mesh_lab::selectNode(state, config.node);
             mesh_lab::selectTriangle(state, *trace, config.triangle); mesh_lab::selectCorner(state, config.corner);
             mesh_lab::upload(capture, *trace);
             IMGUI_CHECKVERSION(); ImGui::CreateContext(); imguiInitialized = true;
@@ -161,7 +156,6 @@ int main(int argc, char** argv)
                 if (!g::isValid(outputTarget)) { throw std::runtime_error("Screenshot allocation failed."); }
                 g::setViewFrameBuffer(uiView, outputTarget);
             }
-            std::future<std::shared_ptr<const mesh_lab::Trace>> job;
             bool running = true;
             int frames = 0, drawableWidth = config.width, drawableHeight = config.height;
             while (running) {
@@ -169,25 +163,6 @@ int main(int argc, char** argv)
                 while (SDL_PollEvent(&event)) {
                     if (platformInitialized) { ImGui_ImplSDL3_ProcessEvent(&event); }
                     if (event.type == SDL_EVENT_QUIT) { running = false; }
-                    if (event.type == SDL_EVENT_DROP_FILE && event.drop.data && !ui.loading) {
-                        ui.requestedPath = woby::pathFromUtf8(event.drop.data);
-                    }
-                }
-                if (ui.requestedPath && !ui.loading) {
-                    auto path = *ui.requestedPath; ui.requestedPath.reset(); ui.error.clear();
-                    if (!path.is_absolute()) { ui.error = "Enter an absolute OBJ path."; }
-                    else {
-                        ui.loading = true;
-                        job = std::async(std::launch::async, [path] { return std::make_shared<const mesh_lab::Trace>(mesh_lab::loadTrace(path)); });
-                    }
-                }
-                if (job.valid() && capture.complete && job.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-                    try {
-                        auto next = job.get();
-                        mesh_lab::upload(capture, *next); trace = std::move(next);
-                        mesh_lab::selectTriangle(state, *trace, 0); mesh_lab::selectCorner(state, 0);
-                    } catch (const std::exception& error) { ui.error = error.what(); }
-                    ui.loading = false;
                 }
                 if (window) {
                     int width = 0, height = 0; SDL_GetWindowSizeInPixels(window, &width, &height);
@@ -218,7 +193,6 @@ int main(int argc, char** argv)
                     running = false;
                 }
             }
-            if (job.valid()) { job.wait(); }
         }
     } catch (const std::exception& error) {
         std::fprintf(stderr, "Mesh memory lab: %s\n", error.what()); exitCode = 1;
