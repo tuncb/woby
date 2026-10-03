@@ -187,22 +187,18 @@ TEST_CASE("limited intersections and unavailable fin measurements cannot look cl
     CHECK(diagnosticSummary(surface, DiagnosticCategory::fins, IntersectionPhase::complete, true).state == AnalysisResultState::partial);
 }
 
-TEST_CASE("analysis browser filters are validated session preferences")
+TEST_CASE("analysis diagnostic filters are validated session preferences")
 {
     AnalysisFixture f;
     const auto document = createSceneDocument(f.state);
     const auto revision = f.state.sceneEditRevision;
-    setAnalysisTaskFilter(f.state, AnalysisTask::meshQuality);
     setDiagnosticFilter(f.state, DiagnosticGroup::duplicates, true);
     CHECK(createSceneDocument(f.state) == document);
     CHECK(f.state.sceneEditRevision == revision);
     const auto restored = prepareSceneReplacement(f.state, {}, createSceneDocument(UiState{}));
-    CHECK(restored.analysisTaskFilter == AnalysisTask::meshQuality);
     CHECK(restored.diagnosticGroupFilter == DiagnosticGroup::duplicates);
     CHECK(restored.diagnosticFindingsOnly);
-    setAnalysisTaskFilter(f.state, static_cast<AnalysisTask>(999));
     setDiagnosticFilter(f.state, static_cast<DiagnosticGroup>(999), false);
-    CHECK(f.state.analysisTaskFilter == AnalysisTask::automatic);
     CHECK(f.state.diagnosticGroupFilter == DiagnosticGroup::all);
 }
 

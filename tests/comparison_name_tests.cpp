@@ -219,6 +219,35 @@ TEST_CASE("analysis compact add button opens an anchored menu while the section 
     CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.state.comparisons.back().objectId});
 }
 
+TEST_CASE("analysis sidebar lists every task without a filter for more than four analyses")
+{
+    ComparisonNameFixture f;
+    for (const auto task : {woby::AnalysisTask::meshChecks, woby::AnalysisTask::meshQuality,
+            woby::AnalysisTask::surfaceComparison, woby::AnalysisTask::uvInspection, woby::AnalysisTask::meshChecks}) {
+        woby::createAnalysisFromSelection(f.state, task);
+    }
+    REQUIRE(f.state.comparisons.size() == 6);
+    const auto hidden = f.state.comparisons.back().objectId;
+    auto settings = woby::comparisonSettings(f.state, hidden);
+    settings.enabled = false;
+    woby::setComparisonSettings(f.state, settings, hidden);
+    const auto before = woby::createSceneDocument(f.state);
+    std::string contents;
+    for (int frame = 0; frame < 2; ++frame) {
+        ImGui::NewFrame(); ImGui::SetNextWindowPos({20, 20}); ImGui::SetNextWindowSize({500, 400});
+        ImGui::Begin("Scene"); ImGui::LogToBuffer();
+        woby::drawComparisonObjects(f.state, f.edit);
+        contents = f.context->LogBuffer.c_str(); ImGui::LogFinish(); ImGui::End(); ImGui::EndFrame();
+    }
+    INFO(contents);
+    for (const auto& analysis : f.state.comparisons) { CHECK(contents.find(analysis.name) != std::string::npos); }
+    CHECK(contents.find("All analysis tasks") == std::string::npos);
+    CHECK(woby::createSceneDocument(f.state) == before);
+    f.frame(); f.click(f.row);
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.id});
+    CHECK_FALSE(woby::comparisonSettings(f.state, hidden).enabled);
+}
+
 TEST_CASE("analysis rows use the full width and delete only through the context menu")
 {
     ComparisonNameFixture f;
@@ -231,24 +260,21 @@ TEST_CASE("analysis rows use the full width and delete only through the context 
         f.key(ImGuiKey_F2);
         REQUIRE(f.edit.objectId == f.id);
     }
-    SUBCASE("filtered row") {
+    SUBCASE("different task row") {
         woby::setAnalysisTask(f.state, other, woby::AnalysisTask::meshQuality);
-        woby::setAnalysisTaskFilter(f.state, woby::AnalysisTask::meshChecks);
     }
     f.frame(); f.frame();
     const auto revision = f.state.sceneEditRevision;
     const auto otherName = woby::findComparison(f.state, other)->name;
     const auto* window = ImGui::FindWindowByName("Scene");
     REQUIRE(window);
-    const float filterHeight = f.state.analysisTaskFilter == woby::AnalysisTask::automatic
-        ? 0 : ImGui::GetFrameHeightWithSpacing();
-    f.click({window->WorkRect.Max.x - woby::renderModeButtonSize() * .5f, f.row.y + filterHeight});
+    f.click({window->WorkRect.Max.x - woby::renderModeButtonSize() * .5f, f.row.y});
     f.frame();
     REQUIRE(woby::findComparison(f.state, f.id));
     CHECK(f.state.comparisons.size() == 2);
     CHECK(f.state.sceneEditRevision == revision);
     if (f.edit.objectId != woby::invalidSceneObjectId) { f.key(ImGuiKey_Escape); }
-    f.click({f.row.x, f.row.y + filterHeight}, ImGuiMouseButton_Right);
+    f.click({f.row.x, f.row.y}, ImGuiMouseButton_Right);
     f.frame();
     REQUIRE_FALSE(f.context->OpenPopupStack.empty());
     const auto* popup = f.context->OpenPopupStack.back().Window;
@@ -349,19 +375,18 @@ TEST_CASE("file analysis menus preserve selection until a task is chosen and use
     CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{created.objectId});
 }
 
-TEST_CASE("analysis header eye controls every analysis independently of collapse and task filter")
+TEST_CASE("analysis header eye controls every analysis independently of collapse and task")
 {
     ComparisonNameFixture f;
     const auto other = woby::createAnalysisFromSelection(f.state, woby::AnalysisTask::uvInspection);
     auto settings = woby::comparisonSettings(f.state, other);
     settings.enabled = false;
     woby::setComparisonSettings(f.state, settings, other);
-    woby::setAnalysisTaskFilter(f.state, woby::AnalysisTask::meshChecks);
     auto* window = ImGui::FindWindowByName("Scene");
     REQUIRE(window);
     const auto header = window->GetID("Analyses");
     SUBCASE("collapsed") { window->StateStorage.SetInt(header, 0); }
-    SUBCASE("expanded and filtered") { window->StateStorage.SetInt(header, 1); }
+    SUBCASE("expanded") { window->StateStorage.SetInt(header, 1); }
     const auto open = window->StateStorage.GetInt(header);
     f.frame(); f.frame();
     const auto* table = ImGui::TableFindByID(window->GetID("analysis_header"));
@@ -372,7 +397,7 @@ TEST_CASE("analysis header eye controls every analysis independently of collapse
         table->OuterRect.Min.y + ImGui::GetStyle().CellPadding.y + size * .5f};
     const auto selection = f.state.selectedSceneObjects;
     const auto revision = f.state.sceneEditRevision;
-    f.click(eye); // Mixed -> show all, including the analysis outside the filter.
+    f.click(eye); // Mixed -> show all, including the other task.
     CHECK(woby::comparisonSettings(f.state, f.id).enabled);
     CHECK(woby::comparisonSettings(f.state, other).enabled);
     CHECK(f.state.sceneEditRevision == revision + 1);
@@ -385,7 +410,6 @@ TEST_CASE("analysis header eye controls every analysis independently of collapse
     CHECK(woby::comparisonSettings(f.state, other).enabled);
     CHECK(f.state.selectedSceneObjects == selection);
     CHECK(window->StateStorage.GetInt(header) == open);
-    CHECK(f.state.analysisTaskFilter == woby::AnalysisTask::meshChecks);
     woby::removeComparison(f.state, f.id);
     woby::removeComparison(f.state, other);
     const auto emptyRevision = f.state.sceneEditRevision;

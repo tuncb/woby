@@ -41,7 +41,6 @@ SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task);
 // Explicit sources let file actions create analyses without first changing the selection.
 SceneObjectId createAnalysisFromObjects(UiState& state, AnalysisTask task, const std::vector<SceneObjectId>& objects);
 void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task);
-void setAnalysisTaskFilter(UiState& state, AnalysisTask task);
 void setDiagnosticFilter(UiState& state, DiagnosticGroup group, bool findingsOnly);
 SceneObjectId duplicateComparison(UiState& state, SceneObjectId id);
 void removeComparison(UiState& state, SceneObjectId id);

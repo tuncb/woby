@@ -2508,22 +2508,10 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         ImGui::EndTable();
     }
     if (!open) { return; }
-    if (state.comparisons.size() > 4 || state.analysisTaskFilter != AnalysisTask::automatic) {
-        int filter = static_cast<int>(state.analysisTaskFilter);
-        const char* filters[] = {"All analysis tasks", "Mesh checks", "Mesh quality", "Surface comparison", "UV inspection"};
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::Combo("##analysis_filter", &filter, filters, 5)) { setAnalysisTaskFilter(state, static_cast<AnalysisTask>(filter)); }
-    }
     if (state.comparisons.empty()) { ImGui::TextDisabled("Select models, then use + to create an analysis."); }
-    size_t displayed = 0;
     for (const auto& comparison : state.comparisons) {
         const auto id = comparison.objectId;
         const auto foundRuntime = runtimes.objects.find(id);
-        const bool bothInputs = foundRuntime != runtimes.objects.end()
-            && foundRuntime->second.sidebarInputs[0].enabledPartCount && foundRuntime->second.sidebarInputs[1].enabledPartCount;
-        if (state.analysisTaskFilter != AnalysisTask::automatic
-            && analysisTask(comparison.settings, bothInputs) != state.analysisTaskFilter) { continue; }
-        ++displayed;
         const auto label = std::to_string(id);
         ImGui::PushID(label.c_str());
         auto settings = comparison.settings;
@@ -2574,6 +2562,5 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         ImGui::PopID();
         if (changed) { break; }
     }
-    if (!displayed && !state.comparisons.empty()) { ImGui::TextDisabled("No analyses match this task."); }
 }
 } // namespace woby
