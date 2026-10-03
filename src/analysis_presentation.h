@@ -18,11 +18,8 @@ struct DiagnosticSummary {
     size_t count = 0;
 };
 [[nodiscard]] const char* analysisResultStateLabel(AnalysisResultState state);
-[[nodiscard]] DiagnosticGroup diagnosticGroup(DiagnosticCategory category);
 [[nodiscard]] DiagnosticSummary diagnosticSummary(const SurfaceComparison& surface, DiagnosticCategory category,
     IntersectionPhase phase, bool current);
-[[nodiscard]] bool diagnosticMatchesFilter(DiagnosticGroup group, bool findingsOnly, DiagnosticCategory category,
-    const DiagnosticSummary& a, const DiagnosticSummary& b, bool hasA, bool hasB);
 [[nodiscard]] std::string diagnosticSummaryText(const DiagnosticSummary& summary);
 
 } // namespace woby

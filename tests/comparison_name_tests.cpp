@@ -922,6 +922,64 @@ TEST_CASE("analysis rename normalizes empty input and ignores missing objects")
     CHECK(state.sceneEditRevision == revision);
 }
 
+TEST_CASE("diagnostics show all checks including zero counts and pending results without filters")
+{
+    ComparisonNameFixture f;
+    woby::Mesh mesh;
+    mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"surface", 0, 3});
+    mesh.bounds = woby::calculateBounds(mesh.vertices);
+    auto source = std::make_shared<woby::SourceMeshData>();
+    source->provenance = woby::SourceProvenance::objPositions;
+    for (const auto& vertex : mesh.vertices) {
+        source->points.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
+    }
+    source->indices = mesh.indices;
+    mesh.sourceData = std::move(source);
+    f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, f.id);
+    woby::setAnalysisTask(f.state, f.id, woby::AnalysisTask::meshChecks);
+    woby::selectSceneObject(f.state, f.id);
+    woby::ComparisonRuntimes runtimes;
+    auto& runtime = runtimes.objects[f.id];
+    runtime.ready = true;
+    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.cache = {runtime.resultSignature, woby::comparisonSource | woby::comparisonDetectors};
+    runtime.result = woby::computeComparisonStages(
+        woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id), {}, runtime.cache.completed);
+    REQUIRE(woby::comparisonDetectorReady(runtime, f.state, f.id, woby::DiagnosticCategory::nonManifold));
+    REQUIRE(runtime.result.original.topology.availableSources == 1);
+    REQUIRE(runtime.result.original.topology.nonManifoldEdges.empty());
+    std::string contents;
+    ImGuiTable* diagnostics = nullptr;
+    for (int frame = 0; frame < 2; ++frame) {
+        ImGui::GetIO().DisplaySize = ImVec2(1000, 1800);
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize({900, 1700});
+        ImGui::Begin("All diagnostic checks");
+        ImGui::LogToBuffer();
+        woby::drawComparisonPanelContents(f.state, runtimes);
+        contents = f.context->LogBuffer.c_str();
+        ImGui::LogFinish();
+        for (auto* window : f.context->Windows) {
+            if (std::string(window->Name).find("comparison_properties") == std::string::npos) { continue; }
+            diagnostics = ImGui::TableFindByID(window->GetID("Analysis diagnostics"));
+        }
+        ImGui::End();
+        ImGui::EndFrame();
+    }
+    INFO(contents);
+    REQUIRE(diagnostics);
+    CHECK(diagnostics->CurrentRow == 10); // Header plus every diagnostic category.
+    CHECK(contents.find("| 0 |") != std::string::npos);
+    CHECK(contents.find("Not run") != std::string::npos);
+    CHECK(contents.find("All check groups") == std::string::npos);
+    CHECK(contents.find("With findings") == std::string::npos);
+    CHECK(contents.find("No findings match this filter") == std::string::npos);
+}
+
 TEST_CASE("diagnostics keep run visibility and settings independent with nearby popups")
 {
     ComparisonNameFixture f;

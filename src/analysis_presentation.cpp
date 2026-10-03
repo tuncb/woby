@@ -78,19 +78,6 @@ const char* analysisResultStateLabel(AnalysisResultState state)
     return "Unavailable";
 }
 
-DiagnosticGroup diagnosticGroup(DiagnosticCategory category)
-{
-    switch (category) {
-    case DiagnosticCategory::boundary: case DiagnosticCategory::nonManifold:
-    case DiagnosticCategory::winding: case DiagnosticCategory::nonManifoldVertices:
-    case DiagnosticCategory::holes: case DiagnosticCategory::fins: return DiagnosticGroup::topology;
-    case DiagnosticCategory::duplicatePoints: case DiagnosticCategory::duplicateTriangles: return DiagnosticGroup::duplicates;
-    case DiagnosticCategory::degenerateTriangles: return DiagnosticGroup::degenerates;
-    case DiagnosticCategory::selfIntersections: return DiagnosticGroup::intersections;
-    }
-    return DiagnosticGroup::all;
-}
-
 DiagnosticSummary diagnosticSummary(const SurfaceComparison& surface, DiagnosticCategory category,
     IntersectionPhase phase, bool current)
 {
@@ -136,18 +123,6 @@ DiagnosticSummary diagnosticSummary(const SurfaceComparison& surface, Diagnostic
     summary.state = unavailable && !available ? AnalysisResultState::unavailable
         : unavailable || limited ? AnalysisResultState::partial : AnalysisResultState::ready;
     return summary;
-}
-
-bool diagnosticMatchesFilter(DiagnosticGroup group, bool findingsOnly, DiagnosticCategory category,
-    const DiagnosticSummary& a, const DiagnosticSummary& b, bool hasA, bool hasB)
-{
-    if (group != DiagnosticGroup::all && diagnosticGroup(category) != group) { return false; }
-    if (!findingsOnly || (!hasA && !hasB)) { return true; }
-    // Incomplete checks remain visible: zero known findings does not mean a clean result.
-    const auto needsReview = [](const DiagnosticSummary& value) {
-        return value.state != AnalysisResultState::ready || value.count != 0;
-    };
-    return (hasA && needsReview(a)) || (hasB && needsReview(b));
 }
 
 std::string diagnosticSummaryText(const DiagnosticSummary& summary)

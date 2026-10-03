@@ -956,15 +956,6 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity.\nExact positions join exactly equal world coordinates within a file, with no epsilon.");
     }
     validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
-    int group = static_cast<int>(state.diagnosticGroupFilter);
-    const char* groups[] = {"All check groups", "Topology", "Duplicates", "Degenerate triangles", "Intersections"};
-    ImGui::SetNextItemWidth(-1);
-    if (ImGui::Combo("##check_group", &group, groups, 5)) {
-        setDiagnosticFilter(state, static_cast<DiagnosticGroup>(group), state.diagnosticFindingsOnly);
-    }
-    bool findingsOnly = state.diagnosticFindingsOnly;
-    if (ImGui::Checkbox("With findings", &findingsOnly)) { setDiagnosticFilter(state, state.diagnosticGroupFilter, findingsOnly); }
-    setLastItemTooltip("Hide only completed checks with zero findings. Incomplete and unavailable checks stay visible.");
     constexpr struct {
         const char* name;
         DiagnosticCategory category;
@@ -991,17 +982,10 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::TableSetupColumn("##visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableHeadersRow();
-        size_t shown = 0;
         for (const auto& row : rows) {
-            const auto phase = comparisonDetectorStatus(runtime.result, row.category).phase;
             const bool rowCurrent = comparisonDetectorReady(runtime, state, id, row.category);
-            const auto a = diagnosticSummary(runtime.result.original, row.category, phase, rowCurrent);
-            const auto b = diagnosticSummary(runtime.result.repaired, row.category, phase, rowCurrent);
-            if (!diagnosticMatchesFilter(state.diagnosticGroupFilter, findingsOnly, row.category, a, b, hasA, hasB)) { continue; }
             diagnosticRow(state, runtime, rowCurrent, row.name, row.category, hasA, hasB, id);
-            ++shown;
         }
-        if (!shown) { ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TableNextColumn(); ImGui::TextWrapped("No findings match this filter."); }
         ImGui::EndTable();
     }
     ImGui::SeparatorText("Findings");

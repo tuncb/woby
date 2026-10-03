@@ -197,9 +197,6 @@ struct UiAnnotation {
 };
 
 struct UiState {
-    // Diagnostic filters are session preferences, excluded from scene content and history.
-    DiagnosticGroup diagnosticGroupFilter = DiagnosticGroup::all;
-    bool diagnosticFindingsOnly = false;
     std::optional<Coordinate> coordinateOrigin; // Fixed once the first file enters the scene.
     std::vector<UiAnnotation> annotations;
     std::vector<UiView> views;

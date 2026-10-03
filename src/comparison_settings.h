@@ -51,7 +51,6 @@ enum class ComparisonMode
 enum class AnalysisType { mesh, uv, uvQuality };
 // Automatic preserves the behavior of scenes and API clients predating task selection.
 enum class AnalysisTask { automatic, meshChecks, meshQuality, surfaceComparison, uvInspection };
-enum class DiagnosticGroup { all, topology, duplicates, degenerates, intersections };
 [[nodiscard]] inline bool isUvAnalysis(AnalysisType type) { return type != AnalysisType::mesh; }
 [[nodiscard]] inline const char* analysisTypeKey(AnalysisType type) { return type == AnalysisType::uvQuality ? "uv_quality" : type == AnalysisType::uv ? "uv" : "mesh"; }
 enum class UvQualityMetric { angle, area, orientation };

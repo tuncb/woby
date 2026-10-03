@@ -45,7 +45,6 @@ void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task);
 // Consolidate explicitly selected Mesh checks into source A, including saved-view references.
 // Legacy untyped comparisons retain their two inputs; a legacy single B input remains inspectable.
 void normalizeMeshCheckSources(UiState& state, SceneObjectId id);
-void setDiagnosticFilter(UiState& state, DiagnosticGroup group, bool findingsOnly);
 SceneObjectId duplicateComparison(UiState& state, SceneObjectId id);
 void removeComparison(UiState& state, SceneObjectId id);
 void renameComparison(UiState& state, SceneObjectId id, const std::string& name);
