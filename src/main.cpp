@@ -2393,7 +2393,13 @@ int main(int argc, char** argv)
             woby::appendVisibleComparisonPickParts(parts, ui, comparison);
             std::vector<std::vector<woby::DiagnosticEdge>> annotationPickStorage;
             woby::appendAnnotationPickParts(parts, ui, annotationPickStorage);
-            const auto id = woby::pickSceneObject(parts, view, point);
+            woby::SceneTriangleHit triangle;
+            const auto id = woby::pickSceneObject(parts, view, point, &triangle);
+            const auto analysisId = triangle.analysisId ? triangle.analysisId : ui.activeComparisonId;
+            if (!toggle && triangle.triangle && woby::setUvProbe(ui,analysisId,triangle.partId,triangle.triangle,triangle.barycentric)) {
+                canvasSelectionPath = woby::sceneSelectionPath(ui,triangle.partId);
+                return;
+            }
             if (id != woby::invalidSceneObjectId) {
                 woby::selectSceneObject(ui, id, toggle);
                 canvasSelectionPath = woby::sceneObjectSelected(ui, id)
@@ -3271,7 +3277,7 @@ int main(int argc, char** argv)
                     try {
                         if (changed) { throw std::runtime_error("Analysis inputs or detectors changed while results were being requested; retry analysis.results."); }
                         if (!ready) { throw std::runtime_error(it->second.error); }
-                        auto result = woby::controlComparisonResults(it->second.result, pending.tolerance, pending.exportPath.empty());
+                        auto result = woby::controlComparisonResults(it->second.result, pending.tolerance, pending.exportPath.empty(), formatObjectId);
                         result["target"] = pending.target;
                         if (!pending.exportPath.empty()) {
                             woby::startAnalysisExport(analysisExport, it->second.result, std::move(result), pending.target, pending.exportPath);
@@ -3344,6 +3350,31 @@ int main(int argc, char** argv)
                             } else if (payload.action == A::comparisonExportStatus || payload.action == A::comparisonExportCancel) {
                                 if (payload.action == A::comparisonExportCancel) { woby::cancelAnalysisExport(analysisExport); }
                                 result = {{"export", woby::analysisExportStatus(analysisExport)}};
+                            } else if (payload.action == A::comparisonUvTriangles || payload.action == A::comparisonUvProbe
+                                || payload.action == A::comparisonUvProbeGet || payload.action == A::comparisonUvProbeClear) {
+                                const auto* source = woby::findComparison(ui, payload.objectId);
+                                if (!source || source->settings.type != woby::AnalysisType::uvQuality) {
+                                    throw std::invalid_argument("This command requires a UV quality analysis ID.");
+                                }
+                                const auto found = comparison.objects.find(payload.objectId);
+                                const bool ready = found != comparison.objects.end()
+                                    && woby::comparisonResultsReady(found->second, ui, payload.objectId, true);
+                                const auto revision = ready ? Json(std::to_string(found->second.resultsRevision)) : Json(nullptr);
+                                if (payload.action == A::comparisonUvTriangles) {
+                                    if (!ready || !found->second.result.original.source.uvQuality) {
+                                        throw std::invalid_argument("UV results are not current; call analysis results first.");
+                                    }
+                                    if (payload.revision && *payload.revision != std::to_string(found->second.resultsRevision)) {
+                                        throw std::invalid_argument("Results changed; restart pagination without --revision.");
+                                    }
+                                    result = woby::controlUvTrianglePage(*found->second.result.original.source.uvQuality,
+                                        static_cast<size_t>(payload.offset.value_or(0)), static_cast<size_t>(payload.limit.value_or(100)), formatObjectId);
+                                    result["target"] = payload.target;
+                                } else {
+                                    result = woby::controlUvProbe(ui, ready ? &found->second.result : nullptr,
+                                        ready ? found->second.resultSignature : 0, payload, formatObjectId);
+                                }
+                                result["revision"] = revision;
                             } else if (payload.action == A::comparisonFindings) {
                                 const auto found = comparison.objects.find(payload.objectId);
                                 const auto category = static_cast<woby::DiagnosticCategory>(std::find(woby::diagnosticCategoryKeys.begin(),
@@ -3736,7 +3767,7 @@ int main(int argc, char** argv)
                     auto& selectedParts = renderScratch.parts;
                     woby::scenePickParts(ui, selectedParts);
                     woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
-                    woby::submitSceneSelection(helperView, selectedParts, helperLayout, colorProgram, colorUniform, renderScratch);
+                    woby::submitSceneSelection(helperView, selectedParts, ui, helperLayout, colorProgram, colorUniform, renderScratch);
                     if (ui.showDimensions) {
                         woby::updateSceneDimensions(dimensionsCache, selectedParts, ui.sceneGeneration, ui.sceneEditRevision);
                     }

@@ -122,8 +122,10 @@ float4 fs_comparison(VertexOutput v) : SV_Target0 {
     float3 color = root.color.rgb;
     if (root.comparison.z > 5.5) {
         float amount = saturate(v.uv.x);
-        color = amount <= .5 ? lerp(float3(.18,.48,.85),float3(1,.82,.3),amount*2)
-            : lerp(float3(1,.82,.3),float3(.94,.22,.055),(amount-.5)*2);
+        float3 middle = root.comparison.w > .5 ? float3(.92,.92,.92) : float3(1,.82,.3);
+        color = amount <= .5 ? lerp(float3(.18,.48,.85),middle,amount*2)
+            : lerp(middle,float3(.94,.22,.055),(amount-.5)*2);
+        if (v.uv.y > .5) color = float3(.1,1,.8);
         if (v.uv.x < 0) color = float3(1,0,1);
         if (v.uv.x < -1.5) color = float3(.56,.61,.67);
         return float4(color,1);

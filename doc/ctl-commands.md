@@ -487,10 +487,103 @@ metric heatmaps instead of grid or parameter colors. `uvMetric` accepts:
 - `area`: UV triangle area divided by world-space triangle area. With
   `uvNormalization=per_patch` (default), divide this ratio by the patch's total
   valid UV area / total valid surface area. `absolute` retains parameter/world
-  units. Colors use absolute log2 of the ratio: blue at 1, red at 8 or 1/8 and beyond.
+  units. Colors use signed log2: blue at 1/8, neutral at 1, red at 8, saturating beyond.
 - `orientation`: blue for positive UV winding, red for negative. A uniformly
   mirrored patch is valid. Mixed signs within one imported patch are findings;
   independent overlapping domains are not classified as errors.
+- `anisotropy`: maximum / minimum singular value of the surface-to-UV triangle
+  map. Colors use log2: blue at 1, yellow at 8, red at 64 or more.
+- `min_stretch`: minimum singular value, in UV units / surface unit in absolute
+  mode; per-patch mode divides by sqrt(total valid UV / surface area). Blue is 1
+  or more, yellow 0.1, red 0.01 or less. Smaller values approach UV collapse.
+- `overlap`: enables overlap checks. Red marks within-patch positive-area overlap;
+  yellow marks cross-patch-only overlap. Shared edges and vertices are excluded.
+
+Additional `analysis set` flags (RPC uses the corresponding camelCase names):
+
+```text
+--uv-threshold-enabled true --uv-threshold 2
+--uv-near-collapse 0.01
+--uv-range-enabled true --uv-range-minimum 1 --uv-range-maximum 4
+--uv-overlap-enabled true --uv-overlap-scope per_patch|selected_patches
+```
+
+Thresholds are strict: greater than the value, absolute log2 magnitude for area,
+and less than the value for minimum stretch. Histogram ranges are inclusive and
+take precedence over threshold highlighting. Thresholds must be nonnegative;
+near-collapse thresholds must be positive. `selected_patches` explicitly treats
+selected patches as sharing a domain and reports cross-patch pairs separately.
+The default `per_patch` excludes independent domains. Checks run on the analysis
+worker, bounded by 2,000,000 broad-phase candidates and 10,000 pairs;
+`overlaps.truncated` means a partial result.
+
+`uvQuality` includes `metric`, `convention=surface_to_uv`, `statistics` (minimum,
+median, p95, maximum, thresholdCount, thresholdAreaPercent, nearCollapseCount),
+`histogram` (bounds, counts, surfaceAreas), and `overlaps` (checked, truncated,
+scope, candidateCount, affectedTriangles, crossPatchPairs, and pairs containing
+first/second part IDs and one-based triangle numbers). Percentiles give valid
+faces equal weight; area percentages use physical surface area. Invalid mappings
+are excluded.
+
+
+Every UV diagnostic can be configured and checked through `ctl`, including in
+`--headless` instances. `analysis results` waits for the current measurements;
+call it after edits before requesting triangle pages or setting a probe.
+
+```powershell
+# Signed UV-area / surface-area distortion (negative = compression).
+woby ctl --instance review analysis set QUALITY_ID --uv-metric area --uv-normalization absolute
+woby ctl --instance review analysis results QUALITY_ID --json
+# Stretch anisotropy; statistics and histogram are in uvQuality.
+woby ctl --instance review analysis set QUALITY_ID --uv-metric anisotropy --uv-threshold-enabled true --uv-threshold 3
+# Inclusive histogram range; overrides threshold highlighting.
+woby ctl --instance review analysis set QUALITY_ID --uv-range-enabled true --uv-range-minimum 10 --uv-range-maximum 20
+# Minimum stretch and near-collapse classification.
+woby ctl --instance review analysis set QUALITY_ID --uv-metric min_stretch --uv-near-collapse 0.01 --uv-range-enabled false
+# Overlap inspection; selected_patches checks a shared UV domain.
+woby ctl --instance review analysis set QUALITY_ID --uv-metric overlap --uv-overlap-scope selected_patches
+woby ctl --instance review analysis results QUALITY_ID --json
+# Bounded per-triangle values and flags; sourcePartId is a usable CLI object ID.
+woby ctl --instance review analysis uv-triangles QUALITY_ID --offset 0 --limit 100 --json
+# Linked triangle/point probe, using a sourcePartId and one-based triangle number.
+woby ctl --instance review analysis uv-probe QUALITY_ID --object PART_ID --index 1 --barycentric 0.5 0.2 0.3 --json
+woby ctl --instance review analysis uv-probe-get QUALITY_ID --json
+woby ctl --instance review analysis uv-probe-clear QUALITY_ID --json
+```
+
+`analysis uv-triangles` returns `items`, `total`, `nextOffset`, and `revision`.
+Offsets are zero-based; limits are 1-100. Pass the returned `--revision` on subsequent
+pages to reject results changed by an edit or recomputation. Each record reports
+all metrics (not just the selected metric), raw UV/surface areas, UV vertices,
+`valid`, `missingUv`, `collapsedUv`, `degenerateSurface`, `mixedOrientation`,
+`nearCollapse`, `thresholdExceeded`, `highlighted`, `overlapping`, and
+`crossPatchOverlap`. Invalid metrics are null. Overlap flags are null until checked;
+`overlapTruncated` means that unreported overlaps may still exist.
+`statistics.highlightedCount` and `highlightedAreaPercent` describe the actual
+threshold/range highlight, with `thresholdEnabled`, `rangeEnabled`, `rangeMinimum`,
+and `rangeMaximum` recording its settings.
+
+`analysis uv-probe` requires an enabled UV quality analysis with linked selection
+and an enabled source part. It defaults to the triangle centroid. Barycentric
+weights follow the imported triangle's vertex order, must be in [0,1], and sum
+to 1. The response includes the triangle measurements, weights, interpolated
+`uv`, `surfacePosition`, and `displayPosition` (including the analysis translation
+and any layout/separation). Positions use scene coordinates; add `coordinateOrigin`
+to `surfacePosition` to recover original world coordinates. Missing UVs return
+null UV coordinates; a triangle omitted from layout has a null display position.
+Probes are transient: they do not dirty the scene or persist in `.woby` files.
+`uv-probe-get` returns a null `probe` when none is selected, or a null `probe` with
+`stale=true` after its inputs change or linked selection is disabled.
+`uv-probe-clear` works even when measurements are stale. Summary findings also
+include `sourceObject`, and overlap pairs include `firstObject` / `secondObject`,
+which can be passed directly to `--object`; existing numeric part IDs are retained.
+
+The end-to-end CLI check exercises all six diagnostics, pagination, source/layout
+probes, invalid inputs, and save/load, with rendered color checks:
+
+```powershell
+uv run tests/ctl_uv_quality_smoke.py build/vs2026-vcpkg/bin/Debug/woby.exe
+```
 
 Collapsed UV triangles are magenta; missing UVs and degenerate surface triangles
 are gray. Missing-UV patches are omitted from layout. Collapsed UVs have no visible

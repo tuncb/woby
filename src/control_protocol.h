@@ -21,6 +21,7 @@ enum class ControlAction {
     importersForget, stats, performance, pane,
     comparisonCreate, comparisonDelete, comparisonSet, comparisonAdd, comparisonRemove,
     comparisonClear, comparisonSwap, comparisonFindings, comparisonExport, comparisonExportStatus, comparisonExportCancel, comparisonResults, comparisonFocus, comparisonEnable, comparisonRun, comparisonCancel,
+    comparisonUvTriangles, comparisonUvProbe, comparisonUvProbeGet, comparisonUvProbeClear,
     annotationList, annotationGet, annotationCreate, annotationSet, annotationReshape, annotationMove, annotationDelete,
 };
 
@@ -34,6 +35,9 @@ struct ControlOperation {
     bool tree = false;
     bool remember = false;
     std::optional<bool> visible, solid, triangles, vertices;
+    std::optional<bool> uvThresholdEnabled, uvOverlapEnabled, uvRangeEnabled;
+    std::optional<float> uvThreshold, uvNearCollapse, uvRangeMinimum, uvRangeMaximum;
+    std::optional<std::string> uvOverlapScope;
     std::optional<bool> uvGrid, uvSeparated, uvLinkedSelection, isolate;
     std::optional<std::string> uvColor, uvMetric, uvNormalization;
     std::optional<float> uvMinimum, uvMaximum;
@@ -41,6 +45,7 @@ struct ControlOperation {
     std::optional<float> lineWidth;
     std::optional<bool> lineDepthTest;
     std::optional<std::array<float, 3>> translation, rotationDegrees, rgb;
+    std::optional<std::array<double, 3>> barycentric;
     std::optional<float> scale, value, pixels, width;
     std::optional<float> yawDegrees, pitchDegrees, rollDegrees, right, up, forward, factor;
     std::optional<std::array<float, 3>> cameraTarget, eye;

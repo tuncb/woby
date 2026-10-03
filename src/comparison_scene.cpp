@@ -126,6 +126,27 @@ void visitParts(const UiState& state, ComparisonSide side, SceneObjectId id, con
 }
 } // namespace
 
+std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
+    const UiState& state, SceneObjectId analysisId, SceneObjectId partId, size_t triangle)
+{
+    std::optional<std::array<Coordinate, 3>> result;
+    visitParts(state, ComparisonSide::a, analysisId, [&](const UiFileState& file, size_t groupIndex, const double* parent) {
+        if (file.groupSettings[groupIndex].objectId != partId) { return; }
+        const auto& node = file.mesh.nodes[groupIndex];
+        if (triangle == 0 || triangle > node.indexCount / 3) { return; }
+        double local[16], model[16];
+        groupTransformMatrix(file.groupSettings[groupIndex], local);
+        coordinateMultiply(model, parent, local);
+        std::array<Coordinate, 3> points;
+        for (size_t k = 0; k < 3; ++k) {
+            points[k] = transformCoordinate(model, meshPosition(file.mesh,
+                file.mesh.indices.at(node.indexOffset + (triangle - 1) * 3 + k)));
+        }
+        result = points;
+    });
+    return result;
+}
+
 Mesh uvLayoutMesh(const Mesh& source, SceneUpAxis upAxis, bool separated)
 {
     UvExtent extent;
@@ -339,7 +360,7 @@ Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectI
     }
     result.bounds = calculateBounds(result.vertices);
     if (comparison->settings.type == AnalysisType::uvQuality) {
-        result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, comparison->settings.uvNormalization, comparison->settings.uvMetric));
+        result.uvQuality = std::make_shared<UvQuality>(analyzeUvQuality(result, comparison->settings));
     }
     if (isUvAnalysis(comparison->settings.type) && comparison->settings.uvView == UvView::layout) {
         return uvLayoutMesh(result, state.upAxis, comparison->settings.uvSeparated);
@@ -358,6 +379,12 @@ uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id)
         hashCombine(seed, settings.uvSeparated);
         hashCombine(seed, static_cast<uint64_t>(settings.uvMetric));
         hashCombine(seed, static_cast<uint64_t>(settings.uvNormalization));
+        hashCombine(seed, settings.uvOverlapEnabled);
+        hashCombine(seed, static_cast<uint64_t>(settings.uvOverlapScope));
+        hashCombine(seed, settings.uvThresholdEnabled);
+        hashDouble(seed, settings.uvThreshold); hashDouble(seed, settings.uvNearCollapse);
+        hashCombine(seed, settings.uvRangeEnabled);
+        hashDouble(seed, settings.uvRangeMinimum); hashDouble(seed, settings.uvRangeMaximum);
         if (settings.uvView == UvView::layout) { hashCombine(seed, static_cast<uint64_t>(state.upAxis)); }
     }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {

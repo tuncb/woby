@@ -725,12 +725,14 @@ void submitSceneFiles(
     }
 }
 
-void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts,
+void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts, const UiState& state,
     const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
     SceneRenderScratch& scratch)
 {
     sceneSelectionLines(parts, scratch.positions);
     submitHelperLines(viewId, scratch.positions, layout, program, colorUniform, {1.0f, .78f, .15f, 1.0f});
+    uvProbeLines(parts,state,scratch.positions);
+    submitHelperLines(viewId, scratch.positions, layout, program, colorUniform, {.1f,1,.8f,1});
 }
 
 void submitSceneHelpers(

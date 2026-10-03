@@ -45,13 +45,19 @@ std::vector<std::string> comparisonReportLines(
     if (isUvAnalysis(settings.type)) {
         lines.push_back(settings.uvView == UvView::layout ? "2D UV layout" : "3D UV surface");
         if (options.legend && settings.type == AnalysisType::uvQuality) {
-            lines.push_back(settings.uvMetric == UvQualityMetric::angle ? "Angle distortion: blue 0, yellow 45, red 90+ degrees"
-                : settings.uvMetric == UvQualityMetric::area ? "Area stretch: blue 1; red 8 or 1/8 and beyond"
-                : "UV winding: blue positive; red negative (mirrored patches are valid)");
-            lines.push_back(settings.uvNormalization == UvAreaNormalization::perPatch ? "Area normalized per patch" : "Absolute UV / world area");
+            lines.push_back(uvQualityLegend(settings.uvMetric));
+            lines.push_back(settings.uvNormalization == UvAreaNormalization::perPatch ? "Area / stretch normalized per patch" : "Absolute UV / surface area; stretch in UV units / surface unit");
             lines.push_back("Magenta: collapsed UV; gray: missing UV / degenerate surface");
             if (result.original.source.uvQuality) {
                 const auto& q = *result.original.source.uvQuality;
+                const auto& s = q.statistics;
+                if (s.count) {
+                    lines.push_back("Min / median / P95 / max: "+measurementNumber(s.minimum)+" / "+measurementNumber(s.median)+" / "+measurementNumber(s.percentile95)+" / "+measurementNumber(s.maximum));
+                    lines.push_back("Threshold "+measurementNumber(q.settings.uvThreshold)+": "+std::to_string(s.thresholdCount)+" faces; "+measurementNumber(s.thresholdAreaPercent)+"% surface area");
+                }
+                lines.push_back(std::to_string(s.nearCollapseCount)+" near-collapse triangles (stretch < "+measurementNumber(q.settings.uvNearCollapse)+")");
+                if (q.overlapChecked) { lines.push_back(std::to_string(q.overlaps.size())+" UV overlap pairs; "+std::to_string(q.crossPatchPairs)+" cross-patch (may be intentional)"+(q.overlapTruncated ? "; PARTIAL: work limit" : "")); }
+                if (settings.uvThresholdEnabled || settings.uvRangeEnabled) { lines.push_back("Cyan: highlighted threshold / histogram range"); }
                 lines.push_back(std::to_string(q.collapsed)+" collapsed UV triangles; "+std::to_string(q.mixedOrientationPatches)+" patches with mixed orientation");
             }
         } else if (options.legend && settings.uvGrid.enabled && settings.uvGrid.mode != UvColorMode::grid) {

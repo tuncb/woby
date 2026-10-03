@@ -16,7 +16,12 @@ nlohmann::json controlAnnotationDetails(const UiState& state, const UiAnnotation
 nlohmann::json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanDocument,
     const ControlOperation& command, const ObjectIdFormatter& formatId);
 // Summarizes an immutable measurement snapshot; no renderer or timing dependencies.
-nlohmann::json controlComparisonResults(const MeshComparison& result, double tolerance, bool includeDetectors = true);
+nlohmann::json controlComparisonResults(const MeshComparison& result, double tolerance, bool includeDetectors = true,
+    const ObjectIdFormatter& formatId = {});
+// Bounded UV triangle records and transient linked selection; all IDs use the session formatter.
+nlohmann::json controlUvTrianglePage(const UvQuality& quality, size_t offset, size_t limit, const ObjectIdFormatter& formatId);
+nlohmann::json controlUvProbe(UiState& state, const MeshComparison* result, uint64_t resultSignature,
+    const ControlOperation& command, const ObjectIdFormatter& formatId);
 // Uses the same finding focus and camera framing as the Diagnostics list.
 nlohmann::json controlFocusComparisonDiagnostic(UiState& state, const MeshComparison& result,
     uint64_t resultSignature, const ControlOperation& command);

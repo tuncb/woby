@@ -11,6 +11,9 @@
 namespace woby {
 struct DiagnosticEdge;
 struct MeshComparison;
+bool setUvProbe(UiState& state, SceneObjectId analysisId, SceneObjectId partId,
+    size_t triangle, const std::array<double,3>& barycentric);
+void clearUvProbe(UiState& state, SceneObjectId analysisId);
 
 [[nodiscard]] ViewNavigation captureViewNavigation(const UiState& state);
 void restoreViewDiagnostics(UiState& state, const std::vector<ViewDiagnosticSelection>& selections);

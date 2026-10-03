@@ -1,3 +1,4 @@
+#include "uv_quality.h"
 #include "scene_file.h"
 #include "utf8_path.h"
 
@@ -492,10 +493,20 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
         else { throw std::runtime_error("Unknown analysis type."); }
     } else if (key == "analysis_uv_separated") { record.settings.uvSeparated = parseTomlBool(value);
     } else if (key == "analysis_uv_linked_selection") { record.settings.uvLinkedSelection = parseTomlBool(value);
+    } else if (key == "analysis_uv_threshold_enabled") { record.settings.uvThresholdEnabled = parseTomlBool(value);
+    } else if (key == "analysis_uv_threshold") { record.settings.uvThreshold = parseTomlFloat(value);
+    } else if (key == "analysis_uv_near_collapse") { record.settings.uvNearCollapse = parseTomlFloat(value);
+    } else if (key == "analysis_uv_overlap_enabled") { record.settings.uvOverlapEnabled = parseTomlBool(value);
+    } else if (key == "analysis_uv_range_enabled") { record.settings.uvRangeEnabled = parseTomlBool(value);
+    } else if (key == "analysis_uv_range_minimum") { record.settings.uvRangeMinimum = parseTomlFloat(value);
+    } else if (key == "analysis_uv_range_maximum") { record.settings.uvRangeMaximum = parseTomlFloat(value);
+    } else if (key == "analysis_uv_overlap_scope") {
+        const auto scope = parseTomlString(value);
+        if (scope != "per_patch" && scope != "selected_patches") { throw std::runtime_error("Unknown UV overlap scope."); }
+        record.settings.uvOverlapScope = scope == "selected_patches" ? UvOverlapScope::selectedPatches : UvOverlapScope::perPatch;
     } else if (key == "analysis_uv_metric") {
         const auto metric = parseTomlString(value);
-        if (metric != "angle" && metric != "area" && metric != "orientation") { throw std::runtime_error("Unknown UV quality metric."); }
-        record.settings.uvMetric = metric == "area" ? UvQualityMetric::area : metric == "orientation" ? UvQualityMetric::orientation : UvQualityMetric::angle;
+        record.settings.uvMetric = parseUvQualityMetric(metric);
     } else if (key == "analysis_uv_normalization") {
         const auto mode = parseTomlString(value);
         if (mode != "per_patch" && mode != "absolute") { throw std::runtime_error("Unknown UV area normalization."); }
@@ -610,8 +621,16 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_type = \"" << analysisTypeKey(comparison.type) << "\"\n";
     stream << "analysis_uv_separated = " << (comparison.uvSeparated ? "true" : "false") << "\n";
     stream << "analysis_uv_linked_selection = " << (comparison.uvLinkedSelection ? "true" : "false") << "\n";
-    stream << "analysis_uv_metric = \"" << (comparison.uvMetric == UvQualityMetric::area ? "area" : comparison.uvMetric == UvQualityMetric::orientation ? "orientation" : "angle") << "\"\n";
+    stream << "analysis_uv_metric = \"" << uvQualityMetricKey(comparison.uvMetric) << "\"\n";
     stream << "analysis_uv_normalization = \"" << (comparison.uvNormalization == UvAreaNormalization::absolute ? "absolute" : "per_patch") << "\"\n";
+    stream << "analysis_uv_threshold_enabled = " << (comparison.uvThresholdEnabled ? "true" : "false") << "\n";
+    stream << "analysis_uv_threshold = " << comparison.uvThreshold << "\n";
+    stream << "analysis_uv_near_collapse = " << comparison.uvNearCollapse << "\n";
+    stream << "analysis_uv_overlap_enabled = " << (comparison.uvOverlapEnabled ? "true" : "false") << "\n";
+    stream << "analysis_uv_range_enabled = " << (comparison.uvRangeEnabled ? "true" : "false") << "\n";
+    stream << "analysis_uv_range_minimum = " << comparison.uvRangeMinimum << "\n";
+    stream << "analysis_uv_range_maximum = " << comparison.uvRangeMaximum << "\n";
+    stream << "analysis_uv_overlap_scope = \"" << (comparison.uvOverlapScope == UvOverlapScope::selectedPatches ? "selected_patches" : "per_patch") << "\"\n";
     stream << "analysis_uv_view = \"" << (comparison.uvView == UvView::layout ? "layout" : "surface") << "\"\n";
     stream << "analysis_uv_color = \"" << uvColorModeKey(comparison.uvGrid.mode) << "\"\n";
     stream << "analysis_uv_minimum = " << comparison.uvGrid.minimum << "\n";

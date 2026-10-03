@@ -93,7 +93,7 @@ void submitSceneHelpers(
     woby::graphics::ProgramHandle program,
     woby::graphics::UniformHandle colorUniform);
 
-void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts,
+void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts, const UiState& state,
     const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
     SceneRenderScratch& scratch);
 

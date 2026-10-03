@@ -1,3 +1,4 @@
+#include "comparison_scene.h"
 #include "scene_pick.h"
 
 #include <algorithm>
@@ -141,7 +142,7 @@ bool intersectsPickBlock(const MeshAnnotationBlock& block, const Point& origin, 
     return intersectsBounds(bounds, origin, direction);
 }
 
-std::optional<double> triangleHit(const Point& origin, const Point& direction, const std::array<Point, 3>& p)
+std::optional<double> triangleHit(const Point& origin, const Point& direction, const std::array<Point, 3>& p, std::array<double,3>& barycentric)
 {
     const auto a = subtract(p[1], p[0]), b = subtract(p[2], p[0]);
     const auto h = cross(direction, b);
@@ -155,6 +156,7 @@ std::optional<double> triangleHit(const Point& origin, const Point& direction, c
     const double v = dot(direction, q) / determinant;
     const double t = dot(b, q) / determinant;
     if (u < -1e-9 || v < -1e-9 || u + v > 1.0 + 1e-9 || t < 0) { return {}; }
+    barycentric = {1-u-v,u,v};
     return t;
 }
 
@@ -298,6 +300,7 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
         for (const auto& node : surface.source.nodes) {
             auto patch = part;
             patch.objectId = node.sourceObjectId ? node.sourceObjectId : comparison.objectId;
+            patch.analysisId = comparison.objectId;
             patch.indexOffset = node.indexOffset; patch.indexCount = node.indexCount;
             patch.bounds.reset();
             parts.push_back(patch);
@@ -339,8 +342,9 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     }
 }
 
-SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const ScenePickView& view, PickPoint point)
+SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const ScenePickView& view, PickPoint point, SceneTriangleHit* detail)
 {
+    if (detail) { *detail = {}; }
     if (view.width == 0 || view.height == 0 || !std::isfinite(point[0]) || !std::isfinite(point[1]) ||
         point[0] < 0 || point[1] < 0 || point[0] >= view.width || point[1] >= view.height) { return invalidSceneObjectId; }
     PickMatrix inverse;
@@ -366,6 +370,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             const bool testSurface = part.solid && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
             if (!testSurface && !part.edges && !part.vertices && part.diagnosticEdges.empty()) { continue; }
             std::optional<double> surfaceDepth, edgeDepth, pointDepth;
+            SceneTriangleHit surfaceHit;
             const auto clip = [&](const Point& p) { return transform(mvp, {p[0], p[1], p[2], 1}); };
             if (part.mesh) {
                 const auto& mesh = *part.mesh;
@@ -398,9 +403,13 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                     }
                     if (!valid) { return; }
                     if (testSurface) {
-                        if (const auto t = triangleHit(origin, direction, triangle)) {
+                        std::array<double,3> barycentric{};
+                        if (const auto t = triangleHit(origin, direction, triangle, barycentric)) {
                             const auto p = clip({origin[0] + *t * direction[0], origin[1] + *t * direction[1], origin[2] + *t * direction[2]});
-                            if (inside(p, view.homogeneousDepth)) { closest(surfaceDepth, p[2] / p[3]); }
+                            if (inside(p, view.homogeneousDepth) && (!surfaceDepth || p[2]/p[3] < *surfaceDepth)) {
+                                surfaceDepth = p[2]/p[3];
+                                surfaceHit = {part.objectId,part.analysisId,(i-part.indexOffset)/3+1,barycentric};
+                            }
                         }
                     }
                     if (part.edges || part.vertices) {
@@ -441,13 +450,16 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             }
             if (surfaceDepth && (part.surfaceLessEqual ? *surfaceDepth <= depthBuffer : *surfaceDepth < depthBuffer)) {
                 hit = part.objectId;
+                if (detail) { *detail = surfaceHit; }
                 if (part.opacity >= .999f) { depthBuffer = *surfaceDepth; }
             }
             if (edgeDepth && (part.edgeXray || *edgeDepth <= depthBuffer + 1e-7)) {
+                if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
                 hit = part.objectId;
                 if (part.lineIndexCount && !part.edgeXray && part.opacity >= .999f) { depthBuffer = *edgeDepth; }
             }
             if (pointDepth && *pointDepth <= depthBuffer + 1e-7) {
+                if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
                 hit = part.objectId;
                 if (part.opacity >= .999f) { depthBuffer = *pointDepth; }
             }
@@ -517,6 +529,37 @@ void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::
             for (size_t k = 0; k < 3; ++k) {
                 const size_t other = i ^ (size_t{1} << k);
                 if (i < other) { lines.push_back(corners[i]); lines.push_back(corners[other]); }
+            }
+        }
+    }
+}
+void uvProbeLines(std::span<const ScenePickPart> parts, const UiState& state,
+    std::vector<std::array<float,3>>& lines)
+{
+    lines.clear();
+    for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled || !comparison.settings.uvLinkedSelection || !comparison.uvProbe
+            || comparison.uvProbe->signature != comparisonGeometrySignature(state,comparison.objectId)) { continue; }
+        const auto& probe = *comparison.uvProbe;
+        for (const auto& part : parts) {
+            if (part.objectId != probe.partId || (part.analysisId && part.analysisId != comparison.objectId)
+                || !part.mesh || probe.triangle == 0 || probe.triangle > part.indexCount/3) { continue; }
+            const auto offset = part.indexOffset+(probe.triangle-1)*3;
+            if (offset+2 >= part.mesh->indices.size()) { continue; }
+            std::array<Point,3> p;
+            Point center{};
+            for (size_t k=0;k<3;++k) {
+                p[k] = position(part.model,meshPosition(*part.mesh,part.mesh->indices[offset+k]));
+                for (size_t j=0;j<3;++j) { center[j] += p[k][j]*probe.barycentric[k]; }
+            }
+            double size = 0;
+            for (size_t k=0;k<3;++k) {
+                lines.push_back(renderPosition(p[k])); lines.push_back(renderPosition(p[(k+1)%3]));
+                const auto edge = subtract(p[k],p[(k+1)%3]); size = std::max(size,std::sqrt(dot(edge,edge))*.025);
+            }
+            for (size_t k=0;k<3;++k) {
+                auto a = center, b = center; a[k] -= size; b[k] += size;
+                lines.push_back(renderPosition(a)); lines.push_back(renderPosition(b));
             }
         }
     }

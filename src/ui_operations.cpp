@@ -43,9 +43,39 @@ void selectSceneObject(UiState& state, SceneObjectId id, bool toggle, bool conte
     }
 }
 
+bool setUvProbe(UiState& state, SceneObjectId analysisId, SceneObjectId partId,
+    size_t triangle, const std::array<double,3>& barycentric)
+{
+    auto* comparison = findComparison(state,analysisId);
+    if (!comparison || comparison->settings.type != AnalysisType::uvQuality || !comparison->settings.uvLinkedSelection
+        || !comparison->settings.enabled || !comparisonContains(state,partId,ComparisonSide::a,analysisId) || triangle == 0) { return false; }
+    if (std::none_of(comparison->a.begin(),comparison->a.end(),[&](const auto& member) {
+        return member.objectId == partId && member.enabled;
+    })) { return false; }
+    bool validTriangle = false;
+    for (const auto& file : state.files) {
+        for (size_t i=0;i<file.groupSettings.size();++i) {
+            if (file.groupSettings[i].objectId == partId && i < file.mesh.nodes.size()) {
+                validTriangle = triangle <= file.mesh.nodes[i].indexCount/3;
+            }
+        }
+    }
+    double sum = 0;
+    for (double value : barycentric) { if (!std::isfinite(value) || value < -1e-8 || value > 1+1e-8) { return false; } sum += value; }
+    if (!validTriangle || std::abs(sum-1) > 1e-8) { return false; }
+    selectSceneObject(state,analysisId);
+    comparison->uvProbe = UvProbe{comparisonGeometrySignature(state,analysisId),partId,triangle,barycentric};
+    return true;
+}
+void clearUvProbe(UiState& state, SceneObjectId analysisId)
+{
+    if (auto* comparison = findComparison(state,analysisId)) { comparison->uvProbe.reset(); }
+}
+
 void clearSceneSelection(UiState& state)
 {
     state.selectedSceneObjects.clear();
+    for (auto& comparison : state.comparisons) { comparison.uvProbe.reset(); }
 }
 
 const UiComparison* selectedComparison(const UiState& state)
@@ -316,6 +346,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     if (!source) { return invalidSceneObjectId; }
     auto copy = *source;
     copy.diagnosticFocus.reset();
+    copy.uvProbe.reset();
     copy.pendingDiagnosticFocus.reset();
     copy.intersectionRequestRevision = 0; copy.cancelIntersections = false;
     copy.detectorRequests = {};

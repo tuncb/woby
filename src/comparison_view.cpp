@@ -1,3 +1,4 @@
+#include "uv_quality_view.h"
 #include "marker_pick.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
@@ -1746,35 +1747,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
         if (ImGui::Button("Show all patches")) { isolateUvObjects(state,{},id); }
         ImGui::TextWrapped("Right-click a source entry above to isolate it. Selecting a patch in either view highlights its source and UV copy.");
         if (settings.type == AnalysisType::uvQuality) {
-            int metric = static_cast<int>(settings.uvMetric);
-            const char* metrics[] = {"Angle distortion", "Area stretch", "UV orientation"};
-            if (ImGui::Combo("Metric",&metric,metrics,3)) { settings.uvMetric = static_cast<UvQualityMetric>(metric); }
-            int normalization = static_cast<int>(settings.uvNormalization);
-            const char* normalizations[] = {"Per patch (relative)", "Absolute UV / world area"};
-            if (ImGui::Combo("Area normalization",&normalization,normalizations,2)) { settings.uvNormalization = static_cast<UvAreaNormalization>(normalization); }
-            ImGui::TextWrapped(metric == 0 ? "Blue: 0 degrees; yellow: 45; red: 90 or more. Maximum corner angle difference per triangle."
-                : metric == 1 ? "Blue: ratio 1; red: ratio 8 or 1/8 and beyond. Per-patch mode divides by total UV area / total surface area."
-                : "Blue: positive UV winding; red: negative. Uniformly mirrored patches are valid; mixed signs within a patch need inspection.");
-            ImGui::TextWrapped("Magenta: collapsed UV triangles. Gray: missing UVs or degenerate 3D triangles. Separate domains may overlap; overlap is not classified as an error.");
-            if (comparisonStagesReady(runtime,state,id,comparisonSource) && runtime.result.original.source.uvQuality) {
-                const auto& q = *runtime.result.original.source.uvQuality;
-                ImGui::TextWrapped("%zu collapsed UV triangles; %zu patches with mixed orientation; %zu missing UV triangles; %zu degenerate surface triangles",
-                    q.collapsed,q.mixedOrientationPatches,q.missing,q.degenerateSurface);
-                if (ImGui::TreeNode("UV findings")) {
-                    size_t shown = 0;
-                    for (const auto& t : q.triangles) {
-                        if (!t.collapsed && !t.mixedOrientation && !t.degenerateSurface) { continue; }
-                        if (shown++ == 100) { ImGui::TextDisabled("First 100 shown. Isolate a patch to narrow the list."); break; }
-                        ImGui::PushID(static_cast<int>(shown));
-                        const auto object = findSceneObject(state,t.partId);
-                        const auto label = (object ? object->name : "Missing patch") + " / triangle " + std::to_string(t.triangle)
-                            + (t.collapsed ? " : collapsed UV" : t.degenerateSurface ? " : degenerate surface" : " : mixed orientation");
-                        if (ImGui::Selectable(label.c_str())) { selectSceneObject(state,t.partId); }
-                        ImGui::PopID();
-                    }
-                    ImGui::TreePop();
-                }
-            }
+            const auto* quality = comparisonStagesReady(runtime,state,id,comparisonSource)
+                ? runtime.result.original.source.uvQuality.get() : nullptr;
+            drawUvQualityControls(state,settings,quality,id);
         } else {
             drawVisibilityField("UV coloring",settings.uvGrid.enabled);
             int mode = static_cast<int>(settings.uvGrid.mode);
@@ -1979,7 +1954,7 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
         const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
         for (const auto& node : runtime.result.original.source.nodes) {
             const bool uvQuality = settings.type == AnalysisType::uvQuality;
-            const auto uv = uvQuality ? std::array<float,4>{0,0,6,0} : uvColorParameters(settings.uvGrid,node.hasTexcoords,true);
+            const auto uv = uvQuality ? std::array<float,4>{0,0,6,settings.uvMetric == UvQualityMetric::area ? 1.0f : 0.0f} : uvColorParameters(settings.uvGrid,node.hasTexcoords,true);
             woby::graphics::setTransform(identity);
             woby::graphics::setUniform(runtimes.parameters, uv.data());
             woby::graphics::setUniform(colorUniform, gray.data());

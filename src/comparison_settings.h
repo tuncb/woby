@@ -51,8 +51,9 @@ enum class ComparisonMode
 enum class AnalysisType { mesh, uv, uvQuality };
 [[nodiscard]] inline bool isUvAnalysis(AnalysisType type) { return type != AnalysisType::mesh; }
 [[nodiscard]] inline const char* analysisTypeKey(AnalysisType type) { return type == AnalysisType::uvQuality ? "uv_quality" : type == AnalysisType::uv ? "uv" : "mesh"; }
-enum class UvQualityMetric { angle, area, orientation };
+enum class UvQualityMetric { angle, area, orientation, anisotropy, minStretch, overlap };
 enum class UvAreaNormalization { perPatch, absolute };
+enum class UvOverlapScope { perPatch, selectedPatches };
 enum class UvView { layout, surface };
 
 struct ComparisonSettings
@@ -64,6 +65,13 @@ struct ComparisonSettings
     bool uvLinkedSelection = true;
     UvQualityMetric uvMetric = UvQualityMetric::angle;
     UvAreaNormalization uvNormalization = UvAreaNormalization::perPatch;
+    bool uvThresholdEnabled = false;
+    float uvThreshold = 2.0f;
+    float uvNearCollapse = .01f;
+    bool uvOverlapEnabled = false;
+    UvOverlapScope uvOverlapScope = UvOverlapScope::perPatch;
+    bool uvRangeEnabled = false;
+    float uvRangeMinimum = 0, uvRangeMaximum = 1;
     bool enabled = false;
     ComparisonMode mode = ComparisonMode::distance;
     bool distanceOnOriginal = false;
