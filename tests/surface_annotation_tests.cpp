@@ -297,7 +297,7 @@ struct AnnotationUiFixture {
     bool showScaleOverlay = false;
     float messageBottom = 0;
     float windowY = 0;
-    ImVec2 removeButton{}, visibilityButton{};
+    ImVec2 objectRow{}, visibilityButton{};
     std::string inspectorContents, objectContents;
     AnnotationUiFixture()
     {
@@ -327,9 +327,9 @@ struct AnnotationUiFixture {
             drawAnnotationObjects(scene.state, nameEdit);
             objectContents = ImGui::GetCurrentContext()->LogBuffer.c_str();
             ImGui::LogFinish();
-            const auto removeLow = ImGui::GetItemRectMin(), removeHigh = ImGui::GetItemRectMax();
-            removeButton = {(removeLow.x + removeHigh.x) / 2, (removeLow.y + removeHigh.y) / 2};
-            visibilityButton = {lineButton.x, removeButton.y};
+            const auto rowLow = ImGui::GetItemRectMin(), rowHigh = ImGui::GetItemRectMax();
+            objectRow = {(rowLow.x + rowHigh.x) / 2, (rowLow.y + rowHigh.y) / 2};
+            visibilityButton = {lineButton.x, objectRow.y};
         }
         ImGui::End();
         if (showInspector) {
@@ -690,7 +690,7 @@ TEST_CASE("annotation header eye remains independent of the collapsed bar")
     CHECK(window->StateStorage.GetInt(header) == open);
 }
 
-TEST_CASE("annotation row eye toggles visibility and X deletes long named items with undo")
+TEST_CASE("annotation rows use the full width and context deletion supports undo")
 {
     AnnotationUiFixture fixture;
     const auto id = fixture.scene.add();
@@ -701,9 +701,19 @@ TEST_CASE("annotation row eye toggles visibility and X deletes long named items 
     CHECK_FALSE(findAnnotation(fixture.scene.state, id)->settings.visible);
     fixture.click(fixture.visibilityButton);
     CHECK(findAnnotation(fixture.scene.state, id)->settings.visible);
+    const auto* window = ImGui::FindWindowByName("Tools");
+    REQUIRE(window);
+    fixture.click({window->WorkRect.Max.x - renderModeButtonSize() * .5f, fixture.objectRow.y});
+    REQUIRE(findAnnotation(fixture.scene.state, id));
     const auto clean = createSceneDocument(fixture.scene.state);
     SceneHistory history; resetSceneHistory(history, fixture.scene.state);
-    fixture.click(fixture.removeButton);
+    fixture.click(fixture.objectRow, ImGuiMouseButton_Right); fixture.frame();
+    REQUIRE_FALSE(fixture.context->OpenPopupStack.empty());
+    const auto* popup = fixture.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    const auto start = popup->DC.CursorStartPos;
+    fixture.click({start.x + 30, start.y + 2 * ImGui::GetTextLineHeightWithSpacing()
+        + ImGui::GetTextLineHeight() * .5f});
     CHECK_FALSE(findAnnotation(fixture.scene.state, id));
     CHECK(fixture.scene.state.selectedSceneObjects.empty());
     REQUIRE(recordSceneHistory(history, fixture.scene.state));
@@ -758,7 +768,7 @@ TEST_CASE("annotation F2 renames inline and Escape cancels edits")
     AnnotationUiFixture fixture;
     const auto id = fixture.scene.add();
     fixture.showObjects = true; fixture.frame(); fixture.frame();
-    fixture.click({100, fixture.removeButton.y});
+    fixture.click({100, fixture.objectRow.y});
     const auto original = findAnnotation(fixture.scene.state, id)->settings.name;
     const auto revision = fixture.scene.state.sceneEditRevision;
     fixture.key(ImGuiKey_F2);
@@ -781,7 +791,7 @@ TEST_CASE("annotation context menu shares Rename Duplicate and Delete actions")
 {
     AnnotationUiFixture fixture;
     const auto id = fixture.scene.add(); fixture.showObjects = true; fixture.frame(); fixture.frame();
-    fixture.click({100,fixture.removeButton.y}, ImGuiMouseButton_Right);
+    fixture.click({100,fixture.objectRow.y}, ImGuiMouseButton_Right);
     fixture.frame();
     CHECK(fixture.objectContents.find("Rename") != std::string::npos);
     CHECK(fixture.objectContents.find("Duplicate") != std::string::npos);

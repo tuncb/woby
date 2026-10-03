@@ -83,7 +83,6 @@ using woby::drawRenderModeIconButton;
 using woby::drawTriStateMasterIconButton;
 using woby::drawTriStateVisibilityButton;
 using woby::drawVisibilityButton;
-using woby::drawRemoveButton;
 using woby::setLastItemTooltip;
 
 constexpr uint32_t resetFlags = WOBY_GPU_RESET_VSYNC | WOBY_GPU_RESET_MSAA_X4;
@@ -728,8 +727,8 @@ void pushRenderModeControlHeight()
         ImVec2(style.FramePadding.x, paddingY));
 }
 
-void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
-    bool treeNode)
+bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
+    bool treeNode, bool removableFile = false)
 {
     if (woby::sceneObjectSelected(state, id)) {
         woby::drawSceneItemOutline();
@@ -770,6 +769,7 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
         }
         ImGui::EndDragDropSource();
     }
+    bool removeFile = false;
     if (ImGui::BeginPopupContextItem("scene_item_context")) {
         if (ImGui::BeginMenu("Create analysis", !woby::comparisonObjectParts(state, state.selectedSceneObjects).empty())) {
             woby::drawAnalysisCreationMenu(state);
@@ -797,8 +797,13 @@ void drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
             }
             ImGui::EndMenu();
         }
+        if (removableFile) {
+            ImGui::Separator();
+            removeFile = ImGui::MenuItem("Remove file from scene");
+        }
         ImGui::EndPopup();
     }
+    return removeFile;
 }
 
 void drawGroupControls(
@@ -874,8 +879,7 @@ void drawSceneTreeNode(
         auto& file = state.files[node.fileIndex];
         const ImGuiStyle& style = ImGui::GetStyle();
         const float rowStartX = ImGui::GetCursorPosX();
-        const float removeControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
-        const float analysisControlStartX = removeControlStartX - renderModeButtonSize() - style.ItemSpacing.x;
+        const float analysisControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         const size_t fileGroupCount = woby::countSceneNodeGroups(state, node);
         const size_t fileVisibleCount = woby::countVisibleSceneNodeGroups(state, node);
         if (drawTriStateVisibilityButton(
@@ -886,7 +890,7 @@ void drawSceneTreeNode(
             woby::setSceneNodeSubtreeVisible(state, node, fileVisibleCount != fileGroupCount);
         }
         ImGui::SameLine();
-        // Reserve both action buttons' columns for drawing and hit testing.
+        // Reserve the analysis button's column for drawing and hit testing.
         const ImVec2 labelClipMin = ImGui::GetWindowDrawList()->GetClipRectMin();
         ImVec2 labelClipMax = ImGui::GetWindowDrawList()->GetClipRectMax();
         labelClipMax.x = ImGui::GetCursorScreenPos().x + analysisControlStartX
@@ -901,7 +905,9 @@ void drawSceneTreeNode(
             ImGui::SetTooltip("%s\nVertices: %zu  Triangles: %zu", file.path.string().c_str(),
                 file.mesh.vertices.size(), file.mesh.indices.size() / 3u);
         }
-        drawSceneItemInteraction(state, node.objectId, true);
+        if (drawSceneItemInteraction(state, node.objectId, true, true)) {
+            removeFileIndex = node.fileIndex;
+        }
         ImGui::PopClipRect();
         ImGui::SameLine(analysisControlStartX, 0.0f);
         const bool canAnalyze = woby::fileHasComparableParts(file);
@@ -913,10 +919,6 @@ void drawSceneTreeNode(
         if (ImGui::BeginPopup("analysis_type")) {
             woby::drawAnalysisCreationMenu(state, {node.objectId});
             ImGui::EndPopup();
-        }
-        ImGui::SameLine(removeControlStartX, 0.0f);
-        if (drawRemoveButton("remove", "Remove file from scene")) {
-            removeFileIndex = node.fileIndex;
         }
         if (fileTreeOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {

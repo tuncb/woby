@@ -219,7 +219,7 @@ TEST_CASE("analysis compact add button opens an anchored menu while the section 
     CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.state.comparisons.back().objectId});
 }
 
-TEST_CASE("analysis row remove buttons delete only their own analysis")
+TEST_CASE("analysis rows use the full width and delete only through the context menu")
 {
     ComparisonNameFixture f;
     woby::renameComparison(f.state, f.id, std::string(300, 'x'));
@@ -236,8 +236,6 @@ TEST_CASE("analysis row remove buttons delete only their own analysis")
         woby::setAnalysisTaskFilter(f.state, woby::AnalysisTask::meshChecks);
     }
     f.frame(); f.frame();
-    auto selection = f.state.selectedSceneObjects;
-    std::erase(selection, f.id);
     const auto revision = f.state.sceneEditRevision;
     const auto otherName = woby::findComparison(f.state, other)->name;
     const auto* window = ImGui::FindWindowByName("Scene");
@@ -246,11 +244,24 @@ TEST_CASE("analysis row remove buttons delete only their own analysis")
         ? 0 : ImGui::GetFrameHeightWithSpacing();
     f.click({window->WorkRect.Max.x - woby::renderModeButtonSize() * .5f, f.row.y + filterHeight});
     f.frame();
+    REQUIRE(woby::findComparison(f.state, f.id));
+    CHECK(f.state.comparisons.size() == 2);
+    CHECK(f.state.sceneEditRevision == revision);
+    if (f.edit.objectId != woby::invalidSceneObjectId) { f.key(ImGuiKey_Escape); }
+    f.click({f.row.x, f.row.y + filterHeight}, ImGuiMouseButton_Right);
+    f.frame();
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    const auto* popup = f.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    const auto start = popup->DC.CursorStartPos;
+    f.click({start.x + 30, start.y + 4 * ImGui::GetTextLineHeightWithSpacing()
+        + ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight() * .5f});
+    f.frame();
     CHECK(woby::findComparison(f.state, f.id) == nullptr);
     REQUIRE(f.state.comparisons.size() == 1);
     CHECK(f.state.comparisons[0].objectId == other);
     CHECK(f.state.comparisons[0].name == otherName);
-    CHECK(f.state.selectedSceneObjects == selection);
+    CHECK_FALSE(woby::sceneObjectSelected(f.state, f.id));
     CHECK(f.state.sceneEditRevision == revision + 1);
     CHECK(f.edit.objectId == woby::invalidSceneObjectId);
 }
@@ -754,17 +765,33 @@ TEST_CASE("F2 renames the focused view even when an analysis is selected")
     CHECK(f.edit.objectId == woby::invalidSceneObjectId);
 }
 
-TEST_CASE("view context menu includes Rename Duplicate and Delete")
+TEST_CASE("view rows retain save and delete through the context menu")
 {
     ComparisonNameFixture f(true);
-    woby::createView(f.state);
+    const auto id = woby::createView(f.state);
     f.frame();
     REQUIRE(f.viewRow.x > 0.0f);
+    // The trailing action is Save; clicking where Delete used to be keeps the view.
+    const ImGuiWindow* rows = nullptr;
+    for (const auto* window : f.context->Windows) {
+        if (std::string(window->Name).find("view_rows") != std::string::npos) { rows = window; break; }
+    }
+    REQUIRE(rows);
+    f.click({rows->WorkRect.Max.x - woby::renderModeButtonSize() * .5f, f.viewRow.y});
+    REQUIRE(woby::findView(f.state, id));
     f.click(f.viewRow, ImGuiMouseButton_Right);
     f.frame();
     CHECK(f.viewContents.find("Rename") != std::string::npos);
     CHECK(f.viewContents.find("Duplicate") != std::string::npos);
     CHECK(f.viewContents.find("Delete view") != std::string::npos);
+    REQUIRE_FALSE(f.context->OpenPopupStack.empty());
+    const auto* popup = f.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    const auto start = popup->DC.CursorStartPos;
+    f.click({start.x + 30, start.y + 4 * ImGui::GetTextLineHeightWithSpacing()
+        + ImGui::GetStyle().ItemSpacing.y + ImGui::GetTextLineHeight() * .5f});
+    CHECK(woby::findView(f.state, id) == nullptr);
+    CHECK(f.state.views.empty());
 }
 
 TEST_CASE("analysis scene Escape and unchanged names do not create edits")

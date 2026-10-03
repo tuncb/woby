@@ -64,7 +64,7 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
             for (const auto& view : state.views) {
                 const auto id = view.id;
                 ImGui::PushID(std::to_string(id).c_str());
-                const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - button * 2 - spacing * 2);
+                const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - button - spacing);
                 bool changed = false;
                 if (edit.id == id) {
                     const bool focusing = edit.focus;
@@ -100,8 +100,6 @@ void drawViews(UiState& state, ViewNameEdit& edit, ViewListLayout& layout, float
                     if (drawRenderModeIconButton("save", "\xef\x83\x87",
                         "Save current state to this view. Save the .woby file to keep it on disk.",
                         RenderModeState::off, false)) { updateView(state, id); }
-                    ImGui::SameLine();
-                    if (drawRemoveButton("delete", "Delete view")) { removeView(state, id); changed = true; }
                 }
                 ImGui::PopID();
                 if (changed) { break; }

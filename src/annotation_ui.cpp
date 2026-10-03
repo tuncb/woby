@@ -198,7 +198,6 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
     for (const auto& item : state.annotations) {
         const auto id = item.objectId;
         ImGui::PushID(std::to_string(id).c_str());
-        const float removeX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         auto style = item.settings;
         if (drawVisibilityButton("visible", style.visible, item.settings.name.c_str())) {
             style.visible = !style.visible;
@@ -207,7 +206,7 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
         ImGui::SameLine();
         const bool missing = !item.targetValid || !findSceneObject(state, item.targetId);
         const std::string label = item.settings.name + (item.targetPending ? " [preparing]" : missing ? " [needs reattachment]" : "") + "##annotation";
-        const float nameWidth = std::max(1.0f, removeX - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
+        const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
         if (edit.objectId == id) {
             const bool focusing = edit.focus;
             if (focusing) { ImGui::SetKeyboardFocusHere(); edit.focus = false; }
@@ -242,8 +241,6 @@ void drawAnnotationObjects(UiState& state, AnnotationNameEdit& edit)
                 ImGui::EndPopup();
             }
         }
-        ImGui::SameLine(removeX, 0.0f);
-        if (drawRemoveButton("remove", "Remove annotation from scene")) { remove = id; }
         ImGui::PopID();
     }
     if (remove) { deleteAnnotation(state, remove); }
