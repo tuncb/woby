@@ -163,8 +163,13 @@ Trace loadTrace(const std::filesystem::path& path)
 
 Trace internalExample()
 {
-    const auto text = internalObjSource();
-    return captureSource(std::string(text), woby::loadObjMeshText(text), "Folded sheet");
+    return traceObjSource(internalObjSource(), "Folded sheet");
+}
+
+Trace traceObjSource(std::string_view source, std::string name)
+{
+    if (source.size() > maxSourceBytes) { throw std::runtime_error("Prototype limit: 512 KiB of OBJ source."); }
+    return captureSource(std::string(source), woby::loadObjMeshText(source), std::move(name));
 }
 
 std::vector<uint8_t> vertexBytes(const Trace& trace) { return bytes(trace.mesh.vertices); }

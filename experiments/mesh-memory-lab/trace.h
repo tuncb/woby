@@ -52,6 +52,7 @@ struct Trace {
 // Runs the production loader. All extra lineage is reconstructed and checked
 // against its actual output. Only face-based OBJ is supported by this prototype.
 [[nodiscard]] Trace loadTrace(const std::filesystem::path& path);
+[[nodiscard]] Trace traceObjSource(std::string_view source, std::string name);
 [[nodiscard]] Trace internalExample();
 [[nodiscard]] std::string_view internalObjSource();
 [[nodiscard]] std::vector<uint8_t> vertexBytes(const Trace& trace);

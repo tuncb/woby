@@ -3,6 +3,19 @@
 #include <cmath>
 
 namespace mesh_lab {
+void selectWorkflowNode(UiState& state, const Workflow& workflow, size_t index)
+{
+    if (index >= workflow.nodes.size()) { return; }
+    state.workflowNode = index;
+    if (workflow.nodes[index].inspector) { selectNode(state, *workflow.nodes[index].inspector); }
+}
+void selectWorkflow(UiState& state, const WorkflowLibrary& library, size_t index)
+{
+    if (index >= library.entries.size() || !library.entries[index].document) { return; }
+    state = {};
+    state.workflow = index;
+    selectWorkflowNode(state, *library.entries[index].document, library.entries[index].document->initialNode);
+}
 void selectTriangle(UiState& state, const Trace& trace, size_t triangle)
 {
     state.triangle = trace.triangles.empty() ? 0 : std::min(triangle, trace.triangles.size() - 1);

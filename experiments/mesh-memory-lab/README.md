@@ -4,11 +4,20 @@ A native prototype for inspecting data shapes and transformations in woby's
 triangle-mesh pipeline. Uses C++20, SDL3, Dear ImGui, bx math, NoGraphicsAPI,
 woby's fonts, production mesh construction, and production shaders.
 
-The app contains one embedded OBJ: two quads folded along a shared edge, with
-independent UV and normal domains on either side of the seam. Six original
-positions become four triangles and eight render vertices. Coordinates near
-`1e9` make the double-to-float localization visible. No file selection or source
-checkout is needed at runtime.
+The app opens a library of `.meshflow` files. Each file stores a diagram with
+named nodes, directed connections, descriptions, and layout. An optional embedded
+OBJ activates the production mesh inspector. Diagrams can branch or contain
+cycles and do not have to follow the OBJ pipeline.
+
+The [workflows](workflows/) folder includes three examples:
+
+- **OBJ to GPU:** two folded quads with UV and normal seams. Six positions become
+  four triangles and eight render vertices. Coordinates near `1e9` demonstrate
+  double-to-float localization.
+- **Background loading:** a process diagram showing owned worker inputs,
+  preparation, and acceptance or rejection of completed results.
+- **Shared quad:** two triangles with shared vertices, generated normals, and
+  no authored UVs. Compare its smaller memory payload with the folded sheet.
 
 ## Build and run
 
@@ -24,9 +33,37 @@ The opt-in target shares woby's staged assets and DLLs. It launches as a native
 GUI without opening a console; redirected command-line output still works.
 CI can enable the same option with the existing `ninja-vcpkg` preset.
 
+## Select and store workflows
+
+Use the **Workflows** pane to select a diagram. Click a node or an outline entry
+to inspect it. Live mesh workflows retain the linked source/vertex/byte inspector
+and GPU viewport. Selection and camera state reset when switching workflows.
+
+**Save copy** writes a new `.meshflow` file into the active folder and selects it.
+Existing files are never overwritten. Edit the JSON file to change its nodes,
+connections, or embedded sample, then use **Reload folder**. Diagram editing is
+file-based; the app does not execute the operations described by arbitrary nodes.
+Malformed files are listed with an error tooltip while valid workflows stay usable.
+Reloading and OBJ capture run on a worker and publish one complete library snapshot.
+
+Builds stage the repository examples into `workflows/` beside the executable.
+That directory is the default library, regardless of the working directory.
+For a persistent library outside the build directory, choose a folder explicitly:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\mesh_memory_lab.exe `
+  --workflows-dir D:/woby/experiments/mesh-memory-lab/workflows `
+  --workflow 02-background-loading.meshflow
+```
+
+New files saved in the repository folder can be versioned with the code. Builds
+refresh shipped examples in the runtime folder; use copies or a custom folder
+for edits you want to retain. See [the file format](workflows/README.md) for a
+minimal example and supported fields.
+
 ## Explore the data train
 
-The main view alternates data blocks with transformers:
+The OBJ-to-GPU example alternates data blocks with transformers:
 
 ```text
 OBJ text -> Parse -> Attribute pools -> Rebase + split -> Corner stream
@@ -69,7 +106,7 @@ corners; shader invocation order and cache behavior are not inferred.
 
 ## Measurement and scope
 
-`internalExample()` calls `woby::loadObjMeshText()`, which uses the same mesh
+`traceObjSource()` calls `woby::loadObjMeshText()`, which uses the same mesh
 construction as the file importer. A second RapidOBJ parse reconstructs
 provenance using the same localization and triangulation policy. The trace
 validates the corner-to-vertex and source-position correspondence against the
@@ -101,9 +138,12 @@ endpoints, vertex insertion/reuse, selection, file/memory loader parity,
 triangulation, seam identity, generated normals, large coordinates, byte layouts,
 and invalid input. Existing OBJ files under `samples/` are regression fixtures
 only. File tests use unique temporary directories with cleanup on failure.
-With `WOBY_TEST_HEADLESS=ON`, the GPU test uploads and reads back the built-in
-example, checks projection, and verifies rasterization. The Windows launch test
-checks GUI subsystem behavior and redirected diagnostics.
+Workflow tests cover format validation, graph references, serialization, safe
+save copies, independent temporary folders, per-file errors, and selection reset.
+With `WOBY_TEST_HEADLESS=ON`, the GPU test uploads and reads back every live library
+example, checks projection, and verifies rasterization. UI tests render both
+diagram-only and live workflows from a temporary custom library. The Windows
+launch test checks GUI subsystem behavior and redirected diagnostics.
 
 For a headless screenshot:
 
@@ -120,6 +160,7 @@ and `--smoke` (GPU validation).
 ## Structure
 
 - `example.cpp`: embedded source.
+- `workflow.*`, `workflows/`: versioned format, discovery, persistence, and examples.
 - `trace.*`: immutable production capture and checked provenance.
 - `pipeline.*`: data/transform topology and payload accounting.
 - `ui_state.h`, `ui_operations.cpp`: inspector selection and camera operations.

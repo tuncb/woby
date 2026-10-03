@@ -13,7 +13,8 @@ assert struct.unpack_from("<H", binary, pe + 24 + 68)[0] == 2, "Expected Windows
 
 result = subprocess.run([app, "--help"], capture_output=True, text=True, timeout=10)
 assert result.returncode == 0, result
-assert "one internal folded-sheet example" in result.stdout, result
+assert "saved workflow diagrams and live mesh inspection" in result.stdout, result
+assert "--workflows-dir" in result.stdout and "--workflow" in result.stdout, result
 assert "--screenshot" in result.stdout and "--smoke" in result.stdout, result
 assert not result.stderr, result
 help_text = result.stdout

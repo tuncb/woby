@@ -27,117 +27,69 @@ void markRow(bool active)
     if (active) { ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(38, 85, 75, 150)); }
 }
 void at(ImDrawList* draw, ImVec2 pos, ImVec4 c, const char* text) { draw->AddText(pos, color(c), text); }
-void clipped(ImDrawList* draw, ImVec2 pos, float width, ImVec4 c, const char* text)
+void workflowDiagram(UiState& state, const Workflow& workflow, const Trace* trace)
 {
-    draw->PushClipRect(pos, {pos.x+width, pos.y+24}, true); at(draw, pos, c, text); draw->PopClipRect();
-}
-void arrow(ImDrawList* draw, float x0, float x1, float y, ImVec4 c)
-{
-    draw->AddLine({x0,y}, {x1-4,y}, color(c), 1.5f);
-    draw->AddTriangleFilled({x1,y}, {x1-5,y-4}, {x1-5,y+4}, color(c));
-}
-void miniRecord(ImDrawList* draw, ImVec2 p, float width, size_t id, bool active)
-{
-    const float cell = width / 8;
-    for (size_t c = 0; c < 8; ++c) {
-        auto shade = fieldColor(c); shade.w = active ? .85f : .25f;
-        const float x = p.x + static_cast<float>(c)*cell;
-        draw->AddRectFilled({x,p.y}, {x+cell-2,p.y+13}, color(shade), 1);
-    }
-    char name[20]; std::snprintf(name, sizeof(name), "v%zu", id);
-    at(draw, {p.x, p.y-18}, active ? ink : muted, name);
-}
-void dataCard(UiState& state, const Trace& trace, const GpuCapture& gpu, const PipelineNode& node,
-    ImVec2 p, float width, float height)
-{
+    const auto origin = ImGui::GetCursorScreenPos();
     auto* draw = ImGui::GetWindowDrawList();
-    const bool selected = node.id == state.node;
-    const auto accent = node.id == Node::gpu ? mint : blue;
-    draw->AddRectFilled(p, {p.x+width,p.y+height}, selected ? IM_COL32(30, 52, 64, 255) : IM_COL32(23, 34, 44, 255), 6);
-    draw->AddRect(p, {p.x+width,p.y+height}, selected ? color(accent) : IM_COL32(52, 65, 75, 255), 6, 0, selected ? 2.0f : 1.0f);
-    at(draw, {p.x+12,p.y+10}, accent, node.id == Node::gpu ? "DATA / DEVICE" : (node.id == Node::source ? "DATA / SOURCE" : "DATA / CPU"));
-    at(draw, {p.x+12,p.y+34}, ink, node.title);
-    char bytes[64]; std::snprintf(bytes, sizeof(bytes), "%zu B payload", payloadBytes(node.id, trace));
-    at(draw, {p.x+12,p.y+60}, muted, bytes);
-    const auto v = selectedVertex(state, trace);
-    const auto key = trace.vertexKeys[v];
-    const float x = p.x+12, y = p.y+95, inner = width-24;
-    char text[96];
-    switch (node.id) {
-    case Node::source:
-        at(draw, {x,y}, blue, "v  1000000000...");
-        at(draw, {x,y+26}, amber, "vt 0.2 0");
-        at(draw, {x,y+52}, purple, "vn 0 -1 0");
-        clipped(draw, {x,y+78}, inner, mint, "f 4/5/2 3/6/2 ...");
-        at(draw, {x,y+119}, muted, "8 polygon corners"); break;
-    case Node::attributes:
-        for (int row = 0; row < 3; ++row) {
-            const char* names[] = {"positions / f64 x3", "normals / f32 x3", "UVs / f32 x2"};
-            const size_t counts[] = {trace.positions.size(), trace.normals.size(), trace.texcoords.size()};
-            const ImVec4 shades[] = {blue, purple, amber};
-            clipped(draw, {x,y+static_cast<float>(row)*43}, inner, shades[row], names[row]);
-            const float cell = std::min(21.0f, inner/static_cast<float>(counts[row]));
-            for (size_t i = 0; i < counts[row]; ++i) {
-                auto shade = shades[row];
-                const int selectedId = row == 0 ? key.position : (row == 1 ? key.normal : key.texcoord);
-                shade.w = static_cast<int>(i) == selectedId ? .95f : .24f;
-                draw->AddRectFilled({x+static_cast<float>(i)*cell,y+22+static_cast<float>(row)*43},
-                    {x+static_cast<float>(i+1)*cell-3,y+34+static_cast<float>(row)*43}, color(shade), 1);
-            }
+    const auto point = [&](const WorkflowNode& node) {
+        return ImVec2{origin.x + node.position[0], origin.y + node.position[1]};
+    };
+    for (const auto& edge : workflow.edges) {
+        const auto a = point(workflow.nodes[edge.from]), b = point(workflow.nodes[edge.to]);
+        ImVec2 from{a.x + workflowCardWidth*.5f, a.y + workflowCardHeight*.5f};
+        ImVec2 to{b.x + workflowCardWidth*.5f, b.y + workflowCardHeight*.5f};
+        const float dx = to.x-from.x, dy = to.y-from.y;
+        if (std::abs(dx)/workflowCardWidth >= std::abs(dy)/workflowCardHeight) {
+            from.x += std::copysign(workflowCardWidth*.5f, dx);
+            to.x -= std::copysign(workflowCardWidth*.5f, dx);
+        } else {
+            from.y += std::copysign(workflowCardHeight*.5f, dy);
+            to.y -= std::copysign(workflowCardHeight*.5f, dy);
         }
-        break;
-    case Node::corners:
-        for (size_t t = 0; t < trace.triangles.size(); ++t) {
-            const auto& corners = trace.triangles[t].corners;
-            std::snprintf(text, sizeof(text), "T%zu  p[%d %d %d]", t, corners[0].position, corners[1].position, corners[2].position);
-            clipped(draw, {x,y+static_cast<float>(t)*27}, inner, t == state.triangle ? mint : muted, text);
+        const bool selected = state.workflowNode == edge.from || state.workflowNode == edge.to;
+        const auto shade = selected ? mint : muted;
+        const float length = std::hypot(to.x-from.x, to.y-from.y);
+        if (length > 1) {
+            const ImVec2 unit{(to.x-from.x)/length, (to.y-from.y)/length};
+            draw->AddLine(from, to, color(shade), selected ? 2.0f : 1.0f);
+            draw->AddTriangleFilled(to, {to.x-unit.x*8-unit.y*4,to.y-unit.y*8+unit.x*4},
+                {to.x-unit.x*8+unit.y*4,to.y-unit.y*8-unit.x*4}, color(shade));
         }
-        at(draw, {x,y+119}, muted, "12 tuples / 4 tris"); break;
-    case Node::mesh:
-        for (size_t row = 0; row < 3; ++row) {
-            const size_t id = row == 1 ? static_cast<size_t>(v) : (row == 0 ? 0 : trace.mesh.vertices.size()-1);
-            miniRecord(draw, {x,y+18+static_cast<float>(row)*35}, inner, id, row == 1);
+        if (!edge.label.empty()) {
+            const auto size = ImGui::CalcTextSize(edge.label.c_str());
+            const ImVec2 p{(from.x+to.x-size.x)*.5f,(from.y+to.y)*.5f-18};
+            draw->AddRectFilled({p.x-3,p.y-2},{p.x+size.x+3,p.y+size.y+2},IM_COL32(19,26,32,255));
+            at(draw,p,shade,edge.label.c_str());
         }
-        at(draw, {x,y+119}, muted, "8 verts / 12 IDs"); break;
-    case Node::gpu:
-        at(draw, {x,y}, blue, "VB / 8 x 32 B");
-        miniRecord(draw, {x,y+42}, inner, static_cast<size_t>(v), true);
-        at(draw, {x,y+70}, amber, "IB / 12 x 4 B");
-        std::snprintf(text, sizeof(text), "[%u %u %u]", trace.mesh.indices[state.triangle*3], trace.mesh.indices[state.triangle*3+1], trace.mesh.indices[state.triangle*3+2]);
-        at(draw, {x,y+94}, ink, text);
-        at(draw, {x,y+119}, gpu.matches ? mint : muted, gpu.complete ? (gpu.matches ? "Readback: equal" : "Readback: ERROR") : "Readback: pending"); break;
-    default: break;
     }
-    ImGui::SetCursorScreenPos(p);
-    if (ImGui::InvisibleButton(node.title, {width,height}, ImGuiButtonFlags_EnableNav)) { selectNode(state, node.id); }
-    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\nClick to inspect values, identities and memory.", node.caption); }
-}
-void train(UiState& state, const Trace& trace, const GpuCapture& gpu)
-{
-    const float width = ImGui::GetContentRegionAvail().x;
-    const float gap = 12, operationWidth = width < 1250 ? 76.0f : 88.0f;
-    const float dataWidth = (width-8*gap-4*operationWidth)/5;
-    const auto origin = ImGui::GetCursorScreenPos(); auto* draw = ImGui::GetWindowDrawList();
-    float x = origin.x;
-    for (size_t i = 0; i < pipeline.size(); ++i) {
-        const auto& node = pipeline[i]; const float w = node.transformer ? operationWidth : dataWidth;
-        ImGui::PushID(static_cast<int>(i));
-        if (node.transformer) {
-            const ImVec2 p{x,origin.y+70}; const bool active = state.node == node.id;
-            draw->AddRectFilled(p, {x+w,p.y+112}, active ? IM_COL32(72, 55, 33, 255) : IM_COL32(42, 37, 30, 255), 12);
-            draw->AddRect(p, {x+w,p.y+112}, active ? color(amber) : IM_COL32(81, 65, 44, 255), 12, 0, active ? 2.0f : 1.0f);
-            const char* names[] = {"", "Parse", "", "Rebase", "", "Intern", "", "Copy", ""};
-            const char* second[] = {"", "", "", "+ split", "", "+ pack", "", "to GPU", ""};
-            at(draw, {x+12,p.y+14}, amber, "f(x)");
-            at(draw, {x+9,p.y+49}, ink, names[i]); at(draw, {x+9,p.y+72}, muted, second[i]);
-            ImGui::SetCursorScreenPos(p);
-            if (ImGui::InvisibleButton(node.title, {w,112}, ImGuiButtonFlags_EnableNav)) { selectNode(state,node.id); }
-            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\nClick for inputs, outputs and transformation details.", node.caption); }
-        } else { dataCard(state,trace,gpu,node,{x,origin.y},w,252); }
-        if (i+1 < pipeline.size()) { arrow(draw,x+w+2,x+w+gap-2,origin.y+126,muted); }
-        x += w+gap; ImGui::PopID();
+    for (size_t i = 0; i < workflow.nodes.size(); ++i) {
+        const auto& node = workflow.nodes[i]; const auto p = point(node);
+        const auto accent = node.transformer ? amber : blue;
+        const bool selected = state.workflowNode == i;
+        draw->AddRectFilled(p,{p.x+workflowCardWidth,p.y+workflowCardHeight},
+            selected ? IM_COL32(30,52,64,255) : IM_COL32(23,34,44,255),6);
+        draw->AddRect(p,{p.x+workflowCardWidth,p.y+workflowCardHeight},
+            selected ? color(accent) : IM_COL32(52,65,75,255),6,0,selected ? 2.0f : 1.0f);
+        const ImVec4 clip{p.x+8,p.y+4,p.x+workflowCardWidth-8,p.y+workflowCardHeight-4};
+        const auto text = [&](float y, ImVec4 shade, const char* value, float wrap = 0) {
+            draw->AddText(nullptr,0,{p.x+12,p.y+y},color(shade),value,nullptr,wrap,&clip);
+        };
+        text(10,accent,node.transformer ? "f(x) TRANSFORM" : "DATA");
+        text(32,ink,node.title.c_str());
+        text(55,muted,node.summary.c_str(),workflowCardWidth-24);
+        if (trace && node.inspector && !node.transformer) {
+            char bytes[48]; std::snprintf(bytes,sizeof(bytes),"%zu B payload",payloadBytes(*node.inspector,*trace));
+            text(86,mint,bytes);
+        }
+        ImGui::PushID(static_cast<int>(i)); ImGui::SetCursorScreenPos(p);
+        if (ImGui::InvisibleButton("node",{workflowCardWidth,workflowCardHeight},ImGuiButtonFlags_EnableNav)) {
+            selectWorkflowNode(state,workflow,i);
+        }
+        if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\n%s",node.title.c_str(),node.summary.c_str()); }
+        ImGui::PopID();
     }
-    ImGui::SetCursorScreenPos({origin.x,origin.y+262}); ImGui::Dummy({width,1});
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::Dummy({workflow.extent[0]+4,workflow.extent[1]+4});
 }
 
 void sourceTable(UiState& state, const Trace& trace, bool parsing)
@@ -160,7 +112,7 @@ void sourceTable(UiState& state, const Trace& trace, bool parsing)
                 if (line.position >= 0) { ImGui::TextColored(blue,"positions[%d] / 24 B",line.position); }
                 else if (line.texcoord >= 0) { ImGui::TextColored(amber,"texcoords[%d] / 8 B",line.texcoord); }
                 else if (line.normal >= 0) { ImGui::TextColored(purple,"normals[%d] / 12 B",line.normal); }
-                else if (line.face >= 0) { ImGui::TextColored(mint,"faces[%d] / 4 tuples",line.face); }
+                else if (line.face >= 0) { ImGui::TextColored(mint,"faces[%d] / %zu tuples",line.face,trace.faces[static_cast<size_t>(line.face)].corners.size()); }
                 else { label("metadata / comment"); }
             }
             ImGui::PopID();
@@ -191,8 +143,11 @@ void positionsTable(UiState& state, const Trace& trace, bool localized)
 void attributePools(UiState& state, const Trace& trace)
 {
     label("Independent contiguous arrays; polygon corners index all three domains.");
-    heading("positions / float64[6][3] / 144 B / stride 24"); positionsTable(state,trace,false);
-    heading("normals / float32[2][3] / 24 B   +   texcoords / float32[8][2] / 64 B");
+    heading("Positions / float64 x3 / stride 24");
+    ImGui::Text("%zu positions / %zu B",trace.positions.size(),trace.positions.size()*sizeof(woby::Coordinate));
+    positionsTable(state,trace,false);
+    heading("Normals / float32 x3 + texcoords / float32 x2");
+    ImGui::Text("%zu normals / %zu B    %zu UVs / %zu B",trace.normals.size(),trace.normals.size()*12,trace.texcoords.size(),trace.texcoords.size()*8);
     if (ImGui::BeginTable("attributes",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"array / index","values","+byte","used by selected corner"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow(); const auto key = trace.vertexKeys[selectedVertex(state,trace)];
@@ -215,7 +170,8 @@ void attributePools(UiState& state, const Trace& trace)
         }
         ImGui::EndTable();
     }
-    heading("Original polygon corners / 8 x 12 B / independent p,n,uv indices");
+    heading("Original polygon corners / independent p,n,uv indices");
+    ImGui::Text("%zu corners x %zu B",trace.originalCorners,sizeof(Corner));
     if (ImGui::BeginTable("polygon-corners",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"face","corner","p / n / uv","corner payload +byte"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow(); size_t offset = 0;
@@ -284,10 +240,10 @@ void meshTable(UiState& state, const Trace& trace)
         ImGui::EndTable();
     }
     heading("Retained CPU arrays / not uploaded");
-    ImGui::Text("precisePositions   double[8][3]   192 B    local coordinates per render vertex");
-    ImGui::Text("sourceData.points  double[6][3]   144 B    original position identity, local frame");
-    ImGui::Text("sourceData.indices uint32[12]      48 B    corner -> source position");
-    label("688 B counts these arrays plus 256 B vertices and 48 B indices. Headers and capacity are excluded.");
+    ImGui::Text("precisePositions   %zu x 24 B    local coordinates per render vertex",trace.mesh.precisePositions.size());
+    ImGui::Text("sourceData.points  %zu x 24 B    original position identity, local frame",trace.mesh.sourceData->points.size());
+    ImGui::Text("sourceData.indices %zu x 4 B     corner -> source position",trace.mesh.sourceData->indices.size());
+    ImGui::Text("%zu B total CPU payload; headers and capacity are excluded.",payloadBytes(Node::mesh,trace));
     heading("Render indices versus original position indices / 4 B per element");
     if (ImGui::BeginTable("cpu-indices",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"triangle","+byte","mesh.indices / render ID","sourceData.indices / source ID"}) { ImGui::TableSetupColumn(name); }
@@ -349,25 +305,25 @@ void allocation(const char* name, const char* type, size_t count, size_t stride,
 }
 void uploadPanel(UiState& state, const Trace& trace, const GpuCapture& gpu)
 {
-    ImGui::TextColored(amber,"Copy 304 B of render data; retain all 688 B of CPU arrays.");
+    ImGui::TextColored(amber,"Copy %zu B of render data; retain %zu B of CPU arrays.",payloadBytes(Node::gpu,trace),payloadBytes(Node::mesh,trace));
     label("Upload copies bytes. It does not move the vectors or upload their pointers, size or capacity.");
     heading("Ownership across the transfer");
     if (ImGui::BeginTable("ownership",4,ImGuiTableFlags_RowBg)) {
         for (const auto* name : {"allocation","element type","payload","lifetime"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
-        allocation("mesh.vertices","Vertex",8,32,"CPU capture");
-        allocation("mesh.indices","uint32",12,4,"CPU capture");
-        allocation("graphics::copy (VB)","byte",256,1,"renderer-owned upload");
-        allocation("graphics::copy (IB)","byte",48,1,"renderer-owned upload");
-        allocation("device VB","Vertex",8,32,"GPU resource");
-        allocation("device IB","uint32",12,4,"GPU resource");
+        allocation("mesh.vertices","Vertex",trace.mesh.vertices.size(),32,"CPU capture");
+        allocation("mesh.indices","uint32",trace.mesh.indices.size(),4,"CPU capture");
+        allocation("graphics::copy (VB)","byte",gpu.vertexUpload.size(),1,"renderer-owned upload");
+        allocation("graphics::copy (IB)","byte",gpu.indexUpload.size(),1,"renderer-owned upload");
+        allocation("device VB","Vertex",trace.mesh.vertices.size(),32,"GPU resource");
+        allocation("device IB","uint32",trace.mesh.indices.size(),4,"GPU resource");
         ImGui::EndTable();
     }
     heading("Executed calls / completion");
-    ImGui::TextUnformatted("createVertexBuffer(copy(vertices.data(), 256), {32}, COMPUTE_READ)\n"
-        "createIndexBuffer(copy(indices.data(), 48), INDEX32)\n"
+    ImGui::TextUnformatted("createVertexBuffer(copy(vertices.data(), vertexBytes), {32}, COMPUTE_READ)\n"
+        "createIndexBuffer(copy(indices.data(), indexBytes), INDEX32)\n"
         "readBuffer(VB, ownedReadback); readBuffer(IB, ownedReadback);");
-    ImGui::TextColored(gpu.matches ? mint : amber,"%s",gpu.complete ? (gpu.matches ? "Completion reached: all 304 returned bytes equal the upload." : "Readback mismatch.") : "Readback pending: destinations remain owned until completion.");
+    ImGui::TextColored(gpu.matches ? mint : amber,"%s",gpu.complete ? (gpu.matches ? "Completion reached: all returned bytes equal the upload." : "Readback mismatch.") : "Readback pending: destinations remain owned until completion.");
     ImGui::Spacing(); triangleIndices(state,trace,gpu);
 }
 void gpuPanel(UiState& state, const Trace& trace, const GpuCapture& gpu)
@@ -401,7 +357,7 @@ void splitPanel(UiState& state, const Trace& trace)
         for (size_t t = 0; t < trace.triangles.size(); ++t) {
             const auto& triangle = trace.triangles[t]; const auto& f = trace.faces[triangle.face];
             ImGui::PushID(static_cast<int>(t)); ImGui::TableNextRow(); markRow(t == state.triangle);
-            ImGui::TableNextColumn(); ImGui::Text("F%zu = [%d %d %d %d]",triangle.face,f.corners[0].position,f.corners[1].position,f.corners[2].position,f.corners[3].position);
+            ImGui::TableNextColumn(); ImGui::Text("F%zu / %zu corners",triangle.face,f.corners.size());
             ImGui::TableNextColumn(); char title[20]; std::snprintf(title,sizeof(title),"T%zu",t);
             if (ImGui::Selectable(title,t == state.triangle,ImGuiSelectableFlags_SpanAllColumns)) { selectTriangle(state,trace,t); }
             ImGui::TableNextColumn(); ImGui::TextColored(mint,"[%d %d %d]",triangle.corners[0].position,triangle.corners[1].position,triangle.corners[2].position);
@@ -410,14 +366,14 @@ void splitPanel(UiState& state, const Trace& trace)
         ImGui::EndTable();
     }
     label("Quad rule: choose diagonal 0-2 only when it is shorter than 1-3; ties use 1-3.");
-    label("Positions are not duplicated here. The corner stream grows from 8 to 12 tuples (+48 B).");
+    ImGui::Text("Positions stay shared: %zu polygon corners -> %zu triangle corners.",trace.originalCorners,trace.mesh.indices.size());
 }
 void packPanel(UiState& state, const Trace& trace)
 {
-    ImGui::TextColored(amber,"12 corners -> 8 unique (position, normal, texcoord) tuples -> 8 vertices + 12 indices");
-    label("Source p2 and p3 each have two render identities because their normal and UV indices differ.");
+    ImGui::TextColored(amber,"%zu corners -> %zu vertices + %zu indices",trace.mesh.indices.size(),trace.mesh.vertices.size(),trace.mesh.indices.size());
+    ImGui::Text("%zu source positions have multiple render identities.",trace.splitPositions);
     ImGui::TextUnformatted("id = vertexIndex({corner.position, corner.normal, corner.texcoord});\n"
-        "if (firstUse) emit Vertex{float(localPosition), authoredNormal, {u, 1-v}};\n"
+        "if (firstUse) emit Vertex{float(localPosition), resolvedNormal, resolvedUV};\n"
         "indices.push_back(id); // first-use order; no index-buffer reordering");
     ImGui::Spacing();
     label("INSERT allocates a 32 B record; REUSE emits only a 4 B index. Double positions stay in CPU sidecars.");
@@ -448,7 +404,7 @@ void details(UiState& state, const Trace& trace, const GpuCapture& gpu)
     case Node::corners:
         ImGui::TextUnformatted("Corner = {int32 position, int32 texcoord, int32 normal}; sizeof = 12 B");
         label("Tuple notation below is p / n / uv. Each consecutive triple is one triangle.");
-        label("232 B of localized attribute arrays + 144 B of corner records. Polygon provenance is retained separately.");
+        ImGui::Text("%zu B of attributes and triangle corners. Polygon provenance is separate.",payloadBytes(Node::corners,trace));
         ImGui::Spacing(); cornerTable(state,trace,false); break;
     case Node::pack: packPanel(state,trace); break;
     case Node::mesh: meshTable(state,trace); break;
@@ -532,12 +488,15 @@ void byteFields(UiState& state, const Trace& trace, const GpuCapture& gpu)
         ImGui::Text("= local f64 %.17g -> f32 %.9g",local,value);
         ImGui::TextColored(muted,"cast error %g / direct cast %.9g",static_cast<double>(value)-local,static_cast<float>(original));
     } else if (state.component < 6) {
-        ImGui::Text("normal[%d].%c = %.9g (authored f32)",key.normal,"xyz"[state.component-3],value);
-        label("Copied unchanged; this example needs no regeneration.");
+        const bool authored = key.normal >= 0 && woby::validNormal(trace.normals[static_cast<size_t>(key.normal)]);
+        ImGui::Text("normal.%c = %.9g (%s)","xyz"[state.component-3],value,authored ? "authored f32" : "generated");
+        label(authored ? "Copied from the source normal." : "Generated by the production mesh loader.");
     } else {
-        const auto uv = trace.texcoords[static_cast<size_t>(key.texcoord)];
-        ImGui::Text("uv[%d] = (%.9g, %.9g)",key.texcoord,uv[0],uv[1]);
-        label("u = source.u; v = 1 - source.v");
+        if (key.texcoord >= 0) {
+            const auto uv = trace.texcoords[static_cast<size_t>(key.texcoord)];
+            ImGui::Text("uv[%d] = (%.9g, %.9g)",key.texcoord,uv[0],uv[1]);
+            label("u = source.u; v = 1 - source.v");
+        } else { label("No source UV; the packed record contains the loader fallback."); }
     }
 }
 void focus(UiState& state, const Trace& trace, const GpuCapture& gpu, Viewport& view)
@@ -588,28 +547,88 @@ void configureStyle(UiRuntime& runtime, const std::filesystem::path& assets)
     s.Colors[ImGuiCol_HeaderActive] = {0.20f,0.37f,0.34f,1};
     s.Colors[ImGuiCol_TableHeaderBg] = {0.10f,0.15f,0.18f,1};
 }
-void drawUi(UiRuntime& runtime, UiState& state, const Trace& trace, const GpuCapture& gpu, Viewport& view)
+void drawUi(UiRuntime& runtime, UiState& state, const WorkflowLibrary& library,
+    const GpuCapture& gpu, Viewport& view, UiActions& actions)
 {
     const auto& io = ImGui::GetIO();
     ImGui::SetNextWindowPos({0,0}); ImGui::SetNextWindowSize(io.DisplaySize);
     ImGui::Begin("Mesh memory lab",nullptr,ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
     ImGui::PushFont(runtime.title); ImGui::TextUnformatted("Mesh memory lab"); ImGui::PopFont();
-    ImGui::SameLine(); ImGui::TextColored(muted,"  DATA SHAPES + TRANSFORMATIONS");
-    ImGui::TextColored(muted,"Built-in folded sheet    /    2 quads    /    6 source positions    /    UV + normal seam    /    coordinates near 1e9");
+    ImGui::SameLine(); ImGui::TextColored(muted,"  WORKFLOW LIBRARY");
     ImGui::Spacing();
-    ImGui::PushFont(runtime.mono);
-    ImGui::BeginChild("train",{0,310},ImGuiChildFlags_Borders,ImGuiWindowFlags_NoScrollbar);
-    ImGui::TextColored(blue,"DATA"); ImGui::SameLine(); ImGui::TextColored(amber,"  f(x) TRANSFORMER");
-    ImGui::SameLine(); label("  Click any block to inspect its records or operation");
-    train(state,trace,gpu); ImGui::EndChild();
-    const float height = ImGui::GetContentRegionAvail().y-24;
-    const float leftWidth = ImGui::GetContentRegionAvail().x*.66f;
-    ImGui::BeginChild("inspector",{leftWidth,height},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
-    details(state,trace,gpu); ImGui::EndChild(); ImGui::SameLine();
-    ImGui::BeginChild("selected-datum",{0,height},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
-    focus(state,trace,gpu,view); ImGui::EndChild();
-    ImGui::PopFont();
-    label("Production loader + shader buffers  /  Array payload excludes container headers and spare capacity  /  Source is compiled into the app");
-    ImGui::End();
+    ImGui::BeginChild("library",{212,0},ImGuiChildFlags_Borders);
+    heading("WORKFLOWS");
+    ImGui::BeginDisabled(runtime.loading);
+    if (ImGui::Button("Reload folder")) { actions.reload = true; }
+    ImGui::EndDisabled();
+    if (runtime.loading) { label("Loading workflows..."); }
+    ImGui::Spacing();
+    for (size_t i = 0; i < library.entries.size(); ++i) {
+        const auto& entry = library.entries[i];
+        const auto name = entry.document ? entry.document->title : woby::pathToUtf8(entry.path.filename());
+        ImGui::PushID(static_cast<int>(i));
+        ImGui::BeginDisabled(runtime.loading || !entry.document);
+        if (ImGui::Selectable(name.c_str(),i == state.workflow && entry.document.has_value(),0,{0,24})) { actions.workflow = i; }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s\n%s",woby::pathToUtf8(entry.path.filename()).c_str(),
+                entry.document ? entry.document->description.c_str() : entry.error.c_str());
+        }
+        if (!entry.error.empty()) { ImGui::TextColored(amber,"Could not load"); }
+        else { label(entry.trace ? "Live mesh + diagram" : "Diagram"); }
+        ImGui::Spacing(); ImGui::PopID();
+    }
+    if (library.entries.empty()) { label("No .meshflow files in this folder. Add a workflow and reload."); }
+    ImGui::Separator(); label("Folder");
+    ImGui::TextWrapped("%s",woby::pathToUtf8(library.directory).c_str());
+    ImGui::EndChild(); ImGui::SameLine();
+    ImGui::BeginChild("workspace",{0,0});
+    if (!runtime.message.empty()) { ImGui::TextWrapped("%s",runtime.message.c_str()); }
+    if (state.workflow < library.entries.size() && library.entries[state.workflow].document) {
+        const auto& entry = library.entries[state.workflow]; const auto& workflow = *entry.document;
+        ImGui::TextColored(mint,"%s",workflow.title.c_str());
+        ImGui::SameLine(); ImGui::BeginDisabled(runtime.loading);
+        if (ImGui::SmallButton("Save copy")) { actions.saveCopy = true; }
+        ImGui::EndDisabled();
+        label(workflow.description.c_str());
+        ImGui::PushFont(runtime.mono);
+        ImGui::BeginChild("diagram",{0,330},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+        workflowDiagram(state,workflow,entry.trace.get());
+        ImGui::EndChild();
+        const float height = ImGui::GetContentRegionAvail().y;
+        const float leftWidth = entry.trace ? ImGui::GetContentRegionAvail().x*.63f : ImGui::GetContentRegionAvail().x*.66f;
+        const auto& node = workflow.nodes[state.workflowNode];
+        ImGui::BeginChild("inspector",{leftWidth,height},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+        ImGui::TextColored(node.transformer ? amber : blue,"%s",node.title.c_str());
+        label(node.description.c_str()); ImGui::Spacing();
+        if (entry.trace && node.inspector) { details(state,*entry.trace,gpu); }
+        else {
+            ImGui::Separator(); heading("CONNECTIONS");
+            for (const auto& edge : workflow.edges) {
+                if (edge.from != state.workflowNode && edge.to != state.workflowNode) { continue; }
+                const size_t target = edge.from == state.workflowNode ? edge.to : edge.from;
+                const auto text = std::string(edge.from == state.workflowNode ? "To: " : "From: ") + workflow.nodes[target].title;
+                ImGui::PushID(static_cast<int>(&edge-workflow.edges.data()));
+                if (ImGui::Selectable(text.c_str())) { selectWorkflowNode(state,workflow,target); }
+                if (!edge.label.empty()) { label(edge.label.c_str()); }
+                ImGui::PopID();
+            }
+        }
+        ImGui::EndChild(); ImGui::SameLine();
+        ImGui::BeginChild("selected-datum",{0,height},ImGuiChildFlags_Borders,ImGuiWindowFlags_HorizontalScrollbar);
+        if (entry.trace) { focus(state,*entry.trace,gpu,view); }
+        else {
+            heading("WORKFLOW OUTLINE");
+            label("Select a stage here or in the diagram.");
+            for (size_t i = 0; i < workflow.nodes.size(); ++i) {
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::Selectable(workflow.nodes[i].title.c_str(),state.workflowNode == i)) { selectWorkflowNode(state,workflow,i); }
+                ImGui::PopID();
+            }
+            ImGui::Spacing(); label("This workflow describes a process. It has no embedded mesh to inspect.");
+        }
+        ImGui::EndChild(); ImGui::PopFont();
+    } else { label("Select a valid workflow from the library. File errors are shown beside their entries."); }
+    ImGui::EndChild(); ImGui::End();
 }
 } // namespace mesh_lab

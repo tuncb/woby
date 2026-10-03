@@ -1,0 +1,129 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "Background loading",
+  "description": "A diagram of owned worker inputs, preparation, and publication into the scene. Select each stage to explore its role.",
+  "initial_node": "snapshot",
+  "nodes": [
+    {
+      "id": "request",
+      "title": "Load request",
+      "kind": "data",
+      "summary": "Files and import settings",
+      "description": "A load begins with selected file paths and import settings. Capture everything the worker needs before starting the job.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "snapshot",
+      "title": "Own the inputs",
+      "kind": "transform",
+      "summary": "Snapshot the request",
+      "description": "Workers consume owned request data. Their inputs must remain valid even when the UI changes or another load replaces the request.",
+      "position": [
+        324,
+        0
+      ]
+    },
+    {
+      "id": "worker",
+      "title": "Load on a worker",
+      "kind": "transform",
+      "summary": "Parse and build CPU meshes",
+      "description": "Run expensive parsing and mesh construction away from the UI thread. Collect per-file successes and failures without mutating the visible scene.",
+      "position": [
+        648,
+        0
+      ]
+    },
+    {
+      "id": "prepared",
+      "title": "Prepared results",
+      "kind": "data",
+      "summary": "Meshes, metadata, errors",
+      "description": "The completed worker result owns the meshes and preparation data. It is ready for the main thread to accept or discard.",
+      "position": [
+        972,
+        0
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Still current?",
+      "kind": "transform",
+      "summary": "Check the active request",
+      "description": "Before publication, check that the completion belongs to the current request. Cancellation or replacement must prevent stale results from changing the scene.",
+      "position": [
+        648,
+        166
+      ]
+    },
+    {
+      "id": "publish",
+      "title": "Publish + upload",
+      "kind": "transform",
+      "summary": "Accept current results",
+      "description": "Publish accepted CPU results into the scene and schedule renderer resource creation on the runtime thread. Scene operations establish valid logical state before drawing.",
+      "position": [
+        324,
+        166
+      ]
+    },
+    {
+      "id": "scene",
+      "title": "Visible scene",
+      "kind": "data",
+      "summary": "Draw the updated state",
+      "description": "The renderer draws the already-updated scene. Keep reusable derived results cached, and invalidate them when their inputs change.",
+      "position": [
+        0,
+        166
+      ]
+    },
+    {
+      "id": "discard",
+      "title": "Discard stale result",
+      "kind": "data",
+      "summary": "Release owned resources",
+      "description": "A superseded or canceled result is released without touching the visible scene. Newer work remains authoritative.",
+      "position": [
+        972,
+        166
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "request",
+      "to": "snapshot"
+    },
+    {
+      "from": "snapshot",
+      "to": "worker"
+    },
+    {
+      "from": "worker",
+      "to": "prepared"
+    },
+    {
+      "from": "prepared",
+      "to": "check"
+    },
+    {
+      "from": "check",
+      "to": "publish",
+      "label": "current"
+    },
+    {
+      "from": "publish",
+      "to": "scene"
+    },
+    {
+      "from": "check",
+      "to": "discard",
+      "label": "superseded"
+    }
+  ]
+}

@@ -1,0 +1,155 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "OBJ to GPU",
+  "description": "A folded sheet: triangulation, seams, double precision, and verified GPU bytes.",
+  "source": {
+    "format": "obj",
+    "text": "# Two quads folded along a shared edge; independent UV and normal domains.\no folded_sheet\nv 1000000000.000125 -1 0\nv 1000000002.000125 -1 0\nv 1000000002.000125 1 0\nv 1000000000.000125 1 0\nv 1000000002.000125 1 2\nv 1000000000.000125 1 2\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nvt 0.2 0\nvt 0.8 0\nvt 0.8 1\nvt 0.2 1\nvn 0 0 1\nvn 0 -1 0\nf 1/1/1 2/2/1 3/3/1 4/4/1\nf 4/5/2 3/6/2 5/7/2 6/8/2\n"
+  },
+  "initial_node": "pack",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "OBJ text",
+      "kind": "data",
+      "summary": "Embedded source text",
+      "description": "Six original positions form two folded quads. UV and normal seams split their render identities. Coordinates near 1e9 demonstrate why double positions are localized before conversion to float.",
+      "position": [
+        0,
+        0
+      ],
+      "inspector": "source"
+    },
+    {
+      "id": "parse",
+      "title": "Parse",
+      "kind": "transform",
+      "summary": "Text to typed values",
+      "description": "Parse decimal positions as doubles and normals and UVs as floats. Resolve OBJ indices into independent zero-based domains.",
+      "position": [
+        238,
+        0
+      ],
+      "inspector": "parse"
+    },
+    {
+      "id": "attributes",
+      "title": "Attribute pools",
+      "kind": "data",
+      "summary": "Independent index domains",
+      "description": "Polygon corners refer independently to the position, normal, and UV pools. A shared position can have multiple normal and UV identities.",
+      "position": [
+        476,
+        0
+      ],
+      "inspector": "attributes"
+    },
+    {
+      "id": "triangulate",
+      "title": "Rebase + split",
+      "kind": "transform",
+      "summary": "Localize and triangulate",
+      "description": "Subtract the coordinate origin in double precision, then triangulate each polygon without losing its corner attributes.",
+      "position": [
+        714,
+        0
+      ],
+      "inspector": "triangulate"
+    },
+    {
+      "id": "corners",
+      "title": "Corner stream",
+      "kind": "data",
+      "summary": "Triangle corner tuples",
+      "description": "Each consecutive group of three corner tuples describes one triangle. The tuples still refer to independent source attribute pools.",
+      "position": [
+        952,
+        0
+      ],
+      "inspector": "corners"
+    },
+    {
+      "id": "pack",
+      "title": "Intern + pack",
+      "kind": "transform",
+      "summary": "Reuse or create vertices",
+      "description": "Intern each position/normal/UV tuple. First use creates a packed vertex; later uses reuse its index. Preserve precise coordinates and source identity alongside the render arrays.",
+      "position": [
+        714,
+        166
+      ],
+      "inspector": "pack"
+    },
+    {
+      "id": "mesh",
+      "title": "CPU mesh",
+      "kind": "data",
+      "summary": "Packed and precise arrays",
+      "description": "Retain packed vertices, render indices, precise positions, original source points, and source indices. Only the packed vertices and render indices are uploaded.",
+      "position": [
+        476,
+        166
+      ],
+      "inspector": "mesh"
+    },
+    {
+      "id": "upload",
+      "title": "Copy to GPU",
+      "kind": "transform",
+      "summary": "Copy, submit, retain",
+      "description": "Allocate GPU buffers using owned byte copies. Retain the CPU capture, and keep readback destinations alive until completion.",
+      "position": [
+        238,
+        166
+      ],
+      "inspector": "upload"
+    },
+    {
+      "id": "gpu",
+      "title": "GPU buffers",
+      "kind": "data",
+      "summary": "Indexed vertex fetch",
+      "description": "The production shaders fetch 32-byte vertex records through the index stream. Readback verifies the uploaded buffers byte for byte.",
+      "position": [
+        0,
+        166
+      ],
+      "inspector": "gpu"
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "parse"
+    },
+    {
+      "from": "parse",
+      "to": "attributes"
+    },
+    {
+      "from": "attributes",
+      "to": "triangulate"
+    },
+    {
+      "from": "triangulate",
+      "to": "corners"
+    },
+    {
+      "from": "corners",
+      "to": "pack"
+    },
+    {
+      "from": "pack",
+      "to": "mesh"
+    },
+    {
+      "from": "mesh",
+      "to": "upload"
+    },
+    {
+      "from": "upload",
+      "to": "gpu"
+    }
+  ]
+}
