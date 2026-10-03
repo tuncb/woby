@@ -19,6 +19,11 @@ The [workflows](workflows/) folder includes three examples:
 - **Shared quad:** two triangles with shared vertices, generated normals, and
   no authored UVs. Compare its smaller memory payload with the folded sheet.
 
+See the [workflow catalog](workflow-catalog.md) for 80 proposed diagrams,
+including UV quality, overlap detection, and linked probes from the latest
+reviewed merge. It also describes the captures needed to compare historical
+results between commits.
+
 ## Build and run
 
 From the repository root on Windows:
