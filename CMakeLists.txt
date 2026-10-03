@@ -653,4 +653,13 @@ if(WOBY_BUILD_OBJ_BENCHMARKS)
     include(cmake/WobyMappingBenchmarks.cmake)
 endif()
 
+option(WOBY_BUILD_MESH_MEMORY_LAB "Build the native mesh memory visualization prototype" OFF)
+if(WOBY_BUILD_MESH_MEMORY_LAB)
+    add_subdirectory(experiments/mesh-memory-lab)
+    list(APPEND woby_runtime_targets mesh_memory_lab)
+    if(BUILD_TESTING)
+        list(APPEND woby_runtime_targets mesh_memory_lab_tests)
+    endif()
+endif()
+
 woby_stage_runtime_dlls("${WOBY_RUNTIME_DIRECTORY}" ${woby_runtime_targets})
