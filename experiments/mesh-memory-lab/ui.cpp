@@ -575,7 +575,6 @@ void drawUi(UiRuntime& runtime, UiState& state, const WorkflowLibrary& library,
                 entry.document ? entry.document->description.c_str() : entry.error.c_str());
         }
         if (!entry.error.empty()) { ImGui::TextColored(amber,"Could not load"); }
-        else { label(entry.trace ? "Live mesh + diagram" : "Diagram"); }
         ImGui::Spacing(); ImGui::PopID();
     }
     if (library.entries.empty()) { label("No .meshflow files in this folder. Add a workflow and reload."); }
