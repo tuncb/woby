@@ -780,7 +780,7 @@ bool drawSceneItemInteraction(woby::UiState& state, woby::SceneObjectId id,
                 ImGui::PushID(std::to_string(comparisonObject.objectId).c_str());
                 if (ImGui::BeginMenu(comparisonObject.name.c_str())) {
                     const bool singleSource = woby::isUvAnalysis(comparisonObject.settings.type)
-                        || woby::comparisonTask(state, comparisonObject.objectId) == woby::AnalysisTask::meshChecks;
+                        || woby::isSingleSourceMeshTask(woby::comparisonTask(state, comparisonObject.objectId));
                     const auto sourceSide = !woby::isUvAnalysis(comparisonObject.settings.type) && comparisonObject.a.empty()
                         && !comparisonObject.b.empty() ? woby::ComparisonSide::b : woby::ComparisonSide::a;
                     for (const auto side : {woby::ComparisonSide::a, woby::ComparisonSide::b}) {

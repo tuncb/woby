@@ -323,7 +323,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
     STRING_FIELD(uvColor) STRING_FIELD(uvMetric) STRING_FIELD(uvNormalization) STRING_FIELD(type) STRING_FIELD(uvView)
 #undef STRING_FIELD
-    if (command.type && *command.type != "mesh" && *command.type != "uv" && *command.type != "uv_quality") { throw std::invalid_argument("type must be mesh, uv or uv_quality."); }
+    if (command.type && *command.type != "mesh" && *command.type != "surface_comparison" && *command.type != "uv" && *command.type != "uv_quality") { throw std::invalid_argument("type must be mesh, surface_comparison, uv or uv_quality."); }
     if (command.uvColor && *command.uvColor != "grid" && *command.uvColor != "u" && *command.uvColor != "v") { throw std::invalid_argument("uvColor must be grid, u or v."); }
     if (command.uvMetric && *command.uvMetric != "angle" && *command.uvMetric != "area" && *command.uvMetric != "orientation") { throw std::invalid_argument("uvMetric must be angle, area or orientation."); }
     if (command.uvNormalization && *command.uvNormalization != "per_patch" && *command.uvNormalization != "absolute") { throw std::invalid_argument("uvNormalization must be per_patch or absolute."); }
@@ -401,7 +401,7 @@ std::string controlMethodUsage(const ControlMethod& method)
         result += cliOption(name);
         if (name != "tree" && name != "remember") {
             result += booleanOption(name) ? " true|false" : name == "rgb" ? " R G B" : vectorOption(name) ? (vectorSize(name) == 2 ? " U V" : " X Y Z")
-                : name == "type" ? " mesh|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
+                : name == "type" ? " mesh|surface_comparison|uv|uv_quality" : name == "uvColor" ? " grid|u|v" : name == "uvMetric" ? " angle|area|orientation" : name == "uvNormalization" ? " per_patch|absolute" : name == "uvView" ? " layout|surface" : name == "shape" ? " line|rectangle" : name == "mode" ? " distance|a|b|overlay|surface_quality" : name == "side" ? " a|b"
                 : name == "path" ? " PATH" : name == "collection" ? " ARRAY_PATH" : name == "index" ? " POSITIVE_INTEGER"
                 : name == "a" || name == "b" || name == "object" ? " OBJECT_ID" : stringOption(name) ? " TEXT" : " N";
         }

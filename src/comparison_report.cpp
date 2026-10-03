@@ -39,7 +39,7 @@ std::vector<std::string> comparisonReportLines(
     std::vector<std::string> lines;
     if (options.comparisonName) { lines.push_back(name); }
     if (options.sources) {
-        if (!a.empty()) { lines.push_back("A: " + a); }
+        if (!a.empty()) { lines.push_back((settings.task == AnalysisTask::meshQuality ? "Sources: " : "A: ") + a); }
         if (!b.empty()) { lines.push_back("B: " + b); }
     }
     if (isUvAnalysis(settings.type)) {
@@ -152,20 +152,21 @@ std::vector<std::string> comparisonReportLines(
         if (options.legend && settings.degenerates.show) { lines.push_back("Purple faces/edges: degenerate triangles; crosses mark collapsed faces."); }
     }
     if (settings.mode == ComparisonMode::surfaceQuality) {
+        const bool sources = settings.task == AnalysisTask::meshQuality;
         const auto metric = settings.quality.metric;
         const auto index = static_cast<size_t>(metric);
         const auto& distribution = result.qualityDistributions[index];
         lines.push_back("Surface mesh quality");
         lines.push_back(surfaceQualityMetricName(metric));
-        if (options.direction) { lines.push_back(settings.quality.onOriginal ? "Heatmap: A" : "Heatmap: B"); }
+        if (options.direction) { lines.push_back(sources ? "Heatmap: Sources" : settings.quality.onOriginal ? "Heatmap: A" : "Heatmap: B"); }
         if (options.legend) {
-            lines.push_back("Shared A/B range: " + measurementNumber(distribution.minimum) + " to " + measurementNumber(distribution.maximum));
+            lines.push_back(std::string(sources ? "Range: " : "Shared A/B range: ") + measurementNumber(distribution.minimum) + " to " + measurementNumber(distribution.maximum));
             lines.push_back(metric == SurfaceQualityMetric::shape ? "Blue: equilateral; red: poor shape." :
                 metric == SurfaceQualityMetric::sizeJump ? "Blue: equal neighbor size; red: largest jump." : "Blue: small; red: large. Colors describe size.");
             lines.push_back("Magenta: degenerate; gray: unavailable. Surface shading affects brightness.");
             size_t side = 0;
             for (const auto* quality : {&result.original.quality, &result.repaired.quality}) {
-                const std::string label = side++ == 0 ? "A" : "B";
+                const std::string label = sources ? "Sources" : side++ == 0 ? "A" : "B";
                 if (quality->triangles.empty()) { continue; }
                 lines.push_back(label + ": " + std::to_string(quality->triangles.size()) + " triangles; " +
                     std::to_string(quality->degenerateTriangles) + " degenerate");
@@ -187,7 +188,7 @@ std::vector<std::string> comparisonReportLines(
             if (options.legend) {
                 size_t side = 0;
                 for (const auto* quality : {&result.original.quality, &result.repaired.quality}) {
-                    const std::string label = side++ == 0 ? "A" : "B";
+                    const std::string label = sources ? "Sources" : side++ == 0 ? "A" : "B";
                     if (quality->triangles.empty()) { continue; }
                     const auto limits = surfaceQualitySizeLimits(*quality, settings.quality);
                     lines.push_back(label + " below / above limits: " + std::to_string(limits.below) + " / " + std::to_string(limits.above));

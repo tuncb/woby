@@ -2447,7 +2447,14 @@ TEST_CASE("surface mesh quality percentiles and size limits distinguish counts f
 
 TEST_CASE("surface mesh quality settings persist normalize and preserve single input inspection")
 {
+    struct Fixture {
+        std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+            / ("woby-quality-" + std::to_string(std::random_device{}()) + "-" + std::to_string(std::random_device{}()));
+        Fixture() { std::filesystem::create_directory(root); }
+        ~Fixture() { std::error_code error; std::filesystem::remove_all(root, error); }
+    } fixture;
     auto state = stateWithFiles(1);
+    state.files[0].path = fixture.root / state.files[0].path.filename();
     const auto id = woby::createComparison(state);
     woby::setComparisonObjects(state, {state.files[0].objectId}, woby::ComparisonSide::a, true, id);
     auto settings = woby::comparisonSettings(state, id);
@@ -2462,17 +2469,15 @@ TEST_CASE("surface mesh quality settings persist normalize and preserve single i
     CHECK(woby::comparisonGeometrySignature(state, id) == signature);
     CHECK(woby::effectiveComparisonSettings(state, id).mode == woby::ComparisonMode::surfaceQuality);
     CHECK(woby::effectiveComparisonSettings(state, id).quality.onOriginal);
-    CHECK_FALSE(woby::comparisonSettings(state, id).quality.onOriginal);
-    const auto path = std::filesystem::temp_directory_path() / "woby-surface-quality.woby";
-    state.files[0].path = path.parent_path() / state.files[0].path;
+    CHECK(woby::comparisonSettings(state, id).quality.onOriginal);
+    const auto path = fixture.root / "quality.woby";
     const auto document = woby::createSceneDocument(state);
     woby::writeSceneDocument(path, document);
     CHECK(woby::readSceneDocument(path).comparisons == document.comparisons);
-    std::filesystem::remove(path);
     const auto copy = woby::duplicateComparison(state, id);
     CHECK(woby::comparisonSettings(state, copy) == woby::comparisonSettings(state, id));
     woby::swapComparisonGroups(state, id);
-    CHECK_FALSE(woby::effectiveComparisonSettings(state, id).quality.onOriginal);
+    CHECK(woby::effectiveComparisonSettings(state, id).quality.onOriginal);
     settings.quality.metric = static_cast<woby::SurfaceQualityMetric>(99);
     settings.quality.minimumSize = std::numeric_limits<float>::quiet_NaN();
     settings.quality.maximumSize = -1;
@@ -2488,6 +2493,9 @@ TEST_CASE("surface mesh quality reports group size limits and omit unit labels")
     const auto result = woby::compareMeshes(input, {});
     woby::ComparisonSettings settings;
     settings.mode = woby::ComparisonMode::surfaceQuality;
+    SUBCASE("legacy sides") {}
+    SUBCASE("single sources") { settings.task = woby::AnalysisTask::meshQuality; }
+    const std::string source = settings.task == woby::AnalysisTask::meshQuality ? "Sources" : "A";
     settings.quality.onOriginal = true;
     settings.quality.metric = woby::SurfaceQualityMetric::sizeJump;
     settings.quality.maximumEnabled = true;
@@ -2497,11 +2505,12 @@ TEST_CASE("surface mesh quality reports group size limits and omit unit labels")
     CHECK(report.find("Surface mesh quality") != std::string::npos);
     CHECK(report.find("Local size jump\n") != std::string::npos);
     CHECK(report.find("max size jump: N/A") != std::string::npos);
-    CHECK(report.find("Heatmap: A") != std::string::npos);
+    CHECK(report.find("Heatmap: " + source) != std::string::npos);
+    CHECK((report.find("Shared A/B") == std::string::npos) == (settings.task == woby::AnalysisTask::meshQuality));
     CHECK(report.find("100% of faces; 100% of area") != std::string::npos);
     CHECK(report.find("Longest-edge limits (inclusive): no minimum to 1\n") != std::string::npos);
-    CHECK(report.find("Longest-edge limits") < report.find("A below / above limits"));
-    CHECK(report.find("A below / above limits") < report.find("A outside limits"));
+    CHECK(report.find("Longest-edge limits") < report.find(source + " below / above limits"));
+    CHECK(report.find(source + " below / above limits") < report.find(source + " outside limits"));
     CHECK(report.find("model units") == std::string::npos);
     CHECK(report.find("dimensionless") == std::string::npos);
     CHECK(report.find("B:") == std::string::npos);
@@ -2546,35 +2555,39 @@ TEST_CASE("surface mesh quality sample projects match analytical expectations")
         const auto state = woby::prepareSceneReplacement({}, std::move(files), document);
         REQUIRE(state.comparisons.size() == expected.size());
         REQUIRE(document.camera);
+        size_t analysisIndex = 0;
         for (const auto& comparison : state.comparisons) {
             REQUIRE(woby::canInspectComparison(state, comparison.objectId));
             CHECK(comparison.settings.mode == woby::ComparisonMode::surfaceQuality);
             const auto a = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, comparison.objectId);
-            const auto b = comparison.b.empty() ? woby::Mesh{} :
-                woby::comparisonWorldMesh(state, woby::ComparisonSide::b, comparison.objectId);
-            const auto result = woby::compareMeshes(a, b);
+            CHECK(comparison.b.empty());
+            CHECK(comparison.settings.task == woby::AnalysisTask::meshQuality);
+            REQUIRE(comparison.a.size() == 1);
+            CHECK(comparison.a[0].objectId == state.files[analysisIndex].groupSettings[0].objectId);
+            const auto result = woby::compareMeshes(a, {});
             const auto json = woby::controlComparisonResults(result, .05);
-            for (const auto& [side, checks] : expected.items()) {
-                const auto& surface = side == "a" ? result.original : result.repaired;
-                auto actual = json.at(side == "a" ? "aToB" : "bToA");
-                const auto limits = woby::surfaceQualitySizeLimits(surface.quality, comparison.settings.quality);
-                actual["limits"] = {{"below", limits.below}, {"above", limits.above},
-                    {"trianglePercent", limits.trianglePercent}, {"areaPercent", limits.areaPercent}};
-                for (const auto& [key, wanted] : checks.items()) {
-                    INFO(side, ": ", key);
-                    const auto dot = key.find('.');
-                    nlohmann::json value;
-                    if (dot == std::string::npos) { value = actual.at(key); }
-                    else {
-                        const auto category = key.substr(0, dot), field = key.substr(dot + 1);
-                        value = category == "diagnostics" || category == "limits" ? actual.at(category).at(field) :
-                            actual.at("surfaceMeshQuality").at(category).at(field);
-                    }
-                    if (wanted.is_null()) { CHECK(value.is_null()); }
-                    else {
-                        REQUIRE(value.is_number());
-                        CHECK(value.get<double>() == doctest::Approx(wanted.get<double>()).epsilon(1e-5));
-                    }
+            // Reference A/B entries describe the left/right sample, each now its own analysis.
+            const auto side = analysisIndex++ == 0 ? "a" : "b";
+            const auto& checks = expected.at(side);
+            const auto& surface = result.original;
+            auto actual = json.at("aToB");
+            const auto limits = woby::surfaceQualitySizeLimits(surface.quality, comparison.settings.quality);
+            actual["limits"] = {{"below", limits.below}, {"above", limits.above},
+                {"trianglePercent", limits.trianglePercent}, {"areaPercent", limits.areaPercent}};
+            for (const auto& [key, wanted] : checks.items()) {
+                INFO(side, ": ", key);
+                const auto dot = key.find('.');
+                nlohmann::json value;
+                if (dot == std::string::npos) { value = actual.at(key); }
+                else {
+                    const auto category = key.substr(0, dot), field = key.substr(dot + 1);
+                    value = category == "diagnostics" || category == "limits" ? actual.at(category).at(field) :
+                        actual.at("surfaceMeshQuality").at(category).at(field);
+                }
+                if (wanted.is_null()) { CHECK(value.is_null()); }
+                else {
+                    REQUIRE(value.is_number());
+                    CHECK(value.get<double>() == doctest::Approx(wanted.get<double>()).epsilon(1e-5));
                 }
             }
         }

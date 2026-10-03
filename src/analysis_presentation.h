@@ -9,8 +9,7 @@ namespace woby {
 [[nodiscard]] AnalysisTask analysisTask(const ComparisonSettings& settings, bool bothInputs);
 [[nodiscard]] const char* analysisTaskLabel(AnalysisTask task);
 [[nodiscard]] const char* analysisTaskKey(AnalysisTask task);
-[[nodiscard]] ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, AnalysisTask task,
-    bool hasA, bool hasB);
+[[nodiscard]] ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, AnalysisTask task);
 
 enum class AnalysisResultState { ready, notRun, queued, running, outdated, canceled, failed, partial, unavailable };
 struct DiagnosticSummary {

@@ -497,6 +497,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "analysis_type") {
         const auto type = parseTomlString(value);
         if (type == "mesh") { record.settings.type = AnalysisType::mesh; }
+        else if (type == "surface_comparison") { record.settings.type = AnalysisType::surfaceComparison; }
         else if (type == "uv") { record.settings.type = AnalysisType::uv; }
         else if (type == "uv_quality") { record.settings.type = AnalysisType::uvQuality; }
         else { throw std::runtime_error("Unknown analysis type."); }
@@ -899,7 +900,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1192,7 +1193,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 21\n";
+    stream << "version = 22\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';

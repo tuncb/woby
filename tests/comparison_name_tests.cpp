@@ -473,11 +473,16 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
     SUBCASE("quality") { task = woby::AnalysisTask::meshQuality; }
     SUBCASE("comparison") { task = woby::AnalysisTask::surfaceComparison; }
     woby::setAnalysisTask(f.state, f.id, task);
+    auto settings = woby::comparisonSettings(f.state, f.id);
+    settings.quality.maximumEnabled = true;
+    woby::setComparisonSettings(f.state, settings, f.id);
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
     runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
     runtime.cache = {runtime.resultSignature, woby::comparisonSource | woby::comparisonQuality | woby::comparisonDistance};
-    runtime.result = woby::computeComparisonStages(mesh, mesh, runtime.cache.completed);
+    runtime.result = woby::computeComparisonStages(woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id),
+        task == woby::AnalysisTask::surfaceComparison ? woby::comparisonWorldMesh(f.state, woby::ComparisonSide::b, f.id)
+            : woby::Mesh{}, runtime.cache.completed);
     std::string contents;
     for (int frame = 0; frame < 2; ++frame) {
         ImGui::NewFrame();
@@ -494,6 +499,16 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
     CHECK((contents.find("Diagnostics") != std::string::npos) == (task == woby::AnalysisTask::meshChecks));
     CHECK((contents.find("Size limits") != std::string::npos) == (task == woby::AnalysisTask::meshQuality));
     CHECK((contents.find("Area-weighted mean") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
+    CHECK((contents.find("Group A") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
+    CHECK((contents.find("Group B") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
+    CHECK((contents.find("Swap inputs A / B") != std::string::npos) == (task == woby::AnalysisTask::surfaceComparison));
+    CHECK((contents.find("Analysis task") != std::string::npos) != (task == woby::AnalysisTask::surfaceComparison));
+    CHECK(contents.find("Heatmap surface") == std::string::npos);
+    CHECK(contents.find("Shared A/B") == std::string::npos);
+    if (task == woby::AnalysisTask::meshQuality) {
+        CHECK(contents.find("Value") != std::string::npos);
+        CHECK(findComparison(f.state, f.id)->b.empty());
+    }
     CHECK(contents.find("Placement") != std::string::npos);
     CHECK(contents.find("Result position") == std::string::npos);
 }

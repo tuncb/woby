@@ -255,7 +255,7 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
         result.enabledPartCount += root.enabledPartCount;
         appendNames(appendNames, root);
     }
-    const bool checks = comparisonTask(state, id) == AnalysisTask::meshChecks;
+    const bool checks = isSingleSourceMeshTask(comparisonTask(state, id));
     const std::string label = side == ComparisonSide::a ? "A" : "B";
     if (const auto* comparison = findComparison(state, id)) {
         const auto available = comparableScenePartIds(state);

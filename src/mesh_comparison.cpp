@@ -606,7 +606,8 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
 
 ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
 {
-    if (settings.type != AnalysisType::mesh && settings.type != AnalysisType::uv && settings.type != AnalysisType::uvQuality) { settings.type = AnalysisType::mesh; }
+    if (settings.type != AnalysisType::mesh && settings.type != AnalysisType::uv && settings.type != AnalysisType::uvQuality
+        && settings.type != AnalysisType::surfaceComparison) { settings.type = AnalysisType::mesh; }
     if (settings.uvView != UvView::layout && settings.uvView != UvView::surface) { settings.uvView = UvView::layout; }
     settings.uvGrid = normalizedUvGrid(settings.uvGrid);
     if (settings.uvMetric != UvQualityMetric::area && settings.uvMetric != UvQualityMetric::orientation) { settings.uvMetric = UvQualityMetric::angle; }
@@ -641,12 +642,16 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     if (settings.task < AnalysisTask::automatic || settings.task > AnalysisTask::uvInspection) {
         settings.task = AnalysisTask::automatic;
     }
+    if (settings.type == AnalysisType::surfaceComparison) { settings.task = AnalysisTask::surfaceComparison; }
     if (settings.task != AnalysisTask::automatic) {
         if (isUvAnalysis(settings.type)) { settings.task = AnalysisTask::uvInspection; }
         else if (settings.mode == ComparisonMode::surfaceQuality) { settings.task = AnalysisTask::meshQuality; }
         else if (settings.mode == ComparisonMode::distance || settings.mode == ComparisonMode::overlay) {
             settings.task = AnalysisTask::surfaceComparison;
         } else if (settings.task != AnalysisTask::surfaceComparison) { settings.task = AnalysisTask::meshChecks; }
+        if (!isUvAnalysis(settings.type)) {
+            settings.type = settings.task == AnalysisTask::surfaceComparison ? AnalysisType::surfaceComparison : AnalysisType::mesh;
+        }
     }
     return settings;
 }

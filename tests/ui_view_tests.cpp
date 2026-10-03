@@ -87,8 +87,10 @@ TEST_CASE("views capture independent display checkpoints and restore selection d
     state.camera.target = {7, 8, 9};
     state.camera.distance = 42;
     state.selectedSceneObjects = {group.objectId, state.files[1].objectId};
-    state.comparisons[0].settings.mode = woby::ComparisonMode::surfaceQuality;
-    state.comparisons[0].settings.colorRange = 2;
+    auto qualitySettings = state.comparisons[0].settings;
+    qualitySettings.mode = woby::ComparisonMode::surfaceQuality;
+    qualitySettings.colorRange = 2;
+    woby::setComparisonSettings(state, qualitySettings, state.comparisons[0].objectId);
     state.comparisons[0].translation = {8, 9, 10};
     const auto original = woby::createSceneDocument(state);
     const auto selection = state.selectedSceneObjects;

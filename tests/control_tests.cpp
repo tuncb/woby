@@ -691,6 +691,30 @@ TEST_CASE("ctl mesh isolation scopes group file and folder inputs to existing me
     }
 }
 
+TEST_CASE("ctl creates dedicated surface comparisons and consolidates quality sources")
+{
+    IsolationFixture f;
+    auto& state = f.state;
+    const auto clean = woby::createSceneDocument(state);
+    const auto first = state.files[0].objectId, second = state.files[1].objectId;
+    const auto parsed = parse({"analysis", "create", "--type", "surface_comparison"});
+    CHECK(parsed.operation.type == "surface_comparison");
+    run(state, clean, "analysis.create", {{"type", "surface_comparison"}, {"a", formatId(first)}, {"b", formatId(second)}});
+    const auto id = state.comparisons.back().objectId;
+    CHECK(woby::comparisonSettings(state, id).type == woby::AnalysisType::surfaceComparison);
+    CHECK(woby::canCompareGroups(state, id));
+    run(state, clean, "analysis.set", {{"mode", "a"}}, id);
+    CHECK(woby::comparisonSettings(state, id).type == woby::AnalysisType::surfaceComparison);
+    run(state, clean, "analysis.set", {{"mode", "surface_quality"}, {"qualityOnA", false}}, id);
+    CHECK(woby::comparisonSettings(state, id).type == woby::AnalysisType::mesh);
+    CHECK(woby::comparisonSettings(state, id).task == woby::AnalysisTask::meshQuality);
+    CHECK(woby::comparisonSettings(state, id).quality.onOriginal);
+    CHECK(woby::findComparison(state, id)->b.empty());
+    CHECK(woby::comparisonPartCount(state, woby::ComparisonSide::a, id) == 6);
+    run(state, clean, "analysis.enable", {{"side", "b"}, {"object", formatId(second)}, {"enabled", true}, {"isolate", true}}, id);
+    CHECK(woby::enabledComparisonPartCount(state, woby::ComparisonSide::a, id) == 3);
+}
+
 TEST_CASE("ctl isolation rejects invalid requests atomically and keeps UV side restrictions")
 {
     IsolationFixture fixture;

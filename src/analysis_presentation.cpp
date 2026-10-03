@@ -6,6 +6,7 @@ namespace woby {
 AnalysisTask analysisTask(const ComparisonSettings& settings, bool bothInputs)
 {
     if (isUvAnalysis(settings.type)) { return AnalysisTask::uvInspection; }
+    if (settings.type == AnalysisType::surfaceComparison) { return AnalysisTask::surfaceComparison; }
     if (settings.task != AnalysisTask::automatic) { return settings.task; }
     if (settings.mode == ComparisonMode::surfaceQuality) { return AnalysisTask::meshQuality; }
     if (bothInputs) {
@@ -19,7 +20,7 @@ const char* analysisTaskLabel(AnalysisTask task)
     switch (task) {
     case AnalysisTask::meshChecks: return "Mesh checks";
     case AnalysisTask::meshQuality: return "Mesh quality";
-    case AnalysisTask::surfaceComparison: return "Comparison";
+    case AnalysisTask::surfaceComparison: return "Surface comparison";
     case AnalysisTask::uvInspection: return "UV inspection";
     case AnalysisTask::automatic: default: return "Analysis";
     }
@@ -36,7 +37,7 @@ const char* analysisTaskKey(AnalysisTask task)
     }
 }
 
-ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, AnalysisTask task, bool hasA, bool hasB)
+ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, AnalysisTask task)
 {
     if (task < AnalysisTask::meshChecks || task > AnalysisTask::uvInspection) { return settings; }
     settings.task = task;
@@ -51,10 +52,12 @@ ComparisonSettings settingsForAnalysisTask(ComparisonSettings settings, Analysis
             break;
         case AnalysisTask::meshQuality:
             settings.mode = ComparisonMode::surfaceQuality;
-            if (!hasA && hasB) { settings.quality.onOriginal = false; }
-            else if (hasA && !hasB) { settings.quality.onOriginal = true; }
+            settings.quality.onOriginal = true;
             break;
-        case AnalysisTask::surfaceComparison: settings.mode = ComparisonMode::distance; break;
+        case AnalysisTask::surfaceComparison:
+            settings.type = AnalysisType::surfaceComparison;
+            settings.mode = ComparisonMode::distance;
+            break;
         case AnalysisTask::automatic: case AnalysisTask::uvInspection: break;
         }
     }

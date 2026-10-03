@@ -84,6 +84,7 @@ TEST_CASE("surface mesh quality mode metric and limits undo and redo together")
     woby::resetSceneHistory(f.history, f.state);
     const auto original = woby::comparisonSettings(f.state, id);
     auto settings = original;
+    settings.task = woby::AnalysisTask::meshQuality;
     settings.mode = woby::ComparisonMode::surfaceQuality;
     settings.quality.metric = woby::SurfaceQualityMetric::shape;
     settings.quality.onOriginal = true;

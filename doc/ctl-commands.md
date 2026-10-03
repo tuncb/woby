@@ -179,7 +179,7 @@ Manual run/cancel requests do not change these saved preferences.
 
 | CLI | RPC method | Behavior |
 | --- | --- | --- |
-| `analysis create [--type mesh|uv|uv_quality] [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
+| `analysis create [--type mesh|surface_comparison|uv|uv_quality] [--name TEXT] [--a OBJECT_ID] [--b OBJECT_ID]` | `analysis.create` | Create an analysis, optionally with an initial input on each side. Returns `target` (the new ID), `object`, `dirty`, and `bounds`. Omitted inputs leave that side empty. |
 | `analysis delete ANALYSIS_ID` | `analysis.delete` | Delete the analysis without deleting its source models. Returns `removed` and `dirty`. |
 | `analysis set ANALYSIS_ID [--name TEXT] [--visible BOOL] [--mode distance\|a\|b\|overlay\|surface_quality] [--distance-on-a BOOL] [--tolerance N] [--color-range N] [--show-edges BOOL] [--show-boundaries BOOL] [--show-non-manifold BOOL] [--show-winding BOOL] [--topology-mode original_index\|exact_position]` | `analysis.set` | Edit any supplied settings; at least one is required. Names must contain 1–511 UTF-8 bytes without NUL characters. |
 | `analysis add ANALYSIS_ID --side a\|b --object OBJECT_ID` | `analysis.add` | Add the input's current triangular parts to the selected side, deduplicating existing membership. |
@@ -489,6 +489,13 @@ define the blue-to-yellow parameter range; maximum must exceed minimum. Values
 outside the range use endpoint colors. The existing `uvGrid` switch enables any
 of these coloring modes, preserving older scenes and commands. Parent edits apply
 to UV-bearing descendants, retaining individual child overrides in saved scenes.
+
+`surface_comparison` creates a dedicated A/B surface comparison. The legacy
+`mesh` type still accepts both input options. Switching to `surface_quality`
+consolidates its inputs into one Sources list, retaining disabled parts and
+using the enabled state if either input enabled a repeated part. Quality uses
+input A internally; side B source commands act on the same list and swapping
+has no effect.
 
 `uv_quality` is a single-input analysis, initially showing the 3D surface.
 The UV inspection UI can switch between Layout (`uv`) and Distortion (`uv_quality`)

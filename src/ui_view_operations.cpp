@@ -319,7 +319,7 @@ void applyView(UiState& state, ViewId id)
             comparison->translation = settings.translation;
         }
     }
-    for (const auto& comparison : state.comparisons) { normalizeMeshCheckSources(state, comparison.objectId); }
+    for (const auto& comparison : state.comparisons) { normalizeAnalysisSources(state, comparison.objectId); }
     state.showOrigin = view.scene.showOrigin;
     state.showGrid = view.scene.showGrid;
     state.showDimensions = view.scene.showDimensions;

@@ -396,7 +396,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             return {{"target", formatId(id)}, {"detector", *detector}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
         }
         if (command.action == A::comparisonCreate) {
-            id = createComparison(state, command.type == "uv_quality" ? AnalysisType::uvQuality : command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
+            id = createComparison(state, command.type == "surface_comparison" ? AnalysisType::surfaceComparison
+                : command.type == "uv_quality" ? AnalysisType::uvQuality : command.type == "uv" ? AnalysisType::uv : AnalysisType::mesh);
             if (command.name) { renameComparison(state, id, *command.name); }
             if (command.a) { setComparisonObjects(state, {command.aId}, ComparisonSide::a, true, id); }
             if (command.b) { setComparisonObjects(state, {command.bId}, ComparisonSide::b, true, id); }
@@ -481,7 +482,8 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         } else if (command.action == A::comparisonSwap) {
             swapComparisonGroups(state, id);
         } else {
-            const auto side = *command.side == "a" ? ComparisonSide::a : ComparisonSide::b;
+            const auto side = isSingleSourceMeshTask(comparisonSettings(state, id).task) || *command.side == "a"
+                ? ComparisonSide::a : ComparisonSide::b;
             if (command.action == A::comparisonClear) { clearComparisonGroup(state, side, id); }
             else if (command.action == A::comparisonEnable) {
                 if (command.isolate.value_or(false)) {

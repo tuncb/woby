@@ -292,11 +292,11 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
             if (ImGui::MenuItem("Show all patches")) { isolateUvObjects(state,{},id); }
         } else {
             if (ImGui::MenuItem("Enable only this object")) { isolateComparisonObjects(state, {node.objectId}, side, id); }
-            if (ImGui::MenuItem(comparisonTask(state, id) == AnalysisTask::meshChecks ? "Enable all sources" : "Enable all on this side")) {
+            if (ImGui::MenuItem(isSingleSourceMeshTask(comparisonTask(state, id)) ? "Enable all sources" : "Enable all on this side")) {
                 setComparisonObjectsEnabled(state, {}, side, true, id);
             }
         }
-        const bool sources = isUvAnalysis(comparisonSettings(state, id).type) || comparisonTask(state, id) == AnalysisTask::meshChecks;
+        const bool sources = isUvAnalysis(comparisonSettings(state, id).type) || isSingleSourceMeshTask(comparisonTask(state, id));
         const char* label = sources ? "Remove from sources" : side == ComparisonSide::a ? "Remove from group A" : "Remove from group B";
         if (ImGui::MenuItem(label)) { setComparisonObjects(state, {node.objectId}, side, false, id); }
         ImGui::EndPopup();
@@ -311,7 +311,7 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
 void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
 {
     const bool uv = isUvAnalysis(comparisonSettings(state, id).type);
-    const bool checks = comparisonTask(state, id) == AnalysisTask::meshChecks;
+    const bool checks = isSingleSourceMeshTask(comparisonTask(state, id));
     const char* label = checks ? "Sources" : uv ? "Source" : side == ComparisonSide::a ? "Group A" : "Group B";
     ImGui::PushID(label);
     comparisonEnabledCheckbox(state, side, id, {});
@@ -1592,7 +1592,7 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
 }
 
 namespace {
-void drawSurfaceQualitySizeLimits(UiState& state, SceneObjectId id, const MeshComparison* result, bool hasA, bool hasB)
+void drawSurfaceQualitySizeLimits(UiState& state, SceneObjectId id, const MeshComparison* result)
 {
     ImGui::Separator();
     ImGui::TextUnformatted("Size limits (longest edge)");
@@ -1618,21 +1618,15 @@ void drawSurfaceQualitySizeLimits(UiState& state, SceneObjectId id, const MeshCo
     const auto& quality = comparisonSettings(state, id).quality;
     if (!quality.minimumEnabled && !quality.maximumEnabled) {
         ImGui::TextDisabled("Enable a limit to see outside-limit statistics.");
-    } else if (result && ImGui::BeginTable("quality_size_limits", 3,
+    } else if (result && ImGui::BeginTable("quality_size_limits", 2,
                    ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Statistic", ImGuiTableColumnFlags_WidthStretch, 1.6f);
-        ImGui::TableSetupColumn("A"); ImGui::TableSetupColumn("B"); ImGui::TableHeadersRow();
-        const std::array<QualitySizeLimits, 2> limits = {
-            surfaceQualitySizeLimits(result->original.quality, quality),
-            surfaceQualitySizeLimits(result->repaired.quality, quality)};
-        const std::array<bool, 2> present = {hasA, hasB};
+        ImGui::TableSetupColumn("Value"); ImGui::TableHeadersRow();
+        const auto limits = surfaceQualitySizeLimits(result->original.quality, quality);
         const auto row = [&](const char* label, const auto& value) {
             ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label);
-            for (size_t side = 0; side < limits.size(); ++side) {
-                ImGui::TableNextColumn();
-                const auto text = present[side] ? value(limits[side]) : "-";
-                ImGui::TextUnformatted(text.c_str());
-            }
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(value(limits).c_str());
         };
         if (quality.minimumEnabled) { row("Below minimum", [](const auto& l) { return std::to_string(l.below); }); }
         if (quality.maximumEnabled) { row("Above maximum", [](const auto& l) { return std::to_string(l.above); }); }
@@ -1643,7 +1637,7 @@ void drawSurfaceQualitySizeLimits(UiState& state, SceneObjectId id, const MeshCo
     ImGui::Separator();
 }
 
-void drawSurfaceQualityStatistics(const MeshComparison& result, const ComparisonSettings& settings, bool hasA, bool hasB)
+void drawSurfaceQualityStatistics(const MeshComparison& result, const ComparisonSettings& settings)
 {
     const auto metric = settings.quality.metric;
     const auto index = static_cast<size_t>(metric);
@@ -1662,19 +1656,14 @@ void drawSurfaceQualityStatistics(const MeshComparison& result, const Comparison
     const float legend = drawSurfaceQualityLegend(*ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(),
         ImGui::GetContentRegionAvail().x, ImGui::GetFontSize(), metric, distribution);
     ImGui::Dummy({0, legend});
-    ImGui::TextWrapped("Shared A/B range. Magenta: degenerate. Gray: unavailable.");
-    const std::array<const SurfaceMeshQuality*, 2> sides = {&result.original.quality, &result.repaired.quality};
-    const std::array<bool, 2> present = {hasA, hasB};
-    if (ImGui::BeginTable("quality_statistics", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
+    ImGui::TextWrapped("Magenta: degenerate. Gray: unavailable.");
+    if (ImGui::BeginTable("quality_statistics", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg)) {
         ImGui::TableSetupColumn("Statistic", ImGuiTableColumnFlags_WidthStretch, 1.6f);
-        ImGui::TableSetupColumn("A"); ImGui::TableSetupColumn("B"); ImGui::TableHeadersRow();
+        ImGui::TableSetupColumn("Value"); ImGui::TableHeadersRow();
         const auto row = [&](const char* label, const auto& value) {
             ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextUnformatted(label);
-            for (size_t side = 0; side < sides.size(); ++side) {
-                ImGui::TableNextColumn();
-                const auto text = present[side] ? value(*sides[side]) : "-";
-                ImGui::TextUnformatted(text.c_str());
-            }
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(value(result.original.quality).c_str());
         };
         row("Triangles", [](const auto& q) { return std::to_string(q.triangles.size()); });
         row("Degenerate", [](const auto& q) { return std::to_string(q.degenerateTriangles); });
@@ -1692,29 +1681,22 @@ void drawSurfaceQualityStatistics(const MeshComparison& result, const Comparison
         ImGui::EndTable();
     }
     ImGui::TextUnformatted("Distribution (% of measured faces)");
-    ImGui::TextColored(ImVec4(.3f, .65f, 1, 1), "A"); ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1, .65f, .25f, 1), "B"); ImGui::SameLine();
-    ImGui::TextUnformatted("Shared bins and vertical scale");
     const auto position = ImGui::GetCursorScreenPos();
     const float width = std::max(1.0f, ImGui::GetContentRegionAvail().x), height = ImGui::GetFontSize() * 5;
     auto& draw = *ImGui::GetWindowDrawList();
-    const auto percent = [&](size_t side, size_t bin) {
-        return distribution.counts[side] ? 100.0 * static_cast<double>(distribution.bins[side][bin]) /
-            static_cast<double>(distribution.counts[side]) : 0;
+    const auto percent = [&](size_t bin) {
+        return distribution.counts[0] ? 100.0 * static_cast<double>(distribution.bins[0][bin]) /
+            static_cast<double>(distribution.counts[0]) : 0;
     };
     double peak = 0;
-    for (size_t side = 0; side < 2; ++side) {
-        for (size_t bin = 0; bin < surfaceQualityBinCount; ++bin) { peak = std::max(peak, percent(side, bin)); }
-    }
+    for (size_t bin = 0; bin < surfaceQualityBinCount; ++bin) { peak = std::max(peak, percent(bin)); }
     const float binWidth = width / static_cast<float>(surfaceQualityBinCount);
     draw.AddRectFilled(position, {position.x + width, position.y + height}, IM_COL32(30, 34, 40, 255));
     for (size_t bin = 0; bin < surfaceQualityBinCount; ++bin) {
-        for (size_t side = 0; side < 2; ++side) {
-            const float barHeight = peak > 0 ? height * static_cast<float>(percent(side, bin) / peak) : 0;
-            const float x = position.x + static_cast<float>(bin) * binWidth + static_cast<float>(side) * binWidth * .5f;
-            draw.AddRectFilled({x, position.y + height - barHeight}, {x + binWidth * .45f, position.y + height},
-                side == 0 ? IM_COL32(77, 166, 255, 255) : IM_COL32(255, 166, 64, 255));
-        }
+        const float barHeight = peak > 0 ? height * static_cast<float>(percent(bin) / peak) : 0;
+        const float x = position.x + static_cast<float>(bin) * binWidth;
+        draw.AddRectFilled({x, position.y + height - barHeight}, {x + binWidth * .9f, position.y + height},
+            IM_COL32(77, 166, 255, 255));
     }
     ImGui::InvisibleButton("quality_histogram", {width, height});
     if (ImGui::IsItemHovered()) {
@@ -1724,9 +1706,7 @@ void drawSurfaceQualityStatistics(const MeshComparison& result, const Comparison
         ImGui::BeginTooltip();
         ImGui::Text("[%.5g, %.5g%s", distribution.minimum + static_cast<double>(bin) * step,
             distribution.minimum + static_cast<double>(bin + 1) * step, bin + 1 == surfaceQualityBinCount ? "]" : ")");
-        for (size_t side = 0; side < 2; ++side) {
-            ImGui::Text("%s: %zu faces (%.2f%%)", side == 0 ? "A" : "B", distribution.bins[side][bin], percent(side, bin));
-        }
+        ImGui::Text("%zu faces (%.2f%%)", distribution.bins[0][bin], percent(bin));
         ImGui::EndTooltip();
     }
     ImGui::TextWrapped("%.5g to %.5g; vertical maximum %.3g%%", distribution.minimum, distribution.maximum, peak);
@@ -1897,35 +1877,35 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     ImGui::SameLine();
     ImGui::SetNextItemWidth(-1);
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
-    if (!isUvAnalysis(comparison->settings.type)) {
-        const AnalysisTask tasks[] = {AnalysisTask::meshChecks, AnalysisTask::meshQuality, AnalysisTask::surfaceComparison};
-        const char* labels[] = {"Mesh checks", "Mesh quality", "Surface comparison"};
-        int selectedTask = task == AnalysisTask::meshQuality ? 1 : task == AnalysisTask::surfaceComparison ? 2 : 0;
+    if (isSingleSourceMeshTask(task)) {
+        const AnalysisTask tasks[] = {AnalysisTask::meshChecks, AnalysisTask::meshQuality};
+        const char* labels[] = {"Mesh checks", "Mesh quality"};
+        int selectedTask = task == AnalysisTask::meshQuality ? 1 : 0;
         ImGui::TextUnformatted("Analysis task");
         ImGui::SetNextItemWidth(-1);
-        if (ImGui::Combo("##analysis_task", &selectedTask, labels, 3)) {
+        if (ImGui::Combo("##analysis_task", &selectedTask, labels, 2)) {
             setAnalysisTask(state, id, tasks[selectedTask]);
             task = tasks[selectedTask];
         }
-    } else { ImGui::TextUnformatted("UV inspection"); }
+    } else { ImGui::TextUnformatted(analysisTaskLabel(task)); }
     const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
     const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     const bool both = hasA && hasB;
-    ImGui::SeparatorText(task == AnalysisTask::meshChecks ? "Sources" : "Inputs");
+    ImGui::SeparatorText(isSingleSourceMeshTask(task) ? "Sources" : "Inputs");
     ImGui::SameLine();
     drawInformationIcon("comparison_info", "Analysis inputs",
-        task == AnalysisTask::meshChecks
+        isSingleSourceMeshTask(task)
             ? "Drag models onto Sources, or use Analysis membership in the model context menu. Hidden models are included. Expand Sources to enable, isolate, or remove parts."
             : "Drag models onto an input, or use Analysis membership in the model context menu. Hidden source models are included. Expand an input to enable, isolate, or remove its parts.");
     const bool resultReady = comparisonStagesReady(runtime, state, id, comparisonDistance);
-    membershipTree(state, task == AnalysisTask::meshChecks && comparison->a.empty() && !comparison->b.empty() ? ComparisonSide::b : ComparisonSide::a, id);
+    membershipTree(state, isSingleSourceMeshTask(task) && comparison->a.empty() && !comparison->b.empty() ? ComparisonSide::b : ComparisonSide::a, id);
     if (isUvAnalysis(comparison->settings.type)) {
         drawUvInspector(state, runtime, id);
         return;
     }
-    if (task != AnalysisTask::meshChecks) { membershipTree(state, ComparisonSide::b, id); }
+    if (task == AnalysisTask::surfaceComparison) { membershipTree(state, ComparisonSide::b, id); }
     ImGui::Separator();
-    if (task != AnalysisTask::meshChecks && both) {
+    if (task == AnalysisTask::surfaceComparison && both) {
         if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
         setLastItemTooltip("Exchange inputs A and B while keeping the measurement direction.");
     }
@@ -1984,14 +1964,6 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             if (ImGui::Combo("##quality_metric", &metric, metrics, 4)) {
                 settings.quality.metric = static_cast<SurfaceQualityMetric>(metric);
             }
-            if (both) {
-                ImGui::TextUnformatted("Heatmap surface");
-                if (ImGui::RadioButton("A##quality", settings.quality.onOriginal)) { settings.quality.onOriginal = true; }
-                setLastItemTooltip("Show the surface quality heatmap on input A.");
-                ImGui::SameLine();
-                if (ImGui::RadioButton("B##quality", !settings.quality.onOriginal)) { settings.quality.onOriginal = false; }
-                setLastItemTooltip("Show the surface quality heatmap on input B.");
-            }
         }
         if (both && settings.mode == ComparisonMode::overlay)
         {
@@ -2030,8 +2002,8 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (!validVisible) { return; }
     if (task == AnalysisTask::meshQuality) {
         const bool qualityReady = comparisonStagesReady(runtime, state, id, comparisonQuality);
-        if (qualityReady) { drawSurfaceQualityStatistics(runtime.result, comparisonSettings(state, id), hasA, hasB); }
-        drawSurfaceQualitySizeLimits(state, id, qualityReady ? &runtime.result : nullptr, hasA, hasB);
+        if (qualityReady) { drawSurfaceQualityStatistics(runtime.result, comparisonSettings(state, id)); }
+        drawSurfaceQualitySizeLimits(state, id, qualityReady ? &runtime.result : nullptr);
     }
     // Diagnostic focus temporarily changes the drawn surface, not the measured direction.
     const bool useOriginal = !hasB || (hasA && originalActive(comparisonSettings(state, id)));

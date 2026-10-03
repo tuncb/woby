@@ -48,11 +48,12 @@ enum class ComparisonMode
     surfaceQuality
 };
 
-enum class AnalysisType { mesh, uv, uvQuality };
+enum class AnalysisType { mesh, uv, uvQuality, surfaceComparison };
 // Automatic preserves the behavior of scenes and API clients predating task selection.
 enum class AnalysisTask { automatic, meshChecks, meshQuality, surfaceComparison, uvInspection };
-[[nodiscard]] inline bool isUvAnalysis(AnalysisType type) { return type != AnalysisType::mesh; }
-[[nodiscard]] inline const char* analysisTypeKey(AnalysisType type) { return type == AnalysisType::uvQuality ? "uv_quality" : type == AnalysisType::uv ? "uv" : "mesh"; }
+[[nodiscard]] inline bool isUvAnalysis(AnalysisType type) { return type == AnalysisType::uv || type == AnalysisType::uvQuality; }
+[[nodiscard]] inline bool isSingleSourceMeshTask(AnalysisTask task) { return task == AnalysisTask::meshChecks || task == AnalysisTask::meshQuality; }
+[[nodiscard]] inline const char* analysisTypeKey(AnalysisType type) { return type == AnalysisType::surfaceComparison ? "surface_comparison" : type == AnalysisType::uvQuality ? "uv_quality" : type == AnalysisType::uv ? "uv" : "mesh"; }
 enum class UvQualityMetric { angle, area, orientation };
 enum class UvAreaNormalization { perPatch, absolute };
 enum class UvView { layout, surface };

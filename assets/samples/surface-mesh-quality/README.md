@@ -4,13 +4,14 @@ Open any `.woby` file below in Woby. All OBJ files are included and use relative
 paths, so the whole folder can be copied elsewhere. Coordinates are in millimeters.
 No generator, plugin, or download is needed to open them.
 
-The projects open in **Surface mesh quality** mode with a saved camera. Paired
-examples display A on the left and B on the right as two named analyses that
-share the same inputs. Select either analysis in the scene tree to inspect
-the A/B statistics, histogram, metric selector, and size limits in Properties.
+The projects open in **Mesh quality** with a saved camera. Paired examples display
+two named analyses side by side, each with its own Sources list. Select either
+analysis in the scene tree to inspect its statistics, histogram, metric selector,
+and size limits in Properties. Below, A and B refer to the left and right examples.
 Source meshes are hidden to avoid covering the heatmaps, but remain analysis inputs.
 Changing one analysis's metric does not change the other; select the same metric
-on both when comparing their colors. Each analysis computes its range from both inputs.
+on both when comparing their values. Each analysis computes its own color range;
+read its legend when comparing colors across analyses.
 
 | Project | Starts with | What to verify |
 | --- | --- | --- |
@@ -29,7 +30,7 @@ on both when comparing their colors. Each analysis computes its range from both 
 - Switch both analyses to **Equivalent size**. A is `2.149140` mm and B is
   `1.074570` mm. The factor of two remains, while both shape histograms coincide.
 
-Size colors use the common A/B range; they are not an automatic FEM pass/fail score.
+Size colors use each analysis's range; they are not an automatic FEM pass/fail score.
 
 ## 2. Equal area, different shapes
 

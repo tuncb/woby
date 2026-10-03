@@ -110,16 +110,19 @@ importer_id = "org.woby.example.off"
 The DLL path and binary are not embedded in a scene. Opening a scene never loads
 a DLL by a path from that scene. The matching importer must already be registered
 on that machine. Missing importers fail scene loading before the existing scene
-is replaced. Scenes save as version 21 and include independent analysis
+is replaced. Scenes save as version 22 and include independent analysis
 objects in `[[analyses]]` records referencing saved file/group indexes.
 The optional `analysis_task` field records the inspector category (`mesh_checks`,
 `mesh_quality`, `surface_comparison`, or `uv_inspection`). Older scenes infer the
 category from their existing analysis type, display mode, and inputs.
-Mesh checks use one Sources list. Selecting this task or loading an explicitly
-saved `mesh_checks` analysis consolidates A and B into A, preserving disabled
-parts and saved-view source states. A repeated part is enabled if either input
-enabled it. Legacy two-input analyses keep separate inputs in Surface comparison
-or Mesh quality until Mesh checks is selected.
+Surface comparison has its own `analysis_type = "surface_comparison"` and keeps
+separate A/B inputs. Mesh checks and Mesh quality use one Sources list. Selecting
+either task consolidates A and B into A, preserving disabled parts and saved-view
+source states. A repeated part is enabled if either input enabled it. Loading a
+saved `mesh_checks` analysis or any Mesh quality analysis performs the same
+consolidation. Older mesh analyses with `analysis_task = "surface_comparison"`
+load as the separate type; automatic two-input mesh analyses retain their legacy
+comparison behavior.
 
 Saved group settings are indexed. Importers must preserve unique group names and
 their order for the same file across versions. Reopening rejects a changed group
