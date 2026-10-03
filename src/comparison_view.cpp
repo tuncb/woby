@@ -55,10 +55,10 @@ void drawCalculationSpinner()
 
 void drawComparisonActivity(const UiState& state, ComparisonRuntime& runtime, SceneObjectId id)
 {
-    // Reserve one row even when idle so finishing work does not move the editor or its scroll position.
+    const auto activity = comparisonActivity(state, runtime, id);
+    if (activity == ComparisonActivity::idle) { return; }
     if (ImGui::BeginChild("comparison_activity", {0, ImGui::GetFrameHeight()}, ImGuiChildFlags_None,
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
-        const auto activity = comparisonActivity(state, runtime, id);
         if (activity == ComparisonActivity::calculating || activity == ComparisonActivity::queued) {
             ImGui::AlignTextToFramePadding();
             drawCalculationSpinner();
@@ -1892,6 +1892,9 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     auto task = comparisonTask(state, id);
     std::array<char, 512> name{};
     std::copy_n(comparison->name.data(), std::min(comparison->name.size(), name.size() - 1), name.data());
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Name");
+    ImGui::SameLine();
     ImGui::SetNextItemWidth(-1);
     if (ImGui::InputText("##comparison_name", name.data(), name.size())) { renameComparison(state, id, name.data()); }
     if (!isUvAnalysis(comparison->settings.type)) {
