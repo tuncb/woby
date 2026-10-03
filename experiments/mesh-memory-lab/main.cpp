@@ -1,7 +1,9 @@
 #include "ui.h"
+#include "console.h"
 #include "imgui_graphics.h"
 #include "utf8_path.h"
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #include <imgui_impl_sdl3.h>
 #include <algorithm>
 #include <chrono>
@@ -81,6 +83,7 @@ void savePng(const std::filesystem::path& path, g::TextureHandle image, int widt
 
 int main(int argc, char** argv)
 {
+    woby::initializeConsole();
     SDL_Window* window = nullptr;
     bool sdlInitialized = false, graphicsInitialized = false, imguiInitialized = false, platformInitialized = false, uiRendererInitialized = false;
     mesh_lab::GpuCapture capture;
