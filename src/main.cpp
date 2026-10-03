@@ -3000,9 +3000,7 @@ int main(int argc, char** argv)
                         ImGui::Separator();
                         const float statusHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f
                             + ImGui::GetStyle().ItemSpacing.y + 1.0f;
-                        const bool scenePaneOpen = woby::drawInformationHeader("Display", "Display settings",
-                            "Solid mesh, triangle edges, and vertices apply to all current model parts.\n\n"
-                            "Vertex size sets the base vertex point size for all groups.", false);
+                        const bool scenePaneOpen = ImGui::CollapsingHeader("Display");
                     if (scenePaneOpen) {
                         const float sceneContentHeight = renderModeButtonSize() * 3.0f + ImGui::GetStyle().ItemSpacing.y * 2.0f;
                         if (ImGui::BeginChild(
