@@ -924,14 +924,8 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
 void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, bool current,
     bool hasA, bool hasB, SceneObjectId id)
 {
-    const auto visibleCount = countVisibleComparisonDiagnostics(comparisonSettings(state, id));
-    bool allVisible = visibleCount == diagnosticCategoryCount;
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted("Diagnostics");
-    ImGui::SameLine();
-    if (drawVisibilityIconField("all diagnostics", allVisible, visibleCount > 0 && !allVisible)) {
-        setComparisonDiagnosticsVisible(state, allVisible, id);
-    }
     auto settings = comparisonSettings(state, id);
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
@@ -981,7 +975,19 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed, countWidth);
         ImGui::TableSetupColumn("##visibility", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
         ImGui::TableSetupColumn("##settings", ImGuiTableColumnFlags_WidthFixed, renderModeButtonSize());
-        ImGui::TableHeadersRow();
+        const float buttonSize = renderModeButtonSize();
+        ImGui::TableNextRow(ImGuiTableRowFlags_Headers, buttonSize + ImGui::GetStyle().CellPadding.y * 2);
+        for (int column = 0; column < 3; ++column) {
+            ImGui::TableSetColumnIndex(column);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + std::max(0.0f, (buttonSize - ImGui::GetTextLineHeight()) * 0.5f));
+            ImGui::TableHeader(ImGui::TableGetColumnName(column));
+        }
+        ImGui::TableSetColumnIndex(3);
+        const auto visibleCount = countVisibleComparisonDiagnostics(comparisonSettings(state, id));
+        bool allVisible = visibleCount == diagnosticCategoryCount;
+        if (drawVisibilityIconField("all diagnostics", allVisible, visibleCount > 0 && !allVisible)) {
+            setComparisonDiagnosticsVisible(state, allVisible, id);
+        }
         for (const auto& row : rows) {
             const bool rowCurrent = comparisonDetectorReady(runtime, state, id, row.category);
             diagnosticRow(state, runtime, rowCurrent, row.name, row.category, hasA, hasB, id);

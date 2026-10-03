@@ -1274,6 +1274,12 @@ TEST_CASE("diagnostics keep readable labels and reachable controls as properties
         ImGui::EndFrame();
     };
     const auto settle = [&] { frame(); frame(); frame(); };
+    const auto click = [&](ImVec2 position) {
+        auto& io = ImGui::GetIO();
+        io.AddMousePosEvent(position.x, position.y); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); settle();
+    };
     for (const float width : {900.0f, 440.0f, 340.0f, 300.0f, 900.0f}) {
         paneWidth = width;
         settle();
@@ -1291,6 +1297,25 @@ TEST_CASE("diagnostics keep readable labels and reachable controls as properties
         CHECK(gearColumn.WorkMinX >= diagnostics->OuterRect.Min.x);
         CHECK(gearColumn.WorkMinX + woby::renderModeButtonSize() <= diagnostics->OuterRect.Max.x);
         CHECK(diagnostics->Columns[0].WorkMinX >= diagnostics->OuterRect.Min.x);
+        const float buttonSize = woby::renderModeButtonSize();
+        CHECK(diagnostics->InstanceDataFirst.LastTopHeadersRowHeight >= buttonSize + style.CellPadding.y * 2);
+        const auto& visibilityColumn = diagnostics->Columns[3];
+        CHECK(visibilityColumn.WorkMinX >= diagnostics->Columns[2].WorkMaxX);
+        CHECK(visibilityColumn.WorkMinX + buttonSize <= diagnostics->OuterRect.Max.x);
+        const ImVec2 masterEye(visibilityColumn.WorkMinX + buttonSize * .5f,
+            diagnostics->OuterRect.Min.y + style.CellPadding.y + buttonSize * .5f);
+        // Exercise the header control at every width and scale: mixed -> all -> none -> all.
+        const auto original = woby::comparisonSettings(f.state, f.id);
+        woby::setComparisonDiagnosticsVisible(f.state, false, f.id);
+        auto mixed = woby::comparisonSettings(f.state, f.id);
+        mixed.showBoundaries = true;
+        woby::setComparisonSettings(f.state, mixed, f.id);
+        settle();
+        for (const auto expected : {woby::diagnosticCategoryCount, size_t{0}, woby::diagnosticCategoryCount}) {
+            click(masterEye);
+            CHECK(woby::countVisibleComparisonDiagnostics(woby::comparisonSettings(f.state, f.id)) == expected);
+        }
+        woby::setComparisonSettings(f.state, original, f.id);
     }
 
     // The settings action remains reachable after repeatedly changing the pane width.
