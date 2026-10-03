@@ -38,6 +38,8 @@ void loadSceneViews(UiState& state, const SceneDocument& document);
 SceneObjectId createComparison(UiState& state, AnalysisType type = AnalysisType::mesh);
 // Checks/quality/UV combine selected sources; comparison assigns up to two sources in click order.
 SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task);
+// Explicit sources let file actions create analyses without first changing the selection.
+SceneObjectId createAnalysisFromObjects(UiState& state, AnalysisTask task, const std::vector<SceneObjectId>& objects);
 void setAnalysisTask(UiState& state, SceneObjectId id, AnalysisTask task);
 void setAnalysisTaskFilter(UiState& state, AnalysisTask task);
 void setDiagnosticFilter(UiState& state, DiagnosticGroup group, bool findingsOnly);

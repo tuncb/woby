@@ -106,6 +106,7 @@ struct ComparisonNameEdit {
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes);
 void drawAnalysisCreationMenu(UiState& state);
+void drawAnalysisCreationMenu(UiState& state, const std::vector<SceneObjectId>& sources);
 void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const ComparisonRuntimes& runtimes = {});
 void drawComparisonPanelContents(UiState& state, ComparisonRuntimes& runtimes);
 void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, const ComparisonRuntimes& runtimes,

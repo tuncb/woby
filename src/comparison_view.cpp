@@ -2378,11 +2378,16 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
 
 void drawAnalysisCreationMenu(UiState& state)
 {
+    drawAnalysisCreationMenu(state, state.selectedSceneObjects);
+}
+
+void drawAnalysisCreationMenu(UiState& state, const std::vector<SceneObjectId>& sources)
+{
     for (const auto task : {AnalysisTask::meshChecks, AnalysisTask::meshQuality,
             AnalysisTask::surfaceComparison, AnalysisTask::uvInspection}) {
-        const bool allowed = task != AnalysisTask::surfaceComparison || state.selectedSceneObjects.size() <= 2;
+        const bool allowed = task != AnalysisTask::surfaceComparison || sources.size() <= 2;
         const char* label = task == AnalysisTask::surfaceComparison ? "Surface comparison" : analysisTaskLabel(task);
-        if (ImGui::MenuItem(label, nullptr, false, allowed)) { createAnalysisFromSelection(state, task); }
+        if (ImGui::MenuItem(label, nullptr, false, allowed)) { createAnalysisFromObjects(state, task, sources); }
         if (!allowed) { setLastItemTooltip("Select up to two sources, in A then B order."); }
     }
 }
@@ -2521,13 +2526,14 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
         ++displayed;
         const auto label = std::to_string(id);
         ImGui::PushID(label.c_str());
+        const float removeX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
         auto settings = comparison.settings;
         if (drawVisibilityButton("visible", settings.enabled, "analysis")) {
             settings.enabled = !settings.enabled;
             setComparisonSettings(state, settings, id);
         }
         ImGui::SameLine();
-        const float nameWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+        const float nameWidth = std::max(1.0f, removeX - ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
         bool changed = false;
         if (edit.objectId == id) {
             const bool focusing = edit.focus;
@@ -2564,6 +2570,14 @@ void drawComparisonObjects(UiState& state, ComparisonNameEdit& edit, const Compa
                 if (ImGui::MenuItem("Duplicate")) { duplicateComparison(state, id); changed = true; }
                 if (ImGui::MenuItem("Delete analysis")) { removeComparison(state, id); changed = true; }
                 ImGui::EndPopup();
+            }
+        }
+        if (!changed) {
+            ImGui::SameLine(removeX, 0.0f);
+            if (drawRemoveButton("remove", "Remove analysis from scene")) {
+                removeComparison(state, id);
+                if (edit.objectId == id) { edit.objectId = invalidSceneObjectId; }
+                changed = true;
             }
         }
         ImGui::PopID();

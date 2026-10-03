@@ -355,10 +355,14 @@ void setDiagnosticFilter(UiState& state, DiagnosticGroup group, bool findingsOnl
 
 SceneObjectId createAnalysisFromSelection(UiState& state, AnalysisTask task)
 {
+    return createAnalysisFromObjects(state, task, state.selectedSceneObjects);
+}
+
+SceneObjectId createAnalysisFromObjects(UiState& state, AnalysisTask task, const std::vector<SceneObjectId>& objects)
+{
     if (task < AnalysisTask::meshChecks || task > AnalysisTask::uvInspection) { return invalidSceneObjectId; }
-    const auto selected = state.selectedSceneObjects;
     std::vector<SceneObjectId> sources;
-    for (const auto id : selected) {
+    for (const auto id : objects) {
         if (!comparisonObjectParts(state, {id}).empty()) { sources.push_back(id); }
     }
     if (task == AnalysisTask::surfaceComparison && sources.size() > 2) { return invalidSceneObjectId; }

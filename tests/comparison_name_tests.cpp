@@ -154,7 +154,7 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
         ImGui::Begin("Compact analysis rows"); ImGui::LogToBuffer(0);
         woby::drawComparisonObjects(f.state, f.edit, runtimes);
         const auto minimum = ImGui::GetItemRectMin();
-        row = {minimum.x + 80, minimum.y + woby::renderModeButtonSize() * .5f};
+        row = {ImGui::GetWindowPos().x + 100, minimum.y + woby::renderModeButtonSize() * .5f};
         endY = ImGui::GetCursorPosY();
         contents = f.context->LogBuffer.c_str(); ImGui::LogFinish(); ImGui::End(); ImGui::EndFrame();
     };
@@ -217,6 +217,125 @@ TEST_CASE("analysis compact add button opens an anchored menu while the section 
     REQUIRE(f.state.comparisons.size() == count + 1);
     CHECK(f.state.comparisons.back().settings.task == woby::AnalysisTask::meshChecks);
     CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{f.state.comparisons.back().objectId});
+}
+
+TEST_CASE("analysis row remove buttons delete only their own analysis")
+{
+    ComparisonNameFixture f;
+    woby::renameComparison(f.state, f.id, std::string(300, 'x'));
+    const auto other = woby::createComparison(f.state);
+    SUBCASE("unselected row") {}
+    SUBCASE("selected row") { woby::selectSceneObject(f.state, f.id); }
+    SUBCASE("renaming row") {
+        woby::selectSceneObject(f.state, f.id);
+        f.key(ImGuiKey_F2);
+        REQUIRE(f.edit.objectId == f.id);
+    }
+    SUBCASE("filtered row") {
+        woby::setAnalysisTask(f.state, other, woby::AnalysisTask::meshQuality);
+        woby::setAnalysisTaskFilter(f.state, woby::AnalysisTask::meshChecks);
+    }
+    f.frame(); f.frame();
+    auto selection = f.state.selectedSceneObjects;
+    std::erase(selection, f.id);
+    const auto revision = f.state.sceneEditRevision;
+    const auto otherName = woby::findComparison(f.state, other)->name;
+    const auto* window = ImGui::FindWindowByName("Scene");
+    REQUIRE(window);
+    const float filterHeight = f.state.analysisTaskFilter == woby::AnalysisTask::automatic
+        ? 0 : ImGui::GetFrameHeightWithSpacing();
+    f.click({window->WorkRect.Max.x - woby::renderModeButtonSize() * .5f, f.row.y + filterHeight});
+    f.frame();
+    CHECK(woby::findComparison(f.state, f.id) == nullptr);
+    REQUIRE(f.state.comparisons.size() == 1);
+    CHECK(f.state.comparisons[0].objectId == other);
+    CHECK(f.state.comparisons[0].name == otherName);
+    CHECK(f.state.selectedSceneObjects == selection);
+    CHECK(f.state.sceneEditRevision == revision + 1);
+    CHECK(f.edit.objectId == woby::invalidSceneObjectId);
+}
+
+TEST_CASE("file analysis menus preserve selection until a task is chosen and use the explicit file")
+{
+    ComparisonNameFixture f;
+    for (size_t i = 0; i < 2; ++i) {
+        woby::Mesh mesh;
+        mesh.vertices = {{{0, 0, 0}, {}, {}}, {{1, 0, 0}, {}, {}}, {{0, 1, 0}, {}, {}}};
+        mesh.indices = {0, 1, 2};
+        mesh.nodes.push_back({"surface", 0, 3});
+        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        f.state.files.push_back(woby::createUiFileState({}, std::move(mesh), i));
+    }
+    woby::appendDefaultSceneNodesForFiles(f.state, 0);
+    woby::createComparison(f.state);
+    woby::selectSceneObject(f.state, f.id, true);
+    woby::selectSceneObject(f.state, f.state.files[0].objectId, true);
+    REQUIRE(f.state.selectedSceneObjects.size() == 3);
+    woby::setPropertiesPaneVisible(f.state, false);
+    const auto source = f.state.files[1].objectId;
+    const auto selection = f.state.selectedSceneObjects;
+    const auto before = woby::createSceneDocument(f.state);
+    const auto revision = f.state.sceneEditRevision;
+    const auto active = f.state.activeComparisonId;
+    const auto dirty = f.state.isDirty;
+    bool open = true;
+    std::string contents;
+    const auto frame = [&] {
+        ImGui::NewFrame(); ImGui::SetNextWindowPos({20, 20}); ImGui::SetNextWindowSize({500, 400});
+        ImGui::Begin("File analysis menu");
+        if (open) { ImGui::OpenPopup("analysis_type"); open = false; }
+        if (ImGui::BeginPopup("analysis_type")) {
+            ImGui::LogToBuffer();
+            woby::drawAnalysisCreationMenu(f.state, {source});
+            contents = f.context->LogBuffer.c_str(); ImGui::LogFinish();
+            ImGui::EndPopup();
+        }
+        ImGui::End(); ImGui::EndFrame();
+    };
+    frame(); frame();
+    REQUIRE(f.context->OpenPopupStack.Size == 1);
+    for (const char* label : {"Mesh checks", "Mesh quality", "Surface comparison", "UV inspection"}) {
+        CHECK(contents.find(label) != std::string::npos);
+    }
+    CHECK(f.state.selectedSceneObjects == selection);
+    CHECK(f.state.activeComparisonId == active);
+    CHECK_FALSE(f.state.propertiesPaneVisible);
+    CHECK(f.state.sceneEditRevision == revision);
+    CHECK(f.state.isDirty == dirty);
+    CHECK(woby::createSceneDocument(f.state) == before);
+    int menuIndex = 0;
+    SUBCASE("dismiss without changes") { menuIndex = -1; }
+    SUBCASE("mesh checks") {}
+    SUBCASE("mesh quality") { menuIndex = 1; }
+    SUBCASE("comparison ignores unrelated multi-selection") { menuIndex = 2; }
+    SUBCASE("UV inspection") { menuIndex = 3; }
+    auto& io = ImGui::GetIO();
+    if (menuIndex < 0) {
+        io.AddMousePosEvent(480, 360); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+        CHECK(f.context->OpenPopupStack.empty());
+        CHECK(f.state.selectedSceneObjects == selection);
+        CHECK_FALSE(f.state.propertiesPaneVisible);
+        CHECK(f.state.sceneEditRevision == revision);
+        CHECK(woby::createSceneDocument(f.state) == before);
+        return;
+    }
+    const auto* popup = f.context->OpenPopupStack.back().Window;
+    REQUIRE(popup);
+    io.AddMousePosEvent(popup->DC.CursorStartPos.x + 30, popup->DC.CursorStartPos.y
+        + static_cast<float>(menuIndex) * ImGui::GetTextLineHeightWithSpacing() + ImGui::GetTextLineHeight() * .5f);
+    frame(); io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+    REQUIRE(f.state.comparisons.size() == before.comparisons.size() + 1);
+    const auto& created = f.state.comparisons.back();
+    CHECK(created.settings.task == static_cast<woby::AnalysisTask>(menuIndex + 1));
+    CHECK(woby::comparisonContains(f.state, f.state.files[1].groupSettings[0].objectId,
+        woby::ComparisonSide::a, created.objectId));
+    CHECK_FALSE(woby::comparisonContains(f.state, f.state.files[0].groupSettings[0].objectId,
+        woby::ComparisonSide::a, created.objectId));
+    CHECK(created.b.empty());
+    CHECK(f.state.selectedSceneObjects == std::vector<woby::SceneObjectId>{created.objectId});
 }
 
 TEST_CASE("analysis header eye controls every analysis independently of collapse and task filter")

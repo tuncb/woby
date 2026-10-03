@@ -907,12 +907,11 @@ void drawSceneTreeNode(
         const bool canAnalyze = woby::fileHasComparableParts(file);
         if (woby::drawRenderModeIconButton("analysis", "\xef\x82\x80", "Create analysis for this file",
                 woby::RenderModeState::off, !canAnalyze)) {
-            woby::selectSceneObject(state, node.objectId);
             ImGui::OpenPopup("analysis_type");
         }
         ImGui::SetNextWindowPos({ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y}, ImGuiCond_Appearing);
         if (ImGui::BeginPopup("analysis_type")) {
-            woby::drawAnalysisCreationMenu(state);
+            woby::drawAnalysisCreationMenu(state, {node.objectId});
             ImGui::EndPopup();
         }
         ImGui::SameLine(removeControlStartX, 0.0f);
