@@ -541,10 +541,26 @@ std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool
     result->index32 = index32;
     if (!noop())
     {
-        result->heap = gpu::create_gpu_heap(state().device, (uint64_t(memory->size) + 15) & ~uint64_t{15},
-                                            gpu::MemoryType::gpu_only);
-        require(result->heap.owner != nullptr, result->heap.error);
-        // Retain before submitting any copy: growing this list can itself fail.
+        const auto heapBytes = (uint64_t(memory->size) + 15) & ~uint64_t{15};
+#if defined(__APPLE__)
+        result->heap = gpu::create_gpu_heap(state().device, heapBytes, gpu::MemoryType::gpu_only);
+#else
+        gpu::HeapAllocationFailure failure;
+        result->heap = gpu::try_create_gpu_heap(state().device, heapBytes, gpu::MemoryType::gpu_only, failure);
+        if (!result->heap.owner) {
+            const char* reason = failure.api_result == VK_ERROR_OUT_OF_DEVICE_MEMORY ? " (out of device memory)"
+                : failure.api_result == VK_ERROR_OUT_OF_HOST_MEMORY ? " (out of host memory)"
+                : failure.api_result == VK_ERROR_DEVICE_LOST ? " (device lost)" : "";
+            throw std::runtime_error("Cannot allocate GPU geometry: requested " + std::to_string(memory->size)
+                + " bytes; " + (failure.operation ? failure.operation : "unknown operation")
+                + " returned VkResult " + std::to_string(failure.api_result) + reason
+                + " (allocation " + std::to_string(failure.allocation_bytes)
+                + " bytes, memory type " + std::to_string(failure.memory_type) + ").");
+        }
+#endif
+        require(result->heap.owner != nullptr, "Cannot allocate GPU geometry");
+        // Retain the destination before submitting any upload chunks. A later
+        // exception must not free memory that an earlier chunk still writes.
         state().trash->push_back(result);
         const uint64_t paddedBytes = (uint64_t(memory->size) + 3) & ~uint64_t{3};
         if (paddedBytes == memory->size)

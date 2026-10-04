@@ -1,4 +1,5 @@
 #include "control_scene.h"
+#include "annotation_command.h"
 #include "annotation_preparation.h"
 #include "surface_annotation.h"
 #include "ui_operations.h"
@@ -36,7 +37,7 @@ Json controlAnnotationDetails(const UiState& state, const UiAnnotation& item)
 }
 
 Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanDocument,
-    const ControlOperation& command, const ObjectIdFormatter& formatId)
+    const ControlOperation& command, const ObjectIdFormatter& formatId, const AnnotationCommandResult* computed)
 {
     using A = ControlAction;
     if (!annotationControlReady(state, command.action)) {
@@ -62,12 +63,13 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         const auto depth = cameraDepthRange(state.camera, state.sceneBounds, state.upAxis);
         bx::mtxProj(view.projection.data(), cameraViewportFov(state.camera, aspect), aspect,
             depth.nearPlane, depth.farPlane, true);
-        const auto projection = annotationProjection(scenePickParts(state), view, id, annotationGroupTargets(state, id));
-        auto geometry = projectAnnotation(projection, *command.shape == "line" ? AnnotationShape::line : AnnotationShape::rectangle,
-            *command.start, *command.end);
+        AnnotationProjection projection;
+        if (!computed) { projection = annotationProjection(scenePickParts(state), view, id, annotationGroupTargets(state, id), annotationRegion(*command.start, *command.end)); }
+        auto geometry = computed ? computed->geometry : projectAnnotation(projection,
+            *command.shape == "line" ? AnnotationShape::line : AnnotationShape::rectangle, *command.start, *command.end);
         // CLI commands name their target explicitly; preserve the user's selection.
         const auto selection = state.selectedSceneObjects;
-        id = createAnnotation(state, id, std::move(geometry), projection.targetIds);
+        id = createAnnotation(state, id, std::move(geometry), computed ? computed->targets : projection.targetIds);
         clearSceneSelection(state);
         for (const auto selected : selection) { selectSceneObject(state, selected, true); }
     } else {
@@ -87,8 +89,11 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
             if (command.delta) {
                 for (size_t axis = 0; axis < 2; ++axis) { start[axis] += (*command.delta)[axis]; end[axis] += (*command.delta)[axis]; }
             }
-            const auto projection = annotationEditProjection(parts, *item);
-            reshapeAnnotation(state, id, projectAnnotation(projection, item->geometry.shape, start, end));
+            if (computed) { reshapeAnnotation(state, id, computed->geometry); }
+            else {
+                const auto projection = annotationEditProjection(parts, *item, annotationRegion(start, end));
+                reshapeAnnotation(state, id, projectAnnotation(projection, item->geometry.shape, start, end));
+            }
         } else if (command.action != A::annotationSet && command.action != A::visibility
             && command.action != A::colorSet && command.action != A::colorReset && command.action != A::opacity) {
             throw std::invalid_argument("Use annotation get, set, reshape, move, or delete for annotation objects.");

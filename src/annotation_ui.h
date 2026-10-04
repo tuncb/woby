@@ -4,7 +4,11 @@
 #include "scene_renderer.h"
 
 namespace woby {
+struct AnnotationExecutor;
+struct AnnotationPointerRuntime;
 struct AnnotationInteraction {
+    AnnotationExecutor* executor = nullptr;
+    std::shared_ptr<AnnotationPointerRuntime> pending;
     std::optional<AnnotationShape> tool;
     bool dragging = false;
     // Runtime-only coarse guide on dense meshes; commit resolves the full edge.
@@ -46,6 +50,8 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction,
 void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point);
 void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bool allowed);
 void cancelAnnotationPointer(AnnotationInteraction& interaction);
+// Poll on the UI thread, before history recording. Never waits for a worker.
+void updateAnnotationPointer(UiState& state, AnnotationInteraction& interaction, const ScenePickView* view = nullptr);
 // Returns the message banner's bottom edge in window coordinates (zero if absent),
 // so other viewport notifications can be stacked below it.
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,

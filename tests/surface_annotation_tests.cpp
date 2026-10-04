@@ -1,6 +1,7 @@
 #include "surface_annotation.h"
 #include "allocation_probe.h"
 #include "annotation_ui.h"
+#include "annotation_command.h"
 #include "scene_scale_overlay.h"
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
@@ -21,6 +22,8 @@
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
+#include <future>
+#include <random>
 
 namespace {
 using namespace woby;
@@ -230,6 +233,196 @@ TEST_CASE("large mesh annotation cache preserves the source fingerprint")
     const auto gesture = annotationGestureProjection(std::array{part}, view(), 1, {0, 0});
     CHECK(gesture.definition.fingerprint == annotationFingerprint(copy, 0, copy.indices.size()));
 }
+TEST_CASE("regional annotation projection preserves exact geometry and bounds scratch to candidates")
+{
+    auto mesh = tessellatedSurface(160, 2);
+    SUBCASE("shuffled source order") {
+        std::vector<std::array<uint32_t, 3>> triangles(mesh.indices.size() / 3);
+        for (size_t i = 0; i < triangles.size(); ++i) { std::copy_n(mesh.indices.begin() + static_cast<std::ptrdiff_t>(i * 3), 3, triangles[i].begin()); }
+        std::mt19937 random(99);
+        std::shuffle(triangles.begin(), triangles.end(), random);
+        for (size_t i = 0; i < triangles.size(); ++i) { std::copy(triangles[i].begin(), triangles[i].end(), mesh.indices.begin() + static_cast<std::ptrdiff_t>(i * 3)); }
+    }
+    prepareAnnotationMeshCache(mesh);
+    REQUIRE(mesh.annotationCache);
+    REQUIRE_FALSE(mesh.annotationCache->spatial->tree.empty());
+    ScenePickPart part;
+    part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size(); part.solid = true;
+    bx::mtxIdentity(part.model.data());
+    const std::array<float, 2> start{-.025f, -.021f}, end{.024f, .031f};
+    const auto full = annotationProjection(std::array{part}, view(), 1);
+    const auto region = annotationProjection(std::array{part}, view(), 1, {}, annotationRegion(start, end));
+    for (const auto shape : {AnnotationShape::line, AnnotationShape::rectangle}) {
+        const auto expected = projectAnnotation(full, shape, start, end);
+        CHECK(projectAnnotation(region, shape, start, end) == expected);
+        UiAnnotation item; item.targetId = 1; item.geometry = expected;
+        const std::array<float, 2> moved{.045f, .043f};
+        const auto edit = annotationEditProjection(std::array{part}, item, annotationRegion(start, moved));
+        CHECK(projectAnnotation(edit, shape, start, moved)
+            == projectAnnotation(annotationEditProjection(std::array{part}, item), shape, start, moved));
+    }
+    CHECK(region.vertices.size() < full.vertices.size() / 10);
+    CHECK(region.triangles.size() < full.triangles.size() / 10);
+}
+TEST_CASE("regional annotation scratch does not scale with unused source vertices")
+{
+    auto mesh = tessellatedSurface(160);
+    prepareAnnotationMeshCache(mesh);
+    ScenePickPart part;
+    part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size(); part.solid = true;
+    bx::mtxIdentity(part.model.data());
+    const auto region = annotationProjection(std::array{part}, view(), 1, {}, annotationRegion({-.02f, 0}, {.02f, 0}));
+    CHECK(region.triangles.size() < mesh.indices.size() / 30);
+    CHECK(region.vertices.size() < mesh.vertices.size() / 10);
+    const auto snapshot = snapshotAnnotationParts(std::array{part});
+    REQUIRE(snapshot.owners.size() == 1);
+    CHECK(snapshot.owners[0] == mesh.annotationCache->snapshot);
+    mesh = {}; // A projection worker can outlive removal/rebase of its source.
+    const auto owned = annotationProjection(snapshot.parts, view(), 1, {}, annotationRegion({-.02f, 0}, {.02f, 0}));
+    CHECK(projectAnnotation(owned, AnnotationShape::line, {-.02f, 0}, {.02f, 0})
+        == projectAnnotation(region, AnnotationShape::line, {-.02f, 0}, {.02f, 0}));
+}
+TEST_CASE("annotation projection cooperatively cancels setup and exact finalization")
+{
+    Fixture fixture;
+    std::stop_source cancel;
+    cancel.request_stop();
+    CHECK_THROWS((void)annotationProjection(scenePickParts(fixture.state), view(), fixture.target(), {}, annotationRegion({0, 0}, {.1f, .1f}), cancel.get_token()));
+    auto projection = fixture.projection();
+    projection.stop = cancel.get_token();
+    CHECK_THROWS((void)projectAnnotation(projection, AnnotationShape::line, {-.2f, 0}, {.2f, 0}));
+}
+TEST_CASE("annotation snapshots bound the aggregate copy of multiple small meshes")
+{
+    std::vector<Mesh> meshes(5, tessellatedSurface(140));
+    std::vector<ScenePickPart> parts;
+    for (auto& mesh : meshes) {
+        ScenePickPart part; part.mesh = &mesh; part.indexCount = mesh.indices.size();
+        parts.push_back(part);
+    }
+    CHECK_THROWS((void)snapshotAnnotationParts(parts));
+    for (auto& mesh : meshes) { prepareAnnotationMeshCache(mesh); }
+    const auto snapshot = snapshotAnnotationParts(parts);
+    CHECK(snapshot.owners.size() == meshes.size());
+    for (size_t i = 0; i < meshes.size(); ++i) { CHECK(snapshot.owners[i] == meshes[i].annotationCache->snapshot); }
+}
+void waitAnnotationWork(const std::shared_ptr<AnnotationWork>& work)
+{
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+    while (!work->done.load(std::memory_order_acquire) && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    REQUIRE(work->done.load(std::memory_order_acquire));
+}
+TEST_CASE("annotation executor cancels active work and coalesces queued previews")
+{
+    AnnotationExecutor executor;
+    std::promise<void> entered, release;
+    const auto released = release.get_future().share();
+    auto first = std::make_shared<AnnotationWork>();
+    first->compute = [&](std::stop_token stop) { entered.set_value(); released.wait(); CHECK(stop.stop_requested()); };
+    submitAnnotationWork(executor, first);
+    entered.get_future().wait();
+    std::atomic<int> executed = 0;
+    auto second = std::make_shared<AnnotationWork>();
+    second->compute = [&](std::stop_token) { executed += 10; };
+    submitAnnotationWork(executor, second);
+    auto last = std::make_shared<AnnotationWork>();
+    last->compute = [&](std::stop_token) { ++executed; };
+    submitAnnotationWork(executor, last);
+    CHECK(second->cancel.stop_requested());
+    release.set_value();
+    waitAnnotationWork(last);
+    CHECK(executed == 1);
+}
+TEST_CASE("background annotation commands publish once through operations and history")
+{
+    Fixture fixture;
+    const auto id = fixture.add();
+    SceneHistory history; resetSceneHistory(history, fixture.state);
+    const auto clean = createSceneDocument(fixture.state);
+    const auto original = findAnnotation(fixture.state, id)->geometry;
+    ControlOperation operation; operation.action = ControlAction::annotationMove; operation.objectId = id;
+    operation.delta = std::array<float, 2>{.02f, .01f};
+    auto command = prepareAnnotationCommand(fixture.state, operation);
+    AnnotationExecutor executor;
+    submitAnnotationWork(executor, command.work);
+    waitAnnotationWork(command.work);
+    CHECK(findAnnotation(fixture.state, id)->geometry == original);
+    REQUIRE(command.work->error.empty());
+    const auto format = [](SceneObjectId object) { return std::to_string(object); };
+    SUBCASE("publish then undo redo") {
+        CHECK_NOTHROW((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        const auto edited = findAnnotation(fixture.state, id)->geometry;
+        CHECK(edited != original);
+        recordSceneHistory(history, fixture.state);
+        CHECK(history.snapshots.size() == 2);
+        CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        auto undo = prepareSceneHistoryStep(history, fixture.state, clean, false);
+        REQUIRE(undo); commitSceneHistoryStep(history, fixture.state, std::move(*undo), false);
+        CHECK(findAnnotation(fixture.state, id)->geometry == original);
+        auto redo = prepareSceneHistoryStep(history, fixture.state, clean, true);
+        REQUIRE(redo); commitSceneHistoryStep(history, fixture.state, std::move(*redo), true);
+        CHECK(findAnnotation(fixture.state, id)->geometry == edited);
+    }
+    SUBCASE("deleted annotation cannot be resurrected") {
+        deleteAnnotation(fixture.state, id);
+        CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        CHECK_FALSE(findAnnotation(fixture.state, id));
+    }
+    SUBCASE("camera navigation invalidates a pending result") {
+        fixture.state.camera.distance *= 2;
+        CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        CHECK(findAnnotation(fixture.state, id)->geometry == original);
+        CHECK(history.snapshots.size() == 1);
+    }
+    SUBCASE("geometry cache invalidation rejects same-address geometry changes") {
+        fixture.state.files[0].mesh.vertices[0].position[0] += 1;
+        ++fixture.state.sceneEditRevision;
+        CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
+    }
+    SUBCASE("canceled command has no history entry") {
+        cancelAnnotationWork(command.work);
+        CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        CHECK_FALSE(recordSceneHistory(history, fixture.state));
+        CHECK(history.snapshots.size() == 1);
+    }
+    SUBCASE("first cache publication preserves a small owned request") {
+        prepareAnnotationMeshCache(fixture.state.files[0].mesh);
+        CHECK_NOTHROW((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        CHECK(findAnnotation(fixture.state, id)->geometry != original);
+    }
+}
+TEST_CASE("background annotation pointer release commits the latest drag and cancellation commits nothing")
+{
+    Fixture fixture;
+    AnnotationExecutor executor;
+    AnnotationInteraction interaction; interaction.executor = &executor; interaction.tool = AnnotationShape::line;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {30, 130}));
+    moveAnnotationPointer(fixture.state, interaction, {100, 100});
+    moveAnnotationPointer(fixture.state, interaction, {160, 60});
+    endAnnotationPointer(fixture.state, interaction, true);
+    REQUIRE(fixture.state.annotations.empty());
+    bool canceled = false;
+    SUBCASE("release") {}
+    SUBCASE("escape") { cancelAnnotationPointer(interaction); canceled = true; }
+    SUBCASE("selection changes") { selectSceneObject(fixture.state, fixture.target()); canceled = true; }
+    SUBCASE("scene replaced") { ++fixture.state.sceneGeneration; fixture.state.files.clear(); canceled = true; }
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+    while (interaction.pending && std::chrono::steady_clock::now() < deadline) {
+        updateAnnotationPointer(fixture.state, interaction);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    CHECK_FALSE(interaction.pending);
+    if (canceled) { CHECK(fixture.state.annotations.empty()); }
+    else {
+        REQUIRE(interaction.error.empty());
+        REQUIRE(fixture.state.annotations.size() == 1);
+        const auto& geometry = fixture.state.annotations.front().geometry;
+        CHECK(geometry == projectAnnotation(fixture.projection(), AnnotationShape::line,
+            annotationNdc(view(), {30, 130}), annotationNdc(view(), {160, 60})));
+    }
+}
 TEST_CASE("cached surface picking agrees with a full triangle scan")
 {
     auto mesh = tessellatedSurface(160);
@@ -266,6 +459,43 @@ void siblingSurface(Fixture& fixture, float gap = 0, float depthJump = 0)
     appendDefaultSceneNodesForFiles(fixture.state, 0);
     fixture.state.files[0].groupSettings[1].translation = {-2,0,-.3f};
     clearSceneDirty(fixture.state);
+}
+TEST_CASE("background pointer annotations retain transformed sibling attachments")
+{
+    Fixture fixture; siblingSurface(fixture);
+    AnnotationExecutor executor;
+    AnnotationInteraction interaction; interaction.executor = &executor; interaction.tool = AnnotationShape::line;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {20, 140}));
+    moveAnnotationPointer(fixture.state, interaction, {180, 60});
+    endAnnotationPointer(fixture.state, interaction, true);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+    while (interaction.pending && std::chrono::steady_clock::now() < deadline) {
+        updateAnnotationPointer(fixture.state, interaction);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    REQUIRE_FALSE(interaction.pending);
+    REQUIRE(interaction.error.empty());
+    REQUIRE(fixture.state.annotations.size() == 1);
+    const auto& item = fixture.state.annotations.front();
+    REQUIRE(item.targetIds.size() == 2);
+    const auto projection = annotationProjection(scenePickParts(fixture.state), view(), item.targetId, item.targetIds);
+    CHECK(item.geometry == projectAnnotation(projection, AnnotationShape::line,
+        annotationNdc(view(), {20, 140}), annotationNdc(view(), {180, 60})));
+    const auto id = item.objectId;
+    const auto original = item.geometry;
+    interaction.executor = &executor;
+    REQUIRE(beginAnnotationPointer(fixture.state, interaction, view(), {180, 60}));
+    moveAnnotationPointer(fixture.state, interaction, {175, 50});
+    endAnnotationPointer(fixture.state, interaction, true);
+    const auto editDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+    while (interaction.pending && std::chrono::steady_clock::now() < editDeadline) {
+        updateAnnotationPointer(fixture.state, interaction);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    REQUIRE_FALSE(interaction.pending);
+    REQUIRE(interaction.error.empty());
+    CHECK(findAnnotation(fixture.state, id)->geometry != original);
+    CHECK(findAnnotation(fixture.state, id)->geometry.sources == original.sources);
 }
 SceneObjectId drawSiblingAnnotation(Fixture& fixture, AnnotationShape shape = AnnotationShape::line, bool sampledPreview = false)
 {
@@ -1722,6 +1952,7 @@ TEST_CASE("surface annotation large mesh benchmark" * doctest::skip())
     for (const auto [width, layers] : {std::pair{100u, 1u}, std::pair{700u, 1u}, std::pair{250u, 8u}}) {
         Fixture fixture;
         fixture.state.files[0].mesh = tessellatedSurface(width, layers);
+        prepareAnnotationMeshCache(fixture.state.files[0].mesh);
         std::vector<double> setupTimes, rectangleTimes, gestureTimes, previewTimes;
         size_t segments = 0;
         size_t cacheBytes = 0;

@@ -1113,7 +1113,10 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
         && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     const auto settings = comparisonSettings(state, id);
     const auto required = requestedComparisonStages(settings, both, fullResults) & ~(comparisonDetectors | comparisonIntersections);
-    if (!comparisonStagesReady(runtime, state, id, required) || (!fullResults && !runtime.ready)) { return false; }
+    // A completed CPU result must not hide a failed display upload. Keep the
+    // cached values for retry, but report the failed stage to the UI and RPC.
+    if ((runtime.failedStages & required) || !comparisonStagesReady(runtime, state, id, required)
+        || (!fullResults && !runtime.ready)) { return false; }
     const auto* comparison = findComparison(state, id);
     for (size_t i = 0; i < backgroundDetectorCount; ++i) {
         const auto category = static_cast<DiagnosticCategory>(i);

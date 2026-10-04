@@ -25,6 +25,7 @@
 #include "scene_renderer.h"
 #include "annotation_ui.h"
 #include "annotation_preparation.h"
+#include "annotation_command.h"
 #include "scene_screenshot.h"
 #include "ui_operations.h"
 #include "ui_state.h"
@@ -2392,6 +2393,10 @@ int main(int argc, char** argv)
         WindowTitleCache windowTitleCache;
         woby::ScenePointerGesture scenePointer;
         woby::AnnotationInteraction annotationInteraction;
+        woby::AnnotationExecutor annotationExecutor, annotationPointerExecutor;
+        annotationInteraction.executor = &annotationPointerExecutor;
+        std::optional<woby::AnnotationCommand> annotationCommand;
+        woby::AutomationCommandId annotationCommandId = 0;
         std::optional<woby::ScenePickView> presentedPickView;
         woby::SceneViewport presentedViewport;
         bool scenePointerAvailable = false;
@@ -2833,6 +2838,8 @@ int main(int argc, char** argv)
                 if (fileActionsDisabled()) {
                     return;
                 }
+                woby::cancelAnnotationPointer(annotationInteraction);
+                if (annotationCommand) { woby::cancelAnnotationWork(annotationCommand->work); }
                 if (action == woby::SceneAction::open) {
                     showOpenSceneDialog(window.get(), sceneFileDialogState);
                 } else if (action == woby::SceneAction::saveAs || !currentScenePath) {
@@ -3225,6 +3232,13 @@ int main(int argc, char** argv)
                 }
             }
 
+            const auto beforeAnnotationRevision = ui.sceneEditRevision;
+            woby::updateAnnotationPointer(ui, annotationInteraction, presentedPickView ? &*presentedPickView : nullptr);
+            if (beforeAnnotationRevision != ui.sceneEditRevision) {
+                woby::finishSceneHistoryInteraction(sceneHistory);
+                woby::recordSceneHistory(sceneHistory, ui);
+                woby::updateSceneDirty(ui, cleanSceneDocument);
+            }
             recordFrameStage(frameTimings, woby::FrameStage::imguiBuild, stageStart);
             if (!headless && woby::recordSceneHistory(sceneHistory, ui, woby::sceneHistoryInteraction())) {
                 woby::updateSceneDirty(ui, cleanSceneDocument);
@@ -3289,6 +3303,27 @@ int main(int argc, char** argv)
                     automationComparison.reset();
                 }
             }
+            if (annotationCommand) {
+                auto& pending = *annotationCommand;
+                if (!woby::annotationWorkCurrent(pending.identity, ui, true)) { woby::cancelAnnotationWork(pending.work); }
+                if (pending.work->cancel.stop_requested() || pending.work->done.load(std::memory_order_acquire)) {
+                    try {
+                        auto result = woby::publishAnnotationCommand(ui, cleanSceneDocument, pending, formatObjectId);
+                        if (commandLine.logPerformance) {
+                            const auto& measurement = *pending.result;
+                            spdlog::info("perf annotation projected_triangles={} projected_vertices={} snapshot_ms={} projection_ms={} exact_ms={}",
+                                measurement.projectedTriangles, measurement.projectedVertices, measurement.snapshotMilliseconds,
+                                measurement.projectionMilliseconds, measurement.exactMilliseconds);
+                        }
+                        woby::finishSceneHistoryInteraction(sceneHistory);
+                        woby::recordSceneHistory(sceneHistory, ui);
+                        woby::completeAutomationCommand(*automation, annotationCommandId, woby::AutomationControlResult{std::move(result)});
+                    } catch (const std::exception& error) {
+                        woby::completeAutomationCommand(*automation, annotationCommandId, woby::AutomationCommandError{error.what()});
+                    }
+                    annotationCommand.reset();
+                }
+            }
             for (size_t executed = 0; executed < woby::maxAutomationCommands; ++executed) {
                 const auto command = woby::takeAutomationCommand(*automation);
                 if (!command) {
@@ -3340,6 +3375,21 @@ int main(int argc, char** argv)
                                         ? "Annotation actions are disabled while annotation data is being prepared. Retry when annotationReady is true."
                                         : "Annotation preparation failed: " + annotationPreparation.error, -32014});
                                 return;
+                            }
+                            if (payload.action == A::annotationCreate || payload.action == A::annotationMove || payload.action == A::annotationReshape) {
+                                auto next = woby::prepareAnnotationCommand(ui, payload);
+                                if (annotationCommand) {
+                                    woby::cancelAnnotationWork(annotationCommand->work);
+                                    woby::completeAutomationCommand(*automation, annotationCommandId,
+                                        woby::AutomationCommandError{"Annotation superseded by a newer geometry command."});
+                                }
+                                annotationCommand = std::move(next); annotationCommandId = command->id;
+                                woby::submitAnnotationWork(annotationExecutor, annotationCommand->work);
+                                return; // Success and history belong to publication, never submission.
+                            }
+                            if (annotationInteraction.pending && woby::controlMethod(payload.action).mutating) { woby::cancelAnnotationPointer(annotationInteraction); }
+                            if (annotationCommand && woby::controlMethod(payload.action).mutating) {
+                                woby::cancelAnnotationWork(annotationCommand->work);
                             }
                             if (historyOperation) {
                                 const bool redo = payload.action == A::sceneRedo;
@@ -3493,6 +3543,9 @@ int main(int argc, char** argv)
                                 || modalDialogOpen || modelFileDialogIsOpen(modelFileDialogState)
                                 || sceneFileDialogIsOpen(sceneFileDialogState)
                                 || sceneScreenshotDialogIsOpen(sceneScreenshotDialogState);
+                            // Lifecycle operations use the last committed scene and cancel pending geometry.
+                            woby::cancelAnnotationPointer(annotationInteraction);
+                            if (annotationCommand) { woby::cancelAnnotationWork(annotationCommand->work); }
                             if (const auto error = woby::beginSceneLifecycle(payload, ui, currentScenePath, cleanSceneDocument, busy)) {
                                 completeLifecycleError(command->id, *error);
                                 return;
@@ -3870,7 +3923,8 @@ int main(int argc, char** argv)
             if (headless && running && !gpuFinalize.active && !sceneScreenshot.readbackPending) {
                 // Wake promptly for commands; poll CPU workers without spinning at idle.
                 // GPU readback must keep advancing frames until its completion frame.
-                const bool processing = backgroundLoad.active || automationComparison.has_value() || sceneScreenshot.captureRequested;
+                const bool processing = backgroundLoad.active || automationComparison.has_value()
+                    || annotationCommand.has_value() || sceneScreenshot.captureRequested;
                 woby::waitForAutomationWork(*automation, std::chrono::milliseconds(processing ? 10 : 50));
             }
         }
