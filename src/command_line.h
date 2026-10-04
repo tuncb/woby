@@ -62,6 +62,10 @@ struct AppArguments {
     bool showHelp = false;
     bool showVersion = false;
     bool headless = false;
+    bool hiddenWindow = false;
+    // Fixed client size in logical units or drawable pixels; runtime-only.
+    std::optional<std::array<int, 2>> windowSize;
+    std::optional<std::array<int, 2>> drawableSize;
     std::optional<std::string> instanceId;
     ControlArguments control;
     UpdateArguments update;

@@ -1,9 +1,14 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = ["psutil", "pillow"]
+# ///
 """Unit tests of measurement math and resource limits, without a viewer."""
 
 import unittest
 import argparse
 import errno
 import json
+import math
 from pathlib import Path
 import tempfile
 import time
@@ -11,9 +16,109 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from run import (add_load_timeout_argument, add_memory_limit_arguments, fixture_copy,
-                 memory_stop_reason, operation, request, summarize_frames, wait_detector)
+                 memory_stop_reason, operation, request, summarize_frames, summarize_capture, comparison_key, verify_capture, wait_detector)
 from prepare_derivatives import finite_vertices
-from summarize import aggregate, analysis_summary, collect, resource_summary
+from summarize import aggregate, aggregate_frames, analysis_summary, collect, resource_summary
+
+
+def recording():
+    env = dict(drawable=dict(width=1280, height=720), viewport=dict(x=100, y=20, width=1180, height=700),
+               window=dict(visible=True, minimized=False),
+               presentation=dict(submitted=True, width=1280, height=720))
+    scene = dict(stats=dict(visibleGroupCount=1, triangleCount=12), tree=[dict(id="session-a", settings=dict(solid=True))], camera={})
+    return dict(droppedFrames=0, environments=[env], sceneBefore=scene, sceneAfter=scene,
+                events=[dict(frameIndex=i + 1, environment=0, completedMilliseconds=i * 10,
+                             camera=[0] * 9) for i in range(101)])
+
+
+def test_complete_frame_distribution_uses_completion_intervals():
+    result = summarize_capture(recording(), 1280, 720)
+    assert result["valid"] and result["fps"] == 100
+    assert result["frames"] == 101 and result["elapsed_seconds"] == 1
+    assert result["frame_interval_p95_ms"] == result["frame_interval_p99_ms"] == 10
+
+
+def test_invalid_frame_windows_never_publish_fps_or_percentiles():
+    import copy
+    invalid = []
+    value = recording(); value["droppedFrames"] = 1; invalid.append(value)
+    value = recording(); value["events"].pop(10); invalid.append(value)
+    value = recording(); value["events"][20]["completedMilliseconds"] = 0; invalid.append(value)
+    value = recording(); value["events"][20]["completedMilliseconds"] = math.inf; invalid.append(value)
+    value = recording(); value["events"][20]["camera"][0] = 1; invalid.append(value)
+    value = recording(); value["events"][20]["environment"] = 9; invalid.append(value)
+    value = recording(); value["environments"][0]["drawable"]["width"] = 640; invalid.append(value)
+    value = recording(); value["environments"][0]["viewport"]["width"] = 1281; invalid.append(value)
+    value = recording(); value["environments"][0]["window"]["visible"] = False; invalid.append(value)
+    value = recording(); value["environments"][0]["window"]["minimized"] = True; invalid.append(value)
+    value = recording(); value["environments"][0]["presentation"]["submitted"] = False; invalid.append(value)
+    value = recording(); value["environments"].append(copy.deepcopy(value["environments"][0])); invalid.append(value)
+    value = recording(); value["sceneAfter"] = copy.deepcopy(value["sceneBefore"]); value["sceneAfter"]["tree"] = []; invalid.append(value)
+    value = recording(); value["sceneBefore"]["stats"]["visibleGroupCount"] = 0; invalid.append(value)
+    value = recording(); value["events"] = []; invalid.append(value)
+    for value in invalid:
+        result = summarize_capture(value, 1280, 720)
+        assert not result["valid"] and result["fps"] is None and result["exclusions"]
+        assert not any(key.startswith("frame_interval_") for key in result)
+
+
+def test_explicit_camera_motion_and_session_ids_keep_comparisons_honest():
+    value = recording()
+    key = comparison_key(value)
+    value["sceneBefore"]["tree"][0]["id"] = "different-session"
+    assert comparison_key(value) == key
+    value["events"][20]["camera"][0] = 1
+    assert summarize_capture(value, 1280, 720, camera_motion=True)["valid"]
+    value["environments"][0]["drawable"]["width"] = 640
+    assert comparison_key(value) != key
+
+
+def test_repeat_aggregation_requires_verified_matching_build_and_settings():
+    frame = dict(name="solid", valid=True, capture_verified=True, comparison_key="settings-a", fps=100)
+    case = dict(status="completed", executable_sha256="build-a", model="mesh.obj", frames=[frame])
+    cases = [case, case, dict(case, frames=[dict(frame, fps=130)]),
+             dict(case, frames=[dict(frame, comparison_key="settings-b")]),
+             dict(case, executable_sha256="build-b"),
+             dict(case, frames=[dict(frame, valid=False)]),
+             dict(case, frames=[dict(frame, capture_verified=False)]), dict(case, status="failed")]
+    rows = aggregate_frames(cases)
+    assert len(rows) == 3
+    repeated = next(row for row in rows if row["runs"] == 3)
+    assert repeated["variance_established"] and repeated["fps_min"] == 100 and repeated["fps_max"] == 130
+    assert repeated["fps_stdev"] > 0
+    assert all(not row["variance_established"] for row in rows if row is not repeated)
+
+
+def test_comparison_keys_preserve_source_membership_and_display_identity():
+    value = recording()
+    value["sceneBefore"]["tree"].append(dict(id="session-b", settings=dict(solid=True)))
+    value["sceneBefore"]["tree"].extend([dict(id="session-a", settings=dict(solid=True)),
+                                        dict(id="session-c", settings=dict(solid=True))])
+    value["sceneBefore"]["analysisInputs"] = [dict(a=[dict(id="session-a", enabled=True)], b=[])]
+    value["environments"][0]["display"] = dict(id=1)
+    key = comparison_key(value)
+    value["sceneBefore"]["analysisInputs"][0]["a"][0]["id"] = "session-b"
+    assert comparison_key(value) != key
+    value["sceneBefore"]["analysisInputs"][0]["a"][0]["id"] = "session-c"
+    assert comparison_key(value) != key
+    value["sceneBefore"]["analysisInputs"][0]["a"][0]["id"] = "session-a"
+    value["environments"][0]["display"]["id"] = 2
+    assert comparison_key(value) != key
+
+
+def test_capture_verification_rejects_missing_corrupt_and_blank_pngs():
+    from PIL import Image
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory).resolve() / "capture.png"
+        assert not verify_capture(path)
+        image = Image.new("RGB", (8, 8), (32, 36, 42))
+        image.save(path)
+        assert not verify_capture(path)
+        image.putpixel((4, 4), (255, 0, 0))
+        image.save(path)
+        assert verify_capture(path)
+        path.write_bytes(path.read_bytes()[:24])
+        assert not verify_capture(path)
 
 
 def sample(frame, timestamp, gpu=2):

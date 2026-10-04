@@ -15,6 +15,7 @@
 #include "model_load.h"
 #include "native_dialogs.h"
 #include "performance_log.h"
+#include "performance_capture.h"
 #include "scene_file.h"
 #include "scene_inspector.h"
 #include "scene_scale_overlay.h"
@@ -412,6 +413,65 @@ CanvasLayout canvasLayout(SDL_Window* window, const woby::UiState& state)
     getDrawableSize(window, pixelWidth, pixelHeight);
     layout.viewport = woby::sceneViewport(pixelWidth, pixelHeight, layout.width, layout.leftWidth, reservedRight, layout.top, layout.height);
     return layout;
+}
+
+woby::FrameEnvironment frameEnvironment(SDL_Window* window, const woby::UiState& ui, const woby::SceneViewport& viewport)
+{
+    woby::FrameEnvironment result;
+    if (!window) { return result; }
+    SDL_GetWindowSize(window, &result.windowWidth, &result.windowHeight);
+    SDL_GetWindowSizeInPixels(window, &result.drawableWidth, &result.drawableHeight);
+    result.viewportX = viewport.x; result.viewportY = viewport.y;
+    result.viewportWidth = viewport.width; result.viewportHeight = viewport.height;
+    result.windowFlags = SDL_GetWindowFlags(window);
+    result.displayId = SDL_GetDisplayForWindow(window);
+    result.pixelDensity = SDL_GetWindowPixelDensity(window);
+    result.displayScale = SDL_GetWindowDisplayScale(window);
+    result.uiScale = ui.uiScale;
+    result.sceneEditRevision = ui.sceneEditRevision;
+    result.sceneGeneration = ui.sceneGeneration;
+    result.scenePaneVisible = ui.viewerPaneVisible; result.scenePaneWidth = ui.viewerPaneWidth;
+    result.propertiesPaneVisible = ui.propertiesPaneVisible; result.propertiesPaneWidth = ui.propertiesPaneWidth;
+    if (const auto* stats = woby::graphics::getStats()) {
+        result.submittedWidth = stats->drawableWidth; result.submittedHeight = stats->drawableHeight;
+        result.presentationSubmitted = stats->presentationSubmitted;
+        result.mailbox = stats->mailboxPresentation;
+        result.refreshRate = stats->displayRefreshRate;
+        result.pacingPeriodNanoseconds = stats->pacingPeriodNanoseconds;
+    }
+    return result;
+}
+
+nlohmann::json frameEnvironmentInfo(const woby::FrameEnvironment& env)
+{
+    return {{"window", {{"width", env.windowWidth}, {"height", env.windowHeight}, {"flags", env.windowFlags},
+                {"visible", (env.windowFlags & SDL_WINDOW_HIDDEN) == 0},
+                {"minimized", (env.windowFlags & SDL_WINDOW_MINIMIZED) != 0},
+                {"focused", (env.windowFlags & SDL_WINDOW_INPUT_FOCUS) != 0}}},
+        {"drawable", {{"width", env.drawableWidth}, {"height", env.drawableHeight}}},
+        {"viewport", {{"x", env.viewportX}, {"y", env.viewportY}, {"width", env.viewportWidth}, {"height", env.viewportHeight}}},
+        {"sceneEditRevision", env.sceneEditRevision}, {"sceneGeneration", env.sceneGeneration},
+        {"display", {{"id", env.displayId}, {"pixelDensity", env.pixelDensity}, {"scale", env.displayScale},
+                {"refreshRateHz", env.refreshRate}}}, {"uiScale", env.uiScale},
+        {"pane", {{"visible", env.scenePaneVisible}, {"width", env.scenePaneWidth}}},
+        {"propertiesPane", {{"visible", env.propertiesPaneVisible}, {"width", env.propertiesPaneWidth}}},
+        {"presentation", {{"submitted", env.presentationSubmitted}, {"width", env.submittedWidth}, {"height", env.submittedHeight},
+                {"policy", env.mailbox ? "mailbox" : "backend_default"}, {"physicalVisibility", "unknown"}}},
+        {"pacing", {{"periodNanoseconds", env.pacingPeriodNanoseconds},
+                {"targetFps", env.pacingPeriodNanoseconds ? 1e9 / static_cast<double>(env.pacingPeriodNanoseconds) : 0.0},
+                {"resetFlags", resetFlags}, {"msaaSamples", 4}}}};
+}
+
+nlohmann::json frameTimingInfo(const woby::FrameTimings& timing)
+{
+    nlohmann::json result = {{"frameIndex", timing.frameIndex}, {"frameMilliseconds", timing.totalMilliseconds},
+        {"cpuFrameMilliseconds", timing.graphicsCpuFrameMilliseconds}, {"cpuSubmitMilliseconds", timing.graphicsCpuSubmitMilliseconds},
+        {"gpuFrameMilliseconds", timing.hasGraphicsGpuFrameMilliseconds ? nlohmann::json(timing.graphicsGpuFrameMilliseconds) : nlohmann::json(nullptr)}};
+    result["stagesMilliseconds"] = nlohmann::json::object();
+    for (size_t stage = 0; stage < timing.stageMilliseconds.size(); ++stage) {
+        result["stagesMilliseconds"][woby::frameStageName(static_cast<woby::FrameStage>(stage))] = timing.stageMilliseconds[stage];
+    }
+    return result;
 }
 
 MousePosition mousePositionInPixels(SDL_Window* window, float mouseWindowX, float mouseWindowY)
@@ -2214,8 +2274,11 @@ int main(int argc, char** argv)
             for (const auto& error : woby::loadPortableImporters(folder)) { reportImporterError(error); }
         } catch (const std::exception& error) { reportImporterError(error.what()); }
 
+        const auto requestedSize = commandLine.windowSize.value_or(commandLine.drawableSize.value_or(std::array<int, 2>{1280, 720}));
+        const SDL_WindowFlags windowFlags = (commandLine.windowSize || commandLine.drawableSize ? 0 : SDL_WINDOW_RESIZABLE)
+            | (commandLine.hiddenWindow ? SDL_WINDOW_HIDDEN : 0);
         SDL_Window* rawWindow = headless ? nullptr
-            : SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), 1280, 720, SDL_WINDOW_RESIZABLE |
+            : SDL_CreateWindow(("woby " WOBY_VERSION " [" + instanceId + "]").c_str(), requestedSize[0], requestedSize[1], windowFlags |
 #if defined(__APPLE__)
                 SDL_WINDOW_METAL
 #else
@@ -2227,6 +2290,28 @@ int main(int argc, char** argv)
         }
 
         std::unique_ptr<SDL_Window, SdlDeleter> window(rawWindow);
+        if (window && commandLine.windowSize) {
+            int actualWidth = 0, actualHeight = 0;
+            if (!SDL_SyncWindow(window.get()) || !SDL_GetWindowSize(window.get(), &actualWidth, &actualHeight)
+                || actualWidth != requestedSize[0] || actualHeight != requestedSize[1]) {
+                throw std::runtime_error("Requested logical window size is unavailable.");
+            }
+        }
+        if (window && commandLine.drawableSize) {
+            int logicalWidth = 0, logicalHeight = 0, pixelWidth = 0, pixelHeight = 0;
+            if (!SDL_GetWindowSize(window.get(), &logicalWidth, &logicalHeight)
+                || !SDL_GetWindowSizeInPixels(window.get(), &pixelWidth, &pixelHeight)
+                || pixelWidth <= 0 || pixelHeight <= 0) {
+                throw std::runtime_error("Cannot determine drawable pixel density.");
+            }
+            const int targetWidth = static_cast<int>(std::lround(static_cast<double>(requestedSize[0]) * logicalWidth / pixelWidth));
+            const int targetHeight = static_cast<int>(std::lround(static_cast<double>(requestedSize[1]) * logicalHeight / pixelHeight));
+            if (!SDL_SetWindowSize(window.get(), targetWidth, targetHeight) || !SDL_SyncWindow(window.get())
+                || !SDL_GetWindowSizeInPixels(window.get(), &pixelWidth, &pixelHeight)
+                || pixelWidth != requestedSize[0] || pixelHeight != requestedSize[1]) {
+                throw std::runtime_error("Requested drawable size is unavailable; check display scaling and desktop bounds.");
+            }
+        }
 
         const auto assets = assetRoot();
         if (window) {
@@ -2381,6 +2466,20 @@ int main(int argc, char** argv)
         std::optional<AutomationComparisonRuntime> automationComparison;
         woby::AnalysisExportRuntime analysisExport;
         const woby::ObjectIdFormatter formatObjectId = [&](woby::SceneObjectId id) { return woby::automationObjectId(*automation, id); };
+        const auto measurementScene = [&]() {
+            nlohmann::json snapshot = {{"stats", woby::controlSceneInfo(ui)}, {"tree", woby::controlSceneTree(ui, formatObjectId)},
+                {"camera", woby::controlCameraInfo(ui)}, {"analysisInputs", nlohmann::json::array()},
+                {"annotationInputs", nlohmann::json::array()}};
+            for (const auto& item : ui.comparisons) {
+                const auto details = woby::controlObjectDetails(ui, item.objectId, formatObjectId);
+                snapshot["analysisInputs"].push_back({{"id", formatObjectId(item.objectId)}, {"a", details["a"]}, {"b", details["b"]}});
+            }
+            for (const auto& item : ui.annotations) {
+                const auto details = woby::controlObjectDetails(ui, item.objectId, formatObjectId);
+                snapshot["annotationInputs"].push_back({{"id", formatObjectId(item.objectId)}, {"sourceIds", details["sourceIds"]}});
+            }
+            return snapshot;
+        };
         auto completeAppend = [&]() {
             if (!automationAppend) { return; }
             nlohmann::json outcomes = nlohmann::json::array(), addedIds = nlohmann::json::array();
@@ -2434,6 +2533,9 @@ int main(int argc, char** argv)
         float fps = 0.0f;
         woby::FrameTimingAccumulator frameTimingAccumulator;
         woby::FrameTimings lastFrameTimings;
+        woby::FrameCapture frameCapture;
+        woby::FrameEnvironment lastFrameEnvironment;
+        nlohmann::json captureScene;
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
         woby::HoverNavigationState hoverNavigation{camera, ui.upAxis};
@@ -3398,8 +3500,8 @@ int main(int argc, char** argv)
                         } else if constexpr (std::is_same_v<Command, woby::ControlOperation>) {
                             using A = woby::ControlAction;
                             using Json = nlohmann::json;
-                            if (headless && payload.action == A::pane) {
-                                throw std::invalid_argument("pane.set is unavailable in headless mode; camera and screenshot commands remain available.");
+                            if (headless && (payload.action == A::pane || payload.action == A::performanceBegin || payload.action == A::performanceEnd)) {
+                                throw std::invalid_argument("Desktop pane and performance capture controls are unavailable in headless mode.");
                             }
                             const bool historyOperation = payload.action == A::sceneUndo || payload.action == A::sceneRedo;
                             const bool busy = backgroundLoad.active || gpuFinalize.active
@@ -3414,7 +3516,7 @@ int main(int argc, char** argv)
                                     return;
                                 }
                             }
-                            if (busy && payload.action != A::comparisonCancel
+                            if (busy && payload.action != A::comparisonCancel && payload.action != A::performanceEnd
                                 && (woby::controlMethod(payload.action).mutating || (payload.action == A::comparisonResults || payload.action == A::comparisonExport))) {
                                 woby::completeAutomationCommand(*automation, command->id,
                                     woby::AutomationCommandError{"Scene is busy loading, capturing, displaying a dialog, or editing a widget.", -32014});
@@ -3541,13 +3643,15 @@ int main(int argc, char** argv)
                                     {"busy", busy}, {"version", WOBY_VERSION},
                                     {"renderer", woby::graphics::getRendererName(woby::graphics::getRendererType())},
                                     {"screenshot", {{"width", ui.screenshotSettings.width}, {"height", ui.screenshotSettings.height}, {"format", "png"}}},
+                                    {"propertiesPane", headless ? Json(nullptr) : Json{{"visible", ui.propertiesPaneVisible}, {"width", ui.propertiesPaneWidth}}},
                                     {"pane", headless ? Json(nullptr) : Json{{"visible", ui.viewerPaneVisible}, {"width", ui.viewerPaneWidth}}}});
                             } else if (payload.action == A::capabilities) {
                                 result = woby::controlCapabilities();
                                 result["headless"] = headless;
                                 result["renderer"] = woby::graphics::getRendererName(woby::graphics::getRendererType());
                                 for (auto& method : result["methods"]) {
-                                    method["available"] = !headless || method["method"] != "pane.set";
+                                    method["available"] = !headless || (method["method"] != "pane.set"
+                                        && method["method"] != "performance.begin" && method["method"] != "performance.end");
                                 }
                                 result["limits"] = {{"admittedCommands", woby::maxAutomationCommands},
                                     {"retainedResults", woby::maxAutomationHistory}, {"requestKeys", woby::maxAutomationRequestKeys},
@@ -3573,22 +3677,42 @@ int main(int argc, char** argv)
                             } else if (payload.action == A::importersList || payload.action == A::importersAdd
                                 || payload.action == A::importersScan || payload.action == A::importersForget) {
                                 result = woby::applyControlImporterOperation(payload, importerSettingsPath, rememberedImporters);
-                            } else if (payload.action == A::performance) {
-                                uint32_t drawableWidth = 0, drawableHeight = 0;
-                                getDrawableSize(window.get(), drawableWidth, drawableHeight);
-                                const auto measuredViewport = canvasLayout(window.get(), ui).viewport;
-                                result = {{"frameIndex", lastFrameTimings.frameIndex}, {"fps", fps},
-                                    {"drawable", {{"width", drawableWidth}, {"height", drawableHeight}}},
-                                    {"viewport", {{"x", measuredViewport.x}, {"y", measuredViewport.y},
-                                        {"width", measuredViewport.width}, {"height", measuredViewport.height}}},
-                                    {"frameMilliseconds", lastFrameTimings.totalMilliseconds},
-                                    {"cpuFrameMilliseconds", lastFrameTimings.graphicsCpuFrameMilliseconds},
-                                    {"cpuSubmitMilliseconds", lastFrameTimings.graphicsCpuSubmitMilliseconds},
-                                    {"gpuFrameMilliseconds", lastFrameTimings.hasGraphicsGpuFrameMilliseconds ? Json(lastFrameTimings.graphicsGpuFrameMilliseconds) : Json(nullptr)}};
-                                result["stagesMilliseconds"] = Json::object();
-                                for (size_t stage = 0; stage < lastFrameTimings.stageMilliseconds.size(); ++stage) {
-                                    result["stagesMilliseconds"][woby::frameStageName(static_cast<woby::FrameStage>(stage))] = lastFrameTimings.stageMilliseconds[stage];
+                            } else if (payload.action == A::performanceBegin) {
+                                if (frameCapture.active) { throw std::invalid_argument("A performance capture is already active."); }
+                                captureScene = measurementScene();
+                                woby::beginFrameCapture(frameCapture, frameIndex, woby::PerformanceClock::now());
+                                result = {{"capacity", woby::maxCapturedFrames}, {"afterFrame", frameIndex}};
+                            } else if (payload.action == A::performanceEnd) {
+                                woby::endFrameCapture(frameCapture);
+                                result = {{"capacity", woby::maxCapturedFrames}, {"droppedFrames", frameCapture.droppedFrames},
+                                    {"sceneBefore", captureScene},
+                                    {"sceneAfter", measurementScene()},
+                                    {"environments", Json::array()}, {"events", Json::array()}};
+                                const woby::FrameEnvironment* previous = nullptr;
+                                for (const auto& event : frameCapture.events) {
+                                    if (!previous || *previous != event.environment) {
+                                        result["environments"].push_back(frameEnvironmentInfo(event.environment));
+                                        previous = &event.environment;
+                                    }
+                                    auto row = frameTimingInfo(event.timing);
+                                    row["environment"] = result["environments"].size() - 1;
+                                    row["completedMilliseconds"] = event.completedMilliseconds;
+                                    row["camera"] = event.camera;
+                                    result["events"].push_back(std::move(row));
                                 }
+                            } else if (payload.action == A::performance) {
+                                result = frameTimingInfo(lastFrameTimings);
+                                if (!headless) { result.update(frameEnvironmentInfo(lastFrameEnvironment)); }
+                                else { result["drawable"] = nullptr; result["viewport"] = nullptr; }
+                                result["fps"] = fps;
+                                result["headless"] = headless;
+                                result["renderer"] = woby::graphics::getRendererName(woby::graphics::getRendererType());
+                                result["sdlVersion"] = SDL_GetVersion();
+                                result["version"] = WOBY_VERSION;
+                                result["buildConfiguration"] = WOBY_BUILD_CONFIG;
+                                result["requestedWindow"] = commandLine.windowSize ? Json(*commandLine.windowSize) : Json(nullptr);
+                                result["requestedDrawable"] = commandLine.drawableSize ? Json(*commandLine.drawableSize) : Json(nullptr);
+                                result["fixedSize"] = commandLine.windowSize.has_value() || commandLine.drawableSize.has_value();
                             } else {
                                 result = woby::applyControlSceneOperation(ui, cleanSceneDocument, payload, formatObjectId, minViewerPaneWidth, maxViewerPaneWidth);
                                 if (payload.action == A::sceneInfo) { result["path"] = currentScenePath ? Json(woby::pathToUtf8(*currentScenePath)) : Json(nullptr); }
@@ -3968,6 +4092,14 @@ int main(int argc, char** argv)
             frameTimings.totalMilliseconds = woby::millisecondsBetween(frameStart, woby::PerformanceClock::now());
             copyGraphicsStats(frameTimings);
             lastFrameTimings = frameTimings;
+            if (!headless) { lastFrameEnvironment = frameEnvironment(window.get(), ui, presentedViewport); }
+            if (frameCapture.active) {
+                const auto& view = ui.camera;
+                woby::captureFrame(frameCapture, {frameTimings, lastFrameEnvironment,
+                    {view.target[0], view.target[1], view.target[2], view.yawRadians, view.pitchRadians, view.rollRadians,
+                        view.distance, view.verticalFovDegrees, view.nearPlane},
+                    woby::millisecondsBetween(frameCapture.start, woby::PerformanceClock::now())});
+            }
             if (commandLine.logPerformance) {
                 woby::accumulateFrameTiming(frameTimingAccumulator, frameTimings);
                 if (commandLine.logSlowFrameMilliseconds.has_value()) {

@@ -62,7 +62,41 @@ The result has the same public metadata as CLI discovery. It never includes the 
 `headless` is available even while `ready` is false. The queued `status` method also
 returns `renderer` and `screenshot: {width, height, format}`. Its `pane` field is null
 in headless mode. `capabilities` includes `headless`, `renderer`, and per-method
-`available`; `pane.set` is unavailable in headless mode and returns `-32602`.
+`available`; `pane.set`, `performance.begin` and `performance.end` are unavailable
+in headless mode and return `-32602`. `status.propertiesPane` reports the independent
+Properties inspector state (null when headless). `pane.set` accepts
+`propertiesVisible`; `visible` continues to control only the Scene pane.
+
+### Reproducible desktop measurements
+
+Start with `--drawable-size 1280x720` to request a fixed client drawable in pixels,
+or `--window-size 1280x720` for logical window units. They are mutually exclusive,
+disable user resizing, and fail startup if the requested size cannot be obtained.
+OS/display changes remain possible: validate the observed size during measurement.
+`--hidden-window` explicitly creates a hidden window; it is not headless rendering.
+
+`performance.get` describes the last completed frame: drawable and viewport,
+logical window size/flags, display scale/pixel density, both panes, UI scale,
+swapchain submission size, presentation policy and pacing period. It also reports
+the requested size, renderer, application/SDL versions and build configuration.
+Presentation submission does not establish compositor visibility or scanout latency.
+Desktop fields are absent/null in headless mode rather than synthetic 1×1 values.
+
+Use `performance.begin`, wait for the measurement window, then `performance.end`.
+The begin-command frame and end-command serialization are excluded. The runtime
+retains at most 16,384 complete frame events in memory and reports `droppedFrames`
+on overflow; it does not write files per frame. End returns scene/camera/render
+snapshots before/after, every retained frame's timing and camera, and indexed
+environment snapshots including scene revision changes. Camera arrays contain
+target XYZ, yaw/pitch/roll in radians, distance, vertical FOV in degrees and near plane.
+Completion timestamps use one monotonic clock relative to begin. Use differences
+between successive timestamps for elapsed time and frame-interval percentiles;
+the first event establishes the interval baseline. Reject overflow, gaps, changed
+conditions and unsuccessful captures before aggregation. GPU timestamps remain
+delayed samples and must not be used as a complete GPU latency distribution.
+Starting an already-active capture or ending an inactive capture returns `-32602`.
+Large results can exceed the normal command-history byte budget; retain the direct
+end response. See [the stress harness](../tests/stress/README.md) for validation.
 
 `status` also reports `annotationPreparing`, `annotationReady`, and
 `annotationPreparationError`. Loading can finish while annotation data is still

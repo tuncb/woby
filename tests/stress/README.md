@@ -50,9 +50,58 @@ Output directories must be new. `--select` matches filename substrings and can r
 
 `status=completed` means the scripted workflow finished. Inspect RPC responses and detector statuses before declaring an analysis complete. Rejection, truncation, process failure, and harness termination are distinct outcomes. The authenticated local RPC token is never written into evidence.
 
-FPS uses completed frame-count deltas over query-midpoint elapsed time. CPU/GPU last-frame timings are sparse samples, unsuitable for frame percentiles. GPU telemetry is device-wide. Screenshot export uses separate dimensions and runs outside steady frame windows.
+Harness version 4 launches a visible, fixed-size desktop window by default using
+`--drawable-size`, with `--width 1280 --height 720` as the default pixel dimensions.
+`--hidden-window` is an explicit control and excludes desktop FPS. Headless mode
+still skips desktop frame measurements. Scene and Properties visibility are
+independent (`pane.set` parameters `visible` and `propertiesVisible`).
 
-Desktop launches request `SW_HIDE` by default; `--visible-window` requests a visible window. Neither option fixes the actual drawable dimensions or establishes physical presentation latency. Woby requests 1280 × 720 at creation, but window management can change it; the native follow-up observed a different outer window size. Lock and record the actual drawable size when comparing future rendering changes. The RPC pane toggle hides only Scene controls, not Properties.
+Each FPS window decodes a separate PNG capture and rejects missing, corrupt or
+blank output before aggregation. It warms up, then records bounded complete frame
+events with `performance.begin/end`. The 16,384-frame cap reports dropped events;
+overflow, missing/nonmonotonic events, changed drawable/viewport/DPI/panes/pacing,
+scene edits, unexpected camera motion, or failed presentation exclude the entire
+window. Both raw observations and exclusion reasons remain in `frames.jsonl`.
+FPS uses completed frame intervals on the viewer's monotonic clock. P95/P99 are
+completion-interval statistics from this complete sequence, not GPU latency or
+physical scanout. Sparse polling timings retain the `sampled_` prefix.
+
+PNG export has separate dimensions and happens outside measurement. Nonblank
+captures and nonempty geometry counts are necessary checks, not proof of a correct
+diagnostic overlay: inspect captures and detector/display status before claiming
+an optimization. Physical visibility/occlusion is unknown; window flags and actual
+swapchain submissions are recorded. GPU telemetry remains device-wide. RPC polling,
+resource monitoring and optional performance logging still add overhead.
+
+Before measuring optimizations, run this small matrix serially at two resolutions
+with three independent processes per setting (four Scene/Properties combinations).
+Use fresh output paths and keep builds/tests closed during measurement:
+
+```powershell
+uv run tests/stress/run.py build/vs2026-vcpkg/bin/Debug/woby.exe assets/samples/surface-mesh-quality build/benchmark-validation-new/720p --suite validation --select equilateral --rounds 3 --width 1280 --height 720 --seconds 3 --warmup 1.5 --max-private-gib 38 --min-available-gib 6
+uv run tests/stress/run.py build/vs2026-vcpkg/bin/Debug/woby.exe assets/samples/surface-mesh-quality build/benchmark-validation-new/600p --suite validation --select equilateral --rounds 3 --width 800 --height 600 --seconds 3 --warmup 1.5 --max-private-gib 38 --min-available-gib 6
+uv run --with psutil tests/stress/summarize.py build/benchmark-validation-new build/benchmark-validation-new/summary.json
+```
+
+The runner and its unit tests declare psutil/Pillow dependencies for `uv run`.
+Repeat aggregation requires successful cases, verified captures, identical binary
+hashes and matching scene/camera/environment keys; it reports run count, FPS range
+and sample standard deviation. Three comparable repeats establish an initial
+variance estimate. A single run is never labeled as establishing variance. Old
+records lacking this validation remain raw evidence and do not enter this aggregate.
+Keep focus consistent and avoid input during each window. Windows may leave a
+new visible window unfocused; those repeats stay in a separate comparison group.
+If no group has three matching repeats, collect additional runs in fresh output
+directories rather than averaging mismatched focus/presentation states.
+Keep Debug and Release campaigns separate. Record and compare actual viewport
+dimensions: changing panes intentionally changes the workload.
+
+Cache policy: each case starts a fresh viewer, each window warms for the configured
+period, and OS file/driver caches are uncontrolled. This is not a cold-cache claim.
+Manifests retain binary/script hashes, Python/psutil/OS versions and settings; raw
+runtime samples include application/SDL versions, build configuration and renderer,
+while NVIDIA telemetry includes driver version when available. No CPU affinity,
+GPU clock lock, thermal control or compositor timing control is applied.
 
 CPU-only stages:
 

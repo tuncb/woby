@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <charconv>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -310,6 +311,30 @@ AppArguments parseCommandLine(int argc, char** argv)
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
 
+        if (argument == "--window-size" || argument == "--drawable-size") {
+            requireValue(argc, index, argument, "WIDTHxHEIGHT (1..16384 each)");
+            if (arguments.windowSize || arguments.drawableSize) {
+                throw std::runtime_error("Specify only one --window-size or --drawable-size.");
+            }
+            const std::string value = argv[++index];
+            const auto separator = value.find('x');
+            std::array<int, 2> size{};
+            if (separator == std::string::npos) { throw std::runtime_error("Expected WIDTHxHEIGHT."); }
+            const auto first = std::from_chars(value.data(), value.data() + separator, size[0]);
+            const auto second = std::from_chars(value.data() + separator + 1, value.data() + value.size(), size[1]);
+            if (first.ec != std::errc{} || first.ptr != value.data() + separator
+                || second.ec != std::errc{} || second.ptr != value.data() + value.size()
+                || size[0] < 1 || size[0] > 16384 || size[1] < 1 || size[1] > 16384) {
+                throw std::runtime_error("Expected WIDTHxHEIGHT with dimensions from 1 to 16384.");
+            }
+            (argument == "--window-size" ? arguments.windowSize : arguments.drawableSize) = size;
+            continue;
+        }
+        if (argument == "--hidden-window") {
+            if (arguments.hiddenWindow) { throw std::runtime_error("Specify --hidden-window once."); }
+            arguments.hiddenWindow = true;
+            continue;
+        }
         if (argument == "--help" || argument == "-h") {
             arguments.showHelp = true;
             continue;
@@ -445,6 +470,9 @@ AppArguments parseCommandLine(int argc, char** argv)
         throw std::runtime_error("Unexpected argument: " + argument);
     }
 
+    if (arguments.headless && (arguments.windowSize || arguments.drawableSize || arguments.hiddenWindow)) {
+        throw std::runtime_error("Window options are unavailable in headless mode.");
+    }
     if (arguments.logLevel != LogLevel::off && !arguments.logFile.has_value()) {
         throw std::runtime_error("--log-file is required when --log-level is not off.");
     }

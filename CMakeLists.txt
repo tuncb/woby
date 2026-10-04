@@ -220,7 +220,7 @@ endif()
 target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(woby SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
 
-target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}" WOBY_BUILD_CONFIG="$<CONFIG>")
 
 target_link_libraries(woby PRIVATE
     CDT::CDT
@@ -392,6 +392,7 @@ if(BUILD_TESTING)
         tests/graphics_diagnostics_tests.cpp
         tests/shader_types_tests.cpp
         tests/frame_pacing_tests.cpp
+        tests/performance_capture_tests.cpp
         tests/manual_path_dialog_tests.cpp
         src/manual_path_dialog.cpp
         src/manual_path_dialog_ui.cpp
