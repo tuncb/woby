@@ -18,15 +18,20 @@ struct AdaptivePointCut {
 };
 struct AdaptivePointRuntime {
     graphics::VertexBufferHandle winners=WOBY_GPU_INVALID_HANDLE;
+    graphics::VertexBufferHandle batch=WOBY_GPU_INVALID_HANDLE;
     graphics::ProgramHandle clear=WOBY_GPU_INVALID_HANDLE, raster=WOBY_GPU_INVALID_HANDLE, resolve=WOBY_GPU_INVALID_HANDLE;
     graphics::ProgramHandle resolveIds=WOBY_GPU_INVALID_HANDLE;
+    graphics::ProgramHandle batchClear{}, ids{}, merge{};
+    graphics::PointBackend preference=graphics::PointBackend::automatic, backend=graphics::PointBackend::automatic;
+    graphics::PointBackend loadedBackend=graphics::PointBackend::automatic, previousBackend=graphics::PointBackend::automatic;
     std::vector<AdaptivePointDraw> draws;
     std::vector<AdaptivePointKey> keys;
     std::vector<points::Refinement> cursors;
-    std::vector<points::Selection> navigation, full;
+    std::vector<points::Selection> navigation, full, querySelections;
     std::future<AdaptivePointCut> pending;
     points::Matrix projection{}, previousProjection{};
     std::array<float,2> query{}, previousQuery{};
+    std::array<uint32_t,4> queryRectangle{};
     bool queryValid=false;
     uint32_t width=0,height=0,previousWidth=0,previousHeight=0,budget=2000000,lastTiming=0;
     uint32_t navigationBudget=0;

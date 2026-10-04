@@ -11,7 +11,23 @@ float2 samplePosition(uint sample) {
     for (uint sample=0;sample<cloud.samples;++sample)
         cloud.winners[(thread.y*cloud.width+thread.x)*cloud.samples+min(sample,cloud.samples-1)]=0;
 }
-[numthreads(128,1,1)] void cs_opaque_raster(uint3 dispatch:SV_GroupID,uint lane:SV_GroupIndex) {
+[numthreads(8,8,1)] void cs_opaque_batch_clear(uint3 thread:SV_DispatchThreadID) {
+    if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
+    for (uint sample=0;sample<cloud.samples;++sample)
+        cloud.batch[(thread.y*cloud.width+thread.x)*cloud.samples+sample]=uint2(0,0);
+}
+[numthreads(8,8,1)] void cs_opaque_merge(uint3 thread:SV_DispatchThreadID) {
+    if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
+    for (uint sample=0;sample<cloud.samples;++sample) {
+        uint index=(thread.y*cloud.width+thread.x)*cloud.samples+sample;
+        uint2 winner=cloud.batch[index];
+        // One invocation owns this sample. No 64-bit atomic is needed to merge
+        // a completed batch into the persistent lexicographic depth/ID winner.
+        uint64 key=(uint64(winner.x)<<32)|uint64(winner.y);
+        cloud.winners[index]=max(cloud.winners[index],key);
+    }
+}
+[ForceInline] void rasterPoints(uint3 dispatch,uint lane,bool ids) {
     uint taskIndex=dispatch.y*cloud.dispatchWidth+dispatch.x;
     if (taskIndex>=cloud.taskCount) return;
     OpaquePointTaskData task=cloud.tasks[taskIndex];
@@ -27,15 +43,34 @@ float2 samplePosition(uint sample) {
         int2 hi=int2(min(float2(cloud.width-1,cloud.height-1),floor(center+radius)));
         if (task.query!=0) { lo=max(lo,int2(cloud.query.xy)); hi=min(hi,int2(cloud.query.zw)-1); }
         uint id=group.firstId+p.id-group.sourceFirstId;
-        uint64 key=(uint64(asuint(max(clip.z/clip.w,0.0)))<<32)|uint64(id);
+        uint depth=asuint(max(clip.z/clip.w,0.0));
         for (int y=lo.y;y<=hi.y;++y) for (int x=lo.x;x<=hi.x;++x) for (uint sample=0;sample<cloud.samples;++sample) {
             float2 delta=float2(x,y)+samplePosition(sample)-center;
             if (dot(delta,delta)>radius*radius) continue;
+            uint index=(uint(y)*cloud.width+uint(x))*cloud.samples+min(sample,cloud.samples-1);
+#ifdef WOBY_POINT_ATOMIC64
             uint64 ignored;
-            InterlockedMax(cloud.winners[(uint(y)*cloud.width+uint(x))*cloud.samples+min(sample,cloud.samples-1)],key,ignored);
+            InterlockedMax(cloud.winners[index],(uint64(depth)<<32)|uint64(id),ignored);
+#else
+            uint ignored;
+            if (!ids) InterlockedMax(cloud.batch[index].x,depth,ignored);
+            else if (cloud.batch[index].x==depth) InterlockedMax(cloud.batch[index].y,id,ignored);
+#endif
         }
     }
 }
+#ifdef WOBY_POINT_ATOMIC64
+[numthreads(128,1,1)] void cs_opaque_raster(uint3 dispatch:SV_GroupID,uint lane:SV_GroupIndex) {
+    rasterPoints(dispatch,lane,false);
+}
+#else
+[numthreads(128,1,1)] void cs_opaque_depth(uint3 dispatch:SV_GroupID,uint lane:SV_GroupIndex) {
+    rasterPoints(dispatch,lane,false);
+}
+[numthreads(128,1,1)] void cs_opaque_ids(uint3 dispatch:SV_GroupID,uint lane:SV_GroupIndex) {
+    rasterPoints(dispatch,lane,true);
+}
+#endif
 struct ResolveVertex { float4 position:SV_Position; };
 ResolveVertex vs_opaque_resolve(uint vertex:SV_VertexID) {
     ResolveVertex v; v.position=float4(vertex==1?3.0:-1.0,vertex==2?3.0:-1.0,0,1); return v;

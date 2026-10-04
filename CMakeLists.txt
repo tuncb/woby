@@ -8,7 +8,7 @@ endif()
 if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS version (Metal 4)")
 endif()
-project(woby_obj_viewer VERSION 0.26.0 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.27.0 LANGUAGES CXX)
 
 if(APPLE)
     # Enable Objective-C++ in the common scope of the backend and Metal tests.
@@ -573,9 +573,12 @@ if(BUILD_TESTING)
     if(WOBY_BUILD_HASH_BENCHMARKS)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
-    if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/adaptive_points_gpu_tests.cpp tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp
+    if(WOBY_TEST_HEADLESS)
+        target_sources(woby_tests PRIVATE tests/adaptive_points_gpu_tests.cpp tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/freeform_gpu_tests.cpp
             tests/scene_renderer_gpu_tests.cpp)
+    endif()
+    if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
+        target_sources(woby_tests PRIVATE tests/graphics_gpu_tests.cpp)
         target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_GPU_ALLOCATION_TESTS)
         target_compile_definitions(woby_tests PRIVATE WOBY_GPU_ALLOCATION_TESTS)
     endif()

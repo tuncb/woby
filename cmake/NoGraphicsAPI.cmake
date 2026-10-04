@@ -51,9 +51,8 @@ function(woby_compile_graphics_shaders target)
         cs_marker_lookup_single cs_marker_lookup_msaa cs_freeform
         vs_mesh_edges vs_triangle_lines fs_mesh_edges fs_mesh_edges_pulled
         fs_marker_mesh_edges fs_marker_mesh_edges_pulled)
-    if(NOT APPLE)
-        list(APPEND entries cs_opaque_clear cs_opaque_raster vs_opaque_resolve fs_opaque_resolve fs_opaque_color)
-    endif()
+    list(APPEND entries cs_opaque_clear cs_opaque_raster cs_opaque_batch_clear cs_opaque_depth cs_opaque_ids
+        cs_opaque_merge vs_opaque_resolve fs_opaque_resolve fs_opaque_color)
     set(outputs)
     foreach(entry IN LISTS entries)
         if(entry MATCHES "^vs_")
@@ -69,6 +68,9 @@ function(woby_compile_graphics_shaders target)
         endif()
         set(common -warnings-as-errors all -entry ${entry} -stage ${stage} -fvk-use-c-layout -matrix-layout-row-major
             -I "${woby_ngapi_SOURCE_DIR}/include" -I "${woby_ngapi_SOURCE_DIR}/utility/include")
+        if(entry STREQUAL "cs_opaque_raster")
+            list(APPEND common -DWOBY_POINT_ATOMIC64)
+        endif()
         if(APPLE)
             set(output "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/metal/${entry}.bin")
             set(intermediate "${CMAKE_CURRENT_BINARY_DIR}/native-shaders/${entry}")

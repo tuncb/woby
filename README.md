@@ -34,6 +34,14 @@ including `VK_EXT_descriptor_heap`, `VK_KHR_device_address_commands`,
 number alone does not establish compatibility. macOS requires Apple silicon,
 macOS 26+, and Metal 4. Woby reports unsupported devices at startup.
 
+Large opaque point sets share adaptive navigation across renderers. M1 uses a
+32-bit atomic compute path with progressive refinement and cached visibility;
+supported M2-and-newer Macs can use 64-bit atomic maximum. Devices without the
+compute requirements use adaptive point quads, returning to full-source drawing
+when navigation stops. These paths retain original point identities for picking.
+Metal performance and native GPU correctness still require validation on real Macs;
+the recorded large-cloud benchmark results are from Vulkan.
+
 Vulkan startup errors list each rejected GPU, its API and driver information,
 and exact missing extensions or queried feature flags. Unqueried features are
 identified as unchecked. Surface and logical-device creation failures report
@@ -730,6 +738,13 @@ cmake --preset vs2026-vcpkg -DWOBY_TEST_HEADLESS=ON
 cmake --build --preset vs2026-vcpkg
 ctest --preset vs2026-vcpkg
 ```
+
+On a Mac with a supported GPU, the same renderer/readback tests can be enabled
+with `cmake --preset ninja-vcpkg -DWOBY_TEST_HEADLESS=ON`, then
+`cmake --build --preset ninja-vcpkg` and `ctest --preset ninja-vcpkg`.
+The point suite exercises 32-bit compute on every compatible GPU and also tests
+64-bit compute when available. Native Metal allocation tests cover registry
+growth beyond 64 buffers, concurrent lookup, and allocation-failure recovery.
 
 To check annotated screenshots immediately after startup, run this regression on
 a machine with a desktop. It launches four fresh viewers and saves their PNGs and

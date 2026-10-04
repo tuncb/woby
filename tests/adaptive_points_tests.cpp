@@ -32,6 +32,18 @@ TEST_CASE("Adaptive point queue rejects transparent points independently of scen
         CHECK(runtime.draws.size()==(alpha>=.999f?1u:0u));
     }
 }
+TEST_CASE("Point backend selection retains adaptive rendering without 64 bit atomics") {
+    using namespace woby::graphics;
+    constexpr auto portable=WOBY_GPU_CAPS_POINT_COMPUTE;
+    constexpr auto native=portable|WOBY_GPU_CAPS_OPAQUE_POINTS;
+    CHECK(selectPointBackend(0)==PointBackend::quads);
+    CHECK(selectPointBackend(portable)==PointBackend::atomic32);
+    CHECK(selectPointBackend(native)==PointBackend::atomic64);
+    CHECK(selectPointBackend(native,PointBackend::atomic32)==PointBackend::atomic32);
+    CHECK(selectPointBackend(native,PointBackend::quads)==PointBackend::quads);
+    CHECK(selectPointBackend(portable,PointBackend::atomic64)==PointBackend::atomic32);
+    CHECK(selectPointBackend(0,PointBackend::atomic32)==PointBackend::quads);
+}
 TEST_CASE("Adaptive point controls persist through views scene files and history") {
     PointDirectory directory;
     woby::UiState state; REQUIRE(state.adaptivePoints);
