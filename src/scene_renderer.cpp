@@ -305,6 +305,7 @@ GpuMesh createGpuMesh(const Mesh& mesh, const woby::graphics::VertexLayout& mesh
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
     uint8_t features)
 {
+    gpuMesh.resourceRevision = nextMeshContentRevision();
     if ((features & gpuMeshEdges) && !mesh.indices.empty() && !woby::graphics::isValid(gpuMesh.lineIndexBuffer)) {
         (void)sceneBufferBytes(mesh.indices.size(), 2 * sizeof(uint32_t));
         gpuMesh.lineIndexBuffer = woby::graphics::createIndexBuffer(
@@ -327,6 +328,7 @@ void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
 
 void destroyGpuMesh(GpuMesh& mesh)
 {
+    mesh.resourceRevision = nextMeshContentRevision();
     for (auto& chunks : {&mesh.pointChunks, &mesh.proxyChunks}) {
         for (const auto buffer : *chunks) { if (graphics::isValid(buffer)) graphics::destroy(buffer); }
         chunks->clear();
@@ -562,7 +564,7 @@ void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePi
 {
     sceneSelectionLines(parts, scratch.positions);
     submitHelperLines(viewId, scratch.positions, layout, program, colorUniform, {1.0f, .78f, .15f, 1.0f});
-    uvProbeLines(parts,state,scratch.positions);
+    uvProbeLines(parts,state,scratch.positions, &scratch.queries);
     submitHelperLines(viewId, scratch.positions, layout, program, colorUniform, {.1f,1,.8f,1});
 }
 

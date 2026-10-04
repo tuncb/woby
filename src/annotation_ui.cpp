@@ -14,6 +14,13 @@
 
 namespace woby {
 namespace {
+std::vector<ScenePickPart> interactionParts(const UiState& state, AnnotationInteraction& interaction)
+{
+    std::vector<ScenePickPart> parts;
+    if (interaction.queries) { resolveSceneParts(*interaction.queries, state, parts); }
+    else { scenePickParts(state, parts); }
+    return parts;
+}
 std::vector<PickPoint> handles(const UiAnnotation& item, std::span<const ScenePickPart> parts, const ScenePickView& view)
 {
     std::vector<PickPoint> result;
@@ -27,92 +34,10 @@ std::vector<PickPoint> handles(const UiAnnotation& item, std::span<const ScenePi
     }
     return result;
 }
-void submitLines(woby::graphics::ViewId viewId, const ScenePickView& view,
-    const UiAnnotation& item, std::span<const ScenePickPart> parts, const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch, bool sampledPreview = false)
+void submitLines(woby::graphics::ViewId viewId, const AnnotationSettings& settings,
+    std::span<const std::array<float, 3>> vertices, const woby::graphics::VertexLayout& layout,
+    woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform, bool sampledPreview = false)
 {
-    auto& sources = scratch.annotationSources;
-    auto& lines = scratch.annotationLines;
-    annotationWorldLines(item, parts, lines, sources);
-    if (lines.empty()) { return; }
-    auto& sourceTransforms = scratch.annotationTransforms;
-    sourceTransforms.clear();
-    const auto vp = annotationCompose(view.view, view.renderProjection);
-    for (const auto* source : sources) {
-        sourceTransforms.push_back(annotationCompose(source->model, vp));
-    }
-    const auto& geometry = item.geometry;
-    const auto& settings = item.settings;
-    auto& vertices = scratch.positions;
-    vertices.clear();
-    vertices.reserve(lines.size() * 6);
-    size_t segmentIndex = 0;
-    for (const auto& line : lines) {
-        const auto& segment = geometry.segments[segmentIndex++];
-        const auto* target = sources[segment.source];
-        double slopeX = 0, slopeY = 0;
-        if (target && target->mesh && !segment.endTriangle) {
-            const auto& transform = sourceTransforms[segment.source];
-            std::array<std::array<float, 4>, 3> corners;
-            for (size_t k = 0; k < 3; ++k) {
-                const auto index = target->mesh->indices[target->indexOffset + static_cast<size_t>(segment.triangle) * 3 + k];
-                const auto& p = target->mesh->vertices[index].position;
-                corners[k] = annotationTransform(transform, {p[0], p[1], p[2], 1});
-            }
-            // NDC depth is affine over the projected face. Extend the stroke in
-            // that plane, preventing its uphill half from sinking into the mesh.
-            if (std::all_of(corners.begin(), corners.end(), [](const auto& p) { return std::abs(p[3]) > 1e-12f; })) {
-                const double x0 = corners[0][0] / corners[0][3], y0 = corners[0][1] / corners[0][3], z0 = corners[0][2] / corners[0][3];
-                const double dx1 = corners[1][0] / corners[1][3] - x0, dy1 = corners[1][1] / corners[1][3] - y0, dz1 = corners[1][2] / corners[1][3] - z0;
-                const double dx2 = corners[2][0] / corners[2][3] - x0, dy2 = corners[2][1] / corners[2][3] - y0, dz2 = corners[2][2] / corners[2][3] - z0;
-                const double determinant = dx1 * dy2 - dx2 * dy1;
-                if (std::abs(determinant) > 1e-15) {
-                    slopeX = (dz1 * dy2 - dz2 * dy1) / determinant;
-                    slopeY = (dx1 * dz2 - dx2 * dz1) / determinant;
-                }
-            }
-        }
-        auto a = annotationTransform(vp, {line.a[0], line.a[1], line.a[2], 1});
-        auto b = annotationTransform(vp, {line.b[0], line.b[1], line.b[2], 1});
-        // Clip line centers before expanding, including lines crossing the near plane.
-        bool visible = true;
-        for (size_t plane = 0; plane < 6; ++plane) {
-            const auto distance = [&](const auto& p) {
-                if (plane < 4) { return p[3] + (plane % 2 == 0 ? p[plane / 2] : -p[plane / 2]); }
-                return plane == 4 ? p[2] : p[3] - p[2];
-            };
-            const float da = distance(a), db = distance(b);
-            if (da < 0 && db < 0) { visible = false; break; }
-            if ((da < 0) != (db < 0)) {
-                const float t = da / (da - db);
-                std::array<float, 4> p;
-                for (size_t k = 0; k < 4; ++k) { p[k] = a[k] + t * (b[k] - a[k]); }
-                (da < 0 ? a : b) = p;
-            }
-        }
-        if (!visible || a[3] <= 0 || b[3] <= 0) { continue; }
-        const float dx = (b[0] / b[3] - a[0] / a[3]) * static_cast<float>(view.width);
-        const float dy = (b[1] / b[3] - a[1] / a[3]) * static_cast<float>(view.height);
-        const float length = std::hypot(dx, dy);
-        if (length < 1e-6f) { continue; }
-        const float ox = -dy / length * settings.width * view.pixelScale / static_cast<float>(view.width);
-        const float oy = dx / length * settings.width * view.pixelScale / static_cast<float>(view.height);
-        std::array<std::array<float, 3>, 4> corners;
-        for (size_t i = 0; i < 4; ++i) {
-            auto p = i < 2 ? a : b;
-            const float sign = i % 2 == 0 ? 1.0f : -1.0f;
-            p[0] += sign * ox * p[3]; p[1] += sign * oy * p[3];
-            // Reversed floating-point depth needs a relative bias toward the
-            // eye. A fixed NDC offset would pull distant strokes through occluders.
-            p[2] += static_cast<float>(sign * (slopeX * ox + slopeY * oy)) * p[3]
-                + std::abs(p[2]) * 1e-6f;
-            // Keep the expanded stroke in NDC. Inverting the combined view and
-            // projection loses precision on large scenes with small near planes,
-            // shifting the rendered stroke away from its handles and pick edges.
-            corners[i] = {p[0] / p[3], p[1] / p[3], p[2] / p[3]};
-        }
-        for (size_t i : {0u, 1u, 2u, 2u, 1u, 3u}) { vertices.push_back(corners[i]); }
-    }
     if (vertices.empty()) { return; }
     const auto count = static_cast<uint32_t>(vertices.size());
     if (woby::graphics::getAvailTransientVertexBuffer(count, layout) < count) { return; }
@@ -329,7 +254,8 @@ bool beginPointerProjection(const UiState& state, AnnotationInteraction& interac
         && annotationEdgeHit(*selected, parts, view, point);
     if (!interaction.tool && handle < 0 && !moveWhole) { return false; }
     interaction.error.clear();
-    interaction.view = view; interaction.generation = state.sceneGeneration; interaction.revision = state.sceneEditRevision;
+    interaction.view = view;
+    interaction.identity = annotationWorkIdentity(state);
     interaction.pointerStart = interaction.pointerEnd = point;
     interaction.editing = 0; interaction.handle = handle;
     try {
@@ -379,7 +305,7 @@ void movePointerProjection(const UiState& state, AnnotationInteraction& interact
     interaction.pointerEnd = point;
     interaction.preview.geometry.segments.clear();
     try {
-        if (state.sceneGeneration != interaction.generation || state.sceneEditRevision != interaction.revision) { throw std::runtime_error("Scene changed while drawing. Start again."); }
+        if (!annotationWorkCurrent(interaction.identity, state, true)) { throw std::runtime_error("Scene changed while drawing. Start again."); }
         auto control = annotationNdc(interaction.view, point);
         if (interaction.editing) {
             const auto* selected = selectedAnnotation(state);
@@ -481,16 +407,17 @@ void cancelAnnotationPointer(AnnotationInteraction& interaction)
 {
     if (interaction.pending) { cancelAnnotationWork(interaction.pending->work); }
     auto* executor = interaction.executor;
-    interaction = {}; interaction.executor = executor;
+    auto* queries = interaction.queries;
+    interaction = {}; interaction.executor = executor; interaction.queries = queries;
 }
 bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, const ScenePickView& view, PickPoint point)
 {
     if (!annotationPreparationReady(state)) { return false; }
     if (!interaction.executor) {
-        return beginPointerProjection(state, interaction, view, point, scenePickParts(state), {});
+        return beginPointerProjection(state, interaction, view, point, interactionParts(state, interaction), {});
     }
     // Cheap outline/handle test avoids consuming unrelated camera/selection clicks.
-    const auto parts = scenePickParts(state);
+    const auto parts = interactionParts(state, interaction);
     if (!interaction.tool) {
         const auto* selected = selectedAnnotation(state);
         if (!selected || !selected->targetValid || !selected->settings.visible || selected->settings.locked) { return false; }
@@ -522,7 +449,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
         interaction.pending = std::make_shared<AnnotationPointerRuntime>();
         interaction.pending->input = std::move(input);
         interaction.view = view; interaction.pointerStart = interaction.pointerEnd = point;
-        interaction.generation = state.sceneGeneration; interaction.revision = state.sceneEditRevision;
+        interaction.identity = annotationWorkIdentity(state);
         interaction.dragging = true; interaction.error.clear(); interaction.preview = {};
         if (const auto* item = selectedAnnotation(state); !interaction.tool && item) { interaction.editing = item->objectId; }
         else { interaction.editing = 0; }
@@ -532,7 +459,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
 }
 void moveAnnotationPointer(const UiState& state, AnnotationInteraction& interaction, PickPoint point)
 {
-    if (!interaction.pending) { movePointerProjection(state, interaction, point, scenePickParts(state)); return; }
+    if (!interaction.pending) { movePointerProjection(state, interaction, point, interactionParts(state, interaction)); return; }
     if (interaction.pending->released || point == interaction.pointerEnd) { return; }
     interaction.pointerEnd = point;
     queuePointerProjection(interaction); // Replaces a queued preview, cooperatively cancels the active one.
@@ -581,7 +508,7 @@ void endAnnotationPointer(UiState& state, AnnotationInteraction& interaction, bo
     }
     if (!interaction.dragging) { return; }
     interaction.dragging = false;
-    if (!allowed || state.sceneGeneration != interaction.generation || state.sceneEditRevision != interaction.revision) {
+    if (!allowed || !annotationWorkCurrent(interaction.identity, state, true)) {
         interaction.error = "Drawing canceled because the viewport or scene changed."; return;
     }
     if (!interaction.error.empty() || interaction.preview.geometry.segments.empty()) { return; }
@@ -617,18 +544,19 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
         const auto* item = selectedAnnotation(state);
         const auto selectedId = item ? item->objectId : 0;
         const bool changed = interaction.overlayView != view.view || interaction.overlayProjection != view.projection
-            || interaction.overlayWidth != view.width || interaction.overlayHeight != view.height
-            || interaction.overlaySelection != selectedId || interaction.overlayRevision != state.sceneEditRevision;
+            || interaction.overlayWidth != view.width || interaction.overlayHeight != view.height || interaction.overlayPixelScale != view.pixelScale
+            || interaction.overlaySelection != selectedId || interaction.overlayStamp != sceneQueryStamp(state) || interaction.overlayAnnotations != state.revisions.annotations;
         if (changed) {
             interaction.overlayView = view.view; interaction.overlayProjection = view.projection;
-            interaction.overlayWidth = view.width; interaction.overlayHeight = view.height;
-            interaction.overlaySelection = selectedId; interaction.overlayRevision = state.sceneEditRevision;
+            interaction.overlayWidth = view.width; interaction.overlayHeight = view.height; interaction.overlayPixelScale = view.pixelScale;
+            interaction.overlaySelection = selectedId; interaction.overlayStamp = sceneQueryStamp(state);
+            interaction.overlayAnnotations = state.revisions.annotations;
             interaction.overlayReady = false; interaction.overlayHandles.clear();
             interaction.overlayEdgePoint.reset(); interaction.overlayEdgeHit = false;
         } else if (pointerAllowed && !interaction.overlayReady && item && item->targetValid && item->settings.visible && !item->settings.locked) {
             // A drag can have frames with no mouse motion. Do not mistake one
             // of those frames for settled navigation and ray-pick the mesh.
-            auto parts = scenePickParts(state);
+            auto parts = interactionParts(state, interaction);
             const auto target = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == item->targetId; });
             if (target != parts.end()) {
                 const auto positions = handles(*item, parts, view);
@@ -671,7 +599,9 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
         if (!interaction.tool && !interaction.dragging && interaction.overlayReady
             && interaction.overlayEdgePoint != point) {
             const auto* item = selectedAnnotation(state);
-            interaction.overlayEdgeHit = item && annotationEdgeHit(*item, scenePickParts(state), view, point);
+            if (interaction.queries) { updateSceneAnnotationQueries(*interaction.queries, state); }
+            const auto* lines = item && interaction.queries ? &interaction.queries->annotations.objects.at(item->objectId).lines : nullptr;
+            interaction.overlayEdgeHit = item && annotationEdgeHit(*item, interactionParts(state, interaction), view, point, lines);
             interaction.overlayEdgePoint = point;
         }
         if ((interaction.dragging && interaction.editing)
@@ -692,21 +622,38 @@ float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interac
     draw->PopClipRect();
     return messageBottom;
 }
-void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state, const ScenePickView& view,
-    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
-    SceneRenderScratch& scratch,
-    const AnnotationInteraction* interaction)
+void prepareSceneAnnotations(const UiState& state, const ScenePickView& view,
+    SceneRenderScratch& scratch, const AnnotationInteraction* interaction)
 {
+    updateSceneAnnotationQueries(scratch.queries, state);
     if (state.annotations.empty() && (!interaction || !interaction->dragging)) { return; }
     auto& parts = scratch.parts;
-    scenePickParts(state, parts);
+    resolveSceneParts(scratch.queries, state, parts);
+    for (const auto& item : state.annotations) {
+        updateAnnotationProjection(scratch.queries.annotations.objects.at(item.objectId), item, parts, view);
+    }
+    auto& preview = scratch.annotationPreview;
+    preview.projected.clear();
+    if (interaction && interaction->dragging && interaction->error.empty()) {
+        preview.lines = annotationWorldLines(interaction->preview, parts);
+        ++preview.builds;
+        updateAnnotationProjection(preview, interaction->preview, parts, view);
+    }
+}
+
+void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state,
+    const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
+    const SceneRenderScratch& scratch, const AnnotationInteraction* interaction)
+{
     for (const auto& item : state.annotations) {
         if (interaction && interaction->dragging && interaction->editing == item.objectId && interaction->error.empty()
             && !interaction->preview.geometry.segments.empty()) { continue; }
-        submitLines(viewId, view, item, parts, layout, program, colorUniform, scratch);
+        const auto& query = scratch.queries.annotations.objects.at(item.objectId);
+        submitLines(viewId, item.settings, query.projected, layout, program, colorUniform);
     }
     if (interaction && interaction->dragging && interaction->error.empty()) {
-        submitLines(viewId, view, interaction->preview, parts, layout, program, colorUniform, scratch, interaction->sampledPreview);
+        submitLines(viewId, interaction->preview.settings, scratch.annotationPreview.projected,
+            layout, program, colorUniform, interaction->sampledPreview);
     }
 }
 } // namespace woby

@@ -30,10 +30,15 @@ struct AnnotationPartsSnapshot {
 };
 [[nodiscard]] AnnotationPartsSnapshot snapshotAnnotationParts(std::span<const ScenePickPart> parts);
 struct AnnotationWorkIdentity {
-    uint64_t generation = 0, revision = 0;
+    const UiState* owner = nullptr;
+    uint64_t generation = 0, geometry = 0, visibility = 0, annotations = 0;
+    SceneUpAxis upAxis = SceneUpAxis::z;
     SceneCamera camera;
+    Bounds bounds;
     std::vector<SceneObjectId> selection;
     struct Source {
+        uint64_t contentRevision = 0;
+        SceneObjectId fileId = 0;
         const Vertex* vertices = nullptr;
         const uint32_t* indices = nullptr;
         size_t vertexCount = 0, indexCount = 0;

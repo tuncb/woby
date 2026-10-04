@@ -332,6 +332,7 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
         && cache.geometryRevision == state.revisions.geometry && cache.analysisRevision == state.revisions.analysis;
     next.signatureBuilds = cache.signatureBuilds + (reuseSignature ? 0 : 1);
     next.signature = reuseSignature ? cache.signature : comparisonGeometrySignature(state, id);
+    next.boundsSignature = reuseSignature ? cache.boundsSignature : comparisonBoundsSignature(state, id);
     const auto* comparison = findComparison(state, id);
     next.preparationSignature = reuseSignature ? cache.preparationSignature
         : comparison && comparison->settings.type == AnalysisType::uvQuality ? comparisonPreparationSignature(state, id) : next.signature;
@@ -685,14 +686,18 @@ static std::optional<Bounds> calculateComparisonDisplayBounds(const UiState& sta
     if (corners.empty()) { return std::nullopt; }
     return calculateBounds(corners);
 }
-std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id)
+uint64_t comparisonBoundsSignature(const UiState& state, SceneObjectId id)
+{
+    return comparisonSignature(state, id, true);
+}
+std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id, std::optional<uint64_t> cachedSignature)
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison) { return std::nullopt; }
     if (!isUvAnalysis(comparison->settings.type) || comparison->settings.uvView != UvView::layout) {
         return calculateComparisonDisplayBounds(state, id);
     }
-    const auto signature = comparisonSignature(state, id, true);
+    const auto signature = cachedSignature ? *cachedSignature : comparisonBoundsSignature(state, id);
     if (!signature) { return std::nullopt; }
     if (!comparison->boundsCache || comparison->boundsCache->signature != signature) {
         comparison->boundsCache = std::make_shared<UiComparison::BoundsCache>(

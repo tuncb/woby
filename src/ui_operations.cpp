@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <utility>
+#include <tuple>
 
 namespace woby {
 bool sceneObjectSelected(const UiState& state, SceneObjectId id)
@@ -288,7 +289,7 @@ void isolateComparisonObjects(UiState& state, const std::vector<SceneObjectId>& 
     }
     if (!changed) { return; }
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::analysis);
 }
 
 void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId>& objects, ComparisonSide side,
@@ -355,7 +356,7 @@ SceneObjectId createComparison(UiState& state, AnalysisType type)
     assignSceneObjectIds(state);
     const auto id = state.comparisons.back().objectId;
     selectSceneObject(state, id);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::analysis);
     return id;
 }
 
@@ -501,7 +502,7 @@ SceneObjectId duplicateComparison(UiState& state, SceneObjectId id)
     const auto created = state.comparisons.back().objectId;
     selectSceneObject(state, created);
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::analysis);
     return created;
 }
 
@@ -515,7 +516,7 @@ void removeComparison(UiState& state, SceneObjectId id)
         state.activeComparisonId = state.comparisons.empty() ? invalidSceneObjectId : state.comparisons.front().objectId;
     }
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::analysis);
 }
 
 void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
@@ -534,7 +535,7 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
     if (auto* comparison = findComparison(state, id)) {
         comparison->translation = translation;
         recalculateSceneBounds(state);
-        markSceneDirty(state, SceneChange::appearance);
+        markSceneDirty(state, SceneChange::presentation);
     }
 }
 
@@ -556,13 +557,14 @@ const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSign
     return &*comparison->uvFindingFocus;
 }
 
-void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t resultSignature, SceneObjectId id)
+void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t resultSignature, SceneObjectId id,
+    std::optional<uint64_t> geometrySignature)
 {
     auto* comparison = findComparison(state, id);
     if (!comparison || !comparison->uvFindingFocus) { return; }
     auto& focus = comparison->uvFindingFocus;
     if (!comparison->settings.enabled || comparison->settings.type != AnalysisType::uvQuality
-        || focus->signature != comparisonGeometrySignature(state, id)) { focus.reset(); return; }
+        || focus->signature != (geometrySignature ? *geometrySignature : comparisonGeometrySignature(state, id))) { focus.reset(); return; }
     if (focus->geometry || resultSignature != focus->signature) { return; }
     focus->geometry = uvFindingGeometry(display, focus->index);
     if (!focus->geometry) { focus.reset(); return; }
@@ -925,6 +927,18 @@ void setComparisonDiagnosticsVisible(UiState& state, bool visible, SceneObjectId
 void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObjectId id)
 {
     if (auto* comparison = findComparison(state, id)) {
+        settings = normalizedComparisonSettings(settings);
+        const auto before = comparison->settings;
+        if (settings == before) { return; }
+        // Detector readiness/scheduling reads settings live. Only these inputs
+        // change source resolution or the geometry/preparation signatures.
+        const auto uvInputs = [](const ComparisonSettings& value) {
+            return std::tie(value.uvView, value.uvSeparated, value.uvMetric, value.uvNormalization,
+                value.uvOverlapEnabled, value.uvOverlapScope, value.uvThresholdEnabled, value.uvThreshold,
+                value.uvNearCollapse, value.uvRangeEnabled, value.uvRangeMinimum, value.uvRangeMaximum);
+        };
+        const bool inputsChanged = before.type != settings.type || before.task != settings.task
+            || ((isUvAnalysis(before.type) || isUvAnalysis(settings.type)) && uvInputs(before) != uvInputs(settings));
         const bool wasEnabled = comparison->settings.enabled;
         if (settings.intersections.limits != comparison->settings.intersections.limits
             || settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
@@ -934,11 +948,15 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
             resetComparisonDiagnosticFocus(state, id);
         }
-        comparison->settings = normalizedComparisonSettings(settings);
+        comparison->settings = settings;
         normalizeAnalysisSources(state, comparison->objectId);
         if (comparison->settings.enabled && !wasEnabled) { setPropertiesPaneVisible(state, true); }
         recalculateSceneBounds(state);
-        markSceneDirty(state, SceneChange::analysis);
+        if (!settings.enabled) {
+            resetComparisonDiagnosticFocus(state, id);
+            comparison->uvFindingFocus.reset();
+        }
+        markSceneDirty(state, SceneChange::presentation | (inputsChanged ? SceneChange::analysis : SceneChange::none));
     }
 }
 
@@ -1568,7 +1586,7 @@ void setTriangleEdgeXray(UiState& state, bool enabled)
 {
     if (state.triangleEdgeXray != enabled) {
         state.triangleEdgeXray = enabled;
-        markSceneDirty(state, SceneChange::appearance);
+        markSceneDirty(state, SceneChange::appearance | SceneChange::picking);
     }
 }
 
@@ -1591,7 +1609,7 @@ void setSceneUpAxis(UiState& state, SceneUpAxis upAxis)
         state.upAxis = upAxis;
         recalculateSceneBounds(state);
         frameCameraToScene(state);
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::presentation);
     }
 }
 
@@ -1611,7 +1629,7 @@ void setMasterVertexPointSize(UiState& state, float value)
         defaultMasterVertexPointSize);
     if (state.masterVertexPointSize != clampedValue) {
         state.masterVertexPointSize = clampedValue;
-        markSceneDirty(state, SceneChange::appearance);
+        markSceneDirty(state, SceneChange::appearance | SceneChange::picking);
     }
 }
 
@@ -1964,6 +1982,9 @@ void notifySceneEdit(UiState& state, SceneChange change)
     if (includes(SceneChange::labels)) { ++state.revisions.labels; }
     if (includes(SceneChange::analysis)) { ++state.revisions.analysis; }
     if (includes(SceneChange::visibility)) { ++state.revisions.visibility; }
+    if (includes(SceneChange::annotations)) { ++state.revisions.annotations; }
+    if (includes(SceneChange::presentation)) { ++state.revisions.presentation; }
+    if (includes(SceneChange::picking)) { ++state.revisions.picking; }
     ++state.sceneEditRevision;
 }
 

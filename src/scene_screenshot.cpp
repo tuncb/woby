@@ -292,9 +292,8 @@ void submitSceneScreenshotCapture(
         }
     }
     if (scaleOverlay) {
-        auto parts = scenePickParts(ui);
-        if (comparison) { appendVisibleComparisonPickParts(parts, ui, *comparison); }
-        const auto dimensions = ui.showDimensions ? sceneDimensions(parts) : std::nullopt;
+        updateSceneSelectionQueries(screenshot.renderScratch.queries, ui, comparison);
+        const auto dimensions = ui.showDimensions ? screenshot.renderScratch.queries.selection.dimensions : std::nullopt;
         const auto pickView = scenePickView(camera, ui.upAxis, sceneBounds,
             sceneWidth, screenshot.height, homogeneousDepth, 1);
         drawSceneScaleOverlay(annotationDraw, ui, dimensions, pickView, {0, 0}, 1, 20);
@@ -346,7 +345,8 @@ void submitSceneScreenshotCapture(
     }
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);
-        submitSceneAnnotations(screenshotHelperView, ui, captureView,
+        prepareSceneAnnotations(ui, captureView, screenshot.renderScratch);
+        submitSceneAnnotations(screenshotHelperView, ui,
             helperLayout, annotationProgram, colorUniform, screenshot.renderScratch);
     }
     if (annotations || scaleOverlay) {
