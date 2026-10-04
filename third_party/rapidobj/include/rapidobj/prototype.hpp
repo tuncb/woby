@@ -30,8 +30,8 @@ struct FreeformStatement {
 struct PositionWeight { size_t position; double weight; };
 
 struct PrototypeOptions {
-    size_t chunk_bytes = 4 * 1024 * 1024;
-    size_t read_bytes = 256 * 1024;
+    size_t chunk_bytes = 4 * 1024 * 1024; // raw blocks scanned by workers
+    size_t read_bytes = 256 * 1024; // individual reads from non-seekable streams
     size_t workers = 0; // zero selects hardware concurrency, capped at 16
     size_t max_statement_bytes = 1024 * 1024;
     bool material_names_only = false; // retain deterministic face IDs without resolving any MTL data
@@ -59,10 +59,23 @@ inline void PrototypeCheckpoint(const PrototypeOptions& options) {
 }
 inline std::string_view PrototypeToken(std::string_view& text) {
     TrimLeft(text);
-    const auto end = text.find_first_of(" \t\r");
+    size_t end = 0;
+    while (end < text.size() && text[end] != ' ' && text[end] != '\t' && text[end] != '\r') { ++end; }
     const auto token = text.substr(0, end);
-    text.remove_prefix(end == std::string_view::npos ? text.size() : end);
+    text.remove_prefix(end);
     return token;
+}
+// Let the numeric decoder find the end once, then validate its delimiter.
+inline bool PrototypeNextNumber(std::string_view& text, double& value, bool finite) {
+    if (!text.empty() && text.front() == '+') { text.remove_prefix(1); }
+    if (text.empty()) { return false; }
+    const auto parsed = fast_float::from_chars(text.data(), text.data() + text.size(), value);
+    if (parsed.ec != std::errc{} || (finite && !std::isfinite(value))) { return false; }
+    if (parsed.ptr != text.data() + text.size() && *parsed.ptr != ' ' && *parsed.ptr != '\t' && *parsed.ptr != '\r') {
+        return false;
+    }
+    text.remove_prefix(static_cast<size_t>(parsed.ptr - text.data()));
+    return true;
 }
 inline bool PrototypeNumber(std::string_view text, double& value, bool finite = true) {
     if (!text.empty() && text.front() == '+') { text.remove_prefix(1); }
@@ -109,12 +122,6 @@ struct PrototypeChunk {
     std::vector<FreeformStatement> statements;
     std::vector<PositionWeight> weights;
 };
-struct PrototypeText {
-    std::string text;
-    size_t first_line = 1, physical_lines = 0, logical_lines = 0;
-    // Sparse physical-line accounting; ordinary files need no per-line table.
-    std::vector<std::pair<size_t, size_t>> continuations;
-};
 
 inline rapidobj_errc PrototypeLine(std::string_view line, size_t line_number,
     PrototypeChunk& out, SharedContext& context) {
@@ -130,8 +137,10 @@ inline rapidobj_errc PrototypeLine(std::string_view line, size_t line_number,
         PrototypeOrdinary(records, line_number);
         std::array<double, 7> values{};
         size_t count = 0;
-        for (auto token = PrototypeToken(text); !token.empty(); token = PrototypeToken(text)) {
-            if (count == values.size() || !PrototypeNumber(token, values[count++], key == "v")) {
+        for (;;) {
+            TrimLeft(text);
+            if (text.empty()) { break; }
+            if (count == values.size() || !PrototypeNextNumber(text, values[count++], key == "v")) {
                 return rapidobj_errc::ParseError;
             }
         }
@@ -154,6 +163,14 @@ inline rapidobj_errc PrototypeLine(std::string_view line, size_t line_number,
             ++chunk.normals.count;
         }
         return rapidobj_errc::Success;
+    }
+
+    // Ordinary primitives avoid constructing a freeform record or traversing
+    // its keyword handlers. Sparse ordinary records still validate body state.
+    if (key == "f" || key == "l" || key == "p" || key == "s" || key == "usemtl") {
+        if (line.size() > kMaxLineLength) { return rapidobj_errc::LineTooLongError; }
+        PrototypeOrdinary(records, line_number);
+        return ProcessLine(line, &chunk, &context);
     }
 
     FreeformStatement record;
@@ -214,64 +231,176 @@ inline rapidobj_errc PrototypeLine(std::string_view line, size_t line_number,
         record.name = key;
     } else {
         if (line.size() > kMaxLineLength) { return rapidobj_errc::LineTooLongError; }
-        if (key != "f" && key != "l" && key != "p" && key != "s" && key != "usemtl") {
-            return rapidobj_errc::ParseError;
-        }
-        PrototypeOrdinary(records, line_number);
-        return ProcessLine(line, &chunk, &context);
+        return rapidobj_errc::ParseError;
     }
     records.push_back(std::move(record));
     return rapidobj_errc::Success;
 }
 
-inline PrototypeChunk PrototypeParseChunk(PrototypeText input, const std::shared_ptr<SharedContext>& context) {
-    PrototypeChunk out;
-    size_t line_number = input.first_line, logical = 0, continuation = 0;
-    std::string_view text = input.text;
-    while (!text.empty()) {
+// A scanner owns only incomplete physical/logical lines. Complete ordinary
+// statements are decoded directly from their input block's string_view.
+struct PrototypeScanner {
+    PrototypeChunk chunk;
+    std::string physical, logical;
+    size_t physical_lines = 0, logical_start = 1, logical_physical = 0;
+};
+
+inline size_t PrototypeContinuation(std::string_view line) {
+    if (!line.empty() && line.back() == '\r') { line.remove_suffix(1); }
+    size_t end = line.size();
+    while (end && (line[end - 1] == ' ' || line[end - 1] == '\t')) { --end; }
+    if (end && line[end - 1] == '\\' && line.find('#') == std::string_view::npos) { return end - 1; }
+    return std::string_view::npos;
+}
+
+inline void PrototypePhysical(PrototypeScanner& scanner, std::string_view line,
+    SharedContext& context, const PrototypeOptions& options) {
+    ++scanner.physical_lines;
+    ++scanner.logical_physical;
+    auto fail = [&] {
+        scanner.chunk.parsed.error = {make_error_code(rapidobj_errc::LineTooLongError), {}, scanner.logical_start};
+    };
+    if (line.size() > options.max_statement_bytes) { fail(); return; }
+    const auto continuation = PrototypeContinuation(line);
+    if (!line.empty() && line.back() == '\r') { line.remove_suffix(1); }
+    if (continuation != std::string_view::npos) { line = line.substr(0, continuation); }
+    if (line.size() > options.max_statement_bytes - scanner.logical.size()) { fail(); return; }
+    if (continuation != std::string_view::npos || scanner.logical_physical > 1) {
+        scanner.logical.append(line);
+        if (continuation != std::string_view::npos) {
+            if (scanner.logical.size() == options.max_statement_bytes) { fail(); }
+            else { scanner.logical += ' '; }
+            return;
+        }
+        line = scanner.logical;
+    }
+    auto trimmed = line;
+    TrimLeft(trimmed);
+    const auto rc = trimmed.size() > kMaxLineLength && trimmed.front() == '#'
+        ? rapidobj_errc::LineTooLongError : PrototypeLine(line, scanner.logical_start, scanner.chunk, context);
+    if (rc != rapidobj_errc::Success) {
+        scanner.chunk.parsed.error = {make_error_code(rc), std::string(line.substr(0, kMaxLineLength)), scanner.logical_start};
+    }
+    scanner.logical.clear();
+    scanner.logical_physical = 0;
+    scanner.logical_start = scanner.physical_lines + 1;
+}
+
+inline void PrototypeScan(PrototypeScanner& scanner, std::string_view text, SharedContext& context,
+    const PrototypeOptions& options, const std::atomic_bool& stopped) {
+    size_t visits = 0;
+    while (!text.empty() && !scanner.chunk.parsed.error) {
+        if (visits++ % 256 == 0 && stopped.load(std::memory_order_relaxed)) { return; }
         const auto end = text.find('\n');
         const auto line = text.substr(0, end);
-        out.parsed.text.line_count = line_number - input.first_line + 1;
-        // Retain the ordinary reader's physical comment limit as well.
-        auto rc = rapidobj_errc::Success;
-        auto trimmed = line;
-        TrimLeft(trimmed);
-        if (trimmed.size() > kMaxLineLength && trimmed.front() == '#') { rc = rapidobj_errc::LineTooLongError; }
-        else { rc = PrototypeLine(line, line_number, out, *context); }
-        if (rc != rapidobj_errc::Success) {
-            out.parsed.error = {make_error_code(rc), std::string(line.substr(0, kMaxLineLength)), line_number};
+        if (line.size() > options.max_statement_bytes - scanner.physical.size()) {
+            scanner.chunk.parsed.error = {make_error_code(rapidobj_errc::LineTooLongError), {}, scanner.logical_start};
+            return;
+        }
+        if (end == std::string_view::npos) { scanner.physical.append(line); return; }
+        if (scanner.physical.empty()) { PrototypePhysical(scanner, line, context, options); }
+        else {
+            scanner.physical.append(line);
+            PrototypePhysical(scanner, scanner.physical, context, options);
+            scanner.physical.clear();
+        }
+        text.remove_prefix(end + 1);
+    }
+}
+
+inline void PrototypeFinish(PrototypeScanner& scanner, SharedContext& context, const PrototypeOptions& options) {
+    if (scanner.chunk.parsed.error) { return; }
+    if (!scanner.physical.empty()) {
+        PrototypePhysical(scanner, scanner.physical, context, options);
+        scanner.physical.clear();
+    }
+    if (!scanner.chunk.parsed.error && scanner.logical_physical) {
+        scanner.chunk.parsed.error = {make_error_code(rapidobj_errc::ParseError),
+            "Unterminated OBJ line continuation", scanner.logical_start};
+    }
+}
+
+struct PrototypeBlock {
+    std::unique_ptr<char, sys::AlignedDeleter> storage;
+    std::string_view text;
+    size_t storage_bytes = 0, prefix_end = 0, middle_end = 0;
+    PrototypeChunk middle;
+    std::error_code read_error;
+};
+
+inline PrototypeBlock PrototypeAllocateBlock(size_t size) {
+    PrototypeBlock block;
+    block.storage_bytes = (size + 4095) / 4096 * 4096;
+    block.storage.reset(sys::AlignedAllocate(block.storage_bytes, 4096));
+    if (!block.storage) { throw std::bad_alloc(); }
+    block.text = {block.storage.get(), size};
+    return block;
+}
+
+inline PrototypeBlock PrototypeParseBlock(PrototypeBlock block, bool first, SharedContext& context,
+    const PrototypeOptions& options, const std::atomic_bool& stopped) {
+    // The first physical line may start in a preceding block. Keep it and the
+    // following complete logical statement for ordered boundary reconciliation.
+    // This also handles a '#' before the block that cancels an apparent '\\'.
+    if (!first) {
+        auto end = block.text.find('\n');
+        block.prefix_end = block.text.size();
+        size_t visits = 0;
+        while (end != std::string_view::npos) {
+            if (visits++ % 256 == 0 && stopped.load(std::memory_order_relaxed)) { return block; }
+            const auto begin = end + 1;
+            end = block.text.find('\n', begin);
+            if (end != std::string_view::npos
+                && PrototypeContinuation(block.text.substr(begin, end - begin)) == std::string_view::npos) {
+                block.prefix_end = end + 1;
+                break;
+            }
+        }
+    }
+    // Locate the final complete logical statement. Only boundary lines are
+    // inspected here; the body is scanned once by its worker, without copying.
+    auto end = block.text.rfind('\n');
+    block.middle_end = block.prefix_end;
+    size_t visits = 0;
+    while (end != std::string_view::npos && end >= block.prefix_end) {
+        if (visits++ % 256 == 0 && stopped.load(std::memory_order_relaxed)) { return block; }
+        const auto previous = end ? block.text.rfind('\n', end - 1) : std::string_view::npos;
+        const auto begin = previous == std::string_view::npos ? 0 : previous + 1;
+        if (PrototypeContinuation(block.text.substr(begin, end - begin)) == std::string_view::npos) {
+            block.middle_end = end + 1;
             break;
         }
-        text.remove_prefix(end == std::string_view::npos ? text.size() : end + 1);
-        ++line_number;
-        if (continuation < input.continuations.size() && input.continuations[continuation].first == logical) {
-            line_number += input.continuations[continuation++].second;
-        }
-        ++logical;
+        end = previous;
     }
-    out.parsed.text.line_count = input.physical_lines;
-    return out;
+    PrototypeScanner scanner;
+    PrototypeScan(scanner, block.text.substr(block.prefix_end, block.middle_end - block.prefix_end), context, options, stopped);
+    scanner.chunk.parsed.text.line_count = scanner.physical_lines;
+    block.middle = std::move(scanner.chunk);
+    return block;
+}
+
+inline PrototypeBlock PrototypeReadFileBlock(sys::File& file, size_t offset, size_t size,
+    SharedContext& context, const PrototypeOptions& options, const std::atomic_bool& stopped) {
+    if (stopped.load(std::memory_order_relaxed)) { return {}; }
+    auto block = PrototypeAllocateBlock(size);
+    sys::FileReader reader(file);
+    PendingRead pending{&reader}; // joins before reader and destination storage are destroyed
+    block.read_error = reader.Error();
+    if (!block.read_error) { block.read_error = reader.ReadBlock(offset, size, block.storage.get()); }
+    if (!block.read_error) {
+        const auto read = reader.WaitForResult();
+        block.read_error = read.error_code;
+        block.text = block.text.substr(0, read.bytes_read);
+        if (!block.read_error && read.bytes_read != size) { block.read_error = std::make_error_code(std::io_errc::stream); }
+    } else { block.text = {}; }
+    return PrototypeParseBlock(std::move(block), offset == 0, context, options, stopped);
 }
 
 struct PrototypeInput {
     std::istream* stream = nullptr;
     std::string_view memory;
-    size_t offset = 0;
-    bool eof = false, failed = false;
+    sys::File* file = nullptr;
 };
-inline size_t PrototypeRead(PrototypeInput& input, std::vector<char>& buffer) {
-    if (input.stream) {
-        input.stream->read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
-        input.eof = input.stream->eof();
-        input.failed = input.stream->bad() || (input.stream->fail() && !input.eof);
-        return static_cast<size_t>(input.stream->gcount());
-    }
-    const auto size = std::min(buffer.size(), input.memory.size() - input.offset);
-    if (size) { memcpy(buffer.data(), input.memory.data() + input.offset, size); }
-    input.offset += size;
-    input.eof = input.offset == input.memory.size();
-    return size;
-}
 
 inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers output,
     const MaterialLibrary& material_library, const PrototypeOptions& options) {
@@ -293,18 +422,23 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
         : std::min(size_t{16}, std::max(size_t{1}, size_t(std::thread::hardware_concurrency())));
     context->thread.concurrency = workers;
     std::vector<Chunk> chunks;
-    // Declare futures after every object referenced by workers, so exception
-    // unwinding joins workers before destroying any referenced state.
-    struct Pending { std::future<PrototypeChunk> worker; size_t text_bytes; };
+    PrototypeScanner boundary;
+    std::atomic_bool stopped = false;
+    size_t inflight = 0, positions = 0, texcoords = 0, normals = 0, boundary_line_base = 0;
+    // Futures are destroyed first on every exit, before all referenced state.
+    struct Pending { std::future<PrototypeBlock> worker; size_t text_bytes; };
     std::deque<Pending> pending;
-    size_t inflight = 0, positions = 0, texcoords = 0, normals = 0;
-    const auto collect = [&](PrototypeChunk chunk) {
-        if (chunk.parsed.error && (!result.polygons.error
-            || chunk.parsed.error.line_num < result.polygons.error.line_num)) { result.polygons.error = chunk.parsed.error; }
+    const auto collect = [&](PrototypeChunk chunk, size_t line_offset) {
+        if (chunk.parsed.error) {
+            chunk.parsed.error.line_num += line_offset;
+            result.polygons.error = chunk.parsed.error;
+            return;
+        }
         constexpr auto limit = static_cast<size_t>(std::numeric_limits<int>::max());
         if (chunk.parsed.positions.count > limit - positions || chunk.parsed.texcoords.count > limit - texcoords
             || chunk.parsed.normals.count > limit - normals) { throw std::length_error("OBJ exceeds the supported attribute range."); }
         for (auto& record : chunk.statements) {
+            record.line += line_offset;
             record.positions += positions; record.texcoords += texcoords; record.normals += normals;
             result.statements.push_back(std::move(record));
         }
@@ -314,103 +448,90 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
         normals += chunk.parsed.normals.count;
         result.stats.parsed_chunk_bytes += SizeInBytes(chunk.parsed);
         chunks.push_back(std::move(chunk.parsed));
+    };
+    const auto flush_boundary = [&] {
+        boundary.chunk.parsed.text.line_count = boundary.physical_lines - boundary_line_base;
+        collect(std::move(boundary.chunk), 0);
+        boundary.chunk = {};
+        boundary_line_base = boundary.physical_lines;
+    };
+    const auto collect_block = [&](PrototypeBlock block) {
         ++result.stats.chunks;
+        result.stats.input_bytes += block.text.size();
+        PrototypeScan(boundary, block.text.substr(0, block.prefix_end), *context, options, stopped);
+        if (boundary.chunk.parsed.error) { result.polygons.error = boundary.chunk.parsed.error; return; }
+        if (block.middle_end > block.prefix_end) {
+            assert(boundary.physical.empty() && boundary.logical.empty() && !boundary.logical_physical);
+            flush_boundary();
+            const auto line_count = block.middle.parsed.text.line_count;
+            collect(std::move(block.middle), boundary.physical_lines);
+            if (result.polygons.error) { return; }
+            boundary.physical_lines += line_count;
+            boundary.logical_start = boundary.physical_lines + 1;
+            boundary_line_base = boundary.physical_lines;
+        }
+        PrototypeScan(boundary, block.text.substr(block.middle_end), *context, options, stopped);
+        if (boundary.chunk.parsed.error) { result.polygons.error = boundary.chunk.parsed.error; }
+        else if (block.read_error) { result.polygons.error = {block.read_error, {}, boundary.logical_start}; }
     };
     const auto collect_first = [&] {
+        while (pending.front().worker.wait_for(std::chrono::milliseconds(10)) != std::future_status::ready) {
+            PrototypeCheckpoint(options);
+        }
         PrototypeCheckpoint(options);
-        collect(pending.front().worker.get());
+        collect_block(pending.front().worker.get());
         inflight -= pending.front().text_bytes;
         pending.pop_front();
         PrototypeCheckpoint(options);
     };
-    const auto dispatch = [&](PrototypeText text, bool final) {
-        if (text.text.empty()) { return; }
-        if (workers == 1 || (final && pending.empty() && chunks.empty())) {
-            result.stats.workers = std::max(result.stats.workers, size_t{1});
-            result.stats.peak_inflight_text_bytes = std::max(result.stats.peak_inflight_text_bytes, text.text.size());
-            collect(PrototypeParseChunk(std::move(text), context));
-        } else {
-            if (pending.size() == workers) { collect_first(); }
-            const auto size = text.text.size();
-            pending.push_back({std::async(std::launch::async, PrototypeParseChunk, std::move(text), context), size});
-            inflight += size;
-            result.stats.workers = std::max(result.stats.workers, pending.size());
-            result.stats.peak_inflight_text_bytes = std::max(result.stats.peak_inflight_text_bytes, inflight);
-        }
-    };
-
     try {
-        PrototypeText text;
-        std::vector<char> buffer(options.read_bytes);
-        std::string physical, logical;
-        size_t physical_line = 0, logical_start = 1, logical_physical = 0;
-        Error scanner_error;
-        const auto finish_physical = [&] {
-            ++physical_line;
-            ++logical_physical;
-            if (!physical.empty() && physical.back() == '\r') { physical.pop_back(); }
-            const auto last = physical.find_last_not_of(" \t");
-            const auto comment = physical.find('#');
-            const bool continued = last != std::string::npos && physical[last] == '\\'
-                && (comment == std::string::npos || last < comment);
-            if (continued) { physical.erase(last); }
-            if (physical.size() > options.max_statement_bytes - logical.size()) {
-                scanner_error = {make_error_code(rapidobj_errc::LineTooLongError), {}, logical_start};
-                return;
-            }
-            logical += physical;
-            physical.clear();
-            if (continued) {
-                if (logical.size() == options.max_statement_bytes) {
-                    scanner_error = {make_error_code(rapidobj_errc::LineTooLongError), {}, logical_start};
-                } else { logical += ' '; }
-                return;
-            }
-            text.text.append(logical); text.text += '\n';
-            if (logical_physical > 1) { text.continuations.push_back({text.logical_lines, logical_physical - 1}); }
-            text.physical_lines += logical_physical;
-            ++text.logical_lines;
-            logical.clear(); logical_physical = 0;
-            logical_start = physical_line + 1;
-            if (text.text.size() >= options.chunk_bytes) {
-                dispatch(std::move(text), false);
-                text = {}; text.first_line = logical_start;
-            }
-        };
-        while (!scanner_error && !result.polygons.error && !input.eof && !input.failed) {
+        const auto input_size = input.file ? input.file->size() : input.memory.size();
+        size_t offset = 0;
+        bool stream_finished = false;
+        while (!result.polygons.error && (input.stream ? !stream_finished : offset < input_size)) {
             PrototypeCheckpoint(options);
-            const auto size = PrototypeRead(input, buffer);
-            result.stats.input_bytes += size;
-            size_t begin = 0;
-            while (begin < size && !scanner_error && !result.polygons.error) {
-                const auto* newline = static_cast<const char*>(memchr(buffer.data() + begin, '\n', size - begin));
-                const auto end = newline ? static_cast<size_t>(newline - buffer.data()) : size;
-                if (end - begin > options.max_statement_bytes - physical.size()) {
-                    scanner_error = {make_error_code(rapidobj_errc::LineTooLongError), {}, logical_start};
-                    break;
+            if (pending.size() == workers) { collect_first(); }
+            if (result.polygons.error) { break; }
+            const auto size = input.stream ? options.chunk_bytes : std::min(options.chunk_bytes, input_size - offset);
+            PrototypeBlock block;
+            if (input.stream) {
+                block = PrototypeAllocateBlock(size);
+                size_t filled = 0;
+                while (filled < size) {
+                    PrototypeCheckpoint(options);
+                    const auto request = std::min(options.read_bytes, size - filled);
+                    input.stream->read(block.storage.get() + filled, static_cast<std::streamsize>(request));
+                    filled += static_cast<size_t>(input.stream->gcount());
+                    if (input.stream->bad() || (input.stream->fail() && !input.stream->eof())) {
+                        block.read_error = std::make_error_code(std::io_errc::stream);
+                    }
+                    if (input.stream->eof() || block.read_error) { stream_finished = true; break; }
                 }
-                physical.append(buffer.data() + begin, end - begin);
-                if (newline) { finish_physical(); }
-                begin = newline ? end + 1 : end;
-            }
-        }
-        if (!scanner_error && !result.polygons.error) {
-            if (input.failed) {
-                scanner_error = {std::make_error_code(std::io_errc::stream), {}, logical_start};
+                block.text = block.text.substr(0, filled);
+            } else if (!input.file) { block.text = input.memory.substr(offset, size); }
+            const auto bytes = input.file ? (size + 4095) / 4096 * 4096
+                : block.storage_bytes ? block.storage_bytes : block.text.size();
+            const bool sequential = workers == 1 || (offset == 0 && (input.stream ? stream_finished : size == input_size));
+            auto parse = [&, start = offset, size, block = std::move(block)]() mutable {
+                if (input.file) { return PrototypeReadFileBlock(*input.file, start, size, *context, options, stopped); }
+                return PrototypeParseBlock(std::move(block), start == 0, *context, options, stopped);
+            };
+            if (sequential) {
+                result.stats.workers = std::max(result.stats.workers, size_t{1});
+                result.stats.peak_inflight_text_bytes = std::max(result.stats.peak_inflight_text_bytes, bytes);
+                collect_block(parse());
             } else {
-                if (!physical.empty()) { finish_physical(); }
-                if (!scanner_error && logical_physical != 0) {
-                    scanner_error = {make_error_code(rapidobj_errc::ParseError), "Unterminated OBJ line continuation", logical_start};
-                }
+                pending.push_back({std::async(std::launch::async, std::move(parse)), bytes});
+                inflight += bytes;
+                result.stats.workers = std::max(result.stats.workers, pending.size());
+                result.stats.peak_inflight_text_bytes = std::max(result.stats.peak_inflight_text_bytes, inflight);
             }
+            offset += size;
         }
-        // Include complete statements preceding a scanner error, for earliest
-        // diagnostics and consistent material/index accounting.
-        dispatch(std::move(text), true);
-        while (!pending.empty()) { collect_first(); }
-        if (scanner_error && (!result.polygons.error || scanner_error.line_num < result.polygons.error.line_num)) {
-            result.polygons.error = std::move(scanner_error);
-        }
+        while (!pending.empty() && !result.polygons.error) { collect_first(); }
+        if (result.polygons.error) { stopped.store(true, std::memory_order_relaxed); return result; }
+        PrototypeFinish(boundary, *context, options);
+        flush_boundary();
         if (result.polygons.error) { return result; }
         if (chunks.empty()) { chunks.emplace_back(); }
 
@@ -440,7 +561,6 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
             ready.set_value(std::move(names));
         }
         PrototypeCheckpoint(options);
-        // Tiny files parsed on the caller must not launch a full merge pool.
         context->thread.concurrency = std::max(size_t{1}, result.stats.workers);
         result.polygons = Merge(chunks, context);
         PrototypeCheckpoint(options);
@@ -449,6 +569,7 @@ inline PrototypeResult PrototypeParse(PrototypeInput input, GeometryBuffers outp
         } else { result.stats.position_copy_bytes_avoided = positions * sizeof(std::array<double, 3>); }
         return result;
     } catch (...) {
+        stopped.store(true, std::memory_order_relaxed);
         output.positions.clear(); output.texcoords.clear(); output.normals.clear();
         throw;
     }
@@ -479,13 +600,15 @@ inline PrototypeResult ParseMemoryPrototype(std::string_view input, GeometryBuff
 }
 inline PrototypeResult ParseFilePrototype(const std::filesystem::path& path, GeometryBuffers output,
     const PrototypeOptions& options = {}) {
-    std::ifstream input(path, std::ios::binary);
+    // Buffered native handles allow arbitrary block boundaries and reuse the
+    // vendored positioned/overlapped reader on worker threads.
+    detail::sys::File input(path, true);
     if (!input) {
         PrototypeResult result;
         result.polygons.error = {std::make_error_code(std::io_errc::stream), {}, 0};
         return result;
     }
-    return ParseStreamPrototype(input, output,
+    return detail::PrototypeParse({nullptr, {}, &input}, output,
         MaterialLibrary::SearchPath(std::filesystem::absolute(path).parent_path(), Load::Optional), options);
 }
 } // namespace rapidobj

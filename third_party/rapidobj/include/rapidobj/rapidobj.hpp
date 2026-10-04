@@ -4908,7 +4908,7 @@ struct AlignedDeleter final {
 
 class File final {
   public:
-    File(const std::filesystem::path& filepath)
+    File(const std::filesystem::path& filepath, [[maybe_unused]] bool buffered = false)
     {
         auto filepath_string = filepath.string();
 
@@ -5013,15 +5013,15 @@ struct AlignedDeleter final {
 
 class File final {
   public:
-    File(const std::filesystem::path& filepath)
+    File(const std::filesystem::path& filepath, bool buffered = false)
     {
         m_handle = CreateFileW(
             filepath.c_str(),
             GENERIC_READ,
-            0,
+            buffered ? FILE_SHARE_READ : 0,
             nullptr,
             OPEN_EXISTING,
-            FILE_ATTRIBUTE_READONLY | FILE_FLAG_NO_BUFFERING | FILE_FLAG_OVERLAPPED,
+            FILE_ATTRIBUTE_READONLY | FILE_FLAG_OVERLAPPED | (buffered ? 0 : FILE_FLAG_NO_BUFFERING),
             nullptr);
 
         if (m_handle == INVALID_HANDLE_VALUE) {
@@ -5160,7 +5160,7 @@ struct AlignedDeleter final {
 
 class File final {
   public:
-    File(const std::filesystem::path& filepath)
+    File(const std::filesystem::path& filepath, [[maybe_unused]] bool buffered = false)
     {
         auto filepath_string = filepath.string();
 

@@ -236,3 +236,135 @@ TEST_CASE("RapidOBJ prototype reports stream failures and rejects invalid resour
     CHECK(positions.empty());
     CHECK_THROWS_AS((void)woby::loadObjMeshTextPrototype(polygons, {}, {0, 8, 2}), std::invalid_argument);
 }
+
+TEST_CASE("OBJ prototype preserves continued bodies at every raw block alignment") {
+    const PrototypeFixture fixture;
+    // A comment's trailing backslash is not a continuation, including when its
+    // '#' and backslash arrive in different blocks. Also split CRLF and tokens.
+    const std::string body = "# comment with a trailing backslash \\\r\n" + rationalTrimmed;
+    const auto reference = woby::loadObjMeshLegacy(fixture.write(rationalTrimmed));
+    for (size_t padding = 0; padding < 64; ++padding) {
+        CAPTURE(padding);
+        const auto text = "#" + std::string(padding, 'x') + "\r\n" + body;
+        const auto path = fixture.write(text);
+        const woby::ObjPrototypeOptions options{64, 7, 3};
+        sameMesh(reference, woby::loadObjMeshPrototype(path, {}, options));
+        sameMesh(reference, woby::loadObjMeshTextPrototype(text, {}, options));
+
+        std::vector<woby::Coordinate> positions, normals;
+        std::vector<std::array<double, 2>> texcoords;
+        std::istringstream stream(text);
+        rapidobj::PrototypeOptions settings; settings.chunk_bytes = 64; settings.read_bytes = 7; settings.workers = 3;
+        const auto parsed = rapidobj::ParseStreamPrototype(stream, {positions, texcoords, normals},
+            rapidobj::MaterialLibrary::Ignore(), settings);
+        REQUIRE_FALSE(parsed.polygons.error);
+        REQUIRE(positions.size() == 5);
+        CHECK(positions.back() == woby::Coordinate{1000000001, 1, 0});
+        REQUIRE(parsed.weights.size() == 2);
+        CHECK(parsed.weights[0].position == 1); CHECK(parsed.weights[1].position == 3);
+        CHECK(parsed.stats.input_bytes == text.size());
+        const auto surface = std::find_if(parsed.statements.begin(), parsed.statements.end(), [](const auto& statement) {
+            return statement.kind == rapidobj::StatementKind::surface;
+        });
+        REQUIRE(surface != parsed.statements.end());
+        CHECK(surface->positions == 4); CHECK(surface->texcoords == 4); CHECK(surface->normals == 1);
+        const auto offset = text.find("surf ");
+        CHECK(surface->line == 1 + static_cast<size_t>(std::count(text.begin(), text.begin() + offset, '\n')));
+    }
+}
+
+TEST_CASE("OBJ prototype reports the earliest error at every raw block alignment") {
+    const PrototypeFixture fixture;
+    const std::string body = "v 0 0 0\r\nv 1 0 0\r\nv 0 1 0 # trailing slash \\\r\nf 1 \\\r\n 2 invalid\r\n"
+        "v also-invalid 0 0\n";
+    for (size_t padding = 0; padding < 64; ++padding) {
+        const auto text = "#" + std::string(padding, 'x') + "\n" + body;
+        const auto path = fixture.write(text);
+        for (int source = 0; source < 3; ++source) {
+            CAPTURE(padding); CAPTURE(source);
+            std::vector<woby::Coordinate> positions, normals;
+            std::vector<std::array<double, 2>> texcoords;
+            rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+            rapidobj::PrototypeOptions settings; settings.chunk_bytes = 64; settings.read_bytes = 3; settings.workers = 4;
+            std::istringstream stream(text);
+            const auto parsed = source == 0 ? rapidobj::ParseMemoryPrototype(text, buffers, rapidobj::MaterialLibrary::Ignore(), settings)
+                : source == 1 ? rapidobj::ParseStreamPrototype(stream, buffers, rapidobj::MaterialLibrary::Ignore(), settings)
+                : rapidobj::ParseFilePrototype(path, buffers, settings);
+            REQUIRE(parsed.polygons.error);
+            CHECK(parsed.polygons.error.line_num == 5);
+            CHECK(positions.empty()); CHECK(normals.empty()); CHECK(texcoords.empty());
+        }
+    }
+}
+
+TEST_CASE("OBJ prototype validates numeric token endings without a delimiter prescan") {
+    const auto valid = woby::loadObjMeshTextPrototype("v +0 -0 0e0\nv +1.0 0 0\nv 0 +1E+0 0\n"
+        "vt +.25 .5\nvn 0 0 +1\nf 1/1/1 2/1/1 3/1/1\n", {}, {23, 2, 3});
+    REQUIRE(valid.vertices.size() == 3);
+    CHECK(valid.vertices[0].texcoord == std::array<float, 2>{.25f, .5f});
+    for (const std::string line : {"v 1x 0 0", "v 1.0.1 0 0", "v 1e+ 0 0", "v nan 0 0",
+            "v 1e309 0 0", "vt .5suffix", "vn 0 0 1x", "v + 0 0", "v 0 0 0 1 2"}) {
+        CAPTURE(line);
+        CHECK(failureLine(line + "\n", {7, 2, 2}).find("line 1") != std::string::npos);
+    }
+}
+
+TEST_CASE("RapidOBJ prototype joins native block reads when cancellation throws") {
+    const PrototypeFixture fixture;
+    std::string text;
+    for (size_t i = 0; i < 10000; ++i) { text += "v 0 0 0\n"; }
+    const auto path = fixture.write(text);
+    std::vector<woby::Coordinate> positions, normals;
+    std::vector<std::array<double, 2>> texcoords;
+    struct Checkpoints { size_t calls = 0; std::thread::id caller = std::this_thread::get_id(); } checkpoints;
+    rapidobj::PrototypeOptions options; options.chunk_bytes = 4096; options.workers = 4;
+    options.user = &checkpoints;
+    options.checkpoint = [](void* data) {
+        auto& state = *static_cast<Checkpoints*>(data);
+        REQUIRE(std::this_thread::get_id() == state.caller);
+        if (++state.calls == 7) { throw std::runtime_error("cancel native blocks"); }
+    };
+    CHECK_THROWS_WITH(rapidobj::ParseFilePrototype(path, {positions, texcoords, normals}, options), "cancel native blocks");
+    CHECK(positions.empty()); CHECK(texcoords.empty()); CHECK(normals.empty());
+    // Windows rejects deleting a file while this reader still owns its handle.
+    CHECK(std::filesystem::remove(path));
+}
+
+TEST_CASE("RapidOBJ prototype allows overlapping read-only opens of the same file") {
+    const PrototypeFixture fixture;
+    const auto path = fixture.write(polygons);
+    // Keep the first handle alive: this catches exclusive sharing without a
+    // timing-dependent race between two background loaders.
+    const rapidobj::detail::sys::File firstReader(path, true);
+    REQUIRE(static_cast<bool>(firstReader));
+    std::vector<woby::Coordinate> positions, normals;
+    std::vector<std::array<double, 2>> texcoords;
+    rapidobj::PrototypeOptions options; options.chunk_bytes = 31; options.workers = 3;
+    const auto parsed = rapidobj::ParseFilePrototype(path, {positions, texcoords, normals}, options);
+    REQUIRE_FALSE(parsed.polygons.error);
+    CHECK(positions.size() == 7);
+}
+
+TEST_CASE("RapidOBJ prototype bounds reconstructed statements across tiny blocks") {
+    rapidobj::PrototypeOptions options;
+    options.chunk_bytes = 3; options.read_bytes = 2; options.workers = 3; options.max_statement_bytes = 16;
+    std::vector<woby::Coordinate> positions, normals;
+    std::vector<std::array<double, 2>> texcoords;
+    rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+    // Trailing whitespace after a continuation is discarded. The raw text can
+    // exceed the logical limit while each physical line stays within its limit.
+    const std::string valid = "v 0 \\        \r\n0 \\        \r\n0\n";
+    const auto parsed = rapidobj::ParseMemoryPrototype(valid, buffers, rapidobj::MaterialLibrary::Ignore(), options);
+    REQUIRE_FALSE(parsed.polygons.error);
+    REQUIRE(positions.size() == 1);
+    CHECK(positions[0] == woby::Coordinate{0, 0, 0});
+    positions.clear();
+    const auto oversized = rapidobj::ParseMemoryPrototype("v 0 0 \\\n          \\\n0\n", buffers,
+        rapidobj::MaterialLibrary::Ignore(), options);
+    REQUIRE(oversized.polygons.error);
+    CHECK(oversized.polygons.error.code == rapidobj::make_error_code(rapidobj::rapidobj_errc::LineTooLongError));
+    CHECK(oversized.polygons.error.line_num == 1);
+    CHECK(positions.empty());
+    // Only the CR belonging to CRLF is removed before detecting continuation.
+    CHECK_THROWS((void)woby::loadObjMeshTextPrototype("v 0 0 \\\r\r\n0\n", {}, {4, 2, 2}));
+}
