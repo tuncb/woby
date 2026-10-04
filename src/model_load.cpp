@@ -3,6 +3,7 @@
 #include "file_discovery.h"
 #include "obj_mesh.h"
 #include <new>
+#include <cstdio>
 #include <stdexcept>
 
 namespace woby {
@@ -24,7 +25,13 @@ try {
     } catch (const Canceled&) { result.canceled = true; }
     return result;
 } catch (const std::bad_alloc&) {
-    throw std::runtime_error("Insufficient CPU memory while loading the model.");
+    constexpr auto message = "Insufficient CPU memory while loading the model.";
+    try { throw std::runtime_error(message); }
+    catch (const std::bad_alloc&) {
+        std::fputs(message, stderr);
+        std::fputc('\n', stderr);
+        throw;
+    }
 }
 
 Mesh loadModelMesh(const std::filesystem::path& path)

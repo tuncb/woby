@@ -5,6 +5,7 @@
 #include <NoGraphicsAPIUtility/texture_allocator.hpp>
 #include <NoGraphicsAPIUtility/delete_queue.hpp>
 #include <NoGraphicsAPIUtility/upload_queue.hpp>
+#include <NoGraphicsAPIUtility/texture_upload.hpp>
 #include <memory>
 
 namespace
@@ -136,4 +137,106 @@ TEST_CASE("Utility upload initialization unwinds every CPU and GPU allocation fa
             CHECK(utilityProbe.pools == 2);
             queue.wait();
         });
+}
+
+TEST_CASE("Upload command warmup failures unwind every pool without waiting for unsubmitted work")
+{
+    for (int step = 1; step <= 6; ++step) {
+        utilityProbe = {};
+        utilityProbe.failCommandAt = step;
+        const auto result = gpu::create_utility<gpu::UploadQueue>(utilityTestDevice(), 64u, 0u, 2u);
+        CHECK(result.value == nullptr);
+        CHECK(result.error != nullptr);
+        CHECK(utilityProbe.commandStep == step);
+        checkReleased();
+    }
+}
+
+TEST_CASE("Upload failures keep completion and retirement at the last successful submission")
+{
+    for (int step = 1; step <= 3; ++step) {
+        utilityProbe = {};
+        const auto created = gpu::create_utility<gpu::UploadQueue>(utilityTestDevice(), 64u, 0u, 2u);
+        auto queue = own(created.value);
+        REQUIRE(queue != nullptr);
+        const gpu::byte bytes[64]{};
+        gpu::byte destination[128]{};
+        queue->upload_buffer({destination, sizeof(destination)}, {bytes, sizeof(bytes)});
+        REQUIRE(queue->flush().value == 1);
+        REQUIRE(utilityProbe.submissions == 1);
+
+        // Ignore reclaim's pool reset; it is tested separately below.
+        queue->reclaim();
+        utilityProbe.failCommandAt = utilityProbe.commandStep + step;
+        queue->upload_buffer({destination, sizeof(destination)}, {bytes, sizeof(bytes)});
+        CHECK(queue->flush().value == 1);
+        CHECK(queue->error != nullptr);
+        CHECK(queue->stats().submissions == 1);
+        CHECK(utilityProbe.submissions == 1);
+        CHECK(utilityProbe.submittedValue == 1);
+        const auto copies = utilityProbe.copies;
+        queue->upload_buffer({destination, sizeof(destination)}, {bytes, sizeof(bytes)});
+        CHECK(utilityProbe.copies == copies);
+        queue->wait();
+        queue.reset();
+        CHECK(utilityProbe.waitedValue <= 1);
+        checkReleased();
+    }
+}
+
+TEST_CASE("Automatic upload flush failure stops a large copy without a null staging write")
+{
+    utilityProbe = {};
+    const auto created = gpu::create_utility<gpu::UploadQueue>(utilityTestDevice(), 64u, 0u, 2u);
+    auto queue = own(created.value);
+    REQUIRE(queue != nullptr);
+    utilityProbe.failCommandAt = utilityProbe.commandStep + 3; // begin, end, submit
+    const gpu::byte bytes[128]{};
+    gpu::byte destination[128]{};
+    queue->upload_buffer({destination, sizeof(destination)}, {bytes, sizeof(bytes)});
+    CHECK(queue->error != nullptr);
+    CHECK(utilityProbe.copies == 1);
+    CHECK(queue->flush().value == 0);
+    CHECK(utilityProbe.submissions == 0);
+    queue.reset();
+    checkReleased();
+}
+
+TEST_CASE("Upload pool reset failure is reported after reclaiming only submitted batches")
+{
+    utilityProbe = {};
+    const auto created = gpu::create_utility<gpu::UploadQueue>(utilityTestDevice(), 64u, 0u, 2u);
+    auto queue = own(created.value);
+    REQUIRE(queue != nullptr);
+    const gpu::byte bytes[16]{};
+    gpu::byte destination[16]{};
+    queue->upload_buffer({destination, sizeof(destination)}, {bytes, sizeof(bytes)});
+    REQUIRE(queue->flush().value == 1);
+    utilityProbe.failCommandAt = utilityProbe.commandStep + 1;
+    queue->reclaim();
+    CHECK(queue->error != nullptr);
+    CHECK(queue->stats().pending_batches == 0);
+    CHECK(queue->flush().value == 1);
+    queue.reset();
+    checkReleased();
+}
+
+TEST_CASE("Tiled texture uploads stop before writing staging memory or recording after failure")
+{
+    for (int step = 1; step <= 3; ++step) {
+        utilityProbe = {};
+        const auto created = gpu::create_utility<gpu::UploadQueue>(utilityTestDevice(), 64u, 0u, 2u);
+        auto queue = own(created.value);
+        REQUIRE(queue != nullptr);
+        utilityProbe.failCommandAt = utilityProbe.commandStep + step;
+        const gpu::byte pixels[128]{};
+        // The isolated copy callback does not inspect native texture ownership.
+        gpu::upload_texture(*queue, nullptr,
+            {.extent = {8, 4, 1}, .format = gpu::Format::rgba8_unorm}, {pixels, sizeof(pixels)});
+        CHECK(queue->error != nullptr);
+        CHECK(utilityProbe.copies == (step == 1 ? 0 : 1));
+        CHECK(queue->flush().value == 0);
+        queue.reset();
+        checkReleased();
+    }
 }
