@@ -6,6 +6,7 @@
 #include <optional>
 
 namespace woby {
+namespace points { struct Cloud; }
 
 struct GpuNodeRange {
     uint32_t triangleIndexOffset = 0;
@@ -24,6 +25,8 @@ struct SceneMeshPreparation {
     std::vector<GpuNodeRange> nodeRanges;
     std::vector<uint32_t> pointVertexIndices;
     std::vector<uint32_t> edgeIndices;
+    std::shared_ptr<const points::Cloud> pointCloud;
+    bool compactOnly = false;
     size_t uploadBytes = 0;
     uint8_t features = 0;
 };
@@ -31,6 +34,6 @@ struct SceneMeshPreparation {
 // Nullopt means cancellation. Invalid geometry/capacity throws before allocation.
 [[nodiscard]] std::optional<SceneMeshPreparation> prepareSceneMesh(
     const Mesh& mesh, uint8_t features = 0,
-    const std::function<bool()>& shouldCancel = {});
+    const std::function<bool()>& shouldCancel = {}, bool buildPointHierarchy = true);
 
 } // namespace woby

@@ -185,10 +185,11 @@ References: [issue 106](https://github.com/tuncb/woby/issues/106),
 
 ## Compact opaque point renderer
 
-The same opt-in build now includes `woby_point_prototype`. This is a separate
-headless architecture experiment; Woby's production vertex renderer is unchanged.
-It requires Windows Vulkan with 64-bit buffer atomics. The optional device
-feature is queried and enabled only in builds with this experiment enabled.
+The same opt-in build includes `woby_point_prototype`. It remains a separate
+headless architecture experiment; the shared point hierarchy also serves Woby's
+production adaptive renderer. The experiment requires Windows Vulkan with 64-bit
+buffer atomics. Production enables that optional feature when supported and uses
+compact full-detail quads on other devices and for transparent scenes.
 
 ```powershell
 cmake --build D:/.worktree/woby-overlay-build --config Release --target woby_point_prototype woby_overlay_tests --parallel 2
@@ -239,3 +240,20 @@ The shader visits footprint samples directly; tiled visibility and coordinate
 quantization are further experiments, not hidden assumptions in these results.
 
 See [the measurements and integration limits](../../doc/point-cloud-prototype.md).
+
+`--navigation-cuts 1` checks the production renderer's prepared spatial-error cuts,
+including full sparse leaves, instead of synchronous view-specific selection.
+This mode budgets raster work separately from surfaces. Its reference captures
+measure coverage and complete refinement; app timing is measured separately:
+
+```powershell
+uv run tests/point_render_benchmark.py D:/.worktree/woby-overlay-build/bin/Release/woby.exe D:/temp/obj_tests/pointclouds/semantic3d_sg27_station8_100000000_xyz_points.obj D:/.worktree/woby-overlay-build/measurements/app-points-new --rounds 3 --visible-window
+```
+
+The app runner records every rendered frame, CPU stages, GPU timestamps and the
+associated completed raster count. Use `raster_frame_gpu_ms` for changing point
+work: the unfiltered GPU median can include cached frames between RPC commands.
+The window's pacing policy and actual viewport dimensions are retained. Hidden
+windows are deliberately paced at 20 Hz and are unsuitable for navigation FPS
+claims. Neither RPC-driven frame intervals nor these GPU timings measure physical
+input-to-display latency. Full-detail PNG exports are outside the timing window.

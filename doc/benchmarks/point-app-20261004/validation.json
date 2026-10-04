@@ -1,0 +1,8 @@
+{
+  "debug_ctest_count": 940,
+  "failed": 0,
+  "seconds": 306.77,
+  "vulkan_synchronization_validation": true,
+  "build_warnings": 0,
+  "source_tree_dirty_during_measurement": true
+}

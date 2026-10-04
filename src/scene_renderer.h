@@ -5,6 +5,7 @@
 #include "ui_state.h"
 #include "scene_pick.h"
 #include "scene_draw_plan.h"
+#include "point_cloud.h"
 
 #include "graphics.h"
 
@@ -14,6 +15,7 @@
 namespace woby {
 
 struct MarkerDrawContext;
+struct AdaptivePointRuntime;
 
 // CPU scratch owned by the viewport/export runtime, never by logical UiState.
 // Rebuilt on each submission; stale borrowed pointers are never read across frames.
@@ -36,7 +38,14 @@ struct GpuMesh {
     woby::graphics::IndexBufferHandle importedLineBuffer = WOBY_GPU_INVALID_HANDLE;
     std::vector<GpuNodeRange> nodeRanges;
     std::vector<uint32_t> pointVertexIndices;
+    std::shared_ptr<const points::Cloud> pointCloud;
+    std::vector<graphics::VertexBufferHandle> pointChunks, proxyChunks;
+    bool compactOnly = false;
 };
+inline constexpr uint32_t pointChunkSize = 1048576;
+[[nodiscard]] inline std::span<const uint32_t> meshPointVertexIndices(const GpuMesh& mesh) {
+    return mesh.pointCloud ? std::span<const uint32_t>(mesh.pointCloud->sourceVertices) : mesh.pointVertexIndices;
+}
 
 struct LoadedModelRuntime {
     GpuMesh gpuMesh;
@@ -58,6 +67,7 @@ struct GpuMeshUpload {
     uint8_t features = 0;
     uint8_t bufferIndex = 0;
     uint32_t bufferOffset = 0;
+    uint32_t pointChunk = 0;
     size_t uploadedBytes = 0;
     size_t totalBytes = 0;
 };
@@ -102,7 +112,8 @@ void submitSceneFiles(
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
     MarkerDrawContext* markers = nullptr,
-    bool importedLinesOnly = false); // Line pass follows surfaces/analyses; colorProgram is vs_line_sprite.
+    bool importedLinesOnly = false,
+    AdaptivePointRuntime* adaptivePoints = nullptr); // Line pass follows surfaces/analyses; colorProgram is vs_line_sprite.
 
 void submitSceneHelpers(
     woby::graphics::ViewId viewId,

@@ -17,23 +17,26 @@ uint32_t spread(uint32_t x) {
 }
 uint32_t hash(uint32_t x) { x^=x>>16; x*=0x7feb352du; x^=x>>15; x*=0x846ca68bu; return x^(x>>16); }
 struct Key { uint32_t morton,id; };
-void radix(std::vector<Key>& keys) {
+struct Canceled {};
+void checkCancel(const std::function<bool()>& cancel) { if (cancel && cancel()) throw Canceled{}; }
+void radix(std::vector<Key>& keys, const std::function<bool()>& cancel) {
     std::vector<Key> scratch(keys.size());
     for (uint32_t shift=0;shift<32;shift+=8) {
         std::array<size_t,256> offsets{};
-        for (const auto key:keys) ++offsets[(key.morton>>shift)&255];
+        for (size_t i=0;i<keys.size();++i) { if ((i&65535)==0) checkCancel(cancel); ++offsets[(keys[i].morton>>shift)&255]; }
         size_t sum=0;
         for (auto& offset:offsets) { const auto count=offset; offset=sum; sum+=count; }
-        for (const auto key:keys) scratch[offsets[(key.morton>>shift)&255]++]=key;
+        for (size_t i=0;i<keys.size();++i) { if ((i&65535)==0) checkCancel(cancel); const auto key=keys[i]; scratch[offsets[(key.morton>>shift)&255]++]=key; }
         keys.swap(scratch);
     }
 }
-uint32_t buildNode(Cloud& cloud,uint32_t begin,uint32_t count,uint32_t group,uint32_t leafSize,uint32_t proxySize) {
+uint32_t buildNode(Cloud& cloud,uint32_t begin,uint32_t count,uint32_t group,uint32_t leafSize,uint32_t proxySize,const std::function<bool()>& cancel) {
+    checkCancel(cancel);
     const auto index=static_cast<uint32_t>(cloud.nodes.size()); cloud.nodes.emplace_back();
     Node node; node.begin=begin; node.count=count; node.group=group;
     if (count>leafSize) {
-        node.left=buildNode(cloud,begin,count/2,group,leafSize,proxySize);
-        node.right=buildNode(cloud,begin+count/2,count-count/2,group,leafSize,proxySize);
+        node.left=buildNode(cloud,begin,count/2,group,leafSize,proxySize,cancel);
+        node.right=buildNode(cloud,begin+count/2,count-count/2,group,leafSize,proxySize,cancel);
         const auto& a=cloud.nodes[node.left]; const auto& b=cloud.nodes[node.right];
         for (size_t axis=0;axis<3;++axis) {
             node.low[axis]=std::min(a.low[axis],b.low[axis]); node.high[axis]=std::max(a.high[axis],b.high[axis]);
@@ -102,22 +105,27 @@ Rectangle project(const Node& node,const Matrix& m,uint32_t width,uint32_t heigh
     return rect;
 }
 void validateView(const Matrix& projection,uint32_t width,uint32_t height,float pointSize) {
-    require(width && height && width<=1920 && height<=1080,"Invalid point viewport");
-    require(std::isfinite(pointSize) && pointSize>=1 && pointSize<=40,"Invalid point footprint");
+    require(width && height && width<=16384 && height<=16384,"Invalid point viewport");
+    require(std::isfinite(pointSize) && pointSize>=1 && pointSize<=16384,"Invalid point footprint");
     for (const auto value:projection) require(std::isfinite(value),"Nonfinite point projection");
 }
 } // namespace
 
 Cloud buildCloud(const Mesh& mesh,uint32_t leafSize,uint32_t proxySize) {
+    if (mesh.vertices.empty()) return {};
+    auto prepared=prepareSceneMesh(mesh,gpuMeshPoints,{},false);
+    return std::move(*buildCloud(mesh,std::move(prepared->pointVertexIndices),prepared->nodeRanges,{},leafSize,proxySize));
+}
+std::optional<Cloud> buildCloud(const Mesh& mesh,std::vector<uint32_t> sourceVertices,
+    std::span<const GpuNodeRange> ranges,const std::function<bool()>& cancel,uint32_t leafSize,uint32_t proxySize) {
     require(leafSize>=2 && proxySize>0 && proxySize<=leafSize,"Invalid hierarchy sizes");
-    Cloud cloud;
-    if (mesh.vertices.empty()) return cloud;
-    auto prepared=prepareSceneMesh(mesh,gpuMeshPoints);
-    cloud.sourceVertices=std::move(prepared->pointVertexIndices);
-    require(cloud.sourceVertices.size()<std::numeric_limits<uint32_t>::max(),"Prototype uses 32-bit source IDs");
+    Cloud cloud; cloud.sourceVertices=std::move(sourceVertices);
+    require(cloud.sourceVertices.size()<std::numeric_limits<uint32_t>::max(),"Point source IDs exceed 32 bits");
+    try {
+    checkCancel(cancel);
     cloud.points.reserve(cloud.sourceVertices.size());
-    for (size_t groupIndex=0;groupIndex<prepared->nodeRanges.size();++groupIndex) {
-        const auto& range=prepared->nodeRanges[groupIndex];
+    for (size_t groupIndex=0;groupIndex<ranges.size();++groupIndex) {
+        const auto& range=ranges[groupIndex];
         const auto first=range.pointIndexOffset+1, end=first+range.pointIndexCount;
         Group group; group.firstId=first; group.endId=end;
         group.color={std::min(1.0f,(.22f+float((groupIndex*37)%53)/100)*1.5f),
@@ -126,12 +134,15 @@ Cloud buildCloud(const Mesh& mesh,uint32_t leafSize,uint32_t proxySize) {
         if (first==end) continue;
         const auto position=[&](uint32_t id)->const std::array<float,3>& { return mesh.vertices[cloud.sourceVertices[id-1]].position; };
         auto low=position(first), high=low;
-        for (uint32_t id=first;id<end;++id) for (size_t axis=0;axis<3;++axis) {
+        for (uint32_t id=first;id<end;++id) {
+            if ((id&65535)==0) checkCancel(cancel);
+            for (size_t axis=0;axis<3;++axis) {
             const float value=position(id)[axis]; require(std::isfinite(value),"Nonfinite source point");
             low[axis]=std::min(low[axis],value); high[axis]=std::max(high[axis],value);
-        }
+        }}
         std::vector<Key> keys; keys.reserve(end-first);
         for (uint32_t id=first;id<end;++id) {
+            if ((id&65535)==0) checkCancel(cancel);
             uint32_t key=0;
             for (uint32_t axis=0;axis<3;++axis) {
                 const double extent=double(high[axis])-low[axis];
@@ -140,29 +151,77 @@ Cloud buildCloud(const Mesh& mesh,uint32_t leafSize,uint32_t proxySize) {
             }
             keys.push_back({key,id});
         }
-        radix(keys);
+        radix(keys,cancel);
         const auto begin=static_cast<uint32_t>(cloud.points.size());
-        for (const auto key:keys) cloud.points.push_back({position(key.id),key.id});
+        for (size_t i=0;i<keys.size();++i) { if ((i&65535)==0) checkCancel(cancel); const auto key=keys[i]; cloud.points.push_back({position(key.id),key.id}); }
         keys.clear(); keys.shrink_to_fit();
-        cloud.roots.push_back(buildNode(cloud,begin,end-first,static_cast<uint32_t>(groupIndex),leafSize,proxySize));
+        cloud.roots.push_back(buildNode(cloud,begin,end-first,static_cast<uint32_t>(groupIndex),leafSize,proxySize,cancel));
     }
+    // Equal tree depth samples by point density, which starves sparse regions.
+    // Prepare spatial-error cuts instead, including full sparse leaves. Each
+    // group's budgets are independent of the other groups in the source file.
+    std::vector<uint32_t> budgets{1,128,256,512,1024,2048};
+    for (uint32_t budget=4096;;budget=std::min(2000000u,budget+budget/4)) {
+        budgets.push_back(budget); if (budget==2000000) break;
+    }
+    cloud.navigationCuts.resize(budgets.size());
+    struct Candidate { double error; uint32_t node; bool operator<(const Candidate& other) const {
+        return error==other.error?node>other.node:error<other.error;
+    }};
+    const auto candidate=[&](uint32_t index) {
+        const auto& n=cloud.nodes[index];
+        const double x=double(n.high[0])-n.low[0],y=double(n.high[1])-n.low[1],z=double(n.high[2])-n.low[2];
+        return Candidate{(x*y+x*z+y*z)/n.proxyCount,index};
+    };
+    std::vector<uint8_t> active(cloud.nodes.size());
+    for (size_t rootIndex=0;rootIndex<cloud.roots.size();++rootIndex) {
+        const auto root=cloud.roots[rootIndex];
+        const size_t end=rootIndex+1<cloud.roots.size()?cloud.roots[rootIndex+1]:cloud.nodes.size();
+        std::priority_queue<Candidate> queue; queue.push(candidate(root)); active[root]=1;
+        uint64_t count=cloud.nodes[root].proxyCount;
+        for (size_t level=0;level<budgets.size();++level) {
+            checkCancel(cancel);
+            if (cloud.nodes[root].count<=budgets[level]) {
+                cloud.navigationCuts[level].push_back({root,true}); continue;
+            }
+            std::vector<Candidate> deferred;
+            while (!queue.empty()) {
+                const auto next=queue.top(); queue.pop(); const auto& n=cloud.nodes[next.node];
+                const auto replacement=n.left?cloud.nodes[n.left].proxyCount+cloud.nodes[n.right].proxyCount:n.count;
+                if (count-n.proxyCount+replacement>budgets[level]) { deferred.push_back(next); continue; }
+                count=count-n.proxyCount+replacement;
+                if (n.left) {
+                    active[next.node]=0;
+                    for (const auto child:{n.left,n.right}) { active[child]=1; queue.push(candidate(child)); }
+                } else active[next.node]=2;
+            }
+            for (const auto& next:deferred) queue.push(next);
+            for (size_t index=root;index<end;++index) if (active[index])
+                cloud.navigationCuts[level].push_back({static_cast<uint32_t>(index),active[index]==2});
+        }
+    }
+    } catch (const Canceled&) { return {}; }
     return cloud;
 }
 Selection selectDetail(const Cloud& cloud,const Matrix& projection,uint32_t width,uint32_t height,float pointSize,uint32_t budget,float spacing) {
+    return selectDetail(cloud,cloud.groups,projection,width,height,pointSize,budget,spacing);
+}
+Selection selectDetail(const Cloud& cloud,std::span<const Group> groups,const Matrix& projection,uint32_t width,uint32_t height,float pointSize,uint32_t budget,float spacing) {
+    require(groups.size()==cloud.groups.size(),"Point group count mismatch");
     validateView(projection,width,height,pointSize);
     require(std::isfinite(spacing) && spacing>0,"Invalid point spacing");
     Selection result; if (!budget) return result;
     struct Candidate { float error; uint32_t node; bool operator<(const Candidate& b) const { return error==b.error?node>b.node:error<b.error; } };
     std::priority_queue<Candidate> queue;
     std::vector<uint8_t> active(cloud.nodes.size());
-    std::vector<Matrix> matrices; matrices.reserve(cloud.groups.size());
-    for (const auto& group:cloud.groups) matrices.push_back(multiply(group.model,projection));
+    std::vector<Matrix> matrices; matrices.reserve(groups.size());
+    for (const auto& group:groups) matrices.push_back(multiply(group.model,projection));
     const auto candidate=[&](uint32_t index) {
         const auto& n=cloud.nodes[index]; ++result.visited;
         const auto rect=project(n,matrices[n.group],width,height,pointSize);
         return Candidate{rect.visible?(rect.x1-rect.x0)*(rect.y1-rect.y0)/float(n.proxyCount):-1,index};
     };
-    for (const auto root:cloud.roots) if (cloud.groups[cloud.nodes[root].group].enabled) {
+    for (const auto root:cloud.roots) if (groups[cloud.nodes[root].group].enabled) {
         const auto c=candidate(root); if (c.error<0) continue;
         const auto count=cloud.nodes[root].proxyCount;
         if (result.points+count>budget) {
@@ -192,6 +251,59 @@ Selection selectDetail(const Cloud& cloud,const Matrix& projection,uint32_t widt
     for (size_t i=0;i<active.size();++i) if (active[i]) {
         const auto& n=cloud.nodes[i]; const bool proxy=active[i]==1;
         result.ranges.push_back({proxy?n.proxyBegin:n.begin,proxy?n.proxyCount:n.count,n.group,proxy});
+    }
+    return result;
+}
+Selection navigationDetail(const Cloud& cloud,uint32_t budget,uint32_t group) {
+    Selection result;
+    if (!budget || cloud.navigationCuts.empty()) return result;
+    uint64_t sourceCount=0;
+    for (const auto root:cloud.roots) {
+        const auto& n=cloud.nodes[root];
+        if (group==UINT32_MAX || group==n.group) sourceCount+=n.count;
+    }
+    // Smaller clouds need no reduction when all originals fit the budget.
+    if (sourceCount<=budget) {
+        for (const auto root:cloud.roots) {
+            const auto& n=cloud.nodes[root];
+            if (group==UINT32_MAX || group==n.group) result.ranges.push_back({n.begin,n.count,n.group,false});
+        }
+        result.points=sourceCount; return result;
+    }
+    const auto groupNodes=[&](const std::vector<NavigationNode>& cut) -> std::span<const NavigationNode> {
+        if (group==UINT32_MAX) return cut;
+        // Prepared cuts stay ordered by group.
+        // Search that span instead of visiting every group for every draw.
+        const auto first=std::lower_bound(cut.begin(),cut.end(),group,[&](const auto& item,uint32_t value) { return cloud.nodes[item.node].group<value; });
+        const auto last=std::upper_bound(first,cut.end(),group,[&](uint32_t value,const auto& item) { return value<cloud.nodes[item.node].group; });
+        return {first,last};
+    };
+    auto cut=groupNodes(cloud.navigationCuts.front());
+    for (const auto& candidate:cloud.navigationCuts) {
+        const auto selected=groupNodes(candidate);
+        uint64_t count=0; for (const auto& item:selected) count+=item.full?cloud.nodes[item.node].count:cloud.nodes[item.node].proxyCount;
+        if (count>budget) break;
+        cut=selected;
+    }
+    for (const auto& item:cut) {
+        const auto& n=cloud.nodes[item.node]; const auto count=item.full?n.count:n.proxyCount;
+        result.ranges.push_back({item.full?n.begin:n.proxyBegin,count,n.group,!item.full}); result.points+=count;
+    }
+    return result;
+}
+Selection queryFootprints(const Cloud& cloud,uint32_t group,const Matrix& matrix,uint32_t width,uint32_t height,
+    float pointSize,std::array<float,4> rectangle) {
+    validateView(matrix,width,height,pointSize);
+    Selection result;
+    std::vector<uint32_t> pending;
+    for (const auto root:cloud.roots) if (cloud.nodes[root].group==group) pending.push_back(root);
+    while (!pending.empty()) {
+        const auto index=pending.back(); pending.pop_back(); ++result.visited;
+        const auto& n=cloud.nodes[index];
+        const auto r=project(n,matrix,width,height,pointSize);
+        if (!r.visible || r.x1<rectangle[0] || r.y1<rectangle[1] || r.x0>rectangle[2] || r.y0>rectangle[3]) continue;
+        if (n.left) { pending.push_back(n.left); pending.push_back(n.right); }
+        else { result.ranges.push_back({n.begin,n.count,n.group,false}); result.points+=n.count; }
     }
     return result;
 }

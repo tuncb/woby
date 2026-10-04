@@ -192,6 +192,8 @@ add_executable(woby
     src/scene_lifecycle.h
     src/scene_file.cpp
     src/scene_file.h
+    src/adaptive_points.cpp
+    src/point_cloud.cpp
     src/scene_mesh_preparation.cpp
     src/scene_mesh_preparation.h
     src/scene_draw_plan.cpp
@@ -507,6 +509,8 @@ if(BUILD_TESTING)
         src/scene_objects.h
         src/graphics_helpers.cpp
         src/graphics_helpers.h
+        src/adaptive_points.cpp
+        src/point_cloud.cpp
         src/scene_mesh_preparation.cpp
         src/scene_mesh_preparation.h
         src/scene_draw_plan.cpp
@@ -540,6 +544,7 @@ if(BUILD_TESTING)
         tests/surface_annotation_tests.cpp
         tests/scene_pick_tests.cpp
         tests/scene_renderer_tests.cpp
+        tests/adaptive_points_tests.cpp
         tests/scene_edge_tests.cpp
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
@@ -557,7 +562,7 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp
+        target_sources(woby_tests PRIVATE tests/adaptive_points_gpu_tests.cpp tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp
             tests/scene_renderer_gpu_tests.cpp)
         target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_GPU_ALLOCATION_TESTS)
         target_compile_definitions(woby_tests PRIVATE WOBY_GPU_ALLOCATION_TESTS)

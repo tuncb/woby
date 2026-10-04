@@ -12,6 +12,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIDiagnostics.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIAllocations.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIUtilities.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIBarycentrics.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIPoints.cmake")
 target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_FRAGMENT_BARYCENTRICS)
 
 find_program(WOBY_SLANGC slangc HINTS "$ENV{SLANG_ROOT}/bin" REQUIRED)
@@ -49,6 +50,9 @@ function(woby_compile_graphics_shaders target)
         cs_marker_lookup_single cs_marker_lookup_msaa cs_freeform
         vs_mesh_edges vs_triangle_lines fs_mesh_edges fs_mesh_edges_pulled
         fs_marker_mesh_edges fs_marker_mesh_edges_pulled)
+    if(NOT APPLE)
+        list(APPEND entries cs_opaque_clear cs_opaque_raster vs_opaque_resolve fs_opaque_resolve fs_opaque_color)
+    endif()
     set(outputs)
     foreach(entry IN LISTS entries)
         if(entry MATCHES "^vs_")
@@ -59,6 +63,9 @@ function(woby_compile_graphics_shaders target)
             set(stage compute)
         endif()
         set(source "${PROJECT_SOURCE_DIR}/shaders/native/woby.slang")
+        if(entry MATCHES "_opaque_")
+            set(source "${PROJECT_SOURCE_DIR}/shaders/native/opaque_points.slang")
+        endif()
         set(common -warnings-as-errors all -entry ${entry} -stage ${stage} -fvk-use-c-layout -matrix-layout-row-major
             -I "${woby_ngapi_SOURCE_DIR}/include" -I "${woby_ngapi_SOURCE_DIR}/utility/include")
         if(APPLE)
@@ -69,7 +76,7 @@ function(woby_compile_graphics_shaders target)
                 COMMAND "${WOBY_SLANGC}" "${source}" -target metal -DNOGRAPHICSAPI_METAL ${common} -o "${intermediate}.metal"
                 COMMAND "${WOBY_XCRUN}" -sdk macosx metal -std=metal4.0 -c "${intermediate}.metal" -o "${intermediate}.air"
                 COMMAND "${WOBY_XCRUN}" -sdk macosx metallib "${intermediate}.air" -o "${output}"
-                DEPENDS "${source}" "${PROJECT_SOURCE_DIR}/shaders/native/root.h"
+                DEPENDS "${source}" "${PROJECT_SOURCE_DIR}/shaders/native/root.h" "${PROJECT_SOURCE_DIR}/shaders/native/opaque_points.h"
                     "${woby_ngapi_SOURCE_DIR}/include/NoGraphicsAPI/shader.slang"
                     "${woby_ngapi_SOURCE_DIR}/utility/include/NoGraphicsAPIUtility/shader_types.h" "${WOBY_SLANGC}" VERBATIM)
         else()
@@ -83,7 +90,7 @@ function(woby_compile_graphics_shaders target)
                 COMMAND "${WOBY_SLANGC}" "${source}" -target spirv -profile spirv_1_5 -emit-spirv-directly
                     -fvk-use-entrypoint-name -DWOBY_VULKAN ${common} ${capabilities} -o "${output}"
                 COMMAND "${WOBY_SPIRV_VAL}" --target-env vulkan1.4 --scalar-block-layout "${output}"
-                DEPENDS "${source}" "${PROJECT_SOURCE_DIR}/shaders/native/root.h"
+                DEPENDS "${source}" "${PROJECT_SOURCE_DIR}/shaders/native/root.h" "${PROJECT_SOURCE_DIR}/shaders/native/opaque_points.h"
                     "${woby_ngapi_SOURCE_DIR}/include/NoGraphicsAPI/shader.slang"
                     "${woby_ngapi_SOURCE_DIR}/utility/include/NoGraphicsAPIUtility/shader_types.h" "${WOBY_SLANGC}" VERBATIM)
         endif()

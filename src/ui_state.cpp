@@ -826,6 +826,7 @@ SceneDocument createSceneDocument(const UiState& state)
     document.showOrigin = state.showOrigin;
     document.showGrid = state.showGrid;
     document.triangleEdgeXray = state.triangleEdgeXray;
+    document.adaptivePoints = state.adaptivePoints;
     document.showDimensions = state.showDimensions;
     document.upAxis = state.upAxis;
     document.files.reserve(state.files.size());

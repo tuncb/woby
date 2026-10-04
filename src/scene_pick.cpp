@@ -1,5 +1,6 @@
 #include "comparison_scene.h"
 #include "scene_pick.h"
+#include "point_cloud.h"
 
 #include <algorithm>
 #include <cmath>
@@ -418,7 +419,18 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             if (part.mesh) {
                 const auto& mesh = *part.mesh;
                 if (part.pointIndexCount && part.vertices) {
-                    for (const auto index : scenePartIndices(part)) {
+                    std::vector<uint32_t> candidatesAtCursor;
+                    auto indices=scenePartIndices(part);
+                    if (part.pointCloud) {
+                        const auto reversed=compose(part.model,compose(view.view,view.renderProjection));
+                        const float diameter=std::max(part.pointSize,6.0f*view.pixelScale);
+                        const auto leaves=points::queryFootprints(*part.pointCloud,static_cast<uint32_t>(part.groupIndex),reversed,
+                            view.width,view.height,diameter,{point[0],point[1],point[0],point[1]});
+                        for (const auto& leaf:leaves.ranges) for (uint32_t i=leaf.begin;i<leaf.begin+leaf.count;++i)
+                            candidatesAtCursor.push_back(part.pointCloud->sourceVertices[part.pointCloud->points[i].id-1]);
+                        indices=candidatesAtCursor;
+                    }
+                    for (const auto index : indices) {
                         if (index >= mesh.vertices.size()) { continue; }
                         const auto p = clip(meshPosition(mesh, index));
                         if (!inside(p, view.homogeneousDepth)) { continue; }

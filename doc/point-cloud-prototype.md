@@ -6,7 +6,8 @@ to compute alone is insufficient: brute-force compute is slower than the quad
 control for 4- and 8-pixel points at 4× MSAA. Bounding the submitted work and
 reusing completed visibility are the decisive changes.
 
-This is an opt-in, headless prototype. The production vertex renderer is unchanged.
+The measurements in this section describe the original opt-in, headless prototype.
+The production integration is described in the final section below.
 The source mesh, original point identities, and precise positions are retained.
 All points and surfaces in these measurements are opaque.
 
@@ -146,7 +147,7 @@ available system memory was **35.71 GiB**. No overlap or resource guard fired.
 
 ## Implementation boundaries and next work
 
-The implementation is in [point_cloud.cpp](../experiments/mesh-overlays/point_cloud.cpp),
+The shared hierarchy implementation is now in [point_cloud.cpp](../src/point_cloud.cpp),
 [point_renderer.cpp](../experiments/mesh-overlays/point_renderer.cpp), and
 [point.slang](../experiments/mesh-overlays/point.slang). It builds on the compute
 visibility-buffer approach described in
@@ -219,3 +220,129 @@ Validation completed with warning-free full Debug and prototype Release builds,
 **all 918 Debug CTest entries passing** (300.56 seconds), the three focused
 Release checks passing, and the final Debug GPU checks passing with Vulkan
 synchronization validation enabled. `git diff --check` passed.
+
+## Production integration — 2026-10-04
+
+The app now uses the opaque point renderer for prepared meshes with at least
+65,536 markers. The View menu's **Adaptive points while navigating** setting is
+enabled by default, belongs to `UiState`, and round-trips through scene files,
+saved views and undo/redo. The control API exposes `render.set` / `adaptivePoints`
+and CLI `render set scene --adaptive-points true`. A viewport label distinguishes
+navigation, refinement and full detail.
+
+Hierarchy construction and preparation run on the existing cancellable loading
+worker. The original mesh and precise positions remain authoritative. GPU uploads
+use bounded staging and 16 MiB compact allocations; standalone clouds no longer
+also upload the 32-byte surface vertices or a separate legacy point-ID buffer.
+The CPU hierarchy is shared with full-source picking. Cursor queries traverse
+original leaves and fill the GPU picking region from original point IDs even
+while the rest of the viewport has reduced detail.
+
+Navigation uses spatial-error cuts prepared during loading, including full sparse
+leaves. Equal-depth tree cuts were rejected: their density bias retained only
+77–89% of covered samples in the 100M fitted test. Each visible group's budget is
+independent, and smaller clouds draw all originals when they fit. Prepared cuts
+are reused across camera changes. Optional view-specific work uses owned worker
+snapshots and is accepted only for the matching camera/geometry epoch.
+
+After 150 ms without a view change, bounded batches refine every original point
+into persistent per-sample depth/ID winners. Completed visibility is reused.
+Camera, geometry, transforms, point size, colors and ID-layout changes invalidate
+it. The resolve pass tests against the current opaque surface depth, so an
+occluder can change without leaving stale point visibility. GPU timing uses the
+existing frame timeline; it does not add a per-frame completion wait. The 8 ms
+raster budget is feedback, not a deadline, and excludes the surface pass and UI.
+
+The optional Vulkan path requires 64-bit buffer atomics and standard sample
+locations. Unsupported devices, freeform geometry, smaller meshes, and scenes
+containing transparency keep full-detail drawing. Compact quad fallback preserves
+source identities, colors and opacity. Screenshot exports also use full source
+detail. In the hardware fallback, ties between overlapping points at equal depth
+and transparent last-drawn picks follow spatial storage order; picked IDs still
+map to the original source footprints. Transparent rendering performance,
+out-of-core residency and the import
+capacity limits are separate work; issues #112 and #113 remain applicable.
+Dense surface meshes still retain surface buffers as well as compact markers.
+
+### Actual app measurements
+
+Same hardware as above, Release desktop Vulkan, **1280×720 drawable / 1280×687
+scene viewport, 4× MSAA**, visible window, three rounds with rotating point-size
+order. Each round records twelve full-source changing views, 96 adaptive camera
+commands over the same repeated angular path, refinement, then cached frames.
+BearTrap includes surfaces, shader edges and vertices. The other rows contain
+standalone points. All cases completed with no workload-overlap or resource-guard
+violation, and every refinement submitted the full original point count.
+
+| Dataset | Diameter | Full-source changing view, GPU ms | Adaptive GPU median / worst-round p95 ms | Full-detail cached GPU ms |
+| --- | ---: | ---: | ---: | ---: |
+| 10M cloud | 1 px | 3.39 | 0.78 / 1.07 | 0.22 |
+| 10M cloud | 4 px | 36.68 | 4.44 / 5.19 | 0.17 |
+| 10M cloud | 8 px | 118.98 | 6.47 / 15.59 | 0.17 |
+| 100M cloud | 1 px | 58.70 | 0.76 / 0.78 | 0.17 |
+| 100M cloud | 4 px | 555.64 | 4.04 / 4.80 | 0.17 |
+| 100M cloud | 8 px | 1375.72 | 6.75 / 16.65 | 0.17 |
+| BearTrap, 38.4M markers | 1 px | 21.44 | 16.03 / 16.17 | 15.58 |
+| BearTrap, 38.4M markers | 4 px | 97.96 | 19.39 / 20.02 | 15.46 |
+| BearTrap, 38.4M markers | 8 px | 332.52 | 22.14 / 31.22 | 15.58 |
+
+These GPU-frame summaries select completed GPU frames containing point raster
+work. They exclude cached frames between camera RPCs; the current CPU submission
+count is not used to classify delayed GPU timestamps. Medians are medians of
+three round medians. The raw records retain every frame and CPU stage, including
+pacing and waits. Navigation changes detail deliberately; the table does not
+claim pixel-equivalent moving-view speedups. Cached rows have full detail and a
+stationary camera. GPU time is not physical input-to-display latency or presented
+FPS. Historical issue FPS lacks comparable recorded drawable dimensions.
+
+At 4 pixels, the main thread's scene-submission median was **0.18 ms** for 100M
+points and **0.26 ms** for BearTrap. The 100M cloud took 29.32 s to load, including
+9.40 s for preparation, with 0.44 s of GPU-finalization work. Its longest measured
+upload step was 2.20 ms. Peak process-private memory was 12.21 GiB; the campaign's
+largest was 12.44 GiB on BearTrap. These do not remove existing CPU mesh copies.
+
+The 100M runs refined in 50 / 87–88 / 233–237 submitted batches at 1 / 4 / 8 px;
+BearTrap used 20 / 20 / 44–46. Completion counters describe submission, with GPU
+completion following on the existing timeline. At 8 pixels the largest observed
+navigation GPU frame was 22.72 ms for the 100M cloud and 35.74 ms for BearTrap.
+The controller therefore improves typical cost without promising a hard frame
+limit.
+
+### Coverage and verification
+
+An independent headless check uses the same prepared cuts at 1280×720, 4× MSAA.
+Fitted 100M coverage is **99.06% / 99.85% / 99.92%** at 1 / 4 / 8 px. A 0.25×
+distance close-up retains **98.24%** at 4 px, and BearTrap with surfaces retains
+**98.31%**. These are covered-sample ratios, not equal IDs or depth. They are
+single final-view checks of the fast prepared cuts, not a guarantee for every
+viewpoint or thin feature. All five sequences refine to identical RGBA and every
+sample ID compared with a fresh full-source compute reference. The exact original
+queries also match that reference.
+
+![Prepared navigation in the close view](benchmarks/point-app-20261004/100m-close-navigation.png)
+
+![The same view after complete refinement](benchmarks/point-app-20261004/100m-close-full.png)
+
+Production GPU tests use an independent CPU oracle for complete circles, original
+IDs, depth ties, transformed groups, 1×/4× samples, point sizes 1/4/8/40, offset
+viewports, resize, stale visibility, partial refinement and exact picking before
+refinement. They cover both color-only and picking targets, current opaque
+occluders, transparent fallback and GPU chunk uploads. Other tests cover scene
+and view persistence, control validation, undo/redo, cancellation, group budgets,
+sparse geometry and full-source CPU picking.
+
+[The integration summary](benchmarks/point-app-20261004/summary.json) records
+source/input/executable/shader hashes, per-case summaries and resource guards.
+Adjacent `.json.gz` files retain complete app and coverage measurements. PNG
+exports from the actual app are full-source reference exports outside timing;
+the coverage PNGs come from the headless checker. Earlier hidden-window and
+uniform-cut pilots are excluded from the final app table. Reproduce with the
+[app runner](../tests/point_render_benchmark.py) and the commands in the experiment
+README. Exact logical GPU geometry remains 1.740 GB for the 100M cloud and
+2.823 GB for BearTrap; the app's winner buffer adds 28.14 MB.
+
+Final validation: warning-free Debug and Release builds; **all 940 Debug CTest
+entries passed** in 306.77 s with Vulkan synchronization validation enabled.
+`git diff --check` passed. Compressed build/test logs accompany the measurements.
+The recorded base revision predates the integration commit; working-source and
+executable hashes identify the measured implementation committed with this report.

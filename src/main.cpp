@@ -9,6 +9,7 @@
 #include "file_discovery.h"
 #include "hover_pick.h"
 #include "marker_pick.h"
+#include "adaptive_points.h"
 #include "comparison_view.h"
 #include "comparison_scene.h"
 #include "imgui_graphics.h"
@@ -2200,6 +2201,7 @@ int main(int argc, char** argv)
     bool graphicsInitialized = false;
     // Readback memory must outlive graphics shutdown, including exception paths.
     woby::GpuMarkerPicker markerPicker;
+    woby::AdaptivePointRuntime adaptivePoints;
     woby::AutomationOwner automation(nullptr, &woby::stopAutomation);
 
     try {
@@ -2560,6 +2562,7 @@ int main(int argc, char** argv)
             std::vector<std::vector<woby::DiagnosticEdge>> annotationPickStorage;
             woby::appendAnnotationPickParts(parts, ui, annotationPickStorage);
             woby::SceneTriangleHit triangle;
+            woby::attachPointHierarchies(parts, runtimes);
             const auto id = woby::pickSceneObject(parts, view, point, &triangle);
             const auto analysisId = triangle.analysisId ? triangle.analysisId : ui.activeComparisonId;
             if (!toggle && triangle.triangle && woby::setUvProbe(ui,analysisId,triangle.partId,triangle.triangle,triangle.barycentric)) {
@@ -3699,6 +3702,10 @@ int main(int argc, char** argv)
                                     row["environment"] = result["environments"].size() - 1;
                                     row["completedMilliseconds"] = event.completedMilliseconds;
                                     row["camera"] = event.camera;
+                                    row["points"] = {{"active",event.pointRendererActive},{"navigation",event.pointNavigation},
+                                        {"sourceCount",event.pointSourceCount},{"refinedCount",event.pointRefinedCount},
+                                        {"submittedCount",event.pointSubmittedCount},{"gpuRasterCount",event.pointRasterCount},
+                                        {"gpuRasterMilliseconds",event.pointRasterMilliseconds},{"gpuRasterBudgeted",event.pointRasterBudgeted}};
                                     result["events"].push_back(std::move(row));
                                 }
                             } else if (payload.action == A::performance) {
@@ -3706,6 +3713,10 @@ int main(int argc, char** argv)
                                 if (!headless) { result.update(frameEnvironmentInfo(lastFrameEnvironment)); }
                                 else { result["drawable"] = nullptr; result["viewport"] = nullptr; }
                                 result["fps"] = fps;
+                                result["points"] = {{"active", adaptivePoints.active}, {"adaptive", ui.adaptivePoints},
+                                    {"sourceCount", adaptivePoints.total}, {"refinedCount", adaptivePoints.refined},
+                                    {"submittedCount", adaptivePoints.submitted}, {"budget", adaptivePoints.budget},
+                                    {"rasterMilliseconds", woby::graphics::getStats()->pointRasterMs}, {"fallback", adaptivePoints.error}};
                                 result["headless"] = headless;
                                 result["renderer"] = woby::graphics::getRendererName(woby::graphics::getRendererType());
                                 result["sdlVersion"] = SDL_GetVersion();
@@ -3972,6 +3983,9 @@ int main(int argc, char** argv)
                 recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
                 woby::updateSceneDrawPlan(renderScratch.drawCache, ui);
+                woby::prepareAdaptivePoints(adaptivePoints, assets, renderScratch.drawCache.plan, currentPickView,
+                    ui.adaptivePoints, std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(),
+                    gpuHover, {mouse.x,mouse.y});
                 woby::graphics::setViewMode(sceneView, woby::graphics::ViewMode::Sequential);
                 {
                     submitSceneFiles(
@@ -3987,7 +4001,7 @@ int main(int argc, char** argv)
                         triangleEdgePrograms,
                         sceneViewportWidth,
                         sceneViewportHeight,
-                        gpuHover ? &markerPicker.context : nullptr);
+                        gpuHover ? &markerPicker.context : nullptr, false, &adaptivePoints);
                 }
                 woby::submitComparisonScenes(sceneView, ui, comparison,
                     gpuHover ? markerPicker.line : colorProgram, colorUniform, renderScratch,
@@ -4023,6 +4037,14 @@ int main(int argc, char** argv)
                 }
                 drawToastMessage(toast, viewport, width, std::max(annotationMessageBottom, static_cast<float>(viewport.y) / currentPickView.pixelScale));
                 drawHoveredVertexOverlay(hoveredVertex, viewport, width, gpuHover);
+                if (adaptivePoints.active) {
+                    const auto label = adaptivePoints.refined == adaptivePoints.total ? std::string("Points: full detail")
+                        : adaptivePoints.now-adaptivePoints.lastChange < .15 ? std::string("Points: adaptive navigation")
+                        : "Points: refining " + std::to_string(adaptivePoints.total ? adaptivePoints.refined*100/adaptivePoints.total : 100) + "%";
+                    const float scale=currentPickView.pixelScale;
+                    ImGui::GetForegroundDrawList()->AddText({(float(viewport.x)+12)/scale,(float(viewport.y+viewport.height)-26)/scale},
+                        IM_COL32(215,225,235,255),label.c_str());
+                }
                 recordFrameStage(frameTimings, woby::FrameStage::submitHelpers, stageStart);
 
             }
@@ -4098,7 +4120,11 @@ int main(int argc, char** argv)
                 woby::captureFrame(frameCapture, {frameTimings, lastFrameEnvironment,
                     {view.target[0], view.target[1], view.target[2], view.yawRadians, view.pitchRadians, view.rollRadians,
                         view.distance, view.verticalFovDegrees, view.nearPlane},
-                    woby::millisecondsBetween(frameCapture.start, woby::PerformanceClock::now())});
+                    woby::millisecondsBetween(frameCapture.start, woby::PerformanceClock::now()),
+                    adaptivePoints.total, adaptivePoints.refined, adaptivePoints.submitted, adaptivePoints.active,
+                    adaptivePoints.active && adaptivePoints.adaptive && adaptivePoints.now-adaptivePoints.lastChange < .15,
+                    woby::graphics::getStats()->pointRasterCount, woby::graphics::getStats()->pointRasterMs,
+                    woby::graphics::getStats()->pointRasterBudgeted});
             }
             if (commandLine.logPerformance) {
                 woby::accumulateFrameTiming(frameTimingAccumulator, frameTimings);
@@ -4137,6 +4163,7 @@ int main(int argc, char** argv)
         ImGui::DestroyContext();
 
         woby::destroyGpuMarkerPicker(markerPicker);
+        woby::destroyAdaptivePoints(adaptivePoints);
         woby::graphics::destroy(uvGridUniform);
         woby::graphics::destroy(pointParamsUniform);
         woby::destroyComparisonRuntimes(comparison);

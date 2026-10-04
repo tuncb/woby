@@ -54,7 +54,7 @@ int main(int argc,char** argv) {
     try {
         std::filesystem::path model,output; std::string mode="compute";
         o::Options options{1280,720,1,true}; uint32_t frames=12,navigationFrames=90,rounds=3,maximum=2000000;
-        float pointSize=0,zoom=1; bool solid=false; double targetMs=8;
+        float pointSize=0,zoom=1; bool solid=false,navigationCuts=false; double targetMs=8;
         for (int i=1;i<argc;++i) {
             const std::string arg=argv[i]; if (i+1==argc) throw std::invalid_argument("Missing option value"); const std::string value=argv[++i];
             if (arg=="--model") model=woby::pathFromUtf8(value); else if (arg=="--output") output=woby::pathFromUtf8(value);
@@ -70,6 +70,7 @@ int main(int argc,char** argv) {
             else if (arg=="--zoom") zoom=std::stof(value);
             else if (arg=="--target-ms") targetMs=std::stod(value);
             else if (arg=="--solid" && (value=="0" || value=="1")) solid=value=="1";
+            else if (arg=="--navigation-cuts" && (value=="0" || value=="1")) navigationCuts=value=="1";
             else throw std::invalid_argument("Unknown option: "+arg);
         }
         if (model.empty() || output.empty() || (mode!="compute" && mode!="control") || frames<3 || frames>1000 || navigationFrames<2 || navigationFrames>1000
@@ -82,7 +83,8 @@ int main(int argc,char** argv) {
         const auto mesh=woby::loadObjMesh(std::filesystem::absolute(model)); const double loadMs=elapsed(start);
         Json report={{"schema",1},{"mode",mode},{"model",std::filesystem::absolute(model).string()},{"width",options.width},{"height",options.height},{"samples",options.samples},
             {"source_vertices",mesh.vertices.size()},{"source_triangles",mesh.indices.size()/3},{"source_precise_positions",mesh.precisePositions.size()},
-            {"source_load_ms",loadMs},{"opaque_surfaces",solid},{"zoom",zoom},{"rounds",rounds},{"point_budget_max",maximum},{"target_gpu_ms",targetMs},{"results",Json::array()}};
+            {"source_load_ms",loadMs},{"opaque_surfaces",solid},{"zoom",zoom},{"rounds",rounds},{"point_budget_max",maximum},{"target_gpu_ms",targetMs},
+            {"navigation_cuts",navigationCuts},{"results",Json::array()}};
         write(output/"results.json",report);
         const auto projection=camera(mesh.bounds,options.width,options.height,0,zoom);
         const std::vector<float> sizes=pointSize?std::vector<float>{pointSize}:std::vector<float>{1,4,8};
@@ -123,14 +125,15 @@ int main(int argc,char** argv) {
             auto rawResult=timings(raw); rawResult["point_size"]=size; rawResult["round"]=round; rawResult["kind"]="compute_full";
             report["results"].push_back(rawResult); write(output/"results.json",report);
             std::cout<<"full size="<<size<<" gpu="<<rawResult["gpu_ms"]<<std::endl;
-            uint32_t budget=std::min(maximum,500000u); std::vector<p::Timing> navigation; std::vector<double> selectionMs; std::vector<uint32_t> visited;
+            uint32_t budget=navigationCuts?maximum:std::min(maximum,500000u); std::vector<p::Timing> navigation; std::vector<double> selectionMs; std::vector<uint32_t> visited;
             p::Matrix view=projection; p::Selection selected;
             for (uint32_t frame=0;frame<navigationFrames;++frame) {
                 view=camera(mesh.bounds,options.width,options.height,float(frame)*.006f,zoom);
-                start=Clock::now(); selected=p::selectDetail(cloud,view,options.width,options.height,size,budget,std::min(1.0f,size*.5f)); const double selectMs=elapsed(start);
+                start=Clock::now(); selected=navigationCuts?p::navigationDetail(cloud,budget)
+                    :p::selectDetail(cloud,view,options.width,options.height,size,budget,std::min(1.0f,size*.5f)); const double selectMs=elapsed(start);
                 auto t=p::render(renderer,cloud,selected,view,size,solid,true); t.cpuMs+=selectMs; t.wallMs+=selectMs; navigation.push_back(t);
                 selectionMs.push_back(selectMs); visited.push_back(selected.visited);
-                budget=p::adjustedBudget(budget,t.rasterMs,std::max(.5,targetMs-t.clearMs-t.resolveMs),maximum);
+                budget=p::adjustedBudget(budget,t.rasterMs,navigationCuts?targetMs:std::max(.5,targetMs-t.clearMs-t.resolveMs),maximum);
             }
             o::Capture coarse,reference,refined; (void)p::render(renderer,cloud,selected,view,size,solid,true,&coarse);
             (void)p::render(renderer,cloud,full,view,size,solid,true,&reference);
@@ -145,7 +148,7 @@ int main(int argc,char** argv) {
             while (cursor.processed<full.points) {
                 start=Clock::now(); const auto batch=p::nextRefinement(full,cursor,budget); const double selectMs=elapsed(start);
                 auto t=p::render(renderer,cloud,batch,view,size,solid,false); t.cpuMs+=selectMs; t.wallMs+=selectMs; refinement.push_back(t);
-                budget=p::adjustedBudget(budget,t.rasterMs,std::max(.5,targetMs-t.clearMs-t.resolveMs),maximum);
+                budget=p::adjustedBudget(budget,t.rasterMs,navigationCuts?targetMs:std::max(.5,targetMs-t.clearMs-t.resolveMs),maximum);
             }
             (void)p::render(renderer,cloud,{},view,size,solid,false,&refined);
             const auto quality=compare(refined,reference);

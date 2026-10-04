@@ -62,7 +62,7 @@ void visitNodes(Nodes& nodes, const Visitor& visitor)
 ViewSceneSettings sceneSettings(const UiState& state)
 {
     return {state.camera, state.showOrigin, state.showGrid, state.showDimensions,
-        state.upAxis, state.masterVertexPointSize, state.triangleEdgeXray};
+        state.upAxis, state.masterVertexPointSize, state.triangleEdgeXray, state.adaptivePoints};
 }
 
 UiView captureView(const UiState& state)
@@ -323,6 +323,7 @@ void applyView(UiState& state, ViewId id)
     state.showOrigin = view.scene.showOrigin;
     state.showGrid = view.scene.showGrid;
     state.triangleEdgeXray = view.scene.triangleEdgeXray;
+    state.adaptivePoints = view.scene.adaptivePoints;
     state.showDimensions = view.scene.showDimensions;
     state.upAxis = view.scene.upAxis == SceneUpAxis::y ? SceneUpAxis::y : SceneUpAxis::z;
     state.masterVertexPointSize = std::isfinite(view.scene.masterVertexPointSize)

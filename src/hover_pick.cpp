@@ -151,6 +151,25 @@ void hashSceneNode(uint64_t& seed, const UiSceneNode& node)
     }
 }
 
+std::span<const uint32_t> hoverCandidates(const GpuMesh& mesh,size_t group,const float* model,const float* view,
+    const float* projection,uint32_t width,uint32_t height,bool homogeneousDepth,const MousePosition& mouse,float radius,
+    std::vector<uint32_t>& scratch) {
+    const auto indices=meshPointVertexIndices(mesh);
+    const auto& range=mesh.nodeRanges[group];
+    const size_t begin=std::min<size_t>(range.pointIndexOffset,indices.size());
+    if (!mesh.pointCloud) return indices.subspan(begin,std::min<size_t>(range.pointIndexCount,indices.size()-begin));
+    points::Matrix modelView,matrix;
+    bx::mtxMul(modelView.data(),model,view); bx::mtxMul(matrix.data(),modelView.data(),projection);
+    if (homogeneousDepth) for (size_t col=0;col<4;++col) matrix[col*4+2]=(matrix[col*4+2]+matrix[col*4+3])*.5f;
+    const auto leaves=points::queryFootprints(*mesh.pointCloud,static_cast<uint32_t>(group),matrix,width,height,radius*2,
+        {mouse.x,mouse.y,mouse.x,mouse.y});
+    for (const auto& leaf:leaves.ranges) for (uint32_t i=leaf.begin;i<leaf.begin+leaf.count;++i)
+        scratch.push_back(mesh.pointCloud->points[i].id-1);
+    std::sort(scratch.begin(),scratch.end());
+    for (auto& index:scratch) index=indices[index];
+    return scratch;
+}
+
 void findHoveredGroupVertex(
     const UiFileState& file,
     const GpuMesh& gpuMesh,
@@ -187,12 +206,10 @@ void findHoveredGroupVertex(
     const float hoverRadius = std::max(
         static_cast<float>(pointSize) * 0.5f,
         vertexHoverMinRadius);
-    const auto& range = gpuMesh.nodeRanges[nodeIndex];
-    const uint32_t endIndex = std::min(
-        range.pointIndexOffset + range.pointIndexCount,
-        static_cast<uint32_t>(gpuMesh.pointVertexIndices.size()));
-    for (uint32_t index = range.pointIndexOffset; index < endIndex; ++index) {
-        const uint32_t vertexIndex = gpuMesh.pointVertexIndices[index];
+    std::vector<uint32_t> scratch;
+    const auto candidates=hoverCandidates(gpuMesh,nodeIndex,groupWorld,view,projection,viewportWidth,viewportHeight,
+        homogeneousDepth,mouse,hoverRadius,scratch);
+    for (const auto vertexIndex:candidates) {
         if (vertexIndex >= file.mesh.vertices.size()) {
             continue;
         }
@@ -379,8 +396,8 @@ uint64_t hoverPickSignature(
         const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
         hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.vertices.data()));
         hashCombine(seed, file.mesh.vertices.size());
-        hashCombine(seed, reinterpret_cast<uintptr_t>(gpuMesh.pointVertexIndices.data()));
-        hashCombine(seed, gpuMesh.pointVertexIndices.size());
+        hashCombine(seed, reinterpret_cast<uintptr_t>(meshPointVertexIndices(gpuMesh).data()));
+        hashCombine(seed, meshPointVertexIndices(gpuMesh).size());
         hashCombine(seed, gpuMesh.nodeRanges.size());
         hashFileSettings(seed, file.fileSettings);
         hashFloat(seed, file.vertexSizeScale);
@@ -463,12 +480,10 @@ std::optional<HoveredVertex> findHoveredVertex(
             const float hoverRadius = std::max(
                 static_cast<float>(pointSize) * 0.5f,
                 vertexHoverMinRadius);
-            const auto& range = gpuMesh.nodeRanges[nodeIndex];
-            const uint32_t endIndex = std::min(
-                range.pointIndexOffset + range.pointIndexCount,
-                static_cast<uint32_t>(gpuMesh.pointVertexIndices.size()));
-            for (uint32_t index = range.pointIndexOffset; index < endIndex; ++index) {
-                const uint32_t vertexIndex = gpuMesh.pointVertexIndices[index];
+            std::vector<uint32_t> scratch;
+            const auto candidates=hoverCandidates(gpuMesh,nodeIndex,model,view,projection,viewportWidth,viewportHeight,
+                homogeneousDepth,mouse,hoverRadius,scratch);
+            for (const auto vertexIndex:candidates) {
                 if (vertexIndex >= file.mesh.vertices.size()) {
                     continue;
                 }

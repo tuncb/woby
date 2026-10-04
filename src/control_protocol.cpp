@@ -35,7 +35,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::sceneUndo, "scene.undo", "scene undo", {}, {}, {}, false, true},
         {ControlAction::sceneRedo, "scene.redo", "scene redo", {}, {}, {}, false, true},
         {ControlAction::visibility, "visibility.set", "visibility set", "target", {"visible"}, {"visible"}, false, true},
-        {ControlAction::render, "render.set", "render set", "target", {"solid", "triangles", "vertices", "xray", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "lineWidth", "lineDepthTest"}, {}, true, true},
+        {ControlAction::render, "render.set", "render set", "target", {"solid", "triangles", "vertices", "xray", "adaptivePoints", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "lineWidth", "lineDepthTest"}, {}, true, true},
         {ControlAction::transformGet, "transform.get", "transform get", "target", {}, {}},
         {ControlAction::transformSet, "transform.set", "transform set", "target", {"translation", "rotationDegrees", "scale"}, {}, true, true},
         {ControlAction::transformReset, "transform.reset", "transform reset", "target", {}, {}, false, true},
@@ -122,7 +122,7 @@ bool booleanOption(const std::string& name)
 {
     if (name == "uvThresholdEnabled" || name == "uvOverlapEnabled" || name == "uvRangeEnabled" || name == "uvSeparated" || name == "uvLinkedSelection" || name == "isolate" || name == "uvGrid" || name == "lineDepthTest") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
-        || name == "xray" || name == "locked" || name == "enabled" || name == "visible" || name == "propertiesVisible" || name == "solid" || name == "triangles" || name == "vertices"
+        || name == "adaptivePoints" || name == "xray" || name == "locked" || name == "enabled" || name == "visible" || name == "propertiesVisible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "showWinding" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
@@ -167,6 +167,7 @@ std::string cliOption(const std::string& name)
     if (name == "intersectionCandidateLimit") { return "--intersection-candidate-limit"; }
     if (name == "rotationDegrees") { return "--rotation-degrees"; }
     if (name == "yawDegrees") { return "--yaw-degrees"; }
+    if (name == "adaptivePoints") { return "--adaptive-points"; }
     if (name == "pitchDegrees") { return "--pitch-degrees"; }
     if (name == "rollDegrees") { return "--roll-degrees"; }
     if (name == "fovDegrees") { return "--fov-degrees"; }
@@ -304,7 +305,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         }
     }
 #define BOOL_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<bool>(); }
-    BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(xray) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
+    BOOL_FIELD(visible) BOOL_FIELD(solid) BOOL_FIELD(xray) BOOL_FIELD(adaptivePoints) BOOL_FIELD(triangles) BOOL_FIELD(vertices) BOOL_FIELD(tree) BOOL_FIELD(remember)
     BOOL_FIELD(uvThresholdEnabled) BOOL_FIELD(uvOverlapEnabled) BOOL_FIELD(uvRangeEnabled)
     BOOL_FIELD(uvSeparated) BOOL_FIELD(uvLinkedSelection) BOOL_FIELD(isolate) BOOL_FIELD(uvGrid) BOOL_FIELD(lineDepthTest)
     BOOL_FIELD(nonManifoldVertices) BOOL_FIELD(showNonManifoldVertices) BOOL_FIELD(holes) BOOL_FIELD(showHoles) BOOL_FIELD(fins) BOOL_FIELD(showFins)
@@ -457,7 +458,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
-    FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
+    FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(adaptivePoints) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
     FIELD(lineWidth) FIELD(lineDepthTest) FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
     FIELD(uvThresholdEnabled) FIELD(uvOverlapEnabled) FIELD(uvRangeEnabled) FIELD(uvThreshold) FIELD(uvNearCollapse) FIELD(uvRangeMinimum) FIELD(uvRangeMaximum) FIELD(uvOverlapScope)
     FIELD(uvSeparated) FIELD(uvLinkedSelection) FIELD(uvColor) FIELD(uvMinimum) FIELD(uvMaximum) FIELD(uvMetric) FIELD(uvNormalization) FIELD(isolate)

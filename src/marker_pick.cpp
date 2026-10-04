@@ -179,7 +179,7 @@ std::optional<HoveredVertex> resolveMarkerCoordinates(uint32_t id, std::span<con
     if (!draw || draw->fileIndex >= state.files.size() || draw->fileIndex >= runtimes.size()) { return {}; }
     const auto& file = state.files[draw->fileIndex];
     if (file.objectId != draw->fileId) { return {}; }
-    const auto& points = runtimes[draw->fileIndex].gpuMesh.pointVertexIndices;
+    const auto points = meshPointVertexIndices(runtimes[draw->fileIndex].gpuMesh);
     const uint64_t rank = uint64_t{draw->pointOffset} + (id - draw->firstId);
     if (rank >= points.size() || points[static_cast<size_t>(rank)] >= file.mesh.vertices.size()) { return {}; }
     const auto& local = file.mesh.vertices[points[static_cast<size_t>(rank)]].position;

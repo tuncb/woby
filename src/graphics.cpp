@@ -2,6 +2,7 @@
 #include "graphics_diagnostics.h"
 #include "frame_pacing.h"
 #include "root.h"
+#include "opaque_points.h"
 #include <NoGraphicsAPI/NoGraphicsAPI.hpp>
 #include <NoGraphicsAPIUtility/bump_allocator.hpp>
 #include <NoGraphicsAPIUtility/delete_queue.hpp>
@@ -127,7 +128,19 @@ enum class OperationType
     draw,
     compute,
     blit,
-    touch
+    touch,
+    points
+};
+struct PointPacket
+{
+    std::shared_ptr<Buffer> winners;
+    std::shared_ptr<Program> clear, raster;
+    std::vector<OpaquePointGroup> groups;
+    std::vector<OpaquePointTaskData> tasks;
+    std::vector<std::shared_ptr<Buffer>> buffers;
+    std::array<uint32_t,4> query{};
+    bool reset = false, budgeted = false;
+    uint64_t pointCount = 0;
 };
 struct Operation
 {
@@ -138,6 +151,7 @@ struct Operation
     std::shared_ptr<Texture> source, destination;
     gpu::uint32x3 groups{1, 1, 1};
     uint16_t x = 0, y = 0, sourceX = 0, sourceY = 0, width = 0, height = 0;
+    std::shared_ptr<PointPacket> points;
 };
 struct ArenaPage
 {
@@ -156,7 +170,10 @@ struct Frame
     std::vector<std::shared_ptr<void>> retained;
     std::shared_ptr<Framebuffer> output;
     uint32_t width = 0, height = 0, samples = 0;
-    std::array<uint64_t, 2> timestamps{};
+    std::array<uint64_t, 2> timestamps{}, pointTimestamps{};
+    uint64_t pointCount = 0;
+    uint32_t pointFrame = 0;
+    bool pointBudgeted = false;
 };
 struct ReadRequest
 {
@@ -308,10 +325,16 @@ void beginFrame()
             c.stats.gpuTimeEnd =
                 static_cast<int64_t>(double(f.timestamps[1]) * gpu::get_device_caps(c.device).timestamp_period_ns);
         }
+        c.stats.pointRasterMs = f.pointTimestamps[1] > f.pointTimestamps[0]
+            ? double(f.pointTimestamps[1]-f.pointTimestamps[0])*gpu::get_device_caps(c.device).timestamp_period_ns/1e6 : 0;
+        c.stats.pointRasterCount = f.pointCount;
+        c.stats.pointRasterFrame = f.pointFrame;
+        c.stats.pointRasterBudgeted = f.pointBudgeted;
         c.deletes->tick();
         c.uploads->reclaim();
         gpu::reset_command_pool(f.pool);
     }
+    f.pointTimestamps = {}; f.pointCount = 0;
     f.operations.clear();
     f.retained.clear();
     f.cpuAllocations.clear();
@@ -753,21 +776,70 @@ void drawOperation(gpu::CommandBuffer *commands, const Operation &op, const View
                   encoder.instances);
     ++state().stats.numDraw;
 }
-void computeOperation(gpu::CommandBuffer *commands, const Operation &op, const View &view)
-{
-    auto &c = state();
-    auto it = c.computePipelines.find(op.program->id);
-    if (it == c.computePipelines.end())
-    {
-        auto *pso = gpu::create_compute_pso(c.device, shaderStage(op.program->compute));
-        require(pso != nullptr, "NoGraphicsAPI compute pipeline creation failed");
-        try { it = c.computePipelines.emplace(op.program->id, pso).first; }
+gpu::PSO* computePipeline(const std::shared_ptr<Program>& program) {
+    auto& c=state();
+    auto it=c.computePipelines.find(program->id);
+    if (it==c.computePipelines.end()) {
+        auto* pso=gpu::create_compute_pso(c.device,shaderStage(program->compute));
+        require(pso!=nullptr,"NoGraphicsAPI compute pipeline creation failed");
+        try { it=c.computePipelines.emplace(program->id,pso).first; }
         catch (...) { gpu::destroy_pso(pso); throw; }
     }
-    auto root = allocateRoot(rootData(op.encoder, view));
-    gpu::bind_pso(commands, it->second);
-    gpu::dispatch(commands, root.gpu, op.groups);
-    ++c.stats.numCompute;
+    return it->second;
+}
+void computeOperation(gpu::CommandBuffer *commands, const Operation &op, const View &view)
+{
+    auto root=allocateRoot(rootData(op.encoder,view));
+    gpu::bind_pso(commands,computePipeline(op.program));
+    gpu::dispatch(commands,root.gpu,op.groups);
+    ++state().stats.numCompute;
+}
+void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View& view,const Attachments& target) {
+    const auto& packet=*op.points;
+    require(view.reversedDepth && (target.samples==1 || target.samples==4),"Unsupported opaque point target");
+    require(uint64_t(view.width)*view.height*target.samples*sizeof(uint64_t)<=packet.winners->bytes,"Point target exceeds winner buffer");
+    OpaquePointRoot root{};
+    root.winners=reinterpret_cast<uint64_t*>(packet.winners->heap.range.gpu);
+    root.width=view.width; root.height=view.height; root.samples=target.samples;
+    root.x=view.x; root.y=view.y; root.groupCount=static_cast<uint32_t>(packet.groups.size());
+    root.query={packet.query[0],packet.query[1],packet.query[2],packet.query[3]};
+    auto groups=allocate(packet.groups.size()*sizeof(OpaquePointGroupData));
+    auto* destination=reinterpret_cast<OpaquePointGroupData*>(groups.cpu);
+    for (size_t i=0;i<packet.groups.size();++i) {
+        const auto& source=packet.groups[i];
+        float modelView[16],mvp[16];
+        bx::mtxMul(modelView,source.model.data(),view.view.data()); bx::mtxMul(mvp,modelView,view.projection.data());
+        auto& group=destination[i]; matrix(group.matrix,mvp);
+        std::memcpy(&group.color,source.color.data(),sizeof(group.color));
+        group.firstId=source.firstId; group.endId=source.endId; group.sourceFirstId=source.sourceFirstId; group.pointSize=source.pointSize;
+    }
+    root.groups=reinterpret_cast<OpaquePointGroupData*>(groups.gpu);
+    if (packet.reset) {
+        auto data=allocateRoot(root);
+        gpu::bind_pso(commands,computePipeline(packet.clear));
+        gpu::dispatch(commands,data.gpu,{(root.width+7)/8,(root.height+7)/8,1});
+        ++state().stats.numCompute; allBarrier(commands);
+    }
+    if (!packet.tasks.empty()) {
+        auto tasks=allocate(packet.tasks.size()*sizeof(OpaquePointTaskData));
+        std::memcpy(tasks.cpu,packet.tasks.data(),packet.tasks.size()*sizeof(OpaquePointTaskData));
+        root.tasks=reinterpret_cast<OpaquePointTaskData*>(tasks.gpu);
+        root.taskCount=static_cast<uint32_t>(packet.tasks.size()); root.dispatchWidth=std::min(root.taskCount,65535u);
+        auto data=allocateRoot(root);
+        auto& f=current(); f.pointCount=packet.pointCount; f.pointFrame=state().frameNumber; f.pointBudgeted=packet.budgeted;
+        gpu::write_timestamp(commands,&f.pointTimestamps[0]);
+        gpu::bind_pso(commands,computePipeline(packet.raster));
+        gpu::dispatch(commands,data.gpu,{root.dispatchWidth,(root.taskCount+root.dispatchWidth-1)/root.dispatchWidth,1});
+        gpu::write_timestamp(commands,&f.pointTimestamps[1]);
+        ++state().stats.numCompute; allBarrier(commands);
+    }
+    gpu::begin_render_pass(commands,{.colors={target.colors.data(),target.count},.depth=target.depth});
+    gpu::set_viewport(commands,{float(view.x),float(view.y),float(view.width),float(view.height)});
+    gpu::set_scissor(commands,{view.x,view.y,view.width,view.height});
+    gpu::set_depth_stencil(commands,{.depth_test=true,.depth_write=true,.depth_compare=gpu::CompareOp::greater_equal});
+    gpu::bind_pso(commands,pipeline(op,target));
+    auto data=allocateRoot(root); gpu::draw(commands,data.gpu,3); ++state().stats.numDraw;
+    gpu::end_render_pass(commands);
 }
 void blitOperation(gpu::CommandBuffer *commands, const Operation &op)
 {
@@ -888,6 +960,8 @@ bool init(const Init &options)
                            WOBY_GPU_CAPS_BLEND_INDEPENDENT | WOBY_GPU_CAPS_PRIMITIVE_ID;
         if (gpu::get_device_caps(c.device).fragment_barycentric)
             c.caps.supported |= WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC;
+        if (gpu::get_device_caps(c.device).point_buffer_int64_atomics)
+            c.caps.supported |= WOBY_GPU_CAPS_OPAQUE_POINTS;
         c.timeline = gpu::create_timeline_semaphore(c.device);
         c.descriptors = gpu::create_texture_descriptor_heap(c.device, descriptorCapacity);
         c.samplers = gpu::create_sampler_descriptor_heap(c.device, 2);
@@ -1358,6 +1432,26 @@ void dispatch(ViewId id, ProgramHandle h, uint32_t x, uint32_t y, uint32_t z)
                                     .groups = {x, y, z}});
     resetEncoder();
 }
+void submitOpaquePoints(ViewId id,VertexBufferHandle winners,ProgramHandle clear,ProgramHandle raster,ProgramHandle resolve,
+    std::span<const OpaquePointGroup> groups,std::span<const OpaquePointTask> tasks,std::array<uint32_t,4> query,bool reset,bool budgeted) {
+    beginFrame();
+    require((state().caps.supported&WOBY_GPU_CAPS_OPAQUE_POINTS)!=0,"Opaque point atomics unsupported");
+    require(!groups.empty(),"Empty opaque point groups");
+    auto packet=std::make_shared<PointPacket>();
+    packet->winners=resource(state().vertexBuffers,winners);
+    packet->clear=resource(state().programs,clear); packet->raster=resource(state().programs,raster);
+    packet->groups.assign(groups.begin(),groups.end()); packet->reset=reset; packet->query=query; packet->budgeted=budgeted;
+    packet->tasks.reserve(tasks.size()); packet->buffers.reserve(tasks.size());
+    for (const auto& task:tasks) {
+        auto buffer=resource(state().vertexBuffers,task.buffer);
+        require(task.group<groups.size() && uint64_t(task.offset+uint64_t(task.count))*sizeof(OpaquePoint)<=buffer->bytes,"Invalid point task");
+        packet->tasks.push_back({reinterpret_cast<OpaquePoint*>(buffer->heap.range.gpu)+task.offset,task.count,task.group,task.query?1u:0u,0});
+        packet->buffers.push_back(std::move(buffer)); packet->pointCount+=task.count;
+    }
+    Operation op; op.view=id; op.type=OperationType::points; op.program=resource(state().programs,resolve);
+    op.encoder.state=WOBY_GPU_STATE_WRITE_RGB|WOBY_GPU_STATE_WRITE_A;
+    op.points=std::move(packet); current().operations.push_back(std::move(op)); resetEncoder();
+}
 void blit(ViewId id, TextureHandle destination, uint16_t x, uint16_t y, TextureHandle source, uint16_t sourceX,
           uint16_t sourceY, uint16_t width, uint16_t height)
 {
@@ -1455,7 +1549,7 @@ uint32_t frame()
                                          [&](const Operation &op)
                                          {
                                              return !c.views[op.view].framebuffer &&
-                                                    (op.type == OperationType::draw || op.type == OperationType::touch);
+                                                    (op.type == OperationType::draw || op.type == OperationType::touch || op.type == OperationType::points);
                                          });
     if (needsOutput || swap.render_view)
         ensureOutput(f);
@@ -1500,7 +1594,11 @@ uint32_t frame()
                     active = false;
                     allBarrier(commands);
                 }
-                if (op.type == OperationType::compute)
+                if (op.type == OperationType::points) {
+                    require(bool(target),"Point view has no target");
+                    renderTargets=attachments(*target,view,first); first=false;
+                    pointOperation(commands,op,view,renderTargets);
+                } else if (op.type == OperationType::compute)
                     computeOperation(commands, op, view);
                 else
                     blitOperation(commands, op);

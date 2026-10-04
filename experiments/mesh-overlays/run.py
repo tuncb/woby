@@ -51,7 +51,8 @@ def main():
     repository = Path(__file__).resolve().parents[2]
     source_paths = list(Path(__file__).resolve().parent.glob("*")) + [
         repository / "shaders/native/woby.slang", repository / "shaders/native/root.h",
-        repository / "src/scene_mesh_preparation.cpp", repository / "src/obj_mesh.cpp",
+        repository / "src/scene_mesh_preparation.cpp", repository / "src/point_cloud.cpp",
+        repository / "src/point_cloud.h", repository / "src/obj_mesh.cpp",
         repository / "src/model_mesh.cpp", repository / "src/camera.cpp"]
     source_hashes = {str(path.relative_to(repository)): hashlib.sha256(path.read_bytes()).hexdigest()
                      for path in source_paths if path.is_file()}

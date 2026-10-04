@@ -1,5 +1,6 @@
 #include "scene_mesh_preparation.h"
 #include "scene_buffer_size.h"
+#include "point_cloud.h"
 
 #include <stdexcept>
 
@@ -18,7 +19,7 @@ uint8_t requestedGpuMeshFeatures(const UiFileState& file)
 }
 
 std::optional<SceneMeshPreparation> prepareSceneMesh(
-    const Mesh& mesh, uint8_t features, const std::function<bool()>& shouldCancel)
+    const Mesh& mesh, uint8_t features, const std::function<bool()>& shouldCancel, bool buildPointHierarchy)
 {
     const auto canceled = [&] { return shouldCancel && shouldCancel(); };
     if (canceled()) { return {}; }
@@ -87,6 +88,15 @@ std::optional<SceneMeshPreparation> prepareSceneMesh(
     result.uploadBytes = mesh.vertices.size() * sizeof(Vertex)
         + (mesh.indices.size() + mesh.lineIndices.size() + result.edgeIndices.size()
             + ((features & gpuMeshPoints) ? result.pointVertexIndices.size() : 0)) * sizeof(uint32_t);
+    if (buildPointHierarchy && result.pointVertexIndices.size() >= 65536 && !mesh.freeform) {
+        auto cloud = points::buildCloud(mesh, std::move(result.pointVertexIndices), result.nodeRanges, shouldCancel);
+        if (!cloud) { return {}; }
+        result.compactOnly = mesh.indices.empty() && mesh.lineIndices.empty();
+        if (result.compactOnly) { result.uploadBytes -= mesh.vertices.size() * sizeof(Vertex); }
+        if (features & gpuMeshPoints) { result.uploadBytes -= cloud->sourceVertices.size() * sizeof(uint32_t); }
+        result.uploadBytes += (cloud->points.size() + cloud->proxies.size()) * sizeof(points::Point);
+        result.pointCloud = std::make_shared<const points::Cloud>(std::move(*cloud));
+    }
     return result;
 }
 

@@ -136,6 +136,7 @@ struct ViewSceneSettings {
     SceneUpAxis upAxis = SceneUpAxis::z;
     float masterVertexPointSize = 4.0f;
     bool triangleEdgeXray = false;
+    bool adaptivePoints = true;
     friend bool operator==(const ViewSceneSettings&, const ViewSceneSettings&) = default;
 };
 
@@ -168,6 +169,7 @@ struct SceneDocument {
     bool showGrid = true;
     bool showDimensions = false;
     bool triangleEdgeXray = false;
+    bool adaptivePoints = true;
     SceneUpAxis upAxis = SceneUpAxis::z;
     std::vector<SceneFileRecord> files;
     std::vector<SceneNodeRecord> nodes;

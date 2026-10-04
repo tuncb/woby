@@ -1,0 +1,13 @@
+[2026-10-04 21:12:42.551] [woby] [info] woby version 0.26.0
+[2026-10-04 21:12:42.875] [woby] [info] perf event=startup_sdl_window duration_ms=304.9226
+[2026-10-04 21:12:43.098] [woby] [info] perf event=startup_graphics duration_ms=222.947
+[2026-10-04 21:12:43.098] [woby] [info] perf event=startup_resolve_model_paths duration_ms=0.0071
+[2026-10-04 21:12:43.098] [woby] [info] perf model_load_batch requested_count=0 loaded_count=0 duration_ms=0.0049
+[2026-10-04 21:12:43.099] [woby] [info] perf event=startup_initial_scene duration_ms=0.1068
+[2026-10-04 21:12:43.101] [woby] [info] perf event=startup_shaders duration_ms=2.4737
+[2026-10-04 21:12:43.106] [woby] [info] perf event=startup_imgui duration_ms=4.4121
+[2026-10-04 21:12:43.106] [woby] [info] perf event=startup_total duration_ms=554.9336
+[2026-10-04 21:13:11.834] [woby] [info] perf model_upload_prepare path="D:\temp\obj_tests\pointclouds\semantic3d_sg27_station8_100000000_xyz_points.obj" duration_ms=9398.8038
+[2026-10-04 21:13:11.834] [woby] [info] perf model_cpu_load path="D:\temp\obj_tests\pointclouds\semantic3d_sg27_station8_100000000_xyz_points.obj" vertices=100000000 triangles=0 groups=1 parse_ms=16513.4894 total_ms=27593.3926
+[2026-10-04 21:13:11.835] [woby] [info] perf model_cpu_load_batch requested_count=1 loaded_count=1 skipped_count=0 failed_count=0 canceled=false duration_ms=27593.5959
+[2026-10-04 21:13:12.408] [woby] [info] perf model_gpu_finalize path="D:\temp\obj_tests\pointclouds\semantic3d_sg27_station8_100000000_xyz_points.obj" bytes=1740044096 upload_ms=444.4995999999995 longest_step_ms=2.1997

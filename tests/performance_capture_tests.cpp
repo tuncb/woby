@@ -43,9 +43,17 @@ TEST_CASE("frame events preserve transient size, presentation, scene and camera 
     event.environment.sceneEditRevision = 1;
     event.environment.presentationSubmitted = true;
     event.camera[0] = 42;
+    event.pointSubmittedCount = 100;
+    event.pointRasterCount = 75; // GPU completion belongs to an earlier submission.
+    event.pointRasterMilliseconds = 2.5;
+    event.pointRasterBudgeted = true;
     woby::captureFrame(capture, event);
     REQUIRE(capture.events.size() == 2);
     CHECK(capture.events[0].environment != capture.events[1].environment);
     CHECK(capture.events[0].camera[0] == 0);
     CHECK(capture.events[1].camera[0] == 42);
+    CHECK(capture.events[1].pointSubmittedCount == 100);
+    CHECK(capture.events[1].pointRasterCount == 75);
+    CHECK(capture.events[1].pointRasterMilliseconds == 2.5);
+    CHECK(capture.events[1].pointRasterBudgeted);
 }

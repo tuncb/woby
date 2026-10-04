@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 #define WOBY_GPU_INVALID_HANDLE {woby::graphics::kInvalidHandle}
 inline constexpr uint64_t WOBY_GPU_STATE_WRITE_RGB = 1ull << 0, WOBY_GPU_STATE_WRITE_A = 1ull << 1,
@@ -42,7 +43,8 @@ inline constexpr uint64_t WOBY_GPU_CAPS_COMPUTE = 1ull << 0, WOBY_GPU_CAPS_VERTE
                           WOBY_GPU_CAPS_INSTANCING = 1ull << 2, WOBY_GPU_CAPS_INDEX32 = 1ull << 3,
                           WOBY_GPU_CAPS_TEXTURE_READ_BACK = 1ull << 4, WOBY_GPU_CAPS_TEXTURE_BLIT = 1ull << 5,
                           WOBY_GPU_CAPS_BLEND_INDEPENDENT = 1ull << 6, WOBY_GPU_CAPS_PRIMITIVE_ID = 1ull << 7,
-                          WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC = 1ull << 8;
+                          WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC = 1ull << 8,
+                          WOBY_GPU_CAPS_OPAQUE_POINTS = 1ull << 9;
 
 namespace woby::graphics
 {
@@ -162,6 +164,10 @@ struct Stats
     int64_t cpuTimeFrame = 0, cpuTimeBegin = 0, cpuTimeEnd = 0, cpuTimerFreq = 1000000000, gpuTimeBegin = 0,
             gpuTimeEnd = 0, gpuTimerFreq = 1000000000;
     uint32_t numDraw = 0, numCompute = 0;
+    double pointRasterMs = 0;
+    uint32_t pointRasterFrame = 0;
+    uint64_t pointRasterCount = 0;
+    bool pointRasterBudgeted = false;
     // Last completed submission; not physical display/scanout telemetry.
     uint32_t drawableWidth = 0, drawableHeight = 0;
     bool presentationSubmitted = false, mailboxPresentation = false;
@@ -244,6 +250,23 @@ void setPaletteColor(uint8_t index, uint32_t rgba);
 void touch(ViewId);
 void submit(ViewId, ProgramHandle);
 void dispatch(ViewId, ProgramHandle, uint32_t x, uint32_t y = 1, uint32_t z = 1);
+// Opaque point packets are copied into the normal frame's retained storage.
+// Each point is {float3 position, uint32 originalId}; no source pointer escapes.
+struct OpaquePointGroup {
+    std::array<float,16> model{};
+    std::array<float,4> color{};
+    uint32_t firstId=0, endId=0, sourceFirstId=0;
+    float pointSize=1;
+};
+struct OpaquePointTask {
+    VertexBufferHandle buffer;
+    uint32_t offset=0, count=0, group=0;
+    bool query=false;
+};
+void submitOpaquePoints(ViewId, VertexBufferHandle winners,
+    ProgramHandle clear, ProgramHandle raster, ProgramHandle resolve,
+    std::span<const OpaquePointGroup> groups, std::span<const OpaquePointTask> tasks,
+    std::array<uint32_t,4> queryRectangle, bool reset, bool budgeted);
 void blit(ViewId, TextureHandle destination, uint16_t x, uint16_t y, TextureHandle source, uint16_t sourceX = 0,
           uint16_t sourceY = 0, uint16_t width = UINT16_MAX, uint16_t height = UINT16_MAX);
 uint32_t readTexture(TextureHandle, void *destination);

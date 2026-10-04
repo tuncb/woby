@@ -1,7 +1,7 @@
 if(NOT WIN32)
     message(FATAL_ERROR "The overlay experiment currently measures Windows Vulkan only")
 endif()
-include("${CMAKE_CURRENT_SOURCE_DIR}/point_atomics.cmake")
+
 
 set(shader_outputs)
 foreach(entry IN ITEMS vs_mesh vs_color vs_point_sprite fs_mesh fs_color fs_point_sprite
@@ -45,7 +45,7 @@ foreach(entry IN ITEMS vs_mesh vs_color vs_point_sprite fs_mesh fs_color fs_poin
 endforeach()
 add_custom_target(woby_overlay_shaders DEPENDS ${shader_outputs})
 
-add_library(woby_overlay_experiment STATIC renderer.cpp visibility.cpp gpu_culling.cpp point_cloud.cpp point_renderer.cpp
+add_library(woby_overlay_experiment STATIC renderer.cpp visibility.cpp gpu_culling.cpp ../../src/point_cloud.cpp point_renderer.cpp
     ../../src/model_mesh.cpp ../../src/obj_mesh.cpp ../../src/obj_freeform.cpp
     ../../src/freeform.cpp ../../src/freeform_trim.cpp ../../src/scene_mesh_preparation.cpp ../../src/camera.cpp)
 target_include_directories(woby_overlay_experiment PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"

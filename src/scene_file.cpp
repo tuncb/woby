@@ -788,9 +788,9 @@ bool sceneContentEqual(const SceneDocument& a, const SceneDocument& b)
     // The live camera is excluded so ordinary navigation stays transient.
     // Named checkpoints, including their cameras, are editable document content.
     return std::tie(a.annotations, a.views, a.comparisons, a.comparison, a.masterVertexPointSize, a.showOrigin,
-               a.showGrid, a.showDimensions, a.triangleEdgeXray, a.upAxis, a.files, a.nodes, a.coordinateOrigin)
+               a.showGrid, a.showDimensions, a.triangleEdgeXray, a.adaptivePoints, a.upAxis, a.files, a.nodes, a.coordinateOrigin)
         == std::tie(b.annotations, b.views, b.comparisons, b.comparison, b.masterVertexPointSize, b.showOrigin,
-               b.showGrid, b.showDimensions, b.triangleEdgeXray, b.upAxis, b.files, b.nodes, b.coordinateOrigin);
+               b.showGrid, b.showDimensions, b.triangleEdgeXray, b.adaptivePoints, b.upAxis, b.files, b.nodes, b.coordinateOrigin);
 }
 
 SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
@@ -933,6 +933,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     document.showOrigin = parseTomlBool(value);
                 } else if (key == "show_grid") {
                     document.showGrid = parseTomlBool(value);
+                } else if (key == "adaptive_points") {
+                    document.adaptivePoints = parseTomlBool(value);
                 } else if (key == "triangle_edge_xray") {
                     document.triangleEdgeXray = parseTomlBool(value);
                 } else if (key == "show_dimensions") {
@@ -1022,6 +1024,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 else if (key == "show_origin") { view.scene.showOrigin = parseTomlBool(value); }
                 else if (key == "show_grid") { view.scene.showGrid = parseTomlBool(value); }
                 else if (key == "show_dimensions") { view.scene.showDimensions = parseTomlBool(value); }
+                else if (key == "adaptive_points") { view.scene.adaptivePoints = parseTomlBool(value); }
                 else if (key == "triangle_edge_xray") { view.scene.triangleEdgeXray = parseTomlBool(value); }
                 else if (key == "up_axis") { view.scene.upAxis = parseSceneUpAxis(value); }
                 else if (key == "master_vertex_point_size") { view.scene.masterVertexPointSize = parseTomlFloat(value); }
@@ -1225,6 +1228,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream << "\n";
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
     stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
+    stream << "adaptive_points = " << (document.adaptivePoints ? "true" : "false") << "\n";
     stream << "triangle_edge_xray = " << (document.triangleEdgeXray ? "true" : "false") << "\n";
     stream << "show_dimensions = " << (document.showDimensions ? "true" : "false") << "\n";
     stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
@@ -1352,6 +1356,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "\n[[views]]\nname = \"" << escapeTomlString(view.name) << "\"\n";
         stream << "show_origin = " << (view.scene.showOrigin ? "true" : "false") << "\n";
         stream << "show_grid = " << (view.scene.showGrid ? "true" : "false") << "\n";
+        stream << "adaptive_points = " << (view.scene.adaptivePoints ? "true" : "false") << "\n";
         stream << "triangle_edge_xray = " << (view.scene.triangleEdgeXray ? "true" : "false") << "\n";
         stream << "show_dimensions = " << (view.scene.showDimensions ? "true" : "false") << "\n";
         stream << "up_axis = \"" << sceneUpAxisName(view.scene.upAxis) << "\"\n";

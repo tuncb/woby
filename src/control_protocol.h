@@ -34,7 +34,7 @@ struct ControlOperation {
     std::string axis, preset, viewId;
     bool tree = false;
     bool remember = false;
-    std::optional<bool> visible, solid, triangles, vertices, xray;
+    std::optional<bool> visible, solid, triangles, vertices, xray, adaptivePoints;
     std::optional<bool> propertiesVisible;
     std::optional<bool> uvThresholdEnabled, uvOverlapEnabled, uvRangeEnabled;
     std::optional<float> uvThreshold, uvNearCollapse, uvRangeMinimum, uvRangeMaximum;

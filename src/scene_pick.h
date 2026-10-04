@@ -7,6 +7,7 @@
 #include <span>
 
 namespace woby {
+namespace points { struct Cloud; }
 
 using PickMatrix = std::array<float, 16>;
 using PickPoint = std::array<float, 2>;
@@ -43,6 +44,7 @@ struct ScenePickPart {
     size_t pointIndexOffset = 0, pointIndexCount = 0;
     SceneObjectId analysisId = 0; // Linked analysis copy; zero for source geometry.
     size_t fileIndex = 0, groupIndex = 0; // Source parts only; never used for analysis copies.
+    const points::Cloud* pointCloud = nullptr;
     bool sourceMesh = false; // Source passes precede analysis overlays and imported lines.
 };
 

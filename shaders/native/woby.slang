@@ -57,14 +57,16 @@ VertexOutput vs_comparison(uint index : SV_VertexID) {
 VertexOutput pointVertex(uint vertex, uint instance) {
     VertexOutput v = {};
     uint base = uint(root.pointParams[1].x) + uint(root.pointParams[1].y)*65536u;
-    uint index = root.pointIds[base+instance];
+    bool compact = root.pointParams[0].w != 0;
+    uint index = compact ? base+instance : root.pointIds[base+instance];
     float2 corner = float2(1.0-float((vertex>>1)&1),float(vertex&1))-0.5;
     float4 center = mul(root.modelViewProj,float4(positionAt(index),1));
     center.xy += corner * root.pointParams[0].x * float2(2.0/root.pointParams[0].y,2.0/root.pointParams[0].z) * center.w;
     v.position = clipPosition(center);
     v.uv = corner;
     uint first = uint(root.markerBase.x)|(uint(root.markerBase.y)<<16);
-    v.id = first == 0 ? 0 : first+instance;
+    uint sourceFirst = uint(root.pointParams[1].z)|(uint(root.pointParams[1].w)<<16);
+    v.id = first == 0 ? 0 : compact ? first+asuint(root.vertices[index*root.stride+3])-sourceFirst : first+instance;
     return v;
 }
 VertexOutput vs_point_sprite(uint vertex : SV_VertexID,uint instance : SV_InstanceID) { return pointVertex(vertex,instance); }

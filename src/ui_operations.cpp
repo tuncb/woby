@@ -1556,6 +1556,14 @@ void setShowGrid(UiState& state, bool visible)
     }
 }
 
+void setAdaptivePoints(UiState& state, bool enabled)
+{
+    if (state.adaptivePoints != enabled) {
+        state.adaptivePoints = enabled;
+        markSceneDirty(state, SceneChange::appearance);
+    }
+}
+
 void setTriangleEdgeXray(UiState& state, bool enabled)
 {
     if (state.triangleEdgeXray != enabled) {
@@ -1884,6 +1892,7 @@ UiState prepareSceneReplacement(const UiState& current,
     setShowOrigin(prepared, document.showOrigin);
     setShowGrid(prepared, document.showGrid);
     setTriangleEdgeXray(prepared, document.triangleEdgeXray);
+    setAdaptivePoints(prepared, document.adaptivePoints);
     setShowDimensions(prepared, document.showDimensions);
     setMasterVertexPointSize(prepared, document.masterVertexPointSize);
     for (const auto& record : document.comparisons) {

@@ -3,6 +3,7 @@
 #include "marker_pick.h"
 #include "scene_dimensions.h"
 #include "graphics_helpers.h"
+#include "adaptive_points.h"
 
 #include <bx/math.h>
 
@@ -195,6 +196,8 @@ GpuMeshUpload beginGpuMeshUpload(SceneMeshPreparation prepared)
     GpuMeshUpload upload;
     upload.mesh.nodeRanges = std::move(prepared.nodeRanges);
     upload.mesh.pointVertexIndices = std::move(prepared.pointVertexIndices);
+    upload.mesh.pointCloud = std::move(prepared.pointCloud);
+    upload.mesh.compactOnly = prepared.compactOnly;
     upload.edgeIndices = std::move(prepared.edgeIndices);
     upload.features = prepared.features;
     upload.totalBytes = prepared.uploadBytes;
@@ -207,7 +210,24 @@ bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
     if (byteBudget < sizeof(Vertex)) { throw std::invalid_argument("Mesh upload budget must fit one vertex."); }
     // Keep chunks aligned for both Vulkan copies and vertex-buffer strides.
     byteBudget -= byteBudget % sizeof(Vertex);
-    while (upload.bufferIndex < 5) {
+    while (upload.bufferIndex < 7) {
+        if (upload.bufferIndex >= 5) {
+            if (!upload.mesh.pointCloud) { ++upload.bufferIndex; continue; }
+            const bool proxy = upload.bufferIndex == 6;
+            const auto& points = proxy ? upload.mesh.pointCloud->proxies : upload.mesh.pointCloud->points;
+            auto& chunks = proxy ? upload.mesh.proxyChunks : upload.mesh.pointChunks;
+            const size_t begin = size_t(upload.pointChunk) * pointChunkSize;
+            if (begin >= points.size()) { ++upload.bufferIndex; upload.pointChunk = 0; continue; }
+            if (byteBudget < sizeof(Vertex)) { return false; }
+            const auto bytes = sceneBufferBytes(std::min<size_t>(pointChunkSize, points.size() - begin), sizeof(points::Point));
+            if (!upload.bufferOffset) { chunks.push_back(graphics::createVertexBufferStorage(bytes, {sizeof(points::Point)})); }
+            const auto count = std::min(bytes - upload.bufferOffset, byteBudget);
+            graphics::uploadBufferRange(chunks.back(), upload.bufferOffset,
+                reinterpret_cast<const uint8_t*>(points.data() + begin) + upload.bufferOffset, count);
+            upload.bufferOffset += count; upload.uploadedBytes += count; byteBudget -= count;
+            if (upload.bufferOffset == bytes) { upload.bufferOffset = 0; ++upload.pointChunk; }
+            continue;
+        }
         const void* data = nullptr;
         uint32_t bytes = 0;
         woby::graphics::IndexBufferHandle* indexBuffer = nullptr;
@@ -215,7 +235,7 @@ bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
         switch (upload.bufferIndex) {
         case 0:
             data = source.vertices.data();
-            bytes = sceneBufferBytes(source.vertices.size(), sizeof(Vertex));
+            bytes = upload.mesh.compactOnly ? 0 : sceneBufferBytes(source.vertices.size(), sizeof(Vertex));
             break;
         case 1:
             data = source.indices.data();
@@ -236,7 +256,7 @@ bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
             break;
         case 4:
             data = upload.mesh.pointVertexIndices.data();
-            if (upload.features & gpuMeshPoints) {
+            if ((upload.features & gpuMeshPoints) && !upload.mesh.pointCloud) {
                 bytes = sceneBufferBytes(upload.mesh.pointVertexIndices.size(), sizeof(uint32_t));
             }
             indexBuffer = &upload.mesh.pointIdBuffer;
@@ -292,7 +312,7 @@ void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
             WOBY_GPU_BUFFER_INDEX32);
         if (!woby::graphics::isValid(gpuMesh.lineIndexBuffer)) { throw std::runtime_error("Failed to allocate scene edge buffer."); }
     }
-    if ((features & gpuMeshPoints) && !woby::graphics::isValid(gpuMesh.pointIdBuffer)) {
+    if ((features & gpuMeshPoints) && !gpuMesh.pointCloud && !woby::graphics::isValid(gpuMesh.pointIdBuffer)) {
         const auto& pointIndices = gpuMesh.pointVertexIndices;
         if (pointIndices.empty()) { return; }
         // copy owns the asynchronous upload; CPU IDs remain available for picking.
@@ -307,6 +327,12 @@ void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,
 
 void destroyGpuMesh(GpuMesh& mesh)
 {
+    for (auto& chunks : {&mesh.pointChunks, &mesh.proxyChunks}) {
+        for (const auto buffer : *chunks) { if (graphics::isValid(buffer)) graphics::destroy(buffer); }
+        chunks->clear();
+    }
+    mesh.pointCloud.reset();
+    mesh.compactOnly = false;
     if (woby::graphics::isValid(mesh.importedLineBuffer)) { woby::graphics::destroy(mesh.importedLineBuffer); }
     mesh.importedLineBuffer = WOBY_GPU_INVALID_HANDLE;
     if (woby::graphics::isValid(mesh.pointIdBuffer)) {
@@ -388,26 +414,57 @@ void submitSceneFiles(
     graphics::ProgramHandle colorProgram, graphics::ProgramHandle pointSpriteProgram,
     graphics::UniformHandle colorUniform, graphics::UniformHandle pointParamsUniform,
     const TriangleEdgePrograms& edges, uint32_t width, uint32_t height,
-    MarkerDrawContext* markers, bool importedLinesOnly)
+    MarkerDrawContext* markers, bool importedLinesOnly, AdaptivePointRuntime* adaptivePoints)
 {
     const bool markerIds = markers != nullptr;
+    MarkerDrawList localMarkers;
     const auto each = [&](const auto& draw) {
         for (const auto& item : plan.items) {
             if (item.importedLines != importedLinesOnly || item.fileIndex >= runtimes.size()) { continue; }
             const auto& mesh = runtimes[item.fileIndex].gpuMesh;
-            if (item.groupIndex >= mesh.nodeRanges.size() || !graphics::isValid(mesh.vertexBuffer)) { continue; }
+            if (item.groupIndex >= mesh.nodeRanges.size() || (!graphics::isValid(mesh.vertexBuffer) && !mesh.pointCloud)) { continue; }
             draw(item, mesh, mesh.nodeRanges[item.groupIndex]);
         }
     };
     const auto points = [&](const SceneDrawItem& item, const GpuMesh& mesh, const GpuNodeRange& range) {
-        if (!item.points || !range.pointIndexCount || !graphics::isValid(mesh.pointIdBuffer)) { return; }
-        if (markers) {
+        if (!item.points || !range.pointIndexCount || (!mesh.pointCloud && !graphics::isValid(mesh.pointIdBuffer))) { return; }
+        uint32_t firstId=0;
+        if (markers || mesh.pointCloud) {
             MarkerDraw draw;
             draw.model = item.model; draw.fileIndex = item.fileIndex; draw.fileId = item.fileId;
             draw.pointOffset = range.pointIndexOffset; draw.count = range.pointIndexCount;
-            const auto id = appendMarkerDraw(markers->list, draw, item.pointSize);
-            const std::array<float, 4> base{float(id & 65535u), float(id >> 16u), 0, 0};
-            graphics::setUniform(markers->baseUniform, base.data());
+            firstId = appendMarkerDraw(markers ? markers->list : localMarkers, draw, item.pointSize);
+            if (markers) {
+                const std::array<float, 4> base{float(firstId & 65535u), float(firstId >> 16u), 0, 0};
+                graphics::setUniform(markers->baseUniform, base.data());
+            }
+        }
+        if (adaptivePoints && queueAdaptivePoints(*adaptivePoints,mesh,item,firstId)) return;
+        if (mesh.pointCloud) {
+            for (const auto root:mesh.pointCloud->roots) {
+                const auto& node=mesh.pointCloud->nodes[root];
+                if (node.group!=item.groupIndex) continue;
+                for (uint32_t used=0;used<node.count;) {
+                    const auto offset=node.begin+used, chunk=offset/pointChunkSize;
+                    const auto count=std::min(node.count-used,pointChunkSize-offset%pointChunkSize);
+                    auto params=pointSpriteParameters(item.pointSize,width,height,offset%pointChunkSize);
+                    params[3]=1;
+                    const auto sourceFirst=range.pointIndexOffset+1;
+                    params[6]=float(sourceFirst&65535u); params[7]=float(sourceFirst>>16u);
+                    const auto color=scaledRgbColor(item.color,1.5f);
+                    graphics::setTransform(item.model.data()); graphics::setUniform(colorUniform,color.data());
+                    graphics::setUniform(pointParamsUniform,params.data(),2);
+                    if (markers) {
+                        const std::array<float,4> base{float(firstId&65535u),float(firstId>>16u),0,0};
+                        graphics::setUniform(markers->baseUniform,base.data());
+                    }
+                    graphics::setBuffer(0,mesh.pointChunks.at(chunk),graphics::Access::Read);
+                    graphics::setVertexCount(4); graphics::setInstanceCount(count);
+                    setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_LEQUAL,true,color,WOBY_GPU_STATE_PT_TRISTRIP),markerIds);
+                    graphics::submit(viewId,pointSpriteProgram); used+=count;
+                }
+            }
+            return;
         }
         submitPointSpriteRange(viewId, mesh, pointSpriteProgram, colorUniform, pointParamsUniform,
             item.model.data(), scaledRgbColor(item.color, 1.5f), item.pointSize, width, height,
@@ -486,6 +543,17 @@ void submitSceneFiles(
         if (hardwareLines || !item.solid) { triangleEdges(item, mesh, range, hardwareLines); }
     });
     each(points);
+    if (adaptivePoints) {
+        try { submitAdaptivePoints(*adaptivePoints,viewId,markerIds); }
+        catch (const std::exception& error) {
+            adaptivePoints->error=error.what(); adaptivePoints->unavailable=true;
+            adaptivePoints->enabled=adaptivePoints->active=false;
+            adaptivePoints->keys.clear(); adaptivePoints->draws.clear();
+            each([&](const auto& item,const auto& mesh,const auto& range) {
+                if (mesh.pointCloud) points(item,mesh,range);
+            });
+        }
+    }
 }
 
 void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts, const UiState& state,

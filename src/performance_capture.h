@@ -29,6 +29,12 @@ struct FrameEvent {
     // target xyz, yaw/pitch/roll radians, distance, vertical FOV degrees, near plane.
     std::array<float, 9> camera{};
     double completedMilliseconds = 0;
+    uint64_t pointSourceCount=0,pointRefinedCount=0,pointSubmittedCount=0;
+    bool pointRendererActive=false,pointNavigation=false;
+    // Completed GPU work can trail this event's CPU submission.
+    uint64_t pointRasterCount=0;
+    double pointRasterMilliseconds=0;
+    bool pointRasterBudgeted=false;
 };
 
 inline constexpr size_t maxCapturedFrames = 16384;
