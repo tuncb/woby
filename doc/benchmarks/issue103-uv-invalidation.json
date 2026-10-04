@@ -1,0 +1,161 @@
+{
+  "baseline": "D:\\woby\\build\\large-file-stress-20261003\\uv-matrix\\uv-san-miguel-r0",
+  "evidence": "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3code-959ba19a\\build\\issue103-uv-san-miguel-final\\uv-san-miguel-r0",
+  "measured_date": "2026-10-04",
+  "source_base_commit": "4abdcc3",
+  "limitations": [
+    "Historical comparison, not a paired A/B run.",
+    "An external compiler build started during the final run; timings are indicative under contention.",
+    "Private memory sampled every 200 ms; last sample is not a settled plateau.",
+    "BearTrap was not remeasured."
+  ],
+  "manifest": {
+    "arguments": {
+      "executable": "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3code-959ba19a\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+      "models": "D:\\temp\\obj_tests",
+      "output": "C:\\Users\\tuncb\\.t3\\worktrees\\woby\\t3code-959ba19a\\build\\issue103-uv-san-miguel-final",
+      "suite": "uv",
+      "select": [
+        "san-miguel"
+      ],
+      "rounds": 1,
+      "seconds": 4,
+      "warmup": 1.5,
+      "load_timeout": 0,
+      "operation_timeout": 240,
+      "max_private_gib": 38.0,
+      "min_available_gib": 6.0,
+      "headless": false,
+      "visible_window": false,
+      "batch_count": 8
+    },
+    "harness_version": 3,
+    "harness_sha256": "c2e8da729de0d5f0686c0cd64fa4e4dd3443e95524310b9fc5ae645020c5e873",
+    "python": "3.13.14 (main, Jun 23 2026, 15:19:27) [MSC v.1944 64 bit (AMD64)]",
+    "psutil": "7.2.2",
+    "executable_sha256": "d7b379ccaf7b5c11564dd3e1a996167ed46a4f090f04465cdb8015bf789c1210",
+    "started_utc": "2026-10-04T12:47:44Z",
+    "models": [
+      {
+        "path": "D:\\temp\\obj_tests\\san-miguel.obj",
+        "bytes": 1143041382,
+        "mtime_ns": 1495700314000000000
+      }
+    ],
+    "physical_memory": 68564348928,
+    "frame_sampling": "Sparse last-completed-frame samples; FPS from counter deltas / query midpoints. No frame percentiles."
+  },
+  "case_status": "completed",
+  "operations": [
+    {
+      "operation": "uv_metric_angle_ready",
+      "baseline_ready_seconds": 0.12767080000048736,
+      "ready_seconds": 0.19483920000493526,
+      "set_seconds": 0.30442000000039116,
+      "peak_private_gib": 6.9934234619140625,
+      "last_private_gib": 6.9934234619140625,
+      "baseline_peak_private_gib": null,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_metric_area_ready",
+      "baseline_ready_seconds": 15.446811800000432,
+      "ready_seconds": 5.204710700010764,
+      "set_seconds": 0.2936941000079969,
+      "peak_private_gib": 9.656688690185547,
+      "last_private_gib": 7.868518829345703,
+      "baseline_peak_private_gib": 7.865837097167969,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_metric_orientation_ready",
+      "baseline_ready_seconds": 11.988118300003407,
+      "ready_seconds": 3.223043600009987,
+      "set_seconds": 0.3093014000041876,
+      "peak_private_gib": 9.879409790039062,
+      "last_private_gib": 7.8850860595703125,
+      "baseline_peak_private_gib": 7.869365692138672,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_metric_anisotropy_ready",
+      "baseline_ready_seconds": 15.799924300001294,
+      "ready_seconds": 5.7417256999906385,
+      "set_seconds": 0.319309999991674,
+      "peak_private_gib": 9.666034698486328,
+      "last_private_gib": 7.878593444824219,
+      "baseline_peak_private_gib": 7.874851226806641,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_metric_min_stretch_ready",
+      "baseline_ready_seconds": 15.416853900002025,
+      "ready_seconds": 5.522593600006076,
+      "set_seconds": 0.30720160000782926,
+      "peak_private_gib": 9.670696258544922,
+      "last_private_gib": 8.776611328125,
+      "baseline_peak_private_gib": 7.883968353271484,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_metric_overlap_ready",
+      "baseline_ready_seconds": 15.354014199998346,
+      "ready_seconds": 9.080496599999606,
+      "set_seconds": 0.30894989999069367,
+      "peak_private_gib": 9.697246551513672,
+      "last_private_gib": 7.280525207519531,
+      "baseline_peak_private_gib": 7.909996032714844,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_absolute_ready",
+      "baseline_ready_seconds": 15.529533799999626,
+      "ready_seconds": 2.3078165000042645,
+      "set_seconds": 0.28534159999981057,
+      "peak_private_gib": 8.728641510009766,
+      "last_private_gib": 7.2597503662109375,
+      "baseline_peak_private_gib": 7.928424835205078,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_threshold_ready",
+      "baseline_ready_seconds": 15.680905199995323,
+      "ready_seconds": 3.9863713000086136,
+      "set_seconds": 0.3027536000008695,
+      "peak_private_gib": 9.708202362060547,
+      "last_private_gib": 7.935455322265625,
+      "baseline_peak_private_gib": 7.941612243652344,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_range_ready",
+      "baseline_ready_seconds": 15.359111300000222,
+      "ready_seconds": 3.5341120999946725,
+      "set_seconds": 0.3184520000068005,
+      "peak_private_gib": 9.695648193359375,
+      "last_private_gib": 7.802379608154297,
+      "baseline_peak_private_gib": 7.929931640625,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    },
+    {
+      "operation": "uv_cross_patch_overlap_ready",
+      "baseline_ready_seconds": 16.419641200001934,
+      "ready_seconds": 11.311262499992154,
+      "set_seconds": 0.30756620000465773,
+      "peak_private_gib": 9.719573974609375,
+      "last_private_gib": 7.946834564208984,
+      "baseline_peak_private_gib": 7.929241180419922,
+      "equal_quality_report": true,
+      "quality_difference_keys": []
+    }
+  ]
+}

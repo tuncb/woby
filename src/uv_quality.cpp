@@ -79,6 +79,7 @@ UvQuality analyzeUvQuality(const Mesh& mesh, const ComparisonSettings& settings,
             const double aa = j00/scale, bb = j01/scale, cc = j10/scale, dd = j11/scale;
             const double e = aa*aa+cc*cc, f = aa*bb+cc*dd, g = bb*bb+dd*dd;
             q.maxStretch = scale*std::sqrt((e+g+std::hypot(e-g,2*f))*.5);
+            q.absoluteMaxStretch = q.maxStretch;
             q.minStretch = (q.uvArea/q.surfaceArea)/q.maxStretch;
             q.anisotropy = q.maxStretch/q.minStretch;
             for (size_t k = 0; k < 3; ++k) {
@@ -88,8 +89,8 @@ UvQuality analyzeUvQuality(const Mesh& mesh, const ComparisonSettings& settings,
             }
         }
         if (positive && negative) { ++result.mixedOrientationPatches; }
-        const double baselineLog2 = result.normalization == UvAreaNormalization::perPatch && worldArea > 0
-            ? std::log2(uvArea)-std::log2(worldArea) : 0;
+        result.patchAreaLog2.push_back(worldArea > 0 ? std::log2(uvArea)-std::log2(worldArea) : 0);
+        const double baselineLog2 = result.normalization == UvAreaNormalization::perPatch ? result.patchAreaLog2.back() : 0;
         for (size_t t = begin; t < end; ++t) {
             if (t % 4096 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
             auto& q = result.triangles[t];
@@ -101,8 +102,35 @@ UvQuality analyzeUvQuality(const Mesh& mesh, const ComparisonSettings& settings,
         }
         ++patch;
     }
-    updateUvQualityStatistics(result);
+    updateUvQualityStatistics(result, stop);
     return result;
+}
+
+void updateUvQualitySettings(UvQuality& quality, const ComparisonSettings& settings, std::stop_token stop)
+{
+    if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
+    const auto next = normalizedComparisonSettings(settings);
+    const bool overlapsChanged = quality.settings.uvOverlapEnabled != next.uvOverlapEnabled
+        || quality.settings.uvOverlapScope != next.uvOverlapScope;
+    if (quality.normalization != next.uvNormalization) {
+        for (size_t i = 0; i < quality.triangles.size(); ++i) {
+            if (i % 4096 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
+            auto& q = quality.triangles[i];
+            if (!validUvTriangle(q)) { continue; }
+            const auto baseline = next.uvNormalization == UvAreaNormalization::perPatch ? quality.patchAreaLog2.at(q.patch) : 0;
+            const auto scale = std::exp2(baseline*.5);
+            q.areaLog2 = std::log2(q.uvArea)-std::log2(q.surfaceArea)-baseline;
+            q.maxStretch = q.absoluteMaxStretch / scale;
+            q.minStretch = (q.uvArea/q.surfaceArea)/q.absoluteMaxStretch / scale;
+        }
+        quality.distributions[static_cast<size_t>(UvQualityMetric::area)].reset();
+        quality.distributions[static_cast<size_t>(UvQualityMetric::minStretch)].reset();
+    }
+    quality.settings = next;
+    quality.normalization = next.uvNormalization;
+    quality.metric = next.uvMetric;
+    if (overlapsChanged || (next.uvOverlapEnabled && !quality.overlapChecked)) { inspectUvOverlaps(quality, stop); }
+    else { updateUvQualityStatistics(quality, stop); }
 }
 
 const char* uvQualityMetricKey(UvQualityMetric metric)
@@ -172,38 +200,47 @@ bool uvQualityHighlighted(const UvTriangleQuality& q, const ComparisonSettings& 
     return settings.uvRangeEnabled ? value >= settings.uvRangeMinimum && value <= settings.uvRangeMaximum
         : settings.uvThresholdEnabled && uvQualityExceedsThreshold(q,settings);
 }
-void updateUvQualityStatistics(UvQuality& quality)
+void updateUvQualityStatistics(UvQuality& quality, std::stop_token stop)
 {
+    if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
     auto& s = quality.statistics;
-    s = {};
+    auto& distribution = quality.distributions.at(static_cast<size_t>(quality.metric));
+    s = distribution.value_or(UvQualityStatistics{});
+    s.thresholdCount = s.nearCollapseCount = s.highlightedCount = 0;
+    s.thresholdAreaPercent = s.highlightedAreaPercent = 0;
     quality.findings.clear();
     std::vector<double> values;
-    values.reserve(quality.triangles.size());
+    if (!distribution) { values.reserve(quality.triangles.size()); }
     double thresholdArea = 0, highlightedArea = 0;
     for (size_t i = 0; i < quality.triangles.size(); ++i) {
+        if (i % 4096 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
         const auto& q = quality.triangles[i];
         if (!validUvTriangle(q) || q.mixedOrientation || q.overlapping || q.crossPatchOverlap
             || q.minStretch < quality.settings.uvNearCollapse || uvQualityHighlighted(q, quality.settings)) {
             quality.findings.push_back(i);
         }
         if (!validUvTriangle(q)) { continue; }
-        values.push_back(uvQualityValue(q,quality.metric));
-        s.surfaceArea += q.surfaceArea;
+        if (!distribution) {
+            values.push_back(uvQualityValue(q,quality.metric));
+            s.surfaceArea += q.surfaceArea;
+        }
         if (q.minStretch < quality.settings.uvNearCollapse) { ++s.nearCollapseCount; }
         if (uvQualityExceedsThreshold(q,quality.settings)) { ++s.thresholdCount; thresholdArea += q.surfaceArea; }
         if (uvQualityHighlighted(q,quality.settings)) { ++s.highlightedCount; highlightedArea += q.surfaceArea; }
     }
+    s.thresholdAreaPercent = s.surfaceArea > 0 ? thresholdArea/s.surfaceArea*100 : 0;
+    s.highlightedAreaPercent = s.surfaceArea > 0 ? highlightedArea/s.surfaceArea*100 : 0;
+    if (distribution) { return; }
     s.count = values.size();
     if (values.empty()) { return; }
     std::sort(values.begin(),values.end());
+    if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
     const auto percentile = [&](double p) {
         const double index = p*static_cast<double>(values.size()-1);
         const auto low = static_cast<size_t>(index);
         return std::lerp(values[low],values[std::min(low+1,values.size()-1)],index-static_cast<double>(low));
     };
     s.minimum = values.front(); s.maximum = values.back(); s.median = percentile(.5); s.percentile95 = percentile(.95);
-    s.thresholdAreaPercent = s.surfaceArea > 0 ? thresholdArea/s.surfaceArea*100 : 0;
-    s.highlightedAreaPercent = s.surfaceArea > 0 ? highlightedArea/s.surfaceArea*100 : 0;
     s.histogramMinimum = s.minimum; s.histogramMaximum = s.maximum;
     if (s.minimum == s.maximum) { s.histogramMaximum = s.minimum + std::max(1.0,std::abs(s.minimum)*.01); }
     for (const auto& q : quality.triangles) {
@@ -212,6 +249,7 @@ void updateUvQualityStatistics(UvQuality& quality)
         const auto bin = std::min(uvHistogramBins-1,static_cast<size_t>(std::clamp(fraction,0.0,1.0)*uvHistogramBins));
         ++s.counts[bin]; s.areas[bin] += q.surfaceArea;
     }
+    distribution = s;
 }
 
 std::array<float,4> uvQualityColor(double value, bool area, bool highlighted)
@@ -257,25 +295,30 @@ std::optional<std::array<std::array<float, 3>, 3>> uvFindingGeometry(const Mesh&
 std::vector<Vertex> uvQualityVertices(const Mesh& display, std::stop_token stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
+    return display.uvQuality ? uvQualityVertices(display, *display.uvQuality, stop) : std::vector<Vertex>{};
+}
+
+std::vector<Vertex> uvQualityVertices(const Mesh& display, const UvQuality& quality, std::stop_token stop)
+{
+    if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
     std::vector<Vertex> result;
-    if (!display.uvQuality) { return result; }
     result.reserve(display.indices.size());
     for (const auto& node : display.nodes) {
         for (size_t i = 0; i < node.indexCount; i += 3) {
             if (i % 12288 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
-            const auto& q = display.uvQuality->triangles.at(node.uvQualityOffset+i/3);
+            const auto& q = quality.triangles.at(node.uvQualityOffset+i/3);
             float value = 0;
-            if (display.uvQuality->metric == UvQualityMetric::angle) { value = static_cast<float>(q.angleDegrees/90); }
-            else if (display.uvQuality->metric == UvQualityMetric::area) { value = static_cast<float>(std::clamp(.5+q.areaLog2/6,0.0,1.0)); }
-            else if (display.uvQuality->metric == UvQualityMetric::anisotropy) { value = static_cast<float>(std::log2(q.anisotropy)/6); }
-            else if (display.uvQuality->metric == UvQualityMetric::minStretch) { value = static_cast<float>(std::clamp(-std::log10(std::max(q.minStretch,1e-30))/2,0.0,1.0)); }
-            else if (display.uvQuality->metric == UvQualityMetric::overlap) { value = static_cast<float>(uvQualityValue(q,UvQualityMetric::overlap)); }
+            if (quality.metric == UvQualityMetric::angle) { value = static_cast<float>(q.angleDegrees/90); }
+            else if (quality.metric == UvQualityMetric::area) { value = static_cast<float>(std::clamp(.5+q.areaLog2/6,0.0,1.0)); }
+            else if (quality.metric == UvQualityMetric::anisotropy) { value = static_cast<float>(std::log2(q.anisotropy)/6); }
+            else if (quality.metric == UvQualityMetric::minStretch) { value = static_cast<float>(std::clamp(-std::log10(std::max(q.minStretch,1e-30))/2,0.0,1.0)); }
+            else if (quality.metric == UvQualityMetric::overlap) { value = static_cast<float>(uvQualityValue(q,UvQualityMetric::overlap)); }
             else { value = q.orientation < 0 ? 1.0f : 0.0f; }
             if (q.collapsed) { value = -1; }
             if (q.missing || q.degenerateSurface) { value = -2; }
             for (size_t k = 0; k < 3; ++k) {
                 auto vertex = display.vertices.at(display.indices.at(node.indexOffset+i+k));
-                vertex.texcoord = {value, uvQualityHighlighted(q,display.uvQuality->settings) ? 1.0f : 0.0f};
+                vertex.texcoord = {value, uvQualityHighlighted(q,quality.settings) ? 1.0f : 0.0f};
                 result.push_back(vertex);
             }
         }

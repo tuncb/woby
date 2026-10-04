@@ -191,3 +191,85 @@ TEST_CASE("UV overlap worker publishes immutable results and reports statistics"
     CHECK(report["overlaps"]["truncated"] == false);
     CHECK(report["statistics"]["count"] == 2);
 }
+
+TEST_CASE("UV cached settings preserve all six metrics distributions and normalization round trips")
+{
+    auto mesh = mappedTriangle(4, 2);
+    appendUvTriangle(mesh, {{{0,0},{2,0},{1,1}}});
+    appendUvTriangle(mesh, {{{0,0},{0,1},{1,0}}}, true);
+    appendUvTriangle(mesh, {{{0,0},{0,0},{0,0}}});
+    woby::ComparisonSettings settings;
+    auto cached = woby::analyzeUvQuality(mesh, settings);
+    for (const auto normalization : {woby::UvAreaNormalization::absolute, woby::UvAreaNormalization::perPatch,
+            woby::UvAreaNormalization::absolute, woby::UvAreaNormalization::perPatch}) {
+        for (const auto metric : {woby::UvQualityMetric::angle, woby::UvQualityMetric::area,
+                woby::UvQualityMetric::orientation, woby::UvQualityMetric::anisotropy,
+                woby::UvQualityMetric::minStretch, woby::UvQualityMetric::overlap}) {
+            settings.uvMetric = metric;
+            settings.uvNormalization = normalization;
+            settings.uvOverlapEnabled = true;
+            settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+            settings.uvThresholdEnabled = true;
+            settings.uvThreshold = .7f;
+            settings.uvNearCollapse = .8f;
+            settings.uvRangeEnabled = true;
+            settings.uvRangeMinimum = .1f;
+            settings.uvRangeMaximum = 2;
+            woby::updateUvQualitySettings(cached, settings);
+            auto fresh = woby::analyzeUvQuality(mesh, settings);
+            woby::inspectUvOverlaps(fresh);
+            CHECK(cached.findings == fresh.findings);
+            CHECK(cached.overlapCandidates == fresh.overlapCandidates);
+            CHECK(cached.overlaps.size() == fresh.overlaps.size());
+            CHECK(cached.statistics.counts == fresh.statistics.counts);
+            CHECK(cached.statistics.areas == fresh.statistics.areas);
+            CHECK(cached.statistics.median == fresh.statistics.median);
+            CHECK(cached.statistics.percentile95 == fresh.statistics.percentile95);
+            CHECK(cached.statistics.thresholdCount == fresh.statistics.thresholdCount);
+            CHECK(cached.statistics.nearCollapseCount == fresh.statistics.nearCollapseCount);
+            CHECK(cached.statistics.highlightedAreaPercent == fresh.statistics.highlightedAreaPercent);
+            for (size_t i = 0; i < cached.triangles.size(); ++i) {
+                const auto& a = cached.triangles[i]; const auto& b = fresh.triangles[i];
+                CHECK(a.partId == b.partId); CHECK(a.triangle == b.triangle); CHECK(a.patch == b.patch);
+                CHECK(a.uv == b.uv); CHECK(a.orientation == b.orientation);
+                CHECK(a.areaLog2 == b.areaLog2); CHECK(a.angleDegrees == b.angleDegrees);
+                CHECK(a.minStretch == b.minStretch); CHECK(a.maxStretch == b.maxStretch);
+                CHECK(a.anisotropy == b.anisotropy);
+                CHECK(a.overlapping == b.overlapping); CHECK(a.crossPatchOverlap == b.crossPatchOverlap);
+            }
+        }
+    }
+    for (const auto& distribution : cached.distributions) { CHECK(distribution.has_value()); }
+    std::stop_source stop; stop.request_stop();
+    CHECK_THROWS(woby::updateUvQualitySettings(cached, settings, stop.get_token()));
+}
+
+TEST_CASE("UV presentation edits reuse bounded overlap results and invalidate only dependent distributions")
+{
+    auto mesh = mappedTriangle();
+    appendUvTriangle(mesh, {{{0,0},{1,0},{0,1}}}, true);
+    auto quality = overlaps(mesh, woby::UvOverlapScope::selectedPatches);
+    woby::inspectUvOverlaps(quality, {}, {100, 0});
+    REQUIRE(quality.overlapTruncated);
+    const auto candidates = quality.overlapCandidates;
+    auto settings = quality.settings;
+    settings.uvThresholdEnabled = true; settings.uvThreshold = .1f;
+    settings.uvRangeEnabled = true; settings.uvRangeMinimum = 0; settings.uvRangeMaximum = 1;
+    settings.uvNormalization = woby::UvAreaNormalization::absolute;
+    woby::updateUvQualitySettings(quality, settings);
+    CHECK(quality.overlapTruncated); CHECK(quality.overlaps.empty());
+    CHECK(quality.overlapCandidates == candidates);
+    CHECK(quality.statistics.highlightedCount == 2);
+    CHECK(quality.distributions[static_cast<size_t>(woby::UvQualityMetric::overlap)].has_value());
+    settings.uvOverlapScope = woby::UvOverlapScope::perPatch;
+    woby::updateUvQualitySettings(quality, settings);
+    CHECK_FALSE(quality.overlapTruncated); CHECK(quality.overlaps.empty());
+    settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+    woby::updateUvQualitySettings(quality, settings);
+    CHECK(quality.crossPatchPairs == 1);
+    CHECK(quality.triangles[0].crossPatchOverlap);
+    settings.uvMetric = woby::UvQualityMetric::angle; settings.uvOverlapEnabled = false;
+    woby::updateUvQualitySettings(quality, settings);
+    CHECK_FALSE(quality.overlapChecked); CHECK_FALSE(quality.triangles[0].crossPatchOverlap);
+    CHECK_FALSE(quality.distributions[static_cast<size_t>(woby::UvQualityMetric::overlap)].has_value());
+}

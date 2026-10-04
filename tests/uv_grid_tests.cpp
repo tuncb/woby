@@ -267,8 +267,9 @@ TEST_CASE("UV worker snapshot owns inputs and prepares matching geometry quality
     f.state.sceneNodes.clear();
     const auto prepared = woby::prepareUvComparisonInputs(snapshot);
     const auto& actual = (*prepared.meshes)[0];
-    REQUIRE(actual.uvQuality);
-    CHECK(actual.uvQuality->missing == expected.uvQuality->missing);
+    CHECK_FALSE(actual.uvQuality);
+    REQUIRE(prepared.buffers[0].uvQuality);
+    CHECK(prepared.buffers[0].uvQuality->missing == expected.uvQuality->missing);
     CHECK(actual.indices == expected.indices);
     CHECK(actual.precisePositions == expected.precisePositions);
     CHECK(actual.bounds.min == expected.bounds.min);
@@ -312,7 +313,8 @@ TEST_CASE("UV worker prepares overlap colors and cached findings before publishi
     SUBCASE("separated layout") { settings.uvView = woby::UvView::layout; settings.uvSeparated = true; }
     woby::setComparisonSettings(f.state, settings, id);
     const auto prepared = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
-    const auto& mesh = (*prepared.meshes)[0];
+    auto mesh = (*prepared.meshes)[0];
+    mesh.uvQuality = prepared.buffers[0].uvQuality;
     REQUIRE(mesh.uvQuality);
     CHECK(mesh.uvQuality->overlapChecked);
     CHECK(mesh.uvQuality->crossPatchPairs == 1);
@@ -342,8 +344,13 @@ TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes
     CHECK_FALSE(runtime.sources.inputs);
     REQUIRE(f.ready());
     REQUIRE(runtime.sources.inputs);
+    CHECK_FALSE((*runtime.sources.inputs)[0].uvQuality);
     CHECK_FALSE(runtime.sources.prepared); // Upload staging memory is released after copying to the GPU.
     const auto inputs = runtime.sources.inputs;
+    const auto* vertices = runtime.results.value.original.source.vertices.data();
+    const auto gpuVertices = runtime.gpu.original.vertices;
+    const auto gpuTriangles = runtime.gpu.original.triangles;
+    const auto gpuLines = runtime.gpu.original.lines;
     const auto revision = runtime.results.revision;
     for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
         woby::setSceneUpAxis(state, axis);
@@ -359,9 +366,43 @@ TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes
     settings.uvMetric = woby::UvQualityMetric::area;
     woby::setComparisonSettings(state, settings, f.id);
     REQUIRE(f.ready());
-    CHECK(runtime.sources.inputs != inputs);
+    CHECK(runtime.sources.inputs == inputs);
+    CHECK(runtime.results.value.original.source.vertices.data() == vertices);
+    CHECK(runtime.gpu.original.vertices.idx == gpuVertices.idx);
+    CHECK(runtime.gpu.original.triangles.idx == gpuTriangles.idx);
+    CHECK(runtime.gpu.original.lines.idx == gpuLines.idx);
     CHECK(runtime.results.value.original.source.uvQuality->metric == woby::UvQualityMetric::area);
     CHECK(runtime.results.revision != revision);
+    const auto refreshed = runtime.results.revision;
+    woby::setComparisonSettings(state, settings, f.id);
+    REQUIRE(f.ready());
+    CHECK(runtime.results.revision == refreshed);
+}
+
+TEST_CASE("UV preparation identity excludes quality settings but tracks source and layout changes")
+{
+    UvFixture f;
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    const auto signature = woby::comparisonPreparationSignature(f.state, id);
+    auto settings = woby::comparisonSettings(f.state, id);
+    SUBCASE("quality settings") {
+        settings.uvMetric = woby::UvQualityMetric::overlap;
+        settings.uvNormalization = woby::UvAreaNormalization::absolute;
+        settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+        settings.uvThresholdEnabled = true; settings.uvThreshold = 3;
+        settings.uvRangeEnabled = true; settings.uvRangeMaximum = 4;
+        woby::setComparisonSettings(f.state, settings, id);
+        CHECK(woby::comparisonPreparationSignature(f.state, id) == signature);
+        return;
+    }
+    SUBCASE("layout") { settings.uvSeparated = !settings.uvSeparated; woby::setComparisonSettings(f.state, settings, id); }
+    SUBCASE("view") { settings.uvView = woby::UvView::surface; woby::setComparisonSettings(f.state, settings, id); }
+    SUBCASE("transform") { f.state.files[0].groupSettings[0].translation[0] = 2; }
+    SUBCASE("source revision") { f.state.files[0].mesh.contentRevision = woby::nextMeshContentRevision(); }
+    SUBCASE("UV availability") { f.state.files[0].mesh.nodes[0].hasTexcoords = false; }
+    SUBCASE("membership") { woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId}, woby::ComparisonSide::a, false, id); }
+    CHECK(woby::comparisonPreparationSignature(f.state, id) != signature);
 }
 
 TEST_CASE("UV runtime rejects stale preparation results and survives removal during preparation")
@@ -392,6 +433,105 @@ TEST_CASE("UV runtime rejects stale preparation results and survives removal dur
     state.files.clear();
     woby::updateComparisonRuntimes(f.runtimes, state);
     CHECK(f.runtimes.objects.empty());
+}
+
+TEST_CASE("UV runtime discards stale setting refreshes and rebuilds changed source geometry")
+{
+    UvRuntimeFixture f;
+    REQUIRE(f.initialized); REQUIRE(f.ready());
+    auto& state = f.fixture.state;
+    auto& runtime = f.runtimes.objects[f.id];
+    const auto inputs = runtime.sources.inputs;
+    auto settings = woby::comparisonSettings(state, f.id);
+    settings.uvMetric = woby::UvQualityMetric::area;
+    woby::setComparisonSettings(state, settings, f.id);
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    REQUIRE(runtime.jobs.preparationWorker.valid());
+    // Wait without polling the runtime, so the completed old result cannot publish.
+    runtime.jobs.preparationWorker.wait();
+    SUBCASE("new setting supersedes completed refresh") {
+        settings.uvMetric = woby::UvQualityMetric::anisotropy;
+        woby::setComparisonSettings(state, settings, f.id);
+        REQUIRE(f.ready());
+        CHECK(runtime.sources.inputs == inputs);
+        CHECK(runtime.results.value.original.source.uvQuality->metric == woby::UvQualityMetric::anisotropy);
+    }
+    SUBCASE("source edit supersedes completed refresh") {
+        state.files[0].groupSettings[0].scale = 2;
+        woby::notifySceneEdit(state, woby::SceneChange::geometry);
+        REQUIRE(f.ready());
+        CHECK(runtime.sources.inputs != inputs);
+        const auto fresh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, f.id);
+        CHECK(runtime.results.value.original.source.precisePositions == fresh.precisePositions);
+        CHECK(runtime.results.value.original.source.uvQuality->triangles[0].angleDegrees
+            == fresh.uvQuality->triangles[0].angleDegrees);
+    }
+    CHECK(runtime.results.signature == woby::comparisonGeometrySignature(state, f.id));
+}
+
+TEST_CASE("UV setting refresh preserves separated layout triangle identity and matches fresh colors")
+{
+    UvFixture f;
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(f.state, id);
+    settings.uvSeparated = true;
+    woby::setComparisonSettings(f.state, settings, id);
+    const auto initial = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
+    settings.uvMetric = woby::UvQualityMetric::overlap;
+    settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+    settings.uvRangeEnabled = true; settings.uvRangeMinimum = .5f; settings.uvRangeMaximum = .5f;
+    const std::array qualities{initial.buffers[0].uvQuality, initial.buffers[1].uvQuality};
+    const auto refresh = woby::refreshUvComparisonInputs(initial.meshes, qualities, settings);
+    CHECK(refresh.meshes == initial.meshes);
+    CHECK(refresh.buffers[0].lines.empty());
+    CHECK_FALSE(qualities[0]->overlapChecked);
+    woby::setComparisonSettings(f.state, settings, id);
+    const auto fresh = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
+    REQUIRE(refresh.buffers[0].quality.size() == fresh.buffers[0].quality.size());
+    for (size_t i = 0; i < refresh.buffers[0].quality.size(); ++i) {
+        CHECK(refresh.buffers[0].quality[i].position == fresh.buffers[0].quality[i].position);
+        CHECK(refresh.buffers[0].quality[i].normal == fresh.buffers[0].quality[i].normal);
+        CHECK(refresh.buffers[0].quality[i].texcoord == fresh.buffers[0].quality[i].texcoord);
+    }
+    auto display = (*refresh.meshes)[0];
+    display.uvQuality = refresh.buffers[0].uvQuality;
+    woby::selectUvFinding(f.state, display, woby::comparisonGeometrySignature(f.state, id), 0, id);
+    const auto probe = woby::findComparison(f.state, id)->uvProbe;
+    REQUIRE(probe);
+    CHECK(probe->partId == f.state.files[0].groupSettings[0].objectId);
+    CHECK(probe->triangle == 1);
+}
+
+TEST_CASE("UV statistics-only edits reuse the heatmap while color edits prepare a replacement")
+{
+    UvFixture f;
+    const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
+    woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
+    auto settings = woby::comparisonSettings(f.state, id);
+    settings.uvMetric = woby::UvQualityMetric::overlap;
+    woby::setComparisonSettings(f.state, settings, id);
+    const auto initial = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
+    const std::array qualities{initial.buffers[0].uvQuality, initial.buffers[1].uvQuality};
+    bool changed = false;
+    SUBCASE("normalization leaves overlap colors unchanged") { settings.uvNormalization = woby::UvAreaNormalization::absolute; }
+    SUBCASE("near collapse affects only findings") { settings.uvNearCollapse = 2; }
+    SUBCASE("disabled threshold affects only counts") { settings.uvThreshold = 3; }
+    SUBCASE("disabled range has no colors") { settings.uvRangeMaximum = 3; }
+    SUBCASE("enabled threshold affects colors") { settings.uvThresholdEnabled = true; changed = true; }
+    SUBCASE("enabled range affects colors") { settings.uvRangeEnabled = true; changed = true; }
+    SUBCASE("overlap scope affects colors") { settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches; changed = true; }
+    SUBCASE("metric affects colors") { settings.uvMetric = woby::UvQualityMetric::angle; changed = true; }
+    const auto refresh = woby::refreshUvComparisonInputs(initial.meshes, qualities, settings);
+    CHECK(refresh.buffers[0].updateQuality == changed);
+    CHECK(refresh.buffers[0].quality.empty() == !changed);
+    CHECK(refresh.meshes == initial.meshes);
+    REQUIRE(refresh.buffers[0].uvQuality);
+    // Compare counts through fresh preparation: metrics must use the surface, not the flattened layout.
+    woby::setComparisonSettings(f.state, settings, id);
+    const auto expected = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
+    CHECK(refresh.buffers[0].uvQuality->findings == expected.buffers[0].uvQuality->findings);
+    CHECK(refresh.buffers[0].uvQuality->statistics.thresholdCount == expected.buffers[0].uvQuality->statistics.thresholdCount);
 }
 
 TEST_CASE("UV runtime releases cached results on allocation failure and retries after input changes")
