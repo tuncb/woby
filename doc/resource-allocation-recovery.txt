@@ -1,0 +1,83 @@
+Resource allocation recovery — issue #111
+https://github.com/tuncb/woby/issues/111
+
+Audit and changes
+-----------------
+The recording, submission, device initialization, and Metal CPU ownership
+problems listed in #111 were still present in the pinned backend. The upload
+queue also advanced its completion value before submission and assumed that
+recording and staging reservations always succeeded. Its tiled-texture helper
+shared those assumptions.
+Vulkan surface re-query failures also aborted; they now request checked
+swapchain recreation and preserve the last valid drawable extent meanwhile.
+
+PatchNoGraphicsAPICommands.cmake extends the existing dependency patches. It
+keeps the backend and utilities compatible with exception-disabled builds.
+Native owners use nonthrowing allocation; checked array growth publishes its
+pointer and capacity only after success. Failed native initialization output
+handles are discarded before cleanup. No geometry budgets were added or
+representation limits removed.
+
+Failure contract
+----------------
+- begin_commands returns null with a static command_pool_error on failure.
+  Partial command buffers, query pools, and timestamp arrays are released.
+  end_commands and reset_command_pool return static errors without allocation.
+- Submission reports both error and submitted. Only successful submission
+  commits the caller's completion point and internal presentation retirement
+  value. Failed submission can be retried with the same completion value.
+- Presentation can fail after rendering was submitted. Callers must still
+  retain resources and commit that submitted completion value. OOM presentation
+  does not enqueue a fence or semaphore wait; cleanup must not wait for it.
+  Surface rejection is different: its presentation operations are enqueued.
+- Each Vulkan presentation context has a separate acquisition fence. Normal
+  frames wait on acquisition on the GPU. abandon_acquired_image waits for
+  acquisition before retiring an unsubmitted image and its synchronization.
+  It is called before reset/destruction of abandoned command pools.
+- Deferred swapchain retirement reserves space for the entire handle and its
+  views before inserting anything. If CPU growth fails, it waits only for
+  already-submitted retirement values and destroys the group directly.
+- Upload failure latches the queue's error. It stops recording/copying, keeps
+  completion at the last successful submission, and safely destroys staging
+  after submitted work finishes. Recreate the queue before uploading again.
+- Woby treats failed frame construction/submission as a renderer failure and
+  reports it through its existing error boundary. It abandons an acquired
+  image and shuts down safely; it does not replay a partially recorded frame.
+- Metal recording/encoder/depth-state failures are latched until end_commands.
+  Submission storage is prepared before drawable waits or queue operations.
+  Failed ownership does not retain native objects or residency registrations.
+  A full buffer registry returns an explicit resource error.
+
+Reporting under memory pressure
+-------------------------------
+The diagnostic callback cannot throw into the backend. It keeps the last
+initialization error in fixed storage if full diagnostic collection fails.
+Renderer initialization errors also use fixed storage. If constructing a
+model/graphics exception fails, the original static message goes to stderr.
+The top-level bad_alloc fallback is printed before cleanup. SDL dialogs and
+other third-party subsystems still have their own allocation behavior; this
+does not promise recovery from every driver failure or process-wide OOM.
+
+Validation
+----------
+Windows Debug: vs2026-vcpkg build, with no compiler warnings. Standard CTest
+preset: 908 tests passed (the preset excludes the optional slow label).
+Allocation suites compile actual patched backend/utility code and inject CPU
+allocation, Vulkan recording/submission/presentation, and poisoned native
+output failures. Reporting tests deny all C++ heap allocations. Utility tests
+also cover implicit flush, pool reset, and tiled-texture upload failures.
+
+Real Windows Vulkan tests exercise CPU failures in device/queue/swapchain
+initialization and acquired-image recovery after submission bookkeeping OOM.
+Headless rendering smoke and four fresh windowed viewers with eight annotated
+captures passed. Fresh and repeated dependency patch application was checked.
+
+Metal source changes and native failure-injection tests are included, but were
+not compiled or executed on this Windows host. On macOS 26 with a compatible
+Metal 4 GPU, run CTest's woby_native_metal_allocations. GPU-dependent cases
+explicitly warn when compatible hardware is unavailable.
+
+Vulkan synchronization references
+---------------------------------
+https://docs.vulkan.org/refpages/latest/refpages/source/vkQueuePresentKHR.html
+https://docs.vulkan.org/refpages/latest/refpages/source/vkDestroySwapchainKHR.html

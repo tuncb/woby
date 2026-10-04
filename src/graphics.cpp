@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <cstdio>
 #include <limits>
 #include <map>
 #include <memory>
@@ -40,9 +41,17 @@ int64_t ticks()
 }
 void require(bool value, const char *message)
 {
-    if (!value)
-        throw std::runtime_error(message);
+    if (!value) {
+        try { throw std::runtime_error(message); }
+        catch (const std::bad_alloc&) {
+            // Preserve the useful error even if constructing the exception fails.
+            std::fputs(message, stderr);
+            std::fputc('\n', stderr);
+            throw;
+        }
+    }
 }
+void checkCommands(const char* error) { require(error == nullptr, error); }
 
 struct Buffer
 {
@@ -207,7 +216,7 @@ struct Context
     Stats stats;
     uint32_t width = 1, height = 1, flags = 0, frameNumber = 0;
     uint64_t submitted = 0, textureBytes = 0;
-    bool windowed = false, frameOpen = false;
+    bool windowed = false, frameOpen = false, frameFailed = false;
     std::array<Frame, framesInFlight> frames;
     std::array<View, 256> views;
     std::array<uint32_t, 256> palette{};
@@ -227,7 +236,7 @@ struct Context
     std::map<uint32_t, gpu::PSO *> computePipelines;
 };
 std::unique_ptr<Context> context;
-std::string initError;
+std::array<char, 32768> initError{};
 Context &state()
 {
     require(bool(context), "NoGraphicsAPI renderer is not initialized");
@@ -311,6 +320,7 @@ void collectReadbacks(bool force)
 void beginFrame()
 {
     auto &c = state();
+    require(!c.frameFailed, "Renderer frame failed; shut down before reinitializing the renderer.");
     if (c.frameOpen)
         return;
     auto &f = current();
@@ -332,7 +342,7 @@ void beginFrame()
         c.stats.pointRasterBudgeted = f.pointBudgeted;
         c.deletes->tick();
         c.uploads->reclaim();
-        gpu::reset_command_pool(f.pool);
+        checkCommands(gpu::reset_command_pool(f.pool));
     }
     f.pointTimestamps = {}; f.pointCount = 0;
     f.operations.clear();
@@ -342,8 +352,10 @@ void beginFrame()
     f.activeArena = 0;
     for (auto &page : f.arenas)
         page.allocator->reset();
-    if (!noop())
+    if (!noop()) {
         f.preparations = gpu::begin_commands(f.pool);
+        require(f.preparations != nullptr, gpu::command_pool_error(f.pool));
+    }
     c.frameOpen = true;
 }
 gpu::GpuCpuRange<byte> allocate(uint64_t bytes)
@@ -602,6 +614,7 @@ void uploadBufferRange(const std::shared_ptr<Buffer>& buffer, uint32_t offset, c
     state().uploads->upload_buffer(
         {static_cast<byte*>(buffer->heap.range.gpu) + offset, bytes},
         {static_cast<const byte*>(data), bytes});
+    checkCommands(state().uploads->error);
 }
 std::shared_ptr<Buffer> createBuffer(const Memory* source, uint16_t stride, bool index32)
 {
@@ -619,6 +632,7 @@ std::shared_ptr<Buffer> createBuffer(const Memory* source, uint16_t stride, bool
             std::memcpy(padded.data(), memory->data, memory->size);
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {padded.data(), paddedBytes});
         }
+        checkCommands(state().uploads->error);
     }
     return result;
 }
@@ -888,19 +902,18 @@ bool init(const Init &options)
 {
     if (context)
     {
-        initError = "Renderer already initialized";
+        std::snprintf(initError.data(), initError.size(), "%s", "Renderer already initialized");
         return false;
     }
-    initError.clear();
-    context = std::make_unique<Context>();
-    auto &c = *context;
-    c.width = std::max(1u, options.resolution.width);
-    c.height = std::max(1u, options.resolution.height);
-    c.flags = options.resolution.reset;
-    if (options.type == RendererType::Noop)
-        return true;
-    try
-    {
+    initError[0] = '\0';
+    try {
+        context = std::make_unique<Context>();
+        auto &c = *context;
+        c.width = std::max(1u, options.resolution.width);
+        c.height = std::max(1u, options.resolution.height);
+        c.flags = options.resolution.reset;
+        if (options.type == RendererType::Noop)
+            return true;
         auto *window = static_cast<SDL_Window *>(options.platformData.window);
         gpu::DeviceDesc deviceOptions{.swapchain_format = gpu::Format::bgra8_unorm};
 #if defined(_WIN32)
@@ -992,14 +1005,16 @@ bool init(const Init &options)
     }
     catch (const std::exception &error)
     {
-        initError = error.what();
+        const char* message = dynamic_cast<const std::bad_alloc*>(&error)
+            ? "Insufficient CPU memory while initializing the renderer." : error.what();
+        std::snprintf(initError.data(), initError.size(), "%s", message);
         shutdown();
         return false;
     }
 }
 const char *initializationError()
 {
-    return initError.c_str();
+    return initError.data();
 }
 const Caps *getCaps()
 {
@@ -1496,6 +1511,7 @@ uint32_t readBuffer(IndexBufferHandle handle, void *destination)
 }
 
 uint32_t frame()
+try
 {
     beginFrame();
     auto &c = state();
@@ -1510,7 +1526,9 @@ uint32_t frame()
     }
     // Acquire before finalizing the upload command buffer: resize may create targets.
     auto *commands = gpu::begin_commands(f.pool);
+    require(commands != nullptr, gpu::command_pool_error(f.pool));
     auto swap = c.windowed ? gpu::acquire(commands) : gpu::SwapchainFrame{};
+    checkCommands(swap.error);
     c.stats.presentationSubmitted = swap.render_view != nullptr;
     c.stats.drawableWidth = swap.render_view ? swap.extent.x : 0;
     c.stats.drawableHeight = swap.render_view ? swap.extent.y : 0;
@@ -1553,7 +1571,7 @@ uint32_t frame()
                                          });
     if (needsOutput || swap.render_view)
         ensureOutput(f);
-    gpu::end_commands(f.preparations);
+    checkCommands(gpu::end_commands(f.preparations));
     gpu::set_texture_descriptor_heap(commands, c.descriptors);
     gpu::set_sampler_descriptor_heap(commands, c.samplers);
     gpu::write_timestamp(commands, &f.timestamps[0]);
@@ -1660,20 +1678,22 @@ uint32_t frame()
     }
     gpu::barrier(commands, gpu::Stage::transfer, gpu::Access::transfer_write, gpu::Stage::host, gpu::Access::host_read);
     gpu::write_timestamp(commands, &f.timestamps[1]);
-    gpu::end_commands(commands);
+    checkCommands(gpu::end_commands(commands));
     const auto uploaded = c.uploads->flush();
+    checkCommands(c.uploads->error);
     // SubmitDesc borrows its spans. Initializer-list storage would expire at
     // the declaration below, before submit() reads it in an optimized build.
     const std::array submittedCommands{f.preparations, commands};
     const std::array uploadWaits{uploaded};
     const gpu::SubmitDesc submission{
         .commands = submittedCommands, .waits = uploadWaits, .completion = {c.timeline, signal}};
-    if (swap.render_view)
-        gpu::submit_and_present(c.device, submission);
-    else
-        gpu::submit(c.device, submission);
-    c.submitted = signal;
-    f.completion = signal;
+    const auto submitted = swap.render_view ? gpu::submit_and_present(c.device, submission)
+                                           : gpu::submit(c.device, submission);
+    if (submitted.submitted) {
+        c.submitted = signal;
+        f.completion = signal;
+    }
+    checkCommands(submitted.error);
     if (!c.trash->empty())
     {
         auto nextTrash = std::make_unique<std::vector<std::shared_ptr<void>>>();
@@ -1689,11 +1709,19 @@ uint32_t frame()
     c.stats.cpuTimeFrame = c.stats.cpuTimeEnd - begin;
     return c.frameNumber;
 }
+catch (...) {
+    if (context) {
+        context->frameFailed = true;
+        gpu::abandon_acquired_image(context->device);
+    }
+    throw;
+}
 void shutdown()
 {
     if (!context)
         return;
     auto &c = *context;
+    gpu::abandon_acquired_image(c.device);
     if (c.uploads)
         c.uploads->wait();
     if (c.device)

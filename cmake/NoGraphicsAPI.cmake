@@ -13,6 +13,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIAllocations.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIUtilities.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIBarycentrics.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIPoints.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPICommands.cmake")
 target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_FRAGMENT_BARYCENTRICS)
 
 find_program(WOBY_SLANGC slangc HINTS "$ENV{SLANG_ROOT}/bin" REQUIRED)
