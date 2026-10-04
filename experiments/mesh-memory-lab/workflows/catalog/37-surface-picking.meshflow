@@ -1,0 +1,130 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "37. Surface picking",
+  "description": "Catalog workflow 37. Pointer → camera ray → candidate geometry → intersections → nearest eligible hit → object or linked triangle selection.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_pick.cpp; src/camera.cpp; src/ui_operations.cpp.",
+  "initial_node": "ray",
+  "nodes": [
+    {
+      "id": "pointer",
+      "title": "Pointer and viewport",
+      "kind": "data",
+      "summary": "Pixel position, camera matrices",
+      "description": "Translate the pointer through the active viewport and camera projection.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ray",
+      "title": "Build camera ray",
+      "kind": "transform",
+      "summary": "World or scene-space ray",
+      "description": "Unproject using the camera's perspective or orthographic projection.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "candidates",
+      "title": "Gather candidates",
+      "kind": "transform",
+      "summary": "Eligible visible geometry",
+      "description": "Resolve transforms and bounds; discard hidden or otherwise ineligible surface candidates.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "intersect",
+      "title": "Intersect triangles",
+      "kind": "transform",
+      "summary": "Hit distance and barycentrics",
+      "description": "Test relevant geometry and retain part ID, source triangle identity, and barycentric weights.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "nearest",
+      "title": "Choose nearest hit",
+      "kind": "transform",
+      "summary": "Compare eligible hit distances",
+      "description": "Use the picking policy to choose the closest valid hit among source and analysis surfaces.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "object",
+      "title": "Object selection",
+      "kind": "data",
+      "summary": "Select the owning object",
+      "description": "Ordinary selection identifies the source object or analysis item.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "linked",
+      "title": "Linked UV probe",
+      "kind": "data",
+      "summary": "Corresponding source triangle",
+      "description": "When linked UV selection is enabled, validate the triangle probe and show corresponding points in both views; see workflow 74.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "miss",
+      "title": "No eligible hit",
+      "kind": "data",
+      "summary": "No surface probe created",
+      "description": "Handle a miss according to the active selection operation without inventing a geometric hit.",
+      "position": [
+        1240,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "pointer",
+      "to": "ray"
+    },
+    {
+      "from": "ray",
+      "to": "candidates"
+    },
+    {
+      "from": "candidates",
+      "to": "intersect"
+    },
+    {
+      "from": "intersect",
+      "to": "nearest"
+    },
+    {
+      "from": "nearest",
+      "to": "object",
+      "label": "ordinary"
+    },
+    {
+      "from": "nearest",
+      "to": "linked",
+      "label": "linked"
+    },
+    {
+      "from": "nearest",
+      "to": "miss",
+      "label": "none"
+    }
+  ]
+}

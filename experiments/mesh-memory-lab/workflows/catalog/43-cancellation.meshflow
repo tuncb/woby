@@ -1,0 +1,119 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "43. Cancellation",
+  "description": "Catalog workflow 43. User request → cancellation token → worker checkpoints → discarded partial work → cleanup.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/background_load.cpp; src/parallel_work.h; src/mesh_intersections.cpp.",
+  "initial_node": "token",
+  "nodes": [
+    {
+      "id": "request",
+      "title": "Cancel or replace",
+      "kind": "data",
+      "summary": "User intent or superseding work",
+      "description": "A new request may make existing background work unnecessary.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "token",
+      "title": "Request stop",
+      "kind": "transform",
+      "summary": "Signal the worker stop token",
+      "description": "The request signals cancellation; it does not forcibly destroy memory still being used by a worker.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "checkpoint",
+      "title": "Worker checkpoint",
+      "kind": "transform",
+      "summary": "Stop requested?",
+      "description": "Long loops and preparation stages check the token often enough to remain responsive.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "continue",
+      "title": "Continue active work",
+      "kind": "data",
+      "summary": "No stop request observed",
+      "description": "Proceed until another checkpoint or normal completion.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "advance",
+      "title": "Process next batch",
+      "kind": "transform",
+      "summary": "Bounded unit of worker work",
+      "description": "Advance through a bounded batch before checking the stop token again.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "unwind",
+      "title": "Discard partial work",
+      "kind": "transform",
+      "summary": "No canceled result publication",
+      "description": "Exit through the cancellation path and release owned local data safely.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "cleanup",
+      "title": "Cleanup complete",
+      "kind": "data",
+      "summary": "Worker and runtime ownership",
+      "description": "Keep asynchronously used buffers alive until safe release; the current scene remains authoritative.",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "request",
+      "to": "token"
+    },
+    {
+      "from": "token",
+      "to": "checkpoint"
+    },
+    {
+      "from": "checkpoint",
+      "to": "continue",
+      "label": "no"
+    },
+    {
+      "from": "continue",
+      "to": "advance"
+    },
+    {
+      "from": "advance",
+      "to": "checkpoint",
+      "label": "next check"
+    },
+    {
+      "from": "checkpoint",
+      "to": "unwind",
+      "label": "yes"
+    },
+    {
+      "from": "unwind",
+      "to": "cleanup"
+    }
+  ]
+}

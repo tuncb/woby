@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "55. Surface annotations",
+  "description": "Catalog workflow 55. Pointer hit → prepared geometry → surface location → line/rectangle construction → persisted annotation → rendering.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/surface_annotation.cpp; src/annotation_preparation.cpp; src/ui_annotation_operations.cpp; src/scene_file.cpp.",
+  "initial_node": "prepare",
+  "nodes": [
+    {
+      "id": "hit",
+      "title": "Pointer surface hit",
+      "kind": "data",
+      "summary": "Target and geometric location",
+      "description": "Start from an eligible surface hit and the active annotation tool.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "prepare",
+      "title": "Prepare target geometry",
+      "kind": "transform",
+      "summary": "Owned geometric data",
+      "description": "Prepare reusable surface data for annotation work and tie it to the current target inputs.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "location",
+      "title": "Surface location",
+      "kind": "data",
+      "summary": "Reference frame and target identity",
+      "description": "Retain the location needed to construct annotation geometry in the correct surface frame.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "construct",
+      "title": "Build annotation",
+      "kind": "transform",
+      "summary": "Line or rectangle parameters",
+      "description": "Use deterministic geometry functions to derive the requested line or rectangle from validated inputs.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "operation",
+      "title": "Apply annotation edit",
+      "kind": "transform",
+      "summary": "Update canonical logical state",
+      "description": "Publish the annotation through operations with appropriate validation and history behavior.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "persist",
+      "title": "Persisted annotation",
+      "kind": "data",
+      "summary": "Scene and history mapping",
+      "description": "Save the logical annotation definition with the scene; runtime drawing buffers remain derived data.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "render",
+      "title": "Draw prepared geometry",
+      "kind": "transform",
+      "summary": "Current annotation resources",
+      "description": "Render the already-prepared annotation and invalidate it when relevant target inputs change.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "hit",
+      "to": "prepare"
+    },
+    {
+      "from": "prepare",
+      "to": "location"
+    },
+    {
+      "from": "location",
+      "to": "construct"
+    },
+    {
+      "from": "construct",
+      "to": "operation"
+    },
+    {
+      "from": "operation",
+      "to": "persist"
+    },
+    {
+      "from": "persist",
+      "to": "render"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "25. Surface-distance comparison",
+  "description": "Catalog workflow 25. Two selected inputs → transformed analysis meshes → target acceleration structure → samples → distances → heatmap.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/comparison_scene.cpp; src/mesh_comparison.cpp.",
+  "initial_node": "assemble",
+  "nodes": [
+    {
+      "id": "inputs",
+      "title": "Two selected inputs",
+      "kind": "data",
+      "summary": "Source A and target B",
+      "description": "Resolve eligible triangular parts from the two analysis selections.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "assemble",
+      "title": "Transform snapshots",
+      "kind": "transform",
+      "summary": "Common analysis frame",
+      "description": "Copy owned geometry, compose source transforms, and align origins before distance work.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "target",
+      "title": "Build target tree",
+      "kind": "transform",
+      "summary": "Triangle acceleration structure",
+      "description": "Build a spatial hierarchy over B for nearest-point queries.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "samples",
+      "title": "Sample source A",
+      "kind": "transform",
+      "summary": "Four subtriangles per face",
+      "description": "Split each source triangle into four subtriangles and sample their centroids; retain their physical areas.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "distance",
+      "title": "Nearest target point",
+      "kind": "transform",
+      "summary": "Distance from each sample to B",
+      "description": "Query the target triangle surface, not just its vertices. Preserve source sample ordering.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "values",
+      "title": "Distances + areas",
+      "kind": "data",
+      "summary": "Directional measured results",
+      "description": "Keep distances and associated areas for weighted statistics. These are sampled distances, not an exact continuous Hausdorff distance.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "heatmap",
+      "title": "Build heatmap",
+      "kind": "transform",
+      "summary": "Sample colors and report values",
+      "description": "Color sampled geometry and publish the accepted result. Reverse the inputs for the other direction; see workflow 26.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "inputs",
+      "to": "assemble"
+    },
+    {
+      "from": "assemble",
+      "to": "target"
+    },
+    {
+      "from": "target",
+      "to": "samples"
+    },
+    {
+      "from": "samples",
+      "to": "distance"
+    },
+    {
+      "from": "distance",
+      "to": "values"
+    },
+    {
+      "from": "values",
+      "to": "heatmap"
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "41. File-to-first-visible-frame",
+  "description": "Catalog workflow 41. File discovery → read/parse → mesh preparation → upload → first draw. Identify the critical path.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/file_discovery.cpp; src/background_load.cpp; src/model_load.cpp; src/scene_renderer.cpp.",
+  "initial_node": "discover",
+  "nodes": [
+    {
+      "id": "request",
+      "title": "File request",
+      "kind": "data",
+      "summary": "Path, options, request identity",
+      "description": "Start latency measurement at a defined user or automation event.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "discover",
+      "title": "Discover input",
+      "kind": "transform",
+      "summary": "Resolve file and importer",
+      "description": "Determine the supported file and loading path before worker preparation begins.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "parse",
+      "title": "Read and parse",
+      "kind": "transform",
+      "summary": "Owned geometry on a worker",
+      "description": "Read bytes, decode records, and construct mesh data while the UI remains responsive.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "prepare",
+      "title": "Prepare CPU mesh",
+      "kind": "transform",
+      "summary": "Bounds, arrays, reusable data",
+      "description": "Perform required geometry preparation before the first usable draw. Record overlap between independent work if profiling.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "accept",
+      "title": "Accept current load",
+      "kind": "transform",
+      "summary": "Request still active?",
+      "description": "Publish only the completion belonging to the active request; canceled or replaced work does not become visible.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "upload",
+      "title": "Create GPU resources",
+      "kind": "transform",
+      "summary": "Owned transfer data",
+      "description": "Upload the required render buffers through the runtime adapter.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "draw",
+      "title": "Submit first draw",
+      "kind": "transform",
+      "summary": "New geometry enters the frame",
+      "description": "Separate CPU preparation completion from GPU readiness and the actual first draw.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "visible",
+      "title": "First visible frame",
+      "kind": "data",
+      "summary": "End-to-end latency",
+      "description": "Measure the critical dependency path from request to presentation. Stage timings are proposed captures, not stored by this diagram.",
+      "position": [
+        0,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "request",
+      "to": "discover"
+    },
+    {
+      "from": "discover",
+      "to": "parse"
+    },
+    {
+      "from": "parse",
+      "to": "prepare"
+    },
+    {
+      "from": "prepare",
+      "to": "accept"
+    },
+    {
+      "from": "accept",
+      "to": "upload"
+    },
+    {
+      "from": "upload",
+      "to": "draw"
+    },
+    {
+      "from": "draw",
+      "to": "visible"
+    }
+  ]
+}

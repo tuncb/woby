@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "61. Performance experiment",
+  "description": "Catalog workflow 61. Fixture + configuration → repeated runs → timing/allocation captures → aggregation → comparison report.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/performance_log.cpp; tests; experiments.",
+  "initial_node": "repeat",
+  "nodes": [
+    {
+      "id": "fixture",
+      "title": "Controlled workload",
+      "kind": "data",
+      "summary": "Pinned input and configuration",
+      "description": "Record input identity, settings, build mode, backend, and machine context for both revisions.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "repeat",
+      "title": "Run repeated trials",
+      "kind": "transform",
+      "summary": "Consistent warm-up and timing scope",
+      "description": "Separate cold preparation from steady-state reuse and use comparable measurement boundaries.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "capture",
+      "title": "Per-run observations",
+      "kind": "data",
+      "summary": "Time, allocations, peak memory",
+      "description": "Record meaningful stage costs and overlapping resource lifetimes; preserve each trial's raw observations.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "aggregate",
+      "title": "Summarize trials",
+      "kind": "transform",
+      "summary": "Distribution and variability",
+      "description": "Compare typical and tail behavior rather than relying on one favorable run.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "compare",
+      "title": "Compare revisions",
+      "kind": "transform",
+      "summary": "Same input, same semantics",
+      "description": "Check output correctness alongside performance so less work is not mistaken for equivalent acceleration.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "report",
+      "title": "Experiment report",
+      "kind": "data",
+      "summary": "Results, context, limitations",
+      "description": "Keep captures as external experiment artifacts; .meshflow version 1 stores diagram structure and optional OBJ text only.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "fixture",
+      "to": "repeat"
+    },
+    {
+      "from": "repeat",
+      "to": "capture"
+    },
+    {
+      "from": "capture",
+      "to": "aggregate"
+    },
+    {
+      "from": "aggregate",
+      "to": "compare"
+    },
+    {
+      "from": "compare",
+      "to": "report"
+    }
+  ]
+}

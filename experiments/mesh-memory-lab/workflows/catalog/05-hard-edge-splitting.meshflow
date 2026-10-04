@@ -1,0 +1,91 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "05. Hard-edge splitting",
+  "description": "Catalog workflow 05. Shared positions + different normals → split vertices → shaded result.\n\nLive OBJ example: bound nodes open the existing polygonal pipeline inspectors; other nodes explain the workflow.\n\nImplementation: src/obj_mesh.cpp; src/model_mesh.cpp.",
+  "initial_node": "key",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "Folded triangles",
+      "kind": "data",
+      "summary": "One shared source edge",
+      "description": "Two triangles meet at a right angle. UVs are absent, so only their authored normal references can cause the split.",
+      "inspector": "source",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "corners",
+      "title": "Normal domains",
+      "kind": "data",
+      "summary": "Same positions, two normals",
+      "description": "The shared source points appear with different normal IDs on the two faces.",
+      "inspector": "corners",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "key",
+      "title": "Intern corner keys",
+      "kind": "transform",
+      "summary": "Normal identity is part of key",
+      "description": "Distinct normal references produce distinct tuples, even when their position references match.",
+      "inspector": "pack",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "split",
+      "title": "Separate vertices",
+      "kind": "data",
+      "summary": "Six render vertices",
+      "description": "The packed arrays preserve both normals at the common edge. Inspect fields on each side of the fold.",
+      "inspector": "mesh",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "shade",
+      "title": "Shaded crease",
+      "kind": "data",
+      "summary": "Discontinuous normal field",
+      "description": "Each face interpolates within its own normal domain. Complete authored normals survive finalization.",
+      "inspector": "gpu",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "corners"
+    },
+    {
+      "from": "corners",
+      "to": "key"
+    },
+    {
+      "from": "key",
+      "to": "split"
+    },
+    {
+      "from": "split",
+      "to": "shade"
+    }
+  ],
+  "source": {
+    "format": "obj",
+    "text": "# Two folded triangles: only normal references split the shared edge.\nv 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\nvn 0 0 1\nvn 0 1 0\nf 1//1 2//1 3//1\nf 1//2 4//2 2//2\n"
+  }
+}

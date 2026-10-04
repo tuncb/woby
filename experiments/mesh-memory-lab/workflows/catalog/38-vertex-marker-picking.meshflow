@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "38. Vertex marker picking",
+  "description": "Catalog workflow 38. Visible markers → screen-space/sample coverage → candidate resolution → point identity → selection.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/marker_pick.cpp; src/marker_pick_logic.cpp; src/hover_pick.cpp.",
+  "initial_node": "project",
+  "nodes": [
+    {
+      "id": "markers",
+      "title": "Visible marker set",
+      "kind": "data",
+      "summary": "Source IDs and marker settings",
+      "description": "Use markers enabled by effective visibility and display mode, with their original point identities.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "project",
+      "title": "Project marker centers",
+      "kind": "transform",
+      "summary": "Viewport coordinates and depth",
+      "description": "Apply the same placement and camera conventions used by marker rendering.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "coverage",
+      "title": "Test marker coverage",
+      "kind": "transform",
+      "summary": "Pixel or sample footprint",
+      "description": "Resolve candidates using the marker's visible footprint and applicable sample-coverage rules.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "resolve",
+      "title": "Choose candidate",
+      "kind": "transform",
+      "summary": "Depth and picking policy",
+      "description": "Resolve overlapping markers consistently with the supported picking path.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "identity",
+      "title": "Source point identity",
+      "kind": "data",
+      "summary": "Stable point reference",
+      "description": "Map the chosen marker back to the original point rather than only its packed render vertex.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "selection",
+      "title": "Apply selection",
+      "kind": "transform",
+      "summary": "Operation updates logical state",
+      "description": "Publish the chosen point or hover result only while its inputs remain current.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "markers",
+      "to": "project"
+    },
+    {
+      "from": "project",
+      "to": "coverage"
+    },
+    {
+      "from": "coverage",
+      "to": "resolve"
+    },
+    {
+      "from": "resolve",
+      "to": "identity"
+    },
+    {
+      "from": "identity",
+      "to": "selection"
+    }
+  ]
+}

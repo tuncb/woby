@@ -1,0 +1,134 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "16. Self-intersection detection",
+  "description": "Catalog workflow 16. Spatial candidates → triangle-pair tests → contact exclusions → intersections → result publication.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_intersections.cpp; src/mesh_comparison.cpp.",
+  "initial_node": "broad",
+  "nodes": [
+    {
+      "id": "snapshot",
+      "title": "Owned triangle mesh",
+      "kind": "data",
+      "summary": "Current input and topology mode",
+      "description": "A worker consumes an owned snapshot with the active revision and detector limits.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "broad",
+      "title": "Spatial candidates",
+      "kind": "transform",
+      "summary": "Bounds prune distant pairs",
+      "description": "Enumerate potentially intersecting triangle pairs and check cancellation during expensive work.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "narrow",
+      "title": "Triangle-pair test",
+      "kind": "transform",
+      "summary": "Resolve actual contact geometry",
+      "description": "Test candidate geometry and retain relevant intersection locations.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "exclude",
+      "title": "Exclude allowed contact",
+      "kind": "transform",
+      "summary": "Shared vertices and edges",
+      "description": "Apply the detector's contact and topology rules before calling a pair a self-intersection.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "findings",
+      "title": "Intersection results",
+      "kind": "data",
+      "summary": "Pairs, geometry, completion state",
+      "description": "Keep findings and explicit partial/limit status; a bounded search is not proof of no intersections.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "current",
+      "title": "Revision still current?",
+      "kind": "transform",
+      "summary": "Match result and active inputs",
+      "description": "Only publish completed work that still belongs to the current geometry and topology settings.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "publish",
+      "title": "Accepted findings",
+      "kind": "data",
+      "summary": "Counts and navigation overlays",
+      "description": "Merge the accepted detector stage into current analysis results.",
+      "position": [
+        620,
+        380
+      ]
+    },
+    {
+      "id": "discard",
+      "title": "Canceled or stale",
+      "kind": "data",
+      "summary": "Release owned work",
+      "description": "Discard superseded or canceled work without overwriting newer results.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "snapshot",
+      "to": "broad"
+    },
+    {
+      "from": "broad",
+      "to": "narrow"
+    },
+    {
+      "from": "narrow",
+      "to": "exclude"
+    },
+    {
+      "from": "exclude",
+      "to": "findings"
+    },
+    {
+      "from": "findings",
+      "to": "current"
+    },
+    {
+      "from": "current",
+      "to": "publish",
+      "label": "current"
+    },
+    {
+      "from": "current",
+      "to": "discard",
+      "label": "stale"
+    },
+    {
+      "from": "broad",
+      "to": "discard",
+      "label": "canceled"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "44. Stale-result rejection",
+  "description": "Catalog workflow 44. Input revision → owned worker snapshot → completed result → revision check → accept/discard.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/comparison_scene.cpp; src/mesh_comparison.cpp; src/main.cpp.",
+  "initial_node": "snapshot",
+  "nodes": [
+    {
+      "id": "revision",
+      "title": "Input signature",
+      "kind": "data",
+      "summary": "Geometry, transforms, settings",
+      "description": "Identify the logical inputs used by the request before launching expensive work.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "snapshot",
+      "title": "Own worker inputs",
+      "kind": "transform",
+      "summary": "Copy geometry and settings",
+      "description": "Capture an immutable input snapshot with the corresponding signature.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "worker",
+      "title": "Compute results",
+      "kind": "transform",
+      "summary": "Worker owns intermediate state",
+      "description": "Run preparation without reading mutable UI state.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "complete",
+      "title": "Completed result",
+      "kind": "data",
+      "summary": "Output with originating signature",
+      "description": "Completion alone does not authorize replacing the visible analysis.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Still current?",
+      "kind": "transform",
+      "summary": "Compare with active signature",
+      "description": "Validate revision and stage-specific settings at the publication boundary.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "accept",
+      "title": "Publish accepted work",
+      "kind": "transform",
+      "summary": "Merge current stages",
+      "description": "Install valid results and update reusable runtime data.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "discard",
+      "title": "Rejected completion",
+      "kind": "data",
+      "summary": "Stale or canceled work",
+      "description": "Release obsolete owned results without invalidating a newer successful computation.",
+      "position": [
+        930,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "revision",
+      "to": "snapshot"
+    },
+    {
+      "from": "snapshot",
+      "to": "worker"
+    },
+    {
+      "from": "worker",
+      "to": "complete"
+    },
+    {
+      "from": "complete",
+      "to": "check"
+    },
+    {
+      "from": "check",
+      "to": "accept",
+      "label": "match"
+    },
+    {
+      "from": "check",
+      "to": "discard",
+      "label": "mismatch"
+    }
+  ]
+}

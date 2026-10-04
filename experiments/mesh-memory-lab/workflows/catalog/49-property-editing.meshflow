@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "49. Property editing",
+  "description": "Catalog workflow 49. UI input → local edit → validation → operation → logical state → invalidated derived data → redraw.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_inspector.cpp; src/ui_property_operations.cpp; src/ui_operations.cpp.",
+  "initial_node": "local",
+  "nodes": [
+    {
+      "id": "input",
+      "title": "UI control input",
+      "kind": "data",
+      "summary": "User edits a displayed property",
+      "description": "The control reads canonical logical state and starts from a local editable value.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "local",
+      "title": "Edit local value",
+      "kind": "transform",
+      "summary": "No direct scene mutation",
+      "description": "ImGui interaction changes a local copy; the UI then calls an operation with the requested value.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Validate operation",
+      "kind": "transform",
+      "summary": "Clamp and check at boundary",
+      "description": "The operation validates target identity, finite values, and supported ranges before updating state.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "state",
+      "title": "Updated UiState",
+      "kind": "data",
+      "summary": "Canonical scene property",
+      "description": "Store scene-visible controls in UiState or its owned structs. Relevant properties participate in history and scene mapping.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "invalidate",
+      "title": "Invalidate derived data",
+      "kind": "transform",
+      "summary": "Only affected dependencies",
+      "description": "Invalidate required caches and schedule expensive preparation off the UI thread.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "redraw",
+      "title": "Updated presentation",
+      "kind": "data",
+      "summary": "Draw accepted current state",
+      "description": "Runtime adapters update resources and render from already-updated logical state.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "input",
+      "to": "local"
+    },
+    {
+      "from": "local",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "state"
+    },
+    {
+      "from": "state",
+      "to": "invalidate"
+    },
+    {
+      "from": "invalidate",
+      "to": "redraw"
+    }
+  ]
+}

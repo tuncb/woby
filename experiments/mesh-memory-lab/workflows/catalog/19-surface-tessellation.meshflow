@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "19. Surface tessellation",
+  "description": "Catalog workflow 19. Control net → parameter grid → evaluated positions/normals → triangle connectivity.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/freeform.cpp; src/freeform_trim.cpp.",
+  "initial_node": "grid",
+  "nodes": [
+    {
+      "id": "net",
+      "title": "Surface control net",
+      "kind": "data",
+      "summary": "U/V definitions and controls",
+      "description": "The two parameter directions define a tensor-product surface with optional rational weights.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "grid",
+      "title": "Choose parameter grid",
+      "kind": "transform",
+      "summary": "U and V sample locations",
+      "description": "Sampling settings determine the tessellation density and the approximation represented by the output mesh.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "evaluate",
+      "title": "Evaluate surface",
+      "kind": "transform",
+      "summary": "Positions and derivatives",
+      "description": "Evaluate each parameter pair; derive a normal from the tangent directions when valid.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "samples",
+      "title": "Surface samples",
+      "kind": "data",
+      "summary": "Position, normal, supplied UV",
+      "description": "Keep source parameter correspondence for later UV inspection and picking.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "connect",
+      "title": "Build connectivity",
+      "kind": "transform",
+      "summary": "Grid cells become triangles",
+      "description": "Connect adjacent valid samples with consistent winding; preserve part and triangle identity.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "mesh",
+      "title": "Tessellated mesh",
+      "kind": "data",
+      "summary": "Indexed surface triangles",
+      "description": "The resulting triangle mapping, rather than exact CAD derivatives, is used by downstream triangle-based quality analysis.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "net",
+      "to": "grid"
+    },
+    {
+      "from": "grid",
+      "to": "evaluate"
+    },
+    {
+      "from": "evaluate",
+      "to": "samples"
+    },
+    {
+      "from": "samples",
+      "to": "connect"
+    },
+    {
+      "from": "connect",
+      "to": "mesh"
+    }
+  ]
+}

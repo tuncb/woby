@@ -1,0 +1,123 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "07. Mixed OBJ primitives",
+  "description": "Catalog workflow 07. OBJ records → faces / polylines / points → separate parts → corresponding render paths.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/obj_mesh.cpp; src/model_mesh.h; src/scene_renderer.cpp.",
+  "initial_node": "dispatch",
+  "nodes": [
+    {
+      "id": "records",
+      "title": "OBJ records",
+      "kind": "data",
+      "summary": "Faces, lines, and points",
+      "description": "A single OBJ can contain f, l, and p records. Retain their source identities while constructing render data.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "dispatch",
+      "title": "Classify primitives",
+      "kind": "transform",
+      "summary": "Choose the matching builder",
+      "description": "Dispatch by primitive kind; face triangulation must not reinterpret line strips or point records as surfaces.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "faces",
+      "title": "Build faces",
+      "kind": "transform",
+      "summary": "Triangulate polygon corners",
+      "description": "Produce triangle indices and attributes for surface parts.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "lines",
+      "title": "Build polylines",
+      "kind": "transform",
+      "summary": "Adjacent pairs become segments",
+      "description": "Preserve polyline connectivity in line indices and use the corresponding part type.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "points",
+      "title": "Build points",
+      "kind": "transform",
+      "summary": "Referenced point indices",
+      "description": "Preserve explicitly referenced point primitives and their identities.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "parts",
+      "title": "Typed parts",
+      "kind": "data",
+      "summary": "Separate index ranges",
+      "description": "Mesh nodes describe their primitive kind and ranges so downstream code can choose eligible operations.",
+      "position": [
+        310,
+        380
+      ]
+    },
+    {
+      "id": "draw",
+      "title": "Submit each kind",
+      "kind": "transform",
+      "summary": "Surface / line / point paths",
+      "description": "Use matching renderer resources. Triangle-only analyses filter out non-surface parts.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "records",
+      "to": "dispatch"
+    },
+    {
+      "from": "dispatch",
+      "to": "faces",
+      "label": "f"
+    },
+    {
+      "from": "dispatch",
+      "to": "lines",
+      "label": "l"
+    },
+    {
+      "from": "dispatch",
+      "to": "points",
+      "label": "p"
+    },
+    {
+      "from": "faces",
+      "to": "parts"
+    },
+    {
+      "from": "lines",
+      "to": "parts"
+    },
+    {
+      "from": "points",
+      "to": "parts"
+    },
+    {
+      "from": "parts",
+      "to": "draw"
+    }
+  ]
+}

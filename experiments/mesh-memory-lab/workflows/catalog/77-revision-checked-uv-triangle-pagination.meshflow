@@ -1,0 +1,125 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "77. Revision-checked UV triangle pagination",
+  "description": "Catalog workflow 77. Wait for current analysis → first page → result revision → subsequent bounded pages → revision mismatch/restart. Inspect zero-based offsets, one-based triangle IDs, limits of 1–100, all metric fields, and null unavailable/unchecked values.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/control_uv.cpp:controlUvTrianglePage; src/main.cpp; src/control_protocol.cpp.",
+  "initial_node": "first",
+  "nodes": [
+    {
+      "id": "await",
+      "title": "Await current analysis",
+      "kind": "transform",
+      "summary": "analysis results before paging",
+      "description": "Ensure the accepted result matches the current input signature before requesting triangle data.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "first",
+      "title": "Request first page",
+      "kind": "transform",
+      "summary": "Offset 0, limit from 1 to 100",
+      "description": "The offset is zero-based across the result array. Source triangle IDs in items are one-based within their part.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "page",
+      "title": "Page and revision",
+      "kind": "data",
+      "summary": "Items, total, nextOffset, revision",
+      "description": "Retain the returned revision token. nextOffset is null at the end; an offset beyond the result returns an empty page. Items expose source IDs, validity, areas, angle, signed areaLog2, min/max stretch, anisotropy, orientation, UV vertices, highlight/threshold flags, and near-collapse state. Invalid metric fields and unchecked overlap flags use null where specified.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "next",
+      "title": "Request next page",
+      "kind": "transform",
+      "summary": "Pass nextOffset and revision",
+      "description": "Bound each request to 1-100 items and reuse the first page's revision to keep the collected sequence coherent.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "guard",
+      "title": "Revision matches?",
+      "kind": "transform",
+      "summary": "Compare current resultsRevision",
+      "description": "Reject an explicitly mismatched revision with the restart-pagination error; never merge pages from different result revisions.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "restart",
+      "title": "Restart pagination",
+      "kind": "transform",
+      "summary": "Discard the old page collection",
+      "description": "After results change, await current analysis and start again without the old revision token.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "done",
+      "title": "Coherent collection",
+      "kind": "data",
+      "summary": "All pages from one revision",
+      "description": "Keep metric, normalization, surface_to_uv convention, overlapChecked, and overlapTruncated metadata with the collected items.",
+      "position": [
+        930,
+        0
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "await",
+      "to": "first"
+    },
+    {
+      "from": "first",
+      "to": "page"
+    },
+    {
+      "from": "page",
+      "to": "next",
+      "label": "more"
+    },
+    {
+      "from": "page",
+      "to": "done",
+      "label": "end"
+    },
+    {
+      "from": "next",
+      "to": "guard"
+    },
+    {
+      "from": "guard",
+      "to": "page",
+      "label": "match"
+    },
+    {
+      "from": "guard",
+      "to": "restart",
+      "label": "changed"
+    },
+    {
+      "from": "restart",
+      "to": "await",
+      "label": "retry"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "35. Hierarchical appearance",
+  "description": "Catalog workflow 35. Folder/file/part settings → composed transforms and opacity → effective draw state.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_objects.cpp; src/scene_renderer.cpp; src/ui_property_operations.cpp.",
+  "initial_node": "parents",
+  "nodes": [
+    {
+      "id": "hierarchy",
+      "title": "Folder / file / part",
+      "kind": "data",
+      "summary": "Local settings at each level",
+      "description": "Each level owns logical transforms, visibility, and appearance settings.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "parents",
+      "title": "Walk ancestors",
+      "kind": "transform",
+      "summary": "Resolve inherited state",
+      "description": "Gather the parent context for each leaf part in a stable hierarchy order.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "transform",
+      "title": "Compose transforms",
+      "kind": "transform",
+      "summary": "Parent matrix times local matrix",
+      "description": "Compute effective placement while respecting file and scene coordinate origins.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "appearance",
+      "title": "Compose appearance",
+      "kind": "transform",
+      "summary": "Visibility and opacity",
+      "description": "Resolve effective visibility, opacity, and other inherited presentation settings.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "effective",
+      "title": "Effective draw state",
+      "kind": "data",
+      "summary": "One resolved part description",
+      "description": "Keep authored local values distinct from their inherited effective result.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "submit",
+      "title": "Submit cached geometry",
+      "kind": "transform",
+      "summary": "Use resolved state for this part",
+      "description": "Draw the part with its effective state; picking uses corresponding eligibility and transforms.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "hierarchy",
+      "to": "parents"
+    },
+    {
+      "from": "parents",
+      "to": "transform"
+    },
+    {
+      "from": "transform",
+      "to": "appearance"
+    },
+    {
+      "from": "appearance",
+      "to": "effective"
+    },
+    {
+      "from": "effective",
+      "to": "submit"
+    }
+  ]
+}

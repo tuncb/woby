@@ -1,0 +1,119 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "51. Continuous edit history",
+  "description": "Catalog workflow 51. Drag start → intermediate edits → drag end → one history entry.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_history.cpp; src/ui_history_controls.h; src/ui_property_operations.cpp.",
+  "initial_node": "before",
+  "nodes": [
+    {
+      "id": "start",
+      "title": "Drag begins",
+      "kind": "data",
+      "summary": "Control becomes active",
+      "description": "Identify the edit transaction and the logical state before the continuous change.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "before",
+      "title": "Capture starting state",
+      "kind": "transform",
+      "summary": "One undo baseline",
+      "description": "Retain the pre-edit snapshot once rather than creating a history entry for every pointer movement.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "update",
+      "title": "Apply live edits",
+      "kind": "transform",
+      "summary": "Validated intermediate values",
+      "description": "Operations update logical state during the drag so the user receives immediate feedback.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "active",
+      "title": "Still dragging?",
+      "kind": "transform",
+      "summary": "Continue or finish the edit",
+      "description": "Repeated control updates stay inside the same continuous-edit boundary.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "repeat",
+      "title": "Next drag value",
+      "kind": "data",
+      "summary": "Another input in the same edit",
+      "description": "A further pointer or keyboard adjustment produces the next validated intermediate value without closing the edit transaction.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "end",
+      "title": "Finish edit",
+      "kind": "transform",
+      "summary": "Compare before and after",
+      "description": "Finalize the edit and determine whether the logical state actually changed.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "entry",
+      "title": "One history entry",
+      "kind": "data",
+      "summary": "Start state to final state",
+      "description": "A completed changed drag is one undoable action; an unchanged edit need not add history.",
+      "position": [
+        0,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "start",
+      "to": "before"
+    },
+    {
+      "from": "before",
+      "to": "update"
+    },
+    {
+      "from": "update",
+      "to": "active"
+    },
+    {
+      "from": "active",
+      "to": "repeat",
+      "label": "active"
+    },
+    {
+      "from": "repeat",
+      "to": "update"
+    },
+    {
+      "from": "active",
+      "to": "end",
+      "label": "released"
+    },
+    {
+      "from": "end",
+      "to": "entry",
+      "label": "changed"
+    }
+  ]
+}

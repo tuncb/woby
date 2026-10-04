@@ -7,6 +7,35 @@ descriptive revision names as folder names. Files at the root continue to work.
 Directory symlinks are not followed. Build staging preserves the folder structure
 under `workflows/` beside the executable; `--workflows-dir` selects another root.
 
+## Workflow catalog
+
+The [catalog](../workflow-catalog.md) links all 80 numbered diagrams in
+[`catalog/`](catalog/). Their filenames and title prefixes match catalog IDs
+01–80. Open the **catalog** library group to browse them; the three introductory
+examples remain at the library root. This group is a descriptive collection,
+not a captured Git revision.
+
+Diagrams 01–06 embed focused OBJ fixtures for vertex mapping, concave
+triangulation, normal fallback, UV seams, hard edges, and large-coordinate
+precision. Their bound stages expose the existing live inspectors. Other nodes
+and diagrams 07–80 provide authored stage explanations, decisions, intermediate
+data, and implementation references; they do not run those application workflows.
+All files use the existing version 1 schema.
+
+From the repository root, open a catalog diagram with:
+
+```powershell
+.\build\vs2026-vcpkg\bin\Debug\mesh_memory_lab.exe `
+  --workflows-dir .\experiments\mesh-memory-lab\workflows `
+  --workflow catalog/65-local-uv-stretch-and-anisotropy.meshflow
+```
+
+Select a node for its explanation and connected stages. Use **100%** for full
+cards or **Fit** for an overview. To compare revisions, copy the desired files
+into revision folders while preserving filenames and meaningful node IDs.
+Embedded sources are rebuilt by the current executable; historical intermediate
+results require the future capture extension described in the catalog.
+
 ## Compare commit snapshots
 
 For example, keep the same workflow filename in each commit folder:

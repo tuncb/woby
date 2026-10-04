@@ -1,0 +1,119 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "63. Application update",
+  "description": "Catalog workflow 63. Update discovery → package verification → extraction → helper handoff → replacement → restart.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/update.cpp; src/update_core.cpp; src/update_archive.cpp; src/update_helper.cpp.",
+  "initial_node": "verify",
+  "nodes": [
+    {
+      "id": "discovery",
+      "title": "Update candidate",
+      "kind": "data",
+      "summary": "Version and package metadata",
+      "description": "Discover an applicable update and its platform package through the application's update flow.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "verify",
+      "title": "Verify package",
+      "kind": "transform",
+      "summary": "Expected version and contents",
+      "description": "Check downloaded package and manifest data before installing any extracted files.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "extract",
+      "title": "Extract to staging",
+      "kind": "transform",
+      "summary": "Validated destination paths",
+      "description": "Stage the verified package without replacing the running executable during extraction.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "handoff",
+      "title": "Start update helper",
+      "kind": "transform",
+      "summary": "Prepared paths and process context",
+      "description": "Transfer the update plan to the helper, keeping ownership and failure reporting explicit.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "replace",
+      "title": "Replace installed files",
+      "kind": "transform",
+      "summary": "Wait for the application to exit",
+      "description": "The helper applies the prepared update once active file users are gone, following the update contract.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "restart",
+      "title": "Restarted application",
+      "kind": "data",
+      "summary": "New version with runtime assets",
+      "description": "Launch the updated application and report completion or actionable failure diagnostics.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "failure",
+      "title": "Update failure",
+      "kind": "data",
+      "summary": "Verification or installation error",
+      "description": "Do not treat a failed verification as an installable package; preserve diagnostics through the helper handoff.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "discovery",
+      "to": "verify"
+    },
+    {
+      "from": "verify",
+      "to": "extract",
+      "label": "valid"
+    },
+    {
+      "from": "verify",
+      "to": "failure",
+      "label": "invalid"
+    },
+    {
+      "from": "extract",
+      "to": "handoff"
+    },
+    {
+      "from": "handoff",
+      "to": "replace"
+    },
+    {
+      "from": "replace",
+      "to": "restart"
+    },
+    {
+      "from": "replace",
+      "to": "failure",
+      "label": "failed"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "62. Release packaging",
+  "description": "Catalog workflow 62. Version metadata → build outputs → package assembly → manifest validation → release artifacts.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: CMakeLists.txt; vcpkg.json; .github/scripts/package_manifest.py; .github/workflows.",
+  "initial_node": "validate",
+  "nodes": [
+    {
+      "id": "version",
+      "title": "Canonical version",
+      "kind": "data",
+      "summary": "CMake and vcpkg values agree",
+      "description": "Read project(woby_obj_viewer VERSION ...) and vcpkg.json version-string as matching release metadata.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Validate release tag",
+      "kind": "transform",
+      "summary": "validate-tag vX.Y.Z",
+      "description": "Run the manifest script's tag check before treating build outputs as a release for that version.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "build",
+      "title": "Build release outputs",
+      "kind": "transform",
+      "summary": "Platform binaries and assets",
+      "description": "Use the release workflow's required configuration and complete its validation checks.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "assemble",
+      "title": "Assemble package",
+      "kind": "transform",
+      "summary": "Runtime files and importer layout",
+      "description": "Collect the required binaries, libraries, shaders, and assets using the platform packaging rules.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "manifest",
+      "title": "Generate and verify",
+      "kind": "transform",
+      "summary": "Required files and checksums",
+      "description": "Validate package contents and manifest against the requested release version.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "artifacts",
+      "title": "Release artifacts",
+      "kind": "data",
+      "summary": "Validated archives and metadata",
+      "description": "Artifacts are ready for the release process after validation. This descriptive diagram does not publish a release or create a tag.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "version",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "build"
+    },
+    {
+      "from": "build",
+      "to": "assemble"
+    },
+    {
+      "from": "assemble",
+      "to": "manifest"
+    },
+    {
+      "from": "manifest",
+      "to": "artifacts"
+    }
+  ]
+}

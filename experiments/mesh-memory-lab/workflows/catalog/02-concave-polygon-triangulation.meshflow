@@ -1,0 +1,106 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "02. Concave polygon triangulation",
+  "description": "Catalog workflow 02. Polygon → projected contour → triangulation → triangles. Compare diagonals, winding, and output ordering.\n\nLive OBJ example: bound nodes open the existing polygonal pipeline inspectors; other nodes explain the workflow.\n\nImplementation: src/obj_mesh.cpp; third_party/rapidobj/include/rapidobj/rapidobj.hpp.",
+  "initial_node": "triangulate",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "Concave polygon",
+      "kind": "data",
+      "summary": "Six corners around an L",
+      "description": "The embedded polygon has a concave notch. A triangle fan would cross the exterior; inspect original corner order.",
+      "inspector": "source",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "parse",
+      "title": "Resolve references",
+      "kind": "transform",
+      "summary": "Ordered polygon contour",
+      "description": "Read positions and resolve face references without discarding their original order.",
+      "inspector": "parse",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "project",
+      "title": "Project contour",
+      "kind": "transform",
+      "summary": "Planar triangulation frame",
+      "description": "The polygon triangulator constructs a suitable 2D contour from localized positions. Inspect winding and the concave corner.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "triangulate",
+      "title": "Triangulate",
+      "kind": "transform",
+      "summary": "Respect the concave notch",
+      "description": "Compare the chosen diagonals and output ordering. A valid six-corner simple polygon produces four triangles.",
+      "inspector": "triangulate",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "triangles",
+      "title": "Triangle corners",
+      "kind": "data",
+      "summary": "Preserve source lineage",
+      "description": "Every output corner still refers to an original polygon corner; check that no triangle crosses the missing quadrant.",
+      "inspector": "corners",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "mesh",
+      "title": "Indexed mesh",
+      "kind": "data",
+      "summary": "Four triangles, six vertices",
+      "description": "Inspect the index buffer and triangle selection against the original contour. Compare winding and coverage between revisions.",
+      "inspector": "mesh",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "parse"
+    },
+    {
+      "from": "parse",
+      "to": "project"
+    },
+    {
+      "from": "project",
+      "to": "triangulate"
+    },
+    {
+      "from": "triangulate",
+      "to": "triangles"
+    },
+    {
+      "from": "triangles",
+      "to": "mesh"
+    }
+  ],
+  "source": {
+    "format": "obj",
+    "text": "# Concave L-shaped polygon: four triangles, no diagonal across the notch.\nv 0 0 0\nv 3 0 0\nv 3 1 0\nv 1 1 0\nv 1 3 0\nv 0 3 0\nf 1 2 3 4 5 6\n"
+  }
+}

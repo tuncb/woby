@@ -1,0 +1,116 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "69. UV statistics and dual histograms",
+  "description": "Catalog workflow 69. Valid metric values → sorted face values → minimum/median/P95/maximum → 12 bins with face counts and physical surface areas. Inspect why equal face weights and area percentages answer different questions.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_quality.cpp:updateUvQualityStatistics; src/uv_quality_view.cpp:histogram.",
+  "initial_node": "sort",
+  "nodes": [
+    {
+      "id": "values",
+      "title": "Valid metric values",
+      "kind": "data",
+      "summary": "One value per valid face",
+      "description": "Exclude missing, collapsed, and degenerate mappings. Retain each valid face's physical surface area alongside its selected metric value.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "sort",
+      "title": "Sort face values",
+      "kind": "transform",
+      "summary": "Equal face weights",
+      "description": "Sort scalar values for minimum, maximum, and face-value percentiles. These UV percentiles differ from area-weighted distance P95.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "statistics",
+      "title": "Summary statistics",
+      "kind": "data",
+      "summary": "Min / median / P95 / max",
+      "description": "For percentile p, interpolate sorted values at p*(N-1). Each valid face contributes one value regardless of area.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "bins",
+      "title": "Create 12 bins",
+      "kind": "transform",
+      "summary": "Shared scalar intervals",
+      "description": "Use the min/max range, expanding constant-valued ranges. Clamp the maximum value into the final bin.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "count",
+      "title": "Face histogram",
+      "kind": "data",
+      "summary": "Count in bin / valid faces",
+      "description": "Blue bars answer how many faces fall in each interval.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "area",
+      "title": "Area histogram",
+      "kind": "data",
+      "summary": "Physical bin area / valid area",
+      "description": "Orange bars answer how much physical surface area falls in the same interval.",
+      "position": [
+        310,
+        380
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Dual distribution",
+      "kind": "data",
+      "summary": "Compare count and area weights",
+      "description": "Many tiny distorted triangles can dominate face counts while covering little surface area. Inspect both summaries before interpreting severity.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "values",
+      "to": "sort"
+    },
+    {
+      "from": "sort",
+      "to": "statistics"
+    },
+    {
+      "from": "values",
+      "to": "bins"
+    },
+    {
+      "from": "bins",
+      "to": "count"
+    },
+    {
+      "from": "bins",
+      "to": "area"
+    },
+    {
+      "from": "count",
+      "to": "review"
+    },
+    {
+      "from": "area",
+      "to": "review"
+    }
+  ]
+}

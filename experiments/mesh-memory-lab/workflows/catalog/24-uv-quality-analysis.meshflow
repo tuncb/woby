@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "24. UV quality analysis",
+  "description": "Catalog workflow 24. Surface and UV triangles → angle/area/orientation/stretch measurements → validity and overlap checks → findings and colors. Use this as the overview for detailed workflows 65–80.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_quality.cpp; src/uv_overlap.cpp; src/comparison_scene.cpp.",
+  "initial_node": "validity",
+  "nodes": [
+    {
+      "id": "inputs",
+      "title": "Surface + UV triangles",
+      "kind": "data",
+      "summary": "World-space surface measurements",
+      "description": "Use supplied triangle mappings, including tessellated freeform surfaces. Keep patch and source triangle identity.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "validity",
+      "title": "Validate mapping",
+      "kind": "transform",
+      "summary": "Missing, collapsed, degenerate",
+      "description": "Exclude invalid mappings from numerical metric statistics while retaining their diagnostic flags.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "metrics",
+      "title": "Measure mapping",
+      "kind": "transform",
+      "summary": "Angle, area, orientation, stretch",
+      "description": "Compute corner-angle differences, signed log2 area ratios, orientation, singular values, and anisotropy. See workflows 65-68.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "overlap",
+      "title": "Inspect overlap",
+      "kind": "transform",
+      "summary": "Optional bounded domain search",
+      "description": "Detect positive-area UV overlap under the configured domain scope; report unchecked or truncated status. See 71-73.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "statistics",
+      "title": "Summarize and select",
+      "kind": "transform",
+      "summary": "Statistics, bins, thresholds",
+      "description": "Aggregate valid measurements and apply range/threshold selection. See 69-70.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "display",
+      "title": "Findings and colors",
+      "kind": "data",
+      "summary": "CPU values and GPU encoding",
+      "description": "Display metric colors, invalid-value colors, and selected findings consistently with the legend.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "probe",
+      "title": "Linked inspection",
+      "kind": "data",
+      "summary": "Triangle pages and probes",
+      "description": "Inspect matching surface and layout triangles using current revisions. See 74-80 for interaction, automation, and persistence.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "inputs",
+      "to": "validity"
+    },
+    {
+      "from": "validity",
+      "to": "metrics"
+    },
+    {
+      "from": "metrics",
+      "to": "overlap"
+    },
+    {
+      "from": "overlap",
+      "to": "statistics"
+    },
+    {
+      "from": "statistics",
+      "to": "display"
+    },
+    {
+      "from": "display",
+      "to": "probe"
+    }
+  ]
+}

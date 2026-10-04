@@ -1,0 +1,101 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "11. Non-manifold detection",
+  "description": "Catalog workflow 11. Edge incidence and vertex links → classification → offending edges/vertices → navigation geometry.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_topology.cpp; src/mesh_comparison.cpp.",
+  "initial_node": "edges",
+  "nodes": [
+    {
+      "id": "topology",
+      "title": "Edge and vertex uses",
+      "kind": "data",
+      "summary": "Connectivity under selected mode",
+      "description": "Use the same source-to-topology mapping as boundary and winding analysis.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "edges",
+      "title": "Classify edges",
+      "kind": "transform",
+      "summary": "More than two incident faces",
+      "description": "Collect edges with excess incidence and the faces that meet there.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "links",
+      "title": "Classify vertex links",
+      "kind": "transform",
+      "summary": "Disconnected or invalid fans",
+      "description": "Examine incident-face connectivity around each vertex; edge incidence alone does not detect every non-manifold vertex.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "findings",
+      "title": "Offending elements",
+      "kind": "data",
+      "summary": "Edge and vertex findings",
+      "description": "Preserve finding type and source references instead of reducing the result to a single count.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "geometry",
+      "title": "Prepare highlights",
+      "kind": "transform",
+      "summary": "Bounds and local geometry",
+      "description": "Build reusable navigation geometry away from per-frame drawing.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "view",
+      "title": "Review finding",
+      "kind": "data",
+      "summary": "Frame and highlight location",
+      "description": "Navigate separately to an edge defect or a vertex fan defect and compare identity modes.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "topology",
+      "to": "edges"
+    },
+    {
+      "from": "topology",
+      "to": "links"
+    },
+    {
+      "from": "edges",
+      "to": "findings"
+    },
+    {
+      "from": "links",
+      "to": "findings"
+    },
+    {
+      "from": "findings",
+      "to": "geometry"
+    },
+    {
+      "from": "geometry",
+      "to": "view"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "58. Commit snapshot comparison",
+  "description": "Catalog workflow 58. Revision folders → matched workflow identities → top/bottom panes → selected stages and captured results. Historical result capture is a proposed extension described below.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: experiments/mesh-memory-lab/workflow.cpp; experiments/mesh-memory-lab/ui_operations.cpp; experiments/mesh-memory-lab/workflow-catalog.md.\n\nRevision folder names identify provided document snapshots; they do not prove historical intermediate results.",
+  "initial_node": "match",
+  "nodes": [
+    {
+      "id": "folders",
+      "title": "Revision folders",
+      "kind": "data",
+      "summary": "Same workflow in two snapshots",
+      "description": "Provide revision folders and stable workflow filenames; the lab does not check out Git commits for you.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "match",
+      "title": "Resolve identities",
+      "kind": "transform",
+      "summary": "Explicit relative workflow paths",
+      "description": "Use relative paths when filenames are duplicated across groups. Stable node IDs preserve stage meaning across authored revisions.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "top",
+      "title": "Top pane",
+      "kind": "data",
+      "summary": "First document and current trace",
+      "description": "Select the earlier workflow structure and its embedded source, if any.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "bottom",
+      "title": "Bottom pane",
+      "kind": "data",
+      "summary": "Second document and current trace",
+      "description": "Select the comparison workflow independently with its own inspector, camera, and selection.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "inspect",
+      "title": "Compare stages",
+      "kind": "transform",
+      "summary": "Structure and current-code results",
+      "description": "Inspect corresponding nodes and bytes. Both embedded sources are evaluated by the currently running executable.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "future",
+      "title": "Historical captures",
+      "kind": "data",
+      "summary": "Proposed format extension",
+      "description": "True historical execution comparison would require commit/build metadata, recorded intermediate values, checksums, and result revisions. Version 1 does not store these fields.",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "folders",
+      "to": "match"
+    },
+    {
+      "from": "match",
+      "to": "top"
+    },
+    {
+      "from": "match",
+      "to": "bottom"
+    },
+    {
+      "from": "top",
+      "to": "inspect"
+    },
+    {
+      "from": "bottom",
+      "to": "inspect"
+    },
+    {
+      "from": "inspect",
+      "to": "future",
+      "label": "limitation"
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "78. UV diagnostics through headless automation",
+  "description": "Catalog workflow 78. Create analysis → configure each of six diagnostics → await results → inspect pages/probes → render colors → save/reload → compare measurements and geometry. Use the same fixture to compare CLI, CPU results, and GPU presentation across commits.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: tests/ctl_uv_quality_smoke.py; doc/ctl-commands.md; src/control_uv.cpp.",
+  "initial_node": "create",
+  "nodes": [
+    {
+      "id": "fixture",
+      "title": "Pinned test fixture",
+      "kind": "data",
+      "summary": "Same geometry and transforms",
+      "description": "Use one known fixture and configuration so numerical, protocol, persistence, and rendered results are comparable across revisions.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "create",
+      "title": "Create UV analysis",
+      "kind": "transform",
+      "summary": "analysis create --type uv_quality",
+      "description": "Load the fixture and select the intended source parts through the CLI.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "configure",
+      "title": "Choose each diagnostic",
+      "kind": "transform",
+      "summary": "Six metric keys",
+      "description": "Exercise angle, area, orientation, anisotropy, min_stretch, and overlap with explicit normalization, thresholds, and domain settings.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "await",
+      "title": "Await accepted results",
+      "kind": "transform",
+      "summary": "Current input signature",
+      "description": "Request current analysis results before inspecting dependent values.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "inspect",
+      "title": "Read pages and probes",
+      "kind": "transform",
+      "summary": "Revision and source correspondence",
+      "description": "Collect bounded triangle pages and linked probes; verify metrics, nullable fields, selection, coordinates, and stale-result rejection.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "render",
+      "title": "Capture presentation",
+      "kind": "transform",
+      "summary": "Metric colors and cyan selections",
+      "description": "Render and compare the GPU presentation against the CPU values and legend, including compression versus expansion.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "roundtrip",
+      "title": "Save and reload",
+      "kind": "transform",
+      "summary": "Persist controls, exclude probes",
+      "description": "Verify that measurement controls survive the scene round trip and transient probes do not.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "compare",
+      "title": "Regression evidence",
+      "kind": "data",
+      "summary": "Measurements, images, geometry",
+      "description": "Compare CLI output, physical measurements, display geometry, and images for the same fixture across commits.",
+      "position": [
+        0,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "fixture",
+      "to": "create"
+    },
+    {
+      "from": "create",
+      "to": "configure"
+    },
+    {
+      "from": "configure",
+      "to": "await"
+    },
+    {
+      "from": "await",
+      "to": "inspect"
+    },
+    {
+      "from": "inspect",
+      "to": "render"
+    },
+    {
+      "from": "render",
+      "to": "roundtrip"
+    },
+    {
+      "from": "roundtrip",
+      "to": "compare"
+    }
+  ]
+}

@@ -70,7 +70,11 @@ Reloading and OBJ capture run on a worker and publish one complete library snaps
 Both open files are restored by relative path; newly added files cannot redirect
 an existing selection to another commit.
 
-Builds stage the repository examples into `workflows/` beside the executable.
+The [workflow catalog](workflow-catalog.md) links all 80 numbered diagrams in
+the **catalog** library group. Diagrams 01–06 include focused live OBJ examples;
+07–80 explain the remaining workflows through authored stages and connections.
+
+Builds stage the repository examples and catalog into `workflows/` beside the executable.
 That directory is the default library, regardless of the working directory.
 For a persistent library outside the build directory, choose a folder explicitly:
 

@@ -1,0 +1,116 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "46. Incremental detector results",
+  "description": "Catalog workflow 46. Shared preparation → independent detectors → staged results → counts and overlays becoming available.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_comparison.cpp; src/analysis_results.cpp; src/main.cpp.",
+  "initial_node": "source",
+  "nodes": [
+    {
+      "id": "request",
+      "title": "Requested stages",
+      "kind": "data",
+      "summary": "Enabled detectors and input state",
+      "description": "Determine which stages are requested and which are already complete for current inputs.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "source",
+      "title": "Shared preparation",
+      "kind": "transform",
+      "summary": "Owned analysis source",
+      "description": "Prepare common source geometry once and retain its signature.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "fast",
+      "title": "Independent stages",
+      "kind": "transform",
+      "summary": "Duplicates, quality, degenerates",
+      "description": "Compute the requested stages independently of a slower intersection search where dependencies allow.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "slow",
+      "title": "Long-running stage",
+      "kind": "transform",
+      "summary": "Topology or intersection work",
+      "description": "Keep progress and completion state separate from other detectors.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "merge",
+      "title": "Accept stage updates",
+      "kind": "transform",
+      "summary": "Revision and stage validation",
+      "description": "Merge only current stages and preserve completed results from other accepted updates.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "mask",
+      "title": "Completion mask",
+      "kind": "data",
+      "summary": "Ready stages and pending stages",
+      "description": "Counts and overlays may become available incrementally. Pending does not mean a detector found zero defects.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "ui",
+      "title": "Incremental review",
+      "kind": "data",
+      "summary": "Available findings and progress",
+      "description": "Display current ready results while remaining work continues.",
+      "position": [
+        930,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "request",
+      "to": "source"
+    },
+    {
+      "from": "source",
+      "to": "fast"
+    },
+    {
+      "from": "source",
+      "to": "slow"
+    },
+    {
+      "from": "fast",
+      "to": "merge"
+    },
+    {
+      "from": "slow",
+      "to": "merge"
+    },
+    {
+      "from": "merge",
+      "to": "mask"
+    },
+    {
+      "from": "mask",
+      "to": "ui"
+    }
+  ]
+}

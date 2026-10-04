@@ -1,0 +1,122 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "06. Large-coordinate precision",
+  "description": "Catalog workflow 06. Original doubles → file origin → local doubles → GPU floats → scene placement. Inspect precision lost at each conversion.\n\nLive OBJ example: bound nodes open the existing polygonal pipeline inspectors; other nodes explain the workflow.\n\nImplementation: src/model_mesh.cpp; src/obj_mesh.cpp; src/scene_renderer.cpp.",
+  "initial_node": "origin",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "Original doubles",
+      "kind": "data",
+      "summary": "Coordinates near 1e9",
+      "description": "The fixture retains a small fractional offset near a large world coordinate. Direct float conversion would erase small differences.",
+      "inspector": "source",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "origin",
+      "title": "Choose file origin",
+      "kind": "transform",
+      "summary": "Bounds center for large offsets",
+      "description": "coordinateOrigin keeps modest axes unchanged and rebases axes whose absolute center is at least 65536. Inspect the original and local coordinates.",
+      "inspector": "triangulate",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "local",
+      "title": "Local doubles",
+      "kind": "data",
+      "summary": "p_local = p_source - origin",
+      "description": "Subtraction happens in double precision before float packing. Precise local positions remain available to CPU analysis.",
+      "inspector": "attributes",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "pack",
+      "title": "Convert to floats",
+      "kind": "transform",
+      "summary": "Local coordinates in vertex data",
+      "description": "Convert localized positions to GPU floats after range validation; compare component values and byte representations.",
+      "inspector": "pack",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "mesh",
+      "title": "Precise + packed",
+      "kind": "data",
+      "summary": "Two representations retained",
+      "description": "The CPU mesh retains precise positions alongside render vertices. Inspect the difference between original, local, and packed values.",
+      "inspector": "mesh",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "gpu",
+      "title": "GPU positions",
+      "kind": "data",
+      "summary": "Small coordinates survive",
+      "description": "Uploaded vertex positions are local floats. They do not contain the original large absolute coordinate.",
+      "inspector": "gpu",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "placement",
+      "title": "Place in scene",
+      "kind": "transform",
+      "summary": "File origin and scene origin",
+      "description": "Runtime transforms combine local geometry with file placement relative to the scene coordinate origin. This placement stage is descriptive.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "origin"
+    },
+    {
+      "from": "origin",
+      "to": "local"
+    },
+    {
+      "from": "local",
+      "to": "pack"
+    },
+    {
+      "from": "pack",
+      "to": "mesh"
+    },
+    {
+      "from": "mesh",
+      "to": "gpu"
+    },
+    {
+      "from": "gpu",
+      "to": "placement"
+    }
+  ],
+  "source": {
+    "format": "obj",
+    "text": "# Two quads folded along a shared edge; independent UV and normal domains.\no folded_sheet\nv 1000000000.000125 -1 0\nv 1000000002.000125 -1 0\nv 1000000002.000125 1 0\nv 1000000000.000125 1 0\nv 1000000002.000125 1 2\nv 1000000000.000125 1 2\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nvt 0.2 0\nvt 0.8 0\nvt 0.8 1\nvt 0.2 1\nvn 0 0 1\nvn 0 -1 0\nf 1/1/1 2/2/1 3/3/1 4/4/1\nf 4/5/2 3/6/2 5/7/2 6/8/2\n"
+  }
+}

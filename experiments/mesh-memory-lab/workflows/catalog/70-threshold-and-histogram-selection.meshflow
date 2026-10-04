@@ -1,0 +1,132 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "70. Threshold and histogram selection",
+  "description": "Catalog workflow 70. Metric → greater-than / absolute-area-magnitude / lower-stretch threshold → optional selected range → highlighted faces and area → cyan overlay. Show range precedence, inclusive range settings, histogram bin boundaries, and invalid-value colors.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_quality.cpp:uvQualityExceedsThreshold, uvQualityHighlighted; src/uv_quality_view.cpp:histogram.",
+  "initial_node": "range",
+  "nodes": [
+    {
+      "id": "input",
+      "title": "Metric and settings",
+      "kind": "data",
+      "summary": "Current values and selection rules",
+      "description": "Keep thresholdExceeded statistics separate from the enabled highlighting controls.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "valid",
+      "title": "Mapping valid?",
+      "kind": "transform",
+      "summary": "Invalid colors take precedence",
+      "description": "Missing UV or degenerate surface uses gray; collapsed UV uses magenta unless also missing or surface-degenerate. Invalid mappings are never highlighted.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "range",
+      "title": "Range enabled?",
+      "kind": "transform",
+      "summary": "Inclusive minimum and maximum",
+      "description": "A selected range overrides threshold highlighting. Test value >= minimum and value <= maximum.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "threshold",
+      "title": "Threshold enabled?",
+      "kind": "transform",
+      "summary": "Metric-specific strict comparison",
+      "description": "Use value > threshold generally, abs(areaLog2) > threshold for area, and minStretch < threshold for minimum stretch.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "bin",
+      "title": "Histogram click",
+      "kind": "data",
+      "summary": "Half-open bins, inclusive settings",
+      "description": "Bins are [low,high), except the inclusive last bin. The UI stores float bounds and moves non-final upper bounds one representable float downward with nextafter.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "selected",
+      "title": "Selected faces",
+      "kind": "data",
+      "summary": "Cyan overlay and physical area",
+      "description": "Highlight qualifying valid faces and sum their physical areas; show highlighted counts and area percentage.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "base",
+      "title": "Base metric color",
+      "kind": "data",
+      "summary": "Unselected or invalid face",
+      "description": "Retain the normal metric or invalid-value color when selection criteria are not met.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "input",
+      "to": "valid"
+    },
+    {
+      "from": "valid",
+      "to": "range",
+      "label": "valid"
+    },
+    {
+      "from": "valid",
+      "to": "base",
+      "label": "invalid"
+    },
+    {
+      "from": "bin",
+      "to": "range",
+      "label": "settings"
+    },
+    {
+      "from": "range",
+      "to": "selected",
+      "label": "in range"
+    },
+    {
+      "from": "range",
+      "to": "threshold",
+      "label": "disabled"
+    },
+    {
+      "from": "range",
+      "to": "base",
+      "label": "outside"
+    },
+    {
+      "from": "threshold",
+      "to": "selected",
+      "label": "passes"
+    },
+    {
+      "from": "threshold",
+      "to": "base",
+      "label": "off or fails"
+    }
+  ]
+}

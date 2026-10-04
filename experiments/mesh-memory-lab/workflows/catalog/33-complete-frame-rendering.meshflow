@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "33. Complete frame rendering",
+  "description": "Catalog workflow 33. Logical scene → visible draw items → transforms/resources → render passes → overlays → UI → presentation.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/main.cpp; src/scene_renderer.cpp; src/analysis_presentation.cpp.",
+  "initial_node": "visible",
+  "nodes": [
+    {
+      "id": "state",
+      "title": "Logical scene",
+      "kind": "data",
+      "summary": "Validated UiState snapshot",
+      "description": "Scene operations and accepted worker completions update logical state before drawing begins.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "visible",
+      "title": "Collect visible items",
+      "kind": "transform",
+      "summary": "Hierarchy and enabled modes",
+      "description": "Resolve visible source and analysis items, excluding hidden or ineligible geometry.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "resources",
+      "title": "Prepare draw state",
+      "kind": "transform",
+      "summary": "Transforms and cached resources",
+      "description": "Use current effective transforms and reusable renderer resources. Resource creation belongs to the runtime adapter.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "passes",
+      "title": "Submit scene passes",
+      "kind": "transform",
+      "summary": "Surfaces, edges, and markers",
+      "description": "Submit geometry with appropriate depth, blending, and display-mode state.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "overlays",
+      "title": "Draw overlays",
+      "kind": "transform",
+      "summary": "Findings and annotations",
+      "description": "Use already-prepared navigation, selection, and annotation geometry.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "ui",
+      "title": "Draw application UI",
+      "kind": "transform",
+      "summary": "Controls and inspection panels",
+      "description": "Read logical state, edit local values, and invoke operations for user changes.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "present",
+      "title": "Presented frame",
+      "kind": "data",
+      "summary": "Completed graphics submission",
+      "description": "Present the composed image. Rendering does not mutate logical scene properties.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "state",
+      "to": "visible"
+    },
+    {
+      "from": "visible",
+      "to": "resources"
+    },
+    {
+      "from": "resources",
+      "to": "passes"
+    },
+    {
+      "from": "passes",
+      "to": "overlays"
+    },
+    {
+      "from": "overlays",
+      "to": "ui"
+    },
+    {
+      "from": "ui",
+      "to": "present"
+    }
+  ]
+}

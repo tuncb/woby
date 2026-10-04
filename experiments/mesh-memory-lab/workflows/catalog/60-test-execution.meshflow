@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "60. Test execution",
+  "description": "Catalog workflow 60. Changed subsystem → unit tests → GPU checks → rendered cases → results and artifacts.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: CMakeLists.txt; CMakePresets.json; experiments/mesh-memory-lab/CMakeLists.txt.",
+  "initial_node": "build",
+  "nodes": [
+    {
+      "id": "change",
+      "title": "Changed subsystem",
+      "kind": "data",
+      "summary": "Behavior and affected dependencies",
+      "description": "Choose relevant existing tests and required checks for the actual change; document content does not need new unit tests.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "build",
+      "title": "Build Debug targets",
+      "kind": "transform",
+      "summary": "Compile tests without warnings",
+      "description": "Use the local Visual Studio + vcpkg preset and make sure test binaries compile successfully.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "unit",
+      "title": "Run unit tests",
+      "kind": "transform",
+      "summary": "Deterministic CPU behavior",
+      "description": "Run appropriate unit suites with isolated temporary fixtures and explicit path bases.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "gpu",
+      "title": "Run GPU checks",
+      "kind": "transform",
+      "summary": "Upload and readback correctness",
+      "description": "When enabled and supported, verify graphics behavior against current CPU inputs and expected runtime contracts.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "render",
+      "title": "Render cases",
+      "kind": "transform",
+      "summary": "Application-level visual evidence",
+      "description": "Run headless or windowed cases as appropriate; inspect screenshots and diagnostics for presentation regressions.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "results",
+      "title": "Results and artifacts",
+      "kind": "data",
+      "summary": "Pass/fail, logs, screenshots",
+      "description": "Report the checks actually run, unresolved failures, and any environment limits. Keep fixture cleanup reliable on failures.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "change",
+      "to": "build"
+    },
+    {
+      "from": "build",
+      "to": "unit"
+    },
+    {
+      "from": "unit",
+      "to": "gpu"
+    },
+    {
+      "from": "gpu",
+      "to": "render"
+    },
+    {
+      "from": "render",
+      "to": "results"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "47. Resource ownership and lifetime",
+  "description": "Catalog workflow 47. Source storage → CPU arrays → upload memory → GPU buffers → readbacks → release points.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/model_mesh.h; src/scene_renderer.cpp; experiments/mesh-memory-lab/gpu_runtime.cpp.",
+  "initial_node": "cpu",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "Source storage",
+      "kind": "data",
+      "summary": "Owned records and source lineage",
+      "description": "Original input and identity data must outlive every consumer that retains references to them.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "cpu",
+      "title": "Build CPU arrays",
+      "kind": "transform",
+      "summary": "Mesh owns positions and indices",
+      "description": "Packed arrays, precise coordinates, and source mappings have distinct lifetimes and memory costs.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "transfer",
+      "title": "Create upload memory",
+      "kind": "transform",
+      "summary": "Copy or retain until consumed",
+      "description": "GPU submission must not reference temporary memory that is destroyed before the runtime consumes it.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "gpu",
+      "title": "GPU resources",
+      "kind": "data",
+      "summary": "Vertex and index buffer handles",
+      "description": "Runtime adapters own handles; logical UiState contains no graphics device resources.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "readback",
+      "title": "Schedule readback",
+      "kind": "transform",
+      "summary": "Owned destination bytes",
+      "description": "Keep readback storage alive until completion, including cancellation and exceptional shutdown paths.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "verify",
+      "title": "CPU capture",
+      "kind": "data",
+      "summary": "Completed GPU bytes",
+      "description": "Read and compare the destination only after completion; the lab verifies upload bytes against CPU arrays.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "release",
+      "title": "Release in order",
+      "kind": "transform",
+      "summary": "Drain work, destroy resources",
+      "description": "Release resources after outstanding uses complete. Retain CPU source data when later analysis or rebuilds still need it.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "cpu"
+    },
+    {
+      "from": "cpu",
+      "to": "transfer"
+    },
+    {
+      "from": "transfer",
+      "to": "gpu"
+    },
+    {
+      "from": "gpu",
+      "to": "readback"
+    },
+    {
+      "from": "readback",
+      "to": "verify"
+    },
+    {
+      "from": "verify",
+      "to": "release"
+    }
+  ]
+}

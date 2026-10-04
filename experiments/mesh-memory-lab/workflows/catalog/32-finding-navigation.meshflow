@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "32. Finding navigation",
+  "description": "Catalog workflow 32. Detector result → finding index → source references → bounds → camera framing and highlighting.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/ui_operations.cpp; src/mesh_comparison.cpp; src/camera.cpp.",
+  "initial_node": "index",
+  "nodes": [
+    {
+      "id": "result",
+      "title": "Current detector result",
+      "kind": "data",
+      "summary": "Findings and completion status",
+      "description": "Only navigate within findings that belong to the current accepted analysis.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "index",
+      "title": "Select finding",
+      "kind": "transform",
+      "summary": "Validate the requested index",
+      "description": "Resolve the selected row or next/previous action against the current detector result.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "source",
+      "title": "Source references",
+      "kind": "data",
+      "summary": "Part, triangle, edge, or point",
+      "description": "Translate the finding into its original geometric references and prepared navigation data.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "bounds",
+      "title": "Compute review bounds",
+      "kind": "transform",
+      "summary": "Frame the affected geometry",
+      "description": "Use prepared bounds when available; keep degenerate extents usable for camera framing.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "camera",
+      "title": "Frame camera",
+      "kind": "transform",
+      "summary": "View target and distance",
+      "description": "Update logical camera state through operations rather than changing it while drawing.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "highlight",
+      "title": "Selected finding",
+      "kind": "data",
+      "summary": "Camera focus and overlay",
+      "description": "Render the matching geometry and finding selection; UV finding rows may also set a centroid probe.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "result",
+      "to": "index"
+    },
+    {
+      "from": "index",
+      "to": "source"
+    },
+    {
+      "from": "source",
+      "to": "bounds"
+    },
+    {
+      "from": "bounds",
+      "to": "camera"
+    },
+    {
+      "from": "camera",
+      "to": "highlight"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "39. Camera projection and framing",
+  "description": "Catalog workflow 39. Bounds + camera state → target/distance → view/projection matrices → screen coordinates.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/camera.cpp; src/scene_dimensions.cpp; src/ui_view_operations.cpp.",
+  "initial_node": "frame",
+  "nodes": [
+    {
+      "id": "bounds",
+      "title": "Scene or finding bounds",
+      "kind": "data",
+      "summary": "Geometry to frame",
+      "description": "Use effective visible geometry or the selected finding's bounds in the correct coordinate frame.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "frame",
+      "title": "Choose target and size",
+      "kind": "transform",
+      "summary": "Center and usable extent",
+      "description": "Resolve a stable target and extent, including small or degenerate bounds.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "camera",
+      "title": "Camera state",
+      "kind": "data",
+      "summary": "Projection, orientation, distance",
+      "description": "Logical camera settings specify perspective or orthographic framing and view orientation.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "view",
+      "title": "Build view matrix",
+      "kind": "transform",
+      "summary": "Camera frame to scene frame",
+      "description": "Construct the view transform from the validated camera state.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "projection",
+      "title": "Build projection",
+      "kind": "transform",
+      "summary": "Aspect and clipping parameters",
+      "description": "Use the active viewport dimensions and projection mode to build the projection matrix.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "screen",
+      "title": "Screen coordinates",
+      "kind": "data",
+      "summary": "Projected scene geometry",
+      "description": "The same matrices support drawing, unprojection, pointer rays, and camera framing comparisons.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "bounds",
+      "to": "frame"
+    },
+    {
+      "from": "frame",
+      "to": "camera"
+    },
+    {
+      "from": "camera",
+      "to": "view"
+    },
+    {
+      "from": "view",
+      "to": "projection"
+    },
+    {
+      "from": "projection",
+      "to": "screen"
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "79. UV worker preparation and immutable publication",
+  "description": "Catalog workflow 79. Owned input snapshot → world-space measurements → display mesh → overlap computation on a copied quality result → prepared buffers → publication of current results. Track cancellation, ownership, and signatures containing metric, normalization, overlap, threshold, and range settings.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/comparison_scene.cpp:snapshotComparisonInputs, prepareUvComparisonInputs, comparisonSignature; src/mesh_comparison.cpp.",
+  "initial_node": "copy",
+  "nodes": [
+    {
+      "id": "snapshot",
+      "title": "Owned input snapshot",
+      "kind": "data",
+      "summary": "Files, selected parts, settings",
+      "description": "Capture owned source data, transforms, scene origin, and settings before worker preparation.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "world",
+      "title": "Measure in world frame",
+      "kind": "transform",
+      "summary": "Physical geometry before layout",
+      "description": "Assemble transformed source geometry and compute UV quality before flattening or separating the display mesh.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "display",
+      "title": "Build display mesh",
+      "kind": "transform",
+      "summary": "Surface or UV layout",
+      "description": "Prepare the requested view while retaining quality results and original part/triangle correspondence.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "copy",
+      "title": "Copy quality result",
+      "kind": "transform",
+      "summary": "Mutable worker-owned copy",
+      "description": "Before overlap detection mutates flags and statistics, copy UvQuality so an already-shared result remains immutable.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "overlap",
+      "title": "Compute overlaps",
+      "kind": "transform",
+      "summary": "Scope, limits, cancellation",
+      "description": "Run overlap work on that owned copy; cancellation aborts publication rather than exposing half-updated shared flags.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "buffers",
+      "title": "Prepare CPU buffers",
+      "kind": "transform",
+      "summary": "Quality vertices, normals, edges",
+      "description": "Build quality vertices with original normals, then prepare smooth surface normals and line indices for upload.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Signature still current?",
+      "kind": "transform",
+      "summary": "Input and UV setting dependencies",
+      "description": "The signature includes geometry/transforms, metric, normalization, view/separation, overlap enable/scope, threshold/near-collapse, and range settings.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "publish",
+      "title": "Immutable current result",
+      "kind": "data",
+      "summary": "Accepted meshes and prepared buffers",
+      "description": "Publish only current work. Runtime upload consumes prepared buffers; existing checked overlap results can be reused instead of mutated.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "discard",
+      "title": "Canceled or superseded",
+      "kind": "data",
+      "summary": "Release owned result",
+      "description": "Discard canceled or stale preparation while keeping the last accepted state authoritative.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "snapshot",
+      "to": "world"
+    },
+    {
+      "from": "world",
+      "to": "display"
+    },
+    {
+      "from": "display",
+      "to": "copy"
+    },
+    {
+      "from": "copy",
+      "to": "overlap"
+    },
+    {
+      "from": "overlap",
+      "to": "buffers"
+    },
+    {
+      "from": "overlap",
+      "to": "discard",
+      "label": "canceled"
+    },
+    {
+      "from": "buffers",
+      "to": "check"
+    },
+    {
+      "from": "check",
+      "to": "publish",
+      "label": "current"
+    },
+    {
+      "from": "check",
+      "to": "discard",
+      "label": "stale"
+    }
+  ]
+}

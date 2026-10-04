@@ -1,0 +1,90 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "04. UV seam splitting",
+  "description": "Catalog workflow 04. Shared positions + different UV references → separate render vertices. Compare vertex counts and connectivity.\n\nLive OBJ example: bound nodes open the existing polygonal pipeline inspectors; other nodes explain the workflow.\n\nImplementation: src/obj_mesh.cpp.",
+  "initial_node": "key",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "UV seam fixture",
+      "kind": "data",
+      "summary": "Four positions, six UVs",
+      "description": "The two triangles are coplanar and share one normal. Distinct UV references isolate the reason for splitting.",
+      "inspector": "source",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "corners",
+      "title": "Shared positions",
+      "kind": "data",
+      "summary": "Different UV references",
+      "description": "Positions 1 and 3 occur on both triangles, but each side uses different texture-coordinate IDs.",
+      "inspector": "corners",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "key",
+      "title": "Build tuple key",
+      "kind": "transform",
+      "summary": "Position + normal + UV",
+      "description": "UV identity participates in the interning key even when positions and normal references agree.",
+      "inspector": "pack",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "split",
+      "title": "Split vertices",
+      "kind": "data",
+      "summary": "Six render vertices",
+      "description": "Four source positions become six render vertices. Inspect duplicate positions with different texture-coordinate fields.",
+      "inspector": "mesh",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "connectivity",
+      "title": "Index connectivity",
+      "kind": "data",
+      "summary": "Geometric edge, UV seam",
+      "description": "The index stream separates the two chart sides. Source position lineage still explains their common geometric edge.",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "corners"
+    },
+    {
+      "from": "corners",
+      "to": "key"
+    },
+    {
+      "from": "key",
+      "to": "split"
+    },
+    {
+      "from": "split",
+      "to": "connectivity"
+    }
+  ],
+  "source": {
+    "format": "obj",
+    "text": "# Coplanar triangles: only UV references split their shared positions.\nv 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\nvt 0 0\nvt 1 0\nvt 1 1\nvt 2 0\nvt 3 1\nvt 2 1\nvn 0 0 1\nf 1/1/1 2/2/1 3/3/1\nf 1/4/1 3/5/1 4/6/1\n"
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "72. Robust UV contact classification",
+  "description": "Catalog workflow 72. Orientation determinant → floating-point confidence check → exact rational fallback when needed → strict separating-axis tests → contact or overlap. Exclude shared edges/vertices; include containment and coincident triangles.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_overlap.cpp:orientation, interiorsOverlap; tests/uv_quality_tests.cpp.",
+  "initial_node": "confidence",
+  "nodes": [
+    {
+      "id": "points",
+      "title": "Orientation inputs",
+      "kind": "data",
+      "summary": "Three represented UV points",
+      "description": "The orientation sign is computed from the input double coordinates used by the triangle predicate.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "determinant",
+      "title": "Fast determinant",
+      "kind": "transform",
+      "summary": "p - q from edge products",
+      "description": "Compute p=(ax-cx)*(by-cy), q=(ay-cy)*(bx-cx), and their difference.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "confidence",
+      "title": "Reliable sign?",
+      "kind": "transform",
+      "summary": "Normal determinant above error bound",
+      "description": "Use the fast sign only when the determinant is normal and abs(det) > (abs(p)+abs(q))*1e-14.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "fast",
+      "title": "Floating-point sign",
+      "kind": "data",
+      "summary": "Confident positive or negative",
+      "description": "Use the sign of the fast determinant without invoking exact arithmetic.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "exact",
+      "title": "Exact rational fallback",
+      "kind": "transform",
+      "summary": "Sign of represented coordinates",
+      "description": "Convert the original doubles to exact rationals and evaluate the determinant exactly; return positive, negative, or zero.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "axes",
+      "title": "Strict separation test",
+      "kind": "transform",
+      "summary": "Check every edge of both triangles",
+      "description": "For every directed edge, require at least one vertex of the other triangle strictly on the interior side.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "contact",
+      "title": "Separated or touching",
+      "kind": "data",
+      "summary": "No positive-area overlap",
+      "description": "A separating edge or zero-area shared contact excludes the pair from overlap findings.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "overlap",
+      "title": "Interior overlap",
+      "kind": "data",
+      "summary": "Containment and coincidence count",
+      "description": "If neither triangle supplies a strict separating edge, the valid triangles overlap in positive area.",
+      "position": [
+        1240,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "points",
+      "to": "determinant"
+    },
+    {
+      "from": "determinant",
+      "to": "confidence"
+    },
+    {
+      "from": "confidence",
+      "to": "fast",
+      "label": "reliable"
+    },
+    {
+      "from": "confidence",
+      "to": "exact",
+      "label": "uncertain"
+    },
+    {
+      "from": "fast",
+      "to": "axes"
+    },
+    {
+      "from": "exact",
+      "to": "axes"
+    },
+    {
+      "from": "axes",
+      "to": "contact",
+      "label": "separated"
+    },
+    {
+      "from": "axes",
+      "to": "overlap",
+      "label": "interior"
+    }
+  ]
+}

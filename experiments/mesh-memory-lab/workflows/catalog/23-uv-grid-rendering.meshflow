@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "23. UV grid rendering",
+  "description": "Catalog workflow 23. Interpolated UVs → independent U/V density → grid coverage → surface color.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_grid.h; shaders/native/woby.slang; src/scene_renderer.cpp.",
+  "initial_node": "scale",
+  "nodes": [
+    {
+      "id": "uv",
+      "title": "Interpolated UV",
+      "kind": "data",
+      "summary": "Per-fragment supplied coordinates",
+      "description": "Rasterization interpolates the surface's texture coordinates, preserving their scale and orientation.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "density",
+      "title": "Grid settings",
+      "kind": "data",
+      "summary": "Independent U and V density",
+      "description": "Validated logical controls specify the line density for each parameter direction.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "scale",
+      "title": "Scale coordinates",
+      "kind": "transform",
+      "summary": "Separate U and V frequencies",
+      "description": "Apply the corresponding density to each UV component instead of assuming equal grid spacing.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "coverage",
+      "title": "Compute coverage",
+      "kind": "transform",
+      "summary": "Grid lines and anti-aliasing",
+      "description": "Determine line coverage at the fragment using the shader's sampling and derivative rules.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "blend",
+      "title": "Compose surface color",
+      "kind": "transform",
+      "summary": "Grid and base appearance",
+      "description": "Combine grid coverage with the effective surface appearance and opacity.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "image",
+      "title": "UV grid image",
+      "kind": "data",
+      "summary": "Visible parameter spacing",
+      "description": "Inspect directional stretching and tile continuity; the grid is a presentation aid, not a numerical quality measurement.",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "uv",
+      "to": "scale"
+    },
+    {
+      "from": "density",
+      "to": "scale"
+    },
+    {
+      "from": "scale",
+      "to": "coverage"
+    },
+    {
+      "from": "coverage",
+      "to": "blend"
+    },
+    {
+      "from": "blend",
+      "to": "image"
+    }
+  ]
+}

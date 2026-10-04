@@ -1,0 +1,141 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "52. Undo/redo restoration",
+  "description": "Catalog workflow 52. History entry → source availability checks → optional reload → restored settings → scene publication.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_history.cpp; src/scene_history_load.cpp; src/scene_lifecycle.cpp.",
+  "initial_node": "check",
+  "nodes": [
+    {
+      "id": "entry",
+      "title": "Undo or redo target",
+      "kind": "data",
+      "summary": "Saved logical scene snapshot",
+      "description": "Select the adjacent history entry without assuming its source meshes are still resident.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Sources available?",
+      "kind": "transform",
+      "summary": "Reuse retained source data?",
+      "description": "Inspect source identity and availability for the requested historical state.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "reuse",
+      "title": "Reuse source data",
+      "kind": "transform",
+      "summary": "Existing compatible meshes",
+      "description": "Reuse available immutable geometry while reconstructing the requested logical settings.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "reload",
+      "title": "Reload missing source",
+      "kind": "transform",
+      "summary": "Owned background load",
+      "description": "Load required files away from the UI thread. Failure must not publish a half-restored scene.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "restore",
+      "title": "Restore settings",
+      "kind": "transform",
+      "summary": "Objects, views, analyses",
+      "description": "Reconstruct the snapshot's logical properties and source associations with valid identities.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "current",
+      "title": "Restoration current?",
+      "kind": "transform",
+      "summary": "Request and source checks",
+      "description": "Reject obsolete restore completions before replacing the active scene.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "scene",
+      "title": "Restored scene",
+      "kind": "data",
+      "summary": "Publish a coherent snapshot",
+      "description": "Install the restored state and prepare current runtime resources. Transient UV probes are excluded.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "failure",
+      "title": "Restore diagnostic",
+      "kind": "data",
+      "summary": "Missing, failed, or stale work",
+      "description": "Keep failure visible and retain the current valid scene when restoration cannot complete.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "entry",
+      "to": "check"
+    },
+    {
+      "from": "check",
+      "to": "reuse",
+      "label": "available"
+    },
+    {
+      "from": "check",
+      "to": "reload",
+      "label": "missing"
+    },
+    {
+      "from": "reuse",
+      "to": "restore"
+    },
+    {
+      "from": "reload",
+      "to": "restore",
+      "label": "loaded"
+    },
+    {
+      "from": "reload",
+      "to": "failure",
+      "label": "failed"
+    },
+    {
+      "from": "restore",
+      "to": "current"
+    },
+    {
+      "from": "current",
+      "to": "scene",
+      "label": "current"
+    },
+    {
+      "from": "current",
+      "to": "failure",
+      "label": "stale"
+    }
+  ]
+}

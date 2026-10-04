@@ -1,0 +1,99 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "13. Duplicate point detection",
+  "description": "Catalog workflow 13. Source points → grouping keys → duplicate groups → original point references.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_duplicates.cpp; src/mesh_duplicates.h.",
+  "initial_node": "available",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "Original points",
+      "kind": "data",
+      "summary": "Before render vertex splitting",
+      "description": "Use original point records with source-domain references. A UV seam is not an extra authored point.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "available",
+      "title": "Source available?",
+      "kind": "transform",
+      "summary": "Can original records be inspected?",
+      "description": "Track unavailable sources explicitly rather than interpreting missing lineage as zero duplicates.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "keys",
+      "title": "Group exact positions",
+      "kind": "transform",
+      "summary": "Coordinate grouping keys",
+      "description": "Group equal source point coordinates under the detector's identity rules; retain every original point reference.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "groups",
+      "title": "Duplicate groups",
+      "kind": "data",
+      "summary": "More than one source record",
+      "description": "Singleton groups are not duplicates. Distinguish group count from the number of points involved.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "bounds",
+      "title": "Prepare navigation",
+      "kind": "transform",
+      "summary": "Locations and source references",
+      "description": "Build finding bounds and point markers from the grouped original data.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "unavailable",
+      "title": "Unavailable source",
+      "kind": "data",
+      "summary": "No reliable point lineage",
+      "description": "Report that original points cannot be inspected for this source.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "available"
+    },
+    {
+      "from": "available",
+      "to": "keys",
+      "label": "yes"
+    },
+    {
+      "from": "keys",
+      "to": "groups"
+    },
+    {
+      "from": "groups",
+      "to": "bounds"
+    },
+    {
+      "from": "available",
+      "to": "unavailable",
+      "label": "no"
+    }
+  ]
+}

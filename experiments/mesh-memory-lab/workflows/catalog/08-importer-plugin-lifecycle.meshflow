@@ -1,0 +1,135 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "08. Importer plugin lifecycle",
+  "description": "Catalog workflow 08. Format discovery → importer selection → plugin call → geometry validation → owned application data.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/importer_host.cpp; src/model_load.cpp; include/woby.",
+  "initial_node": "select",
+  "nodes": [
+    {
+      "id": "formats",
+      "title": "Available formats",
+      "kind": "data",
+      "summary": "Built-in and plugin metadata",
+      "description": "Discover supported extensions and importer descriptors from the configured plugin locations.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "select",
+      "title": "Select importer",
+      "kind": "transform",
+      "summary": "Match file format and policy",
+      "description": "Resolve the loader for this file. Unsupported formats or invalid plugins produce diagnostics.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "call",
+      "title": "Invoke plugin",
+      "kind": "transform",
+      "summary": "Versioned ABI request",
+      "description": "Call the importer through its supported ABI while keeping plugin-owned output alive for validation and copying.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Validate geometry",
+      "kind": "transform",
+      "summary": "Counts, ranges, finite data",
+      "description": "Check returned buffers, references, and primitive descriptions before accepting them into application meshes.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "owned",
+      "title": "Copy owned data",
+      "kind": "transform",
+      "summary": "Application owns the result",
+      "description": "Create application-owned geometry and metadata so imported data outlives the plugin's temporary buffers.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "release",
+      "title": "Release plugin output",
+      "kind": "transform",
+      "summary": "Honor the plugin contract",
+      "description": "Release plugin-owned allocations only after the application has copied everything it needs.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "mesh",
+      "title": "Application mesh",
+      "kind": "data",
+      "summary": "Ready for preparation",
+      "description": "Publish accepted meshes through normal loading and preparation stages.",
+      "position": [
+        620,
+        380
+      ]
+    },
+    {
+      "id": "error",
+      "title": "Import diagnostic",
+      "kind": "data",
+      "summary": "Unsupported or invalid input",
+      "description": "Report the failure and clean up any plugin output; invalid geometry never reaches rendering.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "formats",
+      "to": "select"
+    },
+    {
+      "from": "select",
+      "to": "call",
+      "label": "supported"
+    },
+    {
+      "from": "call",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "owned",
+      "label": "valid"
+    },
+    {
+      "from": "owned",
+      "to": "release"
+    },
+    {
+      "from": "release",
+      "to": "mesh"
+    },
+    {
+      "from": "select",
+      "to": "error",
+      "label": "unsupported"
+    },
+    {
+      "from": "validate",
+      "to": "error",
+      "label": "invalid"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "20. Trimmed surface construction",
+  "description": "Catalog workflow 20. Trim curves → sampled UV boundaries → constrained triangulation → retained regions → surface evaluation.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/freeform_trim.cpp; src/freeform.cpp; src/obj_freeform.cpp.",
+  "initial_node": "sample",
+  "nodes": [
+    {
+      "id": "trims",
+      "title": "Trim definitions",
+      "kind": "data",
+      "summary": "Outer and inner UV curves",
+      "description": "Trim references delimit retained parameter regions on a freeform surface.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "sample",
+      "title": "Sample trim curves",
+      "kind": "transform",
+      "summary": "Ordered UV boundary points",
+      "description": "Evaluate trim curves into boundary segments with consistent connectivity and tolerances.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "constraints",
+      "title": "Constrained domain",
+      "kind": "data",
+      "summary": "Boundary loops and grid samples",
+      "description": "Combine sampled boundaries with tessellation samples in parameter space.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "triangulate",
+      "title": "Constrained triangles",
+      "kind": "transform",
+      "summary": "Respect boundary segments",
+      "description": "Use constrained triangulation so edges honor the trim contours.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "retain",
+      "title": "Classify regions",
+      "kind": "transform",
+      "summary": "Keep the intended interior",
+      "description": "Determine which triangles belong to the retained region; remove triangles in holes or outside trims.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "evaluate",
+      "title": "Map UV to surface",
+      "kind": "transform",
+      "summary": "Evaluate retained vertices",
+      "description": "Evaluate positions and normals on the original surface at the retained UV coordinates.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "mesh",
+      "title": "Trimmed surface",
+      "kind": "data",
+      "summary": "Triangles follow trim boundaries",
+      "description": "Compare hole preservation, edge continuity, and tessellation changes without confusing the sampled boundary with an exact curve.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "trims",
+      "to": "sample"
+    },
+    {
+      "from": "sample",
+      "to": "constraints"
+    },
+    {
+      "from": "constraints",
+      "to": "triangulate"
+    },
+    {
+      "from": "triangulate",
+      "to": "retain"
+    },
+    {
+      "from": "retain",
+      "to": "evaluate"
+    },
+    {
+      "from": "evaluate",
+      "to": "mesh"
+    }
+  ]
+}
