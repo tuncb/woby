@@ -161,6 +161,11 @@ struct Stats
     int64_t cpuTimeFrame = 0, cpuTimeBegin = 0, cpuTimeEnd = 0, cpuTimerFreq = 1000000000, gpuTimeBegin = 0,
             gpuTimeEnd = 0, gpuTimerFreq = 1000000000;
     uint32_t numDraw = 0, numCompute = 0;
+    // Last completed submission; not physical display/scanout telemetry.
+    uint32_t drawableWidth = 0, drawableHeight = 0;
+    bool presentationSubmitted = false, mailboxPresentation = false;
+    double displayRefreshRate = 0;
+    uint64_t pacingPeriodNanoseconds = 0;
 };
 bool init(const Init &options);
 void shutdown();

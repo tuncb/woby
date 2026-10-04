@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = ["psutil", "pillow"]
+# ///
 """Serial, opt-in large-file measurements of the unmodified Woby viewer.
 
 Requires psutil (uv run --with psutil tests/stress/run.py ...). No timing assertions.
@@ -11,6 +15,7 @@ import hashlib
 import json
 import math
 import os
+import platform
 from pathlib import Path
 import shutil
 import statistics
@@ -64,6 +69,99 @@ def summarize_frames(samples):
                 sampled_gpu_median_ms=statistics.median(gpu) if gpu else None,
                 sampled_stage_median_ms={k: statistics.median(s["stagesMilliseconds"][k] for s in unique)
                                          for k in unique[0]["stagesMilliseconds"]})
+
+
+def summarize_capture(record, width, height, camera_motion=False):
+    """Only complete, comparable desktop frame windows may publish FPS/tails."""
+    reasons = []
+    events = record.get("events", [])
+    environments = record.get("environments", [])
+    if record.get("droppedFrames", 0):
+        reasons.append("frame_capture_overflow")
+    if len(events) < 2:
+        reasons.append("insufficient_frames")
+    if len(environments) != 1:
+        reasons.append("environment_or_scene_changed")
+    for env in environments:
+        drawable, viewport = env["drawable"], env["viewport"]
+        if drawable != {"width": width, "height": height}:
+            reasons.append("drawable_mismatch")
+        if not (viewport["width"] > 0 and viewport["height"] > 0 and viewport["x"] >= 0 and viewport["y"] >= 0
+                and viewport["x"] + viewport["width"] <= width and viewport["y"] + viewport["height"] <= height):
+            reasons.append("invalid_viewport")
+        if not env["window"]["visible"] or env["window"]["minimized"]:
+            reasons.append("hidden_or_minimized")
+        presentation = env["presentation"]
+        if not presentation["submitted"] or (presentation["width"], presentation["height"]) != (width, height):
+            reasons.append("presentation_mismatch")
+    if events and any(not 0 <= e["environment"] < len(environments) for e in events):
+        reasons.append("missing_environment")
+    intervals = [b["completedMilliseconds"] - a["completedMilliseconds"] for a, b in zip(events, events[1:])]
+    if any(b["frameIndex"] != a["frameIndex"] + 1 for a, b in zip(events, events[1:])):
+        reasons.append("missing_frame_events")
+    if any(not math.isfinite(v) or v <= 0 for v in intervals):
+        reasons.append("invalid_frame_clock")
+    if events and not camera_motion and any(e["camera"] != events[0]["camera"] for e in events):
+        reasons.append("camera_changed")
+    before, after = record["sceneBefore"], record["sceneAfter"]
+    if {k: v for k, v in before.items() if k != "camera"} != {k: v for k, v in after.items() if k != "camera"}:
+        reasons.append("scene_settings_changed")
+    stats = before["stats"]
+    if not stats.get("visibleGroupCount", 0) or not any(stats.get(k, 0) for k in ("triangleCount", "pointCount", "lineSegmentCount")):
+        reasons.append("empty_geometry_control")
+    summary = dict(valid=not reasons, exclusions=sorted(set(reasons)), fps=None, frames=len(events),
+                   environment=environments[0] if len(environments) == 1 else None,
+                   camera_motion=camera_motion, metric="completed_frame_intervals")
+    if reasons:
+        return summary
+    # Nearest-rank percentiles over ALL completion intervals, never sparse GPU samples.
+    ordered = sorted(intervals)
+    elapsed = sum(intervals) / 1000
+    summary.update(fps=len(intervals) / elapsed, elapsed_seconds=elapsed,
+                   frame_interval_median_ms=statistics.median(intervals),
+                   frame_interval_p95_ms=ordered[math.ceil(.95 * len(ordered)) - 1],
+                   frame_interval_p99_ms=ordered[math.ceil(.99 * len(ordered)) - 1],
+                   frame_interval_max_ms=max(intervals))
+    return summary
+
+
+def comparison_key(record, camera_motion=False):
+    """Ignore session identities, retain every measured rendering condition."""
+    identities = {}
+    def identify(nodes):
+        for node in nodes:
+            if isinstance(node.get("id"), str) and node["id"] not in identities:
+                identities[node["id"]] = f"object:{len(identities)}"
+            identify(node.get("children", []))
+    identify(record["sceneBefore"]["tree"])
+    def stable(value):
+        if isinstance(value, dict):
+            ignored = {"sceneEditRevision", "sceneGeneration"}
+            return {k: stable(v) for k, v in value.items()
+                    if k not in ignored}
+        if isinstance(value, list):
+            return [stable(v) for v in value]
+        if isinstance(value, str):
+            return identities.get(value, value)
+        return value
+    settings = stable(dict(scene=record["sceneBefore"], environments=record["environments"], camera_motion=camera_motion,
+                           runtime=record.get("runtime"), host=record.get("host")))
+    return hashlib.sha256(json.dumps(settings, sort_keys=True, allow_nan=False).encode()).hexdigest()
+
+
+def verify_capture(path):
+    """Decode the complete PNG and reject blank output, outside timing windows."""
+    from PIL import Image
+    try:
+        with Image.open(path) as image:
+            if image.format != "PNG":
+                return False
+            image.verify()
+        with Image.open(path) as image:
+            image.load()
+            return image.width > 0 and image.height > 0 and any(low != high for low, high in image.convert("RGB").getextrema())
+    except (OSError, ValueError, SyntaxError):
+        return False
 
 
 def memory_stop_reason(private_bytes, available_bytes, cap_bytes, floor_bytes):
@@ -187,11 +285,17 @@ def operation(state, name, method, params=None, timeout=None, allow_error=False)
 
 
 def frames(state, name, motion=None):
+    # Capture/readback and metadata serialization are outside the timed window.
+    proof = capture(state, name + "_validation")
+    capture_path = state["directory"] / (name + "_validation.png")
+    capture_ok = proof is not None and verify_capture(capture_path)
     state["phase"] = name + "_warmup"
     time.sleep(state["args"].warmup)
     state["phase"] = name
     scene = request(state, "stats", timeout=30).get("result", {})
     camera = request(state, "camera.get", timeout=30).get("result", {})
+    operation(state, name + "_begin", "performance.begin")
+    state["phase"] = name
     samples = []
     end = time.perf_counter() + state["args"].seconds
     index = 0
@@ -210,9 +314,25 @@ def frames(state, name, motion=None):
         samples.append(sample)
         index += 1
         time.sleep(.08)
-    summary = dict(kind="frames", name=name, **summarize_frames(samples))
+    record = operation(state, name + "_end", "performance.end")
+    record["runtime"] = {key: samples[0].get(key) for key in ("renderer", "sdlVersion", "version", "buildConfiguration")} if samples else {}
+    record["host"] = dict(name=platform.node(), os=platform.platform(), machine=platform.machine())
+    summary = dict(kind="frames", name=name, **summarize_capture(record, state["args"].width, state["args"].height, bool(motion)))
+    summary["capture_verified"] = capture_ok
+    summary["capture"] = capture_path.name
+    summary["comparison_key"] = comparison_key(record, bool(motion))
+    summary.update({k: v for k, v in summarize_frames(samples).items() if k.startswith("sampled_")})
+    if not capture_ok:
+        summary["valid"] = False
+        summary["fps"] = None
+        summary["exclusions"].append("capture_failed")
+        for key in list(summary):
+            if key.startswith("frame_interval_"):
+                del summary[key]
+    if not summary["valid"]:
+        summary["measurement_note"] = "EXCLUDE: " + ", ".join(summary["exclusions"])
     state["frames"].append(summary)
-    append_json(state["directory"] / "frames.jsonl", dict(**summary, scene=scene, camera=camera, raw=samples))
+    append_json(state["directory"] / "frames.jsonl", dict(**summary, scene=scene, camera=camera, raw=samples, recording=record))
     print(json.dumps(dict(case=state["case"], scenario=name, fps=summary["fps"])), flush=True)
     return summary
 
@@ -246,6 +366,14 @@ def wait_annotations(state):
             return
         time.sleep(.1)
     raise TimeoutError("Annotation preparation deadline exceeded")
+
+
+def validation_suite(state, file_id, stats):
+    configure_view(state)
+    for scene, properties in ((True, False), (False, False), (False, True), (True, True)):
+        name = f"panes_scene_{int(scene)}_properties_{int(properties)}"
+        operation(state, name, "pane.set", {"visible": scene, "propertiesVisible": properties})
+        frames(state, name)
 
 
 def render_suite(state, file_id, stats):
@@ -754,7 +882,7 @@ def analysis_members_suite(state, file_id, stats):
     operation(state, "member_delete", "analysis.delete", {"target": target})
 
 
-SUITES = {"load": None, "startup": None, "render": render_suite, "mesh": mesh_suite, "uv": uv_suite,
+SUITES = {"load": None, "startup": None, "validation": validation_suite, "render": render_suite, "mesh": mesh_suite, "uv": uv_suite,
           "intersections": intersection_suite, "comparison": comparison_suite, "lifecycle": lifecycle_suite,
           "annotation": annotation_suite, "retention": retention_suite, "batch": batch_suite,
           "controls": controls_suite, "concurrent": concurrent_suite, "comparison-offset": offset_comparison_suite,
@@ -777,6 +905,10 @@ def run_case(args, model, suite, round_index):
                "--log-performance", "--log-frame-interval", "120", "--log-slow-frame-ms", "250"]
     if args.headless:
         command.append("--headless")
+    else:
+        command.extend(["--drawable-size", f"{args.width}x{args.height}"])
+        if not args.visible_window:
+            command.append("--hidden-window")
     if suite == "startup":
         command.extend(["--file", str(model)])
     startup = subprocess.STARTUPINFO() if os.name == "nt" else None
@@ -793,7 +925,8 @@ def run_case(args, model, suite, round_index):
     watcher = threading.Thread(target=monitor, args=(state,), daemon=True)
     watcher.start()
     summary = dict(case=case, suite=suite, round=round_index, model=str(model), bytes=model.stat().st_size,
-                   executable=str(args.executable), headless=args.headless, status="started")
+                   executable=str(args.executable), executable_sha256=hashlib.sha256(args.executable.read_bytes()).hexdigest(),
+                   headless=args.headless, status="started")
     write_json(directory / "case.json", summary)
     try:
         registry = Path(os.environ["LOCALAPPDATA"]) / "woby" / "instances" / ("instance-"+instance+".json")
@@ -816,6 +949,8 @@ def run_case(args, model, suite, round_index):
             raise TimeoutError("Startup deadline exceeded")
         summary["startup_seconds"] = time.perf_counter() - started
         summary["status_before"] = operation(state, "status_before", "status")
+        if not args.headless:
+            operation(state, "initial_panes", "pane.set", {"visible": True, "propertiesVisible": False})
         if suite == "startup":
             objects = operation(state, "startup_inventory", "objects.list")
             loaded_ids = [item["id"] for item in objects["objects"] if item["kind"] == "file"]
@@ -895,7 +1030,10 @@ def main():
     parser.add_argument("--operation-timeout", type=int, default=240)
     add_memory_limit_arguments(parser)
     parser.add_argument("--headless", action="store_true")
-    parser.add_argument("--visible-window", action="store_true", help="Show the window for a separate native UI follow-up")
+    parser.add_argument("--visible-window", action="store_true", default=True, help="Show the desktop window (default)")
+    parser.add_argument("--hidden-window", dest="visible_window", action="store_false", help="Hidden-window control; excluded from desktop FPS")
+    parser.add_argument("--width", type=int, default=1280, help="Required drawable width in pixels")
+    parser.add_argument("--height", type=int, default=720, help="Required drawable height in pixels")
     parser.add_argument("--batch-count", type=int, default=8)
     args = parser.parse_args()
     for name in ("executable", "models", "output"):
@@ -906,6 +1044,8 @@ def main():
         parser.error("Finite measurement settings are required.")
     if not 1 <= args.batch_count <= 512:
         parser.error("Batch count must be 1..512")
+    if not 1 <= args.width <= 16384 or not 1 <= args.height <= 16384:
+        parser.error("Drawable dimensions must be 1..16384")
     if args.headless and args.suite not in ("load", "lifecycle"):
         parser.error("Headless mode does not continuously draw the desktop scene; use load/lifecycle only.")
     models = sorted(args.models.rglob("*.obj"), key=lambda p: p.stat().st_size)
@@ -916,20 +1056,22 @@ def main():
         parser.error("No selected OBJ models")
     args.output.mkdir(parents=True, exist_ok=False)
     manifest = dict(arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
-                    harness_version=3, harness_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                    harness_version=4, harness_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                     python=sys.version, psutil=psutil.__version__,
+                    os=platform.platform(), machine=platform.machine(),
                     executable_sha256=hashlib.sha256(args.executable.read_bytes()).hexdigest(),
                     started_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                     models=[dict(path=str(p), bytes=p.stat().st_size, mtime_ns=p.stat().st_mtime_ns) for p in models],
                     physical_memory=psutil.virtual_memory().total,
-                    frame_sampling="Sparse last-completed-frame samples; FPS from counter deltas / query midpoints. No frame percentiles.")
+                    cache_policy="Fresh viewer per case; warmup before each window. OS file cache and driver caches are uncontrolled, not cold.",
+                    frame_sampling="Bounded complete frame events (16384 max); overflow/mismatches excluded. Completion-interval tails only; no GPU percentiles.")
     write_json(args.output / "manifest.json", manifest)
     shutil.copyfile(Path(__file__), args.output / "harness-source.py")
     gpu_file = (args.output / "gpu.csv").open("w", encoding="utf-8")
     gpu_process = None
     try:
         try:
-            gpu_process = subprocess.Popen(["nvidia-smi", "--query-gpu=timestamp,name,memory.used,utilization.gpu,utilization.memory,temperature.gpu,power.draw,clocks.current.graphics,clocks.current.memory",
+            gpu_process = subprocess.Popen(["nvidia-smi", "--query-gpu=timestamp,name,driver_version,memory.used,utilization.gpu,utilization.memory,temperature.gpu,power.draw,clocks.current.graphics,clocks.current.memory",
                                             "--format=csv,nounits", "-lms", "1000"], stdout=gpu_file, stderr=subprocess.DEVNULL,
                                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
         except OSError:

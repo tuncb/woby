@@ -638,10 +638,13 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         return {{"camera", controlCameraInfo(state)}};
     case A::pane:
         if (command.visible) { setViewerPaneVisible(state, *command.visible); }
+        if (command.propertiesVisible) { setPropertiesPaneVisible(state, *command.propertiesVisible); }
         if (command.width) { setViewerPaneWidth(state, *command.width, minPaneWidth, maxPaneWidth); }
-        return {{"pane", {{"visible", state.viewerPaneVisible}, {"width", state.viewerPaneWidth}}}};
+        return {{"pane", {{"visible", state.viewerPaneVisible}, {"width", state.viewerPaneWidth}}},
+            {"propertiesPane", {{"visible", state.propertiesPaneVisible}, {"width", state.propertiesPaneWidth}}}};
     case A::status: case A::capabilities: case A::modelAdd: case A::modelRemove: case A::folderAdd:
     case A::importersList: case A::importersAdd: case A::importersScan: case A::importersForget: case A::performance:
+    case A::performanceBegin: case A::performanceEnd:
     case A::annotationList: case A::annotationGet: case A::annotationCreate: case A::annotationSet:
     case A::annotationReshape: case A::annotationMove: case A::annotationDelete:
     case A::comparisonFindings: case A::comparisonExport: case A::comparisonExportStatus: case A::comparisonExportCancel:

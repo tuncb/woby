@@ -65,6 +65,24 @@ TEST_CASE("command line defaults keep logging off")
     CHECK(arguments.control.command == woby::ControlCommand::none);
 }
 
+TEST_CASE("fixed window and drawable sizes are explicit bounded desktop options")
+{
+    const auto pixels = parse({"woby", "--drawable-size", "1280x720", "--hidden-window"});
+    REQUIRE(pixels.drawableSize);
+    CHECK((*pixels.drawableSize == std::array<int, 2>{1280, 720}));
+    CHECK(pixels.hiddenWindow);
+    CHECK_FALSE(pixels.windowSize);
+    CHECK(parse({"woby", "--window-size", "800x600"}).windowSize.has_value());
+    for (const auto* invalid : {"", "0x720", "1280x0", "-1x720", "+1x720", "16385x720", "1x9999999999999", "1x2x3", "1x2junk", " 1x2", "1280X720"}) {
+        CHECK_THROWS(parse({"woby", "--drawable-size", invalid}));
+    }
+    CHECK_THROWS(parse({"woby", "--window-size"}));
+    CHECK_THROWS(parse({"woby", "--window-size", "800x600", "--drawable-size", "800x600"}));
+    CHECK_THROWS(parse({"woby", "--drawable-size", "800x600", "--drawable-size", "800x600"}));
+    CHECK_THROWS(parse({"woby", "--headless", "--drawable-size", "800x600"}));
+    CHECK_THROWS(parse({"woby", "--hidden-window", "--headless"}));
+}
+
 TEST_CASE("instance IDs are explicit unique names with portable spelling")
 {
     const auto arguments = parse({"woby", "--instance", "review-01", "--file", "model.obj"});

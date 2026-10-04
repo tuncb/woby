@@ -134,6 +134,23 @@ def aggregate(cases):
             for model, values in imports.items()}
 
 
+def aggregate_frames(cases):
+    groups = defaultdict(list)
+    for case in cases:
+        if case.get("status") != "completed" or not case.get("executable_sha256"):
+            continue
+        for row in case.get("frames", []):
+            if not row.get("valid") or not row.get("capture_verified") or not row.get("comparison_key") or row.get("fps") is None:
+                continue
+            key = (case["executable_sha256"], case["model"], row["name"], row["comparison_key"])
+            groups[key].append(row["fps"])
+    return [dict(executable_sha256=key[0], model=key[1], scenario=key[2], comparison_key=key[3],
+                 runs=len(values), variance_established=len(values) >= 3,
+                 fps_median=statistics.median(values), fps_min=min(values), fps_max=max(values),
+                 fps_stdev=statistics.stdev(values) if len(values) > 1 else None, observations=values)
+            for key, values in sorted(groups.items())]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
@@ -141,9 +158,9 @@ def main():
     args = parser.parse_args()
     root, output = args.input.resolve(), args.output.resolve()
     cases = collect(root)
-    result = dict(source_commit="7f23b97560877266ca75fbc00c38a03e9576a656", raw_root=str(root),
+    result = dict(raw_root=str(root),
                   case_counts=dict(Counter(case["status"] for case in cases)),
-                  import_aggregate=aggregate(cases), cases=cases, cpu_cases=collect_cpu(root))
+                  import_aggregate=aggregate(cases), frame_aggregate=aggregate_frames(cases), cases=cases, cpu_cases=collect_cpu(root))
     for name in ("environment", "dataset-manifest", "vcpkg-baseline"):
         source = root / (name+".json")
         if source.exists():
