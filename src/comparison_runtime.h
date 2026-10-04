@@ -49,11 +49,13 @@ struct IntersectionRuntime {
 struct ComparisonSourceRuntime {
     std::shared_ptr<const PreparedComparisonInputs> prepared;
     std::shared_ptr<const std::array<Mesh, 2>> inputs;
+    uint64_t preparationSignature = 0;
+    bool refreshUvQuality = false;
 };
 struct ComparisonJobRuntime {
     std::stop_source preparationStop;
     std::future<std::shared_ptr<const PreparedComparisonInputs>> preparationWorker;
-    uint64_t preparationSignature = 0;
+    uint64_t preparationSignature = 0, preparationGeometrySignature = 0;
     std::stop_source stop;
     std::future<MeshComparison> worker;
     uint64_t workerSignature = 0;
