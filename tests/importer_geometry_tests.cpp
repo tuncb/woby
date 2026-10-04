@@ -148,7 +148,7 @@ TEST_CASE("Geometry importer validates spline buffers weights domains dimensions
     SUBCASE("unknown flags") { p.flags = 8; }
     SUBCASE("null controls") { p.controls = nullptr; }
     SUBCASE("control count mismatch") { p.control_count = 2; }
-    SUBCASE("control budget") { p.control_count = p.count_u = 2000001; p.knot_count_u = 2000004; }
+    SUBCASE("knot count overflow") { p.control_count = p.count_u = UINT32_MAX; p.knot_count_u = 2; }
     SUBCASE("degree") { p.degree_u = 9; }
     SUBCASE("invalid curve V") { p.count_v = 2; }
     SUBCASE("null knots") { p.knots_u = nullptr; }

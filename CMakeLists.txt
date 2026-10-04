@@ -528,6 +528,23 @@ if(BUILD_TESTING)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+    if(WIN32)
+        # Isolate the deterministic Windows I/O shim from the application's parser.
+        add_executable(woby_rapidobj_reader_tests tests/rapidobj_reader_tests.cpp)
+        target_include_directories(woby_rapidobj_reader_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+        target_link_libraries(woby_rapidobj_reader_tests PRIVATE doctest::doctest Threads::Threads)
+        woby_enable_project_warnings(woby_rapidobj_reader_tests)
+        add_test(NAME woby_rapidobj_reader COMMAND woby_rapidobj_reader_tests)
+        add_dependencies(woby_tests woby_rapidobj_reader_tests)
+        find_package(Vulkan REQUIRED)
+        add_executable(woby_native_allocation_tests tests/native_allocation_tests.cpp)
+        target_include_directories(woby_native_allocation_tests SYSTEM PRIVATE
+            "${woby_ngapi_SOURCE_DIR}/include" "${woby_ngapi_SOURCE_DIR}/src")
+        target_link_libraries(woby_native_allocation_tests PRIVATE doctest::doctest Vulkan::Vulkan)
+        woby_enable_project_warnings(woby_native_allocation_tests)
+        add_test(NAME woby_native_allocations COMMAND woby_native_allocation_tests)
+        add_dependencies(woby_tests woby_native_allocation_tests)
+    endif()
     target_link_libraries(woby_tests PRIVATE
         CDT::CDT
         Boost::multiprecision
