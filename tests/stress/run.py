@@ -110,7 +110,7 @@ def monitor(state):
             return
 
 
-def request(state, method, params=None, timeout=60):
+def rpc_request(state, method, params=None, timeout=60):
     params = dict(params or {})
     if method not in ("instance.info", "command.get"):
         params["timeoutSeconds"] = max(1, min(3600, math.ceil(timeout)))
@@ -124,8 +124,38 @@ def request(state, method, params=None, timeout=60):
     return payload
 
 
+def request(state, method, params=None, timeout=60):
+    if timeout:
+        return rpc_request(state, method, params, timeout)
+    # The RPC deadline only ends the HTTP wait once a command has started.
+    # Follow its ID to completion without resubmitting a load or keeping a
+    # connection open indefinitely. Transport failures still fail the case.
+    payload = rpc_request(state, method, params, 60)
+    error = payload.get("error", {})
+    command = error.get("data", {})
+    if error.get("code") != -32003 or command.get("state") != "running" or not command.get("commandId"):
+        return payload
+    while True:
+        if state["process"].poll() is not None:
+            raise RuntimeError("Viewer exited while waiting for load completion")
+        payload = rpc_request(state, "command.get", {"id": command["commandId"]}, 30)
+        if "error" in payload:
+            return payload
+        result = payload["result"]
+        if result["state"] not in ("queued", "running"):
+            field = "error" if "error" in result else "result"
+            return {field: result[field]}
+        time.sleep(.2)
+
+
+def add_load_timeout_argument(parser):
+    parser.add_argument("--load-timeout", type=int, default=0,
+                        help="Load deadline in seconds; 0 (default) waits until completion")
+
+
 def operation(state, name, method, params=None, timeout=None, allow_error=False):
-    timeout = timeout or state["args"].operation_timeout
+    if timeout is None:
+        timeout = state["args"].operation_timeout
     state["phase"] = name
     begin = time.perf_counter()
     before = len(state["resources"])
@@ -767,7 +797,8 @@ def run_case(args, model, suite, round_index):
     write_json(directory / "case.json", summary)
     try:
         registry = Path(os.environ["LOCALAPPDATA"]) / "woby" / "instances" / ("instance-"+instance+".json")
-        deadline = time.perf_counter() + (args.load_timeout if suite == "startup" else 45)
+        startup_timeout = args.load_timeout if suite == "startup" else 45
+        deadline = time.perf_counter() + startup_timeout if startup_timeout else math.inf
         while time.perf_counter() < deadline:
             if process.poll() is not None:
                 raise RuntimeError(f"Viewer startup exited {process.returncode}")
@@ -860,7 +891,7 @@ def main():
     parser.add_argument("--rounds", type=int, default=1)
     parser.add_argument("--seconds", type=float, default=4)
     parser.add_argument("--warmup", type=float, default=1.5)
-    parser.add_argument("--load-timeout", type=int, default=600)
+    add_load_timeout_argument(parser)
     parser.add_argument("--operation-timeout", type=int, default=240)
     add_memory_limit_arguments(parser)
     parser.add_argument("--headless", action="store_true")
@@ -869,8 +900,8 @@ def main():
     args = parser.parse_args()
     for name in ("executable", "models", "output"):
         setattr(args, name, getattr(args, name).resolve())
-    if args.rounds < 1 or args.seconds < 1 or args.warmup < 0 or args.load_timeout < 1 or args.operation_timeout < 1:
-        parser.error("Positive rounds, measurement seconds, and deadlines are required.")
+    if args.rounds < 1 or args.seconds < 1 or args.warmup < 0 or args.load_timeout < 0 or args.operation_timeout < 1:
+        parser.error("Positive rounds, measurement seconds, and operation deadlines are required; load timeout may be 0.")
     if not all(math.isfinite(value) for value in (args.seconds, args.warmup)):
         parser.error("Finite measurement settings are required.")
     if not 1 <= args.batch_count <= 512:

@@ -243,9 +243,30 @@ void triangulateFreeformTrim(const FreeformPatch& patch,FreeformGrid& grid,const
     }
     for (auto& loop:loops) { indexLoop(loop); }
     validateLoops(c,loops,regions);
+    // Only cells touching the outer-loop bounds can survive trimming. Keep
+    // their enclosing grid lines as constraints, including a neighbor at an
+    // exact grid-line boundary. This preserves every retained cell and knot
+    // line without triangulating the unused remainder of the surface domain.
+    UV lowUv{1,1},highUv{0,0};
+    for (const auto& region:regions) {
+        const auto& outer=loops[region[0]];
+        for (size_t k=0;k<2;++k) { lowUv[k]=std::min(lowUv[k],outer.low[k]); highUv[k]=std::max(highUv[k],outer.high[k]); }
+    }
+    const auto gridRange=[](const std::vector<double>& values,const std::array<double,2>& domain,double low,double high) {
+        const auto normalizedValue=[&](double value) { return (value-domain[0])/(domain[1]-domain[0]); };
+        auto first=std::lower_bound(values.begin(),values.end(),low,
+            [&](double value,double bound) { return normalizedValue(value)<bound; });
+        if (first!=values.begin()) { --first; }
+        auto last=std::upper_bound(first,values.end(),high,
+            [&](double bound,double value) { return bound<normalizedValue(value); });
+        if (last!=values.end()) { ++last; }
+        return std::pair{static_cast<size_t>(first-values.begin()),static_cast<size_t>(last-values.begin())};
+    };
+    const auto [uFirst,uLast]=gridRange(grid.u,patch.domainU,lowUv[0],highUv[0]);
+    const auto [vFirst,vLast]=gridRange(grid.v,patch.domainV,lowUv[1],highUv[1]);
     // Constrain every grid edge as well as trim boundaries. CDT splits their
     // intersections, so neighboring cells share vertices and knot lines survive.
-    const size_t nu=grid.u.size(),nv=grid.v.size();
+    const size_t nu=uLast-uFirst,nv=vLast-vFirst;
     size_t boundary=0; for (const auto& loop:loops) { boundary+=loop.points.size(); }
     // CDT uses 32-bit indices and adds three super-triangle vertices. Include
     // possible grid/boundary intersections before allowing it to insert them.
@@ -255,8 +276,8 @@ void triangulateFreeformTrim(const FreeformPatch& patch,FreeformGrid& grid,const
     }
     std::vector<CDT::V2d<double>> vertices;
     std::vector<CDT::Edge> edges;
-    for (double v:grid.v) for (double u:grid.u) {
-        const auto p=normalized(patch,{u,v,0}); vertices.push_back({p[0],p[1]});
+    for (size_t y=vFirst;y<vLast;++y) for (size_t x=uFirst;x<uLast;++x) {
+        const auto p=normalized(patch,{grid.u[x],grid.v[y],0}); vertices.push_back({p[0],p[1]});
     }
     for (size_t y=0;y<nv;++y) for (size_t x=0;x<nu;++x) {
         const auto i=static_cast<uint32_t>(y*nu+x);
