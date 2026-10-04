@@ -1,0 +1,103 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "30. Threshold filtering",
+  "description": "Catalog workflow 30. Raw measurements → tolerance/range settings → selected findings → counts and overlays. Include which stages are reused or recomputed.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_comparison.cpp; src/mesh_topology.cpp; src/uv_quality.cpp.",
+  "initial_node": "dependency",
+  "nodes": [
+    {
+      "id": "change",
+      "title": "Settings change",
+      "kind": "data",
+      "summary": "Tolerance, threshold, or range",
+      "description": "Normalize settings at the operation boundary and determine which stage owns the changed value.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "dependency",
+      "title": "Which dependency?",
+      "kind": "transform",
+      "summary": "Filter-only or measured input?",
+      "description": "Reuse is stage-specific. Hole/fin filters reuse topology; degenerate criteria invalidate their stage; UV controls participate in preparation signatures.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "reuse",
+      "title": "Reuse measurements",
+      "kind": "transform",
+      "summary": "Existing raw stage remains valid",
+      "description": "Reapply eligible display or finding filters without rerunning unaffected geometry preparation.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "recompute",
+      "title": "Recompute affected work",
+      "kind": "transform",
+      "summary": "Invalidate required stages",
+      "description": "Schedule only the stages whose dependencies changed and reject obsolete worker completions.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "select",
+      "title": "Select findings",
+      "kind": "transform",
+      "summary": "Apply metric-specific rules",
+      "description": "Apply enabled tolerances or ranges to current measurements. UV range selection takes precedence over threshold highlighting.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "display",
+      "title": "Counts and overlays",
+      "kind": "data",
+      "summary": "Current filtered presentation",
+      "description": "Keep raw results, selected counts, and completion status distinguishable.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "change",
+      "to": "dependency"
+    },
+    {
+      "from": "dependency",
+      "to": "reuse",
+      "label": "reusable"
+    },
+    {
+      "from": "dependency",
+      "to": "recompute",
+      "label": "invalidated"
+    },
+    {
+      "from": "reuse",
+      "to": "select"
+    },
+    {
+      "from": "recompute",
+      "to": "select"
+    },
+    {
+      "from": "select",
+      "to": "display"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "54. Saved views",
+  "description": "Catalog workflow 54. Camera and view settings → named snapshot → selection → restored review state.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/ui_views.cpp; src/ui_view_operations.cpp; src/scene_file.cpp.",
+  "initial_node": "capture",
+  "nodes": [
+    {
+      "id": "review",
+      "title": "Current review state",
+      "kind": "data",
+      "summary": "Camera and view settings",
+      "description": "Identify the logical camera and supported view settings to preserve.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "capture",
+      "title": "Capture saved View",
+      "kind": "transform",
+      "summary": "Snapshot supported state",
+      "description": "Create a named view through operations using the project's saved-view mapping.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "saved",
+      "title": "Named snapshot",
+      "kind": "data",
+      "summary": "Persistable review settings",
+      "description": "Store the saved View in logical state and serialize it with the scene.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "select",
+      "title": "Select saved View",
+      "kind": "transform",
+      "summary": "Resolve the named entry",
+      "description": "Choose the saved review state without treating it as a historical execution result.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "restore",
+      "title": "Restore view settings",
+      "kind": "transform",
+      "summary": "Camera and relevant controls",
+      "description": "Apply the saved logical values and invalidate derived data whose inputs changed.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "display",
+      "title": "Restored review",
+      "kind": "data",
+      "summary": "Current geometry, restored view",
+      "description": "Draw the current scene under the restored settings. Transient linked probes are not restored from saved Views.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "review",
+      "to": "capture"
+    },
+    {
+      "from": "capture",
+      "to": "saved"
+    },
+    {
+      "from": "saved",
+      "to": "select"
+    },
+    {
+      "from": "select",
+      "to": "restore"
+    },
+    {
+      "from": "restore",
+      "to": "display"
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "40. PNG export",
+  "description": "Catalog workflow 40. Export settings → result readiness → offscreen rendering → annotations → readback → image encoding.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_screenshot.cpp; src/scene_renderer.cpp; src/main.cpp.",
+  "initial_node": "ready",
+  "nodes": [
+    {
+      "id": "settings",
+      "title": "Export request",
+      "kind": "data",
+      "summary": "Image size, view, annotations",
+      "description": "Capture validated export settings and the logical scene state requested by the user or CLI.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ready",
+      "title": "Required results ready?",
+      "kind": "transform",
+      "summary": "Loads and current analysis",
+      "description": "Wait for the required current results before rendering an image that depends on them.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "wait",
+      "title": "Pending export",
+      "kind": "data",
+      "summary": "Continue required preparation",
+      "description": "Keep the request pending while work completes; propagate failure or cancellation explicitly.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "resume",
+      "title": "Check completion",
+      "kind": "transform",
+      "summary": "Poll the current request",
+      "description": "Revisit export readiness when runtime work completes or reports failure.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "offscreen",
+      "title": "Render offscreen",
+      "kind": "transform",
+      "summary": "Requested resolution and view",
+      "description": "Create appropriate runtime targets and draw the prepared scene.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "annotations",
+      "title": "Compose annotations",
+      "kind": "transform",
+      "summary": "Review overlays and labels",
+      "description": "Add the annotations and applicable overlays required by the export settings.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "readback",
+      "title": "Read pixels",
+      "kind": "transform",
+      "summary": "Keep destination alive",
+      "description": "Wait for graphics readback completion before consuming or releasing its storage.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "encode",
+      "title": "Encode PNG",
+      "kind": "transform",
+      "summary": "Pixels to image file",
+      "description": "Encode the completed image and surface any file or encoder errors.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "file",
+      "title": "Exported image",
+      "kind": "data",
+      "summary": "Reviewable PNG artifact",
+      "description": "The file represents the requested scene and current analysis at export time.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "settings",
+      "to": "ready"
+    },
+    {
+      "from": "ready",
+      "to": "wait",
+      "label": "pending"
+    },
+    {
+      "from": "wait",
+      "to": "resume"
+    },
+    {
+      "from": "resume",
+      "to": "ready",
+      "label": "retry"
+    },
+    {
+      "from": "ready",
+      "to": "offscreen",
+      "label": "current"
+    },
+    {
+      "from": "offscreen",
+      "to": "annotations"
+    },
+    {
+      "from": "annotations",
+      "to": "readback"
+    },
+    {
+      "from": "readback",
+      "to": "encode"
+    },
+    {
+      "from": "encode",
+      "to": "file"
+    }
+  ]
+}

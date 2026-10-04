@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "28. Mesh quality metrics",
+  "description": "Catalog workflow 28. Triangle geometry → longest edge / equivalent size / shape / neighboring size jump → distributions.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/surface_mesh_quality.cpp; src/comparison_report.cpp.",
+  "initial_node": "lengths",
+  "nodes": [
+    {
+      "id": "triangle",
+      "title": "Triangle geometry",
+      "kind": "data",
+      "summary": "Positions and neighboring faces",
+      "description": "Use transformed physical geometry for size and shape metrics.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "lengths",
+      "title": "Measure size",
+      "kind": "transform",
+      "summary": "Longest edge and area",
+      "description": "Compute edge lengths and triangle area in consistent units.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "shape",
+      "title": "Derive face metrics",
+      "kind": "transform",
+      "summary": "Equivalent size and shape",
+      "description": "Calculate the quality module's size and shape values; retain source triangle identity with each measurement.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "neighbors",
+      "title": "Compare neighbors",
+      "kind": "transform",
+      "summary": "Size jump across shared edges",
+      "description": "Use adjacency to compare neighboring triangle sizes, distinguishing absolute size from abrupt transitions.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "values",
+      "title": "Metric distributions",
+      "kind": "data",
+      "summary": "Per-triangle scalar values",
+      "description": "Retain ranges and distributions rather than only a worst face.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "display",
+      "title": "Quality report",
+      "kind": "data",
+      "summary": "Statistics and heatmap selection",
+      "description": "Review the selected metric, units, and highlighted source triangles together.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "triangle",
+      "to": "lengths"
+    },
+    {
+      "from": "lengths",
+      "to": "shape"
+    },
+    {
+      "from": "shape",
+      "to": "neighbors"
+    },
+    {
+      "from": "neighbors",
+      "to": "values"
+    },
+    {
+      "from": "values",
+      "to": "display"
+    }
+  ]
+}

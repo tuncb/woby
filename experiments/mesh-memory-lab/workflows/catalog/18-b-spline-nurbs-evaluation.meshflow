@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "18. B-spline/NURBS evaluation",
+  "description": "Catalog workflow 18. Knots + degree + weights → active spans → basis tables → rational evaluation → geometry.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/freeform.cpp; src/obj_freeform.cpp.",
+  "initial_node": "span",
+  "nodes": [
+    {
+      "id": "definition",
+      "title": "Spline definition",
+      "kind": "data",
+      "summary": "Knots, degree, controls, weights",
+      "description": "Validate the knot vectors, control counts, parameter bounds, and any rational weights.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "span",
+      "title": "Locate active span",
+      "kind": "transform",
+      "summary": "Nonzero basis support",
+      "description": "Find the knot interval for each sample; repeated knots and interval endpoints require consistent handling.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "basis",
+      "title": "Build basis table",
+      "kind": "transform",
+      "summary": "Local recursive basis values",
+      "description": "Evaluate only the basis functions supported on the active span. Inspect partition of unity and repeated-knot behavior.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "weighted",
+      "title": "Weighted sums",
+      "kind": "data",
+      "summary": "Numerator and denominator",
+      "description": "Accumulate basis times control times weight, and basis times weight separately.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "divide",
+      "title": "Rational evaluation",
+      "kind": "transform",
+      "summary": "Divide by weight sum",
+      "description": "Recover the point from homogeneous coordinates. Invalid or singular input must produce a diagnostic rather than non-finite geometry.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "geometry",
+      "title": "Evaluated geometry",
+      "kind": "data",
+      "summary": "Sampled positions and derivatives",
+      "description": "Use the evaluated curve or surface data for tessellation. Compare rational and unit-weight cases with the same knots.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "definition",
+      "to": "span"
+    },
+    {
+      "from": "span",
+      "to": "basis"
+    },
+    {
+      "from": "basis",
+      "to": "weighted"
+    },
+    {
+      "from": "weighted",
+      "to": "divide"
+    },
+    {
+      "from": "divide",
+      "to": "geometry"
+    }
+  ]
+}

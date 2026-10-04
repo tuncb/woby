@@ -1,0 +1,103 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "48. Allocation and reuse",
+  "description": "Catalog workflow 48. Repeated operation → reusable storage lookup → allocation/reuse → peak memory and retained capacity.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_renderer.cpp; src/marker_pick.cpp; src/comparison_scene.cpp.",
+  "initial_node": "lookup",
+  "nodes": [
+    {
+      "id": "operation",
+      "title": "Repeated operation",
+      "kind": "data",
+      "summary": "Current geometry and settings",
+      "description": "Distinguish a repeated request with unchanged inputs from one that needs new derived data.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "lookup",
+      "title": "Reusable storage?",
+      "kind": "transform",
+      "summary": "Check cache key and capacity",
+      "description": "Inspect current cached resources and required capacity rather than assuming every operation allocates.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "reuse",
+      "title": "Reuse allocation",
+      "kind": "transform",
+      "summary": "Capacity and inputs suffice",
+      "description": "Reuse prepared geometry or scratch capacity while respecting ownership and current signatures.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "allocate",
+      "title": "Allocate or grow",
+      "kind": "transform",
+      "summary": "Missing or insufficient storage",
+      "description": "Record the new allocation, its payload, and any replaced resource that remains in flight.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "measure",
+      "title": "Measure memory",
+      "kind": "transform",
+      "summary": "Live bytes and retained capacity",
+      "description": "Peak resident memory includes overlapping lifetimes; vector capacity and GPU allocation can exceed logical payload.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "report",
+      "title": "Experiment report",
+      "kind": "data",
+      "summary": "Allocations, peak, retained bytes",
+      "description": "Compare repeated runs with the same fixture and settings. This diagram explains the experiment; it does not serialize allocation measurements.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "operation",
+      "to": "lookup"
+    },
+    {
+      "from": "lookup",
+      "to": "reuse",
+      "label": "hit"
+    },
+    {
+      "from": "lookup",
+      "to": "allocate",
+      "label": "miss"
+    },
+    {
+      "from": "reuse",
+      "to": "measure"
+    },
+    {
+      "from": "allocate",
+      "to": "measure"
+    },
+    {
+      "from": "measure",
+      "to": "report"
+    }
+  ]
+}

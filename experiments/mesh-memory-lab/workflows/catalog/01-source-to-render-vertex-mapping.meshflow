@@ -1,0 +1,127 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "01. Source-to-render vertex mapping",
+  "description": "Catalog workflow 01. Source position IDs → corner tuples → lookup → existing/new vertex → index buffer. Inspect why vertices split or remain shared.\n\nLive OBJ example: bound nodes open the existing polygonal pipeline inspectors; other nodes explain the workflow.\n\nImplementation: src/obj_mesh.cpp; experiments/mesh-memory-lab/trace.cpp.",
+  "initial_node": "lookup",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "Source positions",
+      "kind": "data",
+      "summary": "Six positions, two quads",
+      "description": "Inspect source position IDs independently of UV and normal IDs. The folded sheet deliberately reuses positions across a seam.",
+      "inspector": "source",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "corners",
+      "title": "Corner tuples",
+      "kind": "data",
+      "summary": "Position / UV / normal",
+      "description": "Triangulation emits triples of independent attribute references; the same position may occur with different UV or normal references.",
+      "inspector": "corners",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "lookup",
+      "title": "Tuple lookup",
+      "kind": "transform",
+      "summary": "Has this key been seen?",
+      "description": "Inspect the per-corner packing event. Reuse requires the complete tuple to match, not just the source position.",
+      "inspector": "pack",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "reuse",
+      "title": "Reuse vertex",
+      "kind": "transform",
+      "summary": "Existing tuple -> index",
+      "description": "A matching tuple reuses its existing render index; no extra vertex payload is appended.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "create",
+      "title": "Create vertex",
+      "kind": "transform",
+      "summary": "New tuple -> packed record",
+      "description": "A first occurrence appends a packed vertex and precise position, and remembers its render index.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "indices",
+      "title": "Index stream",
+      "kind": "data",
+      "summary": "One index for each corner",
+      "description": "Both lookup outcomes emit an index. Follow source corner IDs through this stream to the actual render vertex.",
+      "inspector": "mesh",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "render",
+      "title": "GPU fetch",
+      "kind": "data",
+      "summary": "Indexed vertex records",
+      "description": "The folded fixture has eight render vertices from six source positions. Inspect the uploaded bytes and explain every split.",
+      "inspector": "gpu",
+      "position": [
+        930,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "corners"
+    },
+    {
+      "from": "corners",
+      "to": "lookup"
+    },
+    {
+      "from": "lookup",
+      "to": "reuse",
+      "label": "hit"
+    },
+    {
+      "from": "lookup",
+      "to": "create",
+      "label": "miss"
+    },
+    {
+      "from": "reuse",
+      "to": "indices"
+    },
+    {
+      "from": "create",
+      "to": "indices"
+    },
+    {
+      "from": "indices",
+      "to": "render"
+    }
+  ],
+  "source": {
+    "format": "obj",
+    "text": "# Two quads folded along a shared edge; independent UV and normal domains.\no folded_sheet\nv 1000000000.000125 -1 0\nv 1000000002.000125 -1 0\nv 1000000002.000125 1 0\nv 1000000000.000125 1 0\nv 1000000002.000125 1 2\nv 1000000000.000125 1 2\nvt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\nvt 0.2 0\nvt 0.8 0\nvt 0.8 1\nvt 0.2 1\nvn 0 0 1\nvn 0 -1 0\nf 1/1/1 2/2/1 3/3/1 4/4/1\nf 4/5/2 3/6/2 5/7/2 6/8/2\n"
+  }
+}

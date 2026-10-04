@@ -1,0 +1,101 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "26. Comparison direction",
+  "description": "Catalog workflow 26. A-to-B and B-to-A branches → separate samples → separate statistics. Show why results can differ.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_comparison.cpp.",
+  "initial_node": "ab",
+  "nodes": [
+    {
+      "id": "inputs",
+      "title": "Meshes A and B",
+      "kind": "data",
+      "summary": "Aligned analysis geometry",
+      "description": "Both meshes use a common coordinate frame, but each side has its own sampling distribution.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "ab",
+      "title": "Sample A against B",
+      "kind": "transform",
+      "summary": "A centroids -> B surface",
+      "description": "Measure distances for A's four subtriangle centroids per triangle, using B's acceleration structure.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "ba",
+      "title": "Sample B against A",
+      "kind": "transform",
+      "summary": "B centroids -> A surface",
+      "description": "Measure B's own sample points against A's surface; this is a separate computation.",
+      "position": [
+        310,
+        380
+      ]
+    },
+    {
+      "id": "statsa",
+      "title": "A-to-B statistics",
+      "kind": "data",
+      "summary": "Areas and distances on A",
+      "description": "Maximum, mean, and P95 summarize A's samples with their associated areas.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "statsb",
+      "title": "B-to-A statistics",
+      "kind": "data",
+      "summary": "Areas and distances on B",
+      "description": "Different coverage, tessellation, or missing regions can produce different statistics in this direction.",
+      "position": [
+        620,
+        380
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Directional comparison",
+      "kind": "data",
+      "summary": "Keep both result sets",
+      "description": "Compare both directions explicitly. A surface contained in a larger surface can have a small one-way distance and a larger reverse distance.",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "inputs",
+      "to": "ab"
+    },
+    {
+      "from": "inputs",
+      "to": "ba"
+    },
+    {
+      "from": "ab",
+      "to": "statsa"
+    },
+    {
+      "from": "ba",
+      "to": "statsb"
+    },
+    {
+      "from": "statsa",
+      "to": "review"
+    },
+    {
+      "from": "statsb",
+      "to": "review"
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "03. Authored versus generated normals",
+  "description": "Catalog workflow 03. Normal records → validation → authored/fallback branch → packed normals.\n\nLive OBJ example: bound nodes open the existing polygonal pipeline inspectors; other nodes explain the workflow.\n\nImplementation: src/obj_mesh.cpp; src/model_mesh.cpp.",
+  "initial_node": "validate",
+  "nodes": [
+    {
+      "id": "records",
+      "title": "Normal records",
+      "kind": "data",
+      "summary": "Valid, missing, or zero",
+      "description": "This fixture includes one valid and one zero normal. Change the zero normal to a valid direction to exercise preservation.",
+      "inspector": "attributes",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "pack",
+      "title": "Pack references",
+      "kind": "transform",
+      "summary": "Copy authored attributes",
+      "description": "Resolve normal references while packing the corner tuples. Missing normals start without a valid direction.",
+      "inspector": "pack",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Complete normals?",
+      "kind": "transform",
+      "summary": "All packed normals valid?",
+      "description": "finalizeMesh checks completeness. With generation enabled, one invalid or missing normal triggers regeneration for the whole mesh.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "authored",
+      "title": "Authored branch",
+      "kind": "data",
+      "summary": "Keep complete normal set",
+      "description": "A complete valid normal set retains its authored directions; compare against the fallback fixture.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "generate",
+      "title": "Generate normals",
+      "kind": "transform",
+      "summary": "Accumulate then normalize",
+      "description": "Clear all normals, accumulate face contributions at packed vertices, then normalize. Vertex splits determine which faces can smooth together.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "mesh",
+      "title": "Final normals",
+      "kind": "data",
+      "summary": "Packed vertex normal fields",
+      "description": "Inspect the final normal fields and the generated-normal indicator. The invalid record exercises whole-mesh fallback.",
+      "inspector": "mesh",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "records",
+      "to": "pack"
+    },
+    {
+      "from": "pack",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "authored",
+      "label": "complete"
+    },
+    {
+      "from": "validate",
+      "to": "generate",
+      "label": "incomplete"
+    },
+    {
+      "from": "authored",
+      "to": "mesh"
+    },
+    {
+      "from": "generate",
+      "to": "mesh"
+    }
+  ],
+  "source": {
+    "format": "obj",
+    "text": "# One authored normal and one invalid normal trigger whole-mesh regeneration.\nv 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\nvn 0 0 1\nvn 0 0 0\nf 1//1 2//1 3//1\nf 1//2 4//2 2//2\n"
+  }
+}

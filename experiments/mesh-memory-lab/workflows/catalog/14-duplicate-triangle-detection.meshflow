@@ -1,0 +1,86 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "14. Duplicate triangle detection",
+  "description": "Catalog workflow 14. Triangle references or coordinates → canonical keys → duplicate groups. Explain identity and geometric duplicates.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_duplicates.cpp; src/mesh_duplicates.h.",
+  "initial_node": "identity",
+  "nodes": [
+    {
+      "id": "triangles",
+      "title": "Source triangles",
+      "kind": "data",
+      "summary": "References and coordinates",
+      "description": "Retain original triangle identities even when render vertices split along seams.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "identity",
+      "title": "Identity key",
+      "kind": "transform",
+      "summary": "Canonical source references",
+      "description": "Canonicalize the triangle's source vertex references to find repeated indexed triangles.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "geometric",
+      "title": "Geometric key",
+      "kind": "transform",
+      "summary": "Canonical coordinates",
+      "description": "Canonicalize vertex coordinates to detect coincident triangles that use different source IDs.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "groups",
+      "title": "Duplicate groups",
+      "kind": "data",
+      "summary": "Identity and geometry evidence",
+      "description": "Report group membership and original triangle references. Keep the two notions of duplication distinguishable.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "inspect",
+      "title": "Prepare findings",
+      "kind": "transform",
+      "summary": "Bounds and highlighted triangles",
+      "description": "Allow a reviewer to inspect authored duplicates separately from geometric coincidence across identities.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "triangles",
+      "to": "identity"
+    },
+    {
+      "from": "triangles",
+      "to": "geometric"
+    },
+    {
+      "from": "identity",
+      "to": "groups"
+    },
+    {
+      "from": "geometric",
+      "to": "groups"
+    },
+    {
+      "from": "groups",
+      "to": "inspect"
+    }
+  ]
+}

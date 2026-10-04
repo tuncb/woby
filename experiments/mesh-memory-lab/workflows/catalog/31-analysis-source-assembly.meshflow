@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "31. Analysis source assembly",
+  "description": "Catalog workflow 31. Selected folders/files/parts → eligible triangular parts → deduplication → transformed source snapshot.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/comparison_scene.cpp.",
+  "initial_node": "visit",
+  "nodes": [
+    {
+      "id": "selection",
+      "title": "Analysis sources",
+      "kind": "data",
+      "summary": "Folders, files, and parts",
+      "description": "The same part may be reachable through a parent folder and an explicit selection.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "visit",
+      "title": "Traverse selection",
+      "kind": "transform",
+      "summary": "Resolve current descendants",
+      "description": "Walk eligible source objects and their effective hierarchy transforms.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "eligible",
+      "title": "Filter parts",
+      "kind": "transform",
+      "summary": "Enabled triangular geometry",
+      "description": "Reject ineligible primitive kinds or unavailable inputs before constructing triangle analysis data.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "deduplicate",
+      "title": "Deduplicate sources",
+      "kind": "transform",
+      "summary": "Each source part once",
+      "description": "Avoid double-counting a part selected both directly and through a containing folder.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "transform",
+      "title": "Assemble snapshot",
+      "kind": "transform",
+      "summary": "Compose transforms and origins",
+      "description": "Copy owned arrays and stable source references into a common analysis coordinate frame.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "snapshot",
+      "title": "Worker input",
+      "kind": "data",
+      "summary": "Geometry plus signature",
+      "description": "The worker can safely outlive UI edits; its signature identifies the inputs used for later acceptance checks.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "selection",
+      "to": "visit"
+    },
+    {
+      "from": "visit",
+      "to": "eligible"
+    },
+    {
+      "from": "eligible",
+      "to": "deduplicate"
+    },
+    {
+      "from": "deduplicate",
+      "to": "transform"
+    },
+    {
+      "from": "transform",
+      "to": "snapshot"
+    }
+  ]
+}

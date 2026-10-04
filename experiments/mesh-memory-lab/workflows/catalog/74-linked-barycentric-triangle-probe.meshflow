@@ -1,0 +1,129 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "74. Linked barycentric triangle probe",
+  "description": "Catalog workflow 74. Solid source/analysis hit → part and triangle identity → barycentric weights → validated probe → matching triangle and point in both views. Finding rows and overlap-pair buttons can select centroids through the same probe state.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_pick.cpp; src/ui_operations.cpp:setUvProbe; src/uv_quality_view.cpp.",
+  "initial_node": "validate",
+  "nodes": [
+    {
+      "id": "hit",
+      "title": "Solid surface hit",
+      "kind": "data",
+      "summary": "Source or analysis triangle",
+      "description": "Resolve a hit to the source part and its one-based triangle ID; preserve barycentric weights from the hit.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "row",
+      "title": "Finding or pair row",
+      "kind": "data",
+      "summary": "Select a triangle centroid",
+      "description": "Finding rows and overlap-pair buttons choose the same source identity with weights (1/3,1/3,1/3).",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "identity",
+      "title": "Probe request",
+      "kind": "data",
+      "summary": "Part, triangle, barycentric weights",
+      "description": "Both entry paths use one logical probe representation, not unrelated per-view selections.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Validate probe",
+      "kind": "transform",
+      "summary": "Enabled analysis and linked selection",
+      "description": "Check enabled source membership, triangle bounds, finite weights near [0,1], and sum near 1 using the operation's 1e-8 tolerance.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "state",
+      "title": "Transient probe",
+      "kind": "data",
+      "summary": "Current signature and source identity",
+      "description": "setUvProbe selects the analysis and stores the current geometry/settings signature with the validated probe.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "surface",
+      "title": "Draw surface probe",
+      "kind": "transform",
+      "summary": "Matching triangle and interpolated point",
+      "description": "Reconstruct the selected point in the source surface frame using the recorded weights.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "layout",
+      "title": "Draw layout probe",
+      "kind": "transform",
+      "summary": "Corresponding UV triangle and point",
+      "description": "Use the same source identity and weights in the analysis view, including display offsets.",
+      "position": [
+        310,
+        380
+      ]
+    },
+    {
+      "id": "rejected",
+      "title": "Invalid probe request",
+      "kind": "data",
+      "summary": "No invalid selection published",
+      "description": "Reject unavailable triangles, disabled linked selection, or invalid barycentric coordinates.",
+      "position": [
+        930,
+        0
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "hit",
+      "to": "identity"
+    },
+    {
+      "from": "row",
+      "to": "identity"
+    },
+    {
+      "from": "identity",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "state",
+      "label": "valid"
+    },
+    {
+      "from": "validate",
+      "to": "rejected",
+      "label": "invalid"
+    },
+    {
+      "from": "state",
+      "to": "surface"
+    },
+    {
+      "from": "state",
+      "to": "layout"
+    }
+  ]
+}

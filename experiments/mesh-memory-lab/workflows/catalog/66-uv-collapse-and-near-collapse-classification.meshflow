@@ -1,0 +1,137 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "66. UV collapse and near-collapse classification",
+  "description": "Catalog workflow 66. Surface/UV edge scales → relative area checks → missing/collapsed/degenerate exclusions → minimum-stretch threshold → near-collapse findings. Keep already collapsed triangles out of near-collapse counts.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_quality.cpp:analyzeUvQuality, validUvTriangle, updateUvQualityStatistics.",
+  "initial_node": "missing",
+  "nodes": [
+    {
+      "id": "triangle",
+      "title": "Triangle inputs",
+      "kind": "data",
+      "summary": "Surface and UV edge scales",
+      "description": "Retain physical area, UV area, and maximum squared edge length in each domain.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "missing",
+      "title": "UVs supplied?",
+      "kind": "transform",
+      "summary": "Missing UV classification",
+      "description": "A part without supplied texture coordinates sets missing=true and cannot contribute a valid UV metric.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "relative",
+      "title": "Relative area checks",
+      "kind": "transform",
+      "summary": "Area <= 1e-12 * max edge squared",
+      "description": "Apply the scale-relative criterion separately to surface area and UV area. This avoids dependence on translation and uniform scale.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "excluded",
+      "title": "Invalid mapping",
+      "kind": "data",
+      "summary": "Missing / collapsed / degenerate",
+      "description": "Retain explicit invalid flags and findings. Do not also count these triangles as near-collapse.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "stretch",
+      "title": "Compute min stretch",
+      "kind": "transform",
+      "summary": "Valid surface-to-UV map",
+      "description": "Evaluate the smallest singular value and apply the selected normalization before the near-collapse comparison.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "threshold",
+      "title": "Near-collapse check",
+      "kind": "transform",
+      "summary": "minStretch < uvNearCollapse",
+      "description": "A valid triangle below the configured minimum-stretch threshold contributes one near-collapse finding.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "near",
+      "title": "Near-collapse finding",
+      "kind": "data",
+      "summary": "Valid but poorly conditioned",
+      "description": "Report small positive stretch as a distinct condition from already collapsed UVs.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "healthy",
+      "title": "Outside this criterion",
+      "kind": "data",
+      "summary": "No near-collapse finding",
+      "description": "The mapping can still have other findings such as overlap, orientation mixing, or excessive angle distortion.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "triangle",
+      "to": "missing"
+    },
+    {
+      "from": "missing",
+      "to": "relative",
+      "label": "supplied"
+    },
+    {
+      "from": "missing",
+      "to": "excluded",
+      "label": "absent"
+    },
+    {
+      "from": "relative",
+      "to": "excluded",
+      "label": "invalid"
+    },
+    {
+      "from": "relative",
+      "to": "stretch",
+      "label": "valid"
+    },
+    {
+      "from": "stretch",
+      "to": "threshold"
+    },
+    {
+      "from": "threshold",
+      "to": "near",
+      "label": "below"
+    },
+    {
+      "from": "threshold",
+      "to": "healthy",
+      "label": "otherwise"
+    }
+  ]
+}

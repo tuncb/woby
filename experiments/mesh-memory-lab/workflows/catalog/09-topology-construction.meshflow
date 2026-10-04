@@ -1,0 +1,133 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "09. Topology construction",
+  "description": "Catalog workflow 09. Source identities → vertices → edge uses → face adjacency → connected components. Compare original-index and exact-position modes.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_topology.cpp; src/mesh_topology.h.",
+  "initial_node": "mode",
+  "nodes": [
+    {
+      "id": "source",
+      "title": "Source identities",
+      "kind": "data",
+      "summary": "Points and triangle references",
+      "description": "Use source lineage rather than treating every UV or normal split as a distinct geometric vertex.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "mode",
+      "title": "Identity mode?",
+      "kind": "transform",
+      "summary": "Original IDs or exact positions",
+      "description": "Select the topology equivalence rule. Coincident but separately authored vertices differ in original-index mode.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "original",
+      "title": "Original-index keys",
+      "kind": "transform",
+      "summary": "Keep source identities",
+      "description": "Group corners by original source vertex identity within its source domain.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "exact",
+      "title": "Exact-position keys",
+      "kind": "transform",
+      "summary": "Merge equal coordinates",
+      "description": "Use exact coordinates as the grouping key; this is not an epsilon weld.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "vertices",
+      "title": "Topology vertices",
+      "kind": "data",
+      "summary": "Corner-to-vertex mapping",
+      "description": "Retain the mapping back to source triangles so findings can navigate to their origin.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "edges",
+      "title": "Collect edge uses",
+      "kind": "transform",
+      "summary": "Undirected key, directed uses",
+      "description": "For each triangle, record its three directed uses under canonical edge keys.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "adjacency",
+      "title": "Face adjacency",
+      "kind": "data",
+      "summary": "Neighbors through shared edges",
+      "description": "Edge incidence supplies boundary, non-manifold, and winding information.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "components",
+      "title": "Find components",
+      "kind": "transform",
+      "summary": "Traverse connected faces",
+      "description": "Build connected components and expose counts and membership under the selected mode.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "source",
+      "to": "mode"
+    },
+    {
+      "from": "mode",
+      "to": "original",
+      "label": "IDs"
+    },
+    {
+      "from": "mode",
+      "to": "exact",
+      "label": "positions"
+    },
+    {
+      "from": "original",
+      "to": "vertices"
+    },
+    {
+      "from": "exact",
+      "to": "vertices"
+    },
+    {
+      "from": "vertices",
+      "to": "edges"
+    },
+    {
+      "from": "edges",
+      "to": "adjacency"
+    },
+    {
+      "from": "adjacency",
+      "to": "components"
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "56. CLI automation request",
+  "description": "Catalog workflow 56. Command → protocol validation → application queue → UI operation → completion/error response.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/control_protocol.cpp; src/automation.cpp; src/main.cpp; src/control_scene.cpp.",
+  "initial_node": "validate",
+  "nodes": [
+    {
+      "id": "command",
+      "title": "CLI request",
+      "kind": "data",
+      "summary": "Action, target, arguments",
+      "description": "Parse the user's command into the application's control protocol.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Validate protocol",
+      "kind": "transform",
+      "summary": "Types, bounds, supported fields",
+      "description": "Reject malformed requests before they can enter scene operations.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "queue",
+      "title": "Application queue",
+      "kind": "data",
+      "summary": "Owned request and response context",
+      "description": "Transfer the validated request to the application's execution boundary.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "operation",
+      "title": "Execute operation",
+      "kind": "transform",
+      "summary": "UI-thread logical mutation",
+      "description": "Use the same operation layer as interactive controls for scene-visible changes.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "wait",
+      "title": "Await required work",
+      "kind": "transform",
+      "summary": "Loads, results, or export",
+      "description": "Commands that depend on asynchronous preparation wait for current results according to their completion contract.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "response",
+      "title": "Completion response",
+      "kind": "data",
+      "summary": "Structured result or error",
+      "description": "Return explicit success data or an actionable error to the requesting process.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "error",
+      "title": "Rejected request",
+      "kind": "data",
+      "summary": "No invalid logical mutation",
+      "description": "Return protocol or operation validation errors without publishing invalid scene state.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "command",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "queue",
+      "label": "valid"
+    },
+    {
+      "from": "validate",
+      "to": "error",
+      "label": "invalid"
+    },
+    {
+      "from": "queue",
+      "to": "operation"
+    },
+    {
+      "from": "operation",
+      "to": "wait"
+    },
+    {
+      "from": "operation",
+      "to": "error",
+      "label": "rejected"
+    },
+    {
+      "from": "wait",
+      "to": "response"
+    }
+  ]
+}

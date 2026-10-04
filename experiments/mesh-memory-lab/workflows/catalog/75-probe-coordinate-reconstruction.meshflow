@@ -1,0 +1,107 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "75. Probe coordinate reconstruction",
+  "description": "Catalog workflow 75. Part transform + source triangle + barycentric weights → surface position and interpolated UV → layout/separation/analysis translation → display position. Track scene coordinate origin, existing OBJ V flip, and null positions for unavailable layout geometry.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/comparison_scene.cpp:comparisonSourceTriangle; src/control_uv.cpp:controlUvProbe; src/obj_mesh.cpp.",
+  "initial_node": "surface",
+  "nodes": [
+    {
+      "id": "probe",
+      "title": "Validated probe",
+      "kind": "data",
+      "summary": "Source triangle and weights",
+      "description": "Resolve a current source part/triangle and barycentric weights; see workflow 76 for lifetime rules.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "surface",
+      "title": "Reconstruct surface",
+      "kind": "transform",
+      "summary": "Apply source hierarchy transform",
+      "description": "Interpolate the transformed source triangle. surfacePosition is relative to coordinateOrigin; adding that origin recovers the original scene frame.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "uv",
+      "title": "Interpolate supplied UV",
+      "kind": "transform",
+      "summary": "Weighted UV corner sum",
+      "description": "Use sum(weight[k]*uv[k]). OBJ import already applies its V flip; do not flip a second time in the probe response.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "display",
+      "title": "Find displayed triangle",
+      "kind": "transform",
+      "summary": "Surface or UV layout geometry",
+      "description": "Locate the matching source part and triangle in the prepared analysis mesh, which already includes layout and patch separation.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "position",
+      "title": "Interpolate display",
+      "kind": "transform",
+      "summary": "Then add analysis translation",
+      "description": "Interpolate the displayed triangle using the same weights and add the comparison's display translation.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "response",
+      "title": "Probe coordinates",
+      "kind": "data",
+      "summary": "Surface, UV, display, origin",
+      "description": "Return each position with its reference-frame meaning. Missing UVs produce null UV; unavailable layout geometry produces null displayPosition. Display separation does not change surfacePosition or UV.",
+      "position": [
+        620,
+        0
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "probe",
+      "to": "surface"
+    },
+    {
+      "from": "probe",
+      "to": "uv"
+    },
+    {
+      "from": "surface",
+      "to": "response"
+    },
+    {
+      "from": "uv",
+      "to": "display"
+    },
+    {
+      "from": "display",
+      "to": "position",
+      "label": "available"
+    },
+    {
+      "from": "display",
+      "to": "response",
+      "label": "absent"
+    },
+    {
+      "from": "position",
+      "to": "response"
+    }
+  ]
+}

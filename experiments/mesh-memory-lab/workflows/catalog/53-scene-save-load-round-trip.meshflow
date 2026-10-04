@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "53. Scene save/load round trip",
+  "description": "Catalog workflow 53. Logical state → `.woby` mapping → relative paths → saved document → validation → reconstructed scene.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_file.cpp; src/scene_lifecycle.cpp; src/scene_history_load.cpp.",
+  "initial_node": "mapping",
+  "nodes": [
+    {
+      "id": "state",
+      "title": "Logical scene",
+      "kind": "data",
+      "summary": "Persisted properties and references",
+      "description": "Map authored scene state into the .woby schema; runtime graphics handles and transient probes are excluded.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "mapping",
+      "title": "Serialize scene",
+      "kind": "transform",
+      "summary": "Explicit schema mapping",
+      "description": "Write properties for objects, analysis settings, annotations, and saved views using the established field mapping.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "paths",
+      "title": "Resolve model paths",
+      "kind": "transform",
+      "summary": "Scene-relative references",
+      "description": "Resolve paths relative to the scene file's explicit base. Cross-drive paths must follow production validation rules.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "document",
+      "title": "Saved .woby file",
+      "kind": "data",
+      "summary": "Portable logical description",
+      "description": "The scene file stores settings and source references, not a frozen capture of live analysis or GPU resources.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Read and normalize",
+      "kind": "transform",
+      "summary": "Schema, values, source paths",
+      "description": "Validate the document and normalize supported settings at load boundaries before scene use.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "reload",
+      "title": "Reconstruct sources",
+      "kind": "transform",
+      "summary": "Load referenced models",
+      "description": "Resolve all related paths from the scene base and load the required inputs with explicit diagnostics.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "scene",
+      "title": "Reconstructed scene",
+      "kind": "data",
+      "summary": "Settings restored, data recomputed",
+      "description": "Rebuild derived results from current sources and code. Compare round-trip logical state separately from computed data.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "state",
+      "to": "mapping"
+    },
+    {
+      "from": "mapping",
+      "to": "paths"
+    },
+    {
+      "from": "paths",
+      "to": "document"
+    },
+    {
+      "from": "document",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "reload"
+    },
+    {
+      "from": "reload",
+      "to": "scene"
+    }
+  ]
+}

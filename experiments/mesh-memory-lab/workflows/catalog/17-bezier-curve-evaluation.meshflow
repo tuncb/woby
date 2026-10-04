@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "17. Bézier curve evaluation",
+  "description": "Catalog workflow 17. Control points → parameter samples → basis weights → evaluated points → line segments.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/freeform.cpp; src/obj_freeform.cpp.",
+  "initial_node": "samples",
+  "nodes": [
+    {
+      "id": "controls",
+      "title": "Curve controls",
+      "kind": "data",
+      "summary": "Ordered control points",
+      "description": "Read the curve degree, control references, parameter interval, and optional rational weights.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "samples",
+      "title": "Sample parameter",
+      "kind": "transform",
+      "summary": "Values across the active interval",
+      "description": "Choose parameter samples from the evaluation settings, including valid endpoints.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "basis",
+      "title": "Evaluate basis",
+      "kind": "transform",
+      "summary": "Bezier blending weights",
+      "description": "Compute the control-point contributions at each parameter. Basis weights explain how a moved control affects the curve.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "points",
+      "title": "Blend controls",
+      "kind": "transform",
+      "summary": "Polynomial or rational point",
+      "description": "Combine the controls; rational evaluation divides the weighted position sum by the weight sum.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "polyline",
+      "title": "Evaluated points",
+      "kind": "data",
+      "summary": "Ordered samples with parameters",
+      "description": "Keep parameter order and inspect endpoints, intermediate samples, and numerical validity.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "segments",
+      "title": "Connect neighbors",
+      "kind": "transform",
+      "summary": "Polyline approximation",
+      "description": "Join adjacent samples into line segments. Sampling density changes the displayed approximation, not the authored controls.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "controls",
+      "to": "samples"
+    },
+    {
+      "from": "samples",
+      "to": "basis"
+    },
+    {
+      "from": "basis",
+      "to": "points"
+    },
+    {
+      "from": "points",
+      "to": "polyline"
+    },
+    {
+      "from": "polyline",
+      "to": "segments"
+    }
+  ]
+}

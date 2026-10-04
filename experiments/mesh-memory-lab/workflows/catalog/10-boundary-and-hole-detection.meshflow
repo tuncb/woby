@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "10. Boundary and hole detection",
+  "description": "Catalog workflow 10. Edge incidence → boundary edges → loops/open chains/branches → size filtering → findings.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_topology.cpp; src/mesh_comparison.cpp.",
+  "initial_node": "boundary",
+  "nodes": [
+    {
+      "id": "incidence",
+      "title": "Edge incidence",
+      "kind": "data",
+      "summary": "Topology and source references",
+      "description": "Start with edge-use counts under the chosen topology mode.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "boundary",
+      "title": "Find boundary edges",
+      "kind": "transform",
+      "summary": "Exactly one incident face",
+      "description": "Exclude interior edges; retain endpoints and supporting face references.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "walk",
+      "title": "Trace boundary graph",
+      "kind": "transform",
+      "summary": "Follow connected edge uses",
+      "description": "Build connected boundary findings and classify whether vertices form a closed loop, an open chain, or a branch.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "shape",
+      "title": "Boundary classes",
+      "kind": "data",
+      "summary": "Loops / chains / branches",
+      "description": "Do not report a branched or open component as a simple closed hole. Retain bounds and sizes for inspection.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "filter",
+      "title": "Apply size settings",
+      "kind": "transform",
+      "summary": "Closed loops within tolerance",
+      "description": "Only closed loops with an available size ratio at or below the hole tolerance become hole findings. Chains and branches remain boundary classifications.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "findings",
+      "title": "Hole findings",
+      "kind": "data",
+      "summary": "Counts and navigation geometry",
+      "description": "Inspect loop length, extent, and source references; frame the selected boundary in the scene.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "incidence",
+      "to": "boundary"
+    },
+    {
+      "from": "boundary",
+      "to": "walk"
+    },
+    {
+      "from": "walk",
+      "to": "shape"
+    },
+    {
+      "from": "shape",
+      "to": "filter"
+    },
+    {
+      "from": "filter",
+      "to": "findings"
+    }
+  ]
+}

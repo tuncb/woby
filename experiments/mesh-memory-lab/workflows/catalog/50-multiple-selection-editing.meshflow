@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "50. Multiple-selection editing",
+  "description": "Catalog workflow 50. Selected objects → mixed-value detection → edited field → per-object changes → resulting state.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_inspector.cpp; src/ui_property_operations.cpp; src/scene_objects.cpp.",
+  "initial_node": "mixed",
+  "nodes": [
+    {
+      "id": "selection",
+      "title": "Selected objects",
+      "kind": "data",
+      "summary": "Eligible targets and kinds",
+      "description": "Resolve the active multi-selection without assuming all selected objects expose every property.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "mixed",
+      "title": "Read selected values",
+      "kind": "transform",
+      "summary": "Common value or mixed state",
+      "description": "Show mixed-value controls when eligible targets disagree; preserve each object's untouched fields.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "edit",
+      "title": "Requested field edit",
+      "kind": "data",
+      "summary": "One property and new value",
+      "description": "Capture only the field being edited, including the intended relative or absolute editing semantics.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "apply",
+      "title": "Apply per object",
+      "kind": "transform",
+      "summary": "Validated operations",
+      "description": "Apply the supported operation to each eligible target using stable object IDs.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "history",
+      "title": "Record the edit",
+      "kind": "transform",
+      "summary": "Coherent undoable change",
+      "description": "Capture the resulting logical change through the established history boundary.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "result",
+      "title": "Updated selection",
+      "kind": "data",
+      "summary": "Per-object state and redraw",
+      "description": "Recompute mixed-value display and affected derived data from the new canonical state.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "selection",
+      "to": "mixed"
+    },
+    {
+      "from": "mixed",
+      "to": "edit"
+    },
+    {
+      "from": "edit",
+      "to": "apply"
+    },
+    {
+      "from": "apply",
+      "to": "history"
+    },
+    {
+      "from": "history",
+      "to": "result"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "42. Recursive batch import",
+  "description": "Catalog workflow 42. Folder traversal → supported files → queued loads → progress aggregation → scene insertion.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/file_discovery.cpp; src/background_load.cpp; src/scene_lifecycle.cpp.",
+  "initial_node": "traverse",
+  "nodes": [
+    {
+      "id": "root",
+      "title": "Folder request",
+      "kind": "data",
+      "summary": "Root and import options",
+      "description": "Capture the chosen folder and recursive discovery settings.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "traverse",
+      "title": "Discover files",
+      "kind": "transform",
+      "summary": "Walk supported folder contents",
+      "description": "Collect supported files and discovery diagnostics without interpreting folders as model meshes.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "queue",
+      "title": "Queued loads",
+      "kind": "data",
+      "summary": "Paths and stable request context",
+      "description": "Preserve enough context to associate progress and errors with each file.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "workers",
+      "title": "Load and prepare",
+      "kind": "transform",
+      "summary": "Independent owned results",
+      "description": "Process files off the UI thread with cancellation checkpoints.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "progress",
+      "title": "Aggregate progress",
+      "kind": "transform",
+      "summary": "Completed, pending, failed",
+      "description": "Combine per-file progress without hiding partial failures or treating one success as full completion.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "accept",
+      "title": "Accept active results",
+      "kind": "transform",
+      "summary": "Current batch and item identity",
+      "description": "Reject completions for replaced or canceled batch work.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "scene",
+      "title": "Scene insertion",
+      "kind": "data",
+      "summary": "Files, hierarchy, diagnostics",
+      "description": "Insert accepted prepared files into logical state and schedule runtime resource creation.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "root",
+      "to": "traverse"
+    },
+    {
+      "from": "traverse",
+      "to": "queue"
+    },
+    {
+      "from": "queue",
+      "to": "workers"
+    },
+    {
+      "from": "workers",
+      "to": "progress"
+    },
+    {
+      "from": "progress",
+      "to": "accept"
+    },
+    {
+      "from": "accept",
+      "to": "scene"
+    }
+  ]
+}

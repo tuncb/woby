@@ -1,0 +1,99 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "22. UV layout extraction",
+  "description": "Catalog workflow 22. Triangle corners → supplied UVs → display coordinates → layout geometry. Preserve overlaps and tile offsets.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/comparison_scene.cpp; src/uv_quality.cpp.",
+  "initial_node": "available",
+  "nodes": [
+    {
+      "id": "corners",
+      "title": "Triangle corners",
+      "kind": "data",
+      "summary": "Source part and triangle IDs",
+      "description": "Start with supplied corner UVs, including the importer's established coordinate convention.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "available",
+      "title": "UVs available?",
+      "kind": "transform",
+      "summary": "Retain validity information",
+      "description": "Missing texture coordinates cannot form a UV layout triangle; keep source correspondence and diagnostic status.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "coordinates",
+      "title": "Build layout positions",
+      "kind": "transform",
+      "summary": "Use supplied UV coordinates",
+      "description": "Preserve tile offsets and overlap. Do not silently wrap every triangle into the unit square.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "separation",
+      "title": "Apply display layout",
+      "kind": "transform",
+      "summary": "Optional patch separation",
+      "description": "Display offsets may separate patches for review; they do not change the UV measurements or overlap domain.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "layout",
+      "title": "UV display mesh",
+      "kind": "data",
+      "summary": "Source-to-layout correspondence",
+      "description": "Retain the mapping used by linked triangle selection and barycentric probes.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "missing",
+      "title": "Unavailable layout",
+      "kind": "data",
+      "summary": "Missing UV geometry",
+      "description": "The source triangle may still exist in the surface view, while its layout position is unavailable.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "corners",
+      "to": "available"
+    },
+    {
+      "from": "available",
+      "to": "coordinates",
+      "label": "supplied"
+    },
+    {
+      "from": "coordinates",
+      "to": "separation"
+    },
+    {
+      "from": "separation",
+      "to": "layout"
+    },
+    {
+      "from": "available",
+      "to": "missing",
+      "label": "absent"
+    }
+  ]
+}

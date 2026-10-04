@@ -1,0 +1,127 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "71. UV overlap detection and domain scope",
+  "description": "Catalog workflow 71. Valid UV triangles → patch/domain grouping → bounding boxes sorted along U → candidate pairs → V rejection → positive-area overlap → within-patch/cross-patch findings. Compare independent patches with an explicitly shared domain; display separation leaves the calculation unchanged.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_overlap.cpp:inspectUvOverlaps; src/comparison_settings.h.",
+  "initial_node": "scope",
+  "nodes": [
+    {
+      "id": "triangles",
+      "title": "Valid UV triangles",
+      "kind": "data",
+      "summary": "Supplied UVs and patch IDs",
+      "description": "Skip missing, collapsed, and degenerate mappings. Preserve UV tile offsets; display separation must not enter these coordinates.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "scope",
+      "title": "Choose domain scope",
+      "kind": "transform",
+      "summary": "Independent patches or shared UV",
+      "description": "Per-patch scope only compares triangles within the same patch. Shared scope also admits pairs from different patches.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "boxes",
+      "title": "Build and sort boxes",
+      "kind": "transform",
+      "summary": "Patch group then minimum U",
+      "description": "Compute UV AABBs and sort deterministically along U, using triangle identity to break ties.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "sweep",
+      "title": "Enumerate candidates",
+      "kind": "transform",
+      "summary": "Stop at U or domain separation",
+      "description": "Stop a sweep when U intervals no longer overlap or a per-patch group ends. Count broad-phase candidates before V rejection.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "vreject",
+      "title": "Reject along V",
+      "kind": "transform",
+      "summary": "Require positive interval overlap",
+      "description": "Touching V bounds alone cannot create positive-area overlap; eliminate separated or merely touching boxes.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "contact",
+      "title": "Test triangle interiors",
+      "kind": "transform",
+      "summary": "Strict positive-area overlap",
+      "description": "Use the robust contact predicate from workflow 72; retain containment and coincidence, exclude edge/vertex-only contact.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "findings",
+      "title": "Overlap pairs",
+      "kind": "data",
+      "summary": "Within-patch or cross-patch",
+      "description": "Preserve triangle IDs and cross-patch classification. Cross-patch overlap may be intentional when the shared domain was explicitly chosen.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "status",
+      "title": "Domain and status",
+      "kind": "data",
+      "summary": "Checked, truncated, candidate count",
+      "description": "Report scope and completion state with findings. See workflow 73 for the work limits.",
+      "position": [
+        0,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "triangles",
+      "to": "scope"
+    },
+    {
+      "from": "scope",
+      "to": "boxes"
+    },
+    {
+      "from": "boxes",
+      "to": "sweep"
+    },
+    {
+      "from": "sweep",
+      "to": "vreject"
+    },
+    {
+      "from": "vreject",
+      "to": "contact"
+    },
+    {
+      "from": "contact",
+      "to": "findings"
+    },
+    {
+      "from": "findings",
+      "to": "status"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "36. Transparency and selection",
+  "description": "Catalog workflow 36. Visibility/opacity → eligible draw and pick candidates → ordering → chosen object.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_pick.cpp; src/scene_renderer.cpp; src/marker_pick.cpp.",
+  "initial_node": "eligibility",
+  "nodes": [
+    {
+      "id": "settings",
+      "title": "Visible appearance",
+      "kind": "data",
+      "summary": "Hierarchy, opacity, display modes",
+      "description": "Evaluate effective settings and selection context before drawing or picking.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "eligibility",
+      "title": "Resolve eligibility",
+      "kind": "transform",
+      "summary": "Visible and pickable candidates",
+      "description": "Use the applicable surface or marker rules. A geometric hit alone does not make a hidden item selectable.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "draw",
+      "title": "Prepare draw order",
+      "kind": "transform",
+      "summary": "Depth and transparency state",
+      "description": "Submit eligible geometry using the renderer's opaque or transparent treatment.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "pick",
+      "title": "Resolve pointer hits",
+      "kind": "transform",
+      "summary": "Depth and candidate identity",
+      "description": "Evaluate eligible hits using their correct transformed geometry and picking mode.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "image",
+      "title": "Composed image",
+      "kind": "data",
+      "summary": "Blended scene appearance",
+      "description": "The visible color is affected by blending and depth; it is distinct from the logical selection identity.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "selection",
+      "title": "Chosen object",
+      "kind": "data",
+      "summary": "Nearest eligible selection",
+      "description": "Publish the selected source object or linked triangle through operations.",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "settings",
+      "to": "eligibility"
+    },
+    {
+      "from": "eligibility",
+      "to": "draw"
+    },
+    {
+      "from": "eligibility",
+      "to": "pick"
+    },
+    {
+      "from": "draw",
+      "to": "image"
+    },
+    {
+      "from": "pick",
+      "to": "selection"
+    }
+  ]
+}

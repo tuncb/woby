@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "59. Build and asset staging",
+  "description": "Catalog workflow 59. CMake configuration → dependencies → compilation → shaders/assets/workflow copies → runnable application.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: CMakePresets.json; CMakeLists.txt; experiments/mesh-memory-lab/CMakeLists.txt.",
+  "initial_node": "dependencies",
+  "nodes": [
+    {
+      "id": "configure",
+      "title": "Build configuration",
+      "kind": "data",
+      "summary": "Debug preset and lab enabled",
+      "description": "For local Windows development use vs2026-vcpkg with WOBY_BUILD_MESH_MEMORY_LAB=ON. CI uses Ninja with vcpkg.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "dependencies",
+      "title": "Resolve dependencies",
+      "kind": "transform",
+      "summary": "Manifest packages and toolchain",
+      "description": "Configure supported packages, graphics tools, and target dependencies before compilation.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "compile",
+      "title": "Compile and link",
+      "kind": "transform",
+      "summary": "Application, lab, test binaries",
+      "description": "Build with project warnings enabled and inspect failures or warnings before delivery.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "assets",
+      "title": "Stage runtime assets",
+      "kind": "transform",
+      "summary": "Shaders, fonts, and libraries",
+      "description": "Copy generated assets and required runtime dependencies into the executable directory.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "workflows",
+      "title": "Stage workflow files",
+      "kind": "transform",
+      "summary": "Preserve relative subfolders",
+      "description": "The recursive .meshflow glob and copy_if_different rules stage catalog files under workflows/ beside the executable.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "runnable",
+      "title": "Runnable application",
+      "kind": "data",
+      "summary": "Binaries with matching assets",
+      "description": "Launch independently of the current working directory; use an explicit workflow root when inspecting another library.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "configure",
+      "to": "dependencies"
+    },
+    {
+      "from": "dependencies",
+      "to": "compile"
+    },
+    {
+      "from": "compile",
+      "to": "assets"
+    },
+    {
+      "from": "assets",
+      "to": "workflows"
+    },
+    {
+      "from": "workflows",
+      "to": "runnable"
+    }
+  ]
+}

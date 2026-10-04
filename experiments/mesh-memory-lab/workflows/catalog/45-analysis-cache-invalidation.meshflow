@@ -1,0 +1,139 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "45. Analysis cache invalidation",
+  "description": "Catalog workflow 45. Geometry/settings change → affected stages → retained caches → recomputation → publication. Track the actual dependency rules.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/comparison_scene.cpp:comparisonSignature; src/mesh_comparison.cpp:resetComparisonCache, resetComparisonTopologyCache, resetComparisonDegenerateCache.",
+  "initial_node": "signature",
+  "nodes": [
+    {
+      "id": "change",
+      "title": "Changed input",
+      "kind": "data",
+      "summary": "Geometry or analysis setting",
+      "description": "Determine the actual dependency change before scheduling work. See workflow 79 for UV preparation signatures.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "signature",
+      "title": "Geometry signature?",
+      "kind": "transform",
+      "summary": "Input signature changed?",
+      "description": "Source buffers, selected parts, transforms, and analysis-dependent preparation settings contribute to this signature.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "reset",
+      "title": "Reset all stages",
+      "kind": "transform",
+      "summary": "New signature, completed = 0",
+      "description": "resetComparisonCache clears the whole completed-stage mask when the signature changes.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "specific",
+      "title": "Stage settings?",
+      "kind": "transform",
+      "summary": "Same geometry signature",
+      "description": "When the signature is unchanged, compare topology mode and normalized degenerate criteria independently.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "topology",
+      "title": "Topology changed",
+      "kind": "transform",
+      "summary": "Clear topology + intersections",
+      "description": "resetComparisonTopologyCache invalidates both topology and self-intersection stages; retain other completed work.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "degenerates",
+      "title": "Criteria changed",
+      "kind": "transform",
+      "summary": "Clear degenerate stage",
+      "description": "resetComparisonDegenerateCache invalidates only degenerates when its thresholds change.",
+      "position": [
+        620,
+        380
+      ]
+    },
+    {
+      "id": "needed",
+      "title": "Schedule missing work",
+      "kind": "transform",
+      "summary": "Requested minus completed",
+      "description": "Reuse retained stages and recompute required invalidated stages; a no-change request can use cached results.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "publish",
+      "title": "Current stage cache",
+      "kind": "data",
+      "summary": "Accepted signature and stage mask",
+      "description": "applyComparisonStages checks signatures and stage settings again before merging results.",
+      "position": [
+        1240,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "change",
+      "to": "signature"
+    },
+    {
+      "from": "signature",
+      "to": "reset",
+      "label": "changed"
+    },
+    {
+      "from": "signature",
+      "to": "specific",
+      "label": "same"
+    },
+    {
+      "from": "specific",
+      "to": "topology",
+      "label": "mode"
+    },
+    {
+      "from": "specific",
+      "to": "degenerates",
+      "label": "criteria"
+    },
+    {
+      "from": "reset",
+      "to": "needed"
+    },
+    {
+      "from": "topology",
+      "to": "needed"
+    },
+    {
+      "from": "degenerates",
+      "to": "needed"
+    },
+    {
+      "from": "needed",
+      "to": "publish"
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "34. Solid, edge, and vertex modes",
+  "description": "Catalog workflow 34. Shared geometry → enabled display branches → mode-specific resources and draw calls.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/scene_renderer.cpp; src/scene_inspector.cpp.",
+  "initial_node": "modes",
+  "nodes": [
+    {
+      "id": "geometry",
+      "title": "Shared geometry",
+      "kind": "data",
+      "summary": "Mesh and effective appearance",
+      "description": "One source mesh can enable several display modes at once.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "modes",
+      "title": "Resolve mode flags",
+      "kind": "transform",
+      "summary": "Solid / edges / vertices",
+      "description": "Read validated mode settings from the hierarchy and select all enabled paths.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "solid",
+      "title": "Draw solid",
+      "kind": "transform",
+      "summary": "Triangle surface resources",
+      "description": "Use surface indices, shading attributes, and effective opacity.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "edges",
+      "title": "Draw edges",
+      "kind": "transform",
+      "summary": "Edge geometry and line style",
+      "description": "Use prepared edge data and configured line appearance.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "vertices",
+      "title": "Draw markers",
+      "kind": "transform",
+      "summary": "Point identities and coverage",
+      "description": "Use the marker path and its visibility, size, color, and picking rules.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "frame",
+      "title": "Composed object",
+      "kind": "data",
+      "summary": "Enabled modes combined",
+      "description": "Inspect the contribution and resources of each enabled mode; disabling a mode removes its draw path.",
+      "position": [
+        310,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "geometry",
+      "to": "modes"
+    },
+    {
+      "from": "modes",
+      "to": "solid",
+      "label": "enabled"
+    },
+    {
+      "from": "modes",
+      "to": "edges",
+      "label": "enabled"
+    },
+    {
+      "from": "modes",
+      "to": "vertices",
+      "label": "enabled"
+    },
+    {
+      "from": "solid",
+      "to": "frame"
+    },
+    {
+      "from": "edges",
+      "to": "frame"
+    },
+    {
+      "from": "vertices",
+      "to": "frame"
+    }
+  ]
+}

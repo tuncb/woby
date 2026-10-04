@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "15. Degenerate triangle detection",
+  "description": "Catalog workflow 15. Triangle coordinates → lengths/areas → configured criteria → classification → overlays.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_degenerates.cpp; src/comparison_settings.h.",
+  "initial_node": "measure",
+  "nodes": [
+    {
+      "id": "triangle",
+      "title": "Triangle coordinates",
+      "kind": "data",
+      "summary": "Three points in analysis frame",
+      "description": "Use precise positions and configured measurement units for each source triangle.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "measure",
+      "title": "Compute measures",
+      "kind": "transform",
+      "summary": "Edge lengths and surface area",
+      "description": "Measure repeated points, short edges, and small or flat triangles using the detector's geometric criteria.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Degenerate settings",
+      "kind": "data",
+      "summary": "Normalized thresholds",
+      "description": "Threshold changes invalidate the degenerate stage; they do not require rebuilding every independent detector.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "classify",
+      "title": "Apply criteria",
+      "kind": "transform",
+      "summary": "Which conditions are met?",
+      "description": "Keep the measurement values and the reason each triangle qualifies.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "findings",
+      "title": "Degenerate findings",
+      "kind": "data",
+      "summary": "Triangle IDs and categories",
+      "description": "Retain counts by condition and source references for review.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "overlay",
+      "title": "Build overlay",
+      "kind": "transform",
+      "summary": "Highlight affected triangles",
+      "description": "Prepare bounds and display geometry once for the current results.",
+      "position": [
+        620,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "triangle",
+      "to": "measure"
+    },
+    {
+      "from": "measure",
+      "to": "classify"
+    },
+    {
+      "from": "settings",
+      "to": "classify"
+    },
+    {
+      "from": "classify",
+      "to": "findings"
+    },
+    {
+      "from": "findings",
+      "to": "overlay"
+    }
+  ]
+}

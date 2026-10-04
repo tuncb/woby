@@ -1,0 +1,101 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "27. Distance statistics",
+  "description": "Catalog workflow 27. Samples + associated areas → maximum/mean/P95/area statistics → report values.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_comparison.cpp; src/comparison_report.cpp.",
+  "initial_node": "reduce",
+  "nodes": [
+    {
+      "id": "samples",
+      "title": "Distances and areas",
+      "kind": "data",
+      "summary": "One weight per sample",
+      "description": "Each subtriangle centroid distance is paired with that subtriangle's physical surface area.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "reduce",
+      "title": "Fixed-order reduction",
+      "kind": "transform",
+      "summary": "Maximum and weighted sums",
+      "description": "Reduce in deterministic sample order: maximum distance, total area, and sum(distance * area).",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "mean",
+      "title": "Area-weighted mean",
+      "kind": "data",
+      "summary": "Sum(distance * area) / area",
+      "description": "Small triangles do not receive the same total weight as large triangles. Retain zero-area handling from the implementation.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "sort",
+      "title": "Sort samples",
+      "kind": "transform",
+      "summary": "Distance order, stable tie key",
+      "description": "Sort by distance and break equal-distance ties by sample index for reproducible results.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "percentile",
+      "title": "Accumulate area",
+      "kind": "transform",
+      "summary": "First distance at 95% area",
+      "description": "The P95 is area-weighted: stop when cumulative sample area reaches 95 percent of total area.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "report",
+      "title": "Distance report",
+      "kind": "data",
+      "summary": "Maximum / mean / P95 / area",
+      "description": "Report units and direction with every statistic. Do not substitute a face-count percentile for this area-weighted distance statistic.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "samples",
+      "to": "reduce"
+    },
+    {
+      "from": "reduce",
+      "to": "mean"
+    },
+    {
+      "from": "samples",
+      "to": "sort"
+    },
+    {
+      "from": "sort",
+      "to": "percentile"
+    },
+    {
+      "from": "mean",
+      "to": "report"
+    },
+    {
+      "from": "percentile",
+      "to": "report"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "29. Fin candidate detection",
+  "description": "Catalog workflow 29. Topology → patches → physical and cut boundaries → boundary classification → area-ratio filtering.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_topology.cpp.",
+  "initial_node": "patches",
+  "nodes": [
+    {
+      "id": "topology",
+      "title": "Topology input",
+      "kind": "data",
+      "summary": "Faces, edges, and physical areas",
+      "description": "Use the selected identity mode and preserve edge incidence.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "patches",
+      "title": "Construct patches",
+      "kind": "transform",
+      "summary": "Connectivity around cut edges",
+      "description": "Build candidate patches separated by the topology's cut boundaries.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "boundaries",
+      "title": "Collect boundaries",
+      "kind": "transform",
+      "summary": "Physical edges and cut edges",
+      "description": "Distinguish original surface boundaries from edges introduced by patch partitioning.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "classify",
+      "title": "Classify boundary",
+      "kind": "transform",
+      "summary": "Loop, branch, chain, or none",
+      "description": "Candidate classification uses boundary structure and patch membership; a simple loop alone is not a fin candidate.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "ratio",
+      "title": "Patch area ratio",
+      "kind": "data",
+      "summary": "Patch area relative to component",
+      "description": "Keep the physical-area evidence needed for filtering. Missing areas must remain explicitly unavailable.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "filter",
+      "title": "Filter candidates",
+      "kind": "transform",
+      "summary": "Configured maximum area ratio",
+      "description": "Select patches whose candidate flag is set and area ratio is within finMaxAreaRatio.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "findings",
+      "title": "Fin candidates",
+      "kind": "data",
+      "summary": "Source patches and bounds",
+      "description": "Present candidate findings for review, not a claim that every selected patch is unwanted geometry.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "topology",
+      "to": "patches"
+    },
+    {
+      "from": "patches",
+      "to": "boundaries"
+    },
+    {
+      "from": "boundaries",
+      "to": "classify"
+    },
+    {
+      "from": "classify",
+      "to": "ratio"
+    },
+    {
+      "from": "ratio",
+      "to": "filter"
+    },
+    {
+      "from": "filter",
+      "to": "findings"
+    }
+  ]
+}

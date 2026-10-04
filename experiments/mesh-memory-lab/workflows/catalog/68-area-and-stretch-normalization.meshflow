@@ -1,0 +1,118 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "68. Area and stretch normalization",
+  "description": "Catalog workflow 68. Valid triangles grouped by imported patch → total UV / surface area → area normalization and square-root stretch normalization → reported units. Compare absolute and per-patch results; anisotropy remains unchanged by uniform scaling.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_quality.cpp:analyzeUvQuality; src/uv_quality_view.cpp.",
+  "initial_node": "totals",
+  "nodes": [
+    {
+      "id": "triangles",
+      "title": "Valid patch triangles",
+      "kind": "data",
+      "summary": "Imported patch grouping",
+      "description": "Only valid triangles contribute to the patch's normalization totals; retain original patch identity.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "totals",
+      "title": "Accumulate areas",
+      "kind": "transform",
+      "summary": "Total UV and physical area",
+      "description": "Sum absolute UV area and physical surface area across valid triangles of each imported patch.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "choice",
+      "title": "Normalization mode?",
+      "kind": "transform",
+      "summary": "Absolute or per patch",
+      "description": "Absolute leaves the baseline at 1. Per-patch normalization removes uniform UV-to-surface scale for that patch.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "absolute",
+      "title": "Absolute baseline",
+      "kind": "data",
+      "summary": "Area baseline = 1",
+      "description": "Area ratio retains UV-area/physical-area units; stretches retain UV-length/physical-length units.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "patch",
+      "title": "Patch baseline",
+      "kind": "data",
+      "summary": "B = total UV / total surface",
+      "description": "Normalized area is ratio/B, and normalized singular values are divided by sqrt(B).",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "apply",
+      "title": "Apply normalization",
+      "kind": "transform",
+      "summary": "Area log shift and stretch divisor",
+      "description": "Subtract log2(B) from areaLog2 and divide min/max stretch by sqrt(B). Anisotropy is unchanged by this uniform scaling.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "report",
+      "title": "Reported metrics",
+      "kind": "data",
+      "summary": "State mode and units",
+      "description": "Compare absolute and relative results using the same triangles; a per-patch baseline does not remove local distortion within a patch.",
+      "position": [
+        930,
+        380
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "triangles",
+      "to": "totals"
+    },
+    {
+      "from": "totals",
+      "to": "choice"
+    },
+    {
+      "from": "choice",
+      "to": "absolute",
+      "label": "absolute"
+    },
+    {
+      "from": "choice",
+      "to": "patch",
+      "label": "per_patch"
+    },
+    {
+      "from": "absolute",
+      "to": "apply"
+    },
+    {
+      "from": "patch",
+      "to": "apply"
+    },
+    {
+      "from": "apply",
+      "to": "report"
+    }
+  ]
+}

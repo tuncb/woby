@@ -1,0 +1,130 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "57. Workflow file loading",
+  "description": "Catalog workflow 57. Folder discovery → `.meshflow` parsing → validation → optional mesh capture → library publication.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: experiments/mesh-memory-lab/workflow.cpp; experiments/mesh-memory-lab/trace.cpp.",
+  "initial_node": "discover",
+  "nodes": [
+    {
+      "id": "folder",
+      "title": "Active workflow folder",
+      "kind": "data",
+      "summary": "Executable workflows or override",
+      "description": "The default root is beside the executable; --workflows-dir selects an explicit folder.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "discover",
+      "title": "Discover files",
+      "kind": "transform",
+      "summary": "Recursive sorted .meshflow paths",
+      "description": "Scan files without following directory symlinks. Immediate child folders become library groups; the library limit is 256 files.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "parse",
+      "title": "Parse and validate",
+      "kind": "transform",
+      "summary": "Strict version 1 JSON schema",
+      "description": "Validate IDs, node kinds, coordinates, edges, known fields, size limits, and inspector compatibility.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "source",
+      "title": "Embedded OBJ present?",
+      "kind": "transform",
+      "summary": "Optional live source",
+      "description": "A diagram can be descriptive only. Live bindings require an embedded supported polygonal OBJ.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "capture",
+      "title": "Build current trace",
+      "kind": "transform",
+      "summary": "Production loader and lineage",
+      "description": "Rebuild the live mesh with current code and verify source-to-render correspondence; this is not a historical capture.",
+      "position": [
+        1240,
+        190
+      ]
+    },
+    {
+      "id": "library",
+      "title": "Published library",
+      "kind": "data",
+      "summary": "Valid documents and errors",
+      "description": "Publish documents with optional traces. Invalid entries retain diagnostics while other files remain selectable.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "error",
+      "title": "Entry diagnostic",
+      "kind": "data",
+      "summary": "Invalid schema or capture",
+      "description": "A malformed file or unsupported OBJ source becomes an invalid entry with a clear error.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "folder",
+      "to": "discover"
+    },
+    {
+      "from": "discover",
+      "to": "parse"
+    },
+    {
+      "from": "parse",
+      "to": "source",
+      "label": "valid"
+    },
+    {
+      "from": "parse",
+      "to": "error",
+      "label": "invalid"
+    },
+    {
+      "from": "source",
+      "to": "capture",
+      "label": "yes"
+    },
+    {
+      "from": "source",
+      "to": "library",
+      "label": "no"
+    },
+    {
+      "from": "capture",
+      "to": "library",
+      "label": "success"
+    },
+    {
+      "from": "capture",
+      "to": "error",
+      "label": "failed"
+    },
+    {
+      "from": "error",
+      "to": "library"
+    }
+  ]
+}

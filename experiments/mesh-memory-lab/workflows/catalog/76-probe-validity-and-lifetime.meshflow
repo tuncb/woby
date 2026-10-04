@@ -1,0 +1,119 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "76. Probe validity and lifetime",
+  "description": "Catalog workflow 76. Probe creation → current geometry/settings signature → input or linked-selection change → stale probe hidden/rejected → clear or reprobe. Show why probes are transient and do not dirty the document or enter scene/history snapshots.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/ui_state.h:UvProbe; src/ui_operations.cpp; src/control_uv.cpp; src/scene_pick.cpp.",
+  "initial_node": "check",
+  "nodes": [
+    {
+      "id": "create",
+      "title": "Created probe",
+      "kind": "data",
+      "summary": "Signature, part, triangle, weights",
+      "description": "A valid linked probe records the current geometry/settings signature at creation.",
+      "position": [
+        0,
+        190
+      ]
+    },
+    {
+      "id": "change",
+      "title": "Changed inputs",
+      "kind": "data",
+      "summary": "Geometry, settings, or selection",
+      "description": "Edits can make the probe stale; clearing selection also clears probes. Linked-selection and analysis enablement are checked when used.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Probe still valid?",
+      "kind": "transform",
+      "summary": "Current result and matching signature",
+      "description": "Require current analysis results, matching signature, an enabled analysis, and linked selection before reconstructing or drawing the probe.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "visible",
+      "title": "Current probe",
+      "kind": "data",
+      "summary": "Draw and report coordinates",
+      "description": "A valid probe can be queried and rendered in both related views.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "stale",
+      "title": "Hidden or rejected",
+      "kind": "data",
+      "summary": "stale=true or set request error",
+      "description": "A stale get response hides the probe; creating a probe without current results is rejected. Do not show coordinates from old geometry.",
+      "position": [
+        310,
+        380
+      ]
+    },
+    {
+      "id": "clear",
+      "title": "Clear or reprobe",
+      "kind": "transform",
+      "summary": "Explicit reset or new valid probe",
+      "description": "Clear transient state, or create a new probe after current results are available.",
+      "position": [
+        0,
+        380
+      ]
+    },
+    {
+      "id": "transient",
+      "title": "No persisted probe",
+      "kind": "data",
+      "summary": "Outside document and history",
+      "description": "Probe creation/clearing does not dirty the document. Scene snapshots, history, and saved Views exclude transient probe state.",
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "create",
+      "to": "check"
+    },
+    {
+      "from": "change",
+      "to": "check"
+    },
+    {
+      "from": "check",
+      "to": "visible",
+      "label": "current"
+    },
+    {
+      "from": "check",
+      "to": "stale",
+      "label": "stale"
+    },
+    {
+      "from": "stale",
+      "to": "clear"
+    },
+    {
+      "from": "clear",
+      "to": "create",
+      "label": "reprobe"
+    },
+    {
+      "from": "create",
+      "to": "transient"
+    }
+  ]
+}

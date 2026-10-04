@@ -1,0 +1,97 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "67. Signed UV area heatmap",
+  "description": "Catalog workflow 67. UV area / physical surface area → optional normalization → signed log2 → color encoding → shader → legend. Negative values show compression, positive values expansion, and ratio 1 is neutral. Compare the previous magnitude-only coloring.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/uv_quality.cpp:analyzeUvQuality, uvQualityVertices; shaders/native/woby.slang; src/comparison_legend.cpp.",
+  "initial_node": "encode",
+  "nodes": [
+    {
+      "id": "areas",
+      "title": "Positive area ratio",
+      "kind": "data",
+      "summary": "abs(UV area) / surface area",
+      "description": "The ratio compares mapped UV area to physical area. Orientation sign is a separate metric; signed area coloring refers to log2 compression or expansion.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "normalize",
+      "title": "Choose baseline",
+      "kind": "transform",
+      "summary": "Absolute or per-patch ratio",
+      "description": "Absolute uses baseline 1. Per-patch uses total valid UV area divided by total valid surface area.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "log",
+      "title": "Signed log2 ratio",
+      "kind": "transform",
+      "summary": "log2(ratio) - log2(baseline)",
+      "description": "Compression is negative, equal relative area is zero, and expansion is positive. Keep the sign through reporting and encoding.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "encode",
+      "title": "Encode heat value",
+      "kind": "transform",
+      "summary": "clamp(0.5 + areaLog2/6, 0, 1)",
+      "description": "Map -3 to 0, 0 to 0.5, and +3 to 1. Invalid triangles use separate negative sentinel values; valid negative metrics do not.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "shader",
+      "title": "Shader color",
+      "kind": "transform",
+      "summary": "Blue -> neutral -> red",
+      "description": "Use a neutral midpoint for area and preserve invalid/highlight color precedence. The CPU color reference and shader must agree.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "legend",
+      "title": "Signed area legend",
+      "kind": "data",
+      "summary": "1/8 blue, 1 neutral, 8 red",
+      "description": "Label ratios consistently with compression and expansion. Compare against the earlier magnitude-only encoding, which lost the direction of area change.",
+      "position": [
+        620,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "areas",
+      "to": "normalize"
+    },
+    {
+      "from": "normalize",
+      "to": "log"
+    },
+    {
+      "from": "log",
+      "to": "encode"
+    },
+    {
+      "from": "encode",
+      "to": "shader"
+    },
+    {
+      "from": "shader",
+      "to": "legend"
+    }
+  ]
+}

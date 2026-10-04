@@ -1,0 +1,99 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "12. Winding consistency",
+  "description": "Catalog workflow 12. Directed edge uses → neighboring face orientation → conflicts → highlighted faces.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_topology.cpp; src/mesh_comparison.cpp.",
+  "initial_node": "neighbors",
+  "nodes": [
+    {
+      "id": "uses",
+      "title": "Directed edge uses",
+      "kind": "data",
+      "summary": "Face winding at shared edges",
+      "description": "Keep each face's oriented edge use along with its undirected edge key.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "neighbors",
+      "title": "Match neighboring faces",
+      "kind": "transform",
+      "summary": "Compare common-edge directions",
+      "description": "Consistently oriented neighboring triangles traverse their shared edge in opposite directions.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "check",
+      "title": "Direction conflict?",
+      "kind": "transform",
+      "summary": "Same or opposite traversal",
+      "description": "Separate orientation conflicts from unrelated boundary or non-manifold findings.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "consistent",
+      "title": "Consistent pair",
+      "kind": "data",
+      "summary": "Opposite edge directions",
+      "description": "No winding conflict for this neighboring face pair.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "conflict",
+      "title": "Winding finding",
+      "kind": "data",
+      "summary": "Same edge direction",
+      "description": "Retain the conflicting edge and face identities.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "highlight",
+      "title": "Prepare overlay",
+      "kind": "transform",
+      "summary": "Show the affected geometry",
+      "description": "Build highlighted edges or faces and navigation bounds so the original winding can be reviewed.",
+      "position": [
+        0,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "uses",
+      "to": "neighbors"
+    },
+    {
+      "from": "neighbors",
+      "to": "check"
+    },
+    {
+      "from": "check",
+      "to": "consistent",
+      "label": "opposite"
+    },
+    {
+      "from": "check",
+      "to": "conflict",
+      "label": "same"
+    },
+    {
+      "from": "conflict",
+      "to": "highlight"
+    }
+  ]
+}

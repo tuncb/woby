@@ -1,0 +1,118 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "21. CPU/GPU freeform evaluation",
+  "description": "Catalog workflow 21. Shared inputs → CPU and GPU evaluation → precision eligibility/fallback → cached geometry.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/freeform.cpp; src/freeform_gpu.cpp; src/scene_renderer.cpp.",
+  "initial_node": "eligible",
+  "nodes": [
+    {
+      "id": "inputs",
+      "title": "Shared surface input",
+      "kind": "data",
+      "summary": "Owned controls, knots, settings",
+      "description": "CPU and GPU paths must represent the same authored surface and sampling request.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "eligible",
+      "title": "GPU eligible?",
+      "kind": "transform",
+      "summary": "Capabilities and precision limits",
+      "description": "Check supported evaluation inputs and precision suitability before choosing the GPU path. Knot normalization reduces large-offset loss.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "cpu",
+      "title": "CPU evaluation",
+      "kind": "transform",
+      "summary": "Precise reference and fallback",
+      "description": "Evaluate supported inputs on the CPU when GPU evaluation is unavailable or unsuitable.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "gpu",
+      "title": "GPU evaluation",
+      "kind": "transform",
+      "summary": "Prepared control and basis data",
+      "description": "Dispatch evaluation using the supported graphics backend and prepared GPU resources.",
+      "position": [
+        310,
+        190
+      ]
+    },
+    {
+      "id": "cache",
+      "title": "Cached geometry",
+      "kind": "data",
+      "summary": "Results tied to evaluation inputs",
+      "description": "Keep reusable derived geometry; invalidate it when controls or evaluation settings change.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "compare",
+      "title": "Compare outputs",
+      "kind": "transform",
+      "summary": "Same parameters, two paths",
+      "description": "For a controlled experiment, compare positions and normals at matching parameters. This diagram does not run the comparison.",
+      "position": [
+        620,
+        380
+      ]
+    },
+    {
+      "id": "draw",
+      "title": "Renderable geometry",
+      "kind": "data",
+      "summary": "Accepted evaluation result",
+      "description": "Render cached results without altering the authored surface definition.",
+      "position": [
+        930,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "inputs",
+      "to": "eligible"
+    },
+    {
+      "from": "eligible",
+      "to": "cpu",
+      "label": "fallback"
+    },
+    {
+      "from": "eligible",
+      "to": "gpu",
+      "label": "supported"
+    },
+    {
+      "from": "cpu",
+      "to": "cache"
+    },
+    {
+      "from": "gpu",
+      "to": "cache"
+    },
+    {
+      "from": "cache",
+      "to": "compare"
+    },
+    {
+      "from": "cache",
+      "to": "draw"
+    }
+  ]
+}

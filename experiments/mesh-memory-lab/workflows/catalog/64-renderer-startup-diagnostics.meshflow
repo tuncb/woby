@@ -1,0 +1,119 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "64. Renderer startup diagnostics",
+  "description": "Catalog workflow 64. Device discovery → capability checks → device selection → resource initialization → success or diagnostic report.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/renderer_startup.cpp; src/graphics_diagnostics.cpp; src/graphics.cpp.",
+  "initial_node": "devices",
+  "nodes": [
+    {
+      "id": "request",
+      "title": "Renderer request",
+      "kind": "data",
+      "summary": "Platform and backend options",
+      "description": "Capture requested backend, device preferences, and headless or windowed context.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "devices",
+      "title": "Discover devices",
+      "kind": "transform",
+      "summary": "Available adapters and drivers",
+      "description": "Enumerate candidate graphics devices and relevant runtime availability.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "capabilities",
+      "title": "Check capabilities",
+      "kind": "transform",
+      "summary": "Required feature support",
+      "description": "Validate device capabilities against the renderer's actual requirements.",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "select",
+      "title": "Select device",
+      "kind": "transform",
+      "summary": "Compatible candidate and policy",
+      "description": "Choose a supported device or fail with the information needed to explain the selection failure.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "initialize",
+      "title": "Initialize resources",
+      "kind": "transform",
+      "summary": "Device, queues, targets, assets",
+      "description": "Create the runtime graphics resources and validate required shaders and targets.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "success",
+      "title": "Renderer ready",
+      "kind": "data",
+      "summary": "Application can submit work",
+      "description": "Report the selected device and usable renderer configuration.",
+      "position": [
+        930,
+        380
+      ]
+    },
+    {
+      "id": "diagnostic",
+      "title": "Startup diagnostic",
+      "kind": "data",
+      "summary": "Device or resource failure",
+      "description": "Retain backend, device, capability, and initialization context instead of producing an unexplained startup exit.",
+      "position": [
+        310,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "request",
+      "to": "devices"
+    },
+    {
+      "from": "devices",
+      "to": "capabilities"
+    },
+    {
+      "from": "capabilities",
+      "to": "select",
+      "label": "supported"
+    },
+    {
+      "from": "capabilities",
+      "to": "diagnostic",
+      "label": "unsupported"
+    },
+    {
+      "from": "select",
+      "to": "initialize"
+    },
+    {
+      "from": "initialize",
+      "to": "success"
+    },
+    {
+      "from": "initialize",
+      "to": "diagnostic",
+      "label": "failed"
+    }
+  ]
+}

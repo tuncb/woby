@@ -1,0 +1,134 @@
+{
+  "format": "mesh-memory-lab.workflow",
+  "version": 1,
+  "title": "80. UV settings validation and persistence",
+  "description": "Catalog workflow 80. UI/CLI settings → validation/normalization → logical analysis settings → history/saved Views/scene serialization → reload → recomputation. Compare invalid command rejection with load normalization; preserve measurement controls while excluding transient probes.\n\nDescriptive diagram: stages and values are explained in the inspector; this file does not execute the workflow or capture historical results.\n\nImplementation: src/mesh_comparison.cpp:normalizedComparisonSettings; src/control_protocol.cpp; src/scene_file.cpp; tests/uv_grid_tests.cpp.",
+  "initial_node": "normalize",
+  "nodes": [
+    {
+      "id": "edit",
+      "title": "UI or CLI settings",
+      "kind": "data",
+      "summary": "Metric, normalization, scope, ranges",
+      "description": "Capture requested measurement and display controls in local UI values or protocol fields.",
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "validate",
+      "title": "Validate command",
+      "kind": "transform",
+      "summary": "Reject invalid explicit requests",
+      "description": "Protocol and operation boundaries reject unsupported or invalid command input instead of silently accepting an unintended command.",
+      "position": [
+        310,
+        0
+      ]
+    },
+    {
+      "id": "load",
+      "title": "Scene load values",
+      "kind": "data",
+      "summary": "Persisted analysis and View settings",
+      "description": "Loaded values pass through the established normalization rules, including backward-compatible defaults.",
+      "position": [
+        620,
+        190
+      ]
+    },
+    {
+      "id": "normalize",
+      "title": "Normalize settings",
+      "kind": "transform",
+      "summary": "Finite values and legal combinations",
+      "description": "Normalize enums and invalid scalar defaults. Selecting overlap forces overlap enabled; non-finite or reversed range bounds disable range selection and reset the range to [0,1].",
+      "position": [
+        620,
+        0
+      ]
+    },
+    {
+      "id": "state",
+      "title": "Logical settings",
+      "kind": "data",
+      "summary": "Canonical analysis state",
+      "description": "Store measurement controls in UiState-owned analysis settings, separate from runtime resources and transient probes.",
+      "position": [
+        930,
+        0
+      ]
+    },
+    {
+      "id": "persist",
+      "title": "History / Views / save",
+      "kind": "transform",
+      "summary": "Explicit .woby field mapping",
+      "description": "Carry supported UV controls into history, saved Views, and scene serialization. Do not serialize linked probe coordinates or signatures.",
+      "position": [
+        930,
+        190
+      ]
+    },
+    {
+      "id": "recompute",
+      "title": "Reload and recompute",
+      "kind": "transform",
+      "summary": "Current inputs and settings",
+      "description": "Restored controls invalidate their dependent preparation and measurements. Results are rebuilt using the current application code.",
+      "position": [
+        1240,
+        0
+      ]
+    },
+    {
+      "id": "error",
+      "title": "Validation error",
+      "kind": "data",
+      "summary": "No invalid setting published",
+      "description": "Reject the command without installing invalid logical state; this differs from normalization of persisted load data.",
+      "position": [
+        0,
+        190
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "edit",
+      "to": "validate"
+    },
+    {
+      "from": "validate",
+      "to": "normalize",
+      "label": "valid"
+    },
+    {
+      "from": "validate",
+      "to": "error",
+      "label": "invalid"
+    },
+    {
+      "from": "load",
+      "to": "normalize"
+    },
+    {
+      "from": "normalize",
+      "to": "state"
+    },
+    {
+      "from": "state",
+      "to": "persist"
+    },
+    {
+      "from": "persist",
+      "to": "load",
+      "label": "reload"
+    },
+    {
+      "from": "state",
+      "to": "recompute"
+    }
+  ]
+}
