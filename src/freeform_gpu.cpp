@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <bit>
 #include <cmath>
+#include <stdexcept>
 
 namespace woby {
 std::vector<float> packFreeformGpu(const FreeformPatch& patch, const FreeformGrid& grid, const Coordinate& origin)
@@ -10,7 +11,10 @@ std::vector<float> packFreeformGpu(const FreeformPatch& patch, const FreeformGri
     // Layout shared with cs_freeform: 16-word header, 9 words per control,
     // 19 per basis sample (first control index, 9 values, 9 derivatives).
     std::vector<float> data(16);
-    const auto header = [&](size_t slot, size_t value) { data[slot] = std::bit_cast<float>(static_cast<uint32_t>(value)); };
+    const auto header = [&](size_t slot, size_t value) {
+        if (value > UINT32_MAX) { throw std::runtime_error("Freeform GPU data exceeds the supported index range."); }
+        data[slot] = std::bit_cast<float>(static_cast<uint32_t>(value));
+    };
     header(0,patch.degreeU); header(1,patch.degreeV); header(2,patch.countU); header(3,patch.surface);
     header(4,grid.u.size()); header(5,grid.v.size()); header(6,grid.vertexOffset); header(7,grid.indexOffset);
     header(8,data.size()); header(11,!patch.texcoords.empty()); header(12,!patch.normals.empty());
@@ -79,6 +83,9 @@ void dispatchFreeformGpu(const Mesh& mesh, graphics::VertexBufferHandle vertices
         const auto& grid = mesh.freeform->grids[i];
         const auto data = packFreeformGpu(patch,grid,mesh.origin);
         if (data.empty()) { continue; }
+        if (data.size() > UINT32_MAX / sizeof(float)) {
+            throw std::runtime_error("Freeform GPU data exceeds the supported 32-bit buffer size.");
+        }
         const auto input = graphics::createVertexBuffer(graphics::copy(data.data(),static_cast<uint32_t>(data.size()*sizeof(float))),
             {4},WOBY_GPU_BUFFER_COMPUTE_READ);
         try {

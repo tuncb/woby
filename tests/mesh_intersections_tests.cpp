@@ -396,6 +396,24 @@ TEST_CASE("manual intersection requests are transient and CLI actions validate d
     CHECK_THROWS(parseControlOperation(*findControlMethod("analysis.run"), {{"target","analysis"},{"detector","typo"}}));
 }
 
+TEST_CASE("failed comparison uploads do not report successful full results from cached CPU data")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, f.id);
+    auto& runtime = f.runtimes.objects[f.id];
+    runtime.fullResultsRequested = true;
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id, true); }));
+    for (const auto stage : {comparisonSource, comparisonQuality, comparisonDistance}) {
+        runtime.failedStages = stage;
+        CHECK(comparisonStagesReady(runtime, f.state, f.id, stage)); // Keep CPU values for retry/export.
+        CHECK_FALSE(comparisonResultsReady(runtime, f.state, f.id, true));
+    }
+    // A failed distance display does not prevent viewing the original geometry.
+    CHECK(comparisonResultsReady(runtime, f.state, f.id));
+    runtime.failedStages = 0;
+    CHECK(comparisonResultsReady(runtime, f.state, f.id, true));
+}
+
 TEST_CASE("each detector publishes readiness without waiting for other stages")
 {
     WorkflowFixture f; REQUIRE(f.initialized);

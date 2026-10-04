@@ -4827,6 +4827,10 @@ struct Reader {
     virtual std::error_code ReadBlock(size_t offset, size_t size, char* buffer) = 0;
     virtual ReadResult      WaitForResult()                                     = 0;
 
+    // Synchronous readers leave this false: an abandoned prefetch must not
+    // perform another stream read just to clean up a parser error.
+    bool async_read_pending{};
+
     auto NumRequests() const noexcept { return m_num_requests; }
     auto SubmitTime() const noexcept { return m_submit_time; }
     auto WaitTime() const noexcept { return m_wait_time; }
@@ -5016,7 +5020,7 @@ struct FileReader : Reader {
     {
         m_handle = CreateEventA(nullptr, FALSE, FALSE, nullptr);
 
-        if (m_handle == INVALID_HANDLE_VALUE) {
+        if (m_handle == nullptr) {
             m_error = std::error_code(static_cast<int>(GetLastError()), std::system_category());
         }
 
@@ -5025,7 +5029,7 @@ struct FileReader : Reader {
 
     ~FileReader() noexcept override
     {
-        if (m_handle != INVALID_HANDLE_VALUE) {
+        if (m_handle != nullptr) {
             CloseHandle(m_handle);
         }
     }
@@ -5034,6 +5038,8 @@ struct FileReader : Reader {
     {
         assert(m_handle && m_handle != INVALID_HANDLE_VALUE);
         assert(m_file && m_file != INVALID_HANDLE_VALUE);
+
+        assert(!async_read_pending);
 
         ++m_num_requests;
 
@@ -5051,6 +5057,7 @@ struct FileReader : Reader {
                 error = std::error_code(ec, std::system_category());
             }
         }
+        async_read_pending = !error;
 
         auto t2 = std::chrono::steady_clock::now();
 
@@ -5067,7 +5074,8 @@ struct FileReader : Reader {
         auto t1 = std::chrono::steady_clock::now();
 
         auto bytes_read = DWORD{};
-        bool success    = GetOverlappedResult(m_handle, &m_overlapped, &bytes_read, TRUE);
+        bool success    = GetOverlappedResult(m_file, &m_overlapped, &bytes_read, TRUE);
+        async_read_pending = false;
 
         auto t2 = std::chrono::steady_clock::now();
 
@@ -6217,18 +6225,17 @@ inline void MergeParallel(MergeTasks* merge_tasks, std::shared_ptr<SharedContext
         }
     }
 
-    auto threads = std::vector<std::thread>{};
+    auto threads = std::vector<std::future<void>>{};
     threads.reserve(context->thread.concurrency);
 
     context->merging.thread_count = context->thread.concurrency;
 
     for (size_t i = 0; i != context->thread.concurrency; ++i) {
-        threads.emplace_back(DispatchMergeTasks, tasks, context);
-        threads.back().detach();
+        threads.emplace_back(std::async(std::launch::async, DispatchMergeTasks, std::cref(tasks), context));
     }
 
     // wait for merging to finish
-    context->merging.completed.get_future().wait();
+    for (auto& thread : threads) { thread.get(); }
 }
 
 // Merge function helper structs
@@ -6883,6 +6890,21 @@ inline rapidobj_errc ProcessLine(std::string_view line, Chunk* chunk, SharedCont
     return rapidobj_errc::Success;
 }
 
+// Keep this guard inside the scope owning the destination buffers, after their
+// declarations: a reader destructor outside that scope would drain too late.
+struct PendingRead final {
+    Reader* reader;
+
+    ~PendingRead() noexcept
+    {
+        if (reader->async_read_pending) {
+            // Windows completion cannot throw. Ignore a cleanup I/O error so
+            // the original parser error/exception is preserved.
+            (void)reader->WaitForResult();
+        }
+    }
+};
+
 inline void ProcessBlocksImpl(
     Reader*        reader,
     size_t         block_begin,
@@ -6899,6 +6921,8 @@ inline void ProcessBlocksImpl(
     auto buffer_size = kMaxLineLength + kBlockSize;
     auto buffer1     = std::unique_ptr<char, sys::AlignedDeleter>(sys::AlignedAllocate(buffer_size, 4_KiB));
     auto buffer2     = std::unique_ptr<char, sys::AlignedDeleter>(sys::AlignedAllocate(buffer_size, 4_KiB));
+    if (!buffer1 || !buffer2) { throw std::bad_alloc(); }
+    auto read        = PendingRead{ reader };
 
     auto front_buffer = buffer1.get();
     auto back_buffer  = buffer2.get();
@@ -7109,7 +7133,7 @@ inline void ParseFileParallel(sys::File* file, std::vector<Chunk>* chunks, std::
     }
 
     auto num_tasks = tasks.size();
-    auto threads   = std::vector<std::thread>{};
+    auto threads   = std::vector<std::future<void>>{};
 
     chunks->resize(num_tasks);
 
@@ -7132,12 +7156,13 @@ inline void ParseFileParallel(sys::File* file, std::vector<Chunk>* chunks, std::
         bool stop_parsing_after_eol = !is_last;
         auto chunk                  = &(*chunks)[i];
 
-        threads.emplace_back(ProcessBlocks, source, i, begin, end, stop_parsing_after_eol, chunk, context);
-        threads.back().detach();
+        threads.emplace_back(std::async(std::launch::async, ProcessBlocks, source, i, begin, end, stop_parsing_after_eol, chunk, context));
     }
 
     // wait for parsing to finish
-    context->parsing.completed.get_future().wait();
+    // Futures propagate allocation failures and join all remaining workers even
+    // if a worker or a later thread creation throws. No worker may outlive chunks.
+    for (auto& thread : threads) { thread.get(); }
 }
 
 inline Result ParseFile(const std::filesystem::path& filepath, const MaterialLibrary& material_library)
@@ -7547,16 +7572,15 @@ TriangulateTasksParallel(size_t concurrency, const Array<double>& positions, con
         }
     };
 
-    auto threads = std::vector<std::thread>();
+    auto threads = std::vector<std::future<void>>();
     threads.reserve(concurrency);
 
     for (size_t i = 0; i != concurrency; ++i) {
-        threads.emplace_back(func);
-        threads.back().detach();
+        threads.emplace_back(std::async(std::launch::async, func));
     }
 
     // wait for triangulation to finish
-    completed.get_future().wait();
+    for (auto& thread : threads) { thread.get(); }
 
     return success;
 }

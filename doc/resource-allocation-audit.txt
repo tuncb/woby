@@ -1,0 +1,115 @@
+Resource allocation audit — issue 91 follow-up
+
+Scope: model import/tessellation, model GPU upload, and the resource creation
+paths of the pinned NoGraphicsAPI backend used by Woby. This is a source audit
+with deterministic failure injection, not a claim that every dependency or
+every graphics-driver failure is recoverable.
+
+Fixed
+-----
+Freeform geometry: removed the 2,000,000-vertex/control-table budget, including
+the cumulative importer budget and the trim work estimate derived from it.
+Keep representation checks for 32-bit mesh/CDT indices and GPU buffer byte
+counts. Count actual triangle/line indices before allocating output arrays;
+reserve output arrays once to avoid large temporary growth copies. Cancellation
+is checked before these allocations. Shader upload sizes/offsets are checked
+before narrowing to 32 bits.
+
+RapidOBJ: both aligned read buffers were unchecked; null now raises bad_alloc
+before I/O begins. Parse, merge and triangulation workers were detached, so an
+allocation exception terminated the process, and thread-creation failure could
+leave other workers using caller-owned storage. Futures now join all launched
+workers on every exit and propagate exceptions to the calling load operation.
+The earlier pending-read drain fix remains in place during unwinding.
+
+Model load boundary: std::bad_alloc becomes an explicit insufficient-CPU-memory
+load error. Existing per-file/background result handling reports the failure.
+
+Vulkan buffers: vkCreateBuffer, memory-type selection, vkAllocateMemory,
+vkBindBufferMemory and vkMapMemory previously aborted. Return an empty heap
+with a static reason distinguishing host/device OOM, mapping failure, resource
+count exhaustion, missing compatible heap, device loss and other driver errors.
+Clean up successful earlier steps on every failure; CPU owner allocations use
+nothrow. Apply the same backing-buffer transaction to descriptor heaps.
+
+Vulkan textures and other handles: texture heap allocation returns an error;
+image creation/binding, render views, graphics/compute pipelines, timeline
+semaphores, command pools and descriptor heap wrappers return null on failure.
+Callers check these returns. Texture suballocation is returned to its allocator
+if native image creation fails. Existing Vulkan error-return paths no longer
+abort merely while translating an OOM VkResult.
+
+CPU storage in GPU allocator utilities: allocating constructors no longer claim
+noexcept. Enable exception unwinding in their library targets. Clean up a first
+range-allocator array if the second fails, and partial upload-queue construction.
+
+Woby renderer ownership: retain geometry before submitting uploads and images
+before recording initialization barriers; release
+resources safely when growing the deferred-retirement list fails; clean up arena
+and blit heaps if CPU bookkeeping fails; preserve the previous framebuffer until
+replacement succeeds; clean up pipelines if cache insertion fails. Reserve
+readback bookkeeping before recording copies, and distinguish submitted copies
+from an abandoned frame during shutdown. Allocate the next retirement list
+before releasing the current one. Commit arena usage only after success.
+
+Remaining findings (not fixed by this change)
+--------------------------------------------
+NoGraphicsAPI Vulkan command recording/submission:
+  - begin_commands uses throwing new inside noexcept, requires successful command
+    buffer/query-pool creation, and does not check timestamp-array malloc calls.
+  - end_commands requires successful epilogue command-buffer allocation.
+  - submit_commands replaces queue submission-array pointers with unchecked
+    realloc results. A failure can lose the old pointer and then dereference null.
+  - Deferred swapchain-image storage also uses unchecked realloc and assertions.
+These need an error-return contract through command recording, submission and
+presentation, plus recovery of acquired images/timeline state. A null check at
+the allocation alone would not make those paths recoverable. An OOM here may
+still abort or crash, including during a model upload's command submission.
+
+NoGraphicsAPI device initialization still performs CPU new/new[] inside noexcept
+functions. Device diagnostic callbacks currently build strings/vectors; those
+can also allocate while called from the backend's noexcept initialization path.
+
+The Metal backend already checks several nil native allocations, but CPU owner
+creation and internal registration/command bookkeeping still include allocations
+inside noexcept paths. The shared utility/renderer fixes apply to it; native
+Metal allocation recovery was not validated on this Windows machine.
+
+Woby's final error strings/logging/UI updates allocate memory too. They are
+best-effort after a model allocation fails and releases its temporary storage;
+there is no reserved emergency reporting pool for complete process-wide OOM.
+Analysis jobs use separate worker exception handling; the audit does not certify
+all allocation sites in third-party codecs, importer DLLs, SDL or ImGui.
+
+Other bounds deliberately unchanged
+----------------------------------
+32-bit indices and per-buffer byte sizes are representation requirements, not
+RAM/VRAM estimates. Trim degree/topology/complexity validation, the renderer's
+256 MiB per-frame upload arena and 2 GiB texture-page budget are separate from
+the removed freeform vertex budget. Their failures already have explicit errors.
+
+Validation
+----------
+tests/native_allocation_tests.cpp compiles the real patched Vulkan backend with
+mock allocation entry points. It exercises failure at every buffer transaction
+step, texture heaps, images/binding, render views, graphics/compute pipelines,
+timeline semaphores and command pools without consuming physical GPU memory.
+tests/rapidobj_reader_tests.cpp injects null aligned allocations, including inside
+an asynchronous parser worker, and checks pending-I/O cleanup.
+Freeform tests accept a planned 10,042,561-vertex grid past the former limit,
+cancel before allocating it, and reject an unaddressable 32-bit index layout.
+Importer tests inject bad_alloc through the load boundary, check the explicit
+CPU memory error, and successfully load another model afterward.
+
+Real-model verification: the Release Vulkan headless renderer loaded
+BeTSSi_mod_NURBS_x00100.obj successfully with 8,880,500 vertices and 16,175,600
+triangles, captured an image, and exited normally. The model-add operation took
+55.75 seconds; the full case peaked at about 2.56 GiB private CPU memory.
+Raw evidence: build/issue91-unlimited-betssi/ (local, generated test artifacts).
+
+Final Windows Debug build: succeeded without compiler warnings. Standard CTest
+preset: all 821 tests passed. The final Debug executable also loaded, rendered,
+captured and cleanly exited with both original BeTSSi and tubes NURBS models;
+raw evidence is in build/issue91-alloc-debug-originals/. GPU integration was
+checked with these real headless runs; WOBY_TEST_HEADLESS remains OFF for the
+standard unit-test preset. The optional slow test label was not rerun here.

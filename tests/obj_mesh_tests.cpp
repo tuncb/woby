@@ -91,6 +91,28 @@ TEST_CASE("OBJ text import shares polygon construction with file import")
     }
 }
 
+TEST_CASE("large OBJ parser failures preserve subsequent valid imports")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "large-invalid.obj";
+    std::string invalid = "v not_a_number 0 0\n";
+    SUBCASE("malformed vertex") {}
+    SUBCASE("oversized line") { invalid = "#" + std::string(8192, 'x') + "\n"; }
+    // Exceed the Windows 1 MiB stream fallback and span multiple parser blocks.
+    std::string padding;
+    const auto comment = "#" + std::string(126, 'x') + "\n";
+    while (padding.size() < 2 * 1024 * 1024) { padding += comment; }
+    writeText(path, (invalid + padding).c_str());
+    const auto validPath = fixture.path / "large-valid.obj";
+    writeText(validPath, ("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n" + padding).c_str());
+    for (int repeat = 0; repeat < 3; ++repeat) {
+        CHECK_THROWS_AS(loadObjAndDiscard(path), std::runtime_error);
+        const auto mesh = woby::loadObjMesh(validPath);
+        CHECK(mesh.vertices.size() == 3);
+        CHECK(mesh.indices.size() == 3);
+    }
+}
+
 TEST_CASE("OBJ text import reports invalid input without filesystem fallback")
 {
     CHECK_THROWS_AS((void)woby::loadObjMeshText(""), std::runtime_error);

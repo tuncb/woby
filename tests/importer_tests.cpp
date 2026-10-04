@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -40,6 +41,17 @@ struct ImporterTestScope {
         std::filesystem::remove_all(root, error);
     }
 };
+
+TEST_CASE("Model loading reports CPU allocation failure and allows a subsequent load")
+{
+    const ImporterTestScope scope;
+    const auto path = scope.root / "triangle.obj";
+    { std::ofstream stream(path); stream << "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"; }
+    woby::ImportCallbacks callbacks;
+    callbacks.stageProgress = [](const auto&) { throw std::bad_alloc(); };
+    CHECK_THROWS_WITH((void)woby::loadModel(path, {}, callbacks), "Insufficient CPU memory while loading the model.");
+    CHECK(woby::loadModel(path).mesh.indices.size() == 3);
+}
 
 void writeFile(const std::filesystem::path& path, const std::string& contents = "fixture")
 {

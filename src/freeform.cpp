@@ -78,7 +78,7 @@ std::vector<double> gridParameters(const std::vector<double>& knots, uint32_t de
     for (const double knot : knots) {
         const double end = std::min(knot, domain[1]);
         if (end <= start) { continue; }
-        if (result.size() + segments > maxFreeformVertices) { throw std::runtime_error("Freeform tessellation exceeds the vertex limit."); }
+        if (result.size() > UINT32_MAX - segments) { throw std::runtime_error("Freeform parameter grid exceeds the supported index range."); }
         for (uint32_t i = 1; i <= segments; ++i) {
             result.push_back(i == segments ? end : std::lerp(start, end, double(i) / segments));
         }
@@ -108,7 +108,7 @@ void validateFreeformPatch(const FreeformPatch& patch)
     validateDirection(patch.knotsU, patch.countU, patch.degreeU, patch.domainU);
     if (patch.surface) { validateDirection(patch.knotsV, patch.countV, patch.degreeV, patch.domainV); }
     else if (patch.countV != 1 || patch.degreeV != 0) { throw std::runtime_error("Invalid freeform curve dimensions."); }
-    if (patch.controls.size() != size_t(patch.countU) * patch.countV || patch.controls.size() > maxFreeformVertices) {
+    if (patch.controls.size() != uint64_t(patch.countU) * patch.countV) {
         throw std::runtime_error("Freeform control point count does not match its dimensions.");
     }
     for (const auto& point : patch.controls) {
@@ -218,7 +218,13 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
     uint64_t nextId = 0;
     std::unordered_set<std::string> names;
     for (const auto& node : mesh.nodes) { names.insert(node.name); }
-    size_t total = 0;
+    const auto checkedCount = [](size_t current, size_t added) {
+        if (current > UINT32_MAX || added > UINT32_MAX - current) {
+            throw std::runtime_error("Freeform geometry exceeds the supported index range.");
+        }
+        return current + added;
+    };
+    size_t total = 0, triangles = 0, lines = 0;
     for (const auto& patch : geometry->patches) {
         validateFreeformPatch(patch);
         FreeformGrid grid;
@@ -226,14 +232,25 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
         grid.v = patch.surface ? gridParameters(patch.knotsV, patch.degreeV, patch.domainV, true) : std::vector<double>{0};
         triangulateFreeformTrim(patch,grid,progress);
         const size_t count = freeformVertexCount(grid);
-        if (count > maxFreeformVertices - total) { throw std::runtime_error("Freeform tessellation exceeds the vertex limit."); }
-        total += count;
+        total = checkedCount(total, count);
+        if (patch.surface) {
+            const size_t indices = grid.samples.empty() ? (grid.u.size()-1)*(grid.v.size()-1)*6 : grid.triangles.size();
+            triangles = checkedCount(triangles, indices);
+        } else { lines = checkedCount(lines, (grid.u.size()-1)*2); }
         geometry->grids.push_back(std::move(grid));
     }
-    if (mesh.vertices.size() + total > UINT32_MAX || source->points.size() + total > UINT32_MAX
-        || mesh.indices.size() + total*6 > UINT32_MAX || mesh.lineIndices.size() + total*2 > UINT32_MAX) {
-        throw std::runtime_error("Freeform geometry exceeds the supported index range.");
-    }
+    const auto vertexCount = checkedCount(mesh.vertices.size(), total);
+    const auto sourceCount = checkedCount(source->points.size(), total);
+    const auto triangleCount = checkedCount(mesh.indices.size(), triangles);
+    const auto sourceIndexCount = checkedCount(source->indices.size(), triangles);
+    const auto lineCount = checkedCount(mesh.lineIndices.size(), lines);
+    const auto nodeCount = checkedCount(mesh.nodes.size(), geometry->patches.size());
+    reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, total);
+    // Allocate once, without transient vector growth copies of a large model.
+    mesh.vertices.reserve(vertexCount); mesh.precisePositions.reserve(vertexCount);
+    source->points.reserve(sourceCount); source->indices.reserve(sourceIndexCount);
+    mesh.indices.reserve(triangleCount); mesh.lineIndices.reserve(lineCount); mesh.nodes.reserve(nodeCount);
+    if (!usedIds.empty()) { source->originalPointIds.reserve(sourceCount); }
     size_t completed = 0;
     for (size_t p = 0; p < geometry->patches.size(); ++p) {
         auto& patch = geometry->patches[p]; auto& grid = geometry->grids[p];
