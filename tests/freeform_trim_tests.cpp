@@ -183,3 +183,61 @@ TEST_CASE("Trimming checks triangulator index capacity and cancels during prepar
         CHECK(visits==12); CHECK(mesh.vertices.empty());
     }
 }
+
+TEST_CASE("Trimming omits unused grid cells before checking triangulator capacity") {
+    auto p=trimTestPatch();
+    auto trim=std::make_shared<woby::FreeformTrimming>(); p.trimming=trim;
+    trim->regions.push_back({trimPolygon({{.49999,.49999},{.50001,.49999},{.50001,.50001},{.49999,.50001}}),{}});
+    woby::FreeformGrid grid;
+    // The full Cartesian product exceeds CDT's capacity, but only a few cells
+    // intersect the retained region. No multi-billion-vertex allocation is needed.
+    for (size_t i=0;i<50000;++i) { grid.u.push_back(double(i)/49999); }
+    grid.v=grid.u;
+    woby::triangulateFreeformTrim(p,grid,{});
+    CHECK(grid.u.size()==50000); CHECK(grid.v.size()==50000);
+    REQUIRE(!grid.samples.empty()); CHECK(grid.samples.size()<20);
+    CHECK(area(grid)==doctest::Approx(4e-10).epsilon(1e-6).scale(1e-10));
+    for (const auto& uv:grid.samples) {
+        CHECK(uv[0]>=.49999); CHECK(uv[0]<=.50001);
+        CHECK(uv[1]>=.49999); CHECK(uv[1]<=.50001);
+    }
+}
+
+TEST_CASE("Trim grid cropping preserves cells in nonunit domains and at grid boundaries") {
+    auto p=trimTestPatch();
+    p.domainU={10,20}; p.knotsU={10,10,20,20};
+    p.domainV={-3,7}; p.knotsV={-3,-3,7,7};
+    double u0=12,u1=16,v0=-1,v1=3;
+    SUBCASE("aligned bounds") {}
+    SUBCASE("bounds within cells") { u0=12.2; u1=15.8; v0=-.8; v1=2.8; }
+    SUBCASE("domain edges") { u0=10; v1=7; }
+    auto trim=std::make_shared<woby::FreeformTrimming>(); p.trimming=trim;
+    trim->regions.push_back({trimPolygon({{u0,v0},{u1,v0},{u1,v1},{u0,v1}}),{}});
+    woby::FreeformGrid grid;
+    grid.u={10,11,12,13,14,15,16,17,18,19,20};
+    grid.v={-3,-2,-1,0,1,2,3,4,5,6,7};
+    woby::triangulateFreeformTrim(p,grid,{});
+    CHECK(area(grid)==doctest::Approx((u1-u0)*(v1-v0)));
+    // Every surviving grid crossing is retained, and no triangle crosses a
+    // constrained grid line (including the surface's knot lines).
+    for (double v:grid.v) for (double u:grid.u) {
+        if (u<u0 || u>u1 || v<v0 || v>v1) { continue; }
+        CHECK(std::any_of(grid.samples.begin(),grid.samples.end(),[&](const auto& uv) {
+            return std::abs(uv[0]-u)<1e-12 && std::abs(uv[1]-v)<1e-12;
+        }));
+    }
+    for (size_t i=0;i<grid.triangles.size();i+=3) {
+        for (size_t k=0;k<2;++k) {
+            double low=grid.samples[grid.triangles[i]][k],high=low;
+            for (size_t j=1;j<3;++j) {
+                const auto value=grid.samples[grid.triangles[i+j]][k];
+                low=std::min(low,value); high=std::max(high,value);
+            }
+            CHECK(low>=(k==0 ? u0 : v0)-1e-12);
+            CHECK(high<=(k==0 ? u1 : v1)+1e-12);
+            for (double line:k==0 ? grid.u : grid.v) {
+                CHECK_FALSE((low<line-1e-12 && high>line+1e-12));
+            }
+        }
+    }
+}
