@@ -140,6 +140,8 @@ add_executable(woby
     src/hover_pick.h
     src/surface_annotation.cpp
     src/ui_annotation_operations.cpp
+    src/annotation_work.cpp
+    src/annotation_command.cpp
     src/annotation_preparation.cpp
     src/annotation_ui.cpp
     src/scene_pick.cpp
@@ -435,6 +437,8 @@ if(BUILD_TESTING)
         src/hover_pick.h
         src/surface_annotation.cpp
         src/ui_annotation_operations.cpp
+        src/annotation_work.cpp
+        src/annotation_command.cpp
         src/annotation_preparation.cpp
         src/annotation_ui.cpp
         src/scene_pick.cpp

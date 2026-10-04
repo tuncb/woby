@@ -13,10 +13,18 @@ void cancelAnnotationPreparation(AnnotationPreparationRuntime& runtime)
 bool annotationPreparationReady(const UiState& state)
 {
     const bool missing = std::any_of(state.files.begin(), state.files.end(),
-        [](const auto& file) { return !annotationMeshCacheReady(file.mesh); });
+        [](const auto& file) { return !annotationMeshSnapshotReady(file.mesh); });
     if (missing) {
+        size_t copyBytes = 0;
+        std::vector<const Mesh*> meshes;
         for (const auto& part : scenePickParts(state)) {
             if (part.mesh && !annotationMeshCacheReady(*part.mesh)) { return false; }
+            if (part.mesh && !annotationMeshSnapshotReady(*part.mesh)
+                && std::find(meshes.begin(), meshes.end(), part.mesh) == meshes.end()) {
+                meshes.push_back(part.mesh);
+                copyBytes += part.mesh->vertices.size() * sizeof(Vertex) + part.mesh->indices.size() * sizeof(uint32_t);
+                if (copyBytes > annotationInlineSnapshotBytes) { return false; }
+            }
         }
     }
     for (const auto& item : state.annotations) {
@@ -44,7 +52,7 @@ void updateAnnotationPreparation(AnnotationPreparationRuntime& runtime, UiState&
     if (!runtime.error.empty()) { return; }
     for (const auto& file : state.files) {
         const auto& mesh = file.mesh;
-        if (annotationMeshCacheReady(mesh)) { continue; }
+        if (mesh.indices.empty() || mesh.nodes.empty() || annotationMeshSnapshotReady(mesh)) { continue; }
         auto job = std::make_unique<AnnotationPreparationJob>();
         job->vertices = mesh.vertices.data(); job->indices = mesh.indices.data();
         job->vertexCount = mesh.vertices.size(); job->indexCount = mesh.indices.size();
