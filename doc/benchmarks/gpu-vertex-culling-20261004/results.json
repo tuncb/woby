@@ -1,0 +1,4112 @@
+{
+  "schema": 1,
+  "notes": "Median of three round medians. Timed current-frame GPU culling and stable compaction, indirect drawing, attachment store/load and MSAA resolve; capture and diagnostic count readback excluded. Requested culling-buffer payload is not committed VRAM. Source hashes identify the uncommitted prototype used for these runs.",
+  "runs": [
+    {
+      "camera_matrix": [
+        0.4499015808105469,
+        -0.42457082867622375,
+        0.003449189942330122,
+        -0.8524513244628906,
+        -0.8641802072525024,
+        -0.2210361808538437,
+        0.0017956857336685061,
+        -0.44379541277885437,
+        -7.258941447929601e-09,
+        1.6645970344543457,
+        0.0011181907029822469,
+        -0.27635565400123596,
+        0.5970870852470398,
+        4.353714942932129,
+        0.5542294979095459,
+        115.87596893310547
+      ],
+      "compaction_blocks": 36449,
+      "culling_buffer_bytes": 77937432,
+      "device": "NVIDIA GeForce RTX 3070 Laptop GPU",
+      "experiment": "vertex_gpu_culling",
+      "groups": 2203,
+      "height": 720,
+      "id_attachment": true,
+      "markers": 9021669,
+      "measurement_seconds": 1.0,
+      "model": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "notes": "Every timed frame builds current-frame visibility, stable GPU compaction and indirect arguments. Total GPU time includes attachment clear/store/load, depth pyramid, all compute passes, barriers, indirect marker draws and MSAA resolve. Capture and counter readback are outside timed intervals. No CPU visibility readback or selection upload is needed to draw. Full padded-square conservative footprints, min across all MSAA depth samples; transparent occlusion disabled. Split control isolates render-pass break. CPU submission excludes fence wait. Headless Vulkan only; no UI/presentation.",
+      "orthographic": false,
+      "retained_geometry_bytes": 684076352,
+      "rounds": 3,
+      "samples": 4,
+      "scan_levels": 2,
+      "schema": 1,
+      "surface_method": "barycentric",
+      "triangles": 9980699,
+      "vertices": 9021391,
+      "warmup_seconds": 0.5,
+      "width": 1280,
+      "zoom": 1.0,
+      "run": "gpu-culling-san-miguel-fit",
+      "guard": {
+        "command": [
+          "D:\\.worktree\\woby-overlay-build\\bin\\Release\\woby_overlay_prototype.exe",
+          "--model",
+          "D:\\temp\\obj_tests\\san-miguel.obj",
+          "--output",
+          "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-san-miguel-fit\\captures",
+          "--gpu-culling",
+          "--point-size",
+          "4",
+          "--rounds",
+          "3",
+          "--seconds",
+          "1",
+          "--warmup",
+          "0.5"
+        ],
+        "status": "completed",
+        "exit_code": 0,
+        "elapsed_seconds": 55.96960840000247,
+        "peak_private_bytes": 2458079232,
+        "minimum_available_bytes": 48594415616,
+        "sample_interval_seconds": 0.2,
+        "private_limit_gib": 38,
+        "available_limit_gib": 6,
+        "overlapping_workloads": [],
+        "source_revision": "b44d2fcc88f1e0a5287b61156f4e28e251c2c36f",
+        "source_sha256": {
+          "experiments\\mesh-overlays\\analysis_tests.py": "59fa27a39d2d5985126fe82733471c90f007108be778d62531c20093e4b04468",
+          "experiments\\mesh-overlays\\analyze.py": "ca07449235525f20b70b5b58b2cc2ed394bbb8c4f0dfd5a46d632b63f2af6a46",
+          "experiments\\mesh-overlays\\CMakeLists.txt": "3c668399f112dec8a80b23b78fe6f4276e60c3ade0e99cec5ec11ce3d831650b",
+          "experiments\\mesh-overlays\\gpu_culling.cpp": "7d07d597014680251da8431c767bd5dfcb16dcba5090ec6869402f565b285b18",
+          "experiments\\mesh-overlays\\gpu_culling.h": "070765e7689d3f5c5dfe7a9f8beb5fee6ad2c07246cc24f84a978ef39e3c8a01",
+          "experiments\\mesh-overlays\\gpu_culling.slang": "aba5efa635b2fd3da003587d2f079c1e480e8dbd71562ba2547f2024b11c7210",
+          "experiments\\mesh-overlays\\gpu_culling_root.h": "76e4e60859a3441abefd5b86750fea08f65c8ba4dfb9426c28d7a7145f1e26d2",
+          "experiments\\mesh-overlays\\gpu_culling_run.cpp": "e9bb6a33c5a31fe8c731a7e1b0b98ec5cbca2e01fcc7975139e8e3a5f83b4dc5",
+          "experiments\\mesh-overlays\\gpu_culling_tests.cpp": "3572d6901420092f5f6d664d0384bbe21612420b2bce4f5708e55c96a59d377d",
+          "experiments\\mesh-overlays\\main.cpp": "1de0a0843c3b48fb66fe0e223c0d56d49677fbda71b8af290c68c16e4419a111",
+          "experiments\\mesh-overlays\\overlay.slang": "2ff364b1c6f221e143d5a234f58214afb73cf1695529f7d83e3df4783d3e958f",
+          "experiments\\mesh-overlays\\README.md": "835e8f01206181ef88b926eb725b76b300253ff503230752cd4985890a726fd6",
+          "experiments\\mesh-overlays\\renderer.cpp": "71eb839c885b59fc150f66bc287d060515ce58c3d1ca42b1cbb2b7663178b460",
+          "experiments\\mesh-overlays\\renderer.h": "2a19370ceaaeff11f8cdbad62127b2eedc43a260818cb03550c4297346138346",
+          "experiments\\mesh-overlays\\run.py": "52b89fc8e9be112b8b11fcf8c6e809b8e83d279f5c0382d28c4bec34118ab2b6",
+          "experiments\\mesh-overlays\\tests.cpp": "1028c413fc0e00dcb9a986aac7ff0727965a62acf1658ec8035cc6dba0edd6f3",
+          "experiments\\mesh-overlays\\visibility.cpp": "b576ac0628a4571ae8146c1cad6bcaeac911bc16cee5375b6fa554b1f4ecac6c",
+          "experiments\\mesh-overlays\\visibility.h": "62266c7755333fbabc8a135732ebf98da0d3d809ceb7fd5371c4b06384f0c66d",
+          "experiments\\mesh-overlays\\visibility_run.cpp": "de05ba2cb1e1bfcdb3c41a5171d521779f160b800f564197edd8c9b95cf0d2c5",
+          "experiments\\mesh-overlays\\visibility_run.h": "12e1e1df3311d0558d523ca282fa13dac7cd5a3a7c42670f9e36b43b8db8aac2",
+          "shaders\\native\\woby.slang": "f1d9d07515066c96536333ba176a5b0043f1941f253a54d63500e79985b22243",
+          "shaders\\native\\root.h": "24d455efeecf53a5753d4424d876341bdb84e4c04cd49d3d8fbf3f8da5b2a7ef",
+          "src\\scene_mesh_preparation.cpp": "263a0e09435ae6984209f79f1fcb33ede0cc8e0a5f800c207484d87c47bde368",
+          "src\\obj_mesh.cpp": "8bea04fdfa6fb3d61e9f146d644be4c829b11ec5e1b0fd160aa99cd7b0c82f49",
+          "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+          "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f"
+        },
+        "model_sha256": "22533258be1d94aa1ece29053e98f11c91ebc17a8a3626545dee3cecf90b71e3",
+        "executable_sha256": "d38fc6544f60486b374a9193b2eef6350240e8900e4d46e4c13eb97ffb23ce11"
+      },
+      "raw_results_path": "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-san-miguel-fit\\captures\\results.json",
+      "raw_results_sha256": "f0627388b902071a53dbe43b47d4a98b4784c64669c05a3d0a27021d29296721",
+      "captures": {
+        "points_4-all-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-gpu_footprint-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-gpu_frustum-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-split-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "surface_4-all-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-gpu_footprint-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-gpu_frustum-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-split-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68"
+      }
+    },
+    {
+      "camera_matrix": [
+        0.4499015808105469,
+        -0.42457079887390137,
+        0.0034490881953388453,
+        -0.8524512648582458,
+        -0.8641801476478577,
+        -0.2210361808538437,
+        0.0017956328811123967,
+        -0.44379541277885437,
+        0.0,
+        1.6645969152450562,
+        0.0011181577574461699,
+        -0.27635565400123596,
+        1.1048671007156372,
+        7.059486389160156,
+        0.07837679982185364,
+        12.102605819702148
+      ],
+      "compaction_blocks": 150057,
+      "culling_buffer_bytes": 314636280,
+      "device": "NVIDIA GeForce RTX 3070 Laptop GPU",
+      "experiment": "vertex_gpu_culling",
+      "groups": 1,
+      "height": 720,
+      "id_attachment": true,
+      "markers": 38414391,
+      "measurement_seconds": 1.0,
+      "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "notes": "Every timed frame builds current-frame visibility, stable GPU compaction and indirect arguments. Total GPU time includes attachment clear/store/load, depth pyramid, all compute passes, barriers, indirect marker draws and MSAA resolve. Capture and counter readback are outside timed intervals. No CPU visibility readback or selection upload is needed to draw. Full padded-square conservative footprints, min across all MSAA depth samples; transparent occlusion disabled. Split control isolates render-pass break. CPU submission excludes fence wait. Headless Vulkan only; no UI/presentation.",
+      "orthographic": false,
+      "retained_geometry_bytes": 4110709572,
+      "rounds": 3,
+      "samples": 4,
+      "scan_levels": 3,
+      "schema": 1,
+      "surface_method": "barycentric",
+      "triangles": 75771986,
+      "vertices": 38414391,
+      "warmup_seconds": 0.5,
+      "width": 1280,
+      "zoom": 1.0,
+      "run": "gpu-culling-beartrap-fit",
+      "guard": {
+        "command": [
+          "D:\\.worktree\\woby-overlay-build\\bin\\Release\\woby_overlay_prototype.exe",
+          "--model",
+          "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+          "--output",
+          "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-beartrap-fit\\captures",
+          "--gpu-culling",
+          "--rounds",
+          "3",
+          "--seconds",
+          "1",
+          "--warmup",
+          "0.5"
+        ],
+        "status": "completed",
+        "exit_code": 0,
+        "elapsed_seconds": 382.07251579999865,
+        "peak_private_bytes": 13071220736,
+        "minimum_available_bytes": 38925414400,
+        "sample_interval_seconds": 0.2,
+        "private_limit_gib": 38,
+        "available_limit_gib": 6,
+        "overlapping_workloads": [],
+        "source_revision": "b44d2fcc88f1e0a5287b61156f4e28e251c2c36f",
+        "source_sha256": {
+          "experiments\\mesh-overlays\\analysis_tests.py": "59fa27a39d2d5985126fe82733471c90f007108be778d62531c20093e4b04468",
+          "experiments\\mesh-overlays\\analyze.py": "ca07449235525f20b70b5b58b2cc2ed394bbb8c4f0dfd5a46d632b63f2af6a46",
+          "experiments\\mesh-overlays\\CMakeLists.txt": "3c668399f112dec8a80b23b78fe6f4276e60c3ade0e99cec5ec11ce3d831650b",
+          "experiments\\mesh-overlays\\gpu_culling.cpp": "7d07d597014680251da8431c767bd5dfcb16dcba5090ec6869402f565b285b18",
+          "experiments\\mesh-overlays\\gpu_culling.h": "070765e7689d3f5c5dfe7a9f8beb5fee6ad2c07246cc24f84a978ef39e3c8a01",
+          "experiments\\mesh-overlays\\gpu_culling.slang": "aba5efa635b2fd3da003587d2f079c1e480e8dbd71562ba2547f2024b11c7210",
+          "experiments\\mesh-overlays\\gpu_culling_root.h": "76e4e60859a3441abefd5b86750fea08f65c8ba4dfb9426c28d7a7145f1e26d2",
+          "experiments\\mesh-overlays\\gpu_culling_run.cpp": "e9bb6a33c5a31fe8c731a7e1b0b98ec5cbca2e01fcc7975139e8e3a5f83b4dc5",
+          "experiments\\mesh-overlays\\gpu_culling_tests.cpp": "3572d6901420092f5f6d664d0384bbe21612420b2bce4f5708e55c96a59d377d",
+          "experiments\\mesh-overlays\\main.cpp": "1de0a0843c3b48fb66fe0e223c0d56d49677fbda71b8af290c68c16e4419a111",
+          "experiments\\mesh-overlays\\overlay.slang": "2ff364b1c6f221e143d5a234f58214afb73cf1695529f7d83e3df4783d3e958f",
+          "experiments\\mesh-overlays\\README.md": "835e8f01206181ef88b926eb725b76b300253ff503230752cd4985890a726fd6",
+          "experiments\\mesh-overlays\\renderer.cpp": "71eb839c885b59fc150f66bc287d060515ce58c3d1ca42b1cbb2b7663178b460",
+          "experiments\\mesh-overlays\\renderer.h": "2a19370ceaaeff11f8cdbad62127b2eedc43a260818cb03550c4297346138346",
+          "experiments\\mesh-overlays\\run.py": "52b89fc8e9be112b8b11fcf8c6e809b8e83d279f5c0382d28c4bec34118ab2b6",
+          "experiments\\mesh-overlays\\tests.cpp": "1028c413fc0e00dcb9a986aac7ff0727965a62acf1658ec8035cc6dba0edd6f3",
+          "experiments\\mesh-overlays\\visibility.cpp": "b576ac0628a4571ae8146c1cad6bcaeac911bc16cee5375b6fa554b1f4ecac6c",
+          "experiments\\mesh-overlays\\visibility.h": "62266c7755333fbabc8a135732ebf98da0d3d809ceb7fd5371c4b06384f0c66d",
+          "experiments\\mesh-overlays\\visibility_run.cpp": "de05ba2cb1e1bfcdb3c41a5171d521779f160b800f564197edd8c9b95cf0d2c5",
+          "experiments\\mesh-overlays\\visibility_run.h": "12e1e1df3311d0558d523ca282fa13dac7cd5a3a7c42670f9e36b43b8db8aac2",
+          "shaders\\native\\woby.slang": "f1d9d07515066c96536333ba176a5b0043f1941f253a54d63500e79985b22243",
+          "shaders\\native\\root.h": "24d455efeecf53a5753d4424d876341bdb84e4c04cd49d3d8fbf3f8da5b2a7ef",
+          "src\\scene_mesh_preparation.cpp": "263a0e09435ae6984209f79f1fcb33ede0cc8e0a5f800c207484d87c47bde368",
+          "src\\obj_mesh.cpp": "8bea04fdfa6fb3d61e9f146d644be4c829b11ec5e1b0fd160aa99cd7b0c82f49",
+          "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+          "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f"
+        },
+        "model_sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329",
+        "executable_sha256": "d38fc6544f60486b374a9193b2eef6350240e8900e4d46e4c13eb97ffb23ce11"
+      },
+      "raw_results_path": "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-beartrap-fit\\captures\\results.json",
+      "raw_results_sha256": "956d1cb7c01de8721a658a1d8a726afcd949b24e2fd87035e1f3cad94de790c7",
+      "captures": {
+        "points_1-all-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_1-gpu_footprint-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_1-gpu_frustum-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_1-split-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_4-all-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_4-gpu_footprint-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_4-gpu_frustum-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_4-split-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_8-all-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "points_8-gpu_footprint-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "points_8-gpu_frustum-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "points_8-split-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "surface_1-all-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_1-gpu_footprint-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_1-gpu_frustum-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_1-split-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_4-all-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_4-gpu_footprint-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_4-gpu_frustum-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_4-split-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_8-all-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926",
+        "surface_8-gpu_footprint-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926",
+        "surface_8-gpu_frustum-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926",
+        "surface_8-split-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926"
+      }
+    },
+    {
+      "camera_matrix": [
+        0.4499015808105469,
+        -0.42457085847854614,
+        0.0036856597289443016,
+        -0.8524512648582458,
+        -0.8641801476478577,
+        -0.22103619575500488,
+        0.0019187945872545242,
+        -0.44379541277885437,
+        0.0,
+        1.6645969152450562,
+        0.0011948519386351109,
+        -0.27635568380355835,
+        1.1048673391342163,
+        7.059486389160156,
+        0.08374956250190735,
+        3.8585407733917236
+      ],
+      "compaction_blocks": 150057,
+      "culling_buffer_bytes": 314636280,
+      "device": "NVIDIA GeForce RTX 3070 Laptop GPU",
+      "experiment": "vertex_gpu_culling",
+      "groups": 1,
+      "height": 720,
+      "id_attachment": true,
+      "markers": 38414391,
+      "measurement_seconds": 1.0,
+      "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "notes": "Every timed frame builds current-frame visibility, stable GPU compaction and indirect arguments. Total GPU time includes attachment clear/store/load, depth pyramid, all compute passes, barriers, indirect marker draws and MSAA resolve. Capture and counter readback are outside timed intervals. No CPU visibility readback or selection upload is needed to draw. Full padded-square conservative footprints, min across all MSAA depth samples; transparent occlusion disabled. Split control isolates render-pass break. CPU submission excludes fence wait. Headless Vulkan only; no UI/presentation.",
+      "orthographic": false,
+      "retained_geometry_bytes": 4110709572,
+      "rounds": 3,
+      "samples": 4,
+      "scan_levels": 3,
+      "schema": 1,
+      "surface_method": "barycentric",
+      "triangles": 75771986,
+      "vertices": 38414391,
+      "warmup_seconds": 0.5,
+      "width": 1280,
+      "zoom": 0.3499999940395355,
+      "run": "gpu-culling-beartrap-close",
+      "guard": {
+        "command": [
+          "D:\\.worktree\\woby-overlay-build\\bin\\Release\\woby_overlay_prototype.exe",
+          "--model",
+          "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+          "--output",
+          "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-beartrap-close\\captures",
+          "--gpu-culling",
+          "--point-size",
+          "4",
+          "--zoom",
+          "0.35",
+          "--rounds",
+          "3",
+          "--seconds",
+          "1",
+          "--warmup",
+          "0.5"
+        ],
+        "status": "completed",
+        "exit_code": 0,
+        "elapsed_seconds": 99.94500739999057,
+        "peak_private_bytes": 13071810560,
+        "minimum_available_bytes": 39222349824,
+        "sample_interval_seconds": 0.2,
+        "private_limit_gib": 38,
+        "available_limit_gib": 6,
+        "overlapping_workloads": [],
+        "source_revision": "b44d2fcc88f1e0a5287b61156f4e28e251c2c36f",
+        "source_sha256": {
+          "experiments\\mesh-overlays\\analysis_tests.py": "59fa27a39d2d5985126fe82733471c90f007108be778d62531c20093e4b04468",
+          "experiments\\mesh-overlays\\analyze.py": "ca07449235525f20b70b5b58b2cc2ed394bbb8c4f0dfd5a46d632b63f2af6a46",
+          "experiments\\mesh-overlays\\CMakeLists.txt": "3c668399f112dec8a80b23b78fe6f4276e60c3ade0e99cec5ec11ce3d831650b",
+          "experiments\\mesh-overlays\\gpu_culling.cpp": "7d07d597014680251da8431c767bd5dfcb16dcba5090ec6869402f565b285b18",
+          "experiments\\mesh-overlays\\gpu_culling.h": "070765e7689d3f5c5dfe7a9f8beb5fee6ad2c07246cc24f84a978ef39e3c8a01",
+          "experiments\\mesh-overlays\\gpu_culling.slang": "aba5efa635b2fd3da003587d2f079c1e480e8dbd71562ba2547f2024b11c7210",
+          "experiments\\mesh-overlays\\gpu_culling_root.h": "76e4e60859a3441abefd5b86750fea08f65c8ba4dfb9426c28d7a7145f1e26d2",
+          "experiments\\mesh-overlays\\gpu_culling_run.cpp": "e9bb6a33c5a31fe8c731a7e1b0b98ec5cbca2e01fcc7975139e8e3a5f83b4dc5",
+          "experiments\\mesh-overlays\\gpu_culling_tests.cpp": "3572d6901420092f5f6d664d0384bbe21612420b2bce4f5708e55c96a59d377d",
+          "experiments\\mesh-overlays\\main.cpp": "1de0a0843c3b48fb66fe0e223c0d56d49677fbda71b8af290c68c16e4419a111",
+          "experiments\\mesh-overlays\\overlay.slang": "2ff364b1c6f221e143d5a234f58214afb73cf1695529f7d83e3df4783d3e958f",
+          "experiments\\mesh-overlays\\README.md": "835e8f01206181ef88b926eb725b76b300253ff503230752cd4985890a726fd6",
+          "experiments\\mesh-overlays\\renderer.cpp": "71eb839c885b59fc150f66bc287d060515ce58c3d1ca42b1cbb2b7663178b460",
+          "experiments\\mesh-overlays\\renderer.h": "2a19370ceaaeff11f8cdbad62127b2eedc43a260818cb03550c4297346138346",
+          "experiments\\mesh-overlays\\run.py": "52b89fc8e9be112b8b11fcf8c6e809b8e83d279f5c0382d28c4bec34118ab2b6",
+          "experiments\\mesh-overlays\\tests.cpp": "1028c413fc0e00dcb9a986aac7ff0727965a62acf1658ec8035cc6dba0edd6f3",
+          "experiments\\mesh-overlays\\visibility.cpp": "b576ac0628a4571ae8146c1cad6bcaeac911bc16cee5375b6fa554b1f4ecac6c",
+          "experiments\\mesh-overlays\\visibility.h": "62266c7755333fbabc8a135732ebf98da0d3d809ceb7fd5371c4b06384f0c66d",
+          "experiments\\mesh-overlays\\visibility_run.cpp": "de05ba2cb1e1bfcdb3c41a5171d521779f160b800f564197edd8c9b95cf0d2c5",
+          "experiments\\mesh-overlays\\visibility_run.h": "12e1e1df3311d0558d523ca282fa13dac7cd5a3a7c42670f9e36b43b8db8aac2",
+          "shaders\\native\\woby.slang": "f1d9d07515066c96536333ba176a5b0043f1941f253a54d63500e79985b22243",
+          "shaders\\native\\root.h": "24d455efeecf53a5753d4424d876341bdb84e4c04cd49d3d8fbf3f8da5b2a7ef",
+          "src\\scene_mesh_preparation.cpp": "263a0e09435ae6984209f79f1fcb33ede0cc8e0a5f800c207484d87c47bde368",
+          "src\\obj_mesh.cpp": "8bea04fdfa6fb3d61e9f146d644be4c829b11ec5e1b0fd160aa99cd7b0c82f49",
+          "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+          "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f"
+        },
+        "model_sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329",
+        "executable_sha256": "d38fc6544f60486b374a9193b2eef6350240e8900e4d46e4c13eb97ffb23ce11"
+      },
+      "raw_results_path": "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-beartrap-close\\captures\\results.json",
+      "raw_results_sha256": "2dbaeeac31b9147acd40beac85f341da9270ad67fd9f3d3efe548079fc1e5f58",
+      "captures": {
+        "points_4-all-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "points_4-gpu_footprint-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "points_4-gpu_frustum-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "points_4-split-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "surface_4-all-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3",
+        "surface_4-gpu_footprint-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3",
+        "surface_4-gpu_frustum-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3",
+        "surface_4-split-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3"
+      }
+    },
+    {
+      "camera_matrix": [
+        0.4499015808105469,
+        -0.42457082867622375,
+        0.003449189942330122,
+        -0.8524513244628906,
+        -0.8641802072525024,
+        -0.2210361808538437,
+        0.0017956857336685061,
+        -0.44379541277885437,
+        -7.258941447929601e-09,
+        1.6645970344543457,
+        0.0011181907029822469,
+        -0.27635565400123596,
+        0.5970870852470398,
+        4.353714942932129,
+        0.5542294979095459,
+        115.87596893310547
+      ],
+      "compaction_blocks": 36449,
+      "culling_buffer_bytes": 77937432,
+      "device": "NVIDIA GeForce RTX 3070 Laptop GPU",
+      "experiment": "vertex_gpu_culling",
+      "groups": 2203,
+      "height": 720,
+      "id_attachment": false,
+      "markers": 9021669,
+      "measurement_seconds": 1.0,
+      "model": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "notes": "Every timed frame builds current-frame visibility, stable GPU compaction and indirect arguments. Total GPU time includes attachment clear/store/load, depth pyramid, all compute passes, barriers, indirect marker draws and MSAA resolve. Capture and counter readback are outside timed intervals. No CPU visibility readback or selection upload is needed to draw. Full padded-square conservative footprints, min across all MSAA depth samples; transparent occlusion disabled. Split control isolates render-pass break. CPU submission excludes fence wait. Headless Vulkan only; no UI/presentation.",
+      "orthographic": false,
+      "retained_geometry_bytes": 684076352,
+      "rounds": 3,
+      "samples": 4,
+      "scan_levels": 2,
+      "schema": 1,
+      "surface_method": "barycentric",
+      "triangles": 9980699,
+      "vertices": 9021391,
+      "warmup_seconds": 0.5,
+      "width": 1280,
+      "zoom": 1.0,
+      "run": "gpu-culling-san-miguel-no-ids",
+      "guard": {
+        "command": [
+          "D:\\.worktree\\woby-overlay-build\\bin\\Release\\woby_overlay_prototype.exe",
+          "--model",
+          "D:\\temp\\obj_tests\\san-miguel.obj",
+          "--output",
+          "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-san-miguel-no-ids\\captures",
+          "--gpu-culling",
+          "--point-size",
+          "4",
+          "--ids",
+          "0",
+          "--rounds",
+          "3",
+          "--seconds",
+          "1",
+          "--warmup",
+          "0.5"
+        ],
+        "status": "completed",
+        "exit_code": 0,
+        "elapsed_seconds": 46.14403950000997,
+        "peak_private_bytes": 2508779520,
+        "minimum_available_bytes": 48966721536,
+        "sample_interval_seconds": 0.2,
+        "private_limit_gib": 38,
+        "available_limit_gib": 6,
+        "overlapping_workloads": [],
+        "source_revision": "b44d2fcc88f1e0a5287b61156f4e28e251c2c36f",
+        "source_sha256": {
+          "experiments\\mesh-overlays\\analysis_tests.py": "59fa27a39d2d5985126fe82733471c90f007108be778d62531c20093e4b04468",
+          "experiments\\mesh-overlays\\analyze.py": "ca07449235525f20b70b5b58b2cc2ed394bbb8c4f0dfd5a46d632b63f2af6a46",
+          "experiments\\mesh-overlays\\CMakeLists.txt": "3c668399f112dec8a80b23b78fe6f4276e60c3ade0e99cec5ec11ce3d831650b",
+          "experiments\\mesh-overlays\\gpu_culling.cpp": "7d07d597014680251da8431c767bd5dfcb16dcba5090ec6869402f565b285b18",
+          "experiments\\mesh-overlays\\gpu_culling.h": "070765e7689d3f5c5dfe7a9f8beb5fee6ad2c07246cc24f84a978ef39e3c8a01",
+          "experiments\\mesh-overlays\\gpu_culling.slang": "aba5efa635b2fd3da003587d2f079c1e480e8dbd71562ba2547f2024b11c7210",
+          "experiments\\mesh-overlays\\gpu_culling_root.h": "76e4e60859a3441abefd5b86750fea08f65c8ba4dfb9426c28d7a7145f1e26d2",
+          "experiments\\mesh-overlays\\gpu_culling_run.cpp": "e9bb6a33c5a31fe8c731a7e1b0b98ec5cbca2e01fcc7975139e8e3a5f83b4dc5",
+          "experiments\\mesh-overlays\\gpu_culling_tests.cpp": "3572d6901420092f5f6d664d0384bbe21612420b2bce4f5708e55c96a59d377d",
+          "experiments\\mesh-overlays\\main.cpp": "1de0a0843c3b48fb66fe0e223c0d56d49677fbda71b8af290c68c16e4419a111",
+          "experiments\\mesh-overlays\\overlay.slang": "2ff364b1c6f221e143d5a234f58214afb73cf1695529f7d83e3df4783d3e958f",
+          "experiments\\mesh-overlays\\README.md": "835e8f01206181ef88b926eb725b76b300253ff503230752cd4985890a726fd6",
+          "experiments\\mesh-overlays\\renderer.cpp": "71eb839c885b59fc150f66bc287d060515ce58c3d1ca42b1cbb2b7663178b460",
+          "experiments\\mesh-overlays\\renderer.h": "2a19370ceaaeff11f8cdbad62127b2eedc43a260818cb03550c4297346138346",
+          "experiments\\mesh-overlays\\run.py": "52b89fc8e9be112b8b11fcf8c6e809b8e83d279f5c0382d28c4bec34118ab2b6",
+          "experiments\\mesh-overlays\\tests.cpp": "1028c413fc0e00dcb9a986aac7ff0727965a62acf1658ec8035cc6dba0edd6f3",
+          "experiments\\mesh-overlays\\visibility.cpp": "b576ac0628a4571ae8146c1cad6bcaeac911bc16cee5375b6fa554b1f4ecac6c",
+          "experiments\\mesh-overlays\\visibility.h": "62266c7755333fbabc8a135732ebf98da0d3d809ceb7fd5371c4b06384f0c66d",
+          "experiments\\mesh-overlays\\visibility_run.cpp": "de05ba2cb1e1bfcdb3c41a5171d521779f160b800f564197edd8c9b95cf0d2c5",
+          "experiments\\mesh-overlays\\visibility_run.h": "12e1e1df3311d0558d523ca282fa13dac7cd5a3a7c42670f9e36b43b8db8aac2",
+          "shaders\\native\\woby.slang": "f1d9d07515066c96536333ba176a5b0043f1941f253a54d63500e79985b22243",
+          "shaders\\native\\root.h": "24d455efeecf53a5753d4424d876341bdb84e4c04cd49d3d8fbf3f8da5b2a7ef",
+          "src\\scene_mesh_preparation.cpp": "263a0e09435ae6984209f79f1fcb33ede0cc8e0a5f800c207484d87c47bde368",
+          "src\\obj_mesh.cpp": "8bea04fdfa6fb3d61e9f146d644be4c829b11ec5e1b0fd160aa99cd7b0c82f49",
+          "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+          "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f"
+        },
+        "model_sha256": "22533258be1d94aa1ece29053e98f11c91ebc17a8a3626545dee3cecf90b71e3",
+        "executable_sha256": "d38fc6544f60486b374a9193b2eef6350240e8900e4d46e4c13eb97ffb23ce11"
+      },
+      "raw_results_path": "D:\\.worktree\\woby-overlay-build\\measurements\\gpu-culling-san-miguel-no-ids\\captures\\results.json",
+      "raw_results_sha256": "1d1f70fd65d67375946e54ff97c439b540f07f5da6c3120873e10c0dfbf2efb4",
+      "captures": {
+        "points_4-all-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-gpu_footprint-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-gpu_frustum-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-split-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "surface_4-all-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-gpu_footprint-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-gpu_frustum-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-split-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68"
+      }
+    }
+  ],
+  "aggregates": [
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "surface_4",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        52,
+        48,
+        50
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 15.858176,
+      "gpu_ms_rounds": [
+        15.777791999999998,
+        16.272896,
+        15.858176
+      ],
+      "surface_ms": 1.9343359999999998,
+      "surface_ms_rounds": [
+        1.9261439999999999,
+        1.9343359999999998,
+        1.934848
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 13.923839999999998,
+      "point_and_resolve_ms_rounds": [
+        13.843456,
+        14.310911999999998,
+        13.923839999999998
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 3.35805,
+      "cpu_submit_ms_rounds": [
+        3.23085,
+        3.56385,
+        3.35805
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "surface_4",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        51,
+        51,
+        49
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 15.774719999999999,
+      "gpu_ms_rounds": [
+        15.774719999999999,
+        15.773696,
+        15.863807999999999
+      ],
+      "surface_ms": 1.9261439999999999,
+      "surface_ms_rounds": [
+        1.9261439999999999,
+        1.9261439999999999,
+        1.9343359999999998
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 13.846528,
+      "point_and_resolve_ms_rounds": [
+        13.846528,
+        13.846528,
+        13.928448
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 3.4808,
+      "cpu_submit_ms_rounds": [
+        3.4808,
+        3.4986,
+        3.448
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "surface_4",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        47,
+        47,
+        47
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 17.046528,
+      "gpu_ms_rounds": [
+        16.961536,
+        17.046528,
+        17.140736
+      ],
+      "surface_ms": 1.9343359999999998,
+      "surface_ms_rounds": [
+        1.9261439999999999,
+        1.9343359999999998,
+        1.9343359999999998
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 13.944832,
+      "point_and_resolve_ms_rounds": [
+        13.868032,
+        13.944832,
+        13.944832
+      ],
+      "culling_ms": 1.16736,
+      "culling_ms_rounds": [
+        1.16736,
+        1.166336,
+        1.174528
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.8919039999999999,
+      "classify_ms_rounds": [
+        0.8919039999999999,
+        0.8919039999999999,
+        0.8929279999999999
+      ],
+      "scan_ms": 0.009216,
+      "scan_ms_rounds": [
+        0.009216,
+        0.009216,
+        0.010239999999999999
+      ],
+      "scatter_ms": 0.263424,
+      "scatter_ms_rounds": [
+        0.263424,
+        0.263264,
+        0.26822399999999996
+      ],
+      "cpu_submit_ms": 3.939,
+      "cpu_submit_ms_rounds": [
+        3.9522,
+        3.874,
+        3.939
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "surface_4",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 2226156,
+      "round_frames": [
+        80,
+        76,
+        80
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 8.333312,
+      "gpu_ms_rounds": [
+        8.297984,
+        8.837119999999999,
+        8.333312
+      ],
+      "surface_ms": 1.9343359999999998,
+      "surface_ms_rounds": [
+        1.9261439999999999,
+        1.9343359999999998,
+        1.9343359999999998
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 5.250048,
+      "point_and_resolve_ms_rounds": [
+        5.226496,
+        5.257216,
+        5.250048
+      ],
+      "culling_ms": 1.147904,
+      "culling_ms_rounds": [
+        1.145856,
+        1.1499519999999999,
+        1.147904
+      ],
+      "pyramid_ms": 0.043008,
+      "pyramid_ms_rounds": [
+        0.043008,
+        0.043008,
+        0.043008
+      ],
+      "classify_ms": 0.8959999999999999,
+      "classify_ms_rounds": [
+        0.8944639999999999,
+        0.8970239999999999,
+        0.8959999999999999
+      ],
+      "scan_ms": 0.011264,
+      "scan_ms_rounds": [
+        0.010239999999999999,
+        0.011264,
+        0.011264
+      ],
+      "scatter_ms": 0.19667199999999999,
+      "scatter_ms_rounds": [
+        0.196656,
+        0.197328,
+        0.19667199999999999
+      ],
+      "cpu_submit_ms": 3.9629,
+      "cpu_submit_ms_rounds": [
+        3.9629,
+        3.9657999999999998,
+        3.9236
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "points_4",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        49,
+        48,
+        47
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 18.117632,
+      "gpu_ms_rounds": [
+        18.117632,
+        18.112,
+        18.194432
+      ],
+      "surface_ms": 0.010239999999999999,
+      "surface_ms_rounds": [
+        0.010239999999999999,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 18.107392,
+      "point_and_resolve_ms_rounds": [
+        18.107392,
+        18.101248,
+        18.184192
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 1.9693999999999998,
+      "cpu_submit_ms_rounds": [
+        1.6829,
+        1.9693999999999998,
+        3.0332
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "points_4",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        48,
+        49,
+        48
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 18.200575999999998,
+      "gpu_ms_rounds": [
+        18.782719999999998,
+        18.117632,
+        18.200575999999998
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.011264,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 18.187264,
+      "point_and_resolve_ms_rounds": [
+        18.76992,
+        18.104319999999998,
+        18.187264
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 1.8747,
+      "cpu_submit_ms_rounds": [
+        1.71835,
+        1.8747,
+        2.00975
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "points_4",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        41,
+        44,
+        42
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 20.012544,
+      "gpu_ms_rounds": [
+        21.303296,
+        19.38176,
+        20.012544
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.011776
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 18.7776,
+      "point_and_resolve_ms_rounds": [
+        19.94752,
+        18.131968,
+        18.7776
+      ],
+      "culling_ms": 1.20064,
+      "culling_ms_rounds": [
+        1.171456,
+        1.20064,
+        1.204224
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.8919039999999999,
+      "classify_ms_rounds": [
+        0.8970239999999999,
+        0.89088,
+        0.8919039999999999
+      ],
+      "scan_ms": 0.010239999999999999,
+      "scan_ms_rounds": [
+        0.010239999999999999,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "scatter_ms": 0.26651199999999997,
+      "scatter_ms_rounds": [
+        0.262112,
+        0.26651199999999997,
+        0.2668
+      ],
+      "cpu_submit_ms": 2.3554500000000003,
+      "cpu_submit_ms_rounds": [
+        2.1841,
+        2.73685,
+        2.3554500000000003
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-fit",
+      "case": "points_4",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        42,
+        44,
+        43
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 19.392512,
+      "gpu_ms_rounds": [
+        20.145664,
+        19.30496,
+        19.392512
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 18.212864,
+      "point_and_resolve_ms_rounds": [
+        18.775551999999998,
+        18.128895999999997,
+        18.212864
+      ],
+      "culling_ms": 1.166336,
+      "culling_ms_rounds": [
+        1.2364799999999998,
+        1.163776,
+        1.166336
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.890368,
+      "classify_ms_rounds": [
+        0.890368,
+        0.890368,
+        0.8919039999999999
+      ],
+      "scan_ms": 0.011264,
+      "scan_ms_rounds": [
+        0.011264,
+        0.010239999999999999,
+        0.011264
+      ],
+      "scatter_ms": 0.261808,
+      "scatter_ms_rounds": [
+        0.335824,
+        0.261808,
+        0.26179199999999997
+      ],
+      "cpu_submit_ms": 3.5833500000000003,
+      "cpu_submit_ms_rounds": [
+        2.5804,
+        3.5833500000000003,
+        4.307
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_1",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 64.31795199999999,
+      "gpu_ms_rounds": [
+        62.112768,
+        64.31795199999999,
+        64.339456
+      ],
+      "surface_ms": 14.852096,
+      "surface_ms_rounds": [
+        14.810112,
+        14.852096,
+        14.938623999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 49.060863999999995,
+      "point_and_resolve_ms_rounds": [
+        47.268352,
+        49.241088,
+        49.060863999999995
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2252,
+      "cpu_submit_ms_rounds": [
+        0.23885,
+        0.2252,
+        0.2212
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_1",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 64.270848,
+      "gpu_ms_rounds": [
+        64.270848,
+        64.109056,
+        64.363008
+      ],
+      "surface_ms": 14.92736,
+      "surface_ms_rounds": [
+        14.933504,
+        14.823936,
+        14.92736
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 49.363456,
+      "point_and_resolve_ms_rounds": [
+        49.556992,
+        49.097215999999996,
+        49.363456
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.22575,
+      "cpu_submit_ms_rounds": [
+        0.2479,
+        0.22575,
+        0.2212
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_1",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 70.060544,
+      "gpu_ms_rounds": [
+        69.971968,
+        70.060544,
+        70.349824
+      ],
+      "surface_ms": 14.940672,
+      "surface_ms_rounds": [
+        14.940672,
+        14.931455999999999,
+        15.04256
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 50.049024,
+      "point_and_resolve_ms_rounds": [
+        50.049024,
+        49.912319999999994,
+        50.267135999999994
+      ],
+      "culling_ms": 4.771328,
+      "culling_ms_rounds": [
+        4.758528,
+        5.005824,
+        4.771328
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.6945919999999997,
+      "classify_ms_rounds": [
+        3.696128,
+        3.693568,
+        3.6945919999999997
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.017408,
+        0.018432,
+        0.018432
+      ],
+      "scatter_ms": 1.04664,
+      "scatter_ms_rounds": [
+        1.0406719999999998,
+        1.04664,
+        1.059072
+      ],
+      "cpu_submit_ms": 0.32115,
+      "cpu_submit_ms_rounds": [
+        0.3579,
+        0.31225,
+        0.32115
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_1",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 21760825,
+      "round_frames": [
+        21,
+        21,
+        21
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 49.340416,
+      "gpu_ms_rounds": [
+        49.26976,
+        49.340416,
+        49.351679999999995
+      ],
+      "surface_ms": 15.407103999999999,
+      "surface_ms_rounds": [
+        15.328256,
+        15.407103999999999,
+        15.458304
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 28.983296,
+      "point_and_resolve_ms_rounds": [
+        28.811263999999998,
+        29.181952,
+        28.983296
+      ],
+      "culling_ms": 4.590592,
+      "culling_ms_rounds": [
+        4.590592,
+        4.585472,
+        4.592639999999999
+      ],
+      "pyramid_ms": 0.039936,
+      "pyramid_ms_rounds": [
+        0.038911999999999995,
+        0.039936,
+        0.039936
+      ],
+      "classify_ms": 3.693568,
+      "classify_ms_rounds": [
+        3.6853759999999998,
+        3.693568,
+        3.6986879999999998
+      ],
+      "scan_ms": 0.019455999999999998,
+      "scan_ms_rounds": [
+        0.019455999999999998,
+        0.019455999999999998,
+        0.019455999999999998
+      ],
+      "scatter_ms": 0.8341759999999999,
+      "scatter_ms_rounds": [
+        0.8367359999999999,
+        0.8341759999999999,
+        0.8340799999999999
+      ],
+      "cpu_submit_ms": 0.3076,
+      "cpu_submit_ms_rounds": [
+        0.2963,
+        0.3076,
+        0.3272
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_4",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 112.923648,
+      "gpu_ms_rounds": [
+        107.51641599999999,
+        112.923648,
+        113.73107199999998
+      ],
+      "surface_ms": 15.956992,
+      "surface_ms_rounds": [
+        14.704127999999999,
+        15.956992,
+        16.057344
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 96.794112,
+      "point_and_resolve_ms_rounds": [
+        92.768256,
+        96.794112,
+        97.262592
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2125,
+      "cpu_submit_ms_rounds": [
+        0.2392,
+        0.2125,
+        0.20934999999999998
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_4",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 105.49606399999999,
+      "gpu_ms_rounds": [
+        105.2544,
+        105.49606399999999,
+        113.789952
+      ],
+      "surface_ms": 14.700543999999999,
+      "surface_ms_rounds": [
+        14.700543999999999,
+        14.700543999999999,
+        16.054783999999998
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 90.540032,
+      "point_and_resolve_ms_rounds": [
+        90.34752,
+        90.540032,
+        97.59232
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2386,
+      "cpu_submit_ms_rounds": [
+        0.24355,
+        0.2386,
+        0.22215000000000001
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_4",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 111.81312,
+      "gpu_ms_rounds": [
+        111.261696,
+        111.81312,
+        120.296448
+      ],
+      "surface_ms": 14.700543999999999,
+      "surface_ms_rounds": [
+        14.69952,
+        14.700543999999999,
+        16.089088
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 92.02687999999999,
+      "point_and_resolve_ms_rounds": [
+        91.621376,
+        92.02687999999999,
+        98.82726399999999
+      ],
+      "culling_ms": 4.7616,
+      "culling_ms_rounds": [
+        4.7616,
+        4.7472639999999995,
+        5.054976
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.6981759999999997,
+      "classify_ms_rounds": [
+        3.6951039999999997,
+        3.6981759999999997,
+        3.945984
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.018432,
+        0.017408,
+        0.019455999999999998
+      ],
+      "scatter_ms": 1.0362559999999998,
+      "scatter_ms_rounds": [
+        1.0387840000000002,
+        1.031968,
+        1.0362559999999998
+      ],
+      "cpu_submit_ms": 0.31105,
+      "cpu_submit_ms_rounds": [
+        0.30815000000000003,
+        0.3133,
+        0.31105
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_4",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 27632170,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 103.975424,
+      "gpu_ms_rounds": [
+        97.101312,
+        103.975424,
+        104.122368
+      ],
+      "surface_ms": 15.7312,
+      "surface_ms_rounds": [
+        14.746623999999999,
+        15.972352,
+        15.7312
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 82.787328,
+      "point_and_resolve_ms_rounds": [
+        77.39494400000001,
+        82.787328,
+        83.07046399999999
+      ],
+      "culling_ms": 4.762112,
+      "culling_ms_rounds": [
+        4.641792,
+        4.762112,
+        4.94848
+      ],
+      "pyramid_ms": 0.045568,
+      "pyramid_ms_rounds": [
+        0.045568,
+        0.045568,
+        0.046079999999999996
+      ],
+      "classify_ms": 3.7145599999999996,
+      "classify_ms_rounds": [
+        3.692544,
+        3.7145599999999996,
+        3.994112
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.018432,
+        0.018432,
+        0.019455999999999998
+      ],
+      "scatter_ms": 0.884976,
+      "scatter_ms_rounds": [
+        0.884976,
+        0.88456,
+        0.887952
+      ],
+      "cpu_submit_ms": 0.33315,
+      "cpu_submit_ms_rounds": [
+        0.37345,
+        0.32289999999999996,
+        0.33315
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_8",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 219.84563199999997,
+      "gpu_ms_rounds": [
+        219.89068799999998,
+        219.84563199999997,
+        219.668992
+      ],
+      "surface_ms": 16.044032,
+      "surface_ms_rounds": [
+        16.044032,
+        15.904768,
+        16.054271999999997
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 203.78009600000001,
+      "point_and_resolve_ms_rounds": [
+        203.78009600000001,
+        203.85023999999999,
+        203.405824
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.21745,
+      "cpu_submit_ms_rounds": [
+        0.22605,
+        0.21745,
+        0.18555
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_8",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 206.24128,
+      "gpu_ms_rounds": [
+        206.24128,
+        205.90899199999998,
+        219.503104
+      ],
+      "surface_ms": 14.792703999999999,
+      "surface_ms_rounds": [
+        14.792703999999999,
+        14.79168,
+        15.805952
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 191.15519999999998,
+      "point_and_resolve_ms_rounds": [
+        191.15519999999998,
+        191.11577599999998,
+        203.49952
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2409,
+      "cpu_submit_ms_rounds": [
+        0.24214999999999998,
+        0.23704999999999998,
+        0.2409
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_8",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 213.31302399999998,
+      "gpu_ms_rounds": [
+        211.94086399999998,
+        213.31302399999998,
+        225.764864
+      ],
+      "surface_ms": 14.796287999999999,
+      "surface_ms_rounds": [
+        14.793728,
+        14.796287999999999,
+        16.031232
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 193.80428799999999,
+      "point_and_resolve_ms_rounds": [
+        192.292864,
+        193.80428799999999,
+        204.637184
+      ],
+      "culling_ms": 4.747776,
+      "culling_ms_rounds": [
+        4.747776,
+        4.747776,
+        4.870655999999999
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.700224,
+      "classify_ms_rounds": [
+        3.7002239999999995,
+        3.700224,
+        3.7084159999999997
+      ],
+      "scan_ms": 0.017408,
+      "scan_ms_rounds": [
+        0.017408,
+        0.017408,
+        0.017408
+      ],
+      "scatter_ms": 1.031136,
+      "scatter_ms_rounds": [
+        1.031168,
+        1.028144,
+        1.031136
+      ],
+      "cpu_submit_ms": 0.2701,
+      "cpu_submit_ms_rounds": [
+        0.2701,
+        0.3127,
+        0.25775000000000003
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "surface_8",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 31888561,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 215.608832,
+      "gpu_ms_rounds": [
+        202.471424,
+        215.608832,
+        215.86944
+      ],
+      "surface_ms": 16.055296,
+      "surface_ms_rounds": [
+        14.79168,
+        16.055296,
+        16.05632
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 194.449408,
+      "point_and_resolve_ms_rounds": [
+        182.88639999999998,
+        194.449408,
+        194.90713599999998
+      ],
+      "culling_ms": 4.930047999999999,
+      "culling_ms_rounds": [
+        4.699135999999999,
+        5.052928,
+        4.930047999999999
+      ],
+      "pyramid_ms": 0.047616,
+      "pyramid_ms_rounds": [
+        0.048128,
+        0.047616,
+        0.047104
+      ],
+      "classify_ms": 3.9295999999999998,
+      "classify_ms_rounds": [
+        3.693056,
+        4.002816,
+        3.9295999999999998
+      ],
+      "scan_ms": 0.018944,
+      "scan_ms_rounds": [
+        0.018432,
+        0.019455999999999998,
+        0.018944
+      ],
+      "scatter_ms": 0.934752,
+      "scatter_ms_rounds": [
+        0.934752,
+        0.9353279999999999,
+        0.9342079999999999
+      ],
+      "cpu_submit_ms": 0.30284999999999995,
+      "cpu_submit_ms_rounds": [
+        0.30284999999999995,
+        0.32535000000000003,
+        0.28195000000000003
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_1",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 50.025472,
+      "gpu_ms_rounds": [
+        53.525504,
+        49.951232,
+        50.025472
+      ],
+      "surface_ms": 0.010239999999999999,
+      "surface_ms_rounds": [
+        0.010239999999999999,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 50.015744,
+      "point_and_resolve_ms_rounds": [
+        53.515775999999995,
+        49.940991999999994,
+        50.015744
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.198,
+      "cpu_submit_ms_rounds": [
+        0.1846,
+        0.22394999999999998,
+        0.198
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_1",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 50.113535999999996,
+      "gpu_ms_rounds": [
+        53.621247999999994,
+        49.221632,
+        50.113535999999996
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 50.100736,
+      "point_and_resolve_ms_rounds": [
+        53.608447999999996,
+        49.20832,
+        50.100736
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2107,
+      "cpu_submit_ms_rounds": [
+        0.2132,
+        0.19655,
+        0.2107
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_1",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 55.871488,
+      "gpu_ms_rounds": [
+        59.317248,
+        55.099391999999995,
+        55.871488
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 51.124224,
+      "point_and_resolve_ms_rounds": [
+        54.32064,
+        50.327552,
+        51.124224
+      ],
+      "culling_ms": 4.76416,
+      "culling_ms_rounds": [
+        4.992,
+        4.76416,
+        4.7472639999999995
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.699712,
+      "classify_ms_rounds": [
+        3.821568,
+        3.699712,
+        3.689984
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.018944,
+        0.017408,
+        0.018432
+      ],
+      "scatter_ms": 1.041232,
+      "scatter_ms_rounds": [
+        1.0452,
+        1.04048,
+        1.041232
+      ],
+      "cpu_submit_ms": 0.29795,
+      "cpu_submit_ms_rounds": [
+        0.29795,
+        0.30345,
+        0.27349999999999997
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_1",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 55.847424,
+      "gpu_ms_rounds": [
+        57.242112,
+        55.80851199999999,
+        55.847424
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 51.043328,
+      "point_and_resolve_ms_rounds": [
+        52.407296,
+        51.043328,
+        50.988544
+      ],
+      "culling_ms": 4.7616,
+      "culling_ms_rounds": [
+        4.76416,
+        4.7544319999999995,
+        4.7616
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.7012479999999996,
+      "classify_ms_rounds": [
+        3.705856,
+        3.6976639999999996,
+        3.7012479999999996
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.018432,
+        0.018432,
+        0.017408
+      ],
+      "scatter_ms": 1.04216,
+      "scatter_ms_rounds": [
+        1.04216,
+        1.03808,
+        1.042672
+      ],
+      "cpu_submit_ms": 0.3194,
+      "cpu_submit_ms_rounds": [
+        0.27344999999999997,
+        0.3194,
+        0.3327
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_4",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 104.68454399999999,
+      "gpu_ms_rounds": [
+        104.67430399999999,
+        104.68454399999999,
+        109.266944
+      ],
+      "surface_ms": 0.010239999999999999,
+      "surface_ms_rounds": [
+        0.010239999999999999,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 104.67430399999999,
+      "point_and_resolve_ms_rounds": [
+        104.664576,
+        104.67430399999999,
+        109.257216
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.21889999999999998,
+      "cpu_submit_ms_rounds": [
+        0.21889999999999998,
+        0.1979,
+        0.22425
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_4",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 104.784896,
+      "gpu_ms_rounds": [
+        104.948736,
+        104.784896,
+        104.678912
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 104.77158399999999,
+      "point_and_resolve_ms_rounds": [
+        104.935936,
+        104.77158399999999,
+        104.66662399999998
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2243,
+      "cpu_submit_ms_rounds": [
+        0.2234,
+        0.2243,
+        0.2294
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_4",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 110.647296,
+      "gpu_ms_rounds": [
+        110.33804799999999,
+        110.647296,
+        110.675456
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 105.831936,
+      "point_and_resolve_ms_rounds": [
+        105.375744,
+        105.85395199999999,
+        105.831936
+      ],
+      "culling_ms": 4.748799999999999,
+      "culling_ms_rounds": [
+        4.7508479999999995,
+        4.748799999999999,
+        4.738048
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.70176,
+      "classify_ms_rounds": [
+        3.702784,
+        3.70176,
+        3.6864
+      ],
+      "scan_ms": 0.017408,
+      "scan_ms_rounds": [
+        0.017408,
+        0.017408,
+        0.017408
+      ],
+      "scatter_ms": 1.031504,
+      "scatter_ms_rounds": [
+        1.031504,
+        1.0305279999999999,
+        1.03256
+      ],
+      "cpu_submit_ms": 0.2958,
+      "cpu_submit_ms_rounds": [
+        0.30235,
+        0.2958,
+        0.28905000000000003
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_4",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 110.53875199999999,
+      "gpu_ms_rounds": [
+        110.53875199999999,
+        110.814208,
+        110.492672
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 105.56825599999999,
+      "point_and_resolve_ms_rounds": [
+        105.56825599999999,
+        106.039808,
+        105.564672
+      ],
+      "culling_ms": 4.746751999999999,
+      "culling_ms_rounds": [
+        4.755967999999999,
+        4.744704,
+        4.746751999999999
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.6976639999999996,
+      "classify_ms_rounds": [
+        3.703296,
+        3.6976639999999996,
+        3.6940799999999996
+      ],
+      "scan_ms": 0.017408,
+      "scan_ms_rounds": [
+        0.017408,
+        0.017408,
+        0.017408
+      ],
+      "scatter_ms": 1.030608,
+      "scatter_ms_rounds": [
+        1.031024,
+        1.028656,
+        1.030608
+      ],
+      "cpu_submit_ms": 0.2711,
+      "cpu_submit_ms_rounds": [
+        0.2649,
+        0.2711,
+        0.28264999999999996
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_8",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 231.18847999999997,
+      "gpu_ms_rounds": [
+        231.191552,
+        231.18847999999997,
+        231.006208
+      ],
+      "surface_ms": 0.010239999999999999,
+      "surface_ms_rounds": [
+        0.010239999999999999,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 231.17875199999997,
+      "point_and_resolve_ms_rounds": [
+        231.180288,
+        231.17875199999997,
+        230.995968
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2148,
+      "cpu_submit_ms_rounds": [
+        0.22039999999999998,
+        0.2148,
+        0.18685000000000002
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_8",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 231.137792,
+      "gpu_ms_rounds": [
+        231.137792,
+        239.446528,
+        231.047168
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 231.12499199999996,
+      "point_and_resolve_ms_rounds": [
+        231.12499199999996,
+        239.43372799999997,
+        231.03488
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.22549999999999998,
+      "cpu_submit_ms_rounds": [
+        0.23045,
+        0.22549999999999998,
+        0.21065
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_8",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 236.17023999999998,
+      "gpu_ms_rounds": [
+        236.198912,
+        236.15488,
+        236.17023999999998
+      ],
+      "surface_ms": 0.012288,
+      "surface_ms_rounds": [
+        0.012288,
+        0.012288,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 231.399424,
+      "point_and_resolve_ms_rounds": [
+        231.434752,
+        231.37279999999998,
+        231.399424
+      ],
+      "culling_ms": 4.745216,
+      "culling_ms_rounds": [
+        4.745216,
+        4.749312,
+        4.743168
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.69664,
+      "classify_ms_rounds": [
+        3.6951039999999997,
+        3.69664,
+        3.6976639999999996
+      ],
+      "scan_ms": 0.017408,
+      "scan_ms_rounds": [
+        0.017408,
+        0.017408,
+        0.017408
+      ],
+      "scatter_ms": 1.02992,
+      "scatter_ms_rounds": [
+        1.02992,
+        1.028864,
+        1.032064
+      ],
+      "cpu_submit_ms": 0.29405000000000003,
+      "cpu_submit_ms_rounds": [
+        0.32605,
+        0.29405000000000003,
+        0.28835
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-fit",
+      "case": "points_8",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 236.207104,
+      "gpu_ms_rounds": [
+        236.43135999999998,
+        235.945472,
+        236.207104
+      ],
+      "surface_ms": 0.011776,
+      "surface_ms_rounds": [
+        0.011776,
+        0.011776,
+        0.012288
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 231.46342399999997,
+      "point_and_resolve_ms_rounds": [
+        231.468544,
+        231.207424,
+        231.46342399999997
+      ],
+      "culling_ms": 4.742656,
+      "culling_ms_rounds": [
+        4.7508479999999995,
+        4.740608,
+        4.742656
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.692544,
+      "classify_ms_rounds": [
+        3.699712,
+        3.689472,
+        3.692544
+      ],
+      "scan_ms": 0.017408,
+      "scan_ms_rounds": [
+        0.017408,
+        0.017408,
+        0.017408
+      ],
+      "scatter_ms": 1.029888,
+      "scatter_ms_rounds": [
+        1.029888,
+        1.028832,
+        1.03072
+      ],
+      "cpu_submit_ms": 0.27665,
+      "cpu_submit_ms_rounds": [
+        0.264,
+        0.27665,
+        0.3016
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "surface_4",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 71.168,
+      "gpu_ms_rounds": [
+        65.64096,
+        71.168,
+        71.186944
+      ],
+      "surface_ms": 14.416383999999999,
+      "surface_ms_rounds": [
+        13.871616,
+        14.416383999999999,
+        14.503936
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 56.52224,
+      "point_and_resolve_ms_rounds": [
+        51.622912,
+        56.52224,
+        56.664576
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2308,
+      "cpu_submit_ms_rounds": [
+        0.2298,
+        0.2336,
+        0.2308
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "surface_4",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 70.71488,
+      "gpu_ms_rounds": [
+        70.047744,
+        75.46572799999998,
+        70.71488
+      ],
+      "surface_ms": 13.88032,
+      "surface_ms_rounds": [
+        13.791744,
+        14.670848,
+        13.88032
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 56.835072,
+      "point_and_resolve_ms_rounds": [
+        56.201216,
+        60.02790399999999,
+        56.835072
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.21605,
+      "cpu_submit_ms_rounds": [
+        0.21605,
+        0.22825,
+        0.21339999999999998
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "surface_4",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 37661252,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 76.327936,
+      "gpu_ms_rounds": [
+        76.306432,
+        76.327936,
+        76.91878399999999
+      ],
+      "surface_ms": 13.90592,
+      "surface_ms_rounds": [
+        13.90336,
+        13.90592,
+        13.981183999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 57.511936,
+      "point_and_resolve_ms_rounds": [
+        57.217535999999996,
+        57.511936,
+        57.70496
+      ],
+      "culling_ms": 4.75904,
+      "culling_ms_rounds": [
+        4.75904,
+        4.777984,
+        4.75904
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.695616,
+      "classify_ms_rounds": [
+        3.69664,
+        3.6945919999999997,
+        3.695616
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.018432,
+        0.018432,
+        0.018432
+      ],
+      "scatter_ms": 1.04816,
+      "scatter_ms_rounds": [
+        1.050416,
+        1.04816,
+        1.042848
+      ],
+      "cpu_submit_ms": 0.32585,
+      "cpu_submit_ms_rounds": [
+        0.34085,
+        0.30925,
+        0.32585
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "surface_4",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 14459945,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 50.074624,
+      "gpu_ms_rounds": [
+        49.672703999999996,
+        50.074624,
+        50.189312
+      ],
+      "surface_ms": 14.431232,
+      "surface_ms_rounds": [
+        14.431232,
+        14.46144,
+        14.429184
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 30.646272,
+      "point_and_resolve_ms_rounds": [
+        30.404607999999996,
+        30.646272,
+        31.076864
+      ],
+      "culling_ms": 4.530688,
+      "culling_ms_rounds": [
+        4.518912,
+        4.530688,
+        4.538368
+      ],
+      "pyramid_ms": 0.054272,
+      "pyramid_ms_rounds": [
+        0.054272,
+        0.054272,
+        0.054272
+      ],
+      "classify_ms": 3.692544,
+      "classify_ms_rounds": [
+        3.680256,
+        3.692544,
+        3.695616
+      ],
+      "scan_ms": 0.020479999999999998,
+      "scan_ms_rounds": [
+        0.019455999999999998,
+        0.020479999999999998,
+        0.020479999999999998
+      ],
+      "scatter_ms": 0.761808,
+      "scatter_ms_rounds": [
+        0.761104,
+        0.761808,
+        0.764512
+      ],
+      "cpu_submit_ms": 0.32304999999999995,
+      "cpu_submit_ms_rounds": [
+        0.33975,
+        0.29305000000000003,
+        0.32304999999999995
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "points_4",
+      "method": "all",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 68.18150399999999,
+      "gpu_ms_rounds": [
+        67.82976,
+        68.18150399999999,
+        72.82585599999999
+      ],
+      "surface_ms": 0.009216,
+      "surface_ms_rounds": [
+        0.009216,
+        0.009216,
+        0.009216
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 68.171776,
+      "point_and_resolve_ms_rounds": [
+        67.820544,
+        68.171776,
+        72.817152
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.21865,
+      "cpu_submit_ms_rounds": [
+        0.22975,
+        0.21200000000000002,
+        0.21865
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "points_4",
+      "method": "split",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 38414391,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 68.04223999999999,
+      "gpu_ms_rounds": [
+        68.04223999999999,
+        67.980288,
+        70.747136
+      ],
+      "surface_ms": 0.009216,
+      "surface_ms_rounds": [
+        0.009216,
+        0.009216,
+        0.009216
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 68.02944,
+      "point_and_resolve_ms_rounds": [
+        68.02944,
+        67.97004799999999,
+        70.736896
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 0.2192,
+      "cpu_submit_ms_rounds": [
+        0.2245,
+        0.2192,
+        0.2086
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "points_4",
+      "method": "gpu_frustum",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 37661252,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 73.619968,
+      "gpu_ms_rounds": [
+        73.654784,
+        73.509376,
+        73.619968
+      ],
+      "surface_ms": 0.010239999999999999,
+      "surface_ms_rounds": [
+        0.009728,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 68.76364799999999,
+      "point_and_resolve_ms_rounds": [
+        68.545536,
+        68.76364799999999,
+        68.886016
+      ],
+      "culling_ms": 4.731392,
+      "culling_ms_rounds": [
+        5.0119679999999995,
+        4.731392,
+        4.729343999999999
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.692544,
+      "classify_ms_rounds": [
+        3.692544,
+        3.693056,
+        3.6884479999999997
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.019455999999999998,
+        0.018432,
+        0.018432
+      ],
+      "scatter_ms": 1.017456,
+      "scatter_ms_rounds": [
+        1.0356,
+        1.017456,
+        1.0167359999999999
+      ],
+      "cpu_submit_ms": 0.28325,
+      "cpu_submit_ms_rounds": [
+        0.28325,
+        0.32865,
+        0.2603
+      ]
+    },
+    {
+      "run": "gpu-culling-beartrap-close",
+      "case": "points_4",
+      "method": "gpu_footprint",
+      "id_attachment": true,
+      "markers": 38414391,
+      "submitted_markers": 37661252,
+      "round_frames": [
+        20,
+        20,
+        20
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 73.9968,
+      "gpu_ms_rounds": [
+        73.525248,
+        73.9968,
+        79.201792
+      ],
+      "surface_ms": 0.009728,
+      "surface_ms_rounds": [
+        0.009216,
+        0.009728,
+        0.009728
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 69.265408,
+      "point_and_resolve_ms_rounds": [
+        68.772352,
+        69.265408,
+        73.84985599999999
+      ],
+      "culling_ms": 4.73344,
+      "culling_ms_rounds": [
+        4.727808,
+        4.73344,
+        5.11232
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 3.697152,
+      "classify_ms_rounds": [
+        3.682816,
+        3.697152,
+        4.041216
+      ],
+      "scan_ms": 0.018432,
+      "scan_ms_rounds": [
+        0.018432,
+        0.018432,
+        0.020479999999999998
+      ],
+      "scatter_ms": 1.01912,
+      "scatter_ms_rounds": [
+        1.0277919999999998,
+        1.01912,
+        1.016352
+      ],
+      "cpu_submit_ms": 0.31275,
+      "cpu_submit_ms_rounds": [
+        0.29510000000000003,
+        0.31275,
+        0.3154
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "surface_4",
+      "method": "all",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        49,
+        48,
+        48
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 15.838208,
+      "gpu_ms_rounds": [
+        15.760384,
+        15.838208,
+        15.848959999999998
+      ],
+      "surface_ms": 1.953792,
+      "surface_ms_rounds": [
+        1.943552,
+        1.953792,
+        1.9553279999999997
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 13.884416,
+      "point_and_resolve_ms_rounds": [
+        13.816832,
+        13.884416,
+        13.88544
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 3.83195,
+      "cpu_submit_ms_rounds": [
+        3.6042,
+        3.83195,
+        3.9311
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "surface_4",
+      "method": "split",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        46,
+        48,
+        49
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 15.840256,
+      "gpu_ms_rounds": [
+        15.765504,
+        15.840768,
+        15.840256
+      ],
+      "surface_ms": 1.9527679999999998,
+      "surface_ms_rounds": [
+        1.943552,
+        1.953792,
+        1.9527679999999998
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 13.88544,
+      "point_and_resolve_ms_rounds": [
+        13.820927999999999,
+        13.88544,
+        13.886464
+      ],
+      "culling_ms": 0.001024,
+      "culling_ms_rounds": [
+        0.001024,
+        0.001024,
+        0.001024
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 4.0168,
+      "cpu_submit_ms_rounds": [
+        4.899,
+        4.0168,
+        3.7435
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "surface_4",
+      "method": "gpu_frustum",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        45,
+        45,
+        44
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 17.09568,
+      "gpu_ms_rounds": [
+        17.143808,
+        17.091584,
+        17.09568
+      ],
+      "surface_ms": 1.9558399999999998,
+      "surface_ms_rounds": [
+        1.9558399999999998,
+        1.9548159999999999,
+        1.9558399999999998
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 13.966336,
+      "point_and_resolve_ms_rounds": [
+        13.914112,
+        13.966336,
+        13.966847999999999
+      ],
+      "culling_ms": 1.1668479999999999,
+      "culling_ms_rounds": [
+        1.169408,
+        1.166336,
+        1.1668479999999999
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.8919039999999999,
+      "classify_ms_rounds": [
+        0.894976,
+        0.8919039999999999,
+        0.891392
+      ],
+      "scan_ms": 0.010239999999999999,
+      "scan_ms_rounds": [
+        0.010239999999999999,
+        0.009216,
+        0.010239999999999999
+      ],
+      "scatter_ms": 0.264,
+      "scatter_ms_rounds": [
+        0.265312,
+        0.264,
+        0.263696
+      ],
+      "cpu_submit_ms": 4.2668,
+      "cpu_submit_ms_rounds": [
+        4.2668,
+        4.1726,
+        4.5183
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "surface_4",
+      "method": "gpu_footprint",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 2226156,
+      "round_frames": [
+        73,
+        74,
+        72
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 8.307712,
+      "gpu_ms_rounds": [
+        8.303616,
+        8.307712,
+        8.311295999999999
+      ],
+      "surface_ms": 1.9548159999999999,
+      "surface_ms_rounds": [
+        1.9548159999999999,
+        1.9548159999999999,
+        1.9548159999999999
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 5.199872,
+      "point_and_resolve_ms_rounds": [
+        5.199872,
+        5.199872,
+        5.198848
+      ],
+      "culling_ms": 1.148928,
+      "culling_ms_rounds": [
+        1.147904,
+        1.148928,
+        1.1499519999999999
+      ],
+      "pyramid_ms": 0.043008,
+      "pyramid_ms_rounds": [
+        0.043008,
+        0.041984,
+        0.043008
+      ],
+      "classify_ms": 0.8959999999999999,
+      "classify_ms_rounds": [
+        0.8959999999999999,
+        0.8959999999999999,
+        0.8970239999999999
+      ],
+      "scan_ms": 0.010239999999999999,
+      "scan_ms_rounds": [
+        0.010239999999999999,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "scatter_ms": 0.198896,
+      "scatter_ms_rounds": [
+        0.19916799999999998,
+        0.198896,
+        0.198832
+      ],
+      "cpu_submit_ms": 4.443350000000001,
+      "cpu_submit_ms_rounds": [
+        4.4698,
+        4.40925,
+        4.443350000000001
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "points_4",
+      "method": "all",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        49,
+        47,
+        47
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 17.990655999999998,
+      "gpu_ms_rounds": [
+        17.990655999999998,
+        17.989632,
+        17.990655999999998
+      ],
+      "surface_ms": 0.008192,
+      "surface_ms_rounds": [
+        0.009216,
+        0.008192,
+        0.008192
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 17.98144,
+      "point_and_resolve_ms_rounds": [
+        17.98144,
+        17.98144,
+        17.98144
+      ],
+      "culling_ms": 0.0,
+      "culling_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 2.4996,
+      "cpu_submit_ms_rounds": [
+        1.9466,
+        2.9656,
+        2.4996
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "points_4",
+      "method": "split",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        48,
+        47,
+        48
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 17.994752,
+      "gpu_ms_rounds": [
+        17.994752,
+        18.002944,
+        17.994239999999998
+      ],
+      "surface_ms": 0.008192,
+      "surface_ms_rounds": [
+        0.008192,
+        0.009216,
+        0.008192
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 17.983487999999998,
+      "point_and_resolve_ms_rounds": [
+        17.983487999999998,
+        17.99168,
+        17.982464
+      ],
+      "culling_ms": 0.002048,
+      "culling_ms_rounds": [
+        0.002048,
+        0.002048,
+        0.002048
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.0,
+      "classify_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scan_ms": 0.0,
+      "scan_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scatter_ms": 0.0,
+      "scatter_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "cpu_submit_ms": 2.1262999999999996,
+      "cpu_submit_ms_rounds": [
+        2.1262999999999996,
+        2.731,
+        2.0628
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "points_4",
+      "method": "gpu_frustum",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        44,
+        43,
+        44
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 19.378176,
+      "gpu_ms_rounds": [
+        19.470336,
+        19.378176,
+        19.29216
+      ],
+      "surface_ms": 0.008192,
+      "surface_ms_rounds": [
+        0.008192,
+        0.008192,
+        0.008192
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 18.0608,
+      "point_and_resolve_ms_rounds": [
+        18.022399999999998,
+        18.122752,
+        18.0608
+      ],
+      "culling_ms": 1.2605439999999999,
+      "culling_ms_rounds": [
+        1.33888,
+        1.2605439999999999,
+        1.1668479999999999
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.8929279999999999,
+      "classify_ms_rounds": [
+        0.8929279999999999,
+        0.8929279999999999,
+        0.89088
+      ],
+      "scan_ms": 0.010239999999999999,
+      "scan_ms_rounds": [
+        0.011264,
+        0.010239999999999999,
+        0.010239999999999999
+      ],
+      "scatter_ms": 0.286016,
+      "scatter_ms_rounds": [
+        0.339264,
+        0.286016,
+        0.2636
+      ],
+      "cpu_submit_ms": 3.4056,
+      "cpu_submit_ms_rounds": [
+        2.5395,
+        3.4056,
+        3.4572
+      ]
+    },
+    {
+      "run": "gpu-culling-san-miguel-no-ids",
+      "case": "points_4",
+      "method": "gpu_footprint",
+      "id_attachment": false,
+      "markers": 9021669,
+      "submitted_markers": 9021669,
+      "round_frames": [
+        44,
+        45,
+        45
+      ],
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 19.249152,
+      "gpu_ms_rounds": [
+        19.21792,
+        19.249152,
+        19.287039999999998
+      ],
+      "surface_ms": 0.008192,
+      "surface_ms_rounds": [
+        0.008192,
+        0.008192,
+        0.008192
+      ],
+      "edge_ms": 0.0,
+      "edge_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "point_and_resolve_ms": 18.071552,
+      "point_and_resolve_ms_rounds": [
+        18.050047999999997,
+        18.071552,
+        18.112512
+      ],
+      "culling_ms": 1.166336,
+      "culling_ms_rounds": [
+        1.165312,
+        1.166336,
+        1.16736
+      ],
+      "pyramid_ms": 0.0,
+      "pyramid_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "classify_ms": 0.8919039999999999,
+      "classify_ms_rounds": [
+        0.8919039999999999,
+        0.89088,
+        0.8929279999999999
+      ],
+      "scan_ms": 0.011264,
+      "scan_ms_rounds": [
+        0.011264,
+        0.011264,
+        0.011264
+      ],
+      "scatter_ms": 0.26201599999999997,
+      "scatter_ms_rounds": [
+        0.261984,
+        0.26201599999999997,
+        0.262272
+      ],
+      "cpu_submit_ms": 2.5758,
+      "cpu_submit_ms_rounds": [
+        2.60295,
+        2.5758,
+        2.4743
+      ]
+    }
+  ],
+  "comparisons": 144,
+  "peak_private_bytes": 13071810560,
+  "minimum_available_bytes": 38925414400,
+  "slang_version": "2026.18.3",
+  "compiled_spirv_sha256": {
+    "cs_capture_depth.spv": "9f8a5d8083110dee3c701dabfa2ff69d94e32780b81d6b1dac347b12238d508f",
+    "cs_capture_ids.spv": "fe322437d5f766e867211b2a28cded71d737dbf0e6f00d7bb5a18c2ae2ddcda9",
+    "cs_cull_add.spv": "14b72ed5728aeaf5a011ff957c8a705a28ee338db38e0935a8a68ed9b9b0186f",
+    "cs_cull_arguments.spv": "38c328df6c8ff85981662222f8898f6a7a3a67c3248efa8287615a827dce0230",
+    "cs_cull_classify.spv": "f454a6c5f3d02dff0038e80ec4dda412f4dd2df981aa5af2054f90d135e01999",
+    "cs_cull_depth.spv": "fd7706aabf840f51e8782c1000c75ac96f1b268861bac5dabe2a875c9ed3a9ca",
+    "cs_cull_reduce.spv": "05b6ab4e086a695f7a4b0c239536d001cd113055b24f04479678cda285b48458",
+    "cs_cull_scan.spv": "2fb717a25bc3e30c21080652a5b1a3d89990d00b7f6ba4b0ed3a82ac6a037934",
+    "cs_cull_scatter.spv": "261b7152b684d0e1d4802ddf3751b4623f4106f006da5d0f6f08457ca2bd5dca",
+    "fs_color.spv": "84d2a403fc254ab1079cf1cb95635f079a878f40ebf13ad89be61b82a8199efe",
+    "fs_marker_line.spv": "db418e171f9945c860268e5e6f00bee45dc009b379da005a0adef341f38c96e8",
+    "fs_marker_mesh.spv": "c2c864a5d1cd304126d0ed5f4ad3528135765cad72bb257c8d2d76d02943aecb",
+    "fs_marker_point.spv": "52bd68af679f43b870a8dc012d38cad1ee4f936cd9f9eb0bf89ae9c00c480541",
+    "fs_mesh.spv": "e45c221e47ff21aff3b3585bba2f9946772414759f457be8c078317cf7e402e1",
+    "fs_overlay_native.spv": "428c31c5ac7cb6a9ceef69c02d80c4036a55c488a5f9e7c67e9e08db41882778",
+    "fs_overlay_native_ids.spv": "3b53ed540073c84e7de1a089ef1c87be06407c0e7d08e57f4ecf03ae1e02c853",
+    "fs_overlay_pull.spv": "4ea3bc775bb88a38216bc3ffac7fb103bd87eca35e89784680ea7a83aa387534",
+    "fs_overlay_pull_ids.spv": "9226b49c307d0fec1b5a319598b5461737d368af9321286ab47280e62ed8a874",
+    "fs_point_sprite.spv": "f6fcaad59ad69afa452140cd492338af16aa867b799324bb88bd1c2a66791db9",
+    "vs_color.spv": "9ae8b6c2498c3dd52e15af7325587d2b2f2298d7ca6665b998bd0b2ac92abdd6",
+    "vs_mesh.spv": "cbc540d50381b24c915bcd3bcbf45390f89483d6244453c4627ca77c16cbac95",
+    "vs_overlay_pull.spv": "4926e64c1529d0ff96d4b83951fb003f955c1e9d9ac5630912016957dbc44702",
+    "vs_point_compacted.spv": "9b20440316eeb51c22db45ca6416af520c9b7b9561391930f1dd25be062e08e2",
+    "vs_point_sprite.spv": "153754b0866b7a6c3dd3423d5fc7f620b6fd46a6d3a022b88f19c958ba12fa51"
+  }
+}

@@ -5,6 +5,10 @@ work: a large fraction of the submitted circles never contribute a final sample.
 The investigation lives in the opt-in overlay experiment; the viewer's vertex
 rendering has not changed.
 
+The proposed GPU implementation below has since been prototyped and timed with
+its full culling cost: [GPU footprint culling and compaction](gpu-vertex-culling.md).
+The measurements in this document remain the earlier offline-selection study.
+
 ## What was compared
 
 The experiment uses the production circle and packed picking-ID shaders at

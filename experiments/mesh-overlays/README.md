@@ -81,7 +81,7 @@ times, input geometry counts, device, dimensions, camera matrix, and capture
 coverage. Captures and GPU-ID readback run outside measurement windows. Empty
 captures fail the run. Inspect the PNGs as well as their coverage counts.
 
-Pass timestamps are within one render pass; the final marker interval includes
+Ordinary overlay pass timestamps are within one render pass; the final marker interval includes
 color resolve/end-pass work. Legacy draws are interleaved, so only their total
 GPU time is reported. CPU submission excludes fence waits. The harness completes
 each frame before reusing resources: these are scene GPU timings, not viewer FPS
@@ -98,6 +98,52 @@ draw lists outside its timed frames.
 Model colors are deterministic per group; global opacity is the transparency
 control. Arbitrary saved scenes, imported lines, detectors, and interleaved opaque
 and transparent groups remain production-integration work.
+
+## Current-frame GPU culling and compaction
+
+`--gpu-culling` compares the original marker draw (`all`), a render-pass break
+without filtering (`split`), GPU frustum culling, and GPU full-footprint culling.
+It defaults to picking IDs enabled; `--ids 0` measures without that attachment.
+`--point-size 4` and `--solid 1` select one workload; omitted values exercise
+1/4/8-pixel markers both with surfaces and in a points-only view.
+
+```powershell
+uv run experiments/mesh-overlays/run.py `
+  D:/.worktree/woby-overlay-build/bin/Release/woby_overlay_prototype.exe `
+  D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj `
+  D:/.worktree/woby-overlay-build/measurements/gpu-culling-new `
+  --gpu-culling --point-size 4 --rounds 3 --seconds 1 --warmup 0.5
+```
+
+Every frame stores opaque depth, builds a reversed-depth minimum pyramid from
+all MSAA samples, classifies complete padded marker squares, computes an ordered
+hierarchical prefix scan, scatters original marker offsets, and generates
+per-group indirect draw arguments. The marker pass loads the same attachments
+and resolves color only at its end. No CPU visibility readback or selection
+upload is needed to draw. The padding and full square are conservative for the
+circle shader; background depth keeps uncertain silhouettes. Transparent views
+and points-only views skip depth preparation and use frustum rejection only.
+
+Stable compaction preserves original group/marker order, equal-depth winners,
+alpha contributions, and picking IDs. Each group has a separate output partition,
+including when groups share an input range. GPU buffers, block descriptors, and
+derived matrices are reused until their inputs change; visibility is recomputed
+from the current frame and never reused across camera/transform changes.
+
+The total GPU timestamp includes attachment clear/store/load, pyramid generation,
+classification, scan, scatter, synchronization, indirect drawing, and resolve.
+JSON stores per-frame stage timings, group counts, and exact RGBA/all-sample ID
+comparisons. Captures and diagnostic count readback are excluded. Buffer byte
+counts describe requested payload, including count readback; they are not a
+measurement of total committed VRAM. CPU submission excludes resource/pipeline
+setup and fence waits. This remains an opt-in Vulkan prototype, outside the viewer.
+
+GPU tests compare rendered colors and every picking sample at 1/4x MSAA, with and
+without IDs, against both original drawing and independent CPU selections. They
+cover sizes 1/4/8/40, non-power-of-two and one-pixel targets, complete-circle
+fringes, transparency, transforms, camera changes, visibility changes, reordered
+and duplicated groups, zero/all retained outputs, partial blocks, and all three
+prefix levels (a group crosses global block 65536).
 Fused surface/edge shading blends transparency once; the separate surface and
 line passes can blend twice. Transparent images are therefore a diagnostic
 comparison, not a claim of equivalent appearance or a production replacement.

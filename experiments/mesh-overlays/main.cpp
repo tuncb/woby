@@ -46,7 +46,7 @@ int main(int argc,char** argv) {
         o::Options options;
         int rounds=3;
         double seconds=2,warmup=1;
-        bool fixture=false,orthographic=false,visibility=false;
+        bool fixture=false,orthographic=false,visibility=false,gpuCulling=false,idsSpecified=false;
         float zoom=1;
         float pointSize=0;
         int solid=-1;
@@ -56,6 +56,7 @@ int main(int argc,char** argv) {
             if (arg=="--fixture") { fixture=true; continue; }
             if (arg=="--orthographic") { orthographic=true; continue; }
             if (arg=="--visibility") { visibility=true; continue; }
+            if (arg=="--gpu-culling") { gpuCulling=true; continue; }
             if (i+1==argc) throw std::invalid_argument("Option needs a value: "+arg);
             const std::string value=argv[++i];
             if (arg=="--model") model=woby::pathFromUtf8(value);
@@ -63,7 +64,7 @@ int main(int argc,char** argv) {
             else if (arg=="--width") options.width=static_cast<uint32_t>(std::stoul(value));
             else if (arg=="--height") options.height=static_cast<uint32_t>(std::stoul(value));
             else if (arg=="--samples") options.samples=static_cast<uint32_t>(std::stoul(value));
-            else if (arg=="--ids") { if (value!="0" && value!="1") throw std::invalid_argument("IDs must be 0 or 1"); options.ids=value=="1"; }
+            else if (arg=="--ids") { if (value!="0" && value!="1") throw std::invalid_argument("IDs must be 0 or 1"); options.ids=value=="1"; idsSpecified=true; }
             else if (arg=="--rounds") rounds=std::stoi(value);
             else if (arg=="--seconds") seconds=std::stod(value);
             else if (arg=="--warmup") warmup=std::stod(value);
@@ -80,8 +81,10 @@ int main(int argc,char** argv) {
         if ((!fixture && model.empty()) || output.empty() || rounds<1 || rounds>10
             || !std::isfinite(seconds) || seconds<=0 || seconds>60
             || !std::isfinite(warmup) || warmup<0 || warmup>60)
-            throw std::invalid_argument("Usage: woby_overlay_prototype (--model FILE | --fixture) --output NEW_DIRECTORY [--samples 1|4 --ids 0|1 --rounds 3 --seconds 2 --warmup 1 --method NAME --scenario NAME --zoom 1 --orthographic]");
+            throw std::invalid_argument("Usage: woby_overlay_prototype (--model FILE | --fixture) --output NEW_DIRECTORY [--samples 1|4 --ids 0|1 --rounds 3 --seconds 2 --warmup 1 --method NAME --scenario NAME --zoom 1 --orthographic --visibility|--gpu-culling --point-size 4 --solid 0|1]");
         if (visibility) options.ids=true;
+        if (gpuCulling && visibility) throw std::invalid_argument("Select either offline visibility or GPU culling");
+        if (gpuCulling && !idsSpecified) options.ids=true;
         o::validate(options,{});
         output=std::filesystem::absolute(output);
         if (std::filesystem::exists(output)) throw std::invalid_argument("Output directory must be new");
@@ -97,6 +100,11 @@ int main(int argc,char** argv) {
         std::array<float,16> projection{};
         if (fixture) bx::mtxIdentity(projection.data());
         else projection=o::fittedProjection(mesh.bounds,options.width,options.height,zoom,orthographic);
+        if (gpuCulling) {
+            o::measureGpuCulling(renderer,projection,{output,fixture?"fixture":std::filesystem::absolute(model).string(),
+                rounds,solid,seconds,warmup,pointSize,zoom,orthographic});
+            return 0;
+        }
         if (visibility) {
             o::measureVisibility(renderer,mesh,projection,{output,fixture?"fixture":std::filesystem::absolute(model).string(),
                 rounds,solid,seconds,warmup,pointSize,zoom,orthographic});

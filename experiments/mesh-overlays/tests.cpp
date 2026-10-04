@@ -27,6 +27,8 @@ TEST_CASE("Overlay experiment rejects invalid workload settings") {
     CHECK_THROWS(o::validate({},{.pointSize=0})); CHECK_THROWS(o::validate({},{.pointSize=41}));
     CHECK_THROWS(o::validate({},{.opacity=std::numeric_limits<float>::quiet_NaN()}));
     CHECK_THROWS(o::validate({},{.edgeHalfWidth=-1}));
+    CHECK_THROWS(o::validate({},{.method=o::Method::legacy,.culling=o::Culling::footprint}));
+    CHECK_THROWS(o::validate({},{.compacted=true,.culling=o::Culling::frustum}));
     CHECK_THROWS(o::fittedProjection({},0,720));
 }
 TEST_CASE("Visibility diagnostics retain footprint fringes and reject invalid depth or provenance") {

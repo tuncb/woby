@@ -11,4 +11,5 @@ struct VisibilityRun {
 };
 void measureVisibility(Renderer& renderer,const Mesh& mesh,
     const std::array<float,16>& projection,const VisibilityRun& options);
+void measureGpuCulling(Renderer& renderer,const std::array<float,16>& projection,const VisibilityRun& options);
 }

@@ -2,6 +2,7 @@
 #include "camera.h"
 #include "scene_mesh_preparation.h"
 #include "root.h"
+#include "gpu_culling.h"
 #include <NoGraphicsAPI/NoGraphicsAPI.hpp>
 #include <NoGraphicsAPIUtility/bump_allocator.hpp>
 #include <NoGraphicsAPIUtility/texture_allocator.hpp>
@@ -25,6 +26,7 @@ struct Display {
     bool solid = true, edges = true, points = true, xray = false;
     float pointSize = 4, opacity = 1, edgeHalfWidth = .5f;
     bool compacted = false;
+    Culling culling = Culling::none;
 };
 void validate(const Options& options, const Display& display);
 struct Group {
@@ -61,7 +63,8 @@ struct Renderer {
     gpu::PSO* depthCapture = nullptr;
     Options options;
     uint64_t sequence = 0;
-    std::array<uint64_t,4> timestamps{};
+    std::array<uint64_t,5> timestamps{};
+    GpuCulling culling;
     Scene scene;
     Renderer() = default;
     Renderer(const Renderer&) = delete;
@@ -70,6 +73,7 @@ struct Renderer {
 };
 struct Measurement {
     double totalMs = 0, surfaceMs = 0, edgeMs = 0, pointMs = 0, cpuSubmitMs = 0;
+    double cullingMs = 0, pyramidMs = 0, classifyMs = 0, scanMs = 0, scatterMs = 0;
     uint32_t draws = 0;
     // The current group-interleaved control has no meaningful pass separation.
     bool separated = true;
@@ -81,6 +85,8 @@ struct Capture {
     std::vector<uint32_t> sampleIds;
     bool depthRequested = false;
     std::vector<float> minimumSampleDepth;
+    bool cullingSelectionRequested = false;
+    std::vector<uint32_t> cullingCounts, cullingSelection;
 };
 void initialize(Renderer& renderer, Options options);
 void upload(Renderer& renderer, const Mesh& mesh);

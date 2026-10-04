@@ -89,7 +89,7 @@ void barrier(gpu::CommandBuffer* commands) {
     gpu::barrier(commands,gpu::Stage::all_commands,
         gpu::Access::color_write|gpu::Access::depth_stencil_write|gpu::Access::transfer_write|gpu::Access::transfer_read|gpu::Access::shader_write,
         gpu::Stage::all_commands,gpu::Access::shader_read|gpu::Access::shader_write|gpu::Access::index_read|gpu::Access::color_write
-            |gpu::Access::depth_stencil_read|gpu::Access::depth_stencil_write|gpu::Access::transfer_read);
+            |gpu::Access::color_read|gpu::Access::depth_stencil_read|gpu::Access::depth_stencil_write|gpu::Access::transfer_read);
 }
 void complete(Renderer& r,gpu::CommandBuffer* commands) {
     gpu::end_commands(commands);
@@ -116,10 +116,13 @@ void validate(const Options& options,const Display& display) {
     require(std::isfinite(display.opacity) && display.opacity>=0 && display.opacity<=1,"Opacity must be 0..1");
     require(std::isfinite(display.edgeHalfWidth) && display.edgeHalfWidth>0 && display.edgeHalfWidth<=4,"Edge half width must be positive and at most 4");
     (void)methodName(display.method);
+    require(display.culling==Culling::none || (display.method!=Method::legacy && !display.compacted),
+        "GPU culling requires ordered rendering and cannot use a static selection");
 }
 Renderer::~Renderer() {
     if (!device) return;
     gpu::wait_idle(device);
+    destroyGpuCulling(culling);
     uploads.reset();
     for (auto& [key,pso]:pipelines) { (void)key; gpu::destroy_pso(pso); }
     gpu::destroy_pso(capture); gpu::destroy_pso(depthCapture);
@@ -213,25 +216,29 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
         "Native barycentric shaders unavailable; use pulled or ordered explicitly");
     const bool shaderEdges=(d.method==Method::barycentric || d.method==Method::pulled) && !d.xray;
     const auto edgeKind=d.method==Method::pulled?"pulled":"barycentric";
+    const bool split=d.culling!=Culling::none && d.points && d.opacity>0 && r.scene.markerCount>0;
+    const bool gpuCull=split && d.culling!=Culling::split;
+    if (gpuCull) prepareGpuCulling(r,capture && capture->cullingSelectionRequested);
     // Create pipelines before the measured command recording interval.
     auto* solidPso=pipeline(r,"mesh",d.opacity<.999f);
     auto* depthPso=pipeline(r,"depth",false);
     auto* edgePso=pipeline(r,"line",d.opacity<.999f);
-    auto* pointPso=pipeline(r,d.compacted?"compacted":"point",d.opacity<.999f);
+    auto* pointPso=pipeline(r,d.compacted || gpuCull?"compacted":"point",d.opacity<.999f);
     auto* surfacePso=shaderEdges?pipeline(r,edgeKind,d.opacity<.999f || !d.solid):solidPso;
     gpu::reset_command_pool(r.pool); r.arena->reset(); r.timestamps={};
     const auto start=Clock::now();
+    if (gpuCull) updateGpuCullInputs(r,viewProjection);
     auto* commands=gpu::begin_commands(r.pool);
     if (r.descriptors) gpu::set_texture_descriptor_heap(commands,r.descriptors);
     barrier(commands);
     std::array<gpu::ColorAttachment,2> colors{};
-    colors[0]={.render_view=r.color.view,.load=gpu::LoadOp::clear,.clear={.125f,.141f,.165f,1},.resolve_view=r.resolved.view};
+    colors[0]={.render_view=r.color.view,.load=gpu::LoadOp::clear,.clear={.125f,.141f,.165f,1},.resolve_view=split?nullptr:r.resolved.view};
     colors[1]={.render_view=r.ids.view,.load=gpu::LoadOp::clear,.clear={0,0,0,0}};
+    gpu::write_timestamp(commands,&r.timestamps[0]);
     gpu::begin_render_pass(commands,{.colors={colors.data(),r.options.ids?2u:1u},
         .depth={.render_view=r.depth.view,.load=gpu::LoadOp::clear,.clear=0}});
     gpu::set_viewport(commands,{0,0,float(r.options.width),float(r.options.height)});
     gpu::set_scissor(commands,{0,0,r.options.width,r.options.height});
-    gpu::write_timestamp(commands,&r.timestamps[0]);
     Measurement measurement;
     const auto draw=[&](const Group& group,const char* kind) {
         if (d.opacity<=0) return;
@@ -239,7 +246,9 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
         const bool isPoint=std::strcmp(kind,"point")==0,isLine=std::strcmp(kind,"line")==0;
         const bool isDepth=std::strcmp(kind,"depth")==0,isOverlay=std::strcmp(kind,"overlay")==0;
         const auto pointCount=d.compacted?group.filteredCount:range.pointIndexCount;
-        const auto pointOffset=d.compacted?group.filteredOffset:range.pointIndexOffset;
+        const auto groupIndex=static_cast<size_t>(&group-r.scene.groups.data());
+        const auto pointOffset=gpuCull?r.culling.layout[groupIndex].outputOffset
+            :d.compacted?group.filteredOffset:range.pointIndexOffset;
         if ((isPoint && pointCount==0) || (!isPoint && range.triangleIndexCount==0)) return;
         auto root=r.arena->allocate<WobyRoot>(); require(root.cpu!=nullptr,"Overlay root arena exhausted");
         *root.cpu={};
@@ -250,7 +259,8 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
         root.cpu->color={std::min(1.0f,group.color[0]*scale),std::min(1.0f,group.color[1]*scale),
             std::min(1.0f,group.color[2]*scale),d.opacity};
         root.cpu->vertices=reinterpret_cast<float*>(r.scene.vertices.range.gpu); root.cpu->stride=sizeof(Vertex)/4;
-        root.cpu->pointIds=reinterpret_cast<uint32_t*>((isPoint && d.compacted?r.scene.filtered:r.scene.points).range.gpu);
+        root.cpu->pointIds=reinterpret_cast<uint32_t*>((isPoint && gpuCull?r.culling.selected
+            :isPoint && d.compacted?r.scene.filtered:r.scene.points).range.gpu);
         // Experiment-only extra indirection preserves the original packed ID.
         root.cpu->freeform=reinterpret_cast<float*>(r.scene.points.range.gpu);
         root.cpu->pointParams[0]={d.pointSize,float(r.options.width),float(r.options.height),0};
@@ -265,7 +275,8 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
             .depth_compare=isLine || isPoint || (isOverlay && !(d.solid && group.solid))
                 ?gpu::CompareOp::greater_equal:gpu::CompareOp::greater});
         gpu::bind_pso(commands,isPoint?pointPso:isLine?edgePso:isDepth?depthPso:isOverlay?surfacePso:solidPso);
-        if (isPoint) gpu::draw(commands,root.gpu,4,pointCount);
+        if (isPoint && gpuCull) gpu::draw_indirect(commands,root.gpu,{r.culling.arguments.range.gpu+groupIndex*16,16});
+        else if (isPoint) gpu::draw(commands,root.gpu,4,pointCount);
         else if (isOverlay && d.method==Method::pulled) {
             root.cpu->pointIds=reinterpret_cast<uint32_t*>(r.scene.triangles.range.gpu)+range.triangleIndexOffset;
             gpu::draw(commands,root.gpu,range.triangleIndexCount);
@@ -297,12 +308,27 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
             else draw(group,"line");
         }
         gpu::write_timestamp(commands,&r.timestamps[2]);
+        if (split) {
+            gpu::end_render_pass(commands);
+            const bool opaqueDepth=d.opacity>=.999f && std::any_of(r.scene.groups.begin(),r.scene.groups.end(),[&](const auto& group) {
+                return group.range.triangleIndexCount && ((d.solid && group.solid) || (!d.xray && d.edges && group.edges));
+            });
+            if (gpuCull) submitGpuCulling(r,commands,d,opaqueDepth);
+            else barrier(commands);
+            colors[0].load=colors[1].load=gpu::LoadOp::load; colors[0].resolve_view=r.resolved.view;
+            gpu::begin_render_pass(commands,{.colors={colors.data(),r.options.ids?2u:1u},
+                .depth={.render_view=r.depth.view,.load=gpu::LoadOp::load}});
+            gpu::set_viewport(commands,{0,0,float(r.options.width),float(r.options.height)});
+            gpu::set_scissor(commands,{0,0,r.options.width,r.options.height});
+        }
+        gpu::write_timestamp(commands,&r.timestamps[4]);
         for (const auto& group:r.scene.groups) if (d.points && group.points) draw(group,"point");
     }
     gpu::end_render_pass(commands);
     gpu::write_timestamp(commands,&r.timestamps[3]);
     if (capture) {
         barrier(commands);
+        if (gpuCull) captureGpuCulling(r,commands,capture->cullingSelectionRequested);
         const uint64_t bytes=uint64_t(r.options.width)*r.options.height*4;
         gpu::copy_texture_to_memory(commands,r.resolved.allocation.texture?r.resolved.allocation.texture:r.color.allocation.texture,
             {r.readback.range.gpu,bytes});
@@ -338,13 +364,21 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
     measurement.totalMs=double(r.timestamps[3]-r.timestamps[0])*period;
     measurement.surfaceMs=double(r.timestamps[1]-r.timestamps[0])*period;
     measurement.edgeMs=double(r.timestamps[2]-r.timestamps[1])*period;
-    measurement.pointMs=double(r.timestamps[3]-r.timestamps[2])*period;
+    measurement.pointMs=double(r.timestamps[3]-(measurement.separated?r.timestamps[4]:r.timestamps[2]))*period;
+    if (split) measurement.cullingMs=double(r.timestamps[4]-r.timestamps[2])*period;
+    if (gpuCull) {
+        const auto& t=r.culling.timestamps;
+        measurement.pyramidMs=double(t[1]-t[0])*period; measurement.classifyMs=double(t[2]-t[1])*period;
+        measurement.scanMs=double(t[3]-t[2])*period; measurement.scatterMs=double(t[4]-t[3])*period;
+    }
     if (capture) {
         capture->width=r.options.width; capture->height=r.options.height;
         const size_t bytes=size_t(r.options.width)*r.options.height*4;
         capture->rgba.resize(bytes); std::memcpy(capture->rgba.data(),r.readback.range.cpu,bytes);
         capture->ids.clear();
         capture->sampleIds.clear(); capture->minimumSampleDepth.clear();
+        capture->cullingCounts.clear(); capture->cullingSelection.clear();
+        if (gpuCull) readGpuCulling(r,*capture);
         if (r.options.ids) {
             capture->sampleIds.resize(bytes/4*r.options.samples);
             std::memcpy(capture->sampleIds.data(),r.readback.range.cpu+bytes,bytes*r.options.samples);
