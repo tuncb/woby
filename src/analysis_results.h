@@ -16,8 +16,12 @@ nlohmann::json analysisResultPage(const MeshComparison& result, ComparisonSide s
 nlohmann::json analysisDetectorSummary(const MeshComparison& result, ComparisonSide side,
     const std::string& detector);
 // Streams all retained diagnostic arrays, including nested members, without a JSON DOM.
+struct AnalysisExportWriteMetrics {
+    size_t bytesWritten = 0;
+    double streamWriteMs = 0;
+};
 void writeAnalysisResults(std::ostream& stream, const MeshComparison& result, nlohmann::json summary,
-    std::stop_token stop = {}, std::atomic<size_t>* written = nullptr);
+    std::stop_token stop = {}, std::atomic<size_t>* written = nullptr, AnalysisExportWriteMetrics* metrics = nullptr);
 
 struct AnalysisExportRuntime {
     std::stop_source stop;
