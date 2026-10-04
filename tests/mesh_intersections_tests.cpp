@@ -620,6 +620,73 @@ TEST_CASE("canceling one shared topology detector preserves the other worker res
     REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::boundary, true); }));
 }
 
+TEST_CASE("hole threshold runtime reuses topology and honors manual requests and cancellation")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    const auto storage = runtime.result.original.topology.sources[0].incidence;
+    const auto* faces = runtime.result.original.topology.sources[0].faces.data();
+    const auto stages = runtime.cache.completed;
+    const auto holes = static_cast<size_t>(DiagnosticCategory::holes);
+    auto settings = comparisonSettings(f.state, f.id);
+    for (const float threshold : {.5f, 1.0f, .5f}) {
+        settings.topologyInspection.holeSizeRatioTolerance = threshold;
+        setComparisonSettings(f.state, settings, f.id);
+        updateComparisonRuntimes(f.runtimes, f.state);
+        CHECK_FALSE(runtime.worker.valid());
+        CHECK(runtime.cache.completed == stages);
+        CHECK(runtime.result.original.topology.sources[0].incidence == storage);
+        CHECK(runtime.result.original.topology.sources[0].faces.data() == faces);
+        CHECK(comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes));
+        CHECK(runtime.result.detectors[holes].knownCounts[0] == (threshold == 1.0f ? 2 : 0));
+    }
+    setComparisonAutomaticUpdate(f.state, f.id, DiagnosticCategory::holes, false);
+    settings = comparisonSettings(f.state, f.id);
+    settings.topologyInspection.holeSizeRatioTolerance = 1.0f;
+    setComparisonSettings(f.state, settings, f.id);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(runtime.result.detectors[holes].phase == IntersectionPhase::outdated);
+    CHECK_FALSE(runtime.worker.valid());
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::holes, true);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(runtime.result.detectors[holes].phase == IntersectionPhase::canceled);
+    CHECK_FALSE(runtime.worker.valid());
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::holes);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(runtime.result.detectors[holes].phase == IntersectionPhase::complete);
+    CHECK(runtime.result.detectors[holes].knownCounts[0] == 2);
+    CHECK_FALSE(runtime.worker.valid());
+    CHECK(runtime.result.original.topology.sources[0].incidence == storage);
+}
+
+TEST_CASE("topology mode invalidation releases old graph and cannot use threshold cache")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    std::weak_ptr<const TopologyIncidence> storage = runtime.result.original.topology.sources[0].incidence;
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        setComparisonAutomaticUpdate(f.state, f.id, static_cast<DiagnosticCategory>(i), false);
+    }
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.topologyMode = TopologyMode::exactPosition;
+    settings.topologyInspection.holeSizeRatioTolerance = 1.0f;
+    setComparisonSettings(f.state, settings, f.id);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(storage.expired());
+    CHECK_FALSE(runtime.worker.valid());
+    CHECK((runtime.cache.completed & comparisonTopology) == 0);
+    CHECK(runtime.result.original.topology.sources.empty());
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::holes);
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(runtime.worker.valid());
+    CHECK_FALSE(comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes));
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes); }));
+    CHECK(runtime.result.original.topology.mode == TopologyMode::exactPosition);
+    CHECK(runtime.result.original.topology.holes.size() == 2);
+}
+
 TEST_CASE("failed and canceled automatic detectors wait for retry or relevant changes")
 {
     WorkflowFixture f; REQUIRE(f.initialized);
@@ -764,6 +831,60 @@ TEST_CASE("fast collapse filter agrees with rational determinants over floating 
     }
 }
 
+TEST_CASE("allocation failures stop the analysis release buffers and require an explicit retry")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    const auto signature = runtime.cache.signature;
+    std::weak_ptr<const std::vector<SourceTopology>> graph = runtime.result.original.topology.sourceStorage;
+    SUBCASE("detector batch") {
+        runtime.workerSignature = signature;
+        runtime.workerStages = comparisonDetectors;
+        runtime.workerDetectors = (1u << backgroundDetectorCount)-1;
+        runtime.workerDetectorRequests = runtime.consumedDetectorRequests;
+        runtime.stop = std::stop_source{};
+        for (auto& status : runtime.result.detectors) { status.phase = IntersectionPhase::running; }
+        std::promise<MeshComparison> pending;
+        runtime.worker = pending.get_future();
+        pending.set_exception(std::make_exception_ptr(std::bad_alloc{}));
+    }
+    SUBCASE("source preparation") {
+        runtime.preparationSignature = signature;
+        runtime.preparationStop = std::stop_source{};
+        std::promise<std::shared_ptr<const PreparedComparisonInputs>> pending;
+        runtime.preparationWorker = pending.get_future();
+        pending.set_exception(std::make_exception_ptr(std::bad_alloc{}));
+    }
+    SUBCASE("intersection worker") {
+        auto& job = runtime.intersection;
+        job.workerSignature = signature; job.workerRevision = job.revision;
+        job.stop = std::stop_source{};
+        std::promise<MeshComparison> pending;
+        job.worker = pending.get_future();
+        pending.set_exception(std::make_exception_ptr(std::bad_alloc{}));
+    }
+    CHECK_NOTHROW(updateComparisonRuntimes(f.runtimes, f.state));
+    CHECK(runtime.allocationFailed);
+    CHECK_FALSE(runtime.retryDetectorsSeparately);
+    CHECK_FALSE(runtime.ready);
+    CHECK_FALSE(runtime.inputs);
+    CHECK(graph.expired());
+    CHECK(runtime.cache.completed == 0);
+    CHECK(runtime.error.find("Memory allocation failed") != std::string::npos);
+    CHECK(runtime.stop.stop_requested());
+    CHECK(runtime.preparationStop.stop_requested());
+    CHECK(runtime.intersection.stop.stop_requested());
+    for (int i = 0; i < 3; ++i) { updateComparisonRuntimes(f.runtimes, f.state); }
+    CHECK_FALSE(runtime.worker.valid());
+    CHECK_FALSE(runtime.preparationWorker.valid());
+    CHECK_FALSE(runtime.intersection.worker.valid());
+    for (const auto& status : runtime.result.detectors) { CHECK(status.phase == IntersectionPhase::failed); }
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::boundary, false);
+    REQUIRE(f.until([&] { return !runtime.allocationFailed && comparisonResultsReady(runtime, f.state, f.id); }));
+    CHECK(runtime.error.empty());
+}
+
 TEST_CASE("detector batch retries unaffected work after threshold edits or a stage failure")
 {
     WorkflowFixture f; REQUIRE(f.initialized);
@@ -798,6 +919,13 @@ TEST_CASE("detector batch retries unaffected work after threshold edits or a sta
         updateComparisonRuntimes(f.runtimes, f.state);
         CHECK(runtime.retryDetectorsSeparately);
         CHECK(runtime.workerStages == comparisonTopology);
+    }
+    SUBCASE("allocation failure from an obsolete worker does not fail the replacement") {
+        auto settings = comparisonSettings(f.state, f.id); settings.topologyMode = TopologyMode::exactPosition;
+        setComparisonSettings(f.state, settings, f.id);
+        updateComparisonRuntimes(f.runtimes, f.state);
+        REQUIRE(runtime.stop.stop_requested());
+        pending.set_exception(std::make_exception_ptr(std::bad_alloc{}));
     }
     REQUIRE(f.until([&] {
         if (runtime.worker.valid()) { return false; }

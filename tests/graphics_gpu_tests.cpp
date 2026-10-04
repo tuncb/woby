@@ -41,6 +41,22 @@ TEST_CASE("Native renderer submits empty frames before geometry exists")
         CHECK(g::frame() == expected);
 }
 
+TEST_CASE("Native GPU heap allocation failure preserves the device for subsequent work")
+{
+    const auto created = gpu::create_device({});
+    REQUIRE(created.device != nullptr);
+    // Far beyond any supported heap, without consuming the machine's memory.
+    for (int i = 0; i < 4; ++i) {
+        const auto rejected = gpu::create_gpu_heap(created.device, uint64_t{1} << 50, gpu::MemoryType::gpu_only);
+        CHECK(rejected.owner == nullptr);
+        gpu::destroy_gpu_heap(rejected);
+    }
+    const auto valid = gpu::create_gpu_heap(created.device, 256, gpu::MemoryType::gpu_only);
+    CHECK(valid.owner != nullptr);
+    gpu::destroy_gpu_heap(valid);
+    gpu::destroy_device(created.device);
+}
+
 TEST_CASE("Native draws retain texture versions and geometry until GPU completion")
 {
     namespace g = woby::graphics;

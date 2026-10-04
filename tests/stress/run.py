@@ -67,11 +67,25 @@ def summarize_frames(samples):
 
 
 def memory_stop_reason(private_bytes, available_bytes, cap_bytes, floor_bytes):
-    if private_bytes > cap_bytes:
+    if cap_bytes and private_bytes > cap_bytes:
         return "process_private_limit"
-    if available_bytes < floor_bytes:
+    if floor_bytes and available_bytes < floor_bytes:
         return "system_available_floor"
     return None
+
+
+def memory_limit(value):
+    value = float(value)
+    if not math.isfinite(value) or value < 0:
+        raise argparse.ArgumentTypeError("Memory limits must be finite and nonnegative; 0 disables the limit")
+    return value
+
+
+def add_memory_limit_arguments(parser):
+    parser.add_argument("--max-private-gib", type=memory_limit, default=0,
+                        help="Optional process-memory cutoff; 0 (default) disables it")
+    parser.add_argument("--min-available-gib", type=memory_limit, default=0,
+                        help="Optional available-memory floor; 0 (default) disables it")
 
 
 def monitor(state):
@@ -848,8 +862,7 @@ def main():
     parser.add_argument("--warmup", type=float, default=1.5)
     parser.add_argument("--load-timeout", type=int, default=600)
     parser.add_argument("--operation-timeout", type=int, default=240)
-    parser.add_argument("--max-private-gib", type=float, default=38)
-    parser.add_argument("--min-available-gib", type=float, default=6)
+    add_memory_limit_arguments(parser)
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--visible-window", action="store_true", help="Show the window for a separate native UI follow-up")
     parser.add_argument("--batch-count", type=int, default=8)
@@ -858,8 +871,8 @@ def main():
         setattr(args, name, getattr(args, name).resolve())
     if args.rounds < 1 or args.seconds < 1 or args.warmup < 0 or args.load_timeout < 1 or args.operation_timeout < 1:
         parser.error("Positive rounds, measurement seconds, and deadlines are required.")
-    if not all(math.isfinite(value) for value in (args.seconds, args.warmup, args.max_private_gib, args.min_available_gib)) or args.max_private_gib <= 0 or args.min_available_gib < 0:
-        parser.error("Finite measurement settings and positive memory limits are required.")
+    if not all(math.isfinite(value) for value in (args.seconds, args.warmup)):
+        parser.error("Finite measurement settings are required.")
     if not 1 <= args.batch_count <= 512:
         parser.error("Batch count must be 1..512")
     if args.headless and args.suite not in ("load", "lifecycle"):

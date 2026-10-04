@@ -519,7 +519,10 @@ std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool
     {
         result->heap = gpu::create_gpu_heap(state().device, (uint64_t(memory->size) + 15) & ~uint64_t{15},
                                             gpu::MemoryType::gpu_only);
-        require(result->heap.owner != nullptr, "Cannot allocate GPU geometry");
+        if (!result->heap.owner) { throw std::bad_alloc{}; }
+        // Retain ownership before recording the upload. If this allocation fails,
+        // no GPU command may still refer to the buffer we are about to destroy.
+        state().trash->push_back(result);
         const uint64_t paddedBytes = (uint64_t(memory->size) + 3) & ~uint64_t{3};
         if (paddedBytes == memory->size)
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {memory->data, paddedBytes});
@@ -529,8 +532,6 @@ std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool
             std::memcpy(padded.data(), memory->data, memory->size);
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {padded.data(), paddedBytes});
         }
-        // Keep uploads alive even when a model is canceled before it is drawn.
-        state().trash->push_back(result);
     }
     return result;
 }

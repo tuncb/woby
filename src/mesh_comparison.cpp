@@ -368,31 +368,47 @@ void inspectSurfaceDegenerates(SurfaceComparison& surface, const Mesh& mesh, Deg
     }
 }
 
-void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_token stop, bool holesOnly = false)
+void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_token stop, bool prepareVertices = true, bool prepareHoles = true, bool prepareFins = true)
 {
     const auto point = [](const auto& p) { return std::array<float, 3>{static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2])}; };
-    if (!holesOnly) { surface.nonManifoldVertexBounds.clear(); surface.nonManifoldVertexMarkers.clear(); }
-    surface.holeBounds.clear(); surface.holeEdges.clear();
-    surface.finBounds.clear(); surface.finEdges.clear(); surface.finFill.clear();
-    for (const auto index : surface.topology.fins) {
-        checkCanceled(stop);
-        const auto& patch = surface.topology.finPatches[index];
-        const auto& source = surface.topology.sources[patch.source];
-        const auto first = point(source.vertices[source.faces[patch.faces.front()].vertices[0]].position);
-        DiagnosticEdge bounds{first, first};
-        for (const auto f : patch.faces) {
+    if (prepareVertices) { surface.nonManifoldVertexBounds.clear(); surface.nonManifoldVertexMarkers.clear(); }
+    if (prepareHoles) { surface.holeBounds.clear(); surface.holeEdges.clear(); }
+    if (prepareFins) {
+        surface.finBounds.clear(); surface.finEdges.clear(); surface.finFill.clear();
+        // Each selected face contributes three fill vertices and three edges.
+        // Count first: geometric vector growth can temporarily hold two huge
+        // overlays at once even when the final result fits in memory.
+        size_t corners = 0;
+        const auto limit = std::min(surface.finFill.max_size(), surface.finEdges.max_size());
+        for (const auto index : surface.topology.fins) {
             checkCanceled(stop);
-            const auto& vertices = source.faces[f].vertices;
-            for (size_t k = 0; k < 3; ++k) {
-                const auto p = point(source.vertices[vertices[k]].position);
-                surface.finFill.push_back(p);
-                surface.finEdges.push_back({p, point(source.vertices[vertices[(k+1)%3]].position)});
-                for (size_t axis = 0; axis < 3; ++axis) { bounds.a[axis] = std::min(bounds.a[axis], p[axis]); bounds.b[axis] = std::max(bounds.b[axis], p[axis]); }
-            }
+            const auto count = surface.topology.finPatches[index].faces.size();
+            if (count > (limit - corners) / 3) { throw std::length_error("Fin overlay is too large."); }
+            corners += count * 3;
         }
-        surface.finBounds.push_back(bounds);
+        surface.finBounds.reserve(surface.topology.fins.size());
+        surface.finFill.reserve(corners);
+        surface.finEdges.reserve(corners);
+        for (const auto index : surface.topology.fins) {
+            checkCanceled(stop);
+            const auto& patch = surface.topology.finPatches[index];
+            const auto& source = surface.topology.sources[patch.source];
+            const auto first = point(source.vertices[source.faces[patch.faces.front()].vertices[0]].position);
+            DiagnosticEdge bounds{first, first};
+            for (const auto f : patch.faces) {
+                checkCanceled(stop);
+                const auto& vertices = source.faces[f].vertices;
+                for (size_t k = 0; k < 3; ++k) {
+                    const auto p = point(source.vertices[vertices[k]].position);
+                    surface.finFill.push_back(p);
+                    surface.finEdges.push_back({p, point(source.vertices[vertices[(k+1)%3]].position)});
+                    for (size_t axis = 0; axis < 3; ++axis) { bounds.a[axis] = std::min(bounds.a[axis], p[axis]); bounds.b[axis] = std::max(bounds.b[axis], p[axis]); }
+                }
+            }
+            surface.finBounds.push_back(bounds);
+        }
     }
-    if (!holesOnly) {
+    if (prepareVertices) {
         for (const auto& finding : surface.topology.nonManifoldVertices) {
             checkCanceled(stop);
             const auto& source = surface.topology.sources[finding.source];
@@ -419,6 +435,7 @@ void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_tok
             }
         }
     }
+    if (!prepareHoles) { return; }
     for (const auto index : surface.topology.holes) {
         checkCanceled(stop);
         const auto& finding = surface.topology.boundaryRegions[index];
@@ -942,6 +959,21 @@ void invalidateComparisonDetectors(MeshComparison& result, uint32_t stages)
         status.phase = status.hasResult ? IntersectionPhase::outdated : IntersectionPhase::notChecked;
         status.error.clear();
     }
+    if (stages & comparisonTopology) {
+        // Outdated findings cannot be inspected. Keep counts in DetectorStatus,
+        // but release the old graph before its replacement starts allocating.
+        for (auto* surface : {&result.original, &result.repaired}) {
+            surface->topology = {};
+            surface->diagnostics = {};
+            for (auto* edges : {&surface->topologyBoundaries, &surface->topologyNonManifold,
+                &surface->topologyWinding, &surface->nonManifoldVertexBounds,
+                &surface->nonManifoldVertexMarkers, &surface->holeBounds, &surface->holeEdges,
+                &surface->finBounds, &surface->finEdges}) {
+                std::vector<DiagnosticEdge>().swap(*edges);
+            }
+            std::vector<std::array<float, 3>>().swap(surface->finFill);
+        }
+    }
 }
 
 uint32_t comparisonDiagnosticStage(DiagnosticCategory category)
@@ -963,7 +995,8 @@ uint32_t comparisonDiagnosticStage(DiagnosticCategory category)
 uint32_t nextComparisonStage(uint32_t missing)
 {
     // Publish the source first, then run the requested automatic detectors as a
-    // bounded parallel batch before distance/quality and expensive checks.
+    // batch before distance/quality and expensive checks. Its memory-heavy
+    // sub-stages run sequentially on the background worker.
     if (missing & comparisonSource) { return comparisonSource; }
     if (missing & comparisonDetectors) { return missing & comparisonDetectors; }
     for (const auto stage : {comparisonQuality, comparisonDistance}) {
@@ -1054,16 +1087,19 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             surface.source.precisePositions = copyWithCancellation(mesh.precisePositions, stop);
         }
         std::vector<uint32_t> tasks;
-        if (stages & (comparisonTopology | comparisonIntersections)) { tasks.push_back(comparisonTopology); }
         if (stages & comparisonDegenerates) { tasks.push_back(comparisonDegenerates); }
         if (stages & (comparisonDuplicatePoints | comparisonDuplicateTriangles)) { tasks.push_back(comparisonDuplicatePoints); }
-        parallelAnalysisBatches(tasks.size(), 1, stop, [&](size_t begin, size_t) {
-            if (tasks[begin] == comparisonTopology) {
+        if (stages & (comparisonTopology | comparisonIntersections)) { tasks.push_back(comparisonTopology); }
+        // Do not overlap the full-size workspaces of independent detectors.
+        // Build the large retained graph last, after duplicate/degenerate scratch
+        // has been released. Serializing in the opposite order still overlaps it.
+        // The batch still publishes together and remains cancellable off-thread.
+        for (const auto task : tasks) {
+            checkCanceled(stop);
+            if (task == comparisonTopology) {
                 if (stages & comparisonTopology) {
-                    parallelAnalysisBatches(2, 1, stop, [&](size_t begin, size_t) {
-                        if (begin == 0) { surface.diagnostics = inspectMesh(mesh, stop); }
-                        else { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
-                    }, mesh.indices.size() >= 12288 ? 2 : 4096);
+                    surface.diagnostics = inspectMesh(mesh, stop);
+                    inspectSurfaceTopology(surface, mesh, topologyMode, stop);
                 }
                 if (stages & comparisonIntersections) {
                     if (!(stages & comparisonTopology)) { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
@@ -1080,7 +1116,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
                         }
                     }
                 }
-            } else if (tasks[begin] == comparisonDegenerates) {
+            } else if (task == comparisonDegenerates) {
                 auto settings = degenerates; settings.enabled = true;
                 inspectSurfaceDegenerates(surface, mesh, settings, stop);
             } else {
@@ -1098,7 +1134,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
                     if (stages & comparisonDuplicateTriangles) { surface.duplicateTriangleBounds = duplicateBounds(surface.duplicates.triangles, stop); }
                 }
             }
-        }, mesh.indices.size() >= 12288 ? 2 : 4096);
+        }
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
 
     };
@@ -1217,8 +1253,10 @@ bool setComparisonTopologyInspectionSettings(MeshComparison& result, TopologyIns
             surface->topology.inspection = settings;
             continue;
         }
+        const bool holesChanged = surface->topology.inspection.holeSizeRatioTolerance != settings.holeSizeRatioTolerance;
+        const bool finsChanged = surface->topology.inspection.finMaxAreaRatio != settings.finMaxAreaRatio;
         if (filterTopologyFindings(surface->topology, settings)) {
-            prepareTopologyInspectionGeometry(*surface, {}, true);
+            prepareTopologyInspectionGeometry(*surface, {}, false, holesChanged, finsChanged);
             geometryChanged = true;
         }
     }
