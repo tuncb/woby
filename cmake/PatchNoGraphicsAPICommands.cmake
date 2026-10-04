@@ -92,8 +92,6 @@ replace_exact(src/NoGraphicsAPI.cpp
 #include <stdio.h>
 #include <stdlib.h>
 #include <new>
-#include <string.h>
-
 ]====]
 [====[#include <algorithm>
 #include <stdio.h>
@@ -101,8 +99,6 @@ replace_exact(src/NoGraphicsAPI.cpp
 #include <new>
 #include <NoGraphicsAPI/backend_allocation.hpp>
 #include <new>
-#include <string.h>
-
 ]====])
 
 replace_exact(src/NoGraphicsAPI.cpp
