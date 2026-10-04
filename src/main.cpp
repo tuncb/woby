@@ -2324,6 +2324,7 @@ int main(int argc, char** argv)
         const auto freeformProgram = woby::graphics::createProgram(woby::loadShader(
             assets / "shaders" / woby::rendererShaderFolder(woby::graphics::getRendererType()) / "cs_freeform.bin"), true);
         const auto presentationProgram = woby::loadProgram(assets, "vs_marker_screen.bin", "fs_marker_composite.bin");
+        auto triangleEdgePrograms = woby::createTriangleEdgePrograms(assets);
         woby::graphics::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         woby::graphics::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         const auto lineSpriteProgram = woby::loadProgram(assets, "vs_line_sprite.bin", "fs_color.bin");
@@ -3846,20 +3847,20 @@ int main(int argc, char** argv)
                 hoveredVertex = gpuHover ? markerPicker.coordinates : hoverPickCache.hoveredVertex;
                 recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
+                woby::updateSceneDrawPlan(renderScratch.drawCache, ui);
                 woby::graphics::setViewMode(sceneView, woby::graphics::ViewMode::Sequential);
                 {
                     submitSceneFiles(
                         sceneView,
-                        files,
-                        ui.sceneNodes,
+                        renderScratch.drawCache.plan,
                         runtimes,
-                        masterVertexPointSize,
                         gpuHover ? markerPicker.mesh : meshProgram,
                         uvGridUniform,
                         gpuHover ? markerPicker.line : colorProgram,
                         gpuHover ? markerPicker.point : pointSpriteProgram,
                         colorUniform,
                         pointParamsUniform,
+                        triangleEdgePrograms,
                         sceneViewportWidth,
                         sceneViewportHeight,
                         gpuHover ? &markerPicker.context : nullptr);
@@ -3867,10 +3868,10 @@ int main(int argc, char** argv)
                 woby::submitComparisonScenes(sceneView, ui, comparison,
                     gpuHover ? markerPicker.line : colorProgram, colorUniform, renderScratch,
                     gpuHover ? markerPicker.comparison : woby::graphics::ProgramHandle{woby::graphics::kInvalidHandle});
-                submitSceneFiles(sceneView, files, ui.sceneNodes, runtimes, masterVertexPointSize,
+                submitSceneFiles(sceneView, renderScratch.drawCache.plan, runtimes,
                     meshProgram, uvGridUniform, gpuHover ? markerPicker.lineSprite : lineSpriteProgram,
                     gpuHover ? markerPicker.point : pointSpriteProgram, colorUniform, pointParamsUniform,
-                    sceneViewportWidth, sceneViewportHeight, gpuHover ? &markerPicker.context : nullptr, true);
+                    triangleEdgePrograms, sceneViewportWidth, sceneViewportHeight, gpuHover ? &markerPicker.context : nullptr, true);
                 woby::submitGpuMarkerPicking(markerPicker, viewport);
                 recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
@@ -3906,15 +3907,14 @@ int main(int argc, char** argv)
             try {
                 submitSceneScreenshotCapture(
                     sceneScreenshot,
-                    files,
                     runtimes,
-                    masterVertexPointSize,
                     meshProgram,
                     uvGridUniform,
                     colorProgram,
                     annotationProgram,
                     lineSpriteProgram,
                     pointSpriteProgram,
+                    triangleEdgePrograms,
                     colorUniform,
                     pointParamsUniform,
                     ui,
@@ -4016,6 +4016,7 @@ int main(int argc, char** argv)
         woby::graphics::destroy(lineSpriteProgram);
         woby::graphics::destroy(presentationProgram);
         woby::graphics::destroy(meshProgram);
+        woby::destroyTriangleEdgePrograms(triangleEdgePrograms);
         destroySceneScreenshotFramebuffer(sceneScreenshot);
         destroyModelRuntimes(runtimes);
         woby::graphics::shutdown();

@@ -5,6 +5,12 @@ namespace woby
 inline constexpr std::array nativeShaderNames{
     "vs_mesh",
     "fs_mesh",
+    "vs_mesh_edges",
+    "vs_triangle_lines",
+    "fs_mesh_edges",
+    "fs_mesh_edges_pulled",
+    "fs_marker_mesh_edges",
+    "fs_marker_mesh_edges_pulled",
     "vs_color",
     "fs_color",
     "vs_annotation",

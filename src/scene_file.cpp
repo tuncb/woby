@@ -788,9 +788,9 @@ bool sceneContentEqual(const SceneDocument& a, const SceneDocument& b)
     // The live camera is excluded so ordinary navigation stays transient.
     // Named checkpoints, including their cameras, are editable document content.
     return std::tie(a.annotations, a.views, a.comparisons, a.comparison, a.masterVertexPointSize, a.showOrigin,
-               a.showGrid, a.showDimensions, a.upAxis, a.files, a.nodes, a.coordinateOrigin)
+               a.showGrid, a.showDimensions, a.triangleEdgeXray, a.upAxis, a.files, a.nodes, a.coordinateOrigin)
         == std::tie(b.annotations, b.views, b.comparisons, b.comparison, b.masterVertexPointSize, b.showOrigin,
-               b.showGrid, b.showDimensions, b.upAxis, b.files, b.nodes, b.coordinateOrigin);
+               b.showGrid, b.showDimensions, b.triangleEdgeXray, b.upAxis, b.files, b.nodes, b.coordinateOrigin);
 }
 
 SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
@@ -919,7 +919,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -933,6 +933,8 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                     document.showOrigin = parseTomlBool(value);
                 } else if (key == "show_grid") {
                     document.showGrid = parseTomlBool(value);
+                } else if (key == "triangle_edge_xray") {
+                    document.triangleEdgeXray = parseTomlBool(value);
                 } else if (key == "show_dimensions") {
                     document.showDimensions = parseTomlBool(value);
                 } else if (key == "up_axis") {
@@ -1020,6 +1022,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 else if (key == "show_origin") { view.scene.showOrigin = parseTomlBool(value); }
                 else if (key == "show_grid") { view.scene.showGrid = parseTomlBool(value); }
                 else if (key == "show_dimensions") { view.scene.showDimensions = parseTomlBool(value); }
+                else if (key == "triangle_edge_xray") { view.scene.triangleEdgeXray = parseTomlBool(value); }
                 else if (key == "up_axis") { view.scene.upAxis = parseSceneUpAxis(value); }
                 else if (key == "master_vertex_point_size") { view.scene.masterVertexPointSize = parseTomlFloat(value); }
             } else if (section == Section::viewCamera) {
@@ -1212,7 +1215,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 22\n";
+    stream << "version = 23\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';
@@ -1222,6 +1225,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream << "\n";
     stream << "show_origin = " << (document.showOrigin ? "true" : "false") << "\n";
     stream << "show_grid = " << (document.showGrid ? "true" : "false") << "\n";
+    stream << "triangle_edge_xray = " << (document.triangleEdgeXray ? "true" : "false") << "\n";
     stream << "show_dimensions = " << (document.showDimensions ? "true" : "false") << "\n";
     stream << "up_axis = \"" << sceneUpAxisName(document.upAxis) << "\"\n\n";
 
@@ -1348,6 +1352,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
         stream << "\n[[views]]\nname = \"" << escapeTomlString(view.name) << "\"\n";
         stream << "show_origin = " << (view.scene.showOrigin ? "true" : "false") << "\n";
         stream << "show_grid = " << (view.scene.showGrid ? "true" : "false") << "\n";
+        stream << "triangle_edge_xray = " << (view.scene.triangleEdgeXray ? "true" : "false") << "\n";
         stream << "show_dimensions = " << (view.scene.showDimensions ? "true" : "false") << "\n";
         stream << "up_axis = \"" << sceneUpAxisName(view.scene.upAxis) << "\"\n";
         stream << "master_vertex_point_size = "; writeTomlFloat(stream, view.scene.masterVertexPointSize);

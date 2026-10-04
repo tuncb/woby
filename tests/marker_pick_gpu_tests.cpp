@@ -9,6 +9,7 @@ namespace {
 struct MarkerGpuFixture {
     bool initialized = false;
     woby::GpuMarkerPicker picker;
+    woby::TriangleEdgePrograms edges;
     woby::UiState state;
     std::vector<woby::LoadedModelRuntime> runtimes;
     woby::graphics::UniformHandle colorUniform = WOBY_GPU_INVALID_HANDLE, pointUniform = WOBY_GPU_INVALID_HANDLE;
@@ -26,6 +27,7 @@ struct MarkerGpuFixture {
         uint32_t frame = woby::graphics::frame();
         while (capturePending && !woby::markerFrameReached(frame, captureReady)) { frame = woby::graphics::frame(); }
         woby::destroyGpuMarkerPicker(picker);
+        woby::destroyTriangleEdgePrograms(edges);
         woby::destroyModelRuntimes(runtimes);
         if (woby::graphics::isValid(outputFramebuffer)) { woby::graphics::destroy(outputFramebuffer); }
         if (woby::graphics::isValid(output)) { woby::graphics::destroy(output); }
@@ -88,6 +90,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     REQUIRE(woby::graphics::isValid(fixture.outputFramebuffer));
     REQUIRE(woby::graphics::isValid(fixture.staging));
     const std::filesystem::path assets = WOBY_TEST_ASSET_DIRECTORY;
+    fixture.edges = woby::createTriangleEdgePrograms(assets);
     auto& picker = fixture.picker;
     woby::SceneViewport viewport{0, 128, 128, 0};
     int samples = 4;
@@ -101,9 +104,9 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
         woby::graphics::setViewTransform(1, view.view.data(), view.renderProjection.data(), true);
         woby::graphics::setViewMode(1, woby::graphics::ViewMode::Sequential);
         woby::graphics::touch(1);
-        woby::submitSceneFiles(1, state.files, state.sceneNodes, fixture.runtimes, state.masterVertexPointSize,
+        woby::submitSceneFiles(1, woby::buildSceneDrawPlan(state), fixture.runtimes,
             picker.mesh, fixture.uvUniform, picker.line, picker.point, fixture.colorUniform, fixture.pointUniform,
-            viewport.width, viewport.height, &picker.context);
+            fixture.edges, viewport.width, viewport.height, &picker.context);
         woby::submitGpuMarkerPicking(picker, viewport);
         // Test output replaces the window, using the production composite/highlight.
         woby::graphics::setViewFrameBuffer(3, fixture.outputFramebuffer);
@@ -145,7 +148,8 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     for (int i = 0; i < 12; ++i) { render(); }
     CHECK_FALSE(picker.coordinates);
 
-    // A surface rendered over the rear marker clears the ID, including at alpha.
+    // Opaque surfaces occlude rear markers. Transparent surfaces do not write
+    // depth, so the later marker pass keeps the visible rear marker selectable.
     state.files[0].fileSettings.opacity = 1;
     auto& front = state.files[1];
     front.fileSettings.visible = true; front.fileSettings.opacity = 1;
@@ -160,7 +164,8 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     CHECK_FALSE(picker.coordinates);
     front.fileSettings.opacity = .4f; ++state.sceneEditRevision;
     for (int i = 0; i < 12; ++i) { render(); }
-    CHECK_FALSE(picker.coordinates);
+    REQUIRE(picker.coordinates);
+    CHECK(picker.coordinates->localPosition == std::array<float, 3>{0, 0, 0});
 
     // Keep marker lookup consistent with the adaptive projection on a large
     // scene whose geometry lies beyond the old target-based far plane.

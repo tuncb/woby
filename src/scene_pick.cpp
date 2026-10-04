@@ -19,7 +19,7 @@ PickMatrix identity()
 PickMatrix compose(const PickMatrix& parent, const PickMatrix& child)
 {
     PickMatrix result;
-    // Keep the same multiplication order as submitSceneNode/submitGroupRange.
+    // Compose a child transform in its parent's coordinates.
     bx::mtxMul(result.data(), parent.data(), child.data());
     return result;
 }
@@ -61,6 +61,8 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     PickMatrix local;
     groupTransformMatrix(group, local.data());
     ScenePickPart part;
+    part.fileIndex = fileIndex; part.groupIndex = groupIndex;
+    part.sourceMesh = true;
     part.objectId = group.objectId;
     part.mesh = &file.mesh;
     part.indexOffset = node.indexOffset;
@@ -74,7 +76,7 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     if (group.localBoundsValid) { part.bounds = group.localBounds; }
     part.solid = node.indexCount && group.showSolidMesh;
     part.edges = node.lineIndexCount || (node.indexCount && group.showTriangles);
-    part.edgeXray = node.lineIndexCount ? !group.lines.depthTest : true;
+    part.edgeXray = node.lineIndexCount ? !group.lines.depthTest : state.triangleEdgeXray;
     part.vertices = group.showVertices;
     part.opacity = opacity;
     part.pointSize = std::round(std::clamp(state.masterVertexPointSize * file.vertexSizeScale * group.vertexSizeScale,
@@ -362,7 +364,45 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
     const auto middle = position(inverse, {x, y, view.homogeneousDepth ? 0.0 : 0.5});
     double depthBuffer = 1.0;
     SceneObjectId hit = invalidSceneObjectId;
+    struct Candidate {
+        const ScenePickPart* part;
+        std::optional<double> surface, edge, point;
+        SceneTriangleHit detail;
+    };
+    std::vector<Candidate> candidates;
+    candidates.reserve(parts.size());
+    const auto hiddenLineDepth = [](const ScenePickPart& part) {
+        return part.sourceMesh && !part.lineIndexCount && !part.solid && part.edges
+            && !part.edgeXray && part.opacity >= .999f;
+    };
+    const auto surface = [&](const Candidate& candidate) {
+        const auto& part = *candidate.part;
+        if (candidate.surface && (part.surfaceLessEqual ? *candidate.surface <= depthBuffer : *candidate.surface < depthBuffer)) {
+            if (part.solid) {
+                hit = part.objectId;
+                if (detail) { *detail = candidate.detail; }
+            }
+            if (part.opacity >= .999f) { depthBuffer = *candidate.surface; }
+        }
+    };
+    const auto edge = [&](const Candidate& candidate) {
+        const auto& part = *candidate.part;
+        if (candidate.edge && (part.edgeXray || *candidate.edge <= depthBuffer + 1e-7)) {
+            if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
+            hit = part.objectId;
+            if (part.lineIndexCount && !part.edgeXray && part.opacity >= .999f) { depthBuffer = *candidate.edge; }
+        }
+    };
+    const auto vertex = [&](const Candidate& candidate) {
+        const auto& part = *candidate.part;
+        if (candidate.point && *candidate.point <= depthBuffer + 1e-7) {
+            if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
+            hit = part.objectId;
+            if (part.opacity >= .999f) { depthBuffer = *candidate.point; }
+        }
+    };
     for (int layer = 0; layer < 3; ++layer) {
+        candidates.clear();
         for (const auto& part : parts) {
             if (layer != (part.annotationOverlay ? 2 : part.lineIndexCount ? 1 : 0)) { continue; }
             if (part.objectId == invalidSceneObjectId || part.opacity <= 0) { continue; }
@@ -370,7 +410,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             bx::mtxInverse(inverse.data(), part.model.data());
             const auto origin = position(inverse, near), end = position(inverse, middle);
             const auto direction = subtract(end, origin);
-            const bool testSurface = part.solid && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
+            const bool testSurface = (part.solid || hiddenLineDepth(part)) && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
             if (!testSurface && !part.edges && !part.vertices && part.diagnosticEdges.empty()) { continue; }
             std::optional<double> surfaceDepth, edgeDepth, pointDepth;
             SceneTriangleHit surfaceHit;
@@ -461,21 +501,27 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
                 closest(edgeDepth, edgeHit(clip({line.a[0], line.a[1], line.a[2]}),
                     clip({line.b[0], line.b[1], line.b[2]}), view, point));
             }
-            if (surfaceDepth && (part.surfaceLessEqual ? *surfaceDepth <= depthBuffer : *surfaceDepth < depthBuffer)) {
-                hit = part.objectId;
-                if (detail) { *detail = surfaceHit; }
-                if (part.opacity >= .999f) { depthBuffer = *surfaceDepth; }
+            candidates.push_back({&part, surfaceDepth, edgeDepth, pointDepth, surfaceHit});
+        }
+        if (layer == 0) {
+            // Mirror the source renderer without traversing triangles per pass.
+            for (const auto& candidate : candidates) {
+                if (hiddenLineDepth(*candidate.part)) { surface(candidate); }
             }
-            if (edgeDepth && (part.edgeXray || *edgeDepth <= depthBuffer + 1e-7)) {
-                if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
-                hit = part.objectId;
-                if (part.lineIndexCount && !part.edgeXray && part.opacity >= .999f) { depthBuffer = *edgeDepth; }
+            for (const bool opaque : {true, false}) {
+                for (const auto& candidate : candidates) {
+                    const auto& part = *candidate.part;
+                    if (part.sourceMesh && part.solid && (part.opacity >= .999f) == opaque) { surface(candidate); }
+                }
             }
-            if (pointDepth && *pointDepth <= depthBuffer + 1e-7) {
-                if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
-                hit = part.objectId;
-                if (part.opacity >= .999f) { depthBuffer = *pointDepth; }
-            }
+            for (const auto& candidate : candidates) { if (candidate.part->sourceMesh) { edge(candidate); } }
+            for (const auto& candidate : candidates) { if (candidate.part->sourceMesh) { vertex(candidate); } }
+        }
+        // Analysis overlays, imported lines, and annotations keep their existing
+        // stable submission order after the source scene's opaque visibility.
+        for (const auto& candidate : candidates) {
+            if (layer == 0 && candidate.part->sourceMesh) { continue; }
+            surface(candidate); edge(candidate); vertex(candidate);
         }
     }
     return hit;

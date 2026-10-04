@@ -41,7 +41,8 @@ inline constexpr uint32_t WOBY_GPU_RESET_NONE = 0, WOBY_GPU_RESET_VSYNC = 1, WOB
 inline constexpr uint64_t WOBY_GPU_CAPS_COMPUTE = 1ull << 0, WOBY_GPU_CAPS_VERTEX_ID = 1ull << 1,
                           WOBY_GPU_CAPS_INSTANCING = 1ull << 2, WOBY_GPU_CAPS_INDEX32 = 1ull << 3,
                           WOBY_GPU_CAPS_TEXTURE_READ_BACK = 1ull << 4, WOBY_GPU_CAPS_TEXTURE_BLIT = 1ull << 5,
-                          WOBY_GPU_CAPS_BLEND_INDEPENDENT = 1ull << 6, WOBY_GPU_CAPS_PRIMITIVE_ID = 1ull << 7;
+                          WOBY_GPU_CAPS_BLEND_INDEPENDENT = 1ull << 6, WOBY_GPU_CAPS_PRIMITIVE_ID = 1ull << 7,
+                          WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC = 1ull << 8;
 
 namespace woby::graphics
 {

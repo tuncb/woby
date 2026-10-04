@@ -65,6 +65,9 @@ MainMenuResult drawMainMenu(UiState& state, AnnotationInteraction& annotation,
             fitCameraToSelection(state);
         }
         ImGui::Separator();
+        if (ImGui::MenuItem("X-ray triangle edges", nullptr, state.triangleEdgeXray)) {
+            setTriangleEdgeXray(state, !state.triangleEdgeXray);
+        }
         if (ImGui::MenuItem("Ground grid", nullptr, state.showGrid)) { toggleShowGrid(state); }
         if (ImGui::MenuItem("Origin axes", nullptr, state.showOrigin)) { toggleShowOrigin(state); }
         if (ImGui::MenuItem("Show dimensions", nullptr, state.showDimensions)) {

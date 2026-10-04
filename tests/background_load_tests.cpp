@@ -79,8 +79,8 @@ TEST_CASE("Background scene preparation includes saved optional display buffers"
     REQUIRE_FALSE(result.canceled);
     REQUIRE(result.files.size() == 1);
     REQUIRE(result.preparations.size() == 1);
-    CHECK(result.preparations[0].features == (woby::gpuMeshEdges | woby::gpuMeshPoints));
-    CHECK(result.preparations[0].edgeIndices == std::vector<uint32_t>{0, 1, 1, 2, 2, 0});
+    CHECK(result.preparations[0].features == woby::gpuMeshPoints);
+    CHECK(result.preparations[0].edgeIndices.empty());
 }
 
 TEST_CASE("Cancel before render preparation publishes no unprepared file")

@@ -4,6 +4,7 @@
 #include "scene_mesh_preparation.h"
 #include "ui_state.h"
 #include "scene_pick.h"
+#include "scene_draw_plan.h"
 
 #include "graphics.h"
 
@@ -17,6 +18,7 @@ struct MarkerDrawContext;
 // CPU scratch owned by the viewport/export runtime, never by logical UiState.
 // Rebuilt on each submission; stale borrowed pointers are never read across frames.
 struct SceneRenderScratch {
+    SceneDrawCache drawCache;
     std::vector<ScenePickPart> parts;
     std::vector<std::array<float, 3>> positions;
     std::vector<std::array<float, 3>> focusPoints;
@@ -76,18 +78,27 @@ void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 [[nodiscard]] std::array<float, 8> pointSpriteParameters(
     float pointSize, uint32_t viewWidth, uint32_t viewHeight, uint32_t pointOffset);
 
+struct TriangleEdgePrograms {
+    woby::graphics::ProgramHandle surface = WOBY_GPU_INVALID_HANDLE, markerSurface = WOBY_GPU_INVALID_HANDLE,
+        lines = WOBY_GPU_INVALID_HANDLE, markerLines = WOBY_GPU_INVALID_HANDLE;
+    woby::graphics::UniformHandle parameters = WOBY_GPU_INVALID_HANDLE;
+    bool nativeBarycentrics = false;
+};
+[[nodiscard]] TriangleEdgePrograms createTriangleEdgePrograms(const std::filesystem::path& assets,
+    bool forceVertexPulling = false);
+void destroyTriangleEdgePrograms(TriangleEdgePrograms& programs);
+
 void submitSceneFiles(
     woby::graphics::ViewId viewId,
-    const std::vector<UiFileState>& files,
-    const std::vector<UiSceneNode>& sceneNodes,
+    const SceneDrawPlan& plan,
     const std::vector<LoadedModelRuntime>& runtimes,
-    float masterVertexPointSize,
     woby::graphics::ProgramHandle meshProgram,
     woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
     woby::graphics::UniformHandle colorUniform,
     woby::graphics::UniformHandle pointParamsUniform,
+    const TriangleEdgePrograms& edgePrograms,
     uint32_t sceneViewportWidth,
     uint32_t viewportHeight,
     MarkerDrawContext* markers = nullptr,

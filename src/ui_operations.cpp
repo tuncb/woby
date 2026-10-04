@@ -1556,6 +1556,14 @@ void setShowGrid(UiState& state, bool visible)
     }
 }
 
+void setTriangleEdgeXray(UiState& state, bool enabled)
+{
+    if (state.triangleEdgeXray != enabled) {
+        state.triangleEdgeXray = enabled;
+        markSceneDirty(state, SceneChange::appearance);
+    }
+}
+
 void toggleShowGrid(UiState& state)
 {
     setShowGrid(state, !state.showGrid);
@@ -1875,6 +1883,7 @@ UiState prepareSceneReplacement(const UiState& current,
     setSceneUpAxis(prepared, document.upAxis);
     setShowOrigin(prepared, document.showOrigin);
     setShowGrid(prepared, document.showGrid);
+    setTriangleEdgeXray(prepared, document.triangleEdgeXray);
     setShowDimensions(prepared, document.showDimensions);
     setMasterVertexPointSize(prepared, document.masterVertexPointSize);
     for (const auto& record : document.comparisons) {

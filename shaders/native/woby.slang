@@ -114,6 +114,42 @@ float4 fs_mesh(VertexOutput v) : SV_Target0 {
     return float4(color,root.color.a);
 }
 float4 fs_color(VertexOutput v) : SV_Target0 { return root.color; }
+uint triangleIndexOffset() {
+    return uint(root.triangleEdges.z) | (uint(root.triangleEdges.w) << 16);
+}
+struct EdgeVertexOutput {
+    VertexOutput mesh;
+    noperspective float3 bary : TEXCOORD2;
+};
+EdgeVertexOutput vs_mesh_edges(uint corner : SV_VertexID) {
+    EdgeVertexOutput v;
+    v.mesh = vs_mesh(root.pointIds[triangleIndexOffset()+corner]);
+    uint k = corner % 3;
+    v.bary = float3(k == 0 ? 1.0 : 0.0, k == 1 ? 1.0 : 0.0, k == 2 ? 1.0 : 0.0);
+    return v;
+}
+// X-ray and transparent overlays keep hardware-line coverage without a second
+// CPU/GPU edge-index buffer. Each triangle emits (0,1), (1,2), (2,0).
+VertexOutput vs_triangle_lines(uint vertex : SV_VertexID) {
+    uint corner = ((vertex % 6 + 1) / 2) % 3;
+    return vs_color(root.pointIds[triangleIndexOffset()+(vertex/6)*3+corner]);
+}
+float4 triangleEdgeColor(VertexOutput v, float3 bary) {
+    float3 dx = ddx(bary), dy = ddy(bary);
+    float3 distances = bary / max(sqrt(dx*dx+dy*dy),float3(1e-8));
+    float distance = min(distances.x,min(distances.y,distances.z));
+    float coverage = 1-smoothstep(max(0.0,root.triangleEdges.x-.5),root.triangleEdges.x+.5,distance);
+    float3 edge = saturate(root.color.rgb*1.25);
+    if (root.triangleEdges.y < .5) {
+        if (coverage <= 0) discard;
+        return float4(edge,root.color.a*coverage);
+    }
+    return float4(lerp(fs_mesh(v).rgb,edge,coverage),root.color.a);
+}
+float4 fs_mesh_edges(VertexOutput v, noperspective float3 bary : SV_Barycentrics) : SV_Target0 {
+    return triangleEdgeColor(v,bary);
+}
+float4 fs_mesh_edges_pulled(EdgeVertexOutput v) : SV_Target0 { return triangleEdgeColor(v.mesh,v.bary); }
 float4 fs_point_sprite(VertexOutput v) : SV_Target0 {
     if (length(v.uv) > .5 || root.color.a <= .000001) discard;
     return root.color;
@@ -153,6 +189,12 @@ float4 fs_comparison(VertexOutput v) : SV_Target0 {
     return float4(color*light,1);
 }
 struct MarkerOutput { float4 color : SV_Target0; float4 id : SV_Target1; };
+MarkerOutput fs_marker_mesh_edges(VertexOutput v, noperspective float3 bary : SV_Barycentrics) {
+    return MarkerOutput(triangleEdgeColor(v,bary),float4(0));
+}
+MarkerOutput fs_marker_mesh_edges_pulled(EdgeVertexOutput v) {
+    return MarkerOutput(triangleEdgeColor(v.mesh,v.bary),float4(0));
+}
 MarkerOutput fs_marker_point(VertexOutput v) {
     MarkerOutput o;
     o.color = fs_point_sprite(v);

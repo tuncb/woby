@@ -208,15 +208,14 @@ void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std
 
 void submitSceneScreenshotCapture(
     SceneScreenshotRuntime& screenshot,
-    const std::vector<UiFileState>& files,
     const std::vector<LoadedModelRuntime>& runtimes,
-    float masterVertexPointSize,
     woby::graphics::ProgramHandle meshProgram,
     woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle annotationProgram,
     woby::graphics::ProgramHandle lineSpriteProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
+    const TriangleEdgePrograms& triangleEdgePrograms,
     woby::graphics::UniformHandle colorUniform,
     woby::graphics::UniformHandle pointParamsUniform,
     const UiState& ui,
@@ -322,28 +321,28 @@ void submitSceneScreenshotCapture(
     woby::graphics::setViewTransform(screenshotSceneView, view, projection, true);
     woby::graphics::setViewTransform(screenshotHelperView, view, projection, true);
 
+    updateSceneDrawPlan(screenshot.renderScratch.drawCache, ui);
     woby::graphics::setViewMode(screenshotSceneView, woby::graphics::ViewMode::Sequential);
     if (!options.resultsOnly) {
         submitSceneFiles(
             screenshotSceneView,
-            files,
-            ui.sceneNodes,
+            screenshot.renderScratch.drawCache.plan,
             runtimes,
-            masterVertexPointSize,
             meshProgram,
             uvGridUniform,
             colorProgram,
             pointSpriteProgram,
             colorUniform,
             pointParamsUniform,
+            triangleEdgePrograms,
             sceneWidth,
             screenshot.height);
     }
     if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform, screenshot.renderScratch); }
     if (!options.resultsOnly) {
-        submitSceneFiles(screenshotSceneView, files, ui.sceneNodes, runtimes, masterVertexPointSize,
+        submitSceneFiles(screenshotSceneView, screenshot.renderScratch.drawCache.plan, runtimes,
             meshProgram, uvGridUniform, lineSpriteProgram, pointSpriteProgram, colorUniform, pointParamsUniform,
-            sceneWidth, screenshot.height, nullptr, true);
+            triangleEdgePrograms, sceneWidth, screenshot.height, nullptr, true);
     }
     if (!options.resultsOnly) {
         submitSceneHelpers(screenshotHelperView, ui, helperLayout, colorProgram, colorUniform);

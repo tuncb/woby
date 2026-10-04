@@ -1115,6 +1115,8 @@ void printCommandLineHelp()
         "  false draws lines on top of surfaces. Targets with no line groups are rejected.\n"
         "  Color, visibility, opacity, transforms, camera framing and vertex markers also apply to lines.\n"
         "Line groups do not contribute triangles to mesh analyses or UV views.\n"
+        "Triangle edges show visible surfaces by default. render set scene --xray true\n"
+        "draws hidden triangle edges too; --xray false restores visible-surface edges.\n"
         "\nUV grids and separate UV views (prefix commands with woby ctl --instance ID):\n"
         "  render set TARGET --solid true --uv-grid true --uv-density-u 8 --uv-density-v 8\n"
         "    Shows a grid on source surfaces with complete supplied UVs. Density uses raw UV\n"

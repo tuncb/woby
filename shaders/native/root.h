@@ -18,11 +18,13 @@ struct WobyRoot {
     uint32 image1;
     uint32 sampler;
     float* freeform;
+    float4 triangleEdges; // Half width, fill surface, triangle-index offset low/high.
 };
 
 #ifndef __SLANG__
 static_assert(offsetof(WobyRoot, vertices) == 256);
 static_assert(offsetof(WobyRoot, sampler) == 288);
 static_assert(offsetof(WobyRoot, freeform) == 296);
-static_assert(sizeof(WobyRoot) == 304);
+static_assert(offsetof(WobyRoot, triangleEdges) == 304);
+static_assert(sizeof(WobyRoot) == 320);
 #endif

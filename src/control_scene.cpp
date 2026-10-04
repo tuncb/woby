@@ -273,7 +273,7 @@ Json controlSceneInfo(const UiState& state)
     modes["vertices"] = modeCount(countEnabledSceneRenderMode(state, UiRenderMode::vertices), groups);
     return {{"dirty", state.isDirty}, {"fileCount", state.files.size()}, {"analysisCount", state.comparisons.size()}, {"annotationCount", state.annotations.size()}, {"groupCount", groups},
         {"visibleGroupCount", countVisibleSceneGroups(state)}, {"vertexCount", vertices}, {"triangleCount", triangles}, {"lineSegmentCount", lineSegments}, {"pointCount", points},
-        {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
+        {"triangleEdgeXray", state.triangleEdgeXray}, {"showGrid", state.showGrid}, {"showDimensions", state.showDimensions},
         {"showOrigin", state.showOrigin}, {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"},
         {"coordinateOrigin", state.coordinateOrigin.value_or(Coordinate{})},
         {"masterVertexPointSize", state.masterVertexPointSize}, {"renderModes", modes}, {"bounds", boundsInfo(state.sceneBounds, state.coordinateOrigin.value_or(Coordinate{}))}};
@@ -550,6 +550,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         else { setSceneNodeSubtreeVisible(state, *target.folder, *command.visible); }
         break;
     case A::render:
+        if (command.xray && !scene) { throw std::invalid_argument("X-ray triangle edges is a scene setting."); }
         if ((command.lineWidth || command.lineDepthTest)
             && !setObjectLineStyle(state, scene ? std::vector<SceneObjectId>{} : std::vector<SceneObjectId>{command.objectId}, {}, {})) {
             throw std::invalid_argument("Line style requires an imported line group.");
@@ -567,6 +568,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             setObjectLineStyle(state, scene ? std::vector<SceneObjectId>{} : std::vector<SceneObjectId>{command.objectId},
                 command.lineWidth, command.lineDepthTest);
         }
+        if (command.xray) { setTriangleEdgeXray(state, *command.xray); }
         for (const auto& [mode, enabled] : {std::pair{UiRenderMode::solidMesh, command.solid},
             std::pair{UiRenderMode::triangles, command.triangles}, std::pair{UiRenderMode::vertices, command.vertices}}) {
             if (!enabled) { continue; }

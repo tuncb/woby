@@ -1056,3 +1056,19 @@ TEST_CASE("camera presets preserve framing and support both up axes")
         }
     }
 }
+
+TEST_CASE("Triangle edge X-ray control validates scope and round trips the scene setting")
+{
+    auto state = scene(); const auto clean = woby::createSceneDocument(state);
+    CHECK_FALSE(run(state, clean, "scene.info")["triangleEdgeXray"].get<bool>());
+    const auto command = parse({"render", "set", "scene", "--xray", "true"});
+    CHECK(command.operation.xray == true);
+    run(state, clean, "render.set", {{"target", "scene"}, {"xray", true}});
+    CHECK(state.triangleEdgeXray);
+    CHECK(run(state, clean, "scene.info")["triangleEdgeXray"] == true);
+    const auto group = state.files[0].groupSettings[0].objectId;
+    CHECK_THROWS(run(state, clean, "render.set", {{"xray", false}, {"solid", false}}, group));
+    CHECK(state.triangleEdgeXray); CHECK(state.files[0].groupSettings[0].showSolidMesh);
+    run(state, clean, "render.set", {{"target", "scene"}, {"xray", false}});
+    CHECK_FALSE(state.triangleEdgeXray);
+}

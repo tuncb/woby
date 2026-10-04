@@ -2,6 +2,7 @@
 #include "scene_buffer_size.h"
 #include "marker_pick.h"
 #include "scene_dimensions.h"
+#include "graphics_helpers.h"
 
 #include <bx/math.h>
 
@@ -42,16 +43,6 @@ std::array<float, 4> scaledRgbColor(const std::array<float, 4>& color, float sca
         std::clamp(color[2] * scale, 0.0f, 1.0f),
         color[3],
     };
-}
-
-std::array<float, 4> groupColor(
-    const UiGroupState& settings,
-    float rgbScale,
-    float opacityScale = 1.0f)
-{
-    auto color = scaledRgbColor(settings.color, rgbScale);
-    color[3] = std::clamp(settings.opacity * opacityScale, minGroupOpacity, maxGroupOpacity);
-    return color;
 }
 
 std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndices)
@@ -121,31 +112,6 @@ void submitTriangleRange(
     woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
     woby::graphics::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
     setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_LESS, true, color, 0u), markerIds);
-    woby::graphics::submit(viewId, program);
-}
-
-void submitColorRange(
-    woby::graphics::ViewId viewId,
-    const GpuMesh& mesh,
-    woby::graphics::IndexBufferHandle indexBuffer,
-    woby::graphics::ProgramHandle program,
-    woby::graphics::UniformHandle colorUniform,
-    const float* model,
-    const std::array<float, 4>& color,
-    uint64_t primitiveState,
-    uint32_t indexOffset,
-    uint32_t indexCount,
-    bool markerIds)
-{
-    if (!woby::graphics::isValid(mesh.vertexBuffer) || !woby::graphics::isValid(indexBuffer) || indexCount == 0) {
-        return;
-    }
-
-    woby::graphics::setTransform(model);
-    woby::graphics::setUniform(colorUniform, color.data());
-    woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
-    woby::graphics::setIndexBuffer(indexBuffer, indexOffset, indexCount);
-    setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_ALWAYS, false, color, primitiveState), markerIds);
     woby::graphics::submit(viewId, program);
 }
 
@@ -255,6 +221,7 @@ bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
             data = source.indices.data();
             bytes = sceneBufferBytes(source.indices.size(), sizeof(uint32_t));
             indexBuffer = &upload.mesh.triangleIndexBuffer;
+            flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
             break;
         case 2:
             data = source.lineIndices.data();
@@ -388,321 +355,137 @@ uint32_t vertexPointSize(float masterSize, float groupScale)
     return static_cast<uint32_t>(std::lround(scaledSize));
 }
 
-void submitGroupRange(
-    woby::graphics::ViewId viewId,
-    const std::vector<UiFileState>& files,
-    const std::vector<LoadedModelRuntime>& runtimes,
-    size_t fileIndex,
-    size_t nodeIndex,
-    const float* parentModel,
-    float opacityScale,
-    float masterVertexPointSize,
-    woby::graphics::ProgramHandle meshProgram,
-    woby::graphics::UniformHandle uvGridUniform,
-    woby::graphics::ProgramHandle colorProgram,
-    woby::graphics::ProgramHandle pointSpriteProgram,
-    woby::graphics::UniformHandle colorUniform,
-    woby::graphics::UniformHandle pointParamsUniform,
-    uint32_t sceneViewportWidth,
-    uint32_t viewportHeight,
-    MarkerDrawContext* markers, bool importedLinesOnly)
+TriangleEdgePrograms createTriangleEdgePrograms(const std::filesystem::path& assets, bool forceVertexPulling)
 {
-    if (fileIndex >= files.size() || fileIndex >= runtimes.size()) {
-        return;
-    }
-
-    const auto& file = files[fileIndex];
-    const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
-    if (nodeIndex >= file.groupSettings.size() || nodeIndex >= gpuMesh.nodeRanges.size()) {
-        return;
-    }
-
-    const auto& node = file.mesh.nodes[nodeIndex];
-    if (importedLinesOnly != (node.lineIndexCount != 0)) { return; }
-    const auto& settings = file.groupSettings[nodeIndex];
-    if (!settings.visible) {
-        return;
-    }
-
-    float groupModel[16];
-    float model[16];
-    groupTransformMatrix(settings, groupModel);
-    bx::mtxMul(model, parentModel, groupModel);
-    const auto& range = gpuMesh.nodeRanges[nodeIndex];
-    if (importedLinesOnly) {
-        const auto params = pointSpriteParameters(settings.lines.width, sceneViewportWidth, viewportHeight, node.lineIndexOffset);
-        woby::graphics::setTransform(model);
-        const auto color = groupColor(settings, 1.0f, opacityScale);
-        woby::graphics::setUniform(colorUniform, color.data());
-        woby::graphics::setUniform(pointParamsUniform, params.data(), 2);
-        woby::graphics::setBuffer(0, gpuMesh.vertexBuffer, woby::graphics::Access::Read);
-        woby::graphics::setBuffer(1, gpuMesh.importedLineBuffer, woby::graphics::Access::Read);
-        woby::graphics::setVertexCount(4);
-        woby::graphics::setInstanceCount(node.lineIndexCount / 2);
-        setMarkerRenderState(renderState(settings.lines.depthTest ? WOBY_GPU_STATE_DEPTH_TEST_LEQUAL : WOBY_GPU_STATE_DEPTH_TEST_ALWAYS,
-            settings.lines.depthTest, color, WOBY_GPU_STATE_PT_TRISTRIP), markers != nullptr);
-        woby::graphics::submit(viewId, colorProgram);
-    }
-    if (!importedLinesOnly && settings.showSolidMesh) {
-        submitTriangleRange(
-            viewId,
-            gpuMesh,
-            meshProgram,
-            uvGridUniform,
-            colorUniform,
-            model,
-            groupColor(settings, 1.0f, opacityScale),
-            range.triangleIndexOffset,
-            range.triangleIndexCount, markers != nullptr,
-            uvColorParameters(settings.uvGrid, nodeIndex < file.mesh.nodes.size() && file.mesh.nodes[nodeIndex].hasTexcoords, false));
-    }
-    if (!importedLinesOnly && settings.showTriangles) {
-        submitColorRange(
-            viewId,
-            gpuMesh,
-            gpuMesh.lineIndexBuffer,
-            colorProgram,
-            colorUniform,
-            model,
-            groupColor(settings, 1.25f, opacityScale),
-            WOBY_GPU_STATE_PT_LINES,
-            range.lineIndexOffset,
-            range.lineIndexCount, markers != nullptr);
-    }
-    if (settings.showVertices) {
-        const uint32_t pointSize = vertexPointSize(
-            masterVertexPointSize,
-            file.vertexSizeScale * settings.vertexSizeScale);
-        if (markers) {
-            MarkerDraw draw;
-            std::copy_n(model, 16, draw.model.begin());
-            draw.fileIndex = fileIndex; draw.fileId = file.objectId;
-            draw.pointOffset = range.pointIndexOffset; draw.count = range.pointIndexCount;
-            const auto id = appendMarkerDraw(markers->list, draw, static_cast<float>(pointSize));
-            const std::array<float, 4> base = {static_cast<float>(id & 65535u), static_cast<float>(id >> 16u), 0, 0};
-            woby::graphics::setUniform(markers->baseUniform, base.data());
-        }
-        submitPointSpriteRange(
-            viewId,
-            gpuMesh,
-            pointSpriteProgram,
-            colorUniform,
-            pointParamsUniform,
-            model,
-            groupColor(settings, 1.5f, opacityScale),
-            static_cast<float>(pointSize),
-            sceneViewportWidth,
-            viewportHeight,
-            range.pointIndexOffset,
-            range.pointIndexCount, markers != nullptr);
-    }
+    TriangleEdgePrograms result;
+    result.nativeBarycentrics = !forceVertexPulling
+        && (graphics::getCaps()->supported & WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC) != 0;
+    try {
+        const auto* vertex = result.nativeBarycentrics ? "vs_mesh.bin" : "vs_mesh_edges.bin";
+        result.surface = loadProgram(assets, vertex,
+            result.nativeBarycentrics ? "fs_mesh_edges.bin" : "fs_mesh_edges_pulled.bin");
+        result.markerSurface = loadProgram(assets, vertex,
+            result.nativeBarycentrics ? "fs_marker_mesh_edges.bin" : "fs_marker_mesh_edges_pulled.bin");
+        result.lines = loadProgram(assets, "vs_triangle_lines.bin", "fs_color.bin");
+        result.markerLines = loadProgram(assets, "vs_triangle_lines.bin", "fs_marker_line.bin");
+        result.parameters = graphics::createUniform("u_triangleEdges", graphics::UniformType::Vec4);
+    } catch (...) { destroyTriangleEdgePrograms(result); throw; }
+    return result;
 }
 
-void submitSceneNode(
-    woby::graphics::ViewId viewId,
-    const std::vector<UiFileState>& files,
-    const std::vector<UiSceneNode>& sceneNodes,
-    const std::vector<LoadedModelRuntime>& runtimes,
-    const UiSceneNode& node,
-    const float* parentModel,
-    float parentOpacity,
-    float masterVertexPointSize,
-    woby::graphics::ProgramHandle meshProgram,
-    woby::graphics::UniformHandle uvGridUniform,
-    woby::graphics::ProgramHandle colorProgram,
-    woby::graphics::ProgramHandle pointSpriteProgram,
-    woby::graphics::UniformHandle colorUniform,
-    woby::graphics::UniformHandle pointParamsUniform,
-    uint32_t sceneViewportWidth,
-    uint32_t viewportHeight,
-    MarkerDrawContext* markers, bool importedLinesOnly)
+void destroyTriangleEdgePrograms(TriangleEdgePrograms& programs)
 {
-    (void)sceneNodes;
-    if (node.kind == UiSceneNodeKind::folder) {
-        if (!node.settings.visible) {
-            return;
-        }
-
-        float nodeModel[16];
-        float model[16];
-        sceneNodeTransformMatrix(node.settings, nodeModel);
-        bx::mtxMul(model, parentModel, nodeModel);
-        const float opacity = parentOpacity * node.settings.opacity;
-        for (const auto& child : node.children) {
-            submitSceneNode(
-                viewId,
-                files,
-                sceneNodes,
-                runtimes,
-                child,
-                model,
-                opacity,
-                masterVertexPointSize,
-                meshProgram,
-                uvGridUniform,
-                colorProgram,
-                pointSpriteProgram,
-                colorUniform,
-                pointParamsUniform,
-                sceneViewportWidth,
-                viewportHeight, markers, importedLinesOnly);
-        }
-        return;
+    for (auto handle : {programs.surface, programs.markerSurface, programs.lines, programs.markerLines}) {
+        if (graphics::isValid(handle)) { graphics::destroy(handle); }
     }
-
-    if (node.kind == UiSceneNodeKind::file) {
-        if (node.fileIndex >= files.size() || node.fileIndex >= runtimes.size()) {
-            return;
-        }
-
-        const auto& file = files[node.fileIndex];
-        if (!file.fileSettings.visible) {
-            return;
-        }
-
-        float fileModel[16];
-        float model[16];
-        fileTransformMatrix(file.fileSettings, fileModel);
-        bx::mtxMul(model, parentModel, fileModel);
-        const float opacity = parentOpacity * file.fileSettings.opacity;
-        if (node.children.empty()) {
-            const size_t groupCount = std::min(file.groupSettings.size(), runtimes[node.fileIndex].gpuMesh.nodeRanges.size());
-            for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
-                submitGroupRange(
-                    viewId,
-                    files,
-                    runtimes,
-                    node.fileIndex,
-                    groupIndex,
-                    model,
-                    opacity,
-                    masterVertexPointSize,
-                    meshProgram,
-                    uvGridUniform,
-                    colorProgram,
-                    pointSpriteProgram,
-                    colorUniform,
-                    pointParamsUniform,
-                    sceneViewportWidth,
-                    viewportHeight, markers, importedLinesOnly);
-            }
-            return;
-        }
-
-        for (const auto& child : node.children) {
-            submitSceneNode(
-                viewId,
-                files,
-                sceneNodes,
-                runtimes,
-                child,
-                model,
-                opacity,
-                masterVertexPointSize,
-                meshProgram,
-                uvGridUniform,
-                colorProgram,
-                pointSpriteProgram,
-                colorUniform,
-                pointParamsUniform,
-                sceneViewportWidth,
-                viewportHeight, markers, importedLinesOnly);
-        }
-        return;
-    }
-
-    submitGroupRange(
-        viewId,
-        files,
-        runtimes,
-        node.fileIndex,
-        node.groupIndex,
-        parentModel,
-        parentOpacity,
-        masterVertexPointSize,
-        meshProgram,
-        uvGridUniform,
-        colorProgram,
-        pointSpriteProgram,
-        colorUniform,
-        pointParamsUniform,
-        sceneViewportWidth,
-        viewportHeight, markers, importedLinesOnly);
+    if (graphics::isValid(programs.parameters)) { graphics::destroy(programs.parameters); }
+    programs = {};
 }
 
 void submitSceneFiles(
-    woby::graphics::ViewId viewId,
-    const std::vector<UiFileState>& files,
-    const std::vector<UiSceneNode>& sceneNodes,
-    const std::vector<LoadedModelRuntime>& runtimes,
-    float masterVertexPointSize,
-    woby::graphics::ProgramHandle meshProgram,
-    woby::graphics::UniformHandle uvGridUniform,
-    woby::graphics::ProgramHandle colorProgram,
-    woby::graphics::ProgramHandle pointSpriteProgram,
-    woby::graphics::UniformHandle colorUniform,
-    woby::graphics::UniformHandle pointParamsUniform,
-    uint32_t sceneViewportWidth,
-    uint32_t viewportHeight,
+    graphics::ViewId viewId, const SceneDrawPlan& plan, const std::vector<LoadedModelRuntime>& runtimes,
+    graphics::ProgramHandle meshProgram, graphics::UniformHandle uvGridUniform,
+    graphics::ProgramHandle colorProgram, graphics::ProgramHandle pointSpriteProgram,
+    graphics::UniformHandle colorUniform, graphics::UniformHandle pointParamsUniform,
+    const TriangleEdgePrograms& edges, uint32_t width, uint32_t height,
     MarkerDrawContext* markers, bool importedLinesOnly)
 {
-    if (importedLinesOnly && std::none_of(files.begin(), files.end(), [](const auto& file) { return !file.mesh.lineIndices.empty(); })) { return; }
-    float identity[16];
-    bx::mtxIdentity(identity);
-    if (!sceneNodes.empty()) {
-        for (const auto& node : sceneNodes) {
-            submitSceneNode(
-                viewId,
-                files,
-                sceneNodes,
-                runtimes,
-                node,
-                identity,
-                1.0f,
-                masterVertexPointSize,
-                meshProgram,
-                uvGridUniform,
-                colorProgram,
-                pointSpriteProgram,
-                colorUniform,
-                pointParamsUniform,
-                sceneViewportWidth,
-                viewportHeight, markers, importedLinesOnly);
+    const bool markerIds = markers != nullptr;
+    const auto each = [&](const auto& draw) {
+        for (const auto& item : plan.items) {
+            if (item.importedLines != importedLinesOnly || item.fileIndex >= runtimes.size()) { continue; }
+            const auto& mesh = runtimes[item.fileIndex].gpuMesh;
+            if (item.groupIndex >= mesh.nodeRanges.size() || !graphics::isValid(mesh.vertexBuffer)) { continue; }
+            draw(item, mesh, mesh.nodeRanges[item.groupIndex]);
         }
+    };
+    const auto points = [&](const SceneDrawItem& item, const GpuMesh& mesh, const GpuNodeRange& range) {
+        if (!item.points || !range.pointIndexCount || !graphics::isValid(mesh.pointIdBuffer)) { return; }
+        if (markers) {
+            MarkerDraw draw;
+            draw.model = item.model; draw.fileIndex = item.fileIndex; draw.fileId = item.fileId;
+            draw.pointOffset = range.pointIndexOffset; draw.count = range.pointIndexCount;
+            const auto id = appendMarkerDraw(markers->list, draw, item.pointSize);
+            const std::array<float, 4> base{float(id & 65535u), float(id >> 16u), 0, 0};
+            graphics::setUniform(markers->baseUniform, base.data());
+        }
+        submitPointSpriteRange(viewId, mesh, pointSpriteProgram, colorUniform, pointParamsUniform,
+            item.model.data(), scaledRgbColor(item.color, 1.5f), item.pointSize, width, height,
+            range.pointIndexOffset, range.pointIndexCount, markerIds);
+    };
+    if (importedLinesOnly) {
+        each([&](const auto& item, const auto& mesh, const auto& range) {
+            if (item.lineIndexCount && graphics::isValid(mesh.importedLineBuffer)) {
+                const auto params = pointSpriteParameters(item.lineWidth, width, height, item.lineIndexOffset);
+                graphics::setTransform(item.model.data());
+                graphics::setUniform(colorUniform, item.color.data());
+                graphics::setUniform(pointParamsUniform, params.data(), 2);
+                graphics::setBuffer(0, mesh.vertexBuffer, graphics::Access::Read);
+                graphics::setBuffer(1, mesh.importedLineBuffer, graphics::Access::Read);
+                graphics::setVertexCount(4); graphics::setInstanceCount(item.lineIndexCount / 2);
+                setMarkerRenderState(renderState(item.lineDepthTest ? WOBY_GPU_STATE_DEPTH_TEST_LEQUAL
+                    : WOBY_GPU_STATE_DEPTH_TEST_ALWAYS, item.lineDepthTest, item.color, WOBY_GPU_STATE_PT_TRISTRIP), markerIds);
+                graphics::submit(viewId, colorProgram);
+            }
+            points(item, mesh, range);
+        });
         return;
     }
-
-    const size_t renderFileCount = std::min(files.size(), runtimes.size());
-    for (size_t fileIndex = 0; fileIndex < renderFileCount; ++fileIndex) {
-        const auto& file = files[fileIndex];
-        if (!file.fileSettings.visible) {
-            continue;
+    const auto triangleEdges = [&](const SceneDrawItem& item, const GpuMesh& mesh,
+        const GpuNodeRange& range, bool hardwareLines) {
+        if (!range.triangleIndexCount || !graphics::isValid(mesh.triangleIndexBuffer)) { return; }
+        const std::array<float, 4> params{.5f, item.solid ? 1.0f : 0.0f,
+            float(range.triangleIndexOffset & 65535u), float(range.triangleIndexOffset >> 16u)};
+        const auto color = hardwareLines ? scaledRgbColor(item.color, 1.25f) : item.color;
+        graphics::setTransform(item.model.data());
+        graphics::setUniform(colorUniform, color.data());
+        graphics::setUniform(uvGridUniform, item.uvGrid.data());
+        graphics::setUniform(edges.parameters, params.data());
+        graphics::setVertexBuffer(0, mesh.vertexBuffer);
+        if (!hardwareLines && edges.nativeBarycentrics) {
+            graphics::setIndexBuffer(mesh.triangleIndexBuffer, range.triangleIndexOffset, range.triangleIndexCount);
+        } else {
+            graphics::setBuffer(1, mesh.triangleIndexBuffer, graphics::Access::Read);
+            graphics::setVertexCount(range.triangleIndexCount * (hardwareLines ? 2u : 1u));
         }
-
-        float fileModel[16];
-        fileTransformMatrix(file.fileSettings, fileModel);
-        const float opacity = file.fileSettings.opacity;
-        const size_t groupCount = std::min(file.groupSettings.size(), runtimes[fileIndex].gpuMesh.nodeRanges.size());
-        for (size_t nodeIndex = 0; nodeIndex < groupCount; ++nodeIndex) {
-            submitGroupRange(
-                viewId,
-                files,
-                runtimes,
-                fileIndex,
-                nodeIndex,
-                fileModel,
-                opacity,
-                masterVertexPointSize,
-                meshProgram,
-                uvGridUniform,
-                colorProgram,
-                pointSpriteProgram,
-                colorUniform,
-                pointParamsUniform,
-                sceneViewportWidth,
-                viewportHeight, markers, importedLinesOnly);
+        auto flags = renderState(hardwareLines && plan.triangleEdgeXray ? WOBY_GPU_STATE_DEPTH_TEST_ALWAYS
+            : item.solid && !hardwareLines ? WOBY_GPU_STATE_DEPTH_TEST_LESS : WOBY_GPU_STATE_DEPTH_TEST_LEQUAL,
+            !hardwareLines && item.solid, color, hardwareLines ? WOBY_GPU_STATE_PT_LINES : 0);
+        if (!hardwareLines && !item.solid) { flags |= WOBY_GPU_STATE_BLEND_ALPHA; }
+        setMarkerRenderState(flags, markerIds);
+        graphics::submit(viewId, hardwareLines ? (markerIds ? edges.markerLines : edges.lines)
+            : (markerIds ? edges.markerSurface : edges.surface));
+    };
+    // Hidden-line occluders precede every color draw, including other files.
+    each([&](const auto& item, const auto& mesh, const auto& range) {
+        if (!item.solid && item.edges && !plan.triangleEdgeXray && item.color[3] >= .999f
+            && range.triangleIndexCount && graphics::isValid(mesh.triangleIndexBuffer)) {
+            graphics::setTransform(item.model.data());
+            // The picking variant discards zero-alpha fragments even when color
+            // writes are disabled; supply the opaque occluder's alpha explicitly.
+            graphics::setUniform(colorUniform, item.color.data());
+            graphics::setVertexBuffer(0, mesh.vertexBuffer);
+            graphics::setIndexBuffer(mesh.triangleIndexBuffer, range.triangleIndexOffset, range.triangleIndexCount);
+            setMarkerRenderState(WOBY_GPU_STATE_WRITE_Z | WOBY_GPU_STATE_DEPTH_TEST_LESS | WOBY_GPU_STATE_MSAA, markerIds);
+            graphics::submit(viewId, colorProgram);
         }
+    });
+    // Opaque surfaces establish visibility before transparent content or markers.
+    // Preserve stable source order for transparent blending; never fuse its edges.
+    for (const bool opaque : {true, false}) {
+        each([&](const auto& item, const auto& mesh, const auto& range) {
+            if (!item.solid || (item.color[3] >= .999f) != opaque) { return; }
+            if (opaque && item.edges && !plan.triangleEdgeXray) { triangleEdges(item, mesh, range, false); }
+            else { submitTriangleRange(viewId, mesh, meshProgram, uvGridUniform, colorUniform,
+                item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.uvGrid); }
+        });
     }
+    each([&](const auto& item, const auto& mesh, const auto& range) {
+        if (!item.edges) { return; }
+        const bool hardwareLines = plan.triangleEdgeXray || item.color[3] < .999f;
+        if (hardwareLines || !item.solid) { triangleEdges(item, mesh, range, hardwareLines); }
+    });
+    each(points);
 }
 
 void submitSceneSelection(woby::graphics::ViewId viewId, std::span<const ScenePickPart> parts, const UiState& state,

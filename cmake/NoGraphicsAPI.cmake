@@ -11,6 +11,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIPacing.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIDiagnostics.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIAllocations.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIUtilities.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIBarycentrics.cmake")
+target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_FRAGMENT_BARYCENTRICS)
 
 find_program(WOBY_SLANGC slangc HINTS "$ENV{SLANG_ROOT}/bin" REQUIRED)
 execute_process(COMMAND "${WOBY_SLANGC}" -version OUTPUT_VARIABLE slang_version ERROR_VARIABLE slang_error)
@@ -44,7 +46,9 @@ function(woby_compile_graphics_shaders target)
         vs_comparison fs_comparison vs_imgui fs_imgui vs_marker_point fs_marker_point fs_marker_mesh
         fs_marker_line fs_marker_comparison vs_marker_screen fs_marker_composite
         vs_marker_highlight fs_marker_highlight_single fs_marker_highlight_msaa
-        cs_marker_lookup_single cs_marker_lookup_msaa cs_freeform)
+        cs_marker_lookup_single cs_marker_lookup_msaa cs_freeform
+        vs_mesh_edges vs_triangle_lines fs_mesh_edges fs_mesh_edges_pulled
+        fs_marker_mesh_edges fs_marker_mesh_edges_pulled)
     set(outputs)
     foreach(entry IN LISTS entries)
         if(entry MATCHES "^vs_")
@@ -70,10 +74,14 @@ function(woby_compile_graphics_shaders target)
                     "${woby_ngapi_SOURCE_DIR}/utility/include/NoGraphicsAPIUtility/shader_types.h" "${WOBY_SLANGC}" VERBATIM)
         else()
             set(output "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/spirv/${entry}.bin")
+            set(capabilities -capability spvDescriptorHeapEXT)
+            if(entry STREQUAL "fs_mesh_edges" OR entry STREQUAL "fs_marker_mesh_edges")
+                list(APPEND capabilities -capability spvFragmentBarycentricKHR)
+            endif()
             add_custom_command(OUTPUT "${output}"
                 COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/spirv"
                 COMMAND "${WOBY_SLANGC}" "${source}" -target spirv -profile spirv_1_5 -emit-spirv-directly
-                    -fvk-use-entrypoint-name -DWOBY_VULKAN ${common} -capability spvDescriptorHeapEXT -o "${output}"
+                    -fvk-use-entrypoint-name -DWOBY_VULKAN ${common} ${capabilities} -o "${output}"
                 COMMAND "${WOBY_SPIRV_VAL}" --target-env vulkan1.4 --scalar-block-layout "${output}"
                 DEPENDS "${source}" "${PROJECT_SOURCE_DIR}/shaders/native/root.h"
                     "${woby_ngapi_SOURCE_DIR}/include/NoGraphicsAPI/shader.slang"

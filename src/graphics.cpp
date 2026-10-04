@@ -687,6 +687,8 @@ gpu::PSO *pipeline(const Operation &op, const Attachments &targets)
                            .alpha = {gpu::BlendFactor::one, gpu::BlendFactor::one_minus_source_alpha}};
     // Marker provenance is always unblended, including transparent surfaces.
     colors[1].blend.enabled = false;
+    // Depth-only scene passes must preserve both the color and picking targets.
+    colors[1].write_mask = colors[0].write_mask;
     auto *pso = gpu::create_graphics_pso(
         c.device, {.vertex = shaderStage(op.program->vertex),
                    .fragment = shaderStage(op.program->fragment),
@@ -884,6 +886,8 @@ bool init(const Init &options)
         c.caps.supported = WOBY_GPU_CAPS_COMPUTE | WOBY_GPU_CAPS_VERTEX_ID | WOBY_GPU_CAPS_INSTANCING |
                            WOBY_GPU_CAPS_INDEX32 | WOBY_GPU_CAPS_TEXTURE_READ_BACK | WOBY_GPU_CAPS_TEXTURE_BLIT |
                            WOBY_GPU_CAPS_BLEND_INDEPENDENT | WOBY_GPU_CAPS_PRIMITIVE_ID;
+        if (gpu::get_device_caps(c.device).fragment_barycentric)
+            c.caps.supported |= WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC;
         c.timeline = gpu::create_timeline_semaphore(c.device);
         c.descriptors = gpu::create_texture_descriptor_heap(c.device, descriptorCapacity);
         c.samplers = gpu::create_sampler_descriptor_heap(c.device, 2);
@@ -1251,6 +1255,8 @@ void setUniform(UniformHandle h, const void *data, uint16_t count)
         destination = &root.comparison;
     else if (uniform->name == "u_uvGrid")
         destination = &root.uvGrid;
+    else if (uniform->name == "u_triangleEdges")
+        destination = &root.triangleEdges;
     else if (uniform->name == "u_markerBase")
         destination = &root.markerBase;
     else if (uniform->name == "u_markerQuery")

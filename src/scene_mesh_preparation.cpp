@@ -11,7 +11,7 @@ uint8_t requestedGpuMeshFeatures(const UiFileState& file)
     if (!file.fileSettings.visible || file.fileSettings.opacity <= 0) { return features; }
     for (const auto& group : file.groupSettings) {
         if (!group.visible || group.opacity <= 0) { continue; }
-        if (group.showTriangles) { features |= gpuMeshEdges; }
+        // Triangle overlays read the existing triangle buffer, including X-ray.
         if (group.showVertices) { features |= gpuMeshPoints; }
     }
     return features;

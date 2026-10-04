@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 
@@ -26,5 +27,6 @@ TEST_CASE("shared shader types coexist with platform half types and preserve sto
     CHECK(copy.y.bits == 0xfc00);
     CHECK(copy.z.bits == 0x8000);
     CHECK(copy.w.bits == 0x0001);
-    CHECK(sizeof(WobyRoot) == 304);
+    CHECK(sizeof(WobyRoot) == 320);
+    CHECK(offsetof(WobyRoot, triangleEdges) == 304);
 }

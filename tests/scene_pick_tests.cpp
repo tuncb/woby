@@ -334,6 +334,8 @@ TEST_CASE("xray edges pick through surfaces while hidden vertices do not")
     CHECK(pick(state, {50, 38}) == state.files[0].groupSettings[0].objectId);
     back.showVertices = false;
     back.showTriangles = true;
+    CHECK(pick(state, {50, 62}) == state.files[0].groupSettings[0].objectId);
+    woby::setTriangleEdgeXray(state, true);
     CHECK(pick(state, {50, 62}) == back.objectId);
 }
 

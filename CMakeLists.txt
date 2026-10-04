@@ -194,6 +194,8 @@ add_executable(woby
     src/scene_file.h
     src/scene_mesh_preparation.cpp
     src/scene_mesh_preparation.h
+    src/scene_draw_plan.cpp
+    src/scene_draw_plan.h
     src/scene_renderer.cpp
     src/freeform_gpu.cpp
     src/scene_renderer.h
@@ -269,6 +271,15 @@ add_dependencies(woby woby-update-helper)
 set(woby_runtime_targets woby woby-update-helper)
 
 include(CTest)
+
+option(WOBY_BUILD_OVERLAY_PROTOTYPE "Build the fixed-resolution mesh overlay experiment" OFF)
+if(WOBY_BUILD_OVERLAY_PROTOTYPE)
+    add_subdirectory(experiments/mesh-overlays)
+    list(APPEND woby_runtime_targets woby_overlay_prototype)
+    if(BUILD_TESTING)
+        list(APPEND woby_runtime_targets woby_overlay_tests)
+    endif()
+endif()
 
 option(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE "Build the Windows NoGraphicsAPI migration experiment" OFF)
 if(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE)
@@ -497,6 +508,8 @@ if(BUILD_TESTING)
         src/graphics_helpers.h
         src/scene_mesh_preparation.cpp
         src/scene_mesh_preparation.h
+        src/scene_draw_plan.cpp
+        src/scene_draw_plan.h
         src/scene_renderer.cpp
         src/freeform_gpu.cpp
         src/scene_renderer.h
@@ -526,6 +539,7 @@ if(BUILD_TESTING)
         tests/surface_annotation_tests.cpp
         tests/scene_pick_tests.cpp
         tests/scene_renderer_tests.cpp
+        tests/scene_edge_tests.cpp
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
@@ -542,7 +556,7 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp)
+        target_sources(woby_tests PRIVATE tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp)
         target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_GPU_ALLOCATION_TESTS)
         target_compile_definitions(woby_tests PRIVATE WOBY_GPU_ALLOCATION_TESTS)
     endif()

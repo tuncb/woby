@@ -35,6 +35,7 @@ SceneSnapshot snapshot(const UiState& state, SceneDocument document,
     content.coordinateOrigin = state.coordinateOrigin;
     content.showOrigin = state.showOrigin;
     content.showGrid = state.showGrid;
+    content.triangleEdgeXray = state.triangleEdgeXray;
     content.showDimensions = state.showDimensions;
     content.upAxis = state.upAxis;
     content.masterVertexPointSize = state.masterVertexPointSize;

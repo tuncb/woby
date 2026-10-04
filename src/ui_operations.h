@@ -214,6 +214,7 @@ void toggleGroupVisible(UiState& state, UiFileState& file, UiGroupState& group);
 void setShowOrigin(UiState& state, bool visible);
 void toggleShowOrigin(UiState& state);
 void setShowGrid(UiState& state, bool visible);
+void setTriangleEdgeXray(UiState& state, bool enabled);
 void toggleShowGrid(UiState& state);
 void setShowDimensions(UiState& state, bool visible);
 void setSceneUpAxis(UiState& state, SceneUpAxis upAxis);

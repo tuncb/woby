@@ -42,6 +42,8 @@ struct ScenePickPart {
     bool annotationOverlay = false;
     size_t pointIndexOffset = 0, pointIndexCount = 0;
     SceneObjectId analysisId = 0; // Linked analysis copy; zero for source geometry.
+    size_t fileIndex = 0, groupIndex = 0; // Source parts only; never used for analysis copies.
+    bool sourceMesh = false; // Source passes precede analysis overlays and imported lines.
 };
 
 [[nodiscard]] std::span<const uint32_t> scenePartIndices(const ScenePickPart& part);

@@ -41,15 +41,14 @@ void requestSceneScreenshotCapture(SceneScreenshotRuntime& screenshot, const std
 bool drawSceneScreenshotOptions(UiState& state);
 void submitSceneScreenshotCapture(
     SceneScreenshotRuntime& screenshot,
-    const std::vector<UiFileState>& files,
     const std::vector<LoadedModelRuntime>& runtimes,
-    float masterVertexPointSize,
     woby::graphics::ProgramHandle meshProgram,
     woby::graphics::UniformHandle uvGridUniform,
     woby::graphics::ProgramHandle colorProgram,
     woby::graphics::ProgramHandle annotationProgram,
     woby::graphics::ProgramHandle lineSpriteProgram,
     woby::graphics::ProgramHandle pointSpriteProgram,
+    const TriangleEdgePrograms& triangleEdgePrograms,
     woby::graphics::UniformHandle colorUniform,
     woby::graphics::UniformHandle pointParamsUniform,
     const UiState& ui,
