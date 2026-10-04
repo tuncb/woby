@@ -63,12 +63,28 @@ struct MeshAnnotationBlock {
     std::array<float, 3> minimum{}, maximum{};
 };
 
+struct MeshAnnotationNode {
+    std::array<float, 3> minimum{}, maximum{};
+    size_t begin = 0, end = 0, left = 0, right = 0;
+    size_t indexBegin = 0, indexEnd = 0;
+};
+struct MeshAnnotationIndex {
+    std::vector<uint32_t> triangles; // Original index-buffer offsets, in spatial order.
+    std::vector<MeshAnnotationNode> tree;
+};
+
+struct Mesh;
+
 struct MeshAnnotationCache {
     size_t vertexCount = 0, indexCount = 0;
     const Vertex* vertexData = nullptr;
     const uint32_t* indexData = nullptr;
     std::vector<MeshAnnotationBlock> blocks;
     std::vector<std::string> fingerprints;
+    std::shared_ptr<const MeshAnnotationIndex> spatial;
+    // Built during preparation, never copied when a gesture/command starts.
+    // Only positions, triangle indices, nodes and the derived index are retained.
+    std::shared_ptr<const Mesh> snapshot;
 };
 
 using Coordinate = std::array<double, 3>;

@@ -247,7 +247,12 @@ void triangulateFreeformTrim(const FreeformPatch& patch,FreeformGrid& grid,const
     // intersections, so neighboring cells share vertices and knot lines survive.
     const size_t nu=grid.u.size(),nv=grid.v.size();
     size_t boundary=0; for (const auto& loop:loops) { boundary+=loop.points.size(); }
-    if (nu*nv+boundary*(nu+nv+1)>maxFreeformVertices) { fail(c,"Trim tessellation exceeds the work limit."); }
+    // CDT uses 32-bit indices and adds three super-triangle vertices. Include
+    // possible grid/boundary intersections before allowing it to insert them.
+    constexpr size_t indexCapacity = (UINT32_MAX - 3u) / 2u;
+    if (nv && (nu > indexCapacity / nv || boundary > (indexCapacity - nu*nv) / (nu+nv+1))) {
+        fail(c,"Trim tessellation exceeds the supported triangulator index range.");
+    }
     std::vector<CDT::V2d<double>> vertices;
     std::vector<CDT::Edge> edges;
     for (double v:grid.v) for (double u:grid.u) {
@@ -276,7 +281,7 @@ void triangulateFreeformTrim(const FreeformPatch& patch,FreeformGrid& grid,const
             reportModelLoadProgress(progress,ModelLoadStage::triangulating);
             const auto last=std::min(first+256,edges.size());
             triangulation.insertEdges(std::vector<CDT::Edge>(edges.begin()+static_cast<ptrdiff_t>(first),edges.begin()+static_cast<ptrdiff_t>(last)));
-            if (triangulation.vertices.size()>maxFreeformVertices) { fail(c,"Trim tessellation exceeds the vertex limit."); }
+            if (triangulation.vertices.size()>indexCapacity) { fail(c,"Trim tessellation exceeds the supported triangulator index range."); }
         }
         triangulation.eraseSuperTriangle();
     } catch (const CDT::Error& error) { fail(c,error.what()); }

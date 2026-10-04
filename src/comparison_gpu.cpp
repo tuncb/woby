@@ -30,16 +30,14 @@ woby::graphics::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge>
     {
         return WOBY_GPU_INVALID_HANDLE;
     }
-    const auto bytes = comparisonBufferBytes(edges.size(), 2 * sizeof(std::array<float, 3>));
-    std::vector<std::array<float, 3>> points;
-    points.reserve(edges.size() * 2);
-    for (const auto &edge : edges)
-    {
-        points.push_back(edge.a);
-        points.push_back(edge.b);
-    }
+    // DiagnosticEdge already has the packed endpoint layout consumed by the
+    // renderer. Copy it directly instead of allocating another full line list.
+    static_assert(sizeof(DiagnosticEdge) == 2 * sizeof(std::array<float, 3>));
+    static_assert(offsetof(DiagnosticEdge, a) == 0);
+    static_assert(offsetof(DiagnosticEdge, b) == sizeof(std::array<float, 3>));
+    const auto bytes = comparisonBufferBytes(edges.size(), sizeof(DiagnosticEdge));
     const auto handle = woby::graphics::createVertexBuffer(
-        woby::graphics::copy(points.data(), bytes), helperLineVertexLayout());
+        woby::graphics::copy(edges.data(), bytes), helperLineVertexLayout());
     if (!woby::graphics::isValid(handle))
     {
         throw std::runtime_error("Cannot allocate analysis edge buffer.");

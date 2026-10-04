@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 
-from run import GIB, monitor, write_json
+from run import GIB, add_memory_limit_arguments, monitor, write_json
 
 
 def main():
@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--workload", choices=("detectors", "detectors-expanded", "intersections"), default="detectors")
     parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument("--timeout", type=int, default=300)
+    add_memory_limit_arguments(parser)
     args = parser.parse_args()
     if not 1 <= args.repetitions <= 100 or args.timeout < 1:
         parser.error("Repetitions must be 1..100 and the deadline must be positive")
@@ -30,7 +31,8 @@ def main():
         arguments={k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
         executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),
         harness_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), python=sys.version,
-        started_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), max_private_gib=38, min_available_gib=6))
+        started_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        max_private_gib=args.max_private_gib, min_available_gib=args.min_available_gib))
     for model in sorted(models.rglob("*.obj"), key=lambda p: p.stat().st_size):
         if not any(value in model.name for value in args.select):
             continue
@@ -41,7 +43,7 @@ def main():
             command = [str(executable), args.workload, str(model), str(args.repetitions)]
             process = subprocess.Popen(command, cwd=case, stdout=out, stderr=err)
             state = dict(process=process, started=started, phase=args.workload, stop=threading.Event(),
-                         cap=38*GIB, floor=6*GIB, resources=[])
+                         cap=args.max_private_gib*GIB, floor=args.min_available_gib*GIB, resources=[])
             watcher = threading.Thread(target=monitor, args=(state,), daemon=True)
             watcher.start()
             try:

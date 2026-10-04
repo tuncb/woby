@@ -59,6 +59,7 @@ struct ComparisonJobRuntime {
     uint64_t workerSignature = 0;
     uint32_t workerStages = 0, attemptedStages = 0, failedStages = 0;
     bool retryDetectorsSeparately = false;
+    bool allocationFailed = false;
     std::array<uint64_t, backgroundDetectorCount> consumedDetectorRequests{};
     std::array<uint64_t, backgroundDetectorCount> workerDetectorRequests{};
     uint32_t workerDetectors = 0;

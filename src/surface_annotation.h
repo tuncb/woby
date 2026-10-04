@@ -2,6 +2,7 @@
 
 #include "annotation_types.h"
 #include "scene_pick.h"
+#include <stop_token>
 
 namespace woby {
 
@@ -49,16 +50,19 @@ struct AnnotationProjection {
     std::vector<AnnotationProjectedTriangle> clippedTriangles;
     std::vector<size_t> order;
     std::vector<AnnotationProjectionNode> nodes;
-    // Gesture-local source-space bounds. They contain values, never mesh pointers.
-    std::vector<AnnotationProjectionBlock> blocks;
     std::optional<std::array<float, 4>> region;
+    bool editing = false;
+    std::stop_token stop;
 };
+
+[[nodiscard]] std::array<float, 4> annotationRegion(std::array<float, 2> start, std::array<float, 2> end);
 
 [[nodiscard]] std::array<float, 2> annotationNdc(const ScenePickView& view, PickPoint point);
 [[nodiscard]] AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets = {});
+    const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets = {},
+    std::optional<std::array<float, 4>> region = {}, std::stop_token stop = {});
 [[nodiscard]] AnnotationProjection annotationGestureProjection(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, SceneObjectId target, std::array<float, 2> point);
+    const ScenePickView& view, SceneObjectId target, std::array<float, 2> point, std::stop_token stop = {});
 void expandAnnotationGestureProjection(AnnotationProjection& projection,
     std::span<const ScenePickPart> parts, const ScenePickView& view,
     std::array<float, 2> start, std::array<float, 2> end);
@@ -72,11 +76,12 @@ void setAnnotationProjectionTargets(AnnotationProjection& projection,
     std::span<const ScenePickPart> parts, uint32_t source);
 [[nodiscard]] const AnnotationProjector& annotationSourceProjector(const AnnotationGeometry& geometry, uint32_t source);
 [[nodiscard]] uint32_t annotationSourceIndex(const AnnotationProjection& projection, SceneObjectId target);
-[[nodiscard]] AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> parts, const UiAnnotation& item);
+[[nodiscard]] AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> parts, const UiAnnotation& item,
+    std::optional<std::array<float, 4>> region = {}, std::stop_token stop = {});
 [[nodiscard]] std::vector<std::array<float, 3>> annotationControlWorldPositions(const UiAnnotation& item,
     std::span<const ScenePickPart> parts);
 [[nodiscard]] AnnotationProjection annotationEditProjection(const ScenePickPart& target,
-    const AnnotationGeometry& geometry);
+    const AnnotationGeometry& geometry, std::optional<std::array<float, 4>> region = {}, std::stop_token stop = {});
 // Reuse a target-discovery projection, removing transparent non-target parts.
 void setAnnotationProjectionTarget(AnnotationProjection& projection,
     std::span<const ScenePickPart> parts, const ScenePickView& view, SceneObjectId target);
@@ -97,6 +102,8 @@ void prepareAnnotationMeshCache(Mesh& mesh);
     std::span<const Vertex> vertices, std::span<const uint32_t> indices, std::span<const MeshNode> nodes,
     const std::function<bool()>& canceled = {});
 [[nodiscard]] bool annotationMeshCacheReady(const Mesh& mesh);
+inline constexpr size_t annotationInlineSnapshotBytes = 4 * 1024 * 1024;
+[[nodiscard]] bool annotationMeshSnapshotReady(const Mesh& mesh);
 [[nodiscard]] std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count);
 [[nodiscard]] std::array<float, 3> annotationPosition(const Mesh& mesh, size_t offset,
     uint32_t triangle, const std::array<float, 3>& bary);

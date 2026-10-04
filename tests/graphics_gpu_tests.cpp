@@ -1,8 +1,13 @@
 #include "graphics.h"
 #include "graphics_helpers.h"
 #include "scene_pick.h"
+#include "comparison_view.h"
+#include "ui_operations.h"
 #include <NoGraphicsAPI/NoGraphicsAPI.hpp>
 #include <array>
+#include <chrono>
+#include <filesystem>
+#include <thread>
 #include <doctest/doctest.h>
 
 namespace
@@ -12,11 +17,131 @@ struct NativeFixture
     bool initialized = false;
     ~NativeFixture()
     {
+        gpu::fail_heap_allocation_for_test(nullptr, 0);
         if (initialized)
             woby::graphics::shutdown();
     }
 };
 } // namespace
+
+TEST_CASE("Native heap allocation failures report the Vulkan operation and remain recoverable")
+{
+    NativeFixture fixture;
+    fixture.initialized = woby::graphics::init({});
+    REQUIRE(fixture.initialized);
+    const auto device = gpu::create_device({});
+    REQUIRE(device.device != nullptr);
+    // These are real Vulkan errors; the failing call is skipped so no large
+    // allocation or exhausted machine is needed to exercise each cleanup path.
+    for (const auto result : {-1, -2, -4, -10}) { // host/device OOM, device lost, too many objects
+        for (const auto* operation : {"vkCreateBuffer", "vkAllocateMemory", "vkBindBufferMemory", "vkMapMemory"}) {
+            gpu::HeapAllocationFailure failure;
+            gpu::fail_heap_allocation_for_test(operation, result);
+            const auto failed = gpu::try_create_gpu_heap(device.device, 4096, gpu::MemoryType::cpu_visible, failure);
+            CHECK(failed.owner == nullptr);
+            CHECK(failure.api_result == result);
+            CHECK(std::string(failure.operation ? failure.operation : "") == operation);
+            CHECK(failure.allocation_bytes >= 4096);
+            gpu::destroy_gpu_heap(failed);
+            const auto recovered = gpu::try_create_gpu_heap(device.device, 4096, gpu::MemoryType::cpu_visible, failure);
+            CHECK(recovered.owner != nullptr);
+            CHECK(failure.operation == nullptr);
+            gpu::destroy_gpu_heap(recovered);
+        }
+    }
+    gpu::destroy_device(device.device);
+}
+
+TEST_CASE("Native buffer allocation errors release borrowed input and allow subsequent uploads")
+{
+    namespace g = woby::graphics;
+    NativeFixture fixture;
+    fixture.initialized = g::init({});
+    REQUIRE(fixture.initialized);
+    std::array<float, 6> vertices{};
+    bool released = false;
+    gpu::fail_heap_allocation_for_test("vkAllocateMemory", -2);
+    CHECK_THROWS_WITH(g::createVertexBuffer(g::makeRef(vertices.data(), sizeof(vertices),
+        [](void*, void* context) { *static_cast<bool*>(context) = true; }, &released), {12}),
+        doctest::Contains("requested 24 bytes; vkAllocateMemory returned VkResult -2"));
+    CHECK(released);
+    const auto buffer = g::createVertexBuffer(g::copy(vertices.data(), sizeof(vertices)), {12});
+    CHECK(g::isValid(buffer));
+    g::destroy(buffer); // Canceled before drawing: submitted uploads still own it.
+    for (size_t i = 0; i < 5; ++i) { g::frame(); }
+}
+
+TEST_CASE("Native comparison distance upload failures clean up both sides and support retry")
+{
+    using namespace woby;
+    namespace g = woby::graphics;
+    NativeFixture fixture;
+    fixture.initialized = g::init({});
+    REQUIRE(fixture.initialized);
+    struct ComparisonFixture {
+        UiState state;
+        ComparisonRuntimes runtimes;
+        std::filesystem::path root = std::filesystem::temp_directory_path()
+            / ("woby-gpu-comparison-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        ComparisonFixture() { std::filesystem::create_directory(root); }
+        ~ComparisonFixture() {
+            destroyComparisonRuntimes(runtimes);
+            std::error_code ignored; std::filesystem::remove_all(root, ignored);
+        }
+    } comparison;
+    Mesh mesh;
+    mesh.vertices.resize(3);
+    mesh.vertices[1].position[0] = 1;
+    mesh.vertices[2].position[1] = 1;
+    mesh.indices = {0, 1, 2};
+    mesh.nodes.push_back({"triangle", 0, 3});
+    captureSourceMesh(mesh, SourceProvenance::objPositions);
+    finalizeMesh(mesh, true);
+    comparison.state.files.push_back(createUiFileState(comparison.root / "triangle.obj", mesh, 0));
+    appendDefaultSceneNodesForFiles(comparison.state, 0);
+    const auto id = createComparison(comparison.state);
+    for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
+        setComparisonObjects(comparison.state, {comparison.state.files[0].objectId}, side, true, id);
+    }
+    auto& runtime = comparison.runtimes.objects[id];
+    runtime.fullResultsRequested = true;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
+    while (!comparisonResultsReady(runtime, comparison.state, id, true) && runtime.jobs.error.empty()
+        && std::chrono::steady_clock::now() < deadline) {
+        updateComparisonRuntimes(comparison.runtimes, comparison.state);
+        g::frame();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    INFO(runtime.jobs.error);
+    REQUIRE(comparisonResultsReady(runtime, comparison.state, id, true));
+    for (const auto skip : {0u, 1u}) {
+        for (auto* surface : {&runtime.gpu.original, &runtime.gpu.repaired}) {
+            g::destroy(surface->samples);
+            surface->samples = WOBY_GPU_INVALID_HANDLE;
+        }
+        runtime.gpu.uploadedStages &= ~comparisonDistance;
+        gpu::fail_heap_allocation_for_test("vkAllocateMemory", -2, skip);
+        CHECK_NOTHROW(updateComparisonRuntimes(comparison.runtimes, comparison.state));
+        CHECK((runtime.jobs.failedStages & comparisonDistance) != 0);
+        CHECK((runtime.gpu.uploadedStages & comparisonDistance) == 0);
+        CHECK_FALSE(g::isValid(runtime.gpu.original.samples));
+        CHECK_FALSE(g::isValid(runtime.gpu.repaired.samples));
+        CHECK(runtime.jobs.error.find("VkResult -2") != std::string::npos);
+        CHECK_FALSE(comparisonResultsReady(runtime, comparison.state, id, true));
+        for (size_t i = 0; i < 5; ++i) { g::frame(); }
+        // The same state changes as the UI Retry button; CPU results survive.
+        runtime.attemptedSignature = 0;
+        runtime.jobs.failedStages = 0;
+        runtime.jobs.error.clear();
+        updateComparisonRuntimes(comparison.runtimes, comparison.state);
+        CHECK(comparisonResultsReady(runtime, comparison.state, id, true));
+    }
+    // Removing an analysis with uploads pending must also be safe.
+    removeComparison(comparison.state, id);
+    updateComparisonRuntimes(comparison.runtimes, comparison.state);
+    CHECK(comparison.runtimes.objects.empty());
+    for (size_t i = 0; i < 5; ++i) { g::frame(); }
+}
 
 TEST_CASE("Native headless devices never enable mailbox presentation")
 {

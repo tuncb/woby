@@ -249,7 +249,16 @@ template <typename T, typename H> void release(std::vector<std::shared_ptr<T>> &
     if (!isValid(handle))
         return;
     auto value = resource(items, handle);
-    state().trash->push_back(std::move(value));
+    try {
+        state().trash->push_back(value);
+    } catch (const std::bad_alloc&) {
+        // Cleanup must also work after an allocation failure. Pending draws
+        // retain their resources; finish submitted work before releasing ours.
+        if (!noop()) {
+            state().uploads->wait();
+            gpu::wait_timeline({state().timeline, state().submitted});
+        }
+    }
     items[handle.idx].reset();
 }
 void freeMemory(const Memory *memory)
@@ -271,6 +280,11 @@ void collectReadbacks(bool force)
                   {
                       if (!force && !reached(c.frameNumber, read.ready))
                           return false;
+                      if (force && read.completion > c.submitted) {
+                          // Frame preparation failed before this copy was submitted.
+                          gpu::destroy_gpu_heap(read.heap);
+                          return true;
+                      }
                       gpu::wait_timeline({c.timeline, read.completion});
                       std::memcpy(read.destination, read.heap.range.cpu, read.bytes);
                       gpu::destroy_gpu_heap(read.heap);
@@ -313,28 +327,34 @@ gpu::GpuCpuRange<byte> allocate(uint64_t bytes)
 {
     beginFrame();
     auto &f = current();
+    require(bytes <= UINT64_MAX - 15, "GPU frame allocation size overflow");
     bytes = (bytes + 15) & ~uint64_t{15};
     require(bytes > 0 && bytes <= arenaLimit - f.arenaUsed, "NoGraphicsAPI frame upload arena exceeds 256 MiB");
-    f.arenaUsed += bytes;
     if (noop())
     {
         auto data = std::make_unique<uint8_t[]>(static_cast<size_t>(bytes));
         auto *pointer = data.get();
         f.cpuAllocations.push_back(std::move(data));
+        f.arenaUsed += bytes;
         return {pointer, pointer, bytes};
     }
     while (f.activeArena < f.arenas.size())
     {
         auto result = f.arenas[f.activeArena].allocator->allocate(bytes);
-        if (result.cpu)
+        if (result.cpu) {
+            f.arenaUsed += bytes;
             return result;
+        }
         ++f.activeArena;
     }
     ArenaPage page;
     page.heap = gpu::create_gpu_heap(state().device, std::max(arenaPageBytes, bytes));
-    require(page.heap.range.cpu != nullptr, "Cannot allocate GPU frame arena");
-    page.allocator = std::make_unique<gpu::BumpAllocator>(page.heap.range);
-    f.arenas.push_back(std::move(page));
+    require(page.heap.range.cpu != nullptr, page.heap.error);
+    try {
+        page.allocator = std::make_unique<gpu::BumpAllocator>(page.heap.range);
+        f.arenas.push_back(std::move(page));
+    } catch (...) { gpu::destroy_gpu_heap(page.heap); throw; }
+    f.arenaUsed += bytes;
     return f.arenas.back().allocator->allocate(bytes);
 }
 template <typename T> gpu::GpuCpuRange<T> allocateRoot(const T &value)
@@ -395,6 +415,9 @@ std::shared_ptr<Image> createImage(uint16_t width, uint16_t height, gpu::Format 
     image->samples = samples;
     if (noop())
         return image;
+    // Native image creation records an initialization barrier. Retain ownership
+    // before that happens, including when later descriptor/view creation fails.
+    current().retained.push_back(image);
     const gpu::TextureDesc desc{
         .extent = {width, height, 1}, .format = format, .usage = usage, .sample_count = samples};
     for (const auto &page : c.pages)
@@ -430,7 +453,7 @@ std::shared_ptr<Image> createImage(uint16_t width, uint16_t height, gpu::Format 
                                                      delete value;
                                                  });
         page->heap = gpu::create_texture_heap(c.device, bytes);
-        require(page->heap.owner != nullptr, "Cannot allocate texture heap");
+        require(page->heap.owner != nullptr, page->heap.error);
         page->allocator = std::make_unique<gpu::TextureAllocator>(c.device, page->heap, 1024);
         image->placed = page->allocator->allocate(current().preparations, desc);
         require(image->placed.texture != nullptr, "Texture does not fit its heap");
@@ -440,8 +463,10 @@ std::shared_ptr<Image> createImage(uint16_t width, uint16_t height, gpu::Format 
     }
     const auto has = [&](gpu::TextureUsage bit)
     { return (static_cast<uint32_t>(usage) & static_cast<uint32_t>(bit)) != 0; };
-    if (has(gpu::TextureUsage::color_attachment) || has(gpu::TextureUsage::depth_stencil_attachment))
+    if (has(gpu::TextureUsage::color_attachment) || has(gpu::TextureUsage::depth_stencil_attachment)) {
         image->view = gpu::create_render_view(image->placed.texture);
+        require(image->view != nullptr, "GPU render view allocation failed");
+    }
     if (has(gpu::TextureUsage::sampled))
     {
         image->sampled = descriptor();
@@ -454,7 +479,6 @@ std::shared_ptr<Image> createImage(uint16_t width, uint16_t height, gpu::Format 
         gpu::write_texture_descriptor(c.descriptors, image->storage, image->placed.texture,
                                       gpu::TextureDescriptorType::storage);
     }
-    current().retained.push_back(image);
     return image;
 }
 std::shared_ptr<Texture> createTexture(uint16_t width, uint16_t height, TextureFormat::Enum format, uint64_t flags)
@@ -517,9 +541,27 @@ std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool
     result->index32 = index32;
     if (!noop())
     {
-        result->heap = gpu::create_gpu_heap(state().device, (uint64_t(memory->size) + 15) & ~uint64_t{15},
-                                            gpu::MemoryType::gpu_only);
+        const auto heapBytes = (uint64_t(memory->size) + 15) & ~uint64_t{15};
+#if defined(__APPLE__)
+        result->heap = gpu::create_gpu_heap(state().device, heapBytes, gpu::MemoryType::gpu_only);
+#else
+        gpu::HeapAllocationFailure failure;
+        result->heap = gpu::try_create_gpu_heap(state().device, heapBytes, gpu::MemoryType::gpu_only, failure);
+        if (!result->heap.owner) {
+            const char* reason = failure.api_result == VK_ERROR_OUT_OF_DEVICE_MEMORY ? " (out of device memory)"
+                : failure.api_result == VK_ERROR_OUT_OF_HOST_MEMORY ? " (out of host memory)"
+                : failure.api_result == VK_ERROR_DEVICE_LOST ? " (device lost)" : "";
+            throw std::runtime_error("Cannot allocate GPU geometry: requested " + std::to_string(memory->size)
+                + " bytes; " + (failure.operation ? failure.operation : "unknown operation")
+                + " returned VkResult " + std::to_string(failure.api_result) + reason
+                + " (allocation " + std::to_string(failure.allocation_bytes)
+                + " bytes, memory type " + std::to_string(failure.memory_type) + ").");
+        }
+#endif
         require(result->heap.owner != nullptr, "Cannot allocate GPU geometry");
+        // Retain the destination before submitting any upload chunks. A later
+        // exception must not free memory that an earlier chunk still writes.
+        state().trash->push_back(result);
         const uint64_t paddedBytes = (uint64_t(memory->size) + 3) & ~uint64_t{3};
         if (paddedBytes == memory->size)
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {memory->data, paddedBytes});
@@ -529,8 +571,6 @@ std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool
             std::memcpy(padded.data(), memory->data, memory->size);
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {padded.data(), paddedBytes});
         }
-        // Keep uploads alive even when a model is canceled before it is drawn.
-        state().trash->push_back(result);
     }
     return result;
 }
@@ -632,7 +672,8 @@ gpu::PSO *pipeline(const Operation &op, const Attachments &targets)
                                : (flags & WOBY_GPU_STATE_PT_TRISTRIP) ? gpu::PrimitiveTopology::triangle_strip
                                                                       : gpu::PrimitiveTopology::triangles});
     require(pso != nullptr, "NoGraphicsAPI graphics pipeline creation failed");
-    c.pipelines.emplace(key, pso);
+    try { c.pipelines.emplace(key, pso); }
+    catch (...) { gpu::destroy_pso(pso); throw; }
     return pso;
 }
 WobyRoot rootData(const Encoder &encoder, const View &view)
@@ -693,7 +734,8 @@ void computeOperation(gpu::CommandBuffer *commands, const Operation &op, const V
     {
         auto *pso = gpu::create_compute_pso(c.device, shaderStage(op.program->compute));
         require(pso != nullptr, "NoGraphicsAPI compute pipeline creation failed");
-        it = c.computePipelines.emplace(op.program->id, pso).first;
+        try { it = c.computePipelines.emplace(op.program->id, pso).first; }
+        catch (...) { gpu::destroy_pso(pso); throw; }
     }
     auto root = allocateRoot(rootData(op.encoder, view));
     gpu::bind_pso(commands, it->second);
@@ -704,16 +746,16 @@ void blitOperation(gpu::CommandBuffer *commands, const Operation &op)
 {
     require(op.source->format == op.destination->format, "Blit requires identical texture formats");
     const uint64_t bytes = uint64_t(op.width) * op.height * pixelBytes(op.source->format);
-    auto heap = gpu::create_gpu_heap(state().device, (bytes + 15) & ~uint64_t{15}, gpu::MemoryType::gpu_only);
-    require(heap.owner != nullptr, "Cannot allocate texture transfer buffer");
-    auto retained = std::shared_ptr<gpu::GpuHeap>(new gpu::GpuHeap(heap),
+    auto retained = std::shared_ptr<gpu::GpuHeap>(new gpu::GpuHeap{},
                                                   [](gpu::GpuHeap *value)
                                                   {
                                                       gpu::destroy_gpu_heap(*value);
                                                       delete value;
                                                   });
+    *retained = gpu::create_gpu_heap(state().device, (bytes + 15) & ~uint64_t{15}, gpu::MemoryType::gpu_only);
+    require(retained->owner != nullptr, retained->error);
     current().retained.push_back(retained);
-    const gpu::GpuRange range{heap.range.gpu, bytes};
+    const gpu::GpuRange range{retained->range.gpu, bytes};
     gpu::copy_texture_to_memory(commands, op.source->image->placed.texture, range,
                                 {.offset = {op.sourceX, op.sourceY, 0}, .extent = {op.width, op.height, 1}});
     gpu::barrier(commands, gpu::Stage::transfer, gpu::Access::transfer_write, gpu::Stage::transfer,
@@ -727,11 +769,12 @@ void ensureOutput(Frame &f)
     const uint32_t samples = (c.flags & WOBY_GPU_RESET_MSAA_X4) ? 4u : 1u;
     if (f.output && f.width == c.width && f.height == c.height && f.samples == samples)
         return;
-    f.output = std::make_shared<Framebuffer>();
+    auto output = std::make_shared<Framebuffer>();
     const auto flags = samples == 4 ? WOBY_GPU_TEXTURE_RT_MSAA_X4 : WOBY_GPU_TEXTURE_RT;
-    f.output->textures = {
+    output->textures = {
         createTexture(static_cast<uint16_t>(c.width), static_cast<uint16_t>(c.height), TextureFormat::BGRA8, flags),
         createTexture(static_cast<uint16_t>(c.width), static_cast<uint16_t>(c.height), TextureFormat::D24S8, flags)};
+    f.output = std::move(output);
     f.width = c.width;
     f.height = c.height;
     f.samples = samples;
@@ -819,6 +862,7 @@ bool init(const Init &options)
         c.timeline = gpu::create_timeline_semaphore(c.device);
         c.descriptors = gpu::create_texture_descriptor_heap(c.device, descriptorCapacity);
         c.samplers = gpu::create_sampler_descriptor_heap(c.device, 2);
+        require(c.timeline && c.descriptors && c.samplers, "GPU timeline or descriptor heap allocation failed");
         gpu::write_sampler_descriptor(
             c.samplers, 0,
             {.address_u = gpu::AddressMode::clamp_to_edge, .address_v = gpu::AddressMode::clamp_to_edge});
@@ -828,12 +872,15 @@ bool init(const Init &options)
                                        .mip_filter = gpu::Filter::nearest,
                                        .address_u = gpu::AddressMode::clamp_to_edge,
                                        .address_v = gpu::AddressMode::clamp_to_edge});
+        c.freeDescriptors.reserve(descriptorCapacity);
         for (uint32_t i = 0; i < descriptorCapacity; ++i)
             c.freeDescriptors.push_back(i);
         c.uploads = std::make_unique<gpu::UploadQueue>(c.device, 16ull * 1024 * 1024);
         c.deletes = std::make_unique<gpu::DeleteQueue>(c.timeline, 64);
-        for (auto &f : c.frames)
+        for (auto &f : c.frames) {
             f.pool = gpu::create_command_pool(c.device);
+            require(f.pool != nullptr, "GPU frame command pool allocation failed");
+        }
         return true;
     }
     catch (const std::exception &error)
@@ -1406,12 +1453,15 @@ uint32_t frame()
             f.retained.push_back(target);
     }
     allBarrier(commands);
-    const auto signal = ++c.submitted;
+    const auto signal = c.submitted + 1;
+    // Complete fallible CPU bookkeeping before recording copies to raw heaps.
+    c.readbacks.reserve(c.readbacks.size() + c.reads.size());
+    f.retained.reserve(f.retained.size() + c.reads.size());
     for (const auto &read : c.reads)
     {
         const uint32_t bytes = read.buffer ? read.buffer->bytes : uint32_t(read.texture->width) * read.texture->height * pixelBytes(read.texture->format);
         auto heap = gpu::create_gpu_heap(c.device, (uint64_t(bytes) + 15) & ~uint64_t{15}, gpu::MemoryType::readback);
-        require(heap.range.cpu != nullptr, "GPU readback allocation failed");
+        require(heap.range.cpu != nullptr, heap.error);
         if (read.buffer) {
             gpu::copy_memory(commands, {read.buffer->heap.range.gpu, bytes}, {heap.range.gpu, bytes});
             f.retained.push_back(read.buffer);
@@ -1464,12 +1514,14 @@ uint32_t frame()
         gpu::submit_and_present(c.device, submission);
     else
         gpu::submit(c.device, submission);
+    c.submitted = signal;
     f.completion = signal;
     if (!c.trash->empty())
     {
+        auto nextTrash = std::make_unique<std::vector<std::shared_ptr<void>>>();
         auto *trash = c.trash.release();
         c.deletes->defer(signal, [trash]() noexcept { delete trash; });
-        c.trash = std::make_unique<std::vector<std::shared_ptr<void>>>();
+        c.trash = std::move(nextTrash);
     }
     c.frameOpen = false;
     ++c.frameNumber;

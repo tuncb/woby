@@ -235,8 +235,10 @@ segments per nonzero knot span (one for degree-one curves), evaluates basis
 tables in double precision, and keeps matching geometry for picking, bounds,
 annotations, and analysis. These operations therefore use a tessellated
 approximation, not exact CAD geometry. Inputs unsafe for GPU floats retain the
-CPU result. Freeform imports are limited to two million source positions and two
-million generated vertices per file. Generated samples get deterministic synthetic
+CPU result. Freeform imports have no fixed vertex budget; available memory and
+the supported 32-bit index and GPU buffer formats constrain their size. CPU
+allocation exceptions and GPU geometry-buffer allocation failures are reported
+as load errors. Generated samples get deterministic synthetic
 analysis point IDs after the original OBJ position records; triangle IDs refer to
 the tessellated mesh.
 

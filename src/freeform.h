@@ -6,7 +6,6 @@ namespace woby {
 
 inline constexpr uint32_t maxFreeformDegree = 8;
 inline constexpr uint32_t freeformSegmentsPerSpan = 32;
-inline constexpr size_t maxFreeformVertices = 2'000'000;
 
 // Immutable source data. Bezier input is represented as an equivalent clamped
 // B-spline. Coordinates and parameter ranges retain the original file frame.

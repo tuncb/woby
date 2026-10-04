@@ -394,6 +394,49 @@ TEST_CASE("UV runtime rejects stale preparation results and survives removal dur
     CHECK(f.runtimes.objects.empty());
 }
 
+TEST_CASE("UV runtime releases cached results on allocation failure and retries after input changes")
+{
+    UvRuntimeFixture f;
+    REQUIRE(f.initialized);
+    REQUIRE(f.ready());
+    auto& state = f.fixture.state;
+    auto& runtime = f.runtimes.objects[f.id];
+    const auto builds = runtime.inspector.queries.builds;
+    std::promise<std::shared_ptr<const woby::PreparedComparisonInputs>> completion;
+    runtime.jobs.preparationStop = std::stop_source{};
+    runtime.jobs.preparationSignature = runtime.results.signature;
+    runtime.jobs.preparationWorker = completion.get_future();
+    completion.set_exception(std::make_exception_ptr(std::bad_alloc{}));
+    bool canceled = false;
+    SUBCASE("current failure releases buffers and waits for retry") {}
+    SUBCASE("canceled failure preserves current results") {
+        canceled = true;
+        runtime.jobs.preparationStop.request_stop();
+    }
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    CHECK(runtime.jobs.allocationFailed == !canceled);
+    CHECK(runtime.gpu.ready == canceled);
+    CHECK(woby::comparisonResultsReady(runtime, state, f.id) == canceled);
+    if (!canceled) {
+        CHECK_FALSE(runtime.sources.inputs);
+        CHECK_FALSE(runtime.sources.prepared);
+        CHECK(runtime.results.value.original.source.vertices.empty());
+        CHECK(runtime.gpu.uploadedStages == 0);
+        CHECK_FALSE(woby::graphics::isValid(runtime.gpu.original.vertices));
+        CHECK(runtime.jobs.error.find("Memory allocation failed") != std::string::npos);
+        woby::updateComparisonRuntimes(f.runtimes, state);
+        CHECK_FALSE(runtime.jobs.preparationWorker.valid());
+        CHECK(runtime.jobs.allocationFailed);
+    }
+    CHECK(runtime.inspector.queries.builds == builds);
+    state.files[0].groupSettings[0].translation = {7, 0, 0};
+    woby::notifySceneEdit(state, woby::SceneChange::geometry);
+    REQUIRE(f.ready());
+    CHECK_FALSE(runtime.jobs.allocationFailed);
+    CHECK(runtime.jobs.error.empty());
+    CHECK(runtime.results.value.original.source.vertices[0].position[0] == 7);
+}
+
 TEST_CASE("UV runtime reports preparation failure once and recovers after geometry replacement")
 {
     UvRuntimeFixture f;

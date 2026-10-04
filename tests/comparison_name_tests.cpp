@@ -1544,9 +1544,11 @@ TEST_CASE("fin findings use table columns and continuous one based indices on pa
     runtime.results.cache = {runtime.results.signature, woby::requestedComparisonStages(settings, false) | woby::comparisonDiagnosticStage(settings.diagnosticCategory)};
     for (auto& detector : runtime.results.value.detectors) { detector.phase = woby::IntersectionPhase::complete; }
     auto& surface = runtime.results.value.original;
-    surface.topology.sources.resize(1);
-    surface.topology.sources[0].source = "defect-source.obj";
-    surface.topology.sources[0].faces.resize(101);
+    auto topologySources = std::make_shared<std::vector<woby::SourceTopology>>(1);
+    (*topologySources)[0].source = "defect-source.obj";
+    (*topologySources)[0].faces.resize(101);
+    surface.topology.sources = *topologySources;
+    surface.topology.sourceStorage = std::move(topologySources);
     surface.finBounds.resize(27);
     for (size_t i = 0; i < 27; ++i) {
         woby::TopologyFinPatch patch;

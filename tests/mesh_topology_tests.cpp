@@ -72,7 +72,7 @@ TEST_CASE("shared topology retains disk incidence links boundaries and closed co
         const auto& source = disk.sources[0];
         CHECK(source.vertices.size() == 4); CHECK(source.faces.size() == 2); CHECK(source.edges.size() == 5);
         CHECK(source.components.size() == 1); CHECK(source.components[0].size() == 2);
-        CHECK(source.vertices[0].link.size() == 2); CHECK(source.vertices[0].boundaryEdges.size() == 2);
+        CHECK(source.vertices[0].faces.size() == 2); CHECK(source.vertices[0].boundaryEdges.size() == 2);
         CHECK(disk.boundaries.size() == 4); CHECK(disk.nonManifoldEdges.empty()); CHECK(disk.windingFaces.empty());
         const auto tetra = buildMeshTopology({sourceFor({{0,0,0},{1,0,0},{0,1,0},{0,0,1}}, {0,2,1, 0,1,3, 1,2,3, 2,0,3})}, mode);
         CHECK(tetra.boundaries.empty()); CHECK(tetra.windingEdges.empty()); CHECK(tetra.sources[0].components.size() == 1);
@@ -670,6 +670,30 @@ TEST_CASE("fin JSON output bounds patches and source face references")
     CHECK(bounded["faces"].size() == 100); CHECK(bounded["faceCount"] == 120); CHECK(bounded["facesTruncated"] == true);
     CHECK(bounded["physicalBoundaryEdgeIds"].size() == 100); CHECK(bounded["physicalBoundaryEdgesTruncated"] == true);
 }
+TEST_CASE("fin overlays reserve the complete selected geometry without growth slack")
+{
+    auto mesh = meshFor(attachedFinSource());
+    auto input = std::make_shared<DuplicateInput>();
+    for (uint64_t i = 0; i < 4; ++i) {
+        auto source = attachedFinSource(); source.fileId = i + 1;
+        input->sources.push_back(std::move(source));
+    }
+    mesh.duplicateInput = std::move(input);
+    const auto result = compareMeshes(mesh, {});
+    const auto& surface = result.original;
+    REQUIRE(surface.topology.fins.size() == 4);
+    REQUIRE(surface.finFill.size() == 12);
+    REQUIRE(surface.finEdges.size() == 12);
+    CHECK(surface.finFill.capacity() == surface.finFill.size());
+    CHECK(surface.finEdges.capacity() == surface.finEdges.size());
+    for (size_t i = 0; i < surface.finFill.size(); i += 3) {
+        for (size_t k = 0; k < 3; ++k) {
+            CHECK(surface.finEdges[i+k].a == surface.finFill[i+k]);
+            CHECK(surface.finEdges[i+k].b == surface.finFill[i+(k+1)%3]);
+        }
+    }
+}
+
 TEST_CASE("fin settings navigate persist validate and control picking reports and cached geometry")
 {
     Fixture fixture;
@@ -685,6 +709,8 @@ TEST_CASE("fin settings navigate persist validate and control picking reports an
     const auto clean = createSceneDocument(state); const auto signature = comparisonGeometrySignature(state, id);
     auto result = compareMeshes(comparisonWorldMesh(state, ComparisonSide::a, id), {});
     REQUIRE(result.original.finBounds.size() == 1); CHECK(result.original.finFill.size() == 3); CHECK(result.original.finEdges.size() == 3);
+    CHECK(result.original.finFill.capacity() == result.original.finFill.size());
+    CHECK(result.original.finEdges.capacity() == result.original.finEdges.size());
     selectComparisonDiagnostic(state, result, signature, 0, id); REQUIRE(findComparison(state,id)->diagnosticFocus);
     CHECK(state.camera.target[0] == doctest::Approx(100.5));
     navigateComparisonDiagnostic(state, result, signature, 1, id); CHECK(findComparison(state,id)->diagnosticFocus->index == 0);
@@ -768,7 +794,13 @@ TEST_CASE("topology incidence survives copied and moved result snapshots")
 {
     auto original = buildMeshTopology({sourceFor()});
     auto copy = original;
+    REQUIRE(copy.sourceStorage == original.sourceStorage);
+    CHECK(copy.sources[0].vertices.data() == original.sources[0].vertices.data());
+    CHECK(copy.sources[0].faces.data() == original.sources[0].faces.data());
+    CHECK(copy.sources[0].edges.data() == original.sources[0].edges.data());
+    CHECK(copy.sources[0].components.data() == original.sources[0].components.data());
     REQUIRE(copy.sources[0].incidence == original.sources[0].incidence);
+    CHECK(copy.sources[0].vertices[0].references.data() == original.sources[0].vertices[0].references.data());
     const auto expected = jsonFor(original, "boundary_edges");
     original = {};
     auto moved = std::move(copy);
@@ -776,13 +808,80 @@ TEST_CASE("topology incidence survives copied and moved result snapshots")
     const auto& source = moved.sources[0];
     REQUIRE(source.vertices[0].faces.size() == 2);
     CHECK(source.vertices[0].faces[1] == 1);
-    CHECK(source.vertices[0].link[0] == std::array<size_t,2>{1,2});
+    CHECK(source.faces[source.vertices[0].faces[0]].vertices == std::array<size_t,3>{0,1,2});
+    REQUIRE(source.vertices[0].references.size() == 1);
+    CHECK(source.vertices[0].references[0].partId == 2);
+    CHECK(source.vertices[0].references[0].pointId == 0);
+    size_t referenceOffset = 0;
+    for (const auto& vertex : source.vertices) {
+        CHECK(vertex.references.data() == source.incidence->pointReferences.data() + referenceOffset);
+        referenceOffset += vertex.references.size();
+    }
+    CHECK(referenceOffset == source.incidence->pointReferences.size());
+    auto filtered = moved;
+    auto settings = filtered.inspection; settings.holeSizeRatioTolerance = 1;
+    CHECK(filterTopologyFindings(filtered, settings));
+    CHECK(filtered.holes.size() == 1);
+    CHECK(moved.holes.empty());
+    CHECK(filtered.sourceStorage == moved.sourceStorage);
     for (size_t e = 0; e < source.edges.size(); ++e) {
         for (const auto& use : source.edges[e].incidentFaces) {
             const auto& face = source.faces[use.face];
             CHECK(std::find(face.edges.begin(), face.edges.end(), e) != face.edges.end());
         }
     }
+}
+
+TEST_CASE("topology allocates unique edges and only selected source faces")
+{
+    auto input = sourceFor({{0,0,0},{1,0,0},{0,1,0},{0,0,1}}, {0,2,1, 0,1,3, 1,2,3, 2,0,3});
+    for (const auto mode : {TopologyMode::originalIndex, TopologyMode::exactPosition}) {
+        const auto topology = buildMeshTopology({input}, mode);
+        const auto& source = topology.sources[0];
+        REQUIRE(source.edges.size() == 6);
+        CHECK(source.edges.capacity() == source.edges.size());
+        CHECK(source.incidence->pointReferences.size() == 4);
+        CHECK(source.incidence->pointReferences.capacity() == 4);
+        CHECK(topology.nonManifoldVertices.empty());
+        for (const auto& edge : source.edges) { CHECK(edge.incidentFaces.size() == 2); }
+    }
+    input.wholeFile = false;
+    input.parts[0].indexCount = 3;
+    const auto partial = buildMeshTopology({input});
+    CHECK(partial.sources[0].faces.capacity() == 1);
+    CHECK(partial.boundaries.size() == 3);
+}
+
+TEST_CASE("invalidating topology releases graph ownership while retaining counts and export snapshots")
+{
+    auto result = computeComparisonStages(meshFor(ringSource()), {}, comparisonDetectors);
+    const auto counts = result.detectors;
+    std::weak_ptr<const TopologyIncidence> storage = result.original.topology.sources[0].incidence;
+    std::weak_ptr<const std::vector<SourceTopology>> graph = result.original.topology.sourceStorage;
+    auto snapshot = result;
+    const auto expected = jsonFor(snapshot.original.topology, "boundary_edges");
+    invalidateComparisonDetectors(result, comparisonTopology);
+    CHECK(result.original.topology.sources.empty());
+    CHECK(result.original.topologyBoundaries.capacity() == 0);
+    CHECK(result.original.finFill.capacity() == 0);
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        CHECK(result.detectors[i].knownCounts == counts[i].knownCounts);
+        const bool topology = comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i)) == comparisonTopology;
+        CHECK(result.detectors[i].phase == (topology ? IntersectionPhase::outdated : counts[i].phase));
+    }
+    CHECK_FALSE(storage.expired());
+    CHECK_FALSE(graph.expired());
+    CHECK(jsonFor(snapshot.original.topology, "boundary_edges") == expected);
+    snapshot = {};
+    CHECK(storage.expired());
+    CHECK(graph.expired());
+    ComparisonCacheStatus cache{3, 0};
+    CHECK_FALSE(applyComparisonStages(result, cache,
+        computeComparisonStages(meshFor(sourceFor()), {}, comparisonTopology), 2, comparisonTopology));
+    CHECK(result.original.topology.sources.empty());
+    CHECK(applyComparisonStages(result, cache,
+        computeComparisonStages(meshFor(sourceFor()), {}, comparisonTopology), 3, comparisonTopology));
+    CHECK(result.original.topology.boundaries.size() == 4);
 }
 
 TEST_CASE("automatic detector batches preserve independent stage results and disabled stages")

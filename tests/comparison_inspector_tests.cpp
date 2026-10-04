@@ -271,8 +271,10 @@ TEST_CASE("analysis inspector preserves final findings page and clears stale sel
     InspectorFixture f;
     auto& runtime = f.runtimes.objects[f.id];
     auto& surface = runtime.results.value.original;
-    surface.topology.sources.resize(1);
-    auto& source = surface.topology.sources[0];
+    auto topologySources = std::make_shared<std::vector<SourceTopology>>(1);
+    surface.topology.sources = *topologySources;
+    surface.topology.sourceStorage = topologySources;
+    auto& source = (*topologySources)[0];
     source.source = "source.obj";
     source.edges.resize(52);
     source.vertices.resize(1);
