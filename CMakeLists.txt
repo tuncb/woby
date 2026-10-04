@@ -8,7 +8,7 @@ endif()
 if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS version (Metal 4)")
 endif()
-project(woby_obj_viewer VERSION 0.26.0 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.27.0 LANGUAGES CXX)
 
 if(APPLE)
     # Enable Objective-C++ in the common scope of the backend and Metal tests.
@@ -165,6 +165,7 @@ add_executable(woby
     src/settings_dialog.cpp
     src/settings_dialog.h
     src/scene_inspector_queries.cpp
+    src/scene_queries.cpp
     src/scene_inspector.cpp
     src/scene_inspector.h
     src/ui_icon_controls.cpp
@@ -457,10 +458,12 @@ if(BUILD_TESTING)
         src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
         src/scene_inspector_queries.cpp
+        src/scene_queries.cpp
         src/scene_inspector.cpp
         tests/comparison_name_tests.cpp
         tests/comparison_inspector_tests.cpp
         tests/scene_inspector_queries_tests.cpp
+        tests/scene_queries_tests.cpp
         src/main_menu.cpp
         src/main_menu.h
         src/settings_dialog.cpp

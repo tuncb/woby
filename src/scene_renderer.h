@@ -5,6 +5,7 @@
 #include "ui_state.h"
 #include "scene_pick.h"
 #include "scene_draw_plan.h"
+#include "scene_queries.h"
 #include "point_cloud.h"
 
 #include "graphics.h"
@@ -17,19 +18,19 @@ namespace woby {
 struct MarkerDrawContext;
 struct AdaptivePointRuntime;
 
-// CPU scratch owned by the viewport/export runtime, never by logical UiState.
-// Rebuilt on each submission; stale borrowed pointers are never read across frames.
+// CPU scratch and queries owned by the viewport/export runtime, never by UiState.
+// Borrowed part views are resolved afresh before use; queries retain owned metadata.
 struct SceneRenderScratch {
+    SceneQueryRuntime queries;
     SceneDrawCache drawCache;
     std::vector<ScenePickPart> parts;
     std::vector<std::array<float, 3>> positions;
     std::vector<std::array<float, 3>> focusPoints;
-    std::vector<const ScenePickPart*> annotationSources;
-    std::vector<PickMatrix> annotationTransforms;
-    std::vector<DiagnosticEdge> annotationLines;
+    AnnotationQuery annotationPreview;
 };
 
 struct GpuMesh {
+    uint64_t resourceRevision = nextMeshContentRevision();
     bool freeformPrepared = false;
     woby::graphics::VertexBufferHandle vertexBuffer = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::IndexBufferHandle triangleIndexBuffer = WOBY_GPU_INVALID_HANDLE;

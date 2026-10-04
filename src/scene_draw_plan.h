@@ -2,6 +2,7 @@
 #include "ui_state.h"
 
 namespace woby {
+struct SceneQueryRuntime;
 
 // Owned logical draw data: no borrowed mesh pointers or backend resources.
 struct SceneDrawItem {
@@ -19,6 +20,7 @@ struct SceneDrawPlan {
     bool triangleEdgeXray = false;
 };
 struct SceneDrawCache {
+    const UiState* owner = nullptr;
     SceneDrawPlan plan;
     uint64_t generation = 0, geometry = 0, appearance = 0, visibility = 0;
     bool valid = false;
@@ -26,6 +28,6 @@ struct SceneDrawCache {
 [[nodiscard]] SceneDrawPlan buildSceneDrawPlan(const UiState& state);
 // Camera/selection changes do not rebuild geometry transforms or appearance.
 // Returns true only when the owned snapshot changed.
-bool updateSceneDrawPlan(SceneDrawCache& cache, const UiState& state);
+bool updateSceneDrawPlan(SceneDrawCache& cache, const UiState& state, SceneQueryRuntime* queries = nullptr);
 
 } // namespace woby

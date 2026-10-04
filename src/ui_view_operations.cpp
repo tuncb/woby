@@ -201,7 +201,7 @@ ViewId createView(UiState& state)
     view.id = allocateViewId(state);
     state.activeViewId = view.id;
     state.views.push_back(std::move(view));
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::none);
     return state.activeViewId;
 }
 
@@ -214,7 +214,7 @@ ViewId duplicateView(UiState& state, ViewId id)
     copy.name += " copy";
     const auto created = copy.id;
     state.views.push_back(std::move(copy));
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::none);
     return created;
 }
 
@@ -227,7 +227,7 @@ void updateView(UiState& state, ViewId id)
     view->scene = captured.scene;
     view->objects = std::move(captured.objects);
     view->parts = std::move(captured.parts);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::none);
 }
 
 void renameView(UiState& state, ViewId id, const std::string& name)
@@ -239,7 +239,7 @@ void renameView(UiState& state, ViewId id, const std::string& name)
         : name.substr(first, name.find_last_not_of(" \t\r\n") - first + 1);
     if (view->name == normalized) { return; }
     view->name = normalized;
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::none);
 }
 
 void removeView(UiState& state, ViewId id)
@@ -247,7 +247,7 @@ void removeView(UiState& state, ViewId id)
     if (!findView(state, id)) { return; }
     std::erase_if(state.views, [id](const auto& view) { return view.id == id; });
     if (state.activeViewId == id) { state.activeViewId = 0; }
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::none);
 }
 
 void pruneMissingViewReferences(UiState& state)
@@ -354,7 +354,7 @@ void applyView(UiState& state, ViewId id)
     const bool contentChanged = !sceneContentEqual(beforeDocument, createSceneDocument(state));
     if (contentChanged || before != after) {
         if (contentChanged) { markSceneDirty(state); }
-        else { notifySceneEdit(state); }
+        else { notifySceneEdit(state, SceneChange::none); }
         state.viewApplication = ViewApplication{before, after, state.sceneEditRevision};
     }
 }

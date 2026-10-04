@@ -49,7 +49,7 @@ void histogram(const UvQualityStatistics& s, ComparisonSettings& settings)
 }
 }
 
-void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const UvQuality* quality, SceneObjectId id)
+void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const UvQuality* quality, SceneObjectId id, uint64_t signature)
 {
     int metric = static_cast<int>(settings.uvMetric);
     const char* metrics[] = {"Angle distortion", "Signed area stretch", "UV orientation", "Stretch anisotropy", "Minimum local stretch", "UV overlaps"};
@@ -132,7 +132,7 @@ void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const U
         }
     }
     const auto* comparison = findComparison(state,id);
-    if (comparison && comparison->uvProbe && comparison->uvProbe->signature == comparisonGeometrySignature(state,id)) {
+    if (comparison && comparison->uvProbe && comparison->uvProbe->signature == signature) {
         const auto& probe = *comparison->uvProbe;
         const auto it = std::find_if(q.triangles.begin(),q.triangles.end(),[&](const auto& t) { return t.partId == probe.partId && t.triangle == probe.triangle; });
         if (it != q.triangles.end()) {

@@ -3,5 +3,5 @@
 #include "uv_quality.h"
 
 namespace woby {
-void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const UvQuality* quality, SceneObjectId id);
+void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const UvQuality* quality, SceneObjectId id, uint64_t signature);
 }

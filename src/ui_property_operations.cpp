@@ -320,7 +320,7 @@ bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& object
             setGroupLineStyle(part, settings);
         }
     }
-    if (changed) { markSceneDirty(state, SceneChange::appearance); }
+    if (changed) { markSceneDirty(state, SceneChange::appearance | SceneChange::picking); }
     return available;
 }
 
@@ -473,7 +473,9 @@ void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float 
             || property == UiObjectProperty::triangles || property == UiObjectProperty::vertices;
         if (transform || visibility) { recalculateSceneBounds(state); }
         markSceneDirty(state, transform ? SceneChange::geometry : visibility
-            ? SceneChange::appearance | SceneChange::visibility : SceneChange::appearance);
+            ? SceneChange::appearance | SceneChange::visibility
+            : (property == UiObjectProperty::vertexSize || property == UiObjectProperty::lineWidth || property == UiObjectProperty::lineDepthTest)
+                ? SceneChange::appearance | SceneChange::picking : SceneChange::appearance);
     }
 }
 
@@ -585,7 +587,7 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
             }
         }
     }
-    if (before != createSceneDocument(state)) { recalculateSceneBounds(state); markSceneDirty(state, group == UiPropertyGroup::appearance ? SceneChange::appearance | SceneChange::visibility : SceneChange::geometry); }
+    if (before != createSceneDocument(state)) { recalculateSceneBounds(state); markSceneDirty(state, group == UiPropertyGroup::appearance ? SceneChange::appearance | SceneChange::visibility | SceneChange::picking : SceneChange::geometry); }
 }
 
 } // namespace woby

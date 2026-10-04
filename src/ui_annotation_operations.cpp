@@ -166,7 +166,9 @@ std::vector<Coordinate> annotationOriginalVertices(const UiState& state, const U
 }
 void validateAnnotationTargets(UiState& state)
 {
+    bool changed = false;
     for (auto& item : state.annotations) {
+        const bool validBefore = item.targetValid, pendingBefore = item.targetPending;
         item.targetPending = false;
         for (const auto& file : state.files) {
             if (annotationMeshCacheReady(file.mesh)) { continue; }
@@ -178,7 +180,9 @@ void validateAnnotationTargets(UiState& state)
             }
         }
         item.targetValid = !item.targetPending && validAttachments(state, item);
+        changed = changed || validBefore != item.targetValid || pendingBefore != item.targetPending;
     }
+    if (changed) { notifySceneEdit(state, SceneChange::annotations); }
 }
 SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationGeometry geometry, std::vector<SceneObjectId> targets)
 {
@@ -208,7 +212,7 @@ SceneObjectId createAnnotation(UiState& state, SceneObjectId target, AnnotationG
     assignSceneObjectIds(state);
     const auto id = state.annotations.back().objectId;
     selectSceneObject(state, id);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::annotations);
     return id;
 }
 SceneObjectId duplicateAnnotation(UiState& state, SceneObjectId id)
@@ -222,7 +226,7 @@ SceneObjectId duplicateAnnotation(UiState& state, SceneObjectId id)
     assignSceneObjectIds(state);
     const auto created = state.annotations.back().objectId;
     selectSceneObject(state, created);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::annotations);
     return created;
 }
 void renameAnnotation(UiState& state, SceneObjectId id, const std::string& name)
@@ -237,7 +241,15 @@ void setAnnotationSettings(UiState& state, SceneObjectId id, AnnotationSettings 
 {
     settings = normalizedAnnotationSettings(std::move(settings));
     for (auto& item : state.annotations) {
-        if (item.objectId == id && item.settings != settings) { item.settings = std::move(settings); markSceneDirty(state); return; }
+        if (item.objectId == id && item.settings != settings) {
+            const bool geometry = item.settings.visible != settings.visible || item.settings.color[3] != settings.color[3]
+                || item.settings.locked != settings.locked;
+            const bool label = item.settings.name != settings.name;
+            item.settings = std::move(settings);
+            markSceneDirty(state, (geometry ? SceneChange::annotations : SceneChange::appearance)
+                | (label ? SceneChange::labels : SceneChange::none));
+            return;
+        }
     }
 }
 void setAllAnnotationsVisible(UiState& state, bool visible)
@@ -247,7 +259,7 @@ void setAllAnnotationsVisible(UiState& state, bool visible)
         changed = changed || item.settings.visible != visible;
         item.settings.visible = visible;
     }
-    if (changed) { markSceneDirty(state); }
+    if (changed) { markSceneDirty(state, SceneChange::annotations); }
 }
 
 void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geometry)
@@ -261,7 +273,7 @@ void reshapeAnnotation(UiState& state, SceneObjectId id, AnnotationGeometry geom
         auto candidate = item;
         candidate.geometry = geometry;
         if (!validAttachments(state, candidate)) { throw std::runtime_error("Invalid annotation triangle."); }
-        if (item.geometry != geometry) { item.geometry = std::move(geometry); markSceneDirty(state); }
+        if (item.geometry != geometry) { item.geometry = std::move(geometry); ++item.geometryRevision; markSceneDirty(state, SceneChange::annotations); }
         return;
     }
 }
@@ -270,7 +282,7 @@ void deleteAnnotation(UiState& state, SceneObjectId id)
     if (!findAnnotation(state, id)) { return; }
     std::erase_if(state.annotations, [id](const auto& item) { return item.objectId == id; });
     std::erase(state.selectedSceneObjects, id);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::annotations);
 }
 std::vector<SceneAnnotationRecord> sceneAnnotationRecords(const UiState& state)
 {

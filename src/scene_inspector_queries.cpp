@@ -11,12 +11,12 @@ UiPropertyValue inspectorProperty(const SceneInspectorSnapshot& snapshot, UiObje
 
 void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
 {
+    auto& queries = runtime.sharedQueries ? *runtime.sharedQueries : runtime.localQueries;
+    updateSceneSelectionQueries(queries, state, runtime.comparisons);
+    const bool dimensionsChanged = runtime.queryOwner != &queries || runtime.dimensionBuilds != queries.selection.dimensionBuilds;
     // Compare before copying selection: unchanged frames allocate nothing.
-    if (runtime.owner == &state && runtime.key && runtime.key->generation == state.sceneGeneration
+    if (!dimensionsChanged && runtime.owner == &state && runtime.key && runtime.key->generation == state.sceneGeneration
         && runtime.key->revision == state.sceneEditRevision && runtime.key->selection == state.selectedSceneObjects) { return; }
-    const bool dimensionsChanged = runtime.owner != &state || !runtime.key
-        || runtime.key->generation != state.sceneGeneration || runtime.key->selection != state.selectedSceneObjects
-        || runtime.geometryRevision != state.revisions.geometry || runtime.visibilityRevision != state.revisions.visibility;
     SceneInspectorSnapshot next;
     next.properties = selectedObjectProperties(state);
     next.visibility = selectedObjectVisibility(state);
@@ -63,17 +63,12 @@ void updateSceneInspector(SceneInspectorRuntime& runtime, const UiState& state)
             }
         }
     }
-    if (dimensionsChanged) {
-        std::vector<ScenePickPart> parts;
-        scenePickParts(state, parts);
-        next.dimensions = sceneDimensions(parts);
-        ++runtime.dimensionBuilds;
-    } else { next.dimensions = runtime.snapshot.dimensions; }
+    next.dimensions = queries.selection.dimensions;
+    runtime.dimensionBuilds = queries.selection.dimensionBuilds;
+    runtime.queryOwner = &queries;
     runtime.snapshot = std::move(next);
     runtime.owner = &state;
     runtime.key = PropertiesKey{state.sceneGeneration, state.sceneEditRevision, state.selectedSceneObjects};
-    runtime.geometryRevision = state.revisions.geometry;
-    runtime.visibilityRevision = state.revisions.visibility;
     ++runtime.builds;
 }
 

@@ -1,5 +1,6 @@
 #include "comparison_scene.h"
 #include "scene_pick.h"
+#include "scene_queries.h"
 #include "point_cloud.h"
 
 #include <algorithm>
@@ -605,12 +606,13 @@ void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::
     }
 }
 void uvProbeLines(std::span<const ScenePickPart> parts, const UiState& state,
-    std::vector<std::array<float,3>>& lines)
+    std::vector<std::array<float,3>>& lines, SceneQueryRuntime* queries)
 {
     lines.clear();
     for (const auto& comparison : state.comparisons) {
         if (!comparison.settings.enabled || !comparison.settings.uvLinkedSelection || !comparison.uvProbe
-            || comparison.uvProbe->signature != comparisonGeometrySignature(state,comparison.objectId)) { continue; }
+            || comparison.uvProbe->signature != (queries ? updateSceneComparisonQuery(*queries, state, comparison.objectId).inputs.signature
+                : comparisonGeometrySignature(state,comparison.objectId))) { continue; }
         const auto& probe = *comparison.uvProbe;
         for (const auto& part : parts) {
             if (part.objectId != probe.partId || (part.analysisId && part.analysisId != comparison.objectId)

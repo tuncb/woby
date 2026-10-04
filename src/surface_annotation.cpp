@@ -1338,10 +1338,11 @@ void appendAnnotationPickParts(std::vector<ScenePickPart>& parts, const UiState&
     }
 }
 bool annotationEdgeHit(const UiAnnotation& item, std::span<const ScenePickPart> parts,
-    const ScenePickView& view, PickPoint point)
+    const ScenePickView& view, PickPoint point, const std::vector<DiagnosticEdge>* cachedLines)
 {
     if (item.settings.locked) { return false; }
-    const auto lines = annotationWorldLines(item, parts);
+    const auto computed = cachedLines ? std::vector<DiagnosticEdge>{} : annotationWorldLines(item, parts);
+    const auto& lines = cachedLines ? *cachedLines : computed;
     if (lines.empty()) { return false; }
     ScenePickPart outline;
     outline.objectId = item.objectId; outline.edgeXray = false;

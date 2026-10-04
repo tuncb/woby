@@ -1,12 +1,17 @@
 #pragma once
 
 #include "surface_annotation.h"
+#include "annotation_work.h"
 #include "scene_renderer.h"
 
 namespace woby {
 struct AnnotationExecutor;
 struct AnnotationPointerRuntime;
 struct AnnotationInteraction {
+    SceneQueryRuntime* queries = nullptr;
+    AnnotationWorkIdentity identity;
+    SceneQueryStamp overlayStamp;
+    uint64_t overlayAnnotations = 0;
     AnnotationExecutor* executor = nullptr;
     std::shared_ptr<AnnotationPointerRuntime> pending;
     std::optional<AnnotationShape> tool;
@@ -17,7 +22,6 @@ struct AnnotationInteraction {
     int handle = -1;
     // Editing with handle == -1 translates the entire outline.
     std::array<float, 2> grabControl{};
-    uint64_t generation = 0, revision = 0;
     AnnotationProjection projection, currentProjection;
     ScenePickView view;
     UiAnnotation preview;
@@ -26,8 +30,8 @@ struct AnnotationInteraction {
     // Re-evaluate handle visibility once after navigation/scene changes settle.
     PickMatrix overlayView{}, overlayProjection{};
     uint32_t overlayWidth = 0, overlayHeight = 0;
+    float overlayPixelScale = 0;
     SceneObjectId overlaySelection = 0;
-    uint64_t overlayRevision = 0;
     bool overlayReady = false;
     std::vector<PickPoint> overlayHandles;
     std::optional<PickPoint> overlayEdgePoint;
@@ -56,9 +60,12 @@ void updateAnnotationPointer(UiState& state, AnnotationInteraction& interaction,
 // so other viewport notifications can be stacked below it.
 float drawAnnotationOverlay(const UiState& state, AnnotationInteraction& interaction,
     const ScenePickView& view, float windowX, float pixelsToWindow, bool pointerAllowed, float windowY = 0.0f);
-// Requires the annotation vertex shader, which consumes projected NDC positions.
-void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state, const ScenePickView& view,
+// CPU preparation is separate from GPU submission.
+void prepareSceneAnnotations(const UiState& state, const ScenePickView& view,
+    SceneRenderScratch& scratch, const AnnotationInteraction* interaction = nullptr);
+// Requires prepared queries and the annotation vertex shader (projected NDC positions).
+void submitSceneAnnotations(woby::graphics::ViewId viewId, const UiState& state,
     const woby::graphics::VertexLayout& layout, woby::graphics::ProgramHandle program, woby::graphics::UniformHandle colorUniform,
-    SceneRenderScratch& scratch,
+    const SceneRenderScratch& scratch,
     const AnnotationInteraction* interaction = nullptr);
 } // namespace woby
