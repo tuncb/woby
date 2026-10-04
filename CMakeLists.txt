@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
 
 option(WOBY_BUILD_HASH_BENCHMARKS "Build opt-in hash table and scene query benchmarks" OFF)
+option(WOBY_RAPIDOBJ_PROTOTYPE "Use the experimental unified RapidOBJ loader in Woby" OFF)
+if(WOBY_RAPIDOBJ_PROTOTYPE)
+    add_compile_definitions(WOBY_RAPIDOBJ_PROTOTYPE=1)
+endif()
 if(WOBY_BUILD_HASH_BENCHMARKS)
     list(APPEND VCPKG_MANIFEST_FEATURES hash-benchmarks)
 endif()
@@ -290,6 +294,21 @@ if(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE)
 endif()
 
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
+option(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK "Build the RapidOBJ prototype/reference CPU comparison" OFF)
+if(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK)
+    add_executable(woby_obj_prototype_benchmark experiments/rapidobj_prototype.cpp
+        src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp
+        src/mesh_duplicates.cpp src/uv_quality.cpp src/uv_overlap.cpp src/mesh_comparison.cpp
+        src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
+    target_include_directories(woby_obj_prototype_benchmark PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(woby_obj_prototype_benchmark SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+    target_link_libraries(woby_obj_prototype_benchmark PRIVATE Threads::Threads CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)
+    if(WIN32)
+        target_link_libraries(woby_obj_prototype_benchmark PRIVATE psapi)
+    endif()
+    woby_enable_project_warnings(woby_obj_prototype_benchmark)
+    list(APPEND woby_runtime_targets woby_obj_prototype_benchmark)
+endif()
 if(WOBY_BUILD_HASH_BENCHMARKS)
     find_package(unordered_dense CONFIG REQUIRED)
     add_executable(woby_hash_benchmarks tests/hash_table_benchmarks.cpp)
@@ -394,6 +413,18 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
     include(doctest)
+    if(TARGET woby_obj_prototype_benchmark)
+        # Fast development target; these cases also belong to woby_tests.
+        get_target_property(prototype_sources woby_obj_prototype_benchmark SOURCES)
+        list(REMOVE_ITEM prototype_sources experiments/rapidobj_prototype.cpp)
+        add_executable(woby_obj_prototype_contract EXCLUDE_FROM_ALL tests/obj_prototype_tests.cpp ${prototype_sources})
+        target_compile_definitions(woby_obj_prototype_contract PRIVATE DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
+        target_include_directories(woby_obj_prototype_contract PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+        target_include_directories(woby_obj_prototype_contract SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+        target_link_libraries(woby_obj_prototype_contract PRIVATE doctest::doctest Threads::Threads CDT::CDT
+            Boost::multiprecision nlohmann_json::nlohmann_json)
+        woby_enable_project_warnings(woby_obj_prototype_contract)
+    endif()
     add_subdirectory(tests/utility_fixture)
     add_executable(woby_utility_allocation_tests tests/utility_allocation_tests.cpp)
     target_link_libraries(woby_utility_allocation_tests PRIVATE doctest::doctest woby_utility_allocation_fixture)
@@ -549,6 +580,7 @@ if(BUILD_TESTING)
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
+        tests/obj_prototype_tests.cpp
         tests/freeform_tests.cpp
         tests/freeform_trim_tests.cpp
         tests/scene_file_edge_tests.cpp

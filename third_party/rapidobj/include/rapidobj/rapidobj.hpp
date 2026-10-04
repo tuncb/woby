@@ -213,6 +213,19 @@ struct Attributes final {
     Array<float> colors;    //  vertex color extension (see http://paulbourke.net/dataformats/obj/colour.html)
 };
 
+// Experimental bulk output: the caller owns these buffers throughout parsing,
+// preparation and publication. No flat-array/tuple reinterpret casts are used.
+struct GeometryBuffers {
+    std::vector<std::array<double, 3>>& positions;
+    std::vector<std::array<double, 2>>& texcoords;
+    std::vector<std::array<double, 3>>& normals;
+};
+
+struct PositionView {
+    const std::array<double, 3>* data;
+    double operator[](size_t index) const noexcept { return data[index / 3][index % 3]; }
+};
+
 struct Index final {
     int position_index;
     int texcoord_index;
@@ -343,6 +356,7 @@ inline Result ParseFile(
 inline Result ParseStream(std::istream& obj_stream, const MaterialLibrary& mtl_library = MaterialLibrary::Default());
 
 inline bool Triangulate(Result& result);
+inline bool Triangulate(Result& result, const std::vector<std::array<double, 3>>& positions);
 
 } // namespace rapidobj
 
@@ -4405,6 +4419,7 @@ struct SmoothingRecord final {
 };
 
 struct SharedContext final {
+    GeometryBuffers* output = nullptr;
     struct Thread final {
         size_t concurrency{};
     } thread;
@@ -4521,6 +4536,8 @@ struct Chunk final {
     Materials materials;
     Smoothing smoothing;
     Error     error;
+    Buffer<double> precise_texcoords;
+    Buffer<double> precise_normals;
 };
 
 inline size_t SizeInBytes(const Chunk& chunk) noexcept
@@ -4530,6 +4547,8 @@ inline size_t SizeInBytes(const Chunk& chunk) noexcept
     size += chunk.positions.buffer.size() * sizeof(double);
     size += chunk.texcoords.buffer.size() * sizeof(float);
     size += chunk.normals.buffer.size() * sizeof(float);
+    size += chunk.precise_texcoords.size() * sizeof(double);
+    size += chunk.precise_normals.size() * sizeof(double);
     size += chunk.colors.buffer.size() * sizeof(float);
     size += chunk.mesh.indices.buffer.size() * sizeof(Index);
     size += chunk.mesh.indices.flags.size() * sizeof(OffsetFlags);
@@ -4757,9 +4776,38 @@ struct CopyIndices final {
     AttributeInfo      m_count{};
 };
 
+template <size_t N>
+struct CopyTuples {
+    std::array<double, N>* dst;
+    const double* src;
+    size_t size;
+    size_t Cost() const noexcept { return size * N * kMergeCopyIntCost; }
+    auto Execute() const noexcept {
+        for (size_t i = 0; i < size; ++i) {
+            for (size_t k = 0; k < N; ++k) { dst[i][k] = src[i * N + k]; }
+        }
+        return rapidobj_errc::Success;
+    }
+    inline auto Subdivide(size_t num) const;
+};
+
 using MergeTask =
-    std::variant<CopyBytes, CopyInts, CopyFloats, CopyDoubles, CopyIndices, FillFloats, FillMaterialIds, FillSmoothingGroupIds>;
+    std::variant<CopyBytes, CopyInts, CopyFloats, CopyDoubles, CopyIndices, FillFloats, FillMaterialIds, FillSmoothingGroupIds,
+                 CopyTuples<2>, CopyTuples<3>>;
 using MergeTasks = std::vector<MergeTask>;
+
+template <size_t N>
+auto CopyTuples<N>::Subdivide(size_t num) const {
+    auto tasks = MergeTasks();
+    tasks.reserve(num);
+    size_t begin = 0;
+    for (size_t i = 0; i < num; ++i) {
+        const size_t end = (i + 1) * size / num;
+        tasks.push_back(CopyTuples{dst + begin, src + begin * N, end - begin});
+        begin = end;
+    }
+    return tasks;
+}
 
 template <typename T>
 auto CopyElements<T>::Subdivide(size_t num) const noexcept
@@ -4810,7 +4858,7 @@ auto CopyIndices::Subdivide(size_t num) const noexcept
     tasks.reserve(num);
     for (size_t i = 0; i != num; ++i) {
         auto end = (1 + i) * m_size / num;
-        tasks.push_back(CopyIndices(m_dst + begin, m_src + begin, m_offset_flags, end - begin, m_offset, m_count));
+        tasks.push_back(CopyIndices(m_dst + begin, m_src + begin, m_offset_flags + begin, end - begin, m_offset, m_count));
         begin = end;
     }
     return tasks;
@@ -6601,10 +6649,16 @@ inline Result Merge(const std::vector<Chunk>& chunks, std::shared_ptr<SharedCont
     auto attribute_size_color = has_vertex_colors ? attribute_size.position : size_t{};
 
     // allocate attribute arrays
-    auto attributes = Attributes{ { attribute_size.position },
+    auto attributes = Attributes{ { context->output ? 0 : attribute_size.position },
                                   { attribute_size.texcoord },
                                   { attribute_size.normal },
                                   { attribute_size_color } };
+
+    if (context->output) {
+        context->output->positions.resize(count.position);
+        context->output->texcoords.resize(count.texcoord);
+        context->output->normals.resize(count.normal);
+    }
 
     // compute tasks to construct attribute arrays
     auto positions_destination = attributes.positions.data();
@@ -6612,13 +6666,30 @@ inline Result Merge(const std::vector<Chunk>& chunks, std::shared_ptr<SharedCont
     auto normals_destination   = attributes.normals.data();
     auto colors_destination    = attributes.colors.data();
 
+    size_t output_position = 0, output_texcoord = 0, output_normal = 0;
     for (const Chunk& chunk : chunks) {
         if (chunk.positions.buffer.size()) {
-            auto dst  = positions_destination;
             auto src  = chunk.positions.buffer.data();
             auto size = chunk.positions.buffer.size();
-            tasks.push_back(CopyDoubles(dst, src, size));
-            positions_destination += size;
+            if (context->output) {
+                tasks.push_back(CopyTuples<3>{context->output->positions.data() + output_position, src, size / 3});
+                output_position += size / 3;
+            } else {
+                tasks.push_back(CopyDoubles(positions_destination, src, size));
+                positions_destination += size;
+            }
+        }
+        if (context->output && chunk.precise_texcoords.size()) {
+            const auto size = chunk.precise_texcoords.size() / 2;
+            tasks.push_back(CopyTuples<2>{context->output->texcoords.data() + output_texcoord,
+                chunk.precise_texcoords.data(), size});
+            output_texcoord += size;
+        }
+        if (context->output && chunk.precise_normals.size()) {
+            const auto size = chunk.precise_normals.size() / 3;
+            tasks.push_back(CopyTuples<3>{context->output->normals.data() + output_normal,
+                chunk.precise_normals.data(), size});
+            output_normal += size;
         }
         if (chunk.texcoords.buffer.size()) {
             auto dst  = texcoords_destination;
@@ -7364,7 +7435,8 @@ inline auto CalculatePolygonArea(double* x, double* y, size_t size) noexcept
 
 enum class ProjectionPlane { X, Y, Z };
 
-inline bool TriangulateSingleTask(const Array<double>& positions, const TriangulateTask& task)
+template <typename Positions>
+inline bool TriangulateSingleTask(const Positions& positions, const TriangulateTask& task)
 {
     auto [src, dst, cost, isrc, idst, fsrc, fdst, size] = task;
 
@@ -7548,8 +7620,9 @@ inline bool TriangulateSingleTask(const Array<double>& positions, const Triangul
     return true;
 }
 
+template <typename Positions>
 inline bool
-TriangulateTasksParallel(size_t concurrency, const Array<double>& positions, const std::vector<TriangulateTask>& tasks)
+TriangulateTasksParallel(size_t concurrency, const Positions& positions, const std::vector<TriangulateTask>& tasks)
 {
     auto task_index  = std::atomic_size_t{ 0 };
     auto num_threads = std::atomic_size_t{ concurrency };
@@ -7585,7 +7658,8 @@ TriangulateTasksParallel(size_t concurrency, const Array<double>& positions, con
     return success;
 }
 
-inline bool TriangulateTasksSequential(const Array<double>& positions, const std::vector<TriangulateTask>& tasks)
+template <typename Positions>
+inline bool TriangulateTasksSequential(const Positions& positions, const std::vector<TriangulateTask>& tasks)
 {
     for (const auto& task : tasks) {
         bool success = TriangulateSingleTask(positions, task);
@@ -7596,7 +7670,8 @@ inline bool TriangulateTasksSequential(const Array<double>& positions, const std
     return true;
 }
 
-inline bool Triangulate(Result& result)
+template <typename Positions>
+inline bool Triangulate(Result& result, const Positions& positions)
 {
     auto mesh_tasks = std::vector<TriangulateTask>();
     auto tasks      = std::vector<TriangulateTask>();
@@ -7684,9 +7759,9 @@ inline bool Triangulate(Result& result)
     bool success          = true;
 
     if (concurrency > 1) {
-        success = TriangulateTasksParallel(concurrency, result.attributes.positions, tasks);
+        success = TriangulateTasksParallel(concurrency, positions, tasks);
     } else {
-        success = TriangulateTasksSequential(result.attributes.positions, tasks);
+        success = TriangulateTasksSequential(positions, tasks);
     }
 
     if (!success) {
@@ -7746,7 +7821,12 @@ inline Result ParseStream(std::istream& obj_stream, const MaterialLibrary& mtl_l
 
 inline bool Triangulate(Result& result)
 {
-    return detail::Triangulate(result);
+    return detail::Triangulate(result, result.attributes.positions);
+}
+
+inline bool Triangulate(Result& result, const std::vector<std::array<double, 3>>& positions)
+{
+    return detail::Triangulate(result, PositionView{positions.data()});
 }
 
 } // namespace rapidobj

@@ -1,5 +1,6 @@
 #include "obj_freeform.h"
 #include "utf8_path.h"
+#include <rapidobj/prototype.hpp>
 
 #include <algorithm>
 #include <charconv>
@@ -250,5 +251,157 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
         throw std::runtime_error("Failed to load OBJ freeform geometry: " + pathToUtf8(path) + " (line " + std::to_string(statementLine) + "): " + error.what());
     }
     return result;
+}
+
+std::vector<FreeformPatch> resolveObjFreeform(const rapidobj::PrototypeResult& input,
+    const rapidobj::GeometryBuffers& buffers, const std::filesystem::path& path,
+    const ModelLoadProgressCallback& progress)
+{
+    using Kind = rapidobj::StatementKind;
+    std::vector<FreeformPatch> patches;
+    std::vector<Coordinate> parameters;
+    std::vector<std::shared_ptr<const FreeformPatch>> parameterCurves;
+    std::optional<FreeformPatch> active;
+    std::shared_ptr<FreeformTrimming> trimming;
+    bool parameterCurve = false, rational = false, bezier = false;
+    bool haveType = false;
+    uint32_t degreeU = 0, degreeV = 0;
+    size_t line = 0, visits = 0;
+    std::string name;
+    const auto ref = [](int64_t index, size_t count) {
+        if (index == 0 || index > static_cast<int64_t>(count) || index < -static_cast<int64_t>(count)) {
+            throw std::runtime_error("Invalid freeform control point reference.");
+        }
+        return static_cast<size_t>(index < 0 ? static_cast<int64_t>(count) + index : index - 1);
+    };
+    const auto checkedDegree = [](double value) {
+        if (value < 1 || value > maxFreeformDegree || std::floor(value) != value) {
+            throw std::runtime_error("Freeform degree must be between 1 and 8.");
+        }
+        return static_cast<uint32_t>(value);
+    };
+    try {
+        for (const auto& record : input.statements) {
+            line = record.line;
+            if (visits++ % 256 == 0) { reportModelLoadProgress(progress, ModelLoadStage::reading); }
+            if (active && record.kind != Kind::knots && record.kind != Kind::end
+                && record.kind != Kind::trim && record.kind != Kind::hole) {
+                throw std::runtime_error("Unexpected statement in a freeform body.");
+            }
+            switch (record.kind) {
+            case Kind::ordinary:
+            case Kind::materialLibrary: break;
+            case Kind::group:
+                name.clear();
+                for (const auto& word : tokens(record.name)) {
+                    if (!name.empty()) { name += ' '; }
+                    name += word;
+                }
+                break;
+            case Kind::type:
+                if (record.name != "bezier" && record.name != "bspline") {
+                    throw std::runtime_error("Unsupported OBJ freeform basis '" + record.name + "'. Use bezier or bspline.");
+                }
+                haveType = true; rational = record.rational; bezier = record.name == "bezier";
+                break;
+            case Kind::degree:
+                if (record.values.empty() || record.values.size() > 2) { throw std::runtime_error("Invalid deg statement."); }
+                degreeU = checkedDegree(record.values[0]);
+                degreeV = record.values.size() == 2 ? checkedDegree(record.values[1]) : 0;
+                break;
+            case Kind::parameterVertex:
+                if (record.values.empty() || record.values.size() > 3) { throw std::runtime_error("Invalid parameter vertex."); }
+                parameters.push_back({record.values[0], record.values.size() > 1 ? record.values[1] : 0,
+                    record.values.size() > 2 ? record.values[2] : 1});
+                break;
+            case Kind::parameterCurve:
+                if (!haveType || !degreeU || record.references.size() < 2 || record.references.size() > 4096) {
+                    throw std::runtime_error("Trimming curves require cstype, deg and 2 to 4096 control points.");
+                }
+                active.emplace(); parameterCurve = true; active->degreeU = degreeU;
+                for (const auto& index : record.references) {
+                    if (index.attributes) { throw std::runtime_error("Parameter curves require parameter-only references."); }
+                    const auto& p = parameters.at(ref(index.position, parameters.size()));
+                    active->controls.push_back({p[0], p[1], 0, rational ? p[2] : 1});
+                }
+                break;
+            case Kind::curve:
+            case Kind::surface: {
+                const bool surface = record.kind == Kind::surface;
+                if (!haveType || !degreeU || (surface && !degreeV) || record.references.empty()) {
+                    throw std::runtime_error("Freeform geometry requires cstype, deg, parameter ranges and control points.");
+                }
+                active.emplace(); auto& patch = *active;
+                patch.name = name; patch.surface = surface;
+                patch.degreeU = degreeU; patch.degreeV = surface ? degreeV : 0;
+                patch.domainU = {record.values[0], record.values[1]};
+                if (surface) { patch.domainV = {record.values[2], record.values[3]}; }
+                for (const auto& index : record.references) {
+                    if (visits++ % 256 == 0) { reportModelLoadProgress(progress, ModelLoadStage::reading); }
+                    const auto id = ref(index.position, record.positions);
+                    const auto& p = buffers.positions.at(id);
+                    double weight = 1;
+                    if (rational) {
+                        const auto it = std::lower_bound(input.weights.begin(), input.weights.end(), id,
+                            [](const auto& item, size_t position) { return item.position < position; });
+                        if (it != input.weights.end() && it->position == id) { weight = it->weight; }
+                    }
+                    patch.controls.push_back({p[0], p[1], p[2], weight});
+                    if (index.attributes && !surface) { throw std::runtime_error("OBJ curves require position-only control references."); }
+                    if (index.texcoord) { patch.texcoords.push_back(buffers.texcoords.at(ref(index.texcoord, record.texcoords))); }
+                    if (index.normal) { patch.normals.push_back(buffers.normals.at(ref(index.normal, record.normals))); }
+                }
+                break;
+            }
+            case Kind::knots:
+                if (!active || record.values.size() < 2 || (record.name != "u" && record.name != "v")
+                    || (record.name == "v" && !active->surface)) { throw std::runtime_error("Invalid parm statement."); }
+                (record.name == "u" ? active->knotsU : active->knotsV) = record.values;
+                break;
+            case Kind::trim:
+            case Kind::hole: {
+                if (!active || !active->surface || record.references.empty()) {
+                    throw std::runtime_error("Trimming requires a surface and parameter-range/curve-reference triples.");
+                }
+                if (!trimming) {
+                    trimming = std::make_shared<FreeformTrimming>(); trimming->sourceFile = pathToUtf8(path);
+                    active->trimming = trimming;
+                }
+                if (record.kind == Kind::trim || trimming->regions.empty()) {
+                    trimming->regions.emplace_back(); trimming->regions.back().outer.sourceLine = line;
+                }
+                if (trimming->regions.size() > 256) { throw std::runtime_error("Too many trim regions."); }
+                FreeformTrimLoop loop; loop.sourceLine = line;
+                for (size_t i = 0; i < record.references.size(); ++i) {
+                    FreeformTrimSegment segment{parameterCurves.at(ref(record.references[i].position, parameterCurves.size())),
+                        {record.values[i * 2], record.values[i * 2 + 1]}};
+                    const auto& domain = segment.curve->domainU;
+                    if (segment.interval[0] == segment.interval[1] || std::min(segment.interval[0], segment.interval[1]) < domain[0]
+                        || std::max(segment.interval[0], segment.interval[1]) > domain[1]) {
+                        throw std::runtime_error("Trimming curve interval is outside its active knot range.");
+                    }
+                    loop.segments.push_back(std::move(segment));
+                }
+                if (record.kind == Kind::trim) { trimming->regions.back().outer = std::move(loop); }
+                else { trimming->regions.back().holes.push_back(std::move(loop)); }
+                break;
+            }
+            case Kind::end:
+                if (!active) { throw std::runtime_error("Unexpected freeform end statement."); }
+                finish(*active, bezier, parameterCurve);
+                if (parameterCurve) { parameterCurves.push_back(std::make_shared<const FreeformPatch>(std::move(*active))); }
+                else { patches.push_back(std::move(*active)); }
+                active.reset(); trimming.reset(); parameterCurve = false;
+                break;
+            case Kind::unsupported:
+                throw std::runtime_error("Unsupported OBJ freeform statement '" + record.name + "'.");
+            }
+        }
+        if (active) { throw std::runtime_error("Freeform geometry is missing its end statement."); }
+    } catch (const std::exception& error) {
+        throw std::runtime_error("Failed to load OBJ freeform geometry: " + pathToUtf8(path)
+            + " (line " + std::to_string(line) + "): " + error.what());
+    }
+    return patches;
 }
 } // namespace woby
