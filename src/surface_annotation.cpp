@@ -7,9 +7,14 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <unordered_map>
 
 namespace woby {
 namespace {
+void checkAnnotationStop(std::stop_token stop)
+{
+    if (stop.stop_requested()) { throw std::runtime_error("Annotation computation canceled."); }
+}
 using P2 = std::array<double, 2>;
 using P3 = std::array<double, 3>;
 using P4 = std::array<double, 4>;
@@ -91,6 +96,8 @@ struct ProjectionVertexCache {
     std::vector<uint8_t> masks;
     std::vector<uint32_t> stamps;
     uint32_t generation = 0;
+    struct Entry { size_t vertex = 0; uint8_t mask = 0; };
+    std::unordered_map<uint32_t, Entry> sparse;
 };
 P4 clipPosition(const AnnotationProjectionVertex& vertex)
 {
@@ -125,23 +132,28 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
     const AnnotationProjector& transform, bool homogeneous, ProjectionVertexCache& cache,
     size_t rangeBegin = 0, size_t rangeEnd = std::numeric_limits<size_t>::max())
 {
+    checkAnnotationStop(result.stop);
     if (!part.mesh || part.opacity <= 0) { return; }
     const auto& mesh = *part.mesh;
     if (cache.mesh != &mesh || cache.transform != transform || cache.homogeneous != homogeneous) {
-        if (cache.mesh != &mesh || cache.vertices.size() != mesh.vertices.size()) {
-            cache.vertices.resize(mesh.vertices.size());
-            cache.masks.resize(mesh.vertices.size());
-            cache.stamps.assign(mesh.vertices.size(), 0);
-            cache.generation = 0;
+        cache.sparse.clear();
+        if (!result.region) {
+            if (cache.mesh != &mesh || cache.vertices.size() != mesh.vertices.size()) {
+                cache.vertices.resize(mesh.vertices.size());
+                cache.masks.resize(mesh.vertices.size());
+                cache.stamps.assign(mesh.vertices.size(), 0);
+                cache.generation = 0;
+            }
+            if (++cache.generation == 0) {
+                cache.stamps.assign(mesh.vertices.size(), 0);
+                cache.generation = 1;
+            }
         }
         cache.mesh = &mesh; cache.transform = transform; cache.homogeneous = homogeneous;
-        if (++cache.generation == 0) {
-            cache.stamps.assign(mesh.vertices.size(), 0);
-            cache.generation = 1;
-        }
     }
     const size_t finish = std::min({mesh.indices.size(), part.indexOffset + part.indexCount, rangeEnd});
     for (size_t i = std::max(part.indexOffset, rangeBegin); i + 2 < finish; i += 3) {
+        if ((i % 768) < 3) { checkAnnotationStop(result.stop); }
         AnnotationProjectionFace face;
         face.objectId = part.objectId;
         face.triangle = static_cast<uint32_t>((i - part.indexOffset) / 3);
@@ -150,23 +162,26 @@ void appendProjection(AnnotationProjection& result, const ScenePickPart& part,
         for (size_t k = 0; k < 3; ++k) {
             const auto index = mesh.indices[i + k];
             if (index >= mesh.vertices.size()) { count = 0; break; }
-            auto& mask = cache.masks[index];
-            if (cache.stamps[index] != cache.generation) {
-                cache.stamps[index] = cache.generation;
+            auto [entry, inserted] = result.region ? cache.sparse.try_emplace(index)
+                : std::pair{cache.sparse.end(), false};
+            auto& mask = result.region ? entry->second.mask : cache.masks[index];
+            auto& vertex = result.region ? entry->second.vertex : cache.vertices[index];
+            if (result.region ? inserted : cache.stamps[index] != cache.generation) {
+                if (!result.region) { cache.stamps[index] = cache.generation; }
                 const auto& p = mesh.vertices[index].position;
                 const auto q = annotationTransform(transform, {p[0], p[1], p[2], 1});
                 mask = 0x80;
                 if (finitePosition(p) && std::all_of(q.begin(), q.end(), [](double v) { return std::isfinite(v); })) {
-                    cache.vertices[index] = result.vertices.size();
+                    vertex = result.vertices.size();
                     result.vertices.push_back({q, p});
                     mask = 0;
                     for (size_t axis = 0; axis < 6; ++axis) {
-                        if (plane({q[0], q[1], q[2], q[3]}, axis, homogeneous) < 0) { mask |= static_cast<uint8_t>(1u << axis); }
+                        if (plane(q, axis, homogeneous) < 0) { mask |= static_cast<uint8_t>(1u << axis); }
                     }
                 }
             }
             if (mask == 0x80) { count = 0; break; }
-            face.vertices[k] = cache.vertices[index];
+            face.vertices[k] = vertex;
             outside |= mask; common &= mask;
         }
         if (common || !count) { continue; }
@@ -298,6 +313,52 @@ bool blockIntersectsRegion(const AnnotationProjectionBlock& block, const Annotat
     }
     return !(outsideLeft || outsideRight || outsideBottom || outsideTop);
 }
+void appendRegion(AnnotationProjection& projection, const ScenePickPart& part,
+    const AnnotationProjector& transform, bool homogeneous, ProjectionVertexCache& vertices)
+{
+    if (!projection.region) { appendProjection(projection, part, transform, homogeneous, vertices); return; }
+    const auto& mesh = *part.mesh;
+    const auto& cache = mesh.annotationCache;
+    if (cache && cache->vertexData == mesh.vertices.data() && cache->indexData == mesh.indices.data()
+        && cache->vertexCount == mesh.vertices.size() && cache->indexCount == mesh.indices.size()
+        && cache->spatial && !cache->spatial->tree.empty()
+        && std::any_of(mesh.nodes.begin(), mesh.nodes.end(), [&](const auto& node) {
+            return node.indexOffset == part.indexOffset && node.indexCount == part.indexCount;
+        })) {
+        const auto& spatial = *cache->spatial;
+        std::vector<uint32_t> candidates;
+        const auto visit = [&](const auto& self, size_t index) -> void {
+            checkAnnotationStop(projection.stop);
+            const auto& node = spatial.tree[index];
+            if (node.indexEnd <= part.indexOffset || node.indexBegin >= part.indexOffset + part.indexCount
+                || !blockIntersectsRegion({0, 0, 0, node.minimum, node.maximum}, transform, *projection.region)) { return; }
+            if (node.left) { self(self, node.left); self(self, node.right); return; }
+            for (size_t i = node.begin; i < node.end; ++i) {
+                const auto offset = spatial.triangles[i];
+                if (offset >= part.indexOffset && size_t{offset} + 2 < part.indexOffset + part.indexCount) {
+                    candidates.push_back(offset);
+                }
+            }
+        };
+        visit(visit, 0);
+        // Visibility ties and attachment triangle IDs retain original source order.
+        std::sort(candidates.begin(), candidates.end(), [&](uint32_t a, uint32_t b) {
+            checkAnnotationStop(projection.stop); return a < b;
+        });
+        for (const auto offset : candidates) {
+            appendProjection(projection, part, transform, homogeneous, vertices, offset, size_t{offset} + 3);
+        }
+    } else {
+        std::vector<AnnotationProjectionBlock> blocks;
+        appendProjectionBlocks(blocks, part);
+        for (const auto& block : blocks) {
+            checkAnnotationStop(projection.stop);
+            if (blockIntersectsRegion(block, transform, *projection.region)) {
+                appendProjection(projection, part, transform, homogeneous, vertices, block.begin, block.end);
+            }
+        }
+    }
+}
 void appendGestureRegion(AnnotationProjection& projection, std::span<const ScenePickPart> parts,
     const ScenePickView& view)
 {
@@ -305,19 +366,27 @@ void appendGestureRegion(AnnotationProjection& projection, std::span<const Scene
     projection.order.clear(); projection.nodes.clear();
     const auto vp = composeProjector(view.view, view.projection);
     ProjectionVertexCache cache;
-    for (const auto& part : parts) {
-        if (!part.mesh || (!part.solid && !annotationHasTarget(projection, part.objectId))
-            || (projection.targetId && part.opacity < .999f && !annotationHasTarget(projection, part.objectId))) { continue; }
-        const auto transform = composeProjector(part.model, vp);
-        for (const auto& block : projection.blocks) {
-            if (block.objectId != part.objectId || !blockIntersectsRegion(block, transform, *projection.region)) { continue; }
-            appendProjection(projection, part, transform, view.homogeneousDepth, cache, block.begin, block.end);
+    if (projection.editing) {
+        const size_t count = std::max(size_t{1}, projection.targetIds.size());
+        for (size_t i = 0; i < count; ++i) {
+            const auto id = projection.targetIds.empty() ? projection.targetId : projection.targetIds[i];
+            const auto part = std::find_if(parts.begin(), parts.end(), [id](const auto& p) { return p.objectId == id; });
+            if (part == parts.end() || !part->mesh) { throw std::runtime_error("Make all annotation source parts visible before editing."); }
+            appendRegion(projection, *part, annotationSourceProjector(projection.definition, static_cast<uint32_t>(i)),
+                projection.definition.homogeneousDepth, cache);
+        }
+    } else {
+        for (const auto& part : parts) {
+            if (!part.mesh || (!part.solid && !annotationHasTarget(projection, part.objectId))
+                || (projection.targetId && part.opacity < .999f && !annotationHasTarget(projection, part.objectId))) { continue; }
+            appendRegion(projection, part, composeProjector(part.model, vp), view.homogeneousDepth, cache);
         }
     }
     finishProjection(projection);
 }
 size_t buildProjectionNode(AnnotationProjection& projection, size_t begin, size_t end)
 {
+    checkAnnotationStop(projection.stop);
     AnnotationProjectionNode node;
     node.begin = begin; node.end = end;
     node.minimum.fill(std::numeric_limits<double>::infinity());
@@ -359,6 +428,7 @@ void finishProjection(AnnotationProjection& projection)
     std::vector<std::pair<uint32_t, size_t>> keys;
     keys.reserve(projection.triangles.size());
     for (size_t i = 0; i < projection.triangles.size(); ++i) {
+        if (i % 256 == 0) { checkAnnotationStop(projection.stop); }
         const auto& triangle = projection.triangles[i];
         keys.emplace_back(projectionMortonCoordinate((triangle.minimum[0] + triangle.maximum[0]) * .5)
             | (projectionMortonCoordinate((triangle.minimum[1] + triangle.maximum[1]) * .5) << 1), i);
@@ -368,10 +438,10 @@ void finishProjection(AnnotationProjection& projection)
     std::vector<std::pair<uint32_t, size_t>> scratch(keys.size());
     for (uint32_t shift = 0; shift < 32; shift += 8) {
         std::array<size_t, 256> offsets{};
-        for (const auto& key : keys) { ++offsets[(key.first >> shift) & 255]; }
+        for (const auto& key : keys) { checkAnnotationStop(projection.stop); ++offsets[(key.first >> shift) & 255]; }
         size_t begin = 0;
         for (auto& offset : offsets) { const auto count = offset; offset = begin; begin += count; }
-        for (const auto& key : keys) { scratch[offsets[(key.first >> shift) & 255]++] = key; }
+        for (const auto& key : keys) { checkAnnotationStop(projection.stop); scratch[offsets[(key.first >> shift) & 255]++] = key; }
         keys.swap(scratch);
     }
     projection.order.resize(projection.triangles.size());
@@ -384,6 +454,7 @@ std::vector<size_t> projectionCandidates(const AnnotationProjection& projection,
 {
     std::vector<size_t> result;
     const auto visit = [&](const auto& self, size_t index) -> void {
+        checkAnnotationStop(projection.stop);
         const auto& node = projection.nodes[index];
         double low = 0, high = 1;
         for (size_t axis = 0; axis < 2; ++axis) {
@@ -402,7 +473,7 @@ std::vector<size_t> projectionCandidates(const AnnotationProjection& projection,
         else { for (size_t i = node.begin; i < node.end; ++i) { result.push_back(projection.order[i]); } }
     };
     if (!projection.nodes.empty()) { visit(visit, 0); }
-    std::sort(result.begin(), result.end());
+    std::sort(result.begin(), result.end(), [&](size_t a, size_t b) { checkAnnotationStop(projection.stop); return a < b; });
     return result;
 }
 struct Interval { size_t index; double begin, end, z0, z1; };
@@ -413,8 +484,9 @@ void appendVisibleInterval(std::vector<VisibleInterval>& result, const Interval*
     if (!result.empty() && result.back().surface == surface) { result.back().end = end; }
     else { result.push_back({surface, begin, end}); }
 }
-std::vector<VisibleInterval> visibleIntervals(std::span<const Interval> intervals)
+std::vector<VisibleInterval> visibleIntervals(std::span<const Interval> intervals, std::stop_token stop)
 {
+    checkAnnotationStop(stop);
     if (intervals.empty()) { return {{nullptr, 0, 1}}; }
     if (intervals.size() == 1) {
         const auto& interval = intervals.front();
@@ -428,12 +500,13 @@ std::vector<VisibleInterval> visibleIntervals(std::span<const Interval> interval
     // every level. Enumerating every overlapping pair is quadratic even for
     // coincident faces and used to hit an arbitrary two-million-pair limit.
     const size_t middle = intervals.size() / 2;
-    const auto left = visibleIntervals(intervals.first(middle));
-    const auto right = visibleIntervals(intervals.subspan(middle));
+    const auto left = visibleIntervals(intervals.first(middle), stop);
+    const auto right = visibleIntervals(intervals.subspan(middle), stop);
     std::vector<VisibleInterval> result;
     result.reserve(left.size() + right.size());
     size_t i = 0, j = 0;
     while (i < left.size() && j < right.size()) {
+        checkAnnotationStop(stop);
         const auto& a = left[i]; const auto& b = right[j];
         const double low = std::max(a.begin, b.begin), high = std::min(a.end, b.end);
         if (!a.surface || !b.surface) {
@@ -494,6 +567,7 @@ void projectEdge(AnnotationGeometry& result, OutlineJoins& joins, const Annotati
     const auto at = [&](double t) -> P2 { return {start[0] + t * (end[0] - start[0]), start[1] + t * (end[1] - start[1])}; };
     std::vector<Interval> intervals;
     for (const size_t i : projectionCandidates(projection, start, end)) {
+        checkAnnotationStop(projection.stop);
         const auto triangle = projectedTriangle(projection, i);
         const auto a = weights(triangle, start), b = weights(triangle, end);
         double low = 0, high = 1;
@@ -508,7 +582,7 @@ void projectEdge(AnnotationGeometry& result, OutlineJoins& joins, const Annotati
     }
     bool previous = false;
     bool gap = false;
-    for (const auto& visible : visibleIntervals(intervals)) {
+    for (const auto& visible : visibleIntervals(intervals, projection.stop)) {
         const double low = visible.begin, high = visible.end;
         if (high - low < 1e-10) { continue; }
         const auto* best = visible.surface;
@@ -604,11 +678,19 @@ bool annotationMeshCacheReady(const Mesh& mesh)
             && mesh.annotationCache->vertexData == mesh.vertices.data()
             && mesh.annotationCache->indexData == mesh.indices.data());
 }
+bool annotationMeshSnapshotReady(const Mesh& mesh)
+{
+    return mesh.annotationCache && mesh.annotationCache->snapshot
+        && mesh.annotationCache->vertexCount == mesh.vertices.size()
+        && mesh.annotationCache->indexCount == mesh.indices.size()
+        && mesh.annotationCache->vertexData == mesh.vertices.data()
+        && mesh.annotationCache->indexData == mesh.indices.data();
+}
 std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
     std::span<const Vertex> vertices, std::span<const uint32_t> indices, std::span<const MeshNode> nodes,
     const std::function<bool()>& canceled)
 {
-    if (indices.size() < 50000 * 3 || nodes.empty()) { return {}; }
+    if (indices.empty() || nodes.empty()) { return {}; }
     auto cache = std::make_shared<MeshAnnotationCache>();
     cache->vertexCount = vertices.size();
     cache->indexCount = indices.size();
@@ -644,6 +726,127 @@ std::shared_ptr<const MeshAnnotationCache> buildAnnotationMeshCache(
         }
         cache->fingerprints.push_back(std::to_string(hash));
     }
+    auto spatial = std::make_shared<MeshAnnotationIndex>();
+    const auto check = [&] {
+        if (canceled && canceled()) { throw std::runtime_error("Annotation preparation canceled."); }
+    };
+    {
+        // Consecutive OBJ triangles can be scattered across the entire model.
+        // Sort compact centroid keys once, then build spatial leaves independently
+        // of file order. The original offsets remain the persistent identities.
+        std::array<double, 3> low{}, extent{};
+        for (size_t axis = 0; axis < 3; ++axis) {
+            double minimum = std::numeric_limits<double>::infinity(), maximum = -minimum;
+            for (const auto& block : cache->blocks) {
+                minimum = std::min(minimum, double{block.minimum[axis]});
+                maximum = std::max(maximum, double{block.maximum[axis]});
+            }
+            low[axis] = minimum; extent[axis] = maximum - minimum;
+        }
+        const auto coordinate = [](double value) {
+            uint32_t bits = static_cast<uint32_t>(std::clamp(value, 0.0, 1.0) * 1023);
+            bits = (bits | (bits << 16)) & 0x030000ffu;
+            bits = (bits | (bits << 8)) & 0x0300f00fu;
+            bits = (bits | (bits << 4)) & 0x030c30c3u;
+            return (bits | (bits << 2)) & 0x09249249u;
+        };
+        std::vector<std::pair<uint32_t, uint32_t>> keys;
+        keys.reserve(indices.size() / 3);
+        for (const auto& block : cache->blocks) {
+            check();
+            for (size_t i = block.begin; i + 2 < block.end; i += 3) {
+                std::array<double, 3> center{};
+                bool valid = true;
+                for (size_t k = 0; k < 3; ++k) {
+                    if (indices[i + k] >= vertices.size() || !finitePosition(vertices[indices[i + k]].position)) { valid = false; break; }
+                    for (size_t axis = 0; axis < 3; ++axis) { center[axis] += vertices[indices[i + k]].position[axis] / 3.0; }
+                }
+                if (!valid) { continue; }
+                uint32_t key = 0;
+                for (size_t axis = 0; axis < 3; ++axis) {
+                    key |= coordinate(extent[axis] > 0 ? (center[axis] - low[axis]) / extent[axis] : 0) << axis;
+                }
+                keys.emplace_back(key, static_cast<uint32_t>(i));
+            }
+        }
+        std::vector<std::pair<uint32_t, uint32_t>> scratch(keys.size());
+        for (uint32_t shift = 0; shift < 32; shift += 8) {
+            std::array<size_t, 256> offsets{};
+            for (size_t i = 0; i < keys.size(); ++i) {
+                if (i % 1024 == 0) { check(); }
+                ++offsets[(keys[i].first >> shift) & 255];
+            }
+            size_t begin = 0;
+            for (auto& offset : offsets) { const auto count = offset; offset = begin; begin += count; }
+            for (size_t i = 0; i < keys.size(); ++i) {
+                if (i % 1024 == 0) { check(); }
+                const auto& key = keys[i]; scratch[offsets[(key.first >> shift) & 255]++] = key;
+            }
+            keys.swap(scratch);
+        }
+        spatial->triangles.reserve(keys.size());
+        for (size_t i = 0; i < keys.size(); ++i) {
+            if (i % 1024 == 0) { check(); }
+            spatial->triangles.push_back(keys[i].second);
+        }
+    }
+    const auto build = [&](const auto& self, size_t begin, size_t end) -> size_t {
+        check();
+        MeshAnnotationNode node;
+        node.begin = begin; node.end = end;
+        node.minimum.fill(std::numeric_limits<float>::infinity());
+        node.maximum.fill(-std::numeric_limits<float>::infinity());
+        node.indexBegin = std::numeric_limits<size_t>::max();
+        const size_t index = spatial->tree.size(); spatial->tree.push_back(node);
+        if (end - begin > 128) {
+            const size_t middle = begin + (end - begin) / 2;
+            node.left = self(self, begin, middle); node.right = self(self, middle, end);
+            for (const auto child : {node.left, node.right}) {
+                const auto& bounds = spatial->tree[child];
+                node.indexBegin = std::min(node.indexBegin, bounds.indexBegin);
+                node.indexEnd = std::max(node.indexEnd, bounds.indexEnd);
+                for (size_t axis = 0; axis < 3; ++axis) {
+                    node.minimum[axis] = std::min(node.minimum[axis], bounds.minimum[axis]);
+                    node.maximum[axis] = std::max(node.maximum[axis], bounds.maximum[axis]);
+                }
+            }
+        } else {
+            for (size_t i = begin; i < end; ++i) {
+                const size_t offset = spatial->triangles[i];
+                node.indexBegin = std::min(node.indexBegin, offset); node.indexEnd = std::max(node.indexEnd, offset + 3);
+                for (size_t k = 0; k < 3; ++k) {
+                    const auto& p = vertices[indices[offset + k]].position;
+                    for (size_t axis = 0; axis < 3; ++axis) {
+                        node.minimum[axis] = std::min(node.minimum[axis], p[axis]);
+                        node.maximum[axis] = std::max(node.maximum[axis], p[axis]);
+                    }
+                }
+            }
+        }
+        spatial->tree[index] = node;
+        return index;
+    };
+    if (!spatial->triangles.empty()) { build(build, 0, spatial->triangles.size()); }
+    cache->spatial = std::move(spatial);
+    // Stage ownership off the UI thread. Do not retain normals, UV data, precise
+    // positions, topology, or other analysis scratch in an annotation snapshot.
+    auto snapshot = std::make_shared<Mesh>();
+    snapshot->vertices.reserve(vertices.size()); snapshot->indices.reserve(indices.size());
+    for (size_t i = 0; i < vertices.size(); ++i) {
+        if (i % 256 == 0 && canceled && canceled()) { return {}; }
+        Vertex vertex; vertex.position = vertices[i].position;
+        snapshot->vertices.push_back(vertex);
+    }
+    for (size_t i = 0; i < indices.size(); ++i) {
+        if (i % 768 == 0 && canceled && canceled()) { return {}; }
+        snapshot->indices.push_back(indices[i]);
+    }
+    snapshot->nodes.assign(nodes.begin(), nodes.end());
+    // The snapshot's index has no snapshot pointer: ownership is acyclic.
+    auto snapshotCache = std::make_shared<MeshAnnotationCache>(*cache);
+    snapshotCache->vertexData = snapshot->vertices.data(); snapshotCache->indexData = snapshot->indices.data();
+    snapshot->annotationCache = std::move(snapshotCache);
+    cache->snapshot = std::move(snapshot);
     return cache;
 }
 std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count)
@@ -661,9 +864,11 @@ std::string gestureFingerprint(const Mesh& mesh, size_t offset, size_t count)
     return annotationFingerprint(mesh, offset, count);
 }
 AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets)
+    const ScenePickView& view, SceneObjectId target, std::span<const SceneObjectId> targets,
+    std::optional<std::array<float, 4>> region, std::stop_token stop)
 {
     AnnotationProjection result;
+    result.region = region; result.stop = stop;
     result.targetId = target;
     if (targets.size() > 1) {
         result.targetIds.push_back(target);
@@ -701,29 +906,20 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
             result.definition.projector = transform;
             result.definition.fingerprint = gestureFingerprint(*part.mesh, part.indexOffset, part.indexCount);
         }
-        appendProjection(result, part, transform, view.homogeneousDepth, cache);
+        appendRegion(result, part, transform, view.homogeneousDepth, cache);
     }
     finishProjection(result);
     return result;
 }
-AnnotationProjection annotationGestureProjection(std::span<const ScenePickPart> parts,
-    const ScenePickView& view, SceneObjectId target, std::array<float, 2> point)
+std::array<float, 4> annotationRegion(std::array<float, 2> start, std::array<float, 2> end)
 {
-    AnnotationProjection result;
-    result.targetId = target;
-    result.definition.homogeneousDepth = view.homogeneousDepth;
-    result.region = {point[0] - .02f, point[1] - .02f, point[0] + .02f, point[1] + .02f};
-    const auto vp = composeProjector(view.view, view.projection);
-    for (const auto& part : parts) {
-        if (!part.mesh) { continue; }
-        if (part.objectId == target) {
-            result.definition.projector = composeProjector(part.model, vp);
-            result.definition.fingerprint = gestureFingerprint(*part.mesh, part.indexOffset, part.indexCount);
-        }
-        appendProjectionBlocks(result.blocks, part);
-    }
-    appendGestureRegion(result, parts, view);
-    return result;
+    return {std::min(start[0], end[0]) - .02f, std::min(start[1], end[1]) - .02f,
+        std::max(start[0], end[0]) + .02f, std::max(start[1], end[1]) + .02f};
+}
+AnnotationProjection annotationGestureProjection(std::span<const ScenePickPart> parts,
+    const ScenePickView& view, SceneObjectId target, std::array<float, 2> point, std::stop_token stop)
+{
+    return annotationProjection(parts, view, target, {}, annotationRegion(point, point), stop);
 }
 void expandAnnotationGestureProjection(AnnotationProjection& projection,
     std::span<const ScenePickPart> parts, const ScenePickView& view,
@@ -778,14 +974,16 @@ void setAnnotationProjectionTargets(AnnotationProjection& projection,
     }
     appendGestureRegion(projection, parts, view);
 }
-AnnotationProjection annotationEditProjection(const ScenePickPart& target, const AnnotationGeometry& geometry)
+AnnotationProjection annotationEditProjection(const ScenePickPart& target, const AnnotationGeometry& geometry,
+    std::optional<std::array<float, 4>> region, std::stop_token stop)
 {
     AnnotationProjection result;
+    result.region = region; result.stop = stop; result.editing = true;
     result.targetId = target.objectId;
     result.definition = geometry;
     result.definition.segments.clear();
     ProjectionVertexCache cache;
-    appendProjection(result, target, geometry.projector, geometry.homogeneousDepth, cache);
+    appendRegion(result, target, geometry.projector, geometry.homogeneousDepth, cache);
     finishProjection(result);
     return result;
 }
@@ -817,12 +1015,14 @@ const AnnotationProjector& annotationSourceProjector(const AnnotationGeometry& g
 {
     return geometry.sources.empty() ? geometry.projector : geometry.sources.at(source).projector;
 }
-AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> parts, const UiAnnotation& item)
+AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> parts, const UiAnnotation& item,
+    std::optional<std::array<float, 4>> region, std::stop_token stop)
 {
     const auto* primary = annotationSourcePart(item, parts, 0);
     if (!primary) { throw std::runtime_error("Make the annotation source model visible before editing its geometry."); }
-    if (item.targetIds.empty()) { return annotationEditProjection(*primary, item.geometry); }
+    if (item.targetIds.empty()) { return annotationEditProjection(*primary, item.geometry, region, stop); }
     AnnotationProjection result;
+    result.region = region; result.stop = stop; result.editing = true;
     result.targetId = item.targetId; result.targetIds = item.targetIds;
     result.definition = item.geometry; result.definition.segments.clear();
     ProjectionVertexCache cache;
@@ -830,7 +1030,7 @@ AnnotationProjection annotationEditProjection(std::span<const ScenePickPart> par
         const auto* part = annotationSourcePart(item, parts, static_cast<uint32_t>(i));
         if (!part || !part->mesh) { throw std::runtime_error("Make all annotation source parts visible before editing."); }
         const auto& projector = annotationSourceProjector(item.geometry, static_cast<uint32_t>(i));
-        appendProjection(result, *part, projector, item.geometry.homogeneousDepth, cache);
+        appendRegion(result, *part, projector, item.geometry.homogeneousDepth, cache);
     }
     finishProjection(result);
     return result;

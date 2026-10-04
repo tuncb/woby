@@ -13,8 +13,9 @@ nlohmann::json controlSceneTree(const UiState& state, const ObjectIdFormatter& f
 nlohmann::json controlObjectDetails(const UiState& state, SceneObjectId id, const ObjectIdFormatter& formatId);
 nlohmann::json controlAnnotationDetails(const UiState& state, const UiAnnotation& item);
 [[nodiscard]] bool annotationControlReady(const UiState& state, ControlAction action);
+struct AnnotationCommandResult;
 nlohmann::json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanDocument,
-    const ControlOperation& command, const ObjectIdFormatter& formatId);
+    const ControlOperation& command, const ObjectIdFormatter& formatId, const AnnotationCommandResult* computed = nullptr);
 // Summarizes an immutable measurement snapshot; no renderer or timing dependencies.
 nlohmann::json controlComparisonResults(const MeshComparison& result, double tolerance, bool includeDetectors = true,
     const ObjectIdFormatter& formatId = {});
