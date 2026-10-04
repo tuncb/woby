@@ -5,6 +5,7 @@
 #include "control_scene.h"
 #include "scene_history.h"
 #include "scene_viewport.h"
+#include "comparison_runtime.h"
 
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
@@ -17,6 +18,7 @@
 #include <future>
 #include <limits>
 #include <random>
+#include <thread>
 
 namespace
 {
@@ -2412,6 +2414,140 @@ TEST_CASE("surface mesh quality distributions share ranges and retain endpoint c
     CHECK(result.qualityDistributions[2].maximum == 1);
     const auto json = woby::controlComparisonResults(result, .1);
     CHECK(json["aToB"]["surfaceMeshQuality"]["longest_edge"]["count"] == 2);
+}
+
+TEST_CASE("packed quality display preserves all metrics normals and shared ranges")
+{
+    auto a = square(), b = square();
+    for (auto& v : b.vertices) { for (auto& x : v.position) { x *= 4; } }
+    const auto result = woby::computeComparisonStages(a, b, woby::comparisonQuality);
+    for (const auto side : {0u, 1u}) {
+        const auto& input = side == 0 ? a : b;
+        const auto& surface = side == 0 ? result.original : result.repaired;
+        const auto& packed = surface.qualityVertices;
+        REQUIRE(packed.size() == input.indices.size());
+        for (size_t metric = 0; metric < woby::surfaceQualityMetricCount; ++metric) {
+            const auto reference = woby::surfaceQualityVertices(input, surface.quality,
+                static_cast<woby::SurfaceQualityMetric>(metric), result.qualityDistributions[metric]);
+            for (size_t i = 0; i < packed.size(); ++i) {
+                CHECK(packed[i].position == reference[i].position);
+                CHECK(packed[i].normal == reference[i].normal);
+                CHECK(packed[(i / 3) * 3 + metric / 2].texcoord[metric % 2] == reference[i].texcoord[0]);
+            }
+        }
+    }
+    CHECK(result.original.qualityVertices[0].texcoord[0] == doctest::Approx(.25));
+    CHECK(result.repaired.qualityVertices[0].texcoord[0] == doctest::Approx(1));
+}
+
+TEST_CASE("packed quality display handles unavailable degenerate empty and canceled inputs")
+{
+    using namespace woby;
+    const auto input = mesh({{0,0,0}, {1,0,0}, {0,1,0}}, {0,0,0, 0,1,2});
+    const auto quality = inspectSurfaceMeshQuality(input);
+    const auto distributions = surfaceQualityDistributions(quality, {});
+    const auto packed = surfaceQualityDisplayVertices(input, quality, distributions);
+    REQUIRE(packed.size() == 6);
+    for (size_t metric = 0; metric < surfaceQualityMetricCount; ++metric) {
+        CHECK(packed[metric / 2].texcoord[metric % 2] == -1);
+    }
+    CHECK(packed[4].texcoord[1] == -2);
+    CHECK(surfaceQualityDisplayVertices({}, {}, distributions).empty());
+    std::stop_source stop;
+    stop.request_stop();
+    CHECK_THROWS_WITH((void)surfaceQualityDisplayVertices(input, quality, distributions, stop.get_token()), "Analysis canceled.");
+    CHECK_THROWS((void)surfaceQualityDisplayVertices(input, {}, distributions));
+}
+
+TEST_CASE("quality display publication moves matching buffers and rejects stale worker results")
+{
+    using namespace woby;
+    ComparisonCacheStatus cache{17, comparisonSource};
+    MeshComparison published;
+    auto update = computeComparisonStages(square(), {}, comparisonQuality);
+    const auto* storage = update.original.qualityVertices.data();
+    REQUIRE(applyComparisonStages(published, cache, std::move(update), 17, comparisonQuality));
+    CHECK(published.original.qualityVertices.data() == storage);
+    auto stale = computeComparisonStages(square(4), {}, comparisonQuality);
+    CHECK_FALSE(applyComparisonStages(published, cache, std::move(stale), 16, comparisonQuality));
+    CHECK(published.original.qualityVertices.data() == storage);
+    CHECK(published.original.qualityVertices[0].position[2] == 0);
+    auto unrelated = computeComparisonStages(square(), {}, comparisonSource);
+    REQUIRE(applyComparisonStages(published, cache, std::move(unrelated), 17, comparisonSource));
+    CHECK(published.original.qualityVertices.data() == storage);
+}
+
+TEST_CASE("quality metric switches reuse GPU buffers and source edits invalidate them")
+{
+    using namespace woby;
+    struct Fixture {
+        std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+            / ("woby-quality-runtime-" + std::to_string(std::random_device{}()));
+        UiState state;
+        ComparisonRuntimes runtimes;
+        Fixture() { std::filesystem::create_directory(root); }
+        ~Fixture() {
+            destroyComparisonRuntimes(runtimes);
+            graphics::shutdown();
+            std::error_code ignored;
+            std::filesystem::remove_all(root, ignored);
+        }
+    } fixture;
+    graphics::Init init;
+    init.type = graphics::RendererType::Noop;
+    REQUIRE(graphics::init(init));
+    fixture.state.files.push_back(createUiFileState(fixture.root / "mesh.obj", square(), 0));
+    appendDefaultSceneNodesForFiles(fixture.state, 0);
+    const auto id = createAnalysisFromObjects(fixture.state, AnalysisTask::meshQuality,
+        {fixture.state.files[0].objectId});
+    auto& runtime = fixture.runtimes.objects[id];
+    const auto wait = [&] {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+        do {
+            updateComparisonRuntimes(fixture.runtimes, fixture.state);
+            if (comparisonStagesReady(runtime, fixture.state, id, comparisonSource | comparisonQuality, true)) { return true; }
+            std::this_thread::yield();
+        } while (runtime.jobs.error.empty() && std::chrono::steady_clock::now() < deadline);
+        return false;
+    };
+    REQUIRE(wait());
+    const auto handle = runtime.gpu.original.quality;
+    const auto revision = runtime.results.revision;
+    REQUIRE(graphics::isValid(handle));
+    CHECK(runtime.results.value.original.qualityVertices.empty());
+    for (size_t cycle = 0; cycle < 2; ++cycle) {
+        for (size_t metric = 0; metric < surfaceQualityMetricCount; ++metric) {
+            auto settings = comparisonSettings(fixture.state, id);
+            settings.quality.metric = static_cast<SurfaceQualityMetric>(metric);
+            settings.quality.maximumEnabled = true;
+            settings.quality.maximumSize = static_cast<float>(metric + 1);
+            setComparisonSettings(fixture.state, settings, id);
+            updateComparisonRuntimes(fixture.runtimes, fixture.state);
+            CHECK(runtime.gpu.original.quality.idx == handle.idx);
+            CHECK(runtime.results.revision == revision);
+            CHECK_FALSE(runtime.jobs.worker.valid());
+            CHECK(readyComparisonSettings(runtime, fixture.state, id).mode == ComparisonMode::surfaceQuality);
+            CHECK(comparisonsReadyForScreenshot(fixture.state, fixture.runtimes));
+        }
+    }
+    const auto oldSignature = runtime.results.signature;
+    std::promise<MeshComparison> stale;
+    runtime.jobs.worker = stale.get_future();
+    runtime.jobs.workerSignature = oldSignature;
+    runtime.jobs.workerStages = comparisonQuality;
+    runtime.jobs.stop = std::stop_source{};
+    selectSceneObject(fixture.state, fixture.state.files[0].objectId);
+    setSelectedObjectProperty(fixture.state, UiObjectProperty::scale, 3);
+    updateComparisonRuntimes(fixture.runtimes, fixture.state);
+    CHECK(runtime.jobs.stop.stop_requested());
+    CHECK_FALSE(graphics::isValid(runtime.gpu.original.quality));
+    CHECK_FALSE(comparisonStagesReady(runtime, fixture.state, id, comparisonQuality, true));
+    stale.set_value(computeComparisonStages(square(), {}, comparisonQuality));
+    REQUIRE(wait());
+    CHECK(runtime.results.signature != oldSignature);
+    CHECK(runtime.results.revision != revision);
+    CHECK(runtime.results.value.original.quality.statistics[0].maximum == doctest::Approx(3 * std::sqrt(2.0)));
+    CHECK(comparisonsReadyForScreenshot(fixture.state, fixture.runtimes));
 }
 
 TEST_CASE("surface mesh quality percentiles and size limits distinguish counts from area")
