@@ -333,7 +333,6 @@ TEST_CASE("analysis submission resolves live modes from current cached inputs") 
             findComparison(f.state, f.id)->settings = settings;
             notifySceneEdit(f.state);
             runtime.results.signature = runtime.results.cache.signature = f.queries().signature;
-            runtime.gpu.uploadedQualityMetric = settings.quality.metric;
             const auto cached = readyComparisonSettings(runtime, f.state, f.id);
             const auto queries = runtime.inspector.queries;
             runtime.inspector.queries = {};

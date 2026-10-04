@@ -1417,6 +1417,13 @@ uint32_t frame()
     // Acquire before finalizing the upload command buffer: resize may create targets.
     auto *commands = gpu::begin_commands(f.pool);
     auto swap = c.windowed ? gpu::acquire(commands) : gpu::SwapchainFrame{};
+    c.stats.presentationSubmitted = swap.render_view != nullptr;
+    c.stats.drawableWidth = swap.render_view ? swap.extent.x : 0;
+    c.stats.drawableHeight = swap.render_view ? swap.extent.y : 0;
+    const auto *displayMode = c.window ? SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(c.window)) : nullptr;
+    c.stats.displayRefreshRate = displayMode ? displayMode->refresh_rate : 0.0;
+    c.stats.mailboxPresentation = false;
+    c.stats.pacingPeriodNanoseconds = 0;
 #if defined(_WIN32)
     // FIFO retirement on mixed-refresh Windows desktops can follow a different
     // display's cadence. Mailbox keeps the latest completed image available to
@@ -1427,16 +1434,17 @@ uint32_t frame()
     const bool mailbox = swap.render_view && !inactive && gpu::supports_mailbox_presentation(c.device);
     if (mailbox || inactive)
     {
-        const auto *mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(c.window));
         // Occluded FIFO presentation may return immediately; keep minimized
         // windows responsive without spinning through thousands of frames.
-        const auto delay = advanceFramePacing(c.pacing, SDL_GetTicksNS(), mode ? mode->refresh_rate : 0.0, !inactive);
+        const auto delay = advanceFramePacing(c.pacing, SDL_GetTicksNS(), c.stats.displayRefreshRate, !inactive);
         if (delay)
             SDL_DelayPrecise(delay);
     }
     else
         resetFramePacing(c.pacing);
     gpu::set_mailbox_presentation(c.device, mailbox);
+    c.stats.mailboxPresentation = mailbox;
+    c.stats.pacingPeriodNanoseconds = c.pacing.periodNanoseconds;
 #endif
     if (swap.render_view)
     {

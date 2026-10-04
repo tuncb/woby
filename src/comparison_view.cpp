@@ -1398,7 +1398,7 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     const auto &gpu = useOriginal ? runtime.gpu.original : runtime.gpu.repaired;
     const bool quality = settings.mode == ComparisonMode::surfaceQuality;
     const bool heatmap = settings.mode == ComparisonMode::distance || quality;
-    if (quality && (!woby::graphics::isValid(gpu.quality) || runtime.gpu.uploadedQualityMetric != settings.quality.metric)) { return; }
+    if (quality && !woby::graphics::isValid(gpu.quality)) { return; }
     float identity[16];
     bx::mtxTranslate(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
     if (isUvAnalysis(settings.type)) {
@@ -1422,7 +1422,8 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
         if (settings.showEdges) { submitWire(view, gpu, colorProgram, colorUniform, {.22f, .25f, .30f, 1}, false, identity); }
         return;
     }
-    const std::array<float, 4> parameters = {settings.tolerance, settings.colorRange, quality ? 2.0f : heatmap ? 1.0f : 0.0f,
+    const std::array<float, 4> parameters = {quality ? static_cast<float>(settings.quality.metric) : settings.tolerance,
+        settings.colorRange, quality ? 2.0f : heatmap ? 1.0f : 0.0f,
         quality && settings.quality.metric == SurfaceQualityMetric::shape ? 1.0f : 0.0f};
     const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
     woby::graphics::setTransform(identity);

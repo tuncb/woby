@@ -96,7 +96,8 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"camera", "dolly", "--factor", "0.5"}, {"camera", "move", "--forward", "1"},
         {"model", "add", path}, {"model", "remove", "object"}, {"folder", "add", path, "--tree"},
         {"importers", "list"}, {"importers", "add", path, "--remember"}, {"importers", "scan", path},
-        {"importers", "forget", path}, {"stats"}, {"performance", "get"}, {"pane", "set", "--visible", "false", "--width", "450"},
+        {"importers", "forget", path}, {"stats"}, {"performance", "get"}, {"performance", "begin"}, {"performance", "end"},
+        {"pane", "set", "--visible", "false", "--width", "450", "--properties-visible", "true"},
         {"analysis", "create", "--name", "Repair check", "--a", "source-a", "--b", "source-b"},
         {"analysis", "delete", "object"},
         {"analysis", "set", "object", "--name", "Renamed", "--mode", "overlay", "--visible", "false", "--distance-on-a", "true",
@@ -342,6 +343,13 @@ TEST_CASE("ctl camera navigation has explicit units finite results and no scene 
         run(state, clean, "pane.set", {{"visible", false}, {"width", 1}});
         CHECK(state.viewerPaneWidth == 200);
         CHECK_FALSE(state.viewerPaneVisible);
+        const auto panes = run(state, clean, "pane.set", {{"propertiesVisible", true}});
+        CHECK(state.propertiesPaneVisible);
+        CHECK_FALSE(state.viewerPaneVisible);
+        CHECK(panes["propertiesPane"]["visible"] == true);
+        run(state, clean, "pane.set", {{"propertiesVisible", false}, {"visible", true}});
+        CHECK_FALSE(state.propertiesPaneVisible);
+        CHECK(state.viewerPaneVisible);
         CHECK(woby::sceneContentEqual(woby::createSceneDocument(state), clean));
         CHECK_FALSE(state.isDirty);
         run(state, clean, "camera.frame");

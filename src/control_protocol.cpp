@@ -73,7 +73,9 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::importersForget, "importers.forget", "importers forget", "path", {}, {}, false, true},
         {ControlAction::stats, "stats", "stats", {}, {}, {}},
         {ControlAction::performance, "performance.get", "performance get", {}, {}, {}},
-        {ControlAction::pane, "pane.set", "pane set", {}, {"visible", "width"}, {}, true, true},
+        {ControlAction::performanceBegin, "performance.begin", "performance begin", {}, {}, {}, false, true},
+        {ControlAction::performanceEnd, "performance.end", "performance end", {}, {}, {}, false, true},
+        {ControlAction::pane, "pane.set", "pane set", {}, {"visible", "width", "propertiesVisible"}, {}, true, true},
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
@@ -120,7 +122,7 @@ bool booleanOption(const std::string& name)
 {
     if (name == "uvThresholdEnabled" || name == "uvOverlapEnabled" || name == "uvRangeEnabled" || name == "uvSeparated" || name == "uvLinkedSelection" || name == "isolate" || name == "uvGrid" || name == "lineDepthTest") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
-        || name == "xray" || name == "locked" || name == "enabled" || name == "visible" || name == "solid" || name == "triangles" || name == "vertices"
+        || name == "xray" || name == "locked" || name == "enabled" || name == "visible" || name == "propertiesVisible" || name == "solid" || name == "triangles" || name == "vertices"
         || name == "tree" || name == "remember" || name == "distanceOnA"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "showWinding" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
@@ -157,6 +159,7 @@ std::string cliOption(const std::string& name)
     if (name == "uvGrid") { return "--uv-grid"; }
     if (name == "uvView") { return "--uv-view"; }
     if (name == "lineWidth") { return "--line-width"; }
+    if (name == "propertiesVisible") { return "--properties-visible"; }
     if (name == "lineDepthTest") { return "--line-depth-test"; }
     if (name == "uvDensityU") { return "--uv-density-u"; }
     if (name == "uvDensityV") { return "--uv-density-v"; }
@@ -309,7 +312,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     BOOL_FIELD(autoUpdateSelfIntersections) BOOL_FIELD(selfIntersections) BOOL_FIELD(showSelfIntersections)
     BOOL_FIELD(degenerateTriangles) BOOL_FIELD(showDegenerateTriangles)
     BOOL_FIELD(duplicatePoints) BOOL_FIELD(duplicateTriangles) BOOL_FIELD(showDuplicatePoints) BOOL_FIELD(showDuplicateTriangles)
-    BOOL_FIELD(locked)
+    BOOL_FIELD(locked) BOOL_FIELD(propertiesVisible)
     BOOL_FIELD(qualityOnA) BOOL_FIELD(qualityMinimumEnabled) BOOL_FIELD(qualityMaximumEnabled)
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(showWinding) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
@@ -454,7 +457,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
-    FIELD(visible) FIELD(solid) FIELD(xray) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
+    FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
     FIELD(lineWidth) FIELD(lineDepthTest) FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
     FIELD(uvThresholdEnabled) FIELD(uvOverlapEnabled) FIELD(uvRangeEnabled) FIELD(uvThreshold) FIELD(uvNearCollapse) FIELD(uvRangeMinimum) FIELD(uvRangeMaximum) FIELD(uvOverlapScope)
     FIELD(uvSeparated) FIELD(uvLinkedSelection) FIELD(uvColor) FIELD(uvMinimum) FIELD(uvMaximum) FIELD(uvMetric) FIELD(uvNormalization) FIELD(isolate)

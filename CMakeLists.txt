@@ -222,7 +222,7 @@ endif()
 target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(woby SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
 
-target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}" WOBY_BUILD_CONFIG="$<CONFIG>")
 
 target_link_libraries(woby PRIVATE
     CDT::CDT
@@ -297,13 +297,13 @@ if(WOBY_BUILD_HASH_BENCHMARKS)
 endif()
 if(WOBY_BUILD_BENCHMARKS)
     add_executable(woby_benchmarks
-        tests/performance_benchmarks.cpp
+        tests/performance_benchmarks.cpp tests/analysis_export_benchmarks.cpp src/analysis_results.cpp
         src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_comparison.cpp
         src/uv_quality.cpp src/uv_overlap.cpp
         src/mesh_duplicates.cpp src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
     target_include_directories(woby_benchmarks PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_include_directories(woby_benchmarks SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
-    target_link_libraries(woby_benchmarks PRIVATE Threads::Threads CDT::CDT Boost::multiprecision)
+    target_link_libraries(woby_benchmarks PRIVATE Threads::Threads CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)
     woby_enable_project_warnings(woby_benchmarks)
     list(APPEND woby_runtime_targets woby_benchmarks)
     if(WOBY_BUILD_HASH_BENCHMARKS)
@@ -322,7 +322,7 @@ if(WOBY_BUILD_BENCHMARKS)
         endforeach()
         foreach(backend IN ITEMS boost ankerl)
             set(target "woby_benchmarks_${backend}")
-            add_executable(${target} tests/performance_benchmarks.cpp ${hash_probe_sources}
+            add_executable(${target} tests/performance_benchmarks.cpp tests/analysis_export_benchmarks.cpp src/analysis_results.cpp ${hash_probe_sources}
                 src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_degenerates.cpp
                 src/uv_quality.cpp src/uv_overlap.cpp
                 src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
@@ -330,7 +330,7 @@ if(WOBY_BUILD_BENCHMARKS)
             target_include_directories(${target} SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
             target_compile_definitions(${target} PRIVATE "WOBY_BENCHMARK_${backend}=1")
             target_link_libraries(${target} PRIVATE Threads::Threads
-                CDT::CDT Boost::multiprecision Boost::unordered unordered_dense::unordered_dense)
+                CDT::CDT Boost::multiprecision Boost::unordered unordered_dense::unordered_dense nlohmann_json::nlohmann_json)
             woby_enable_project_warnings(${target})
             list(APPEND woby_runtime_targets ${target})
         endforeach()
@@ -403,6 +403,7 @@ if(BUILD_TESTING)
         tests/graphics_diagnostics_tests.cpp
         tests/shader_types_tests.cpp
         tests/frame_pacing_tests.cpp
+        tests/performance_capture_tests.cpp
         tests/manual_path_dialog_tests.cpp
         src/manual_path_dialog.cpp
         src/manual_path_dialog_ui.cpp
@@ -556,7 +557,8 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp)
+        target_sources(woby_tests PRIVATE tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp
+            tests/scene_renderer_gpu_tests.cpp)
         target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_GPU_ALLOCATION_TESTS)
         target_compile_definitions(woby_tests PRIVATE WOBY_GPU_ALLOCATION_TESTS)
     endif()

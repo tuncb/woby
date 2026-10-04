@@ -44,6 +44,14 @@ VertexOutput vs_comparison(uint index : SV_VertexID) {
     uint p = index * root.stride;
     v.normal = float3(root.vertices[p+3],root.vertices[p+4],root.vertices[p+5]);
     v.uv = float2(root.vertices[p+6],root.vertices[p+7]);
+    if (root.comparison.z > 1.5 && root.comparison.z < 2.5) {
+        // Four per-face metrics occupy the UV slots of the first two corners.
+        // Every corner fetches the same selected value; buffer size and vertex
+        // layout stay identical to an ordinary expanded mesh.
+        uint metric = uint(root.comparison.x);
+        uint corner = (index/3)*3 + metric/2;
+        v.uv = float2(root.vertices[corner*root.stride+6+metric%2],0);
+    }
     return v;
 }
 VertexOutput pointVertex(uint vertex, uint instance) {
