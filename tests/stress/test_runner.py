@@ -1,6 +1,7 @@
 """Unit tests of measurement math and resource limits, without a viewer."""
 
 import unittest
+import argparse
 import errno
 import json
 from pathlib import Path
@@ -9,7 +10,7 @@ import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from run import fixture_copy, memory_stop_reason, summarize_frames, wait_detector
+from run import add_memory_limit_arguments, fixture_copy, memory_stop_reason, summarize_frames, wait_detector
 from prepare_derivatives import finite_vertices
 from summarize import aggregate, analysis_summary, collect, resource_summary
 
@@ -41,6 +42,21 @@ def test_memory_limits_distinguish_process_and_system():
     assert memory_stop_reason(11, 20, 10, 5) == "process_private_limit"
     assert memory_stop_reason(9, 4, 10, 5) == "system_available_floor"
     assert memory_stop_reason(10, 5, 10, 5) is None
+
+
+def test_memory_monitor_has_no_default_cutoff():
+    parser = argparse.ArgumentParser()
+    add_memory_limit_arguments(parser)
+    defaults = parser.parse_args([])
+    assert defaults.max_private_gib == defaults.min_available_gib == 0
+    assert memory_stop_reason(100 * 1024**3, 0, 0, 0) is None
+    assert memory_stop_reason(100, 4, 0, 5) == "system_available_floor"
+    assert memory_stop_reason(11, 0, 10, 0) == "process_private_limit"
+    explicit = parser.parse_args(["--max-private-gib", "38", "--min-available-gib", "6"])
+    assert explicit.max_private_gib == 38 and explicit.min_available_gib == 6
+    for invalid in ("-1", "nan", "inf"):
+        with unittest.TestCase().assertRaises(SystemExit):
+            parser.parse_args(["--max-private-gib", invalid])
 
 
 def test_finite_derivative_preserves_source_and_records_removed_rows():

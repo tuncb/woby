@@ -22,11 +22,19 @@ MeshComparison data()
         duplicates.findings.push_back(std::move(f)); duplicates.duplicateCount += 136;
     }
     auto& t = r.original.topology;
-    t.availableSources = 1; t.sources.resize(1);
-    t.sources[0].fileId = 1; t.sources[0].vertices.resize(121);
-    for (auto& v : t.sources[0].vertices) {
-        for (size_t i = 0; i < 130; ++i) { v.references.push_back({2, i}); }
+    t.availableSources = 1;
+    auto sources = std::make_shared<std::vector<SourceTopology>>(1);
+    (*sources)[0].fileId = 1; (*sources)[0].vertices.resize(121);
+    auto incidence = std::make_shared<TopologyIncidence>();
+    incidence->pointReferences.reserve(121 * 130);
+    for (auto& v : (*sources)[0].vertices) {
+        const auto first = incidence->pointReferences.size();
+        for (size_t i = 0; i < 130; ++i) { incidence->pointReferences.push_back({2, i}); }
+        v.references = std::span<const TopologyPointReference>(incidence->pointReferences).subspan(first, 130);
     }
+    (*sources)[0].incidence = std::move(incidence);
+    t.sources = *sources;
+    t.sourceStorage = std::move(sources);
     TopologyBoundary b;
     for (size_t i = 0; i < 121; ++i) { b.vertices.push_back(i); }
     t.boundaryRegions.push_back(std::move(b)); t.holes.push_back(0);

@@ -105,16 +105,14 @@ woby::graphics::VertexBufferHandle uploadEdges(const std::vector<DiagnosticEdge>
     {
         return WOBY_GPU_INVALID_HANDLE;
     }
-    const auto bytes = comparisonBufferBytes(edges.size(), 2 * sizeof(std::array<float, 3>));
-    std::vector<std::array<float, 3>> points;
-    points.reserve(edges.size() * 2);
-    for (const auto &edge : edges)
-    {
-        points.push_back(edge.a);
-        points.push_back(edge.b);
-    }
+    // DiagnosticEdge already has the packed endpoint layout consumed by the
+    // renderer. Copy it directly instead of allocating another full line list.
+    static_assert(sizeof(DiagnosticEdge) == 2 * sizeof(std::array<float, 3>));
+    static_assert(offsetof(DiagnosticEdge, a) == 0);
+    static_assert(offsetof(DiagnosticEdge, b) == sizeof(std::array<float, 3>));
+    const auto bytes = comparisonBufferBytes(edges.size(), sizeof(DiagnosticEdge));
     const auto handle = woby::graphics::createVertexBuffer(
-        woby::graphics::copy(points.data(), bytes), helperLineVertexLayout());
+        woby::graphics::copy(edges.data(), bytes), helperLineVertexLayout());
     if (!woby::graphics::isValid(handle))
     {
         throw std::runtime_error("Cannot allocate analysis edge buffer.");
@@ -1170,7 +1168,7 @@ static void destroyStage(ComparisonGpuSurface& gpu, uint32_t stages)
     if (stages & comparisonQuality) { destroy(gpu.quality); }
 }
 
-static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, SceneObjectId id, bool allowStart)
+static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& state, SceneObjectId id, bool allowStart)
 {
     const auto settings = comparisonSettings(state, id);
     const auto* comparison = findComparison(state, id);
@@ -1213,6 +1211,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.result.detectors = std::move(detectors);
         runtime.inputs.reset(); runtime.uploadedStages = runtime.failedStages = 0;
         runtime.retryDetectorsSeparately = false;
+        runtime.allocationFailed = false;
         runtime.resultSignature = runtime.attemptedSignature = 0; runtime.error.clear();
         resetComparisonDiagnosticFocus(state, id);
     }
@@ -1223,6 +1222,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
                 runtime.prepared = std::move(prepared);
                 runtime.inputs = runtime.prepared->meshes;
             }
+        } catch (const std::bad_alloc&) {
+            if (!runtime.preparationStop.stop_requested() && runtime.preparationSignature == wanted) { throw; }
         } catch (const std::exception& error) {
             if (!runtime.preparationStop.stop_requested() && runtime.preparationSignature == wanted) {
                 runtime.error = error.what();
@@ -1325,6 +1326,9 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
                     if (!runtime.failedStages) { runtime.error.clear(); }
                 }
             } else { requeueCanceledWorker(); }
+        } catch (const std::bad_alloc&) {
+            if (!runtime.stop.stop_requested() && wanted == runtime.workerSignature) { throw; }
+            requeueCanceledWorker();
         } catch (const std::exception& error) {
             if (!runtime.stop.stop_requested() && wanted == runtime.workerSignature) {
                 const auto detectors = runtime.workerStages & comparisonDetectors;
@@ -1349,6 +1353,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
                 && applyComparisonStages(runtime.result, runtime.cache, std::move(update), job.workerSignature, comparisonIntersections)) {
                 runtime.resultSignature = wanted; runtime.resultsRevision = nextResultsRevision();
             }
+        } catch (const std::bad_alloc&) {
+            if (!job.stop.stop_requested() && job.workerRevision == job.revision && job.workerSignature == wanted) { throw; }
         } catch (const std::exception& error) {
             if (!job.stop.stop_requested() && job.workerRevision == job.revision && job.workerSignature == wanted) { phase(IntersectionPhase::failed, error.what()); }
         }
@@ -1366,22 +1372,28 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
     setComparisonDegenerateSettings(runtime.result, resultSettings.degenerates);
     setComparisonIntersectionSettings(runtime.result, settings.intersections);
     if (setComparisonTopologyInspectionSettings(runtime.result, resultSettings.topologyInspection)) { runtime.resultsRevision = nextResultsRevision(); invalidateGpu(comparisonTopology); }
-    // Filtering may change the count from the worker's default hole threshold.
+    // Hole and fin thresholds filter the current graph; neither needs a rebuild.
+    // Only queued requests complete here, preserving manual/outdated/canceled
+    // states and the geometry/mode invalidation checked above.
+    for (const auto category : {DiagnosticCategory::holes, DiagnosticCategory::fins}) {
+        auto& status = runtime.result.detectors[static_cast<size_t>(category)];
+        if (status.phase == IntersectionPhase::queued && (runtime.cache.completed & comparisonTopology)
+            && !(runtime.failedStages & comparisonTopology)) {
+            status.phase = IntersectionPhase::complete; status.hasResult = true;
+        }
+    }
+    queuedStages = 0;
+    for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+        if (runtime.result.detectors[i].phase == IntersectionPhase::queued) {
+            queuedStages |= comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i));
+        }
+    }
+    // Filtering may change counts from the worker's default thresholds.
     auto& holes = runtime.result.detectors[static_cast<size_t>(DiagnosticCategory::holes)];
     if (holes.phase == IntersectionPhase::complete) {
         holes.knownCounts = {runtime.result.original.topology.holes.size(), runtime.result.repaired.topology.holes.size()};
     }
     auto& fins = runtime.result.detectors[static_cast<size_t>(DiagnosticCategory::fins)];
-    if (fins.phase == IntersectionPhase::queued && (runtime.cache.completed & comparisonTopology)
-        && !(runtime.failedStages & comparisonTopology)) {
-        fins.phase = IntersectionPhase::complete; fins.hasResult = true;
-        queuedStages = 0;
-        for (size_t i = 0; i < backgroundDetectorCount; ++i) {
-            if (runtime.result.detectors[i].phase == IntersectionPhase::queued) {
-                queuedStages |= comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i));
-            }
-        }
-    }
     if (fins.phase == IntersectionPhase::complete) {
         fins.knownCounts = {runtime.result.original.topology.fins.size(), runtime.result.repaired.topology.fins.size()};
     }
@@ -1440,6 +1452,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
                     return computeComparisonStages((*inputs)[0], (*inputs)[1], comparisonIntersections, stop, {}, mode, limits);
                 });
             }
+        } catch (const std::bad_alloc&) {
+            throw;
         } catch (const std::exception& error) {
             if (job.requested) { job.requested = false; phase(IntersectionPhase::failed, error.what()); }
             else {
@@ -1463,6 +1477,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
                 uploadSurface(runtime.repairedGpu, runtime.result.repaired, stage, runtime.prepared ? &runtime.prepared->buffers[1] : nullptr);
                 runtime.uploadedStages |= stage;
                 if (stage & comparisonSource) { runtime.prepared.reset(); }
+            } catch (const std::bad_alloc&) {
+                throw;
             } catch (const std::exception& error) {
                 invalidateGpu(stage); runtime.failedStages |= stage; runtime.attemptedSignature = wanted;
                 if (stage == comparisonIntersections) { phase(IntersectionPhase::failed, error.what()); }
@@ -1487,11 +1503,73 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
                 uploadQuality(runtime.originalGpu, runtime.result.original, settings.quality.metric, distribution);
                 uploadQuality(runtime.repairedGpu, runtime.result.repaired, settings.quality.metric, distribution);
                 runtime.uploadedQualityMetric = settings.quality.metric;
-            } catch (const std::exception& error) { runtime.failedStages |= comparisonQuality; runtime.error = error.what(); }
+            } catch (const std::bad_alloc&) { throw; }
+            catch (const std::exception& error) { runtime.failedStages |= comparisonQuality; runtime.error = error.what(); }
         }
     }
     runtime.ready = wanted && settings.enabled && (runtime.cache.completed & comparisonSource) && (runtime.uploadedStages & comparisonSource);
 
+}
+
+static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, SceneObjectId id, bool allowStart)
+{
+    if (runtime.allocationFailed) {
+        // Drain stopped workers without blocking the UI or publishing partial work.
+        const auto drain = [](auto& worker) {
+            if (!worker.valid()) { return true; }
+            if (worker.wait_for(std::chrono::seconds(0)) != std::future_status::ready) { return false; }
+            try { (void)worker.get(); } catch (...) { }
+            return true;
+        };
+        const bool prepared = drain(runtime.preparationWorker);
+        const bool computed = drain(runtime.worker);
+        const bool intersected = drain(runtime.intersection.worker);
+        if (!prepared || !computed || !intersected) { return; }
+        const auto* comparison = findComparison(state, id);
+        bool retry = runtime.error.empty() || runtime.attemptedSignature != comparisonGeometrySignature(state, id);
+        if (comparison) {
+            for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                retry |= comparison->detectorRequests[i].revision != runtime.consumedDetectorRequests[i]
+                    && !comparison->detectorRequests[i].cancel;
+            }
+            retry |= comparison->intersectionRequestRevision != runtime.intersection.consumedRequest
+                && !comparison->cancelIntersections;
+        }
+        if (!retry) { return; }
+        runtime.allocationFailed = false;
+        runtime.failedStages = 0;
+        runtime.error.clear();
+        for (auto& status : runtime.result.detectors) { status.phase = IntersectionPhase::notChecked; status.error.clear(); }
+        for (auto* surface : {&runtime.result.original, &runtime.result.repaired}) {
+            surface->intersections.phase = IntersectionPhase::notChecked;
+            surface->intersections.error.clear();
+        }
+    }
+    try {
+        updateComparisonRuntimeImpl(runtime, state, id, allowStart);
+    } catch (const std::bad_alloc&) {
+        runtime.stop.request_stop();
+        runtime.preparationStop.request_stop();
+        runtime.intersection.stop.request_stop();
+        runtime.intersection.requested = false;
+        runtime.prepared.reset(); runtime.inputs.reset();
+        // Release large retained buffers before constructing the error message.
+        runtime.result = {};
+        destroySurface(runtime.originalGpu); destroySurface(runtime.repairedGpu);
+        runtime.cache.completed = runtime.uploadedStages = 0;
+        runtime.ready = false;
+        runtime.retryDetectorsSeparately = false;
+        runtime.allocationFailed = true;
+        runtime.failedStages = comparisonSource | comparisonDetectors | comparisonQuality | comparisonDistance | comparisonIntersections;
+        runtime.attemptedSignature = runtime.cache.signature;
+        runtime.error = "Memory allocation failed. Analysis stopped; free memory and retry.";
+        for (auto& status : runtime.result.detectors) { status.phase = IntersectionPhase::failed; status.error = runtime.error; }
+        for (auto* surface : {&runtime.result.original, &runtime.result.repaired}) {
+            surface->intersections.phase = IntersectionPhase::failed;
+            surface->intersections.error = runtime.error;
+        }
+        runtime.resultsRevision = nextResultsRevision();
+    }
 }
 
 static void destroyComparisonRuntime(ComparisonRuntime &runtime)

@@ -32,10 +32,8 @@ struct TopologyPointReference {
 };
 struct TopologyVertex {
     std::array<double, 3> position{};
-    std::vector<TopologyPointReference> references;
+    std::span<const TopologyPointReference> references;
     std::span<const size_t> faces, edges, boundaryEdges;
-    // One link edge per incident triangle, including parallel links from duplicate faces.
-    std::span<const std::array<size_t, 2>> link;
 };
 struct TopologyFace {
     TopologyFaceReference reference;
@@ -51,8 +49,8 @@ struct TopologyEdge {
 // Immutable incidence storage is shared when a result snapshot is copied. The
 // spans in vertices/edges remain valid across copies, moves and cache publication.
 struct TopologyIncidence {
+    std::vector<TopologyPointReference> pointReferences;
     std::vector<size_t> vertexFaces, vertexEdges, boundaryEdges;
-    std::vector<std::array<size_t, 2>> vertexLinks;
     std::vector<TopologyEdgeUse> edgeUses;
 };
 struct SourceTopology {
@@ -94,7 +92,10 @@ struct TopologyFinPatch {
 struct MeshTopology {
     TopologyMode mode = TopologyMode::originalIndex;
     size_t availableSources = 0, unavailableSources = 0, excludedCollapsedFaces = 0;
-    std::vector<SourceTopology> sources;
+    // The source graphs are immutable after construction. Result/export copies
+    // share them; threshold-dependent selections below remain independently owned.
+    std::shared_ptr<const std::vector<SourceTopology>> sourceStorage;
+    std::span<const SourceTopology> sources;
     std::vector<TopologyEdgeFinding> boundaries, nonManifoldEdges, windingEdges;
     std::vector<TopologyFaceReference> windingFaces;
     size_t orientationContradictions = 0;
