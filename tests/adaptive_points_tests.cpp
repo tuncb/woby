@@ -20,6 +20,18 @@ woby::Mesh cloudMesh(uint32_t count) {
     return mesh;
 }
 }
+TEST_CASE("Adaptive point queue rejects transparent points independently of scene eligibility") {
+    woby::GpuMesh mesh;
+    mesh.pointCloud=std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(cloudMesh(16),8,4));
+    woby::AdaptivePointRuntime runtime; runtime.enabled=true;
+    woby::SceneDrawItem item; item.points=true;
+    bx::mtxIdentity(item.model.data());
+    for (const float alpha:{0.0f,.35f,.998f,.999f,1.0f}) {
+        item.color={.4f,.5f,.6f,alpha}; runtime.draws.clear();
+        CHECK(woby::queueAdaptivePoints(runtime,mesh,item,1)==(alpha>=.999f));
+        CHECK(runtime.draws.size()==(alpha>=.999f?1u:0u));
+    }
+}
 TEST_CASE("Adaptive point controls persist through views scene files and history") {
     PointDirectory directory;
     woby::UiState state; REQUIRE(state.adaptivePoints);

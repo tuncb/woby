@@ -255,7 +255,9 @@ raster budget is feedback, not a deadline, and excludes the surface pass and UI.
 
 The optional Vulkan path requires 64-bit buffer atomics and standard sample
 locations. Unsupported devices, freeform geometry, smaller meshes, and scenes
-containing transparency keep full-detail drawing. Compact quad fallback preserves
+containing transparent point draws keep full-detail drawing. Transparent surfaces
+and edges alone retain the optimized point path and the existing markers-last
+rendering order. Compact quad fallback preserves
 source identities, colors and opacity. Screenshot exports also use full source
 detail. In the hardware fallback, ties between overlapping points at equal depth
 and transparent last-drawn picks follow spatial storage order; picked IDs still

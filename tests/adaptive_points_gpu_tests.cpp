@@ -16,7 +16,7 @@ struct PointGpuFixture {
     woby::SceneDrawPlan plan;
     woby::ScenePickView view;
     g::ProgramHandle point{},mesh{};
-    g::UniformHandle color{},params{},base{};
+    g::UniformHandle color{},params{},base{},uv{};
     g::TextureHandle output{},depth{},ids{};
     g::FrameBufferHandle framebuffer{};
     woby::MarkerDrawContext markers;
@@ -25,7 +25,7 @@ struct PointGpuFixture {
         if (!initialized) return;
         woby::destroyAdaptivePoints(runtime); woby::destroyModelRuntimes(models);
         for (auto h:{point,mesh}) if (g::isValid(h)) g::destroy(h);
-        for (auto h:{color,params,base}) if (g::isValid(h)) g::destroy(h);
+        for (auto h:{color,params,base,uv}) if (g::isValid(h)) g::destroy(h);
         for (auto h:{output,depth,ids}) if (g::isValid(h)) g::destroy(h);
         if (g::isValid(framebuffer)) g::destroy(framebuffer);
         g::shutdown();
@@ -44,6 +44,7 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true) {
     f.color=g::createUniform("u_color",g::UniformType::Vec4);
     f.params=g::createUniform("u_pointParams",g::UniformType::Vec4,2);
     f.base=g::createUniform("u_markerBase",g::UniformType::Vec4); f.markers.baseUniform=f.base;
+    f.uv=g::createUniform("u_uvGrid",g::UniformType::Vec4);
     f.view.width=37; f.view.height=29;
     bx::mtxIdentity(f.view.view.data()); bx::mtxIdentity(f.view.renderProjection.data());
     const auto flags=samples==4?WOBY_GPU_TEXTURE_RT_MSAA_X4:WOBY_GPU_TEXTURE_RT;
@@ -82,7 +83,7 @@ void draw(PointGpuFixture& f,double now,bool adaptive=false,bool query=false,std
     g::setViewRect(0,3,5,static_cast<uint16_t>(f.view.width),static_cast<uint16_t>(f.view.height));
     g::setViewTransform(0,f.view.view.data(),f.view.renderProjection.data(),true); g::touch(0);
     woby::prepareAdaptivePoints(f.runtime,WOBY_TEST_ASSET_DIRECTORY,f.plan,f.view,adaptive,now,query,position);
-    woby::submitSceneFiles(0,f.plan,f.models,f.mesh,{},f.mesh,f.point,f.color,f.params,{},f.view.width,f.view.height,
+    woby::submitSceneFiles(0,f.plan,f.models,f.mesh,f.uv,f.mesh,f.point,f.color,f.params,{},f.view.width,f.view.height,
         markerIds?&f.markers:nullptr,false,&f.runtime);
 }
 std::vector<uint64_t> winners(PointGpuFixture& f) {
@@ -122,7 +123,7 @@ void checkIds(const std::vector<uint64_t>& actual,const std::vector<uint32_t>& e
     for (size_t i=0;i<actual.size();++i) if (uint32_t(actual[i])!=expected[i]) ++differences;
     CHECK(differences==0);
 }
-void checkColors(PointGpuFixture& f,const std::vector<uint32_t>& ids) {
+void checkColors(PointGpuFixture& f,const std::vector<uint32_t>& ids,const std::array<float,3>& background={}) {
     std::vector<uint8_t> pixels(43*37*4);
     const auto ready=g::readTexture(f.output,pixels.data()); while (g::frame()<ready) {}
     size_t differences=0;
@@ -130,7 +131,7 @@ void checkColors(PointGpuFixture& f,const std::vector<uint32_t>& ids) {
         float sum=0;
         for (uint32_t sample=0;sample<f.samples;++sample) {
             const auto id=ids[(size_t(y)*f.view.width+x)*f.samples+sample];
-            if (!id) continue;
+            if (!id) { sum+=std::round(background[channel]*255); continue; }
             const auto* draw=woby::findMarkerDraw(f.markers.list.draws,id); REQUIRE(draw);
             const auto& item=f.plan.items[static_cast<size_t>(draw-f.markers.list.draws.data())];
             sum+=std::round(std::min(1.0f,item.color[channel]*1.5f)*255);
@@ -173,6 +174,57 @@ TEST_CASE("Integrated reduced point GPU picking queries all original circle foot
     REQUIRE(f.runtime.refined==0);
     for (uint32_t y=5;y<23;++y) for (uint32_t x=11;x<27;++x) for (uint32_t sample=0;sample<4;++sample) {
         const auto i=(size_t(y)*f.view.width+x)*4+sample; CHECK(uint32_t(actual[i])==expected[i]);
+    }
+}
+TEST_CASE("Transparent surfaces retain adaptive point rendering cached visibility and picking") {
+    for (const uint32_t samples:{1u,4u}) for (const bool adaptive:{false,true}) {
+        PointGpuFixture f; if (!initialize(f,samples)) return;
+        f.view.view[10]=.5f;
+        const auto expected=reference(f);
+        draw(f,0,adaptive); (void)winners(f);
+        if (f.runtime.pending.valid()) f.runtime.pending.wait();
+        draw(f,1,adaptive); checkIds(winners(f),expected);
+        REQUIRE(f.runtime.refined==f.runtime.total);
+        const auto epoch=f.runtime.epoch;
+        const auto captureIds=[&] {
+            std::vector<uint8_t> pixels(43*37*4);
+            const auto ready=g::readTexture(f.ids,pixels.data()); while (g::frame()<ready) {}
+            return pixels;
+        };
+        const auto pointIds=captureIds();
+        REQUIRE(std::any_of(pointIds.begin(),pointIds.end(),[](uint8_t value) { return value!=0; }));
+
+        woby::Mesh surface;
+        for (const auto& position:std::array<std::array<float,3>,4>{{{-1,-1,1.8f},{1,-1,1.8f},{1,1,1.8f},{-1,1,1.8f}}}) {
+            woby::Vertex vertex; vertex.position=position; surface.vertices.push_back(vertex);
+        }
+        surface.indices={0,1,2,0,2,3}; surface.nodes={{"surface",0,6}};
+        f.models.push_back({woby::createGpuMesh(surface,woby::meshVertexLayout(),woby::gpuMeshPoints)});
+        woby::SceneDrawItem item; item.fileIndex=1; item.solid=true; item.color={0,0,1,.35f};
+        bx::mtxIdentity(item.model.data()); f.plan.items.push_back(item);
+        double now=2;
+        for (const float alpha:{.35f,.6f,1.0f,.2f}) {
+            f.plan.items.back().color[3]=alpha;
+            draw(f,now++,adaptive);
+            REQUIRE(f.runtime.enabled); REQUIRE(f.runtime.active);
+            CHECK(f.runtime.epoch==epoch); CHECK(f.runtime.submitted==0);
+            checkIds(winners(f),expected);
+            if (alpha<.999f) {
+                // Preserve markers-last color and IDs even behind the surface.
+                checkColors(f,expected,{0,0,alpha}); CHECK(captureIds()==pointIds);
+            } else {
+                checkColors(f,std::vector<uint32_t>(expected.size()),{0,0,1});
+                const auto ids=captureIds();
+                CHECK(std::all_of(ids.begin(),ids.end(),[](uint8_t value) { return value==0; }));
+            }
+        }
+        // A small transparent mesh's visible vertices still require fallback.
+        f.plan.items.back().points=true;
+        draw(f,now++,adaptive); CHECK_FALSE(f.runtime.enabled); CHECK_FALSE(f.runtime.active);
+        g::frame();
+        f.plan.items.back().points=false;
+        draw(f,now,adaptive); REQUIRE(f.runtime.active); CHECK(f.runtime.submitted>0);
+        checkIds(winners(f),expected); CHECK(captureIds()==pointIds);
     }
 }
 TEST_CASE("Integrated cached points obey current opaque surfaces and color-only viewport offsets") {

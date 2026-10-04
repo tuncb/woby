@@ -44,7 +44,9 @@ void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::
     const auto* caps=graphics::getCaps();
     runtime.enabled=!runtime.unavailable && (caps->supported&WOBY_GPU_CAPS_OPAQUE_POINTS)!=0
         && view.width && view.height && uint64_t(view.width)*view.height*4*sizeof(uint64_t)<=UINT32_MAX
-        && std::none_of(plan.items.begin(),plan.items.end(),[](const auto& item) { return item.color[3]<.999f; });
+        // Surface/edge transparency preserves the existing markers-last order.
+        // Transparent points still require every blended point contribution.
+        && std::none_of(plan.items.begin(),plan.items.end(),[](const auto& item) { return item.points && item.color[3]<.999f; });
     if (!runtime.enabled) { runtime.keys.clear(); return; }
     if (!graphics::isValid(runtime.resolve)) {
         try {
@@ -59,7 +61,7 @@ void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::
     }
 }
 bool queueAdaptivePoints(AdaptivePointRuntime& runtime,const GpuMesh& mesh,const SceneDrawItem& item,uint32_t firstId) {
-    if (!runtime.enabled || !mesh.pointCloud || item.importedLines || !firstId) return false;
+    if (!runtime.enabled || !mesh.pointCloud || item.importedLines || !firstId || item.color[3]<.999f) return false;
     const auto& source=mesh.pointCloud->groups.at(item.groupIndex);
     AdaptivePointDraw draw;
     draw.mesh=&mesh; draw.key.cloud=mesh.pointCloud; draw.key.sourceGroup=static_cast<uint32_t>(item.groupIndex);
