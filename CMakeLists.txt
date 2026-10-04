@@ -326,6 +326,11 @@ endif()
 
 if(BUILD_TESTING)
     include(cmake/WobyPython.cmake)
+    if(WOBY_BUILD_BENCHMARKS)
+        add_test(NAME woby_detector_benchmarks COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/performance_benchmarks_tests.py" "$<TARGET_FILE:woby_benchmarks>")
+        set_tests_properties(woby_detector_benchmarks PROPERTIES TIMEOUT 150)
+    endif()
     option(WOBY_TEST_HEADLESS "Run headless integration tests (requires a NoGraphicsAPI-compatible GPU)" OFF)
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
         add_test(NAME woby_headless COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
