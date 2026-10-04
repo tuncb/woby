@@ -55,7 +55,8 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
 void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 void frameComparison(UiState& state, SceneObjectId id);
 // UV navigation retains the analysis inspector and uses only matching results.
-[[nodiscard]] const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id);
+[[nodiscard]] const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id,
+    std::optional<uint64_t> geometrySignature = {});
 void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t resultSignature, SceneObjectId id);
 void selectUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, size_t index, SceneObjectId id);
 void navigateUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, int step, SceneObjectId id);
@@ -153,6 +154,9 @@ enum class ComparisonMembershipAction { unavailable, add, remove };
 [[nodiscard]] bool canInspectComparison(const UiState& state, SceneObjectId id = invalidSceneObjectId);
 // Fall back to the populated side without changing the saved two-input mode.
 [[nodiscard]] ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id = invalidSceneObjectId);
+// Resolve live display/focus settings using inputs from a current scene-revision cache.
+[[nodiscard]] ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id,
+    bool hasA, bool hasB, uint64_t geometrySignature);
 // Create a comparison from one object or two distinct objects in click order.
 [[nodiscard]] bool canCompareSceneSelection(const UiState& state);
 bool compareSceneSelection(UiState& state, AnalysisType type = AnalysisType::mesh);

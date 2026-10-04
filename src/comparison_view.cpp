@@ -1510,6 +1510,7 @@ void appendVisibleComparisonPickParts(std::vector<ScenePickPart>& parts, const U
     const ComparisonRuntimes& runtimes)
 {
     for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it != runtimes.objects.end() && comparisonStagesReady(it->second, state, comparison.objectId, comparisonSource, true)) {
             const auto first = parts.size();
@@ -1526,22 +1527,22 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
     woby::graphics::ProgramHandle colorProgram, woby::graphics::UniformHandle colorUniform, SceneRenderScratch& scratch, woby::graphics::ProgramHandle markerProgram)
 {
     for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it != runtimes.objects.end() && comparisonStagesReady(it->second, state, comparison.objectId, comparisonSource, true)) {
             auto settings = readyComparisonSettings(it->second, state, comparison.objectId);
-            if (it->second.results.signature != comparisonCurrentSignature(it->second, state, comparison.objectId)) {
-                settings.duplicates.showPoints = false; settings.duplicates.showTriangles = false;
-            }
             submitComparisonScene(view, comparison, it->second, runtimes, colorProgram, colorUniform, settings, markerProgram);
         }
     }
     // Submit focus last so surfaces and other diagnostic edges cannot obscure it.
     for (const auto& comparison : state.comparisons) {
+        if (!comparison.settings.enabled || (!comparison.diagnosticFocus && !comparison.uvFindingFocus)) { continue; }
         const auto it = runtimes.objects.find(comparison.objectId);
         if (it == runtimes.objects.end() || !it->second.gpu.ready) { continue; }
+        const auto signature = comparisonCurrentSignature(it->second, state, comparison.objectId);
         const auto* edge = focusedComparisonDiagnostic(state, it->second.results.value,
-            it->second.results.signature, comparison.objectId);
-        const auto* uv = focusedUvFinding(state, it->second.results.signature, comparison.objectId);
+            it->second.results.signature, comparison.objectId, signature);
+        const auto* uv = focusedUvFinding(state, it->second.results.signature, comparison.objectId, signature);
         if (!edge && !uv) { continue; }
         auto& points = scratch.focusPoints;
         auto& faceFill = scratch.positions;

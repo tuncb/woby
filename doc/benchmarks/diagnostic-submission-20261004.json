@@ -1,0 +1,568 @@
+{
+  "issue": "https://github.com/tuncb/woby/issues/101",
+  "date": "2026-10-04",
+  "base_commit": "b79ad95",
+  "findings": [
+    "Issue 100 already supplied revision-checked signatures and source summaries. The remaining submission callers still used uncached effectiveComparisonSettings.",
+    "Without finding focus, effectiveComparisonSettings sorted membership IDs and counted both sides for every scene submission and selection-helper submission.",
+    "With finding focus, effectiveComparisonSettings rehashed the geometry hierarchy in both stages. The final focus draw separately rehashed it again.",
+    "Existing surface and diagnostic GPU buffers were already reused. The measured repeated CPU work was input resolution, not GPU geometry rebuilding."
+  ],
+  "fix": [
+    "Resolve display mode from current runtime input counts and signature, while continuing to read live settings, focus, detector state and per-stage GPU result revisions.",
+    "Supply the same current signature to diagnostic and UV finding-focus validation.",
+    "Skip disabled analyses before resolving submission inputs. Remove a duplicate stale-result check already guaranteed by comparisonStagesReady.",
+    "Retain uncached resolution when the runtime snapshot is absent or stale."
+  ],
+  "validation": {
+    "configuration": "Windows x64 Debug, vs2026-vcpkg",
+    "build": "Full default build passed without compiler warnings",
+    "ctest_passed": 859,
+    "note": "854/855 ordinary checks passed on the first run; the Windows launch check needed its console probe target. Full default build supplied it and the rerun passed. All four slow checks passed.",
+    "regressions": [
+      "A/B/both/empty input mode fallback, including legacy quality modes",
+      "Live diagnostic focus and source-transform invalidation",
+      "Selection bounds, translation, hidden overlay settings and uploaded-stage revisions",
+      "Cached UV finding freshness, disabled analyses and missing finding geometry"
+    ],
+    "evidence": [
+      "build/issue101-all-build.log",
+      "build/issue101-unit-tests.log",
+      "build/issue101-launch-retest.log",
+      "build/issue101-extra-tests.log"
+    ]
+  },
+  "synthetic_cpu": {
+    "method": "Median of 20 timed samples after 5 warm-ups; microseconds. Noop graphics with one triangle repeated over 1, 256 or 2203 groups. Measures submitComparisonScenes and appendVisibleComparisonPickParts + submitSceneSelection. Properties construction is outside the measured stages. One optional focused boundary edge; diagnostic GPU overlay buffers are omitted.",
+    "limits": [
+      "Not an FPS or GPU benchmark. It does not reproduce San Miguel geometry or detector density.",
+      "Background host load and clock frequencies were not locked; the separately measured uncached query demonstrates timing variability.",
+      "Properties shown/hidden and Show flags on/off are independent controls. Focus remains a separate visible overlay when Show flags are off."
+    ],
+    "command": "build/vs2026-vcpkg/bin/Debug/woby_tests.exe --test-case=\"analysis submission CPU benchmark\" --no-skip=true",
+    "before": [
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 6.0,
+        "submit_analysis_scene_us": 23.5,
+        "selection_helpers_us": 29.0
+      },
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 6.0,
+        "submit_analysis_scene_us": 23.4,
+        "selection_helpers_us": 29.0
+      },
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 28.2,
+        "submit_analysis_scene_us": 92.1,
+        "selection_helpers_us": 56.0
+      },
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 28.3,
+        "submit_analysis_scene_us": 92.2,
+        "selection_helpers_us": 56.8
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 6.0,
+        "submit_analysis_scene_us": 20.8,
+        "selection_helpers_us": 27.9
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 6.0,
+        "submit_analysis_scene_us": 20.8,
+        "selection_helpers_us": 27.8
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 27.9,
+        "submit_analysis_scene_us": 89.0,
+        "selection_helpers_us": 54.9
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 27.9,
+        "submit_analysis_scene_us": 89.1,
+        "selection_helpers_us": 55.0
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 155.5,
+        "submit_analysis_scene_us": 174.3,
+        "selection_helpers_us": 184.3
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 155.2,
+        "submit_analysis_scene_us": 170.7,
+        "selection_helpers_us": 177.1
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 1605.8,
+        "submit_analysis_scene_us": 3290.5,
+        "selection_helpers_us": 1656.7
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 1601.8,
+        "submit_analysis_scene_us": 3288.3,
+        "selection_helpers_us": 1671.2
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 161.1,
+        "submit_analysis_scene_us": 177.4,
+        "selection_helpers_us": 184.9
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 157.3,
+        "submit_analysis_scene_us": 172.4,
+        "selection_helpers_us": 180.3
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 1817.6,
+        "submit_analysis_scene_us": 4079.2,
+        "selection_helpers_us": 1896.5
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 1754.5,
+        "submit_analysis_scene_us": 3727.3,
+        "selection_helpers_us": 1875.4
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 1552.9,
+        "submit_analysis_scene_us": 1636.2,
+        "selection_helpers_us": 1586.9
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 1555.4,
+        "submit_analysis_scene_us": 1633.0,
+        "selection_helpers_us": 1589.6
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 14490.6,
+        "submit_analysis_scene_us": 28695.9,
+        "selection_helpers_us": 14373.4
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 14519.2,
+        "submit_analysis_scene_us": 28889.5,
+        "selection_helpers_us": 14463.2
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 1620.2,
+        "submit_analysis_scene_us": 1660.2,
+        "selection_helpers_us": 1627.9
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 1555.1,
+        "submit_analysis_scene_us": 1632.9,
+        "selection_helpers_us": 1592.9
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 14544.1,
+        "submit_analysis_scene_us": 28974.8,
+        "selection_helpers_us": 14431.4
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 14305.1,
+        "submit_analysis_scene_us": 28709.2,
+        "selection_helpers_us": 14376.6
+      }
+    ],
+    "after": [
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 6.3,
+        "submit_analysis_scene_us": 16.2,
+        "selection_helpers_us": 22.3
+      },
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 6.3,
+        "submit_analysis_scene_us": 16.3,
+        "selection_helpers_us": 22.2
+      },
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 31.6,
+        "submit_analysis_scene_us": 37.6,
+        "selection_helpers_us": 25.4
+      },
+      {
+        "groups": 1,
+        "overlays": true,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 49.9,
+        "submit_analysis_scene_us": 63.5,
+        "selection_helpers_us": 43.1
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 11.0,
+        "submit_analysis_scene_us": 24.8,
+        "selection_helpers_us": 38.4
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 6.2,
+        "submit_analysis_scene_us": 13.8,
+        "selection_helpers_us": 21.5
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 31.2,
+        "submit_analysis_scene_us": 34.7,
+        "selection_helpers_us": 24.2
+      },
+      {
+        "groups": 1,
+        "overlays": false,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 31.1,
+        "submit_analysis_scene_us": 34.5,
+        "selection_helpers_us": 24.1
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 154.2,
+        "submit_analysis_scene_us": 17.0,
+        "selection_helpers_us": 23.1
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 155.3,
+        "submit_analysis_scene_us": 17.1,
+        "selection_helpers_us": 24.4
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 1996.1,
+        "submit_analysis_scene_us": 83.0,
+        "selection_helpers_us": 46.3
+      },
+      {
+        "groups": 256,
+        "overlays": true,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 1660.9,
+        "submit_analysis_scene_us": 63.2,
+        "selection_helpers_us": 34.3
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 159.6,
+        "submit_analysis_scene_us": 14.4,
+        "selection_helpers_us": 22.7
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 313.7,
+        "submit_analysis_scene_us": 46.5,
+        "selection_helpers_us": 57.6
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 1896.5,
+        "submit_analysis_scene_us": 78.5,
+        "selection_helpers_us": 38.2
+      },
+      {
+        "groups": 256,
+        "overlays": false,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 3095.7,
+        "submit_analysis_scene_us": 118.3,
+        "selection_helpers_us": 57.7
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 3296.0,
+        "submit_analysis_scene_us": 89.0,
+        "selection_helpers_us": 80.7
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 3232.8,
+        "submit_analysis_scene_us": 94.9,
+        "selection_helpers_us": 85.1
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 27897.3,
+        "submit_analysis_scene_us": 148.3,
+        "selection_helpers_us": 72.1
+      },
+      {
+        "groups": 2203,
+        "overlays": true,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 26143.1,
+        "submit_analysis_scene_us": 145.9,
+        "selection_helpers_us": 74.4
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": true,
+        "focus": false,
+        "uncached_settings_us": 3146.3,
+        "submit_analysis_scene_us": 90.5,
+        "selection_helpers_us": 87.0
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": false,
+        "focus": false,
+        "uncached_settings_us": 3242.2,
+        "submit_analysis_scene_us": 95.3,
+        "selection_helpers_us": 90.9
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": true,
+        "focus": true,
+        "uncached_settings_us": 19786.3,
+        "submit_analysis_scene_us": 126.8,
+        "selection_helpers_us": 57.3
+      },
+      {
+        "groups": 2203,
+        "overlays": false,
+        "properties": false,
+        "focus": true,
+        "uncached_settings_us": 27050.7,
+        "submit_analysis_scene_us": 136.2,
+        "selection_helpers_us": 67.9
+      }
+    ]
+  },
+  "scope": "Residual submission-query work on top of issue 100. This does not attribute the entire historical 30 ms/frame to this patch.",
+  "native_validation": {
+    "status": "incomplete",
+    "configuration": "Windows x64 Debug, Vulkan; baseline b79ad95 executable retained before the production patch",
+    "model": "D:\\temp\\obj_tests\\san-miguel.obj",
+    "model_bytes": 1143041382,
+    "stats": {
+      "analysisCount": 0,
+      "annotationCount": 0,
+      "bounds": {
+        "center": [
+          12.250049591064453,
+          7.0684356689453125,
+          1.4475998878479004
+        ],
+        "max": [
+          46.77439880371094,
+          14.600000381469727,
+          14.937399864196777
+        ],
+        "min": [
+          -22.27429962158203,
+          -0.4631290137767792,
+          -12.042200088500977
+        ],
+        "radius": 37.82366943359375
+      },
+      "commandId": "cmd-628fc6f68603f1b4d3e9c24c64d35593-3",
+      "coordinateOrigin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "dirty": true,
+      "fileCount": 1,
+      "fps": 61.654136657714844,
+      "groupCount": 2203,
+      "instance": "stress-a3b6d4e8bfb84a45",
+      "lineSegmentCount": 0,
+      "masterVertexPointSize": 4.0,
+      "pointCount": 0,
+      "renderModes": {
+        "solid": {
+          "enabled": 2203,
+          "state": "on",
+          "total": 2203
+        },
+        "triangles": {
+          "enabled": 0,
+          "state": "off",
+          "total": 2203
+        },
+        "vertices": {
+          "enabled": 0,
+          "state": "off",
+          "total": 2203
+        }
+      },
+      "renderer": "NoGraphicsAPI Vulkan",
+      "sequence": "3",
+      "showDimensions": false,
+      "showGrid": true,
+      "showOrigin": false,
+      "state": "succeeded",
+      "triangleCount": 9980699,
+      "upAxis": "z",
+      "vertexCount": 9021391,
+      "visibleGroupCount": 2203
+    },
+    "result": "failed",
+    "error": "{\"code\": -32003, \"data\": {\"commandId\": \"cmd-628fc6f68603f1b4d3e9c24c64d35593-177\", \"sequence\": \"177\", \"state\": \"running\"}, \"message\": \"Control command timed out; started work may still complete.\"}",
+    "total_seconds": 353.1956568000023,
+    "peak_private_bytes": 9701765120,
+    "minimum_available_bytes": 22481510400,
+    "resource_guards": {
+      "max_private_gib": 38,
+      "min_available_gib": 6,
+      "operation_timeout_seconds": 240
+    },
+    "explanation": "Baseline detector readiness timed out before steady-state sampling. No native FPS, CPU-stage improvement, screenshot equivalence, or sampled CPU-stack conclusion is claimed. WPR recording was scheduled around frame windows and was not reached.",
+    "evidence": "build/issue101-native-before/issue101-san-miguel-r0",
+    "driver": "build/issue101_native.py",
+    "remaining": [
+      "Repeat baseline/fix in Release Vulkan with an adequate analysis deadline, preserving memory guards.",
+      "Lock and compare actual drawable/viewport dimensions and camera, with Properties visible and hidden.",
+      "Compare detector counts, visible overlays, focused finding and selection captures; retain CPU traces."
+    ]
+  }
+}

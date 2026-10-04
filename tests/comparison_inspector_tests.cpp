@@ -312,3 +312,213 @@ TEST_CASE("analysis inspector unchanged draw benchmark" * doctest::skip()) {
         }
     }
 }
+
+TEST_CASE("analysis submission resolves live modes from current cached inputs") {
+    for (const auto enabled : {std::array{true, true}, std::array{true, false},
+                              std::array{false, true}, std::array{false, false}}) {
+        for (const auto mode : {ComparisonMode::original, ComparisonMode::repaired,
+                ComparisonMode::overlay, ComparisonMode::distance, ComparisonMode::surfaceQuality}) {
+            InspectorFixture f;
+            auto& runtime = f.runtimes.objects[f.id];
+            runtime.gpu.uploadedStages = runtime.results.cache.completed | comparisonDistance | comparisonQuality;
+            runtime.results.cache.completed = runtime.gpu.uploadedStages;
+            setAnalysisTask(f.state, f.id, AnalysisTask::surfaceComparison);
+            setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, f.id);
+            setComparisonObjectsEnabled(f.state, {}, ComparisonSide::a, enabled[0], f.id);
+            setComparisonObjectsEnabled(f.state, {}, ComparisonSide::b, enabled[1], f.id);
+            auto settings = comparisonSettings(f.state, f.id);
+            settings.mode = mode;
+            // Also exercise legacy two-input quality settings, before operation
+            // normalization consolidates a mesh-quality analysis into source A.
+            findComparison(f.state, f.id)->settings = settings;
+            notifySceneEdit(f.state);
+            runtime.results.signature = runtime.results.cache.signature = f.queries().signature;
+            runtime.gpu.uploadedQualityMetric = settings.quality.metric;
+            const auto cached = readyComparisonSettings(runtime, f.state, f.id);
+            const auto queries = runtime.inspector.queries;
+            runtime.inspector.queries = {};
+            // Render/export callers before the runtime update must still resolve
+            // current state rather than trusting an absent or stale snapshot.
+            const auto uncached = readyComparisonSettings(runtime, f.state, f.id);
+            runtime.inspector.queries = queries;
+            CHECK(cached == uncached);
+            if (enabled[0] != enabled[1]) {
+                if (mode == ComparisonMode::surfaceQuality) {
+                    CHECK(cached.quality.onOriginal == enabled[0]);
+                } else {
+                    CHECK(cached.mode == (enabled[0] ? ComparisonMode::original : ComparisonMode::repaired));
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("analysis submission preserves selection translation overlays and stale result rejection") {
+    InspectorFixture f;
+    auto& runtime = f.runtimes.objects[f.id];
+    runtime.results.value.original.source = comparisonWorldMesh(f.state, ComparisonSide::a, f.id);
+    runtime.results.value.original.diagnostics.boundaryEdges = {{{0, 0, 0}, {1, 0, 0}}};
+    runtime.gpu.uploadedStages = runtime.results.cache.completed;
+    f.queries();
+    setPropertiesPaneVisible(f.state, false);
+    setComparisonTranslation(f.state, f.id, {7, 8, 9});
+    const auto parts = [&] {
+        std::vector<ScenePickPart> result;
+        appendVisibleComparisonPickParts(result, f.state, f.runtimes);
+        return result;
+    };
+    auto visible = parts();
+    REQUIRE(visible.size() >= 2);
+    CHECK(visible.front().selected);
+    CHECK(visible.front().model[12] == 7);
+    CHECK(visible.front().model[13] == 8);
+    CHECK(visible.front().model[14] == 9);
+    const auto bounds = sceneSelectionLines(visible);
+    CHECK(bounds.size() == 24);
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.showBoundaries = false;
+    setComparisonSettings(f.state, settings, f.id);
+    CHECK(parts().size() == 1);
+    CHECK(sceneSelectionLines(parts()) == bounds);
+    ++runtime.results.stageRevisions[0];
+    CHECK(parts().empty());
+    runtime.gpu.stageRevisions = runtime.results.stageRevisions;
+    CHECK(parts().size() == 1);
+    setComparisonObjectsEnabled(f.state, {f.state.files[0].groupSettings[0].objectId}, ComparisonSide::a, false, f.id);
+    CHECK_FALSE(comparisonInspectorCacheCurrent(runtime.inspector.queries, f.state, f.id));
+    CHECK(parts().empty());
+    f.queries();
+    CHECK(parts().empty());
+}
+
+TEST_CASE("analysis submission keeps finding focus live without rebuilding cached inputs") {
+    InspectorFixture f;
+    auto& runtime = f.runtimes.objects[f.id];
+    setAnalysisTask(f.state, f.id, AnalysisTask::surfaceComparison);
+    setComparisonObjects(f.state, {f.state.files[0].objectId}, ComparisonSide::b, true, f.id);
+    auto settings = comparisonSettings(f.state, f.id);
+    settings.mode = ComparisonMode::overlay;
+    setComparisonSettings(f.state, settings, f.id);
+    runtime.results.signature = runtime.results.cache.signature = f.queries().signature;
+    runtime.results.value.original.diagnostics.boundaryEdges = {{{0, 0, 0}, {1, 0, 0}}};
+    const auto builds = f.queries().builds;
+    selectComparisonDiagnostic(f.state, runtime.results.value, runtime.results.signature, 0, f.id);
+    REQUIRE(findComparison(f.state, f.id)->diagnosticFocus);
+    CHECK(readyComparisonSettings(runtime, f.state, f.id).mode == ComparisonMode::original);
+    setComparisonTranslation(f.state, f.id, {1, 2, 3});
+    CHECK(readyComparisonSettings(runtime, f.state, f.id).mode == ComparisonMode::original);
+    CHECK(f.queries().builds == builds);
+    resetComparisonDiagnosticFocus(f.state, f.id);
+    CHECK(readyComparisonSettings(runtime, f.state, f.id).mode == ComparisonMode::overlay);
+    selectComparisonDiagnostic(f.state, runtime.results.value, runtime.results.signature, 0, f.id);
+    REQUIRE(findComparison(f.state, f.id)->diagnosticFocus);
+    selectSceneObject(f.state, f.state.files[0].objectId);
+    setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 5);
+    CHECK_FALSE(comparisonInspectorCacheCurrent(runtime.inspector.queries, f.state, f.id));
+    CHECK(readyComparisonSettings(runtime, f.state, f.id).mode == ComparisonMode::overlay);
+    f.queries();
+    CHECK(readyComparisonSettings(runtime, f.state, f.id).mode == ComparisonMode::overlay);
+}
+
+TEST_CASE("analysis submission validates UV focus against a resolved geometry signature") {
+    InspectorFixture f;
+    auto* comparison = findComparison(f.state, f.id);
+    comparison->settings.type = AnalysisType::uvQuality;
+    notifySceneEdit(f.state);
+    const auto signature = f.queries().signature;
+    REQUIRE(signature != 0);
+    comparison->uvFindingFocus = UvFindingFocus{signature, 0, std::array<std::array<float, 3>, 3>{}};
+    const auto resolved = [&] {
+        return focusedUvFinding(f.state, signature, f.id,
+            comparisonCurrentSignature(f.runtimes.objects[f.id], f.state, f.id));
+    };
+    CHECK(resolved() == focusedUvFinding(f.state, signature, f.id));
+    CHECK(resolved() != nullptr);
+    CHECK(focusedUvFinding(f.state, signature, f.id, 0) == nullptr);
+    SUBCASE("hidden") {
+        auto settings = comparison->settings;
+        settings.enabled = false;
+        setComparisonSettings(f.state, settings, f.id);
+    }
+    SUBCASE("missing finding geometry") { comparison->uvFindingFocus->geometry.reset(); }
+    SUBCASE("changed source") {
+        selectSceneObject(f.state, f.state.files[0].objectId);
+        setSelectedObjectProperty(f.state, UiObjectProperty::translationX, 5);
+    }
+    CHECK(resolved() == nullptr);
+    f.queries();
+    CHECK(resolved() == nullptr);
+}
+
+TEST_CASE("analysis submission CPU benchmark" * doctest::skip()) {
+    graphics::Init init;
+    init.type = graphics::RendererType::Noop;
+    init.resolution.width = init.resolution.height = 1;
+    REQUIRE(graphics::init(init));
+    struct Shutdown { ~Shutdown() { graphics::shutdown(); } } shutdown;
+    const uint32_t code = 0;
+    const auto program = graphics::createProgram(
+        graphics::createShader(graphics::copy(&code, sizeof(code))),
+        graphics::createShader(graphics::copy(&code, sizeof(code))), true);
+    const auto uniform = graphics::createUniform("u_color", graphics::UniformType::Vec4);
+    const auto parameters = graphics::createUniform("u_comparison", graphics::UniformType::Vec4);
+    for (const size_t groups : {1u, 256u, 2203u}) {
+        InspectorFixture f(groups);
+        auto& runtime = f.runtimes.objects[f.id];
+        runtime.results.value.original.source = comparisonWorldMesh(f.state, ComparisonSide::a, f.id);
+        runtime.results.value.original.diagnostics.boundaryEdges = {{{0, 0, 0}, {1, 0, 0}}};
+        auto gpu = createGpuMesh(runtime.results.value.original.source, meshVertexLayout(), gpuMeshEdges);
+        runtime.gpu.original.vertices = gpu.vertexBuffer;
+        runtime.gpu.original.triangles = gpu.triangleIndexBuffer;
+        runtime.gpu.original.lines = gpu.lineIndexBuffer;
+        f.runtimes.program = program;
+        f.runtimes.parameters = parameters;
+        runtime.gpu.uploadedStages = runtime.results.cache.completed;
+        f.queries();
+        SceneRenderScratch scratch;
+        for (const bool overlays : {true, false}) {
+            auto settings = comparisonSettings(f.state, f.id);
+            settings.showEdges = settings.showBoundaries = settings.showNonManifold = settings.showWinding = overlays;
+            settings.topologyInspection.showNonManifoldVertices = settings.topologyInspection.showHoles = settings.topologyInspection.showFins = overlays;
+            settings.duplicates.showPoints = settings.duplicates.showTriangles = settings.degenerates.show = overlays;
+            setComparisonSettings(f.state, settings, f.id);
+            f.queries();
+            for (int scenario = 0; scenario < 4; ++scenario) {
+                const bool properties = scenario % 2 == 0;
+                const bool focused = scenario >= 2;
+                if (focused) { selectComparisonDiagnostic(f.state, runtime.results.value, runtime.results.signature, 0, f.id); }
+                else { resetComparisonDiagnosticFocus(f.state, f.id); }
+                setPropertiesPaneVisible(f.state, properties);
+                if (properties) { f.frame(); }
+                std::array<std::vector<double>, 3> times;
+                for (int i = 0; i < 25; ++i) {
+                    auto start = std::chrono::steady_clock::now();
+                    (void)effectiveComparisonSettings(f.state, f.id);
+                    const auto scene = std::chrono::steady_clock::now();
+                    submitComparisonScenes(0, f.state, f.runtimes, program, uniform, scratch);
+                    const auto helpers = std::chrono::steady_clock::now();
+                    scratch.parts.clear();
+                    appendVisibleComparisonPickParts(scratch.parts, f.state, f.runtimes);
+                    submitSceneSelection(0, scratch.parts, f.state, helperLineVertexLayout(), program, uniform, scratch);
+                    const auto end = std::chrono::steady_clock::now();
+                    if (i >= 5) {
+                        times[0].push_back(std::chrono::duration<double, std::micro>(scene-start).count());
+                        times[1].push_back(std::chrono::duration<double, std::micro>(helpers-scene).count());
+                        times[2].push_back(std::chrono::duration<double, std::micro>(end-helpers).count());
+                    }
+                    graphics::frame();
+                }
+                std::cout << "submission_us," << groups << ",overlays=" << overlays << ",properties=" << properties << ",focus=" << focused;
+                for (auto& samples : times) {
+                    std::sort(samples.begin(), samples.end());
+                    std::cout << ',' << samples[samples.size()/2];
+                }
+                std::cout << '\n';
+            }
+        }
+        destroyGpuMesh(gpu);
+    }
+    graphics::destroy(parameters);
+    graphics::destroy(uniform);
+    graphics::destroy(program);
+}

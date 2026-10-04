@@ -104,7 +104,7 @@ TEST_CASE("Native comparison distance upload failures clean up both sides and su
         setComparisonObjects(comparison.state, {comparison.state.files[0].objectId}, side, true, id);
     }
     auto& runtime = comparison.runtimes.objects[id];
-    runtime.fullResultsRequested = true;
+    runtime.jobs.fullResultsRequested = true;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
     while (!comparisonResultsReady(runtime, comparison.state, id, true) && runtime.jobs.error.empty()
         && std::chrono::steady_clock::now() < deadline) {
@@ -130,7 +130,7 @@ TEST_CASE("Native comparison distance upload failures clean up both sides and su
         CHECK_FALSE(comparisonResultsReady(runtime, comparison.state, id, true));
         for (size_t i = 0; i < 5; ++i) { g::frame(); }
         // The same state changes as the UI Retry button; CPU results survive.
-        runtime.attemptedSignature = 0;
+        runtime.jobs.attemptedSignature = 0;
         runtime.jobs.failedStages = 0;
         runtime.jobs.error.clear();
         updateComparisonRuntimes(comparison.runtimes, comparison.state);
