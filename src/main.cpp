@@ -656,7 +656,7 @@ void drawCameraToolbar(woby::UiState& state)
 }
 
 void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes,
-    const CanvasLayout& layout, woby::SceneDimensionsCache& dimensionsCache)
+    const CanvasLayout& layout, woby::SceneInspectorRuntime& inspector)
 {
     if (!state.propertiesPaneVisible) { return; }
     ImGui::SetNextWindowBgAlpha(1.0f);
@@ -677,7 +677,7 @@ void drawPropertiesPane(woby::UiState& state, woby::ComparisonRuntimes& runtimes
         } else if (woby::selectedComparison(state)) {
             woby::drawComparisonPanelContents(state, runtimes);
         } else {
-            woby::drawSceneInspector(state, dimensionsCache);
+            woby::drawSceneInspector(state, inspector);
         }
     }
     ImGui::End();
@@ -2388,6 +2388,7 @@ int main(int argc, char** argv)
         HoverPickCache hoverPickCache;
         woby::HoverNavigationState hoverNavigation{camera, ui.upAxis};
         woby::SceneDimensionsCache dimensionsCache;
+        woby::SceneInspectorRuntime inspector;
         woby::SceneRenderScratch renderScratch;
         WindowTitleCache windowTitleCache;
         woby::ScenePointerGesture scenePointer;
@@ -3212,7 +3213,7 @@ int main(int argc, char** argv)
                     }
                     ImGui::End();
                 }
-                drawPropertiesPane(ui, comparison, panelLayout, dimensionsCache);
+                drawPropertiesPane(ui, comparison, panelLayout, inspector);
                 const auto settings = woby::drawSettingsDialog(ui, requestSettings, menu.popupPosition);
                 const auto updates = woby::drawUpdatesDialog(ui, requestUpdates, updateRuntime.state, menu.popupPosition);
                 modalDialogOpen = modalDialogOpen || settings.open || updates.open;
@@ -3266,26 +3267,26 @@ int main(int argc, char** argv)
                     || pending.stages != woby::requestedComparisonStages(woby::comparisonSettings(ui, pending.objectId), both, true);
                 const bool ready = !changed && it != comparison.objects.end()
                     && woby::comparisonResultsReady(it->second, ui, pending.objectId, true)
-                    && (pending.exportPath.empty() || (!it->second.intersection.requested
-                        && it->second.result.original.intersections.phase != woby::IntersectionPhase::queued
-                        && it->second.result.original.intersections.phase != woby::IntersectionPhase::running));
-                const bool failed = it != comparison.objects.end() && !it->second.error.empty()
-                    && it->second.attemptedSignature == pending.signature;
+                    && (pending.exportPath.empty() || (!it->second.jobs.intersection.requested
+                        && it->second.results.value.original.intersections.phase != woby::IntersectionPhase::queued
+                        && it->second.results.value.original.intersections.phase != woby::IntersectionPhase::running));
+                const bool failed = it != comparison.objects.end() && !it->second.jobs.error.empty()
+                    && it->second.jobs.attemptedSignature == pending.signature;
                 if (changed || ready || failed) {
                     try {
                         if (changed) { throw std::runtime_error("Analysis inputs or detectors changed while results were being requested; retry analysis.results."); }
-                        if (!ready) { throw std::runtime_error(it->second.error); }
-                        auto result = woby::controlComparisonResults(it->second.result, pending.tolerance, pending.exportPath.empty(), formatObjectId);
+                        if (!ready) { throw std::runtime_error(it->second.jobs.error); }
+                        auto result = woby::controlComparisonResults(it->second.results.value, pending.tolerance, pending.exportPath.empty(), formatObjectId);
                         result["target"] = pending.target;
                         if (!pending.exportPath.empty()) {
-                            woby::startAnalysisExport(analysisExport, it->second.result, std::move(result), pending.target, pending.exportPath);
+                            woby::startAnalysisExport(analysisExport, it->second.results.value, std::move(result), pending.target, pending.exportPath);
                             result = {{"export", woby::analysisExportStatus(analysisExport)}};
                         }
                         woby::completeAutomationCommand(*automation, pending.id, woby::AutomationControlResult{std::move(result)});
                     } catch (const std::exception& error) {
                         woby::completeAutomationCommand(*automation, pending.id, woby::AutomationCommandError{error.what()});
                     }
-                    if (it != comparison.objects.end()) { it->second.fullResultsRequested = false; }
+                    if (it != comparison.objects.end()) { it->second.jobs.fullResultsRequested = false; }
                     automationComparison.reset();
                 }
             }
@@ -3357,20 +3358,20 @@ int main(int argc, char** argv)
                                 const auto found = comparison.objects.find(payload.objectId);
                                 const bool ready = found != comparison.objects.end()
                                     && woby::comparisonResultsReady(found->second, ui, payload.objectId, true);
-                                const auto revision = ready ? Json(std::to_string(found->second.resultsRevision)) : Json(nullptr);
+                                const auto revision = ready ? Json(std::to_string(found->second.results.revision)) : Json(nullptr);
                                 if (payload.action == A::comparisonUvTriangles) {
-                                    if (!ready || !found->second.result.original.source.uvQuality) {
+                                    if (!ready || !found->second.results.value.original.source.uvQuality) {
                                         throw std::invalid_argument("UV results are not current; call analysis results first.");
                                     }
-                                    if (payload.revision && *payload.revision != std::to_string(found->second.resultsRevision)) {
+                                    if (payload.revision && *payload.revision != std::to_string(found->second.results.revision)) {
                                         throw std::invalid_argument("Results changed; restart pagination without --revision.");
                                     }
-                                    result = woby::controlUvTrianglePage(*found->second.result.original.source.uvQuality,
+                                    result = woby::controlUvTrianglePage(*found->second.results.value.original.source.uvQuality,
                                         static_cast<size_t>(payload.offset.value_or(0)), static_cast<size_t>(payload.limit.value_or(100)), formatObjectId);
                                     result["target"] = payload.target;
                                 } else {
-                                    result = woby::controlUvProbe(ui, ready ? &found->second.result : nullptr,
-                                        ready ? found->second.resultSignature : 0, payload, formatObjectId);
+                                    result = woby::controlUvProbe(ui, ready ? &found->second.results.value : nullptr,
+                                        ready ? found->second.results.signature : 0, payload, formatObjectId);
                                 }
                                 result["revision"] = revision;
                             } else if (payload.action == A::comparisonFindings) {
@@ -3380,9 +3381,9 @@ int main(int argc, char** argv)
                                 if (found == comparison.objects.end() || !woby::comparisonDetectorReady(found->second, ui, payload.objectId, category)) {
                                     throw std::invalid_argument("Detector results are not current; run analysis run first.");
                                 }
-                                const auto revision = std::to_string(found->second.resultsRevision);
+                                const auto revision = std::to_string(found->second.results.revision);
                                 if (payload.revision && *payload.revision != revision) { throw std::invalid_argument("Results changed; restart pagination without --revision."); }
-                                result = woby::analysisResultPage(found->second.result, *payload.side == "a" ? woby::ComparisonSide::a : woby::ComparisonSide::b,
+                                result = woby::analysisResultPage(found->second.results.value, *payload.side == "a" ? woby::ComparisonSide::a : woby::ComparisonSide::b,
                                     *payload.detector, payload.collection.value_or("/findings"), static_cast<size_t>(payload.offset.value_or(0)), static_cast<size_t>(payload.limit.value_or(100)));
                                 result["revision"] = revision; result["target"] = payload.target;
                             } else if (payload.action == A::comparisonResults || payload.action == A::comparisonExport) {
@@ -3410,7 +3411,7 @@ int main(int argc, char** argv)
                                 const bool both = woby::enabledComparisonPartCount(ui, woby::ComparisonSide::a, payload.objectId) != 0
                                     && woby::enabledComparisonPartCount(ui, woby::ComparisonSide::b, payload.objectId) != 0;
                                 pending.stages = woby::requestedComparisonStages(source->settings, both, true);
-                                comparison.objects[payload.objectId].fullResultsRequested = true;
+                                comparison.objects[payload.objectId].jobs.fullResultsRequested = true;
                                 automationComparison.emplace(std::move(pending));
                                 return;
                             } else if (payload.action == A::comparisonFocus) {
@@ -3425,8 +3426,8 @@ int main(int argc, char** argv)
                                         static_cast<woby::DiagnosticCategory>(detector - woby::diagnosticCategoryKeys.begin()))) {
                                     throw std::invalid_argument("Detector findings are not current; run the detector first.");
                                 }
-                                result = woby::controlFocusComparisonDiagnostic(ui, found->second.result,
-                                    found->second.resultSignature, payload);
+                                result = woby::controlFocusComparisonDiagnostic(ui, found->second.results.value,
+                                    found->second.results.signature, payload);
                                 woby::updateSceneDirty(ui, cleanSceneDocument);
                             } else if (payload.action == A::status) {
                                 result = woby::automationInstanceInfo(*automation);

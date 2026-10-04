@@ -77,6 +77,8 @@ void coordinateIdentity(double* result);
 void coordinateMultiply(double* result, const double* a, const double* b);
 [[nodiscard]] Coordinate transformCoordinate(const double* matrix, const Coordinate& point);
 
+// Process-unique geometry version. Copies preserve it; writers renew it after changing content.
+[[nodiscard]] uint64_t nextMeshContentRevision();
 struct Mesh {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -94,7 +96,11 @@ struct Mesh {
     std::shared_ptr<const UvQuality> uvQuality;
     std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
     std::shared_ptr<const FreeformGeometry> freeform;
+    uint64_t contentRevision = nextMeshContentRevision();
 };
+
+// After editing published geometry, renew this identity and notify the owning UiState.
+void renewMeshContentRevision(Mesh& mesh);
 
 [[nodiscard]] std::span<const uint32_t> meshNodeIndices(const Mesh& mesh, const MeshNode& node);
 [[nodiscard]] bool finiteCoordinate(const Coordinate& point) noexcept;

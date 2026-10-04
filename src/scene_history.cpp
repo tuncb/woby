@@ -182,7 +182,9 @@ std::optional<UiState> prepareSceneHistoryStep(const SceneHistory& history,
     }
     validateAnnotationTargets(prepared);
     prepared.running = current.running;
-    prepared.sceneEditRevision = current.sceneEditRevision + 1;
+    prepared.sceneEditRevision = current.sceneEditRevision;
+    prepared.revisions = current.revisions;
+    notifySceneEdit(prepared);
     prepared.nextObjectId = current.nextObjectId;
     prepared.nextViewId = current.nextViewId;
     prepared.activeViewId = findView(prepared, current.activeViewId) ? current.activeViewId : 0;

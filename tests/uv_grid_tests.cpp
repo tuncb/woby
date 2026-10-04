@@ -183,6 +183,7 @@ TEST_CASE("UV bounds cache invalidates for source and layout changes without cha
         auto replacement = state.files[0].mesh;
         replacement.vertices[1].position = {2, 3, 4};
         replacement.vertices[1].texcoord = {7, -3};
+        woby::renewMeshContentRevision(replacement);
         state.files[0].mesh = std::move(replacement);
     }
     SUBCASE("membership") { woby::isolateUvObjects(state, {state.files[0].groupSettings[1].objectId}, id); }
@@ -337,30 +338,30 @@ TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes
     auto& state = f.fixture.state;
     woby::updateComparisonRuntimes(f.runtimes, state);
     auto& runtime = f.runtimes.objects[f.id];
-    CHECK(runtime.preparationWorker.valid());
-    CHECK_FALSE(runtime.inputs);
+    CHECK(runtime.jobs.preparationWorker.valid());
+    CHECK_FALSE(runtime.sources.inputs);
     REQUIRE(f.ready());
-    REQUIRE(runtime.inputs);
-    CHECK_FALSE(runtime.prepared); // Upload staging memory is released after copying to the GPU.
-    const auto inputs = runtime.inputs;
-    const auto revision = runtime.resultsRevision;
+    REQUIRE(runtime.sources.inputs);
+    CHECK_FALSE(runtime.sources.prepared); // Upload staging memory is released after copying to the GPU.
+    const auto inputs = runtime.sources.inputs;
+    const auto revision = runtime.results.revision;
     for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
         woby::setSceneUpAxis(state, axis);
         woby::updateComparisonRuntimes(f.runtimes, state);
-        CHECK(runtime.inputs == inputs);
-        CHECK(runtime.resultsRevision == revision);
-        CHECK_FALSE(runtime.preparationWorker.valid());
+        CHECK(runtime.sources.inputs == inputs);
+        CHECK(runtime.results.revision == revision);
+        CHECK_FALSE(runtime.jobs.preparationWorker.valid());
     }
-    CHECK(runtime.inputs == inputs);
-    CHECK(runtime.resultsRevision == revision);
-    CHECK_FALSE(runtime.preparationWorker.valid());
+    CHECK(runtime.sources.inputs == inputs);
+    CHECK(runtime.results.revision == revision);
+    CHECK_FALSE(runtime.jobs.preparationWorker.valid());
     auto settings = woby::comparisonSettings(state, f.id);
     settings.uvMetric = woby::UvQualityMetric::area;
     woby::setComparisonSettings(state, settings, f.id);
     REQUIRE(f.ready());
-    CHECK(runtime.inputs != inputs);
-    CHECK(runtime.result.original.source.uvQuality->metric == woby::UvQualityMetric::area);
-    CHECK(runtime.resultsRevision != revision);
+    CHECK(runtime.sources.inputs != inputs);
+    CHECK(runtime.results.value.original.source.uvQuality->metric == woby::UvQualityMetric::area);
+    CHECK(runtime.results.revision != revision);
 }
 
 TEST_CASE("UV runtime rejects stale preparation results and survives removal during preparation")
@@ -371,21 +372,22 @@ TEST_CASE("UV runtime rejects stale preparation results and survives removal dur
     auto& runtime = f.runtimes.objects[f.id];
     auto stale = std::make_shared<woby::PreparedComparisonInputs>(woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(state, f.id)));
     const auto signature = woby::comparisonGeometrySignature(state, f.id);
-    runtime.cache.signature = runtime.preparationSignature = signature;
+    runtime.results.cache.signature = runtime.jobs.preparationSignature = signature;
     std::promise<std::shared_ptr<const woby::PreparedComparisonInputs>> completion;
-    runtime.preparationWorker = completion.get_future();
+    runtime.jobs.preparationWorker = completion.get_future();
     completion.set_value(stale);
     state.files[0].groupSettings[0].translation = {7, 0, 0};
+    woby::notifySceneEdit(state, woby::SceneChange::geometry);
     woby::updateComparisonRuntimes(f.runtimes, state);
-    CHECK(runtime.prepared != stale);
+    CHECK(runtime.sources.prepared != stale);
     REQUIRE(f.ready());
-    CHECK(runtime.resultSignature == woby::comparisonGeometrySignature(state, f.id));
-    CHECK(runtime.result.original.source.vertices[0].position[0] == 7);
+    CHECK(runtime.results.signature == woby::comparisonGeometrySignature(state, f.id));
+    CHECK(runtime.results.value.original.source.vertices[0].position[0] == 7);
     auto settings = woby::comparisonSettings(state, f.id);
     settings.uvMetric = woby::UvQualityMetric::orientation;
     woby::setComparisonSettings(state, settings, f.id);
     woby::updateComparisonRuntimes(f.runtimes, state);
-    REQUIRE(runtime.preparationWorker.valid());
+    REQUIRE(runtime.jobs.preparationWorker.valid());
     state.comparisons.clear();
     state.files.clear();
     woby::updateComparisonRuntimes(f.runtimes, state);
@@ -399,19 +401,22 @@ TEST_CASE("UV runtime reports preparation failure once and recovers after geomet
     auto& state = f.fixture.state;
     auto valid = state.files[0].mesh;
     state.files[0].mesh.indices[0] = UINT32_MAX;
+    woby::renewMeshContentRevision(state.files[0].mesh);
+    woby::notifySceneEdit(state, woby::SceneChange::geometry);
     woby::updateComparisonRuntimes(f.runtimes, state);
     auto& runtime = f.runtimes.objects[f.id];
-    REQUIRE(runtime.preparationWorker.valid());
-    runtime.preparationWorker.wait();
+    REQUIRE(runtime.jobs.preparationWorker.valid());
+    runtime.jobs.preparationWorker.wait();
     woby::updateComparisonRuntimes(f.runtimes, state);
-    CHECK_FALSE(runtime.error.empty());
-    CHECK((runtime.failedStages & woby::comparisonSource) != 0);
-    CHECK_FALSE(runtime.ready);
+    CHECK_FALSE(runtime.jobs.error.empty());
+    CHECK((runtime.jobs.failedStages & woby::comparisonSource) != 0);
+    CHECK_FALSE(runtime.gpu.ready);
     woby::updateComparisonRuntimes(f.runtimes, state);
-    CHECK_FALSE(runtime.preparationWorker.valid());
+    CHECK_FALSE(runtime.jobs.preparationWorker.valid());
     state.files[0].mesh = std::move(valid);
+    woby::notifySceneEdit(state, woby::SceneChange::geometry);
     REQUIRE(f.ready());
-    CHECK(runtime.error.empty());
+    CHECK(runtime.jobs.error.empty());
 }
 
 TEST_CASE("UV edits expand parents skip missing UVs and preserve per-child overrides")

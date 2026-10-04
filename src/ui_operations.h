@@ -92,6 +92,7 @@ enum class UiObjectProperty {
     uvGrid, uvDensityU, uvDensityV, uvColorMode, uvMinimum, uvMaximum,
     lineWidth, lineDepthTest,
 };
+inline constexpr size_t uiObjectPropertyCount = static_cast<size_t>(UiObjectProperty::lineDepthTest) + 1;
 enum class UiPropertyGroup { translation, rotation, scale, transform, appearance };
 struct UiPropertyValue {
     float value = 0.0f;
@@ -102,6 +103,7 @@ struct UiPropertyValue {
 // parts; folder vertex size aggregates contained file multipliers (or direct parts).
 // Comparisons use their dedicated inspector; stale/unsupported selections are rejected.
 [[nodiscard]] UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty property);
+[[nodiscard]] std::array<UiPropertyValue, uiObjectPropertyCount> selectedObjectProperties(const UiState& state);
 // Edit only this component on resolved targets, deduplicating overlaps. File/part
 // vertex multipliers remain independent, including when both are selected.
 void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float value);
@@ -259,10 +261,10 @@ void setSceneDirty(UiState& state, bool dirty);
 // Notify history after a scene operation, including batches of struct-level
 // setters. Does not change the saved-state indicator: tree construction can also
 // be used while initializing a clean scene. No-op notifications are filtered.
-void notifySceneEdit(UiState& state);
+void notifySceneEdit(UiState& state, SceneChange change = SceneChange::all);
 // Notify an edit and provisionally mark the document dirty. clear/updateSceneDirty
 // only synchronize the saved-state indicator and do not notify history.
-void markSceneDirty(UiState& state);
+void markSceneDirty(UiState& state, SceneChange change = SceneChange::all);
 void clearSceneDirty(UiState& state);
 void updateSceneDirty(UiState& state, const SceneDocument& cleanDocument);
 void setViewerPaneWidth(UiState& state, float value, float minWidth, float maxWidth);

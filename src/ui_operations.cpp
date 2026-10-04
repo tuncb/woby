@@ -308,7 +308,7 @@ void setComparisonObjectsEnabled(UiState& state, const std::vector<SceneObjectId
     }
     if (!changed) { return; }
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::analysis);
 }
 
 namespace {
@@ -524,7 +524,7 @@ void renameComparison(UiState& state, SceneObjectId id, const std::string& name)
         const auto normalized = name.empty() ? "Analysis" : name;
         if (comparison->name == normalized) { return; }
         comparison->name = normalized;
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::labels);
     }
 }
 
@@ -534,7 +534,7 @@ void setComparisonTranslation(UiState& state, SceneObjectId id, const std::array
     if (auto* comparison = findComparison(state, id)) {
         comparison->translation = translation;
         recalculateSceneBounds(state);
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::appearance);
     }
 }
 
@@ -927,7 +927,7 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
         normalizeAnalysisSources(state, comparison->objectId);
         if (comparison->settings.enabled && !wasEnabled) { setPropertiesPaneVisible(state, true); }
         recalculateSceneBounds(state);
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::analysis);
     }
 }
 
@@ -977,7 +977,7 @@ void setComparisonObjects(UiState& state, const std::vector<SceneObjectId>& obje
     if (member) { setPropertiesPaneVisible(state, true); }
     normalizeAnalysisSources(state, comparison->objectId);
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::analysis);
 }
 
 void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObjectId id)
@@ -992,7 +992,7 @@ void removeMissingComparisonParts(UiState& state, ComparisonSide side, SceneObje
         });
         normalizeAnalysisSources(state, comparison->objectId);
         recalculateSceneBounds(state);
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::analysis);
     }
 }
 
@@ -1003,7 +1003,7 @@ void clearComparisonGroup(UiState& state, ComparisonSide side, SceneObjectId id)
         (side == ComparisonSide::a ? comparison->a : comparison->b).clear();
         normalizeAnalysisSources(state, comparison->objectId);
         recalculateSceneBounds(state);
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::analysis);
     }
 }
 
@@ -1014,7 +1014,7 @@ void swapComparisonGroups(UiState& state, SceneObjectId id)
         std::swap(comparison->a, comparison->b);
         normalizeAnalysisSources(state, comparison->objectId);
         recalculateSceneBounds(state);
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::analysis);
     }
 }
 
@@ -1361,7 +1361,7 @@ void setAllSceneRenderModes(UiState& state, UiRenderMode mode, bool enabled)
         setAllGroupRenderModes(file.groupSettings, mode, enabled);
     }
     if (changed) {
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::appearance | SceneChange::visibility);
     }
 }
 
@@ -1371,7 +1371,7 @@ void setSceneNodeSubtreeRenderMode(
     UiRenderMode mode,
     bool enabled)
 {
-    notifySceneEdit(state);
+    notifySceneEdit(state, SceneChange::appearance | SceneChange::visibility);
     if (node.kind == UiSceneNodeKind::group) {
         if (validGroupIndex(state, node.fileIndex, node.groupIndex)) {
             setGroupRenderMode(state.files[node.fileIndex].groupSettings[node.groupIndex], mode, enabled);
@@ -1440,14 +1440,14 @@ void setAllModelsVisible(UiState& state, bool visible)
 {
     if (!setAllModelVisibility(state, visible)) { return; }
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::visibility);
 }
 
 void setAllComparisonsVisible(UiState& state, bool visible)
 {
     if (!setAllComparisonVisibility(state, visible)) { return; }
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::visibility);
 }
 
 void setAllSceneVisible(UiState& state, bool visible)
@@ -1456,7 +1456,7 @@ void setAllSceneVisible(UiState& state, bool visible)
     const bool comparisonsChanged = setAllComparisonVisibility(state, visible);
     if (!modelsChanged && !comparisonsChanged) { return; }
     recalculateSceneBounds(state);
-    markSceneDirty(state);
+    markSceneDirty(state, SceneChange::visibility);
 }
 
 static void setSceneNodeSubtreeVisibleRecursive(UiState& state, UiSceneNode& node, bool visible)
@@ -1481,7 +1481,7 @@ void setSceneNodeSubtreeVisible(UiState& state, UiSceneNode& node, bool visible)
 {
     setSceneNodeSubtreeVisibleRecursive(state, node, visible);
     refreshSceneTreeFolderVisibility(state);
-    notifySceneEdit(state);
+    notifySceneEdit(state, SceneChange::visibility);
 }
 
 void setGroupVisible(UiGroupState& group, bool visible)
@@ -1516,7 +1516,7 @@ void setGroupVisible(UiState& state, UiFileState& file, UiGroupState& group, boo
 {
     setGroupVisible(file, group, visible);
     refreshSceneTreeFolderVisibility(state);
-    notifySceneEdit(state);
+    notifySceneEdit(state, SceneChange::visibility);
 }
 
 void toggleGroupVisible(UiState& state, UiFileState& file, UiGroupState& group)
@@ -1528,7 +1528,7 @@ void setShowOrigin(UiState& state, bool visible)
 {
     if (state.showOrigin != visible) {
         state.showOrigin = visible;
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::appearance);
     }
 }
 
@@ -1541,7 +1541,7 @@ void setShowGrid(UiState& state, bool visible)
 {
     if (state.showGrid != visible) {
         state.showGrid = visible;
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::appearance);
     }
 }
 
@@ -1554,7 +1554,7 @@ void setShowDimensions(UiState& state, bool visible)
 {
     if (state.showDimensions != visible) {
         state.showDimensions = visible;
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::appearance);
     }
 }
 
@@ -1584,7 +1584,7 @@ void setMasterVertexPointSize(UiState& state, float value)
         defaultMasterVertexPointSize);
     if (state.masterVertexPointSize != clampedValue) {
         state.masterVertexPointSize = clampedValue;
-        markSceneDirty(state);
+        markSceneDirty(state, SceneChange::appearance);
     }
 }
 
@@ -1927,31 +1927,41 @@ void setSceneDirty(UiState& state, bool dirty)
     state.isDirty = dirty;
 }
 
-void notifySceneEdit(UiState& state)
+void notifySceneEdit(UiState& state, SceneChange change)
 {
+    const auto includes = [&](SceneChange domain) { return (static_cast<uint32_t>(change) & static_cast<uint32_t>(domain)) != 0; };
+    if (includes(SceneChange::geometry)) { ++state.revisions.geometry; }
+    if (includes(SceneChange::appearance)) { ++state.revisions.appearance; }
+    if (includes(SceneChange::labels)) { ++state.revisions.labels; }
+    if (includes(SceneChange::analysis)) { ++state.revisions.analysis; }
+    if (includes(SceneChange::visibility)) { ++state.revisions.visibility; }
     ++state.sceneEditRevision;
 }
 
-void markSceneDirty(UiState& state)
+void markSceneDirty(UiState& state, SceneChange change)
 {
+    notifySceneEdit(state, change);
+    setSceneDirty(state, true);
+    const bool affectsAnalysis = (static_cast<uint32_t>(change) & static_cast<uint32_t>(SceneChange::geometry | SceneChange::analysis)) != 0;
+    if (!affectsAnalysis) { return; }
     for (auto& comparison : state.comparisons) {
+        if (!comparison.pendingDiagnosticFocus && !comparison.diagnosticFocus && !comparison.uvFindingFocus) { continue; }
+        const auto signature = comparisonGeometrySignature(state, comparison.objectId);
         if (comparison.pendingDiagnosticFocus) {
             const auto& pending = *comparison.pendingDiagnosticFocus;
-            if (!comparison.settings.enabled || pending.signature != comparisonGeometrySignature(state, comparison.objectId)
+            if (!comparison.settings.enabled || pending.signature != signature
                 || pending.side != comparison.settings.diagnosticSide || pending.category != comparison.settings.diagnosticCategory) {
                 comparison.pendingDiagnosticFocus.reset();
             }
         }
-        if (comparison.diagnosticFocus && !diagnosticFocusCurrent(state, comparison)) {
+        if (comparison.diagnosticFocus && !diagnosticFocusCurrent(state, comparison, signature)) {
             comparison.diagnosticFocus.reset();
         }
         if (comparison.uvFindingFocus && (!comparison.settings.enabled || comparison.settings.type != AnalysisType::uvQuality
-                || comparison.uvFindingFocus->signature != comparisonGeometrySignature(state, comparison.objectId))) {
+                || comparison.uvFindingFocus->signature != signature)) {
             comparison.uvFindingFocus.reset();
         }
     }
-    notifySceneEdit(state);
-    setSceneDirty(state, true);
 }
 
 void clearSceneDirty(UiState& state)

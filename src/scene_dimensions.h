@@ -22,6 +22,7 @@ struct DimensionPartKey {
     const uint32_t* indices = nullptr;
     size_t vertexCount = 0, indexCount = 0, begin = 0, count = 0;
     PickMatrix model{};
+    uint64_t contentRevision = 0;
     friend bool operator==(const DimensionPartKey&, const DimensionPartKey&) = default;
 };
 

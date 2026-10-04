@@ -125,12 +125,12 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     woby::renameComparison(f.state, f.id, "Inspection one");
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
-    runtime.ready = true;
-    runtime.inspector.inputs[0].summary.enabledPartCount = 1;
-    runtime.inspector.sources = "inspection-source.obj";
-    for (auto& check : runtime.diagnosticSummaries) { check[0].state = woby::AnalysisResultState::ready; }
-    runtime.diagnosticSummaries[0][0].count = 3;
-    runtime.diagnosticSummaries[1][0].state = woby::AnalysisResultState::notRun;
+    runtime.gpu.ready = true;
+    runtime.inspector.queries.inputs[0].summary.enabledPartCount = 1;
+    runtime.inspector.queries.sources = "inspection-source.obj";
+    for (auto& check : runtime.inspector.diagnosticSummaries) { check[0].state = woby::AnalysisResultState::ready; }
+    runtime.inspector.diagnosticSummaries[0][0].count = 3;
+    runtime.inspector.diagnosticSummaries[1][0].state = woby::AnalysisResultState::notRun;
     const char* expectedTask = "Mesh checks";
     const char* expectedStatus = "Checks pending";
     bool missing = false;
@@ -141,14 +141,16 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     }
     SUBCASE("input issues appear directly in the hint") {
         woby::clearComparisonGroup(f.state, woby::ComparisonSide::a, f.id);
-        runtime.inspector.inputs[0].summary.enabledPartCount = 0;
-        runtime.inspector.inputs[0].summary.issue = "Add an enabled source to this input.";
+        runtime.inspector.queries.inputs[0].summary.enabledPartCount = 0;
+        runtime.inspector.queries.inputs[0].summary.issue = "Add an enabled source to this input.";
         expectedStatus = "Needs inputs"; missing = true;
     }
-    runtime.inspector.owner = &f.state;
-    runtime.inspector.objectId = f.id;
-    runtime.inspector.generation = f.state.sceneGeneration;
-    runtime.inspector.revision = f.state.sceneEditRevision;
+    runtime.inspector.queries.owner = &f.state;
+    runtime.inspector.queries.objectId = f.id;
+    runtime.inspector.queries.generation = f.state.sceneGeneration;
+    runtime.inspector.queries.geometryRevision = f.state.revisions.geometry;
+    runtime.inspector.queries.analysisRevision = f.state.revisions.analysis;
+    runtime.inspector.queries.labelsRevision = f.state.revisions.labels;
     std::string contents;
     float endY = 0;
     ImVec2 row;
@@ -177,7 +179,7 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     CHECK(contents.find(expectedStatus) != std::string::npos);
     CHECK(contents.find("Sources: inspection-source.obj") != std::string::npos);
     CHECK(contents.find("Double-click to rename") != std::string::npos);
-    if (missing) { CHECK(contents.find(runtime.inspector.inputs[0].summary.issue) != std::string::npos); }
+    if (missing) { CHECK(contents.find(runtime.inspector.queries.inputs[0].summary.issue) != std::string::npos); }
     else if (woby::comparisonSettings(f.state, f.id).mode != woby::ComparisonMode::surfaceQuality) {
         CHECK(contents.find("1 checks with findings | 1 not run") != std::string::npos);
     }
@@ -481,11 +483,11 @@ TEST_CASE("analysis inspectors keep measurements separate from diagnostic findin
     woby::setComparisonSettings(f.state, settings, f.id);
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
-    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
-    runtime.cache = {runtime.resultSignature, woby::comparisonSource | woby::comparisonQuality | woby::comparisonDistance};
-    runtime.result = woby::computeComparisonStages(woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id),
+    runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.results.cache = {runtime.results.signature, woby::comparisonSource | woby::comparisonQuality | woby::comparisonDistance};
+    runtime.results.value = woby::computeComparisonStages(woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id),
         task == woby::AnalysisTask::surfaceComparison ? woby::comparisonWorldMesh(f.state, woby::ComparisonSide::b, f.id)
-            : woby::Mesh{}, runtime.cache.completed);
+            : woby::Mesh{}, runtime.results.cache.completed);
     std::string contents;
     for (int frame = 0; frame < 2; ++frame) {
         ImGui::NewFrame();
@@ -540,9 +542,9 @@ TEST_CASE("analysis UV inspector shows all findings and only relevant normalizat
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
-    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
-    runtime.cache = {runtime.resultSignature, woby::comparisonSource};
-    runtime.result.original.source = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id);
+    runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.results.cache = {runtime.results.signature, woby::comparisonSource};
+    runtime.results.value.original.source = woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id);
     std::string contents;
     const auto before = woby::createSceneDocument(f.state);
     for (int frame = 0; frame < 2; ++frame) {
@@ -583,27 +585,27 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
     const char* status = "Queued...";
     SUBCASE("queued") {}
     SUBCASE("calculating") {
-        runtime.worker = pending.get_future();
-        runtime.workerSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.jobs.worker = pending.get_future();
+        runtime.jobs.workerSignature = woby::comparisonGeometrySignature(f.state, f.id);
         status = "Calculating analysis...";
     }
     SUBCASE("obsolete worker leaves new work queued") {
-        runtime.worker = pending.get_future();
-        runtime.workerSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
+        runtime.jobs.worker = pending.get_future();
+        runtime.jobs.workerSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
     }
     SUBCASE("canceled worker leaves new work queued") {
-        runtime.worker = pending.get_future();
-        runtime.workerSignature = woby::comparisonGeometrySignature(f.state, f.id);
-        runtime.stop.request_stop();
+        runtime.jobs.worker = pending.get_future();
+        runtime.jobs.workerSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.jobs.stop.request_stop();
     }
     SUBCASE("failed") {
-        runtime.error = "Test analysis failure";
-        runtime.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.jobs.error = "Test analysis failure";
+        runtime.jobs.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id);
         status = "Analysis failed";
     }
     SUBCASE("obsolete error does not report failure") {
-        runtime.error = "Old failure";
-        runtime.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
+        runtime.jobs.error = "Old failure";
+        runtime.jobs.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
     }
     SUBCASE("disabled") {
         auto settings = woby::comparisonSettings(f.state, f.id);
@@ -617,17 +619,17 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
         status = "";
     }
     SUBCASE("ready") {
-        runtime.ready = true;
-        runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
-        runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
-        for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
+        runtime.gpu.ready = true;
+        runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.results.cache = {runtime.results.signature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+        for (auto& detector : runtime.results.value.detectors) { detector.phase = woby::IntersectionPhase::complete; }
         status = "";
     }
     SUBCASE("new quality view waits for its missing stage") {
-        runtime.ready = true;
-        runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
-        runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
-        for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
+        runtime.gpu.ready = true;
+        runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+        runtime.results.cache = {runtime.results.signature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+        for (auto& detector : runtime.results.value.detectors) { detector.phase = woby::IntersectionPhase::complete; }
         auto settings = woby::comparisonSettings(f.state, f.id);
         settings.mode = woby::ComparisonMode::surfaceQuality;
         woby::setComparisonSettings(f.state, settings, f.id);
@@ -635,8 +637,8 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
         CHECK_FALSE(woby::comparisonsReadyForScreenshot(f.state, runtimes));
     }
     SUBCASE("outdated result") {
-        runtime.ready = true;
-        runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
+        runtime.gpu.ready = true;
+        runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id) ^ 1;
     }
     std::string contents;
     for (int frame = 0; frame < 2; ++frame) {
@@ -774,23 +776,23 @@ TEST_CASE("analysis status stays fixed while active and collapses without losing
     CHECK(activity->Scroll.y == 0);
     CHECK(contents.find("Queued...") != std::string::npos);
 
-    runtime.error = "Test failure";
-    runtime.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.jobs.error = "Test failure";
+    runtime.jobs.attemptedSignature = woby::comparisonGeometrySignature(f.state, f.id);
     frame();
     CHECK(contents.find("Analysis failed") != std::string::npos);
     auto& io = ImGui::GetIO();
     io.AddMousePosEvent(activity->Pos.x + 15, activity->Pos.y + activity->Size.y * 0.5f); frame();
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
     io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame(); frame();
-    CHECK(runtime.error.empty());
-    CHECK(runtime.attemptedSignature == 0);
+    CHECK(runtime.jobs.error.empty());
+    CHECK(runtime.jobs.attemptedSignature == 0);
     CHECK(contents.find("Queued...") != std::string::npos);
     CHECK(editor->Scroll.y == doctest::Approx(100));
 
-    runtime.ready = true;
-    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
-    runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
-        for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
+    runtime.gpu.ready = true;
+    runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.results.cache = {runtime.results.signature, woby::requestedComparisonStages(woby::comparisonSettings(f.state, f.id), false)};
+        for (auto& detector : runtime.results.value.detectors) { detector.phase = woby::IntersectionPhase::complete; }
     frame(); frame();
     CHECK(contents.find("Queued...") == std::string::npos);
     CHECK(contents.find("Updating...") == std::string::npos);
@@ -1031,14 +1033,14 @@ TEST_CASE("diagnostics show all checks including zero counts and pending results
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
-    runtime.ready = true;
-    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
-    runtime.cache = {runtime.resultSignature, woby::comparisonSource | woby::comparisonDetectors};
-    runtime.result = woby::computeComparisonStages(
-        woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id), {}, runtime.cache.completed);
+    runtime.gpu.ready = true;
+    runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.results.cache = {runtime.results.signature, woby::comparisonSource | woby::comparisonDetectors};
+    runtime.results.value = woby::computeComparisonStages(
+        woby::comparisonWorldMesh(f.state, woby::ComparisonSide::a, f.id), {}, runtime.results.cache.completed);
     REQUIRE(woby::comparisonDetectorReady(runtime, f.state, f.id, woby::DiagnosticCategory::nonManifold));
-    REQUIRE(runtime.result.original.topology.availableSources == 1);
-    REQUIRE(runtime.result.original.topology.nonManifoldEdges.empty());
+    REQUIRE(runtime.results.value.original.topology.availableSources == 1);
+    REQUIRE(runtime.results.value.original.topology.nonManifoldEdges.empty());
     std::string contents;
     ImGuiTable* diagnostics = nullptr;
     for (int frame = 0; frame < 2; ++frame) {
@@ -1183,7 +1185,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     }
     if (!hasA && !hasB) {
         for (const auto phase : {woby::IntersectionPhase::notChecked, woby::IntersectionPhase::outdated, woby::IntersectionPhase::failed}) {
-            auto& result = runtimes.objects[f.id].result;
+            auto& result = runtimes.objects[f.id].results.value;
             result.original.intersections.phase = phase;
             for (auto& status : result.detectors) { status.phase = phase; }
             frame();
@@ -1243,7 +1245,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
     CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.show);
     CHECK_FALSE(woby::comparisonSettings(f.state, f.id).intersections.autoUpdate);
     click(intersectionEye);
-    auto& inspection = runtimes.objects[f.id].result.original.intersections;
+    auto& inspection = runtimes.objects[f.id].results.value.original.intersections;
     struct ActionCase {
         woby::IntersectionPhase phase;
         const char* icon;
@@ -1263,7 +1265,7 @@ TEST_CASE("diagnostics keep run visibility and settings independent with nearby 
         CAPTURE(action.hint);
         inspection.phase = action.phase;
         inspection.error = action.phase == woby::IntersectionPhase::failed ? "Test check failure" : "";
-        runtimes.objects[f.id].result.repaired.intersections.phase = action.phase;
+        runtimes.objects[f.id].results.value.repaired.intersections.phase = action.phase;
         frame();
         const auto request = woby::findComparison(f.state, f.id)->intersectionRequestRevision;
         const auto revision = f.state.sceneEditRevision;
@@ -1537,11 +1539,11 @@ TEST_CASE("fin findings use table columns and continuous one based indices on pa
     woby::selectSceneObject(f.state, f.id);
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
-    runtime.ready = true;
-    runtime.resultSignature = woby::comparisonGeometrySignature(f.state, f.id);
-    runtime.cache = {runtime.resultSignature, woby::requestedComparisonStages(settings, false) | woby::comparisonDiagnosticStage(settings.diagnosticCategory)};
-    for (auto& detector : runtime.result.detectors) { detector.phase = woby::IntersectionPhase::complete; }
-    auto& surface = runtime.result.original;
+    runtime.gpu.ready = true;
+    runtime.results.signature = woby::comparisonGeometrySignature(f.state, f.id);
+    runtime.results.cache = {runtime.results.signature, woby::requestedComparisonStages(settings, false) | woby::comparisonDiagnosticStage(settings.diagnosticCategory)};
+    for (auto& detector : runtime.results.value.detectors) { detector.phase = woby::IntersectionPhase::complete; }
+    auto& surface = runtime.results.value.original;
     surface.topology.sources.resize(1);
     surface.topology.sources[0].source = "defect-source.obj";
     surface.topology.sources[0].faces.resize(101);
@@ -1578,7 +1580,7 @@ TEST_CASE("fin findings use table columns and continuous one based indices on pa
     CHECK(contents.find("| 1 | defect-source.obj | 101 | branched |") != std::string::npos);
     CHECK(contents.find("| 25 | defect-source.obj | 125 | branched |") != std::string::npos);
     CHECK(contents.find("| 26 | defect-source.obj |") == std::string::npos);
-    woby::selectComparisonDiagnostic(f.state, runtime.result, runtime.resultSignature, 25, f.id);
+    woby::selectComparisonDiagnostic(f.state, runtime.results.value, runtime.results.signature, 25, f.id);
     contents = frame();
     CHECK(contents.find("| 26 | defect-source.obj | 126 | branched |") != std::string::npos);
     CHECK(contents.find("| 27 | defect-source.obj | 127 | branched |") != std::string::npos);

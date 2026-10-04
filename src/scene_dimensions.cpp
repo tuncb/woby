@@ -77,7 +77,7 @@ const std::optional<SceneDimensions>& updateSceneDimensions(SceneDimensionsCache
         if (!measurable(part)) { continue; }
         const auto indices = scenePartIndices(part);
         const DimensionPartKey key{part.mesh->vertices.data(), indices.data(), part.mesh->vertices.size(),
-            indices.size(), 0, indices.size(), part.model};
+            indices.size(), 0, indices.size(), part.model, part.mesh->contentRevision};
         if (index == cache.keys.size()) { cache.keys.push_back(key); changed = true; }
         else if (cache.keys[index] != key) { cache.keys[index] = key; changed = true; }
         ++index;

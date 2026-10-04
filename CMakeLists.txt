@@ -106,6 +106,8 @@ add_executable(woby
     src/comparison_scene.cpp
     src/ui_views.cpp
     src/analysis_presentation.cpp
+    src/comparison_runtime.cpp
+    src/comparison_gpu.cpp
     src/comparison_view.cpp
     src/uv_quality_view.cpp
     src/control_importers.cpp
@@ -155,6 +157,7 @@ add_executable(woby
     src/main_menu.h
     src/settings_dialog.cpp
     src/settings_dialog.h
+    src/scene_inspector_queries.cpp
     src/scene_inspector.cpp
     src/scene_inspector.h
     src/ui_icon_controls.cpp
@@ -385,6 +388,8 @@ if(BUILD_TESTING)
         src/ui_views.cpp
         src/analysis_presentation.cpp
         tests/analysis_presentation_tests.cpp
+        src/comparison_runtime.cpp
+        src/comparison_gpu.cpp
         src/comparison_view.cpp
         src/uv_quality_view.cpp
         src/comparison_legend.cpp
@@ -414,9 +419,11 @@ if(BUILD_TESTING)
         src/background_load.h
         src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
+        src/scene_inspector_queries.cpp
         src/scene_inspector.cpp
         tests/comparison_name_tests.cpp
         tests/comparison_inspector_tests.cpp
+        tests/scene_inspector_queries_tests.cpp
         src/main_menu.cpp
         src/main_menu.h
         src/settings_dialog.cpp

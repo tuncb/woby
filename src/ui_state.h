@@ -204,7 +204,19 @@ struct UiAnnotation {
     bool targetPending = false;
 };
 
+// Derived-data dependencies. These counters are session metadata, never scene content.
+// geometry: mesh content, hierarchy, transforms and coordinate frames.
+// appearance: property values/colors; visibility: contributors to visible bounds (also opacity/render modes).
+// labels: names/paths; analysis: membership and analysis settings. Navigation is independent.
+// Unknown edits must use all. History advances all counters monotonically; New/Open changes sceneGeneration.
+enum class SceneChange : uint32_t { geometry = 1, appearance = 2, labels = 4, analysis = 8, visibility = 16, all = 31 };
+constexpr SceneChange operator|(SceneChange a, SceneChange b) { return static_cast<SceneChange>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
+struct SceneRevisions {
+    uint64_t geometry = 0, appearance = 0, labels = 0, analysis = 0, visibility = 0;
+};
+
 struct UiState {
+    SceneRevisions revisions;
     std::optional<Coordinate> coordinateOrigin; // Fixed once the first file enters the scene.
     std::vector<UiAnnotation> annotations;
     std::vector<UiView> views;

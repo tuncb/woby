@@ -256,7 +256,7 @@ TEST_CASE("topology settings navigation CLI and independent visibility roundtrip
     CHECK_FALSE(findComparison(state, id)->diagnosticFocus);
     selectComparisonDiagnostic(state, result, signature, 0, id); CHECK_FALSE(findComparison(state, id)->diagnosticFocus);
     CHECK_FALSE(comparisonSettings(state, id).showNonManifold); CHECK(comparisonSettings(state, id).showWinding);
-    ComparisonRuntime runtime; runtime.ready = true; runtime.resultSignature = signature; runtime.cache = {signature, requestedComparisonStages(settings, false)};
+    ComparisonRuntime runtime; runtime.gpu.ready = true; runtime.results.signature = signature; runtime.results.cache = {signature, requestedComparisonStages(settings, false)};
     CHECK_FALSE(comparisonResultsReady(runtime, state, id));
     const auto saved = fixture.root/"scene.woby"; writeSceneDocument(saved, createSceneDocument(state));
     CHECK(readSceneDocument(saved).comparisons[0].settings == comparisonSettings(state, id));

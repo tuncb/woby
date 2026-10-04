@@ -36,11 +36,11 @@ struct InspectorFixture {
         id = createAnalysisFromObjects(state, AnalysisTask::meshChecks, {state.files[0].objectId});
         selectSceneObject(state, id);
         auto& runtime = runtimes.objects[id];
-        runtime.ready = true;
-        runtime.resultSignature = comparisonGeometrySignature(state, id);
-        runtime.cache = {runtime.resultSignature, comparisonSource | comparisonDetectors};
-        runtime.cache.topologyMode = comparisonSettings(state, id).topologyMode;
-        for (auto& detector : runtime.result.detectors) { detector.phase = IntersectionPhase::complete; }
+        runtime.gpu.ready = true;
+        runtime.results.signature = comparisonGeometrySignature(state, id);
+        runtime.results.cache = {runtime.results.signature, comparisonSource | comparisonDetectors};
+        runtime.results.cache.topologyMode = comparisonSettings(state, id).topologyMode;
+        for (auto& detector : runtime.results.value.detectors) { detector.phase = IntersectionPhase::complete; }
         auto& io = ImGui::GetIO();
         io.IniFilename = nullptr;
         io.DisplaySize = {1524, 1664};
@@ -56,7 +56,7 @@ struct InspectorFixture {
         std::filesystem::remove_all(root, ignored);
     }
     const ComparisonInspectorCache& queries() {
-        return updateComparisonInspectorCache(runtimes.objects[id].inspector, state, id);
+        return updateComparisonInspectorCache(runtimes.objects[id].inspector.queries, state, id);
     }
     void expandSources() {
         for (auto* window : context->Windows) {
@@ -170,6 +170,7 @@ TEST_CASE("analysis inspector invalidates membership transforms names geometry a
         auto replacement = f.state.files[0].mesh.vertices;
         replacement[0].position[0] = 3;
         f.state.files[0].mesh.vertices = std::move(replacement);
+        renewMeshContentRevision(f.state.files[0].mesh);
         notifySceneEdit(f.state);
         CHECK(f.queries().signature != signature);
     }
@@ -220,7 +221,7 @@ TEST_CASE("analysis inspector invalidates history scene replacement and reused i
     CHECK(f.queries().builds == builds + 1);
     checkQueries(f);
     auto otherState = f.state;
-    auto& cache = f.runtimes.objects[f.id].inspector;
+    auto& cache = f.runtimes.objects[f.id].inspector.queries;
     CHECK_FALSE(comparisonInspectorCacheCurrent(cache, otherState, f.id));
     const auto other = duplicateComparison(f.state, f.id);
     updateComparisonInspectorCache(cache, f.state, other);
@@ -239,15 +240,15 @@ TEST_CASE("analysis inspector keeps result publication and settings readiness li
     };
     CHECK(ready(comparisonSource));
     CHECK_FALSE(ready(comparisonSource, true));
-    runtime.uploadedStages = comparisonSource;
+    runtime.gpu.uploadedStages = comparisonSource;
     CHECK(ready(comparisonSource, true));
-    runtime.cache.completed &= ~comparisonSource;
+    runtime.results.cache.completed &= ~comparisonSource;
     CHECK_FALSE(ready(comparisonSource));
-    runtime.cache.completed |= comparisonSource;
+    runtime.results.cache.completed |= comparisonSource;
     CHECK(ready(comparisonSource));
-    ++runtime.resultSignature;
+    ++runtime.results.signature;
     CHECK_FALSE(ready(comparisonSource));
-    runtime.resultSignature = signature;
+    runtime.results.signature = signature;
     CHECK(ready(comparisonTopology));
     settings.topologyInspection.holeSizeRatioTolerance += 1;
     CHECK_FALSE(ready(comparisonTopology));
@@ -256,11 +257,11 @@ TEST_CASE("analysis inspector keeps result publication and settings readiness li
     CHECK_FALSE(ready(comparisonDegenerates));
     settings = comparisonSettings(f.state, f.id);
     settings.topologyMode = TopologyMode::exactPosition;
-    runtime.cache.topologyMode = TopologyMode::originalIndex;
+    runtime.results.cache.topologyMode = TopologyMode::originalIndex;
     CHECK_FALSE(ready(comparisonTopology));
     for (const auto phase : {IntersectionPhase::queued, IntersectionPhase::running,
             IntersectionPhase::failed, IntersectionPhase::canceled, IntersectionPhase::complete}) {
-        runtime.result.detectors[0].phase = phase;
+        runtime.results.value.detectors[0].phase = phase;
         f.frame();
         CHECK(f.queries().builds == builds);
     }
@@ -269,7 +270,7 @@ TEST_CASE("analysis inspector keeps result publication and settings readiness li
 TEST_CASE("analysis inspector preserves final findings page and clears stale selection") {
     InspectorFixture f;
     auto& runtime = f.runtimes.objects[f.id];
-    auto& surface = runtime.result.original;
+    auto& surface = runtime.results.value.original;
     surface.topology.sources.resize(1);
     auto& source = surface.topology.sources[0];
     source.source = "source.obj";
@@ -277,7 +278,7 @@ TEST_CASE("analysis inspector preserves final findings page and clears stale sel
     source.vertices.resize(1);
     for (size_t i = 0; i < 52; ++i) { surface.topology.boundaries.push_back({0, i}); }
     surface.topologyBoundaries.resize(52);
-    selectComparisonDiagnostic(f.state, runtime.result, runtime.resultSignature, 51, f.id);
+    selectComparisonDiagnostic(f.state, runtime.results.value, runtime.results.signature, 51, f.id);
     REQUIRE(findComparison(f.state, f.id)->diagnosticFocus);
     const auto contents = f.frame(true);
     CHECK(contents.find("Edges 51-52 of 52") != std::string::npos);
@@ -295,14 +296,17 @@ TEST_CASE("analysis inspector unchanged draw benchmark" * doctest::skip()) {
     for (const size_t groups : {1u, 256u, 2203u}) {
         InspectorFixture f(groups);
         f.frame();
-        std::vector<double> times;
-        for (int i = 0; i < 9; ++i) {
-            const auto start = std::chrono::steady_clock::now();
-            f.frame();
-            times.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+        for (const bool expanded : {false, true}) {
+            if (expanded) { f.expandSources(); f.frame(); }
+            std::vector<double> times;
+            for (int i = 0; i < 9; ++i) {
+                const auto start = std::chrono::steady_clock::now();
+                f.frame();
+                times.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+            }
+            std::sort(times.begin(), times.end());
+            std::cout << (expanded ? "properties_expanded_sources," : "properties_collapsed_sources,") << groups << ',' << times[4] << " ms\n";
+            CHECK(f.queries().builds == 1);
         }
-        std::sort(times.begin(), times.end());
-        std::cout << "properties_collapsed_sources," << groups << ',' << times[4] << " ms\n";
-        CHECK(f.queries().builds == 1);
     }
 }

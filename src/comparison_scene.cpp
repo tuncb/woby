@@ -312,7 +312,8 @@ ComparisonInputSummary comparisonInputSummary(const UiState& state, ComparisonSi
 bool comparisonInspectorCacheCurrent(const ComparisonInspectorCache& cache, const UiState& state, SceneObjectId id)
 {
     return cache.owner == &state && cache.objectId == id && cache.generation == state.sceneGeneration
-        && cache.revision == state.sceneEditRevision;
+        && cache.geometryRevision == state.revisions.geometry && cache.analysisRevision == state.revisions.analysis
+        && cache.labelsRevision == state.revisions.labels;
 }
 
 const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspectorCache& cache,
@@ -323,9 +324,14 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
     next.owner = &state;
     next.objectId = id;
     next.generation = state.sceneGeneration;
-    next.revision = state.sceneEditRevision;
     next.builds = cache.builds + 1;
-    next.signature = comparisonGeometrySignature(state, id);
+    next.geometryRevision = state.revisions.geometry;
+    next.analysisRevision = state.revisions.analysis;
+    next.labelsRevision = state.revisions.labels;
+    const bool reuseSignature = cache.owner == &state && cache.objectId == id && cache.generation == state.sceneGeneration
+        && cache.geometryRevision == state.revisions.geometry && cache.analysisRevision == state.revisions.analysis;
+    next.signatureBuilds = cache.signatureBuilds + (reuseSignature ? 0 : 1);
+    next.signature = reuseSignature ? cache.signature : comparisonGeometrySignature(state, id);
     const auto* comparison = findComparison(state, id);
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         auto& input = next.inputs[side == ComparisonSide::a ? 0 : 1];
@@ -499,6 +505,7 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
 {
     if (!canInspectComparison(state, id)) { return 0; }
     uint64_t seed = 17;
+    hashCombine(seed, state.sceneGeneration);
     const auto settings = comparisonSettings(state, id);
     hashCombine(seed, boundsOnly ? static_cast<uint64_t>(isUvAnalysis(settings.type)) : static_cast<uint64_t>(settings.type));
     if (isUvAnalysis(settings.type)) {
@@ -522,10 +529,7 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
             ++count;
             hashCombine(seed, file.objectId);
             hashCombine(seed, file.groupSettings[index].objectId);
-            hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.vertices.data()));
-            hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.indices.data()));
-            hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.sourceData.get()));
-            hashCombine(seed, reinterpret_cast<uintptr_t>(file.mesh.precisePositions.data()));
+            hashCombine(seed, file.mesh.contentRevision);
             hashCombine(seed, file.mesh.precisePositions.size());
             hashCombine(seed, file.mesh.vertices.size());
             hashCombine(seed, file.mesh.indices.size());

@@ -37,12 +37,14 @@ struct ComparisonInspectorInput {
     size_t memberCount = 0, enabledMemberCount = 0;
 };
 
-// Runtime-only derived data. Scene operations notify sceneEditRevision; New/Open
-// changes sceneGeneration. Camera, selection and detector publication need no rebuild.
+// Runtime-only derived data. Geometry/membership/settings invalidate inputs; labels
+// refresh the tree without rehashing geometry. Appearance, visibility, navigation and
+// result publication are independent. New/Open changes sceneGeneration.
 struct ComparisonInspectorCache {
     const UiState* owner = nullptr;
     SceneObjectId objectId = invalidSceneObjectId;
-    uint64_t generation = 0, revision = 0, builds = 0;
+    uint64_t generation = 0, builds = 0;
+    uint64_t geometryRevision = 0, analysisRevision = 0, labelsRevision = 0, signatureBuilds = 0;
     uint64_t signature = 0;
     std::array<ComparisonInspectorInput, 2> inputs;
     std::string sources;
