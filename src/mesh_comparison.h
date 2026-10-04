@@ -48,6 +48,8 @@ struct SurfaceComparison
     std::vector<DiagnosticEdge> nonManifoldVertexBounds, nonManifoldVertexMarkers, holeBounds, holeEdges, finBounds, finEdges;
     std::vector<std::array<float, 3>> finFill;
     SurfaceMeshQuality quality;
+    // Worker-prepared display data, released after successful GPU upload.
+    std::vector<Vertex> qualityVertices;
     MeshDuplicates duplicates;
     MeshDegenerates degenerates;
     MeshIntersections intersections;

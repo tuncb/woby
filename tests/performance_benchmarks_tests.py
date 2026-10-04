@@ -1,6 +1,7 @@
 """Regression coverage for the actual indexed and expanded detector drivers."""
 
 import csv
+import json
 import math
 from pathlib import Path
 import subprocess
@@ -29,6 +30,25 @@ f 2 2 3
 
 
 class DetectorBenchmarkTests(unittest.TestCase):
+    def test_export_benchmark_preserves_counts_and_never_overwrites(self):
+        with tempfile.TemporaryDirectory(prefix="woby export benchmark ") as directory:
+            root = Path(directory).resolve()
+            command = [str(EXECUTABLE), "export", "1", "1", str(root)]
+            result = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            status = json.loads(result.stdout)
+            output = root / "export-0.json"
+            original = output.read_bytes()
+            report = json.loads(original)
+            self.assertEqual(status["entriesWritten"], 33)
+            self.assertEqual(status["bytesWritten"], len(original))
+            self.assertTrue(report["allRetainedResults"])
+            self.assertFalse(report["detectionComplete"])
+            self.assertEqual(len(report["aToB"]["detectors"]["boundary_edges"]["findings"]), 1)
+            again = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(again.returncode, 0)
+            self.assertEqual(output.read_bytes(), original)
+
     def test_expanded_matches_indexed_source_and_group_counts(self):
         with tempfile.TemporaryDirectory(prefix="woby detector benchmark ") as directory:
             root = Path(directory).resolve()

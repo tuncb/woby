@@ -241,6 +241,38 @@ std::vector<Vertex> surfaceQualityVertices(const Mesh& mesh, const SurfaceMeshQu
     return result;
 }
 
+std::vector<Vertex> surfaceQualityDisplayVertices(const Mesh& mesh,
+    const SurfaceMeshQuality& quality,
+    const std::array<QualityDistribution, surfaceQualityMetricCount>& distributions, std::stop_token stop)
+{
+    canceled(stop);
+    if (mesh.indices.size() % 3 != 0 || quality.triangles.size() != mesh.indices.size() / 3) {
+        throw std::runtime_error("Surface quality display does not match its source triangles.");
+    }
+    std::vector<Vertex> result;
+    result.reserve(mesh.indices.size());
+    for (size_t i = 0; i < quality.triangles.size(); ++i) {
+        if (i % 1024 == 0) { canceled(stop); }
+        const auto& triangle = quality.triangles[i];
+        std::array<float, surfaceQualityMetricCount> values;
+        for (size_t metric = 0; metric < surfaceQualityMetricCount; ++metric) {
+            const auto value = triangle.values[metric];
+            const auto& range = distributions[metric];
+            values[metric] = triangle.degenerate ? -1.0f : !std::isfinite(value) ? -2.0f :
+                static_cast<float>(std::clamp((value - range.minimum) / (range.maximum - range.minimum), 0.0, 1.0));
+        }
+        const auto& a = mesh.vertices.at(mesh.indices[i * 3]).position;
+        const auto& b = mesh.vertices.at(mesh.indices[i * 3 + 1]).position;
+        const auto& c = mesh.vertices.at(mesh.indices[i * 3 + 2]).position;
+        const auto normal = calculateFaceNormal(a, b, c);
+        result.push_back({a, normal, {values[0], values[1]}});
+        result.push_back({b, normal, {values[2], values[3]}});
+        result.push_back({c, normal, {}});
+    }
+    canceled(stop);
+    return result;
+}
+
 std::array<float, 4> surfaceQualityColor(double value, SurfaceQualityMetric metric)
 {
     if (value < -1.5) { return {.56f, .61f, .67f, 1}; }

@@ -1,4 +1,5 @@
 #include "analysis_results.h"
+#include "analysis_results_writer.h"
 #include "utf8_path.h"
 #include <algorithm>
 #include <charconv>
@@ -265,30 +266,42 @@ bool detectionComplete(const MeshComparison& result, const Json& summary)
     }
     return true;
 }
-void writeNode(std::ostream& out, const Node& n, std::stop_token stop, std::atomic<size_t>* written)
+void writeDetector(analysis_export_detail::Writer& out, const MeshComparison& result, ComparisonSide side, const char* detector)
 {
-    checkStop(stop);
-    if (n.arrays.empty()) { out << n.value.dump(); return; }
+    namespace writer = analysis_export_detail;
+    const auto n = detectorNode(result, side, detector);
+    const auto& s = side == ComparisonSide::a ? result.original : result.repaired;
+    const auto& t = s.topology;
+    const auto category = static_cast<DiagnosticCategory>(std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), detector) - diagnosticCategoryKeys.begin());
     Json fields = n.value;
     for (const auto& [name, a] : n.arrays) {
         if (!a.truncated.empty()) { fields[a.truncated] = a.incomplete; }
     }
-    out << '{'; bool comma = false;
+    auto object = writer::object(out);
     for (const auto& item : fields.items()) {
-        if (comma) { out << ','; } comma = true;
-        out << Json(item.key()).dump() << ':' << item.value().dump();
+        writer::field(object, item.key(), item.value());
     }
     for (const auto& [name, a] : n.arrays) {
-        if (comma) { out << ','; } comma = true;
-        out << Json(name).dump() << ":[";
-        for (size_t i = 0; i < a.size; ++i) {
-            if (i) { out << ','; }
-            writeNode(out, a.at(i), stop, written);
-            if (written) { written->fetch_add(1, std::memory_order_relaxed); }
-        }
-        out << ']';
+        writer::arrayField(object, name, a.size, [&](size_t i) {
+            if (name == "sources") { writer::source(out, t.sources[i]); return; }
+            if (name == "affectedFaces") { writer::face(out, t.windingFaces[i]); return; }
+            if (name == "boundaryRegions") { writer::boundary(out, t, i); return; }
+            if (name != "findings") { throw std::logic_error("Unknown analysis export collection."); }
+            switch (category) {
+            case DiagnosticCategory::boundary: writer::edge(out, t, t.boundaries[i]); break;
+            case DiagnosticCategory::nonManifold: writer::edge(out, t, t.nonManifoldEdges[i]); break;
+            case DiagnosticCategory::winding: writer::edge(out, t, t.windingEdges[i]); break;
+            case DiagnosticCategory::duplicatePoints: writer::duplicate(out, s.duplicates.points.findings[i]); break;
+            case DiagnosticCategory::duplicateTriangles: writer::duplicate(out, s.duplicates.triangles.findings[i]); break;
+            case DiagnosticCategory::degenerateTriangles: writer::degenerate(out, s.degenerates.findings[i]); break;
+            case DiagnosticCategory::nonManifoldVertices: writer::vertex(out, t, t.nonManifoldVertices[i]); break;
+            case DiagnosticCategory::holes: writer::boundary(out, t, t.holes[i]); break;
+            case DiagnosticCategory::fins: writer::fin(out, t, i); break;
+            case DiagnosticCategory::selfIntersections: writer::intersection(out, s.intersections.findings[i]); break;
+            }
+        });
     }
-    out << '}';
+    writer::end(object);
 }
 } // namespace
 
@@ -329,35 +342,43 @@ nlohmann::json analysisResultPage(const MeshComparison& result, ComparisonSide s
         {"items", std::move(items)}, {"metadata", metadata}};
 }
 
-void writeAnalysisResults(std::ostream& out, const MeshComparison& result, Json summary,
-    std::stop_token stop, std::atomic<size_t>* written)
+void writeAnalysisResults(std::ostream& stream, const MeshComparison& result, Json summary,
+    std::stop_token stop, std::atomic<size_t>* written, AnalysisExportWriteMetrics* metrics)
 {
+    namespace writer = analysis_export_detail;
+    checkStop(stop);
+    if (metrics) { *metrics = {}; }
+    writer::Writer out{stream, stop, written, metrics, {}, written ? written->load(std::memory_order_relaxed) : 0};
+    out.buffer.reserve(64 * 1024);
     summary["allRetainedResults"] = true;
     summary["detectionComplete"] = detectionComplete(result, summary);
-    out << '{'; bool comma = false;
-    for (const auto& field : summary.items()) {
+    try {
+        writer::append(out, "{"); bool comma = false;
+        for (const auto& field : summary.items()) {
+            checkStop(stop);
+            if (comma) { writer::append(out, ","); } comma = true;
+            writer::value(out, field.key()); writer::append(out, ":");
+            if ((field.key() != "aToB" && field.key() != "bToA") || field.value().is_null()) { writer::value(out, field.value()); continue; }
+            const auto side = field.key() == "aToB" ? ComparisonSide::a : ComparisonSide::b;
+            writer::append(out, "{"); bool innerComma = false;
+            for (const auto& item : field.value().items()) {
+                if (item.key() == "detectors") { continue; }
+                if (innerComma) { writer::append(out, ","); } innerComma = true;
+                writer::value(out, item.key()); writer::append(out, ":"); writer::value(out, item.value());
+            }
+            if (innerComma) { writer::append(out, ","); }
+            writer::append(out, "\"detectors\":{\"schemaVersion\":1,\"idBase\":1,\"scope\":\"per-source; selected parts, including unused points when whole file selected\"");
+            for (const auto* key : diagnosticCategoryKeys) {
+                writer::append(out, ","); writer::value(out, key); writer::append(out, ":");
+                writeDetector(out, result, side, key);
+            }
+            writer::append(out, "}}");
+        }
+        writer::append(out, "}\n");
+        writer::flush(out);
         checkStop(stop);
-        if (comma) { out << ','; } comma = true;
-        out << Json(field.key()).dump() << ':';
-        if ((field.key() != "aToB" && field.key() != "bToA") || field.value().is_null()) { out << field.value().dump(); continue; }
-        const auto side = field.key() == "aToB" ? ComparisonSide::a : ComparisonSide::b;
-        out << '{'; bool innerComma = false;
-        for (const auto& item : field.value().items()) {
-            if (item.key() == "detectors") { continue; }
-            if (innerComma) { out << ','; } innerComma = true;
-            out << Json(item.key()).dump() << ':' << item.value().dump();
-        }
-        if (innerComma) { out << ','; }
-        out << "\"detectors\":{\"schemaVersion\":1,\"idBase\":1,\"scope\":\"per-source; selected parts, including unused points when whole file selected\"";
-        for (const auto* key : diagnosticCategoryKeys) {
-            out << ',' << Json(key).dump() << ':';
-            writeNode(out, detectorNode(result, side, key), stop, written);
-        }
-        out << "}}";
-    }
-    out << "}\n";
-    checkStop(stop);
-    if (!out) { throw std::runtime_error("Unable to write analysis export."); }
+        writer::publishProgress(out);
+    } catch (...) { writer::publishProgress(out); throw; }
 }
 
 void startAnalysisExport(AnalysisExportRuntime& runtime, const MeshComparison& result,
@@ -367,6 +388,8 @@ void startAnalysisExport(AnalysisExportRuntime& runtime, const MeshComparison& r
     if (runtime.worker.valid()) { throw std::invalid_argument("An export is already running; use analysis export-status or export-cancel."); }
     if (!path.is_absolute() || !std::filesystem::is_directory(path.parent_path())) { throw std::invalid_argument("Export requires an absolute path in an existing directory."); }
     if (std::filesystem::exists(path)) { throw std::invalid_argument("Export destination already exists; choose a new filename."); }
+    namespace writer = analysis_export_detail;
+    const auto started = writer::Clock::now();
     // Copy only diagnostic data. Meshes, render buffers, and distance samples are not needed by the writer.
     MeshComparison snapshot; snapshot.detectors = result.detectors;
     for (size_t side = 0; side < 2; ++side) {
@@ -378,10 +401,21 @@ void startAnalysisExport(AnalysisExportRuntime& runtime, const MeshComparison& r
     runtime.stop = {}; runtime.written = 0; runtime.target = target; runtime.path = path;
     runtime.outcome = {{"state", "running"}, {"target", target}, {"path", pathToUtf8(path)}};
     const bool complete = detectionComplete(snapshot, summary);
+    const double snapshotMs = writer::milliseconds(started);
+    runtime.outcome["timings"] = {{"snapshotMs", snapshotMs}};
     runtime.worker = std::async(std::launch::async, [snapshot = std::move(snapshot), summary = std::move(summary), complete,
-        path, stop = runtime.stop.get_token(), written = &runtime.written]() mutable -> Json {
+        path, stop = runtime.stop.get_token(), written = &runtime.written, started, snapshotMs]() mutable -> Json {
         std::filesystem::path staging;
         bool ownsStaging = false;
+        AnalysisExportWriteMetrics metrics;
+        double writeMs = 0, publishMs = 0;
+        const auto outcome = [&](Json status) {
+            status["bytesWritten"] = metrics.bytesWritten;
+            status["timings"] = {{"snapshotMs", snapshotMs}, {"writeMs", writeMs},
+                {"streamWriteMs", metrics.streamWriteMs}, {"serializationMs", std::max(0.0, writeMs - metrics.streamWriteMs)},
+                {"publishMs", publishMs}, {"totalMs", writer::milliseconds(started)}};
+            return status;
+        };
         try {
             // Atomically reserve a sibling directory, so cleanup only touches this job's files.
             for (size_t suffix = 0; ; ++suffix) {
@@ -390,9 +424,18 @@ void startAnalysisExport(AnalysisExportRuntime& runtime, const MeshComparison& r
                 checkStop(stop);
             }
             const auto temporary = staging / "results.json";
-            { std::ofstream out(temporary, std::ios::binary); out.exceptions(std::ios::badbit | std::ios::failbit);
-              writeAnalysisResults(out, snapshot, std::move(summary), stop, written); out.close(); }
+            {
+                std::ofstream out(temporary, std::ios::binary); out.exceptions(std::ios::badbit | std::ios::failbit);
+                const auto writeStart = writer::Clock::now();
+                try {
+                    writeAnalysisResults(out, snapshot, std::move(summary), stop, written, &metrics);
+                    const auto closeStart = writer::Clock::now();
+                    out.close(); metrics.streamWriteMs += writer::milliseconds(closeStart);
+                } catch (...) { writeMs = writer::milliseconds(writeStart); throw; }
+                writeMs = writer::milliseconds(writeStart);
+            }
             checkStop(stop);
+            const auto publishStart = writer::Clock::now();
             // Match scene saving: atomic no-clobber publication on the same filesystem.
 #ifdef _WIN32
             if (!MoveFileExW(temporary.c_str(), path.c_str(), 0)) {
@@ -403,12 +446,13 @@ void startAnalysisExport(AnalysisExportRuntime& runtime, const MeshComparison& r
             std::filesystem::create_hard_link(temporary, path);
 #endif
             std::error_code ignored; std::filesystem::remove(temporary, ignored); std::filesystem::remove(staging, ignored);
-            return {{"state", "complete"}, {"allRetainedResults", true}, {"detectionComplete", complete}};
+            publishMs = writer::milliseconds(publishStart);
+            return outcome({{"state", "complete"}, {"allRetainedResults", true}, {"detectionComplete", complete}});
         } catch (const std::exception& error) {
             if (ownsStaging) {
                 std::error_code ignored; std::filesystem::remove(staging / "results.json", ignored); std::filesystem::remove(staging, ignored);
             }
-            return {{"state", stop.stop_requested() ? "canceled" : "failed"}, {"error", error.what()}};
+            return outcome({{"state", stop.stop_requested() ? "canceled" : "failed"}, {"error", error.what()}});
         }
     });
 }

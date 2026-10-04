@@ -1052,6 +1052,10 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     }
     checkCanceled(stop);
     MeshComparison result;
+    if (stages & comparisonQuality) {
+        (void)comparisonBufferBytes(original.indices.size(), sizeof(Vertex));
+        (void)comparisonBufferBytes(repaired.indices.size(), sizeof(Vertex));
+    }
     if ((stages & comparisonDistance) && !original.indices.empty() && !repaired.indices.empty()) {
         validateComparisonDistanceSize(original.vertices.size(), original.indices.size() / 3);
         validateComparisonDistanceSize(repaired.vertices.size(), repaired.indices.size() / 3);
@@ -1143,6 +1147,8 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     completeComparisonDetectors(result, stages);
     if (stages & comparisonQuality) {
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
+        result.original.qualityVertices = surfaceQualityDisplayVertices(original, result.original.quality, result.qualityDistributions, stop);
+        result.repaired.qualityVertices = surfaceQualityDisplayVertices(repaired, result.repaired.quality, result.qualityDistributions, stop);
     }
     checkCanceled(stop);
     return result;
@@ -1194,7 +1200,10 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
             target.finEdges = std::move(source.finEdges);
             target.finFill = std::move(source.finFill);
         }
-        if (stages & comparisonQuality) { target.quality = std::move(source.quality); }
+        if (stages & comparisonQuality) {
+            target.quality = std::move(source.quality);
+            target.qualityVertices = std::move(source.qualityVertices);
+        }
         if (stages & comparisonDegenerates) {
             target.degenerates = std::move(source.degenerates);
             target.degenerateBounds = std::move(source.degenerateBounds);

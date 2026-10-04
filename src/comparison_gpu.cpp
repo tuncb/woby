@@ -84,6 +84,17 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
     const PreparedComparisonSource* prepared)
 {
     if (surface.source.indices.empty()) { return; }
+    if (stages & comparisonQuality) {
+        if (surface.qualityVertices.size() != surface.source.indices.size()) {
+            throw std::runtime_error("Surface quality display does not match its source triangles.");
+        }
+        const auto bytes = comparisonBufferBytes(surface.qualityVertices.size(), sizeof(Vertex));
+        // createVertexBuffer consumes the reference synchronously; avoid an
+        // additional full-size CPU copy before the native upload staging copy.
+        gpu.quality = woby::graphics::createVertexBuffer(
+            woby::graphics::makeRef(surface.qualityVertices.data(), bytes), meshVertexLayout());
+        if (!woby::graphics::isValid(gpu.quality)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
+    }
     if (stages & comparisonSource) {
         const auto vertexBytes = comparisonBufferBytes(surface.source.vertices.size(), sizeof(Vertex));
         const auto indexBytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(uint32_t));
@@ -151,17 +162,6 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         gpu.intersectionFill = uploadPositions(fill);
     }
     uploadDuplicateOverlays(gpu, surface, stages);
-}
-void uploadQuality(ComparisonGpuSurface& gpu, const SurfaceComparison& surface,
-    SurfaceQualityMetric metric, const QualityDistribution& distribution)
-{
-    if (surface.source.indices.empty()) { return; }
-    const auto bytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(Vertex));
-    const auto vertices = surfaceQualityVertices(surface.source, surface.quality, metric, distribution);
-    const auto handle = woby::graphics::createVertexBuffer(woby::graphics::copy(vertices.data(), bytes), meshVertexLayout());
-    if (!woby::graphics::isValid(handle)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
-    if (woby::graphics::isValid(gpu.quality)) { woby::graphics::destroy(gpu.quality); }
-    gpu.quality = handle;
 }
 void destroyStage(ComparisonGpuSurface& gpu, uint32_t stages)
 {
