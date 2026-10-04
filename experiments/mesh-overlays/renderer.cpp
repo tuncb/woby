@@ -174,9 +174,9 @@ void initialize(Renderer& r,Options options) {
     }
     complete(r,commands);
 }
-void upload(Renderer& r,const Mesh& mesh) {
+void upload(Renderer& r,const Mesh& mesh,uint8_t features) {
     require(r.scene.vertices.owner==nullptr,"One immutable scene per experiment renderer");
-    auto prepared=prepareSceneMesh(mesh,gpuMeshPoints|gpuMeshEdges);
+    auto prepared=prepareSceneMesh(mesh,features);
     require(prepared.has_value(),"Overlay mesh preparation canceled");
     r.scene.vertexCount=mesh.vertices.size(); r.scene.triangleCount=mesh.indices.size()/3;
     r.scene.markerCount=prepared->pointVertexIndices.size();

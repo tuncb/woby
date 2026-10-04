@@ -89,7 +89,7 @@ struct Capture {
     std::vector<uint32_t> cullingCounts, cullingSelection;
 };
 void initialize(Renderer& renderer, Options options);
-void upload(Renderer& renderer, const Mesh& mesh);
+void upload(Renderer& renderer, const Mesh& mesh, uint8_t features = gpuMeshPoints|gpuMeshEdges);
 Measurement render(Renderer& renderer, const Display& display,
     const std::array<float,16>& viewProjection, Capture* capture = nullptr);
 std::array<float,16> fittedProjection(const Bounds& bounds, uint32_t width, uint32_t height,

@@ -17,10 +17,20 @@ import psutil
 
 def overlapping_workloads(excluded_pid=None):
     names = {"woby.exe", "woby_tests.exe", "woby_overlay_tests.exe",
-             "woby_overlay_prototype.exe", "woby_nographicsapi_prototype.exe"}
-    return [dict(pid=process.info["pid"], name=process.info["name"])
-            for process in psutil.process_iter(["pid", "name"])
-            if process.info["pid"] != excluded_pid and (process.info["name"] or "").lower() in names]
+             "woby_overlay_prototype.exe", "woby_point_prototype.exe", "woby_nographicsapi_prototype.exe",
+             "ctest.exe", "msbuild.exe", "cl.exe", "link.exe", "slangc.exe"}
+    result = []
+    for process in psutil.process_iter(["pid", "name", "cmdline"]):
+        name = (process.info["name"] or "").lower()
+        if process.info["pid"] == excluded_pid or name not in names:
+            continue
+        # MSBuild keeps idle worker nodes alive after a completed build. The
+        # active coordinator and its compiler/linker children remain guarded.
+        if name == "msbuild.exe" and any("/nodemode:" in arg.lower()
+                                         for arg in process.info["cmdline"] or []):
+            continue
+        result.append(dict(pid=process.info["pid"], name=process.info["name"]))
+    return result
 
 
 def main():
@@ -45,6 +55,9 @@ def main():
         repository / "src/model_mesh.cpp", repository / "src/camera.cpp"]
     source_hashes = {str(path.relative_to(repository)): hashlib.sha256(path.read_bytes()).hexdigest()
                      for path in source_paths if path.is_file()}
+    shader_directory = args.executable.resolve().parents[2] / "experiments/mesh-overlays/shaders"
+    shader_hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                     for path in shader_directory.glob("*.spv")}
     revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repository,
                               capture_output=True, text=True, check=True).stdout.strip()
     with args.model.open("rb") as source:
@@ -96,6 +109,7 @@ def main():
                   sample_interval_seconds=.2, private_limit_gib=args.private_gib,
                   available_limit_gib=args.available_gib, overlapping_workloads=overlap, source_revision=revision,
                   source_sha256=source_hashes, model_sha256=model_hash,
+                  shader_sha256=shader_hashes,
                   executable_sha256=hashlib.sha256(args.executable.read_bytes()).hexdigest())
     (destination / "guard.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))

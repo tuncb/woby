@@ -1,14 +1,17 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["Pillow>=11"]
+# dependencies = ["Pillow>=11", "psutil>=6"]
 # ///
 """Small behavioral checks for the capture comparison used by the experiment."""
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from PIL import Image
 
 from analyze import compare
+from run import overlapping_workloads
 
 
 def test_identical_and_changed_pixels():
@@ -39,7 +42,20 @@ def test_dimensions_cannot_be_compared_as_equivalent():
         raise AssertionError("Mismatched capture dimensions must be rejected")
 
 
+def test_workload_guard_distinguishes_idle_build_workers():
+    processes = [SimpleNamespace(info=dict(pid=pid, name=name, cmdline=command))
+                 for pid, name, command in (
+                     (1, "woby_point_prototype.exe", []),
+                     (2, "MSBuild.exe", ["MSBuild", "/nodemode:1", "/nodeReuse:true"]),
+                     (3, "MSBuild.exe", ["MSBuild", "woby.sln"]),
+                     (4, "ctest.exe", []), (5, "cl.exe", []), (6, "unrelated.exe", []))]
+    with patch("run.psutil.process_iter", return_value=processes):
+        assert [item["pid"] for item in overlapping_workloads()] == [1, 3, 4, 5]
+        assert [item["pid"] for item in overlapping_workloads(1)] == [3, 4, 5]
+
+
 if __name__ == "__main__":
     test_identical_and_changed_pixels()
     test_dimensions_cannot_be_compared_as_equivalent()
-    print("2 capture-analysis tests passed")
+    test_workload_guard_distinguishes_idle_build_workers()
+    print("3 capture-analysis and workload-guard tests passed")

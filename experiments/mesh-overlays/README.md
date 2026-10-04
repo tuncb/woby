@@ -182,3 +182,60 @@ for reproduction, limits, and the proposed next GPU prototypes.
 
 References: [issue 106](https://github.com/tuncb/woby/issues/106),
 [Khronos barycentric sample](https://docs.vulkan.org/samples/latest/samples/extensions/fragment_shader_barycentric/README.html).
+
+## Compact opaque point renderer
+
+The same opt-in build now includes `woby_point_prototype`. This is a separate
+headless architecture experiment; Woby's production vertex renderer is unchanged.
+It requires Windows Vulkan with 64-bit buffer atomics. The optional device
+feature is queried and enabled only in builds with this experiment enabled.
+
+```powershell
+cmake --build D:/.worktree/woby-overlay-build --config Release --target woby_point_prototype woby_overlay_tests --parallel 2
+uv run experiments/mesh-overlays/run.py D:/.worktree/woby-overlay-build/bin/Release/woby_point_prototype.exe D:/temp/obj_tests/pointclouds/semantic3d_sg27_station8_100000000_xyz_points.obj D:/.worktree/woby-overlay-build/measurements/points-new --mode compute --samples 4 --rounds 3 --frames 12 --navigation-frames 90
+```
+
+Use a new output directory for every run. `--mode control` measures the original
+full-data quad renderer with the same camera, point sizes, sample count, and
+opaque surface setting. `--point-size 4` selects one size (otherwise 1/4/8),
+`--zoom 0.25` moves closer, and `--solid 1` includes opaque mesh surfaces.
+The runner rejects overlapping viewer, test, and active build workloads and
+records source, executable, input, and SPIR-V hashes with memory guards.
+
+The compute mode reports four separate workloads:
+
+- Full-data rendering without LOD, clearing and processing all points each frame.
+- A deterministic 90-frame orbit with spatial detail selection, a maximum of
+  two million submitted points, and feedback toward an 8 ms GPU frame target.
+  `--budget` and `--target-ms` change those limits. The target is feedback, not
+  a hard real-time guarantee; CPU traversal and fixed surface work also matter.
+- Stationary refinement, replaying every original point in bounded batches into
+  persistent depth/ID winners. The final RGBA and every sample ID must exactly
+  match the full compute reference. View, size, surface mode, group visibility,
+  transform, or color changes invalidate the accumulation.
+- A fully refined stationary view using cached visibility.
+
+The CPU hierarchy holds Morton-ordered, unquantized positions and original IDs,
+with spatially stratified proxy samples and actual extrema. GPU point allocations
+contain 12-byte positions plus 4-byte IDs, in independently allocated chunks with
+bounded staging. The visibility buffer holds an atomic 64-bit depth/ID winner
+per sample. Full circle footprints compete against opaque surface depth; shading
+then runs for winning samples. Source IDs provide deterministic equal-depth ties
+and map back to the retained mesh's precise positions. CPU picking traverses
+original leaves, never LOD proxies. The benchmark queries covered samples and
+checks cloud-only results against the full GPU reference.
+
+This prototype evaluates circles at each sample. The production quad control
+discards its circle at pixel frequency, so their MSAA edge coverage is different.
+Navigation coverage is measured against the new full-data compute reference;
+it is approximate, and the recorded ratio is not a guarantee for arbitrary
+thin structures. No hole filling or averaged replacement positions are used.
+
+All compact data is resident. The existing OBJ/Mesh loader and its CPU copies
+remain as an adapter; this is not yet an out-of-core importer, a Metal fallback,
+an asynchronous UI integration, or a replacement for source-data ownership.
+Hierarchy construction is measured as offline setup. All geometry is opaque.
+The shader visits footprint samples directly; tiled visibility and coordinate
+quantization are further experiments, not hidden assumptions in these results.
+
+See [the measurements and integration limits](../../doc/point-cloud-prototype.md).
