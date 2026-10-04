@@ -661,60 +661,66 @@ TEST_CASE("analysis properties distinguish queued calculating failed and inactiv
 
 TEST_CASE("analysis name shares the first row with its label without an idle status gap")
 {
-    ComparisonNameFixture f;
     auto task = woby::AnalysisTask::meshChecks;
     float scale = 1.0f;
     SUBCASE("mesh checks") {}
     SUBCASE("UV inspection") { task = woby::AnalysisTask::uvInspection; }
     SUBCASE("UV inspection at double scale") { task = woby::AnalysisTask::uvInspection; scale = 2.0f; }
-    auto& style = ImGui::GetStyle();
-    style.ScaleAllSizes(scale);
-    style.FontScaleMain = scale;
-    f.id = woby::createAnalysisFromSelection(f.state, task);
-    woby::ComparisonRuntimes runtimes;
-    ImGuiWindow* editor = nullptr;
-    ImVec2 contentStart;
-    std::string contents;
-    const auto frame = [&] {
-        ImGui::GetIO().DisplaySize = {1000 * scale, 1800 * scale};
-        ImGui::NewFrame();
-        ImGui::SetNextWindowPos({20, 20});
-        ImGui::SetNextWindowSize({300 * scale, 1600 * scale});
-        ImGui::Begin("Compact analysis properties");
-        ImGui::TextUnformatted("Properties");
-        ImGui::Separator();
-        contentStart = ImGui::GetCursorScreenPos();
-        ImGui::LogToBuffer();
-        woby::drawComparisonPanelContents(f.state, runtimes);
-        contents = f.context->LogBuffer.c_str();
-        ImGui::LogFinish();
-        for (auto* window : f.context->Windows) {
-            if (window->ParentWindow == ImGui::GetCurrentWindow()
-                && std::string(window->Name).find("comparison_properties") != std::string::npos) { editor = window; }
-        }
-        ImGui::End();
-        ImGui::EndFrame();
-    };
-    frame(); frame();
-    REQUIRE(editor);
-    CHECK(editor->Pos.y == doctest::Approx(contentStart.y));
-    const auto label = contents.find("Name");
-    REQUIRE(label != std::string::npos);
-    const auto lineEnd = contents.find('\n', label);
-    CHECK(contents.find(woby::findComparison(f.state, f.id)->name, label) < lineEnd);
-    auto& io = ImGui::GetIO();
-    const float inputX = editor->DC.CursorStartPos.x + ImGui::CalcTextSize("Name").x + style.ItemSpacing.x;
-    io.AddMousePosEvent(inputX + 20 * scale, editor->DC.CursorStartPos.y + ImGui::GetFrameHeight() * .5f); frame();
-    io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
-    io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
-    REQUIRE(f.context->InputTextState.ID == editor->GetID("##comparison_name"));
-    io.AddKeyEvent(ImGuiMod_Ctrl, true); frame();
-    io.AddKeyEvent(ImGuiKey_A, true); frame();
-    io.AddKeyEvent(ImGuiKey_A, false); io.AddKeyEvent(ImGuiMod_Ctrl, false); frame();
-    io.AddInputCharactersUTF8("Inspection review"); frame();
-    io.AddKeyEvent(ImGuiKey_Enter, true); frame();
-    io.AddKeyEvent(ImGuiKey_Enter, false); frame();
-    CHECK(woby::findComparison(f.state, f.id)->name == "Inspection review");
+    for (const bool macOSBehaviors : {false, true}) {
+        CAPTURE(macOSBehaviors);
+        ComparisonNameFixture f;
+        auto& io = ImGui::GetIO();
+        io.ConfigMacOSXBehaviors = macOSBehaviors;
+        auto& style = ImGui::GetStyle();
+        style.ScaleAllSizes(scale);
+        style.FontScaleMain = scale;
+        f.id = woby::createAnalysisFromSelection(f.state, task);
+        woby::ComparisonRuntimes runtimes;
+        ImGuiWindow* editor = nullptr;
+        ImVec2 contentStart;
+        std::string contents;
+        const auto frame = [&] {
+            ImGui::GetIO().DisplaySize = {1000 * scale, 1800 * scale};
+            ImGui::NewFrame();
+            ImGui::SetNextWindowPos({20, 20});
+            ImGui::SetNextWindowSize({300 * scale, 1600 * scale});
+            ImGui::Begin("Compact analysis properties");
+            ImGui::TextUnformatted("Properties");
+            ImGui::Separator();
+            contentStart = ImGui::GetCursorScreenPos();
+            ImGui::LogToBuffer();
+            woby::drawComparisonPanelContents(f.state, runtimes);
+            contents = f.context->LogBuffer.c_str();
+            ImGui::LogFinish();
+            for (auto* window : f.context->Windows) {
+                if (window->ParentWindow == ImGui::GetCurrentWindow()
+                    && std::string(window->Name).find("comparison_properties") != std::string::npos) { editor = window; }
+            }
+            ImGui::End();
+            ImGui::EndFrame();
+        };
+        frame(); frame();
+        REQUIRE(editor);
+        CHECK(editor->Pos.y == doctest::Approx(contentStart.y));
+        const auto label = contents.find("Name");
+        REQUIRE(label != std::string::npos);
+        const auto lineEnd = contents.find('\n', label);
+        CHECK(contents.find(woby::findComparison(f.state, f.id)->name, label) < lineEnd);
+        const float inputX = editor->DC.CursorStartPos.x + ImGui::CalcTextSize("Name").x + style.ItemSpacing.x;
+        io.AddMousePosEvent(inputX + 20 * scale, editor->DC.CursorStartPos.y + ImGui::GetFrameHeight() * .5f); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, true); frame();
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, false); frame();
+        REQUIRE(f.context->InputTextState.ID == editor->GetID("##comparison_name"));
+        // ImGui maps physical Command input to logical Ctrl on macOS.
+        const auto shortcutModifier = macOSBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl;
+        io.AddKeyEvent(shortcutModifier, true); frame();
+        io.AddKeyEvent(ImGuiKey_A, true); frame();
+        io.AddKeyEvent(ImGuiKey_A, false); io.AddKeyEvent(shortcutModifier, false); frame();
+        io.AddInputCharactersUTF8("Inspection review"); frame();
+        io.AddKeyEvent(ImGuiKey_Enter, true); frame();
+        io.AddKeyEvent(ImGuiKey_Enter, false); frame();
+        CHECK(woby::findComparison(f.state, f.id)->name == "Inspection review");
+    }
 }
 
 TEST_CASE("analysis status stays fixed while active and collapses without losing the editor scroll position")
