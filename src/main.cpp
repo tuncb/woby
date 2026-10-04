@@ -292,6 +292,11 @@ struct GpuFinalizeRuntime {
     std::filesystem::path scenePath;
     woby::SceneDocument sceneDocument;
     std::vector<LoadedModelFile> files;
+    std::vector<woby::SceneMeshPreparation> preparations;
+    std::optional<woby::GpuMeshUpload> upload;
+    double uploadMilliseconds = 0;
+    double longestUploadStepMilliseconds = 0;
+    bool cancelRequested = false;
     std::vector<LoadedModelFile> finalizedFiles;
     std::vector<LoadedModelRuntime> finalizedRuntimes;
     size_t sourceFailedCount = 0;
@@ -1579,7 +1584,7 @@ bool startAppendModelBackgroundLoad(
                     },
                     [&load]() {
                         return load.cancelRequested.load();
-                    });
+                    }, true);
             } catch (const std::exception& exception) {
                 outcome.failed = true;
                 outcome.error = exception.what();
@@ -1649,7 +1654,7 @@ bool startOpenSceneBackgroundLoad(
                     },
                     [&load]() {
                         return load.cancelRequested.load();
-                    });
+                    }, true);
             } catch (const std::exception& exception) {
                 outcome.failed = true;
                 outcome.error = exception.what();
@@ -1682,8 +1687,9 @@ std::optional<AsyncLoadOutcome> takeBackgroundLoadOutcome(BackgroundLoadRuntime&
         load.worker.join();
     }
     load.active = false;
-    if (load.cancelRequested.exchange(false) && outcome->kind == AsyncLoadKind::openScene) {
-        outcome->scene.canceled = true;
+    if (load.cancelRequested.exchange(false)) {
+        if (outcome->kind == AsyncLoadKind::openScene) { outcome->scene.canceled = true; }
+        else { outcome->modelBatch.canceled = true; outcome->modelBatch.status = "Loading canceled"; }
     }
     return outcome;
 }
@@ -1695,6 +1701,7 @@ void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
     finalize.folderTreeRoot = std::move(outcome.folderTreeRoot);
     if (isAppendModelLoadKind(outcome.kind)) {
         finalize.files = std::move(outcome.modelBatch.files);
+        finalize.preparations = std::move(outcome.modelBatch.preparations);
         finalize.sourceFailedCount = outcome.modelBatch.failedCount;
         finalize.sourceSkippedCount = outcome.modelBatch.skippedCount;
         finalize.lastError = std::move(outcome.modelBatch.lastError);
@@ -1702,6 +1709,7 @@ void startGpuFinalize(GpuFinalizeRuntime& finalize, AsyncLoadOutcome outcome)
         finalize.scenePath = std::move(outcome.scene.scenePath);
         finalize.sceneDocument = std::move(outcome.scene.document);
         finalize.files = std::move(outcome.scene.files);
+        finalize.preparations = std::move(outcome.scene.preparations);
     }
     finalize.finalizedFiles.reserve(finalize.files.size());
     finalize.finalizedRuntimes.reserve(finalize.files.size());
@@ -1729,6 +1737,7 @@ std::string appendFinalizeStatus(const GpuFinalizeRuntime& finalize)
 
 void abortGpuFinalize(GpuFinalizeRuntime& finalize)
 {
+    if (finalize.upload) { woby::abortGpuMeshUpload(*finalize.upload); }
     destroyModelRuntimes(finalize.finalizedRuntimes);
     finalize = GpuFinalizeRuntime{};
 }
@@ -1796,6 +1805,12 @@ std::optional<std::string> processGpuFinalizeStep(
         return {};
     }
 
+    if (finalize.cancelRequested) {
+        abortGpuFinalize(finalize);
+        setToastMessage(toast, "Loading canceled");
+        return std::string("Loading canceled");
+    }
+
     if (finalize.nextFileIndex >= finalize.files.size()) {
         try {
             commitGpuFinalize(finalize, state, runtimes, currentScenePath, cleanSceneDocument, toast);
@@ -1809,28 +1824,56 @@ std::optional<std::string> processGpuFinalizeStep(
     }
 
     const auto uploadStart = woby::PerformanceClock::now();
-    // A time budget lets thousands of small files upload in batches instead of
-    // imposing one frame per file. A single large GPU allocation may exceed it.
+    size_t frameBytes = 0;
+    // Bound work within a file as well as between files. Four MiB chunks keep
+    // staging-ring copies/waits short; the byte cap also bounds GPU work per frame.
     do {
-        LoadedModelFile file = std::move(finalize.files[finalize.nextFileIndex]);
-        ++finalize.nextFileIndex;
+        const auto remainingBytes = 16u * 1024 * 1024 - static_cast<uint32_t>(frameBytes);
+        if (remainingBytes < sizeof(woby::Vertex)) { break; }
+        auto& file = finalize.files[finalize.nextFileIndex];
         try {
-            LoadedModelRuntime runtime;
-            runtime.gpuMesh = createGpuMesh(file.mesh, meshLayout,
-                woby::requestedGpuMeshFeatures(file));
-            finalize.finalizedRuntimes.push_back(std::move(runtime));
-            finalize.finalizedFiles.push_back(std::move(file));
+            if (!finalize.upload) {
+                finalize.upload = woby::beginGpuMeshUpload(std::move(finalize.preparations[finalize.nextFileIndex]));
+                finalize.uploadMilliseconds = finalize.longestUploadStepMilliseconds = 0;
+            }
+            const auto stepStart = woby::PerformanceClock::now();
+            const auto previousBytes = finalize.upload->uploadedBytes;
+            const bool complete = woby::stepGpuMeshUpload(*finalize.upload, file.mesh, meshLayout,
+                std::min(remainingBytes, 4u * 1024 * 1024));
+            const auto stepMilliseconds = elapsedMilliseconds(stepStart);
+            finalize.uploadMilliseconds += stepMilliseconds;
+            finalize.longestUploadStepMilliseconds = std::max(finalize.longestUploadStepMilliseconds, stepMilliseconds);
+            frameBytes += finalize.upload->uploadedBytes - previousBytes;
+            if (complete) {
+                spdlog::info("perf model_gpu_finalize path=\"{}\" bytes={} upload_ms={} longest_step_ms={}",
+                    file.path.string(), finalize.upload->uploadedBytes, finalize.uploadMilliseconds,
+                    finalize.longestUploadStepMilliseconds);
+                LoadedModelRuntime runtime;
+                runtime.requestedFeatures = finalize.upload->features;
+                runtime.gpuMesh = std::move(finalize.upload->mesh);
+                finalize.finalizedRuntimes.push_back(std::move(runtime));
+                finalize.finalizedFiles.push_back(std::move(file));
+                finalize.upload.reset();
+                ++finalize.nextFileIndex;
+            }
         } catch (const std::exception& exception) {
+            if (finalize.upload) {
+                woby::abortGpuMeshUpload(*finalize.upload);
+                finalize.upload.reset();
+            }
+            ++finalize.nextFileIndex;
             ++finalize.gpuFailedCount;
             finalize.lastError = exception.what();
             finalize.gpuFailures.push_back({file.path, "failed", exception.what()});
             if (finalize.kind == AsyncLoadKind::openScene) {
-                setToastMessage(toast, std::string("Open scene failed: ") + exception.what());
+                const std::string error = exception.what();
+                setToastMessage(toast, "Open scene failed: " + error);
                 abortGpuFinalize(finalize);
-                return std::string(exception.what());
+                return error;
             }
         }
-    } while (finalize.nextFileIndex < finalize.files.size() && elapsedMilliseconds(uploadStart) < 4.0);
+    } while (finalize.nextFileIndex < finalize.files.size() && frameBytes < 16u * 1024 * 1024
+        && elapsedMilliseconds(uploadStart) < 4.0);
     return {};
 }
 
@@ -2019,7 +2062,10 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
                     fileDisplayName(gpuFinalize.files[gpuFinalize.nextFileIndex].path).c_str());
             }
             if (!gpuFinalize.files.empty()) {
-                const float fraction = static_cast<float>(std::min(gpuFinalize.nextFileIndex, gpuFinalize.files.size()))
+                const auto* upload = gpuFinalize.upload ? &*gpuFinalize.upload : nullptr;
+                const float currentFraction = upload && upload->totalBytes
+                    ? static_cast<float>(upload->uploadedBytes) / static_cast<float>(upload->totalBytes) : 0.0f;
+                const float fraction = (static_cast<float>(std::min(gpuFinalize.nextFileIndex, gpuFinalize.files.size())) + currentFraction)
                     / static_cast<float>(gpuFinalize.files.size());
                 ImGui::ProgressBar(
                     fraction,
@@ -2027,6 +2073,9 @@ bool drawProcessingDialog(BackgroundLoadRuntime& backgroundLoad, GpuFinalizeRunt
                     (std::to_string(gpuFinalize.nextFileIndex) + " / " + std::to_string(gpuFinalize.files.size())).c_str());
             } else {
                 ImGui::TextUnformatted("Committing scene...");
+            }
+            if (ImGui::Button("Cancel") || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+                gpuFinalize.cancelRequested = true;
             }
         }
         ImGui::EndPopup();
@@ -2645,6 +2694,8 @@ int main(int argc, char** argv)
                 }
             }
 
+            const bool finalizeCanceled = gpuFinalize.active && gpuFinalize.cancelRequested;
+            if (finalizeCanceled && automationAppend) { automationAppend->canceled = true; }
             const auto previousGpuFailures = gpuFinalize.gpuFailures.size();
             if (gpuFinalize.active && gpuFinalize.kind == AsyncLoadKind::openScene) {
                 woby::cancelAnnotationPreparation(annotationPreparation);
@@ -2670,7 +2721,7 @@ int main(int argc, char** argv)
                 }
             }
             if (finalized && automationAppend) {
-                if (finalized->empty()) { completeAppend(); }
+                if (finalized->empty() || finalizeCanceled) { completeAppend(); }
                 else {
                     woby::completeAutomationCommand(*automation, automationAppend->id, woby::AutomationCommandError{*finalized});
                     automationAppend.reset();
@@ -2681,7 +2732,7 @@ int main(int argc, char** argv)
                     woby::completeAutomationCommand(*automation, *automationOpenCommandId,
                         woby::AutomationSceneResult{currentScenePath, ui.isDirty});
                 } else {
-                    completeLifecycleError(*automationOpenCommandId, {"open_failed", *finalized, -32016});
+                    completeLifecycleError(*automationOpenCommandId, {finalizeCanceled ? "scene_canceled" : "open_failed", *finalized, finalizeCanceled ? -32017 : -32016});
                 }
                 automationOpenCommandId.reset();
             }

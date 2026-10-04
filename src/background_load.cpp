@@ -114,12 +114,13 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
     const std::vector<std::filesystem::path>& modelPaths,
     size_t firstColorIndex,
     const BackgroundLoadProgressCallback& progress,
-    const BackgroundLoadCancelCallback& shouldCancel)
+    const BackgroundLoadCancelCallback& shouldCancel, bool prepareRenderData)
 {
     const auto start = PerformanceClock::now();
     ModelBatchCpuLoadResult result;
     result.requestedCount = modelPaths.size();
     result.files.reserve(modelPaths.size());
+    if (prepareRenderData) { result.preparations.reserve(modelPaths.size()); }
     result.outcomes.reserve(modelPaths.size());
     for (const auto& path : modelPaths) { result.outcomes.push_back({path, "not-started", {}}); }
 
@@ -162,6 +163,18 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
 
             UiFileState file = createUiFileState(
                 modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId), stageProgress);
+            if (prepareRenderData) {
+                const auto prepareStart = PerformanceClock::now();
+                auto prepared = prepareSceneMesh(file.mesh, requestedGpuMeshFeatures(file), shouldCancel);
+                if (!prepared) {
+                    result.canceled = true;
+                    outcome.state = "canceled";
+                    break;
+                }
+                result.preparations.push_back(std::move(*prepared));
+                spdlog::info("perf model_upload_prepare path=\"{}\" duration_ms={}", modelPath.string(),
+                    millisecondsBetween(prepareStart, PerformanceClock::now()));
+            }
             colorIndex += file.groupSettings.size();
             spdlog::info(
                 "perf model_cpu_load path=\"{}\" vertices={} triangles={} groups={} parse_ms={} total_ms={}",
@@ -202,7 +215,7 @@ ModelBatchCpuLoadResult loadModelBatchCpu(
 SceneCpuLoadResult loadSceneCpu(
     const std::filesystem::path& scenePath,
     const BackgroundLoadProgressCallback& progress,
-    const BackgroundLoadCancelCallback& shouldCancel)
+    const BackgroundLoadCancelCallback& shouldCancel, bool prepareRenderData)
 {
     const auto totalStart = PerformanceClock::now();
     SceneCpuLoadResult result;
@@ -213,6 +226,7 @@ SceneCpuLoadResult loadSceneCpu(
     const double readMilliseconds = millisecondsBetween(readStart, PerformanceClock::now());
 
     result.files.reserve(result.document.files.size());
+    if (prepareRenderData) { result.preparations.reserve(result.document.files.size()); }
     size_t colorIndex = 0;
     PrefetchedLoads prefetched;
     for (const auto& record : result.document.files) {
@@ -244,6 +258,11 @@ SceneCpuLoadResult loadSceneCpu(
         }
         UiFileState file = createUiFileState(modelPath, std::move(imported.mesh), colorIndex, std::move(imported.importerId), stageProgress);
         applySceneFileRecord(file, record);
+        if (prepareRenderData) {
+            auto prepared = prepareSceneMesh(file.mesh, requestedGpuMeshFeatures(file), shouldCancel);
+            if (!prepared) { result.canceled = true; break; }
+            result.preparations.push_back(std::move(*prepared));
+        }
         colorIndex += file.groupSettings.size();
         spdlog::info(
             "perf scene_model_cpu_load scene=\"{}\" path=\"{}\" vertices={} triangles={} groups={} duration_ms={}",

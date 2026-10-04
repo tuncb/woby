@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model_mesh.h"
+#include "scene_mesh_preparation.h"
 #include "ui_state.h"
 #include "scene_pick.h"
 
@@ -24,15 +25,6 @@ struct SceneRenderScratch {
     std::vector<DiagnosticEdge> annotationLines;
 };
 
-struct GpuNodeRange {
-    uint32_t triangleIndexOffset = 0;
-    uint32_t triangleIndexCount = 0;
-    uint32_t lineIndexOffset = 0;
-    uint32_t lineIndexCount = 0;
-    uint32_t pointIndexOffset = 0;
-    uint32_t pointIndexCount = 0;
-};
-
 struct GpuMesh {
     bool freeformPrepared = false;
     woby::graphics::VertexBufferHandle vertexBuffer = WOBY_GPU_INVALID_HANDLE;
@@ -50,9 +42,6 @@ struct LoadedModelRuntime {
     uint8_t requestedFeatures = 0;
 };
 
-enum GpuMeshFeature : uint8_t { gpuMeshEdges = 1, gpuMeshPoints = 2 };
-[[nodiscard]] uint8_t requestedGpuMeshFeatures(const UiFileState& file);
-
 [[nodiscard]] woby::graphics::VertexLayout meshVertexLayout();
 [[nodiscard]] woby::graphics::VertexLayout helperLineVertexLayout();
 
@@ -60,6 +49,23 @@ enum GpuMeshFeature : uint8_t { gpuMeshEdges = 1, gpuMeshPoints = 2 };
     const Mesh& mesh,
     const woby::graphics::VertexLayout& meshLayout,
     uint8_t features = 0);
+// A staged mesh is never published to the scene until all buffers are uploaded.
+struct GpuMeshUpload {
+    GpuMesh mesh;
+    std::vector<uint32_t> edgeIndices;
+    uint8_t features = 0;
+    uint8_t bufferIndex = 0;
+    uint32_t bufferOffset = 0;
+    size_t uploadedBytes = 0;
+    size_t totalBytes = 0;
+};
+[[nodiscard]] GpuMeshUpload beginGpuMeshUpload(SceneMeshPreparation prepared);
+// Source geometry must remain unchanged until completion. Each call copies at
+// most byteBudget bytes into graphics-owned staging; no source pointer escapes.
+[[nodiscard]] bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
+    const woby::graphics::VertexLayout& layout, uint32_t byteBudget);
+void abortGpuMeshUpload(GpuMeshUpload& upload);
+
 // Optional display buffers are retained once built; drawing never allocates.
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh, uint8_t features);
 void destroyGpuMesh(GpuMesh& mesh);

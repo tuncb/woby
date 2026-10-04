@@ -42,6 +42,63 @@ void writeTriangleObj(const std::filesystem::path& path)
 
 } // namespace
 
+TEST_CASE("Background render preparation stays aligned with successful batch files")
+{
+    const BatchTestDirectory fixture;
+    const auto obj = fixture.path / "triangle.obj";
+    writeTriangleObj(obj);
+    auto result = woby::loadModelBatchCpu({obj, fixture.path / "missing.obj", obj}, 0, {}, {}, true);
+    REQUIRE(result.files.size() == 2);
+    REQUIRE(result.preparations.size() == result.files.size());
+    CHECK(result.failedCount == 1);
+    for (size_t i = 0; i < result.files.size(); ++i) {
+        CHECK(result.preparations[i].features == woby::requestedGpuMeshFeatures(result.files[i]));
+        REQUIRE(result.preparations[i].nodeRanges.size() == 1);
+        CHECK(result.preparations[i].pointVertexIndices == std::vector<uint32_t>{0, 1, 2});
+    }
+    result.files.clear();
+    CHECK(result.preparations[0].pointVertexIndices == std::vector<uint32_t>{0, 1, 2});
+}
+
+TEST_CASE("Background scene preparation includes saved optional display buffers")
+{
+    const BatchTestDirectory fixture;
+    const auto obj = fixture.path / "triangle.obj", scene = fixture.path / "scene.woby";
+    writeTriangleObj(obj);
+    woby::SceneDocument document;
+    woby::SceneFileRecord record;
+    record.path = obj;
+    woby::SceneGroupRecord group;
+    group.name = "triangle";
+    group.settings.showTriangles = true;
+    group.settings.showVertices = true;
+    record.groups.push_back(group);
+    document.files.push_back(record);
+    woby::writeSceneDocument(scene, document);
+    auto result = woby::loadSceneCpu(scene, {}, {}, true);
+    REQUIRE_FALSE(result.canceled);
+    REQUIRE(result.files.size() == 1);
+    REQUIRE(result.preparations.size() == 1);
+    CHECK(result.preparations[0].features == (woby::gpuMeshEdges | woby::gpuMeshPoints));
+    CHECK(result.preparations[0].edgeIndices == std::vector<uint32_t>{0, 1, 1, 2, 2, 0});
+}
+
+TEST_CASE("Cancel before render preparation publishes no unprepared file")
+{
+    const BatchTestDirectory fixture;
+    const auto obj = fixture.path / "triangle.obj";
+    writeTriangleObj(obj);
+    bool cancel = false;
+    const auto result = woby::loadModelBatchCpu({obj}, 0, [&](const auto& progress) {
+        if (progress.model.stage == woby::ModelLoadStage::ready) { cancel = true; }
+    }, [&] { return cancel; }, true);
+    CHECK(result.canceled);
+    CHECK(result.files.empty());
+    CHECK(result.preparations.empty());
+    REQUIRE(result.outcomes.size() == 1);
+    CHECK(result.outcomes[0].state == "canceled");
+}
+
 TEST_CASE("prefetched model batches preserve ordering colors and failures across ring reuse")
 {
     const BatchTestDirectory fixture;

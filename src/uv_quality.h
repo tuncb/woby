@@ -15,6 +15,7 @@ struct UvTriangleQuality {
     double angleDegrees = 0, areaLog2 = 0, surfaceArea = 0, uvArea = 0;
     // Surface -> UV; per-patch mode divides by sqrt(total UV / surface area).
     double minStretch = 0, maxStretch = 0, anisotropy = 1;
+    double absoluteMaxStretch = 0; // Canonical value; normalization edits never accumulate rounding error.
     std::array<UvPoint, 3> uv{};
     int orientation = 0;
     bool missing = false, collapsed = false, degenerateSurface = false, mixedOrientation = false;
@@ -35,6 +36,9 @@ struct UvOverlapLimits { size_t candidates = 2000000, pairs = 10000; };
 
 struct UvQuality {
     std::vector<UvTriangleQuality> triangles;
+    std::vector<double> patchAreaLog2;
+    // Metric distributions exclude threshold/range-dependent counts and findings.
+    std::array<std::optional<UvQualityStatistics>, 6> distributions;
     // Computed once on the worker; UI navigation never scans all triangles.
     std::vector<size_t> findings;
     UvAreaNormalization normalization = UvAreaNormalization::perPatch;
@@ -50,6 +54,10 @@ struct UvQuality {
 [[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric,
     std::stop_token stop = {});
 [[nodiscard]] std::vector<Vertex> uvQualityVertices(const Mesh& display, std::stop_token stop = {});
+[[nodiscard]] std::vector<Vertex> uvQualityVertices(const Mesh& display, const UvQuality& quality,
+    std::stop_token stop = {});
+// Updates an owned worker copy, reusing geometric metrics and compatible overlap results.
+void updateUvQualitySettings(UvQuality& quality, const ComparisonSettings& settings, std::stop_token stop = {});
 [[nodiscard]] const char* uvFindingLabel(const UvTriangleQuality& triangle, const ComparisonSettings& settings = {});
 [[nodiscard]] std::optional<std::array<std::array<float, 3>, 3>> uvFindingGeometry(const Mesh& display, size_t finding);
 [[nodiscard]] const char* uvQualityMetricKey(UvQualityMetric metric);
@@ -63,7 +71,7 @@ struct UvQuality {
 [[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, const ComparisonSettings& settings, std::stop_token stop = {});
 // Run on the analysis worker; cancellation never publishes a partial result.
 void inspectUvOverlaps(UvQuality& quality, std::stop_token stop = {}, UvOverlapLimits limits = {});
-void updateUvQualityStatistics(UvQuality& quality);
+void updateUvQualityStatistics(UvQuality& quality, std::stop_token stop = {});
 [[nodiscard]] std::array<float, 4> uvQualityColor(double encodedValue, bool area, bool highlighted = false);
 
 } // namespace woby

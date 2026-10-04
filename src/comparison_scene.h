@@ -45,7 +45,7 @@ struct ComparisonInspectorCache {
     SceneObjectId objectId = invalidSceneObjectId;
     uint64_t generation = 0, builds = 0;
     uint64_t geometryRevision = 0, analysisRevision = 0, labelsRevision = 0, signatureBuilds = 0;
-    uint64_t signature = 0;
+    uint64_t signature = 0, preparationSignature = 0;
     std::array<ComparisonInspectorInput, 2> inputs;
     std::string sources;
 };
@@ -62,6 +62,8 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
 // independently of ordinary scene visibility and appearance settings.
 [[nodiscard]] Mesh comparisonWorldMesh(const UiState &state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);
 [[nodiscard]] uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id = invalidSceneObjectId);
+// Source/layout identity, excluding UV metrics, overlap and presentation settings.
+[[nodiscard]] uint64_t comparisonPreparationSignature(const UiState& state, SceneObjectId id);
 [[nodiscard]] std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id);
 // Source triangle in scene coordinates, independent of analysis display/layout and visibility.
 [[nodiscard]] std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
@@ -87,6 +89,9 @@ struct ComparisonInputSnapshot {
 struct PreparedComparisonSource {
     std::vector<Vertex> quality;
     std::vector<uint32_t> lines;
+    bool qualityOnly = false;
+    bool updateQuality = true;
+    std::shared_ptr<const UvQuality> uvQuality;
 };
 struct PreparedComparisonInputs {
     std::shared_ptr<const std::array<Mesh, 2>> meshes;
@@ -95,5 +100,9 @@ struct PreparedComparisonInputs {
 // CPU-only preparation; the runtime uploads these buffers on the graphics thread.
 [[nodiscard]] PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot& snapshot,
     std::stop_token stop = {});
+[[nodiscard]] PreparedComparisonInputs refreshUvComparisonInputs(
+    std::shared_ptr<const std::array<Mesh, 2>> meshes,
+    const std::array<std::shared_ptr<const UvQuality>, 2>& qualities,
+    const ComparisonSettings& settings, std::stop_token stop = {});
 
 } // namespace woby

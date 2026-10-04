@@ -39,9 +39,12 @@ Callers check these returns. Texture suballocation is returned to its allocator
 if native image creation fails. Existing Vulkan error-return paths no longer
 abort merely while translating an OOM VkResult.
 
-CPU storage in GPU allocator utilities: allocating constructors no longer claim
-noexcept. Enable exception unwinding in their library targets. Clean up a first
-range-allocator array if the second fails, and partial upload-queue construction.
+CPU storage in GPU allocator utilities: keep noexcept constructors and compile
+with exceptions and RTTI disabled. Checked nothrow allocations feed explicit
+creation results with static error messages; failed creation releases partial
+CPU arrays, heaps, timelines and command pools. Texture allocation distinguishes
+a full page from native creation failure and returns the reserved range on failure.
+The renderer checks these results at its existing application error boundary.
 
 Woby renderer ownership: retain geometry before submitting uploads and images
 before recording initialization barriers; release
@@ -96,6 +99,10 @@ step, texture heaps, images/binding, render views, graphics/compute pipelines,
 timeline semaphores and command pools without consuming physical GPU memory.
 tests/rapidobj_reader_tests.cpp injects null aligned allocations, including inside
 an asynchronous parser worker, and checks pending-I/O cleanup.
+tests/utility_allocation_tests.cpp exercises the patched utilities compiled with
+exceptions and RTTI disabled. It injects ownership, array, heap, timeline and
+command-pool failures, checks cleanup and retry, and verifies texture failure
+does not consume a suballocation or masquerade as a full page.
 Freeform tests accept a planned 10,042,561-vertex grid past the former limit,
 cancel before allocating it, and reject an unaddressable 32-bit index layout.
 Importer tests inject bad_alloc through the load boundary, check the explicit

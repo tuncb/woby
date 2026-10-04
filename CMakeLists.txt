@@ -192,6 +192,8 @@ add_executable(woby
     src/scene_lifecycle.h
     src/scene_file.cpp
     src/scene_file.h
+    src/scene_mesh_preparation.cpp
+    src/scene_mesh_preparation.h
     src/scene_renderer.cpp
     src/freeform_gpu.cpp
     src/scene_renderer.h
@@ -326,6 +328,11 @@ endif()
 
 if(BUILD_TESTING)
     include(cmake/WobyPython.cmake)
+    if(WOBY_BUILD_BENCHMARKS)
+        add_test(NAME woby_detector_benchmarks COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/performance_benchmarks_tests.py" "$<TARGET_FILE:woby_benchmarks>")
+        set_tests_properties(woby_detector_benchmarks PROPERTIES TIMEOUT 150)
+    endif()
     option(WOBY_TEST_HEADLESS "Run headless integration tests (requires a NoGraphicsAPI-compatible GPU)" OFF)
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
         add_test(NAME woby_headless COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
@@ -374,6 +381,11 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
     include(doctest)
+    add_subdirectory(tests/utility_fixture)
+    add_executable(woby_utility_allocation_tests tests/utility_allocation_tests.cpp)
+    target_link_libraries(woby_utility_allocation_tests PRIVATE doctest::doctest woby_utility_allocation_fixture)
+    woby_enable_project_warnings(woby_utility_allocation_tests)
+    add_test(NAME woby_utility_allocations COMMAND woby_utility_allocation_tests)
 
     add_executable(woby_tests
         tests/graphics_tests.cpp
@@ -483,6 +495,8 @@ if(BUILD_TESTING)
         src/scene_objects.h
         src/graphics_helpers.cpp
         src/graphics_helpers.h
+        src/scene_mesh_preparation.cpp
+        src/scene_mesh_preparation.h
         src/scene_renderer.cpp
         src/freeform_gpu.cpp
         src/scene_renderer.h

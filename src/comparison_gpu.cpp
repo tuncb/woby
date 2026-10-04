@@ -99,12 +99,15 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         const auto vertexBytes = comparisonBufferBytes(surface.source.vertices.size(), sizeof(Vertex));
         const auto indexBytes = comparisonBufferBytes(surface.source.indices.size(), sizeof(uint32_t));
         const auto lineBytes = comparisonBufferBytes(surface.source.indices.size(), 2 * sizeof(uint32_t));
-        if (surface.source.uvQuality) {
+        if (surface.source.uvQuality && (!prepared || prepared->updateQuality)) {
             const auto qualityBytes = comparisonBufferBytes(surface.source.indices.size(),sizeof(Vertex));
             const auto values = prepared ? std::vector<Vertex>{} : uvQualityVertices(surface.source);
-            gpu.quality = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? prepared->quality.data() : values.data(), qualityBytes),meshVertexLayout());
-            if (!woby::graphics::isValid(gpu.quality)) { throw std::runtime_error("Cannot allocate UV quality buffer."); }
+            const auto handle = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? prepared->quality.data() : values.data(), qualityBytes),meshVertexLayout());
+            if (!woby::graphics::isValid(handle)) { throw std::runtime_error("Cannot allocate UV quality buffer."); }
+            if (woby::graphics::isValid(gpu.quality)) { woby::graphics::destroy(gpu.quality); }
+            gpu.quality = handle;
         }
+        if (prepared && prepared->qualityOnly) { return; }
         auto vertices = prepared ? std::vector<Vertex>{} : surface.source.vertices;
         if (!prepared) { generateSmoothNormals(vertices, surface.source.indices); }
         gpu.vertices = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? surface.source.vertices.data() : vertices.data(), vertexBytes), meshVertexLayout());
