@@ -1,5 +1,11 @@
 # Performance engineering
 
+For the October 2026 full-corpus loading, rendering, diagnostics, UV, comparison,
+and scene-lifecycle baseline, see [large-file stress results](large-file-stress-results.md)
+and the [stress-test path catalog](large-file-stress-paths.md).
+The resulting [GitHub issue index](large-file-stress-issues.md) links the separate
+stability and performance work items.
+
 Vertex compaction has since been removed from the application and the CPU
 benchmark. Compaction results below are historical; see the
 [compaction removal measurements](obj-compaction-performance.md).
