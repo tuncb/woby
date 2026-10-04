@@ -10,6 +10,11 @@ if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
 endif()
 project(woby_obj_viewer VERSION 0.26.0 LANGUAGES CXX)
 
+if(APPLE)
+    # Enable Objective-C++ in the common scope of the backend and Metal tests.
+    enable_language(OBJCXX)
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
