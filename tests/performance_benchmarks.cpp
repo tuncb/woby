@@ -100,15 +100,21 @@ int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, boo
     input->sources.push_back(std::move(source));
     mesh.duplicateInput = std::move(input);
     if (expanded) {
-        // Match the flat world-space snapshot assembled by comparisonWorldMesh.
+        // Retain the flat comparison snapshot workload alongside indexed meshes.
+        // Remap both position buffers; source indices and part ranges stay intact.
         const auto vertices = std::move(mesh.vertices);
+        std::vector<woby::Coordinate> positions;
+        positions.reserve(mesh.indices.size());
         mesh.vertices.reserve(mesh.indices.size());
         for (auto& index : mesh.indices) {
+            positions.push_back(mesh.precisePositions.at(index));
             woby::Vertex vertex;
             vertex.position = vertices[index].position;
+            vertex.texcoord = vertices[index].texcoord;
             index = static_cast<uint32_t>(mesh.vertices.size());
             mesh.vertices.push_back(vertex);
         }
+        mesh.precisePositions = std::move(positions);
     }
     if (intersections) {
         const auto topology = woby::buildMeshTopology(mesh.duplicateInput->sources);
