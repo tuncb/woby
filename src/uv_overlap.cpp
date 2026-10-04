@@ -39,10 +39,11 @@ bool interiorsOverlap(const UvTriangleQuality& a, const UvTriangleQuality& b)
 
 void inspectUvOverlaps(UvQuality& quality, std::stop_token stop, UvOverlapLimits limits)
 {
+    quality.distributions[static_cast<size_t>(UvQualityMetric::overlap)].reset();
     quality.overlaps.clear(); quality.overlapCandidates = quality.overlappingTriangles = quality.crossPatchPairs = 0;
     quality.overlapTruncated = quality.overlapChecked = false;
     for (auto& q : quality.triangles) { q.overlapping = q.crossPatchOverlap = false; }
-    if (!quality.settings.uvOverlapEnabled) { updateUvQualityStatistics(quality); return; }
+    if (!quality.settings.uvOverlapEnabled) { updateUvQualityStatistics(quality, stop); return; }
     const auto canceled = [&] { if (stop.stop_requested()) { throw std::runtime_error("UV overlap analysis canceled."); } };
     struct Box { size_t triangle; UvPoint min, max; };
     std::vector<Box> boxes;
@@ -84,6 +85,6 @@ void inspectUvOverlaps(UvQuality& quality, std::stop_token stop, UvOverlapLimits
     canceled();
     quality.overlapChecked = true;
     for (const auto& q : quality.triangles) { if (q.overlapping || q.crossPatchOverlap) { ++quality.overlappingTriangles; } }
-    updateUvQualityStatistics(quality);
+    updateUvQualityStatistics(quality, stop);
 }
 } // namespace woby

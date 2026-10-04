@@ -166,16 +166,24 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
         resetComparisonDiagnosticFocus(state, id);
     }
     if (resetComparisonCache(runtime.results.cache, wanted)) {
+        const bool reuseUv = wanted && settings.type == AnalysisType::uvQuality && runtime.sources.inputs
+            && runtime.sources.preparationSignature == runtime.inspector.queries.preparationSignature
+            && ((runtime.gpu.uploadedStages & comparisonSource) || runtime.sources.refreshUvQuality);
         runtime.jobs.preparationStop.request_stop();
         runtime.sources.prepared.reset();
         runtime.jobs.stop.request_stop(); invalidateIntersection();
         invalidateComparisonDetectors(runtime.results.value, comparisonDetectors);
         auto detectors = std::move(runtime.results.value.detectors);
         auto a = std::move(runtime.results.value.original.intersections), b = std::move(runtime.results.value.repaired.intersections);
-        destroySurface(runtime.gpu.original); destroySurface(runtime.gpu.repaired);
-        runtime.results.value = {}; runtime.results.value.original.intersections = std::move(a); runtime.results.value.repaired.intersections = std::move(b);
+        if (!reuseUv) {
+            destroySurface(runtime.gpu.original); destroySurface(runtime.gpu.repaired);
+            runtime.results.value = {};
+            runtime.sources.inputs.reset();
+        }
+        runtime.sources.refreshUvQuality = reuseUv;
+        runtime.results.value.original.intersections = std::move(a); runtime.results.value.repaired.intersections = std::move(b);
         runtime.results.value.detectors = std::move(detectors);
-        runtime.sources.inputs.reset(); runtime.gpu.uploadedStages = runtime.jobs.failedStages = 0;
+        runtime.gpu.uploadedStages = runtime.jobs.failedStages = 0;
         runtime.jobs.retryDetectorsSeparately = false;
         runtime.jobs.allocationFailed = false;
         runtime.results.signature = runtime.jobs.attemptedSignature = 0; runtime.jobs.error.clear();
@@ -187,6 +195,14 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
             if (!runtime.jobs.preparationStop.stop_requested() && runtime.jobs.preparationSignature == wanted) {
                 runtime.sources.prepared = std::move(prepared);
                 runtime.sources.inputs = runtime.sources.prepared->meshes;
+                runtime.sources.preparationSignature = runtime.jobs.preparationGeometrySignature;
+                if (runtime.sources.prepared->buffers[0].qualityOnly) {
+                    runtime.results.value.original.source.uvQuality = runtime.sources.prepared->buffers[0].uvQuality;
+                    runtime.results.value.repaired.source.uvQuality = runtime.sources.prepared->buffers[1].uvQuality;
+                    runtime.results.cache.completed |= comparisonSource;
+                    runtime.results.signature = wanted;
+                    recordResultPublication(runtime.results, comparisonSource);
+                }
             }
         } catch (const std::bad_alloc&) {
             if (!runtime.jobs.preparationStop.stop_requested() && runtime.jobs.preparationSignature == wanted) { throw; }
@@ -373,12 +389,27 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
         const auto missing = (requested & ~runtime.results.cache.completed & ~runtime.jobs.failedStages) | queuedStages;
         if (!wanted || !allowStart || !active || (!missing && !job.requested)) { return; }
         try {
+            if (runtime.sources.refreshUvQuality && (missing & comparisonSource)) {
+                if (!runtime.jobs.preparationWorker.valid()) {
+                    const std::array qualities{runtime.results.value.original.source.uvQuality,
+                        runtime.results.value.repaired.source.uvQuality};
+                    runtime.jobs.preparationStop = std::stop_source{};
+                    runtime.jobs.preparationSignature = runtime.jobs.attemptedSignature = wanted;
+                    runtime.jobs.preparationGeometrySignature = runtime.inspector.queries.preparationSignature;
+                    runtime.jobs.preparationWorker = std::async(std::launch::async,
+                        [inputs = runtime.sources.inputs, qualities, settings, stop = runtime.jobs.preparationStop.get_token()] {
+                            return std::make_shared<const PreparedComparisonInputs>(refreshUvComparisonInputs(inputs, qualities, settings, stop));
+                        });
+                }
+                return;
+            }
             if (!runtime.sources.inputs) {
                 if (isUvAnalysis(settings.type)) {
                     if (!runtime.jobs.preparationWorker.valid()) {
                         auto snapshot = snapshotComparisonInputs(state, id);
                         runtime.jobs.preparationStop = std::stop_source{};
                         runtime.jobs.preparationSignature = runtime.jobs.attemptedSignature = wanted;
+                        runtime.jobs.preparationGeometrySignature = runtime.inspector.queries.preparationSignature;
                         runtime.jobs.preparationWorker = std::async(std::launch::async,
                             [snapshot = std::move(snapshot), stop = runtime.jobs.preparationStop.get_token()]() -> std::shared_ptr<const PreparedComparisonInputs> {
                                 return std::make_shared<PreparedComparisonInputs>(prepareUvComparisonInputs(snapshot, stop));
@@ -408,9 +439,17 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                     }
                 }
                 runtime.jobs.stop = std::stop_source{};
+                const std::array qualities{
+                    runtime.sources.prepared ? runtime.sources.prepared->buffers[0].uvQuality : nullptr,
+                    runtime.sources.prepared ? runtime.sources.prepared->buffers[1].uvQuality : nullptr};
                 runtime.jobs.worker = std::async(std::launch::async, [inputs = runtime.sources.inputs, stage = runtime.jobs.workerStages,
-                    degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.jobs.stop.get_token()] {
-                    return computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode);
+                    qualities, degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.jobs.stop.get_token()] {
+                    auto result = computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode);
+                    if (stage & comparisonSource) {
+                        if (qualities[0]) { result.original.source.uvQuality = qualities[0]; }
+                        if (qualities[1]) { result.repaired.source.uvQuality = qualities[1]; }
+                    }
+                    return result;
                 });
             } else if (job.requested && !runtime.jobs.worker.valid() && !job.worker.valid()) {
                 job.requested = false; job.workerSignature = wanted; job.workerRevision = job.revision;
@@ -446,11 +485,15 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 for (size_t i = 0; i < runtime.gpu.stageRevisions.size(); ++i) {
                     if (stage & (1u << i)) { runtime.gpu.stageRevisions[i] = runtime.results.stageRevisions[i]; }
                 }
-                if (stage & comparisonSource) { runtime.sources.prepared.reset(); }
+                if (stage & comparisonSource) {
+                    runtime.sources.prepared.reset();
+                    runtime.sources.refreshUvQuality = false;
+                }
             } catch (const std::bad_alloc&) {
                 throw;
             } catch (const std::exception& error) {
                 invalidateGpu(stage); runtime.jobs.failedStages |= stage; runtime.jobs.attemptedSignature = wanted;
+                if (stage & comparisonSource) { runtime.sources.refreshUvQuality = false; }
                 if (stage == comparisonIntersections) { phase(IntersectionPhase::failed, error.what()); }
                 else {
                     runtime.jobs.error = error.what();
@@ -523,6 +566,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.jobs.intersection.stop.request_stop();
         runtime.jobs.intersection.requested = false;
         runtime.sources.prepared.reset(); runtime.sources.inputs.reset();
+        runtime.sources.refreshUvQuality = false;
         // Release large retained buffers before constructing the error message.
         runtime.results.value = {};
         destroySurface(runtime.gpu.original); destroySurface(runtime.gpu.repaired);

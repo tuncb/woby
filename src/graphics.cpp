@@ -423,6 +423,8 @@ std::shared_ptr<Image> createImage(uint16_t width, uint16_t height, gpu::Format 
     for (const auto &page : c.pages)
     {
         image->placed = page->allocator->allocate(current().preparations, desc);
+        require(image->placed.status != gpu::TextureAllocationStatus::failed,
+                "GPU texture creation failed: insufficient CPU/GPU memory or a driver error.");
         if (image->placed.texture)
         {
             image->page = page;
@@ -454,8 +456,12 @@ std::shared_ptr<Image> createImage(uint16_t width, uint16_t height, gpu::Format 
                                                  });
         page->heap = gpu::create_texture_heap(c.device, bytes);
         require(page->heap.owner != nullptr, page->heap.error);
-        page->allocator = std::make_unique<gpu::TextureAllocator>(c.device, page->heap, 1024);
+        const auto allocator = gpu::create_utility<gpu::TextureAllocator>(c.device, page->heap, 1024u);
+        page->allocator.reset(allocator.value);
+        require(allocator.value != nullptr, allocator.error);
         image->placed = page->allocator->allocate(current().preparations, desc);
+        require(image->placed.status != gpu::TextureAllocationStatus::failed,
+                "GPU texture creation failed: insufficient CPU/GPU memory or a driver error.");
         require(image->placed.texture != nullptr, "Texture does not fit its heap");
         image->page = page;
         c.pages.push_back(page);
@@ -894,8 +900,12 @@ bool init(const Init &options)
         c.freeDescriptors.reserve(descriptorCapacity);
         for (uint32_t i = 0; i < descriptorCapacity; ++i)
             c.freeDescriptors.push_back(i);
-        c.uploads = std::make_unique<gpu::UploadQueue>(c.device, 16ull * 1024 * 1024);
-        c.deletes = std::make_unique<gpu::DeleteQueue>(c.timeline, 64);
+        const auto uploads = gpu::create_utility<gpu::UploadQueue>(c.device, 16ull * 1024 * 1024);
+        c.uploads.reset(uploads.value);
+        require(uploads.value != nullptr, uploads.error);
+        const auto deletes = gpu::create_utility<gpu::DeleteQueue>(c.timeline, 64u);
+        c.deletes.reset(deletes.value);
+        require(deletes.value != nullptr, deletes.error);
         for (auto &f : c.frames) {
             f.pool = gpu::create_command_pool(c.device);
             require(f.pool != nullptr, "GPU frame command pool allocation failed");

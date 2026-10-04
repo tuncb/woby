@@ -333,6 +333,8 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
     next.signatureBuilds = cache.signatureBuilds + (reuseSignature ? 0 : 1);
     next.signature = reuseSignature ? cache.signature : comparisonGeometrySignature(state, id);
     const auto* comparison = findComparison(state, id);
+    next.preparationSignature = reuseSignature ? cache.preparationSignature
+        : comparison && comparison->settings.type == AnalysisType::uvQuality ? comparisonPreparationSignature(state, id) : next.signature;
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         auto& input = next.inputs[side == ComparisonSide::a ? 0 : 1];
         input.roots = comparisonTree(state, side, id);
@@ -482,10 +484,12 @@ PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot
             inspectUvOverlaps(*quality, stop);
             mesh.uvQuality = std::move(quality);
         }
+        buffers.uvQuality = mesh.uvQuality;
+        mesh.uvQuality.reset(); // The long-lived geometry cache must not pin obsolete quality results.
         if (mesh.indices.empty()) { continue; }
         // Match the previous upload path: quality uses the original normals,
         // while the indexed surface uses generated smooth normals.
-        buffers.quality = uvQualityVertices(mesh, stop);
+        if (buffers.uvQuality) { buffers.quality = uvQualityVertices(mesh, *buffers.uvQuality, stop); }
         generateSmoothNormals(mesh.vertices, mesh.indices, [&](const ModelLoadProgress&) { check(); });
         buffers.lines.reserve(mesh.indices.size() * 2);
         for (size_t i = 0; i < mesh.indices.size(); i += 3) {
@@ -501,7 +505,42 @@ PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot
     return result;
 }
 
-static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool boundsOnly)
+PreparedComparisonInputs refreshUvComparisonInputs(std::shared_ptr<const std::array<Mesh, 2>> meshes,
+    const std::array<std::shared_ptr<const UvQuality>, 2>& qualities,
+    const ComparisonSettings& settings, std::stop_token stop)
+{
+    PreparedComparisonInputs result;
+    result.meshes = std::move(meshes);
+    for (size_t side = 0; side < 2; ++side) {
+        if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
+        auto& buffers = result.buffers[side];
+        buffers.qualityOnly = true;
+        if (!qualities[side]) { continue; }
+        auto quality = std::make_shared<UvQuality>(*qualities[side]);
+        updateUvQualitySettings(*quality, settings, stop);
+        const auto& before = qualities[side]->settings;
+        const auto& after = quality->settings;
+        const bool normalizationColors = after.uvMetric == UvQualityMetric::area || after.uvMetric == UvQualityMetric::minStretch;
+        const bool highlightsChanged = before.uvRangeEnabled != after.uvRangeEnabled
+            || (after.uvRangeEnabled ? before.uvRangeMinimum != after.uvRangeMinimum || before.uvRangeMaximum != after.uvRangeMaximum
+                : before.uvThresholdEnabled != after.uvThresholdEnabled || (after.uvThresholdEnabled && before.uvThreshold != after.uvThreshold));
+        buffers.updateQuality = before.uvMetric != after.uvMetric || highlightsChanged
+            || (normalizationColors && before.uvNormalization != after.uvNormalization)
+            || (after.uvMetric == UvQualityMetric::overlap && (before.uvOverlapEnabled != after.uvOverlapEnabled
+                || before.uvOverlapScope != after.uvOverlapScope || !qualities[side]->overlapChecked));
+        if (buffers.updateQuality) { buffers.quality = uvQualityVertices((*result.meshes)[side], *quality, stop); }
+        // World preparation starts with zero normals; layout starts with -Y.
+        // The cached indexed mesh has since received smooth normals.
+        const std::array<float, 3> normal = settings.uvView == UvView::layout
+            ? std::array<float, 3>{0, -1, 0} : std::array<float, 3>{};
+        for (auto& vertex : buffers.quality) { vertex.normal = normal; }
+        buffers.uvQuality = std::move(quality);
+    }
+    if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
+    return result;
+}
+
+static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool boundsOnly, bool uvSettings = true)
 {
     if (!canInspectComparison(state, id)) { return 0; }
     uint64_t seed = 17;
@@ -511,7 +550,7 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
     if (isUvAnalysis(settings.type)) {
         hashCombine(seed, static_cast<uint64_t>(settings.uvView));
         hashCombine(seed, settings.uvSeparated);
-        if (!boundsOnly) {
+        if (!boundsOnly && uvSettings) {
             hashCombine(seed, static_cast<uint64_t>(settings.uvMetric));
             hashCombine(seed, static_cast<uint64_t>(settings.uvNormalization));
             hashCombine(seed, settings.uvOverlapEnabled);
@@ -548,6 +587,10 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
 uint64_t comparisonGeometrySignature(const UiState& state, SceneObjectId id)
 {
     return comparisonSignature(state, id, false);
+}
+uint64_t comparisonPreparationSignature(const UiState& state, SceneObjectId id)
+{
+    return comparisonSignature(state, id, false, false);
 }
 
 static std::optional<Bounds> calculateComparisonDisplayBounds(const UiState& state, SceneObjectId id)
