@@ -545,13 +545,14 @@ void frameComparison(UiState& state, SceneObjectId id)
     if (const auto bounds = comparisonDisplayBounds(state, id)) { frameComparisonBounds(state, *bounds); }
 }
 
-const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id)
+const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id,
+    std::optional<uint64_t> geometrySignature)
 {
     const auto* comparison = findComparison(state, id);
     if (!comparison || !comparison->settings.enabled || comparison->settings.type != AnalysisType::uvQuality
         || !comparison->uvFindingFocus || !comparison->uvFindingFocus->geometry || !resultSignature
         || comparison->uvFindingFocus->signature != resultSignature
-        || resultSignature != comparisonGeometrySignature(state, id)) { return nullptr; }
+        || resultSignature != (geometrySignature ? *geometrySignature : comparisonGeometrySignature(state, id))) { return nullptr; }
     return &*comparison->uvFindingFocus;
 }
 
@@ -821,13 +822,23 @@ ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObject
 {
     if (isUvAnalysis(comparisonSettings(state, id).type)) { return comparisonSettings(state, id); }
     if (const auto* comparison = findComparison(state, id); comparison && diagnosticFocusCurrent(state, *comparison)) {
+        return effectiveComparisonSettings(state, id, false, false, comparison->diagnosticFocus->signature);
+    }
+    return effectiveComparisonSettings(state, id,
+        enabledComparisonPartCount(state, ComparisonSide::a, id) != 0,
+        enabledComparisonPartCount(state, ComparisonSide::b, id) != 0, 0);
+}
+
+ComparisonSettings effectiveComparisonSettings(const UiState& state, SceneObjectId id,
+    bool hasA, bool hasB, uint64_t geometrySignature)
+{
+    if (isUvAnalysis(comparisonSettings(state, id).type)) { return comparisonSettings(state, id); }
+    if (const auto* comparison = findComparison(state, id); comparison && diagnosticFocusCurrent(state, *comparison, geometrySignature)) {
         auto settings = comparison->settings;
         settings.mode = settings.diagnosticSide == ComparisonSide::a ? ComparisonMode::original : ComparisonMode::repaired;
         return settings;
     }
     auto settings = comparisonSettings(state, id);
-    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
-    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
     if (settings.mode == ComparisonMode::surfaceQuality) {
         if (!hasB && hasA) { settings.quality.onOriginal = true; }
         if (!hasA && hasB) { settings.quality.onOriginal = false; }

@@ -101,15 +101,20 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
 
 ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id)
 {
-    auto settings = effectiveComparisonSettings(state, id);
     const auto signature = comparisonCurrentSignature(runtime, state, id);
-    const auto ready = [&](uint32_t stage) { return comparisonStagesReady(runtime, comparisonSettings(state, id), signature, stage, true); };
+    const auto& queries = runtime.inspector.queries;
+    auto settings = comparisonInspectorCacheCurrent(queries, state, id)
+        ? effectiveComparisonSettings(state, id, queries.inputs[0].summary.enabledPartCount != 0,
+            queries.inputs[1].summary.enabledPartCount != 0, signature)
+        : effectiveComparisonSettings(state, id);
+    const auto requested = comparisonSettings(state, id);
+    const auto ready = [&](uint32_t stage) { return comparisonStagesReady(runtime, requested, signature, stage, true); };
     if ((settings.mode == ComparisonMode::distance && !ready(comparisonDistance))
         || (settings.mode == ComparisonMode::surfaceQuality && (!ready(comparisonQuality) || runtime.gpu.uploadedQualityMetric != settings.quality.metric))) {
         const bool original = settings.mode == ComparisonMode::distance ? settings.distanceOnOriginal : settings.quality.onOriginal;
         settings.mode = original ? ComparisonMode::original : ComparisonMode::repaired;
     }
-    const auto detectorReady = [&](DiagnosticCategory category) { return comparisonDetectorReady(runtime, comparisonSettings(state, id), signature, category, true); };
+    const auto detectorReady = [&](DiagnosticCategory category) { return comparisonDetectorReady(runtime, requested, signature, category, true); };
     settings.showBoundaries &= detectorReady(DiagnosticCategory::boundary);
     settings.showNonManifold &= detectorReady(DiagnosticCategory::nonManifold);
     settings.showWinding &= detectorReady(DiagnosticCategory::winding);
