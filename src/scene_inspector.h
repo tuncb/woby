@@ -1,7 +1,8 @@
 #pragma once
+#include "scene_inspector_queries.h"
 
 namespace woby {
-struct UiState;
-struct SceneDimensionsCache;
-void drawSceneInspector(UiState& state, SceneDimensionsCache& dimensionsCache);
+void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vector<InspectorEdit>& edits);
+// Preparation / drawing / operation boundary. Drawing itself only reads the snapshot.
+void drawSceneInspector(UiState& state, SceneInspectorRuntime& runtime);
 } // namespace woby

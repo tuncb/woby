@@ -1,0 +1,130 @@
+{
+  "base_commit": "b79ad95",
+  "note": "Single headless Vulkan runs with other machine activity; not an FPS or isolated tessellation comparison. CPU-only stage timings are in doc/freeform-loading-performance.md.",
+  "evidence_root": "D:\\woby-build\\issue-102",
+  "viewer_runs": [
+    {
+      "case": "viewer-before-500",
+      "executable_sha256": "a690a628151004624b5b4bae9dc9bad5f8ac4a0dd191df407ecdcb5bd4020a78",
+      "harness_sha256": "b7e3e5a7cd5e7ff07f8854d0dae350c81f0bbea58135fbd803f5994d5302659c",
+      "model": {
+        "path": "D:\\woby\\build\\large-file-stress-20261003\\derived-models\\parametric\\SA_Row3_x00500.obj",
+        "bytes": 22706316,
+        "mtime_ns": 1791065203206680200
+      },
+      "headless": true,
+      "load": {
+        "seconds": 213.89837989999796,
+        "cpu_seconds": 193.484375,
+        "peak_private_bytes": 392777728,
+        "timeout_seconds": 0
+      },
+      "geometry": {
+        "vertexCount": 1117000,
+        "triangleCount": 1497500,
+        "groupCount": 3500,
+        "bounds": {
+          "center": [
+            1590.875,
+            1518.5625,
+            6.7255048751831055
+          ],
+          "max": [
+            3190.60009765625,
+            3045.97509765625,
+            13.451009750366211
+          ],
+          "min": [
+            -8.850000381469727,
+            -8.850000381469727,
+            -2.0420986035247102e-15
+          ],
+          "radius": 2211.821533203125
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "case": "viewer-after-500",
+      "executable_sha256": "6d8c18ba71b2e2fb4c4d8542fa5e871a8c59bac31f26c5aaca81f9a634934938",
+      "harness_sha256": "b7e3e5a7cd5e7ff07f8854d0dae350c81f0bbea58135fbd803f5994d5302659c",
+      "model": {
+        "path": "D:\\woby\\build\\large-file-stress-20261003\\derived-models\\parametric\\SA_Row3_x00500.obj",
+        "bytes": 22706316,
+        "mtime_ns": 1791065203206680200
+      },
+      "headless": true,
+      "load": {
+        "seconds": 17.571662700007437,
+        "cpu_seconds": 17.59375,
+        "peak_private_bytes": 287318016,
+        "timeout_seconds": 0
+      },
+      "geometry": {
+        "vertexCount": 1117000,
+        "triangleCount": 1497500,
+        "groupCount": 3500,
+        "bounds": {
+          "center": [
+            1590.875,
+            1518.5625,
+            6.7255048751831055
+          ],
+          "max": [
+            3190.60009765625,
+            3045.97509765625,
+            13.451009750366211
+          ],
+          "min": [
+            -8.850000381469727,
+            -8.850000381469727,
+            -2.0420986035247102e-15
+          ],
+          "radius": 2211.821533203125
+        }
+      },
+      "status": "completed"
+    },
+    {
+      "case": "viewer-after-1000",
+      "executable_sha256": "6d8c18ba71b2e2fb4c4d8542fa5e871a8c59bac31f26c5aaca81f9a634934938",
+      "harness_sha256": "b7e3e5a7cd5e7ff07f8854d0dae350c81f0bbea58135fbd803f5994d5302659c",
+      "model": {
+        "path": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "bytes": 45704945,
+        "mtime_ns": 1791060505541542500
+      },
+      "headless": true,
+      "load": {
+        "seconds": 33.685074299995904,
+        "cpu_seconds": 34.21875,
+        "peak_private_bytes": 501325824,
+        "timeout_seconds": 600
+      },
+      "geometry": {
+        "vertexCount": 2234000,
+        "triangleCount": 2995000,
+        "groupCount": 7000,
+        "bounds": {
+          "center": [
+            2241.6875,
+            2241.6875,
+            6.7255048751831055
+          ],
+          "max": [
+            4492.22509765625,
+            4492.22509765625,
+            13.451009750366211
+          ],
+          "min": [
+            -8.850000381469727,
+            -8.850000381469727,
+            -2.0420986035247102e-15
+          ],
+          "radius": 3182.747802734375
+        }
+      },
+      "status": "completed"
+    }
+  ]
+}

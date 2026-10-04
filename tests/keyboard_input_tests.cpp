@@ -80,7 +80,7 @@ TEST_CASE("inspector axis inputs align across columns at different pane widths a
             woby::appendDefaultSceneNodesForFiles(state, 0);
             woby::assignSceneObjectIds(state);
             woby::selectSceneObject(state, state.files[0].objectId);
-            woby::SceneDimensionsCache cache;
+            woby::SceneInspectorRuntime cache;
             for (int frame = 0; frame < 2; ++frame) {
                 ImGui::GetIO().DisplaySize = ImVec2(1000, 2000);
                 ImGui::NewFrame();
@@ -152,7 +152,7 @@ TEST_CASE("geometry inspector uses compact single rows and preserves tiny and la
     state.files.push_back(woby::createUiFileState("triangle.obj", mesh, 0));
     woby::appendDefaultSceneNodesForFiles(state, 0);
     woby::assignSceneObjectIds(state);
-    woby::SceneDimensionsCache cache;
+    woby::SceneInspectorRuntime cache;
     for (const auto id : {state.files[0].objectId, state.files[0].groupSettings[0].objectId}) {
         woby::selectSceneObject(state, id);
         std::string logged;

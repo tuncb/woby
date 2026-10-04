@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-04",
+  "base_commit": "0883cb4",
+  "scope": "Four-step Properties and analysis cache refactor, on top of GitHub issue 100",
+  "implementation": {
+    "invalidation": "Operation-owned dependency counters; conservative all-domain fallback; ordered selection in Properties key; monotonically invalidated history and document-generation guards",
+    "properties": "Owned snapshot of labels, aggregated values, eligibility, statistics and dimensions; fixed-height target list clipped; edits applied after drawing",
+    "runtime": "Separate source, job, result, GPU and inspector structs; scheduling in comparison_runtime.cpp and resource operations in comparison_gpu.cpp",
+    "freshness": "Explicit mesh content revisions; shared readiness checks; per-stage uploaded result revisions; late worker and document-replacement protection"
+  },
+  "method": {
+    "configuration": "Windows x64 Debug, vs2026-vcpkg",
+    "fixtures": "Synthetic groups referencing a triangle, not a native San Miguel performance capture",
+    "properties_selection_modes": [
+      "one file containing all groups",
+      "all individual parts selected"
+    ],
+    "query_measurement": "Mean of 10000 warm updateSceneInspector calls in microseconds",
+    "properties_draw_measurement": "Median of 9 warm drawing samples after 3 warm-up frames, milliseconds; excludes NewFrame/EndFrame",
+    "analysis_draw_measurement": "Median of 9 warm complete fixture frames, milliseconds",
+    "window_size": [
+      420,
+      1500
+    ],
+    "notes": [
+      "Other workloads were not controlled; absolute timings vary.",
+      "Expanded analysis source trees still draw their expanded rows; tree virtualization is outside this refactor.",
+      "These timings do not establish native-model FPS or resident-memory usage."
+    ]
+  },
+  "properties": [
+    {
+      "groups": 1,
+      "selection": "file",
+      "query_us": 0.23623,
+      "draw_ms": 0.238,
+      "builds": 1
+    },
+    {
+      "groups": 1,
+      "selection": "all_parts",
+      "query_us": 0.23002,
+      "draw_ms": 0.2452,
+      "builds": 1
+    },
+    {
+      "groups": 256,
+      "selection": "file",
+      "query_us": 0.26027,
+      "draw_ms": 0.2413,
+      "builds": 1
+    },
+    {
+      "groups": 256,
+      "selection": "all_parts",
+      "query_us": 0.2727,
+      "draw_ms": 0.2978,
+      "builds": 1
+    },
+    {
+      "groups": 2203,
+      "selection": "file",
+      "query_us": 0.2294,
+      "draw_ms": 0.2409,
+      "builds": 1
+    },
+    {
+      "groups": 2203,
+      "selection": "all_parts",
+      "query_us": 0.79659,
+      "draw_ms": 0.3446,
+      "builds": 1
+    }
+  ],
+  "analysis": [
+    {
+      "groups": 1,
+      "collapsed_ms": 0.5291,
+      "expanded_ms": 0.5416,
+      "builds": 1
+    },
+    {
+      "groups": 256,
+      "collapsed_ms": 0.5312,
+      "expanded_ms": 1.6028,
+      "builds": 1
+    },
+    {
+      "groups": 2203,
+      "collapsed_ms": 1.1738,
+      "expanded_ms": 10.7908,
+      "builds": 1
+    }
+  ],
+  "memory_checks": {
+    "warm_query_allocations": 0,
+    "allocation_probe_calls": 100,
+    "fixture_groups": 2203,
+    "snapshot_retains_mesh_buffers": false
+  },
+  "validation": {
+    "debug_build": "passed without warnings",
+    "full_ctest": "passed: 834/834, including 4 slow tests",
+    "logs": [
+      "build/refactor-build-final.log",
+      "build/refactor-tests-final.log",
+      "build/refactor-benchmarks-final.log"
+    ],
+    "full_ctest_seconds": 195.94,
+    "benchmark_and_focused_ui_tests": "passed: 5 test cases, 386 assertions"
+  }
+}

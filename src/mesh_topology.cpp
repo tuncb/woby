@@ -14,6 +14,16 @@
 namespace woby {
 namespace {
 using Point = std::array<double, 3>;
+// Temporary index-linked lists avoid one heap allocation per source vertex.
+// Flatten them into the immutable incidence block before building adjacency.
+constexpr size_t noReference = std::numeric_limits<size_t>::max();
+struct ReferenceNode {
+    TopologyPointReference value;
+    size_t next = noReference;
+};
+struct ReferenceList {
+    size_t first = noReference, last = noReference, count = 0;
+};
 void canceled(const std::stop_token& stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
@@ -39,8 +49,14 @@ void inspectVertexLinks(MeshTopology& result, const SourceTopology& source, std:
         if (vertex.faces.empty()) { continue; }
         nodes.clear();
         size_t components = 0;
-        for (const auto& edge : vertex.link) {
+        // The opposite edge in each incident triangle is the vertex-link edge.
+        // Derive it once here instead of retaining another 3T endpoint pairs.
+        // Duplicate faces still contribute parallel links, as required.
+        for (const auto f : vertex.faces) {
             canceled(stop);
+            const auto& ids = source.faces[f].vertices;
+            const size_t corner = ids[0] == v ? 0 : ids[1] == v ? 1 : 2;
+            const std::array<size_t, 2> edge{ids[(corner+1)%3], ids[(corner+2)%3]};
             for (const auto node : edge) {
                 if (degree[node]++ == 0) { parent[node] = node; nodes.push_back(node); ++components; }
             }
@@ -149,13 +165,9 @@ void inspectFinPatches(MeshTopology& result, const SourceTopology& source, std::
     const bool manifold = std::none_of(source.edges.begin(), source.edges.end(), [](const auto& edge) {
         return edge.incidentFaces.size() > 2;
     });
-    std::vector<std::vector<size_t>> componentFaces, componentBoundaries;
+    std::vector<std::vector<size_t>> componentBoundaries;
     if (manifold) {
-        componentFaces.resize(source.components.size()); componentBoundaries.resize(source.components.size());
-        for (size_t i = 0; i < source.components.size(); ++i) { componentFaces[i].reserve(source.components[i].size()); }
-        for (size_t f = 0; f < source.faces.size(); ++f) {
-            canceled(stop); componentFaces[source.faces[f].component].push_back(f);
-        }
+        componentBoundaries.resize(source.components.size());
         for (size_t e = 0; e < source.edges.size(); ++e) {
             canceled(stop);
             if (source.edges[e].incidentFaces.size() == 1) {
@@ -200,8 +212,7 @@ void inspectFinPatches(MeshTopology& result, const SourceTopology& source, std::
                 }
             }
         }
-        if (manifold) { patch.faces = std::move(componentFaces[source.faces[seed].component]); }
-        else { std::sort(patch.faces.begin(), patch.faces.end(), [&](size_t a, size_t b) { canceled(stop); return a < b; }); }
+        std::sort(patch.faces.begin(), patch.faces.end(), [&](size_t a, size_t b) { canceled(stop); return a < b; });
         patch.physicalBoundaryEdges.assign(physical.begin(), physical.end());
         patch.cutBoundaryEdges.assign(cuts.begin(), cuts.end());
         std::map<size_t, std::vector<size_t>> graph;
@@ -277,81 +288,119 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
         return std::tie(a->partId, a->firstIndex, a->indexCount, a->transform)
             < std::tie(b->partId, b->firstIndex, b->indexCount, b->transform);
     });
-    AnalysisIndex<size_t, 2> originalVertices;
-    AnalysisIndex<double, 3> exactVertices;
-    AnalysisIndex<double, 16> transforms;
-    AnalysisIndex<uint64_t, 3> largeReferenceSets;
-    const bool uniformTransform = !parts.empty() && std::all_of(parts.begin(), parts.end(), [&](const auto* part) {
-        return part->transform == parts.front()->transform;
-    });
-    const size_t missingVertex = std::numeric_limits<size_t>::max();
-    std::vector<size_t> originalIds;
-    if (result.mode == TopologyMode::originalIndex && uniformTransform) { originalIds.assign(data.points.size(), missingVertex); }
-    else if (result.mode == TopologyMode::originalIndex) { reserveAnalysisIndex(originalVertices, data.points.size()); }
-    else { reserveAnalysisIndex(exactVertices, data.points.size()); }
-    std::vector<size_t> visited(data.indices.size() / 3, 0);
-    size_t generation = 0;
-    uint64_t previousPart = 0;
-    result.vertices.reserve(data.points.size());
-    result.faces.reserve(data.indices.size() / 3);
-    for (const auto* part : parts) {
-        if (generation == 0 || previousPart != part->partId) { ++generation; previousPart = part->partId; }
-        const auto transform = analysisIndex(transforms, part->transform);
-        for (size_t i = part->firstIndex; i < part->firstIndex + part->indexCount; i += 3) {
-            canceled(stop);
-            if (visited[i/3] == generation) { continue; }
-            visited[i/3] = generation;
-            std::array<Point, 3> points{};
-            for (size_t j = 0; j < 3; ++j) {
-                const auto p = promoteSourcePoint(data.points[data.indices[i+j]]);
-                const auto& m = part->transform;
-                for (size_t k = 0; k < 3; ++k) {
-                    const double value = m[k]*p[0] + m[k+4]*p[1] + m[k+8]*p[2] + m[k+12];
-                    if (!std::isfinite(value) || std::abs(value) > std::numeric_limits<float>::max()) {
-                        throw std::invalid_argument("Topology requires finite renderable world coordinates.");
+    auto incidence = std::make_shared<TopologyIncidence>();
+    {
+        AnalysisIndex<size_t, 2> originalVertices;
+        AnalysisIndex<double, 3> exactVertices;
+        AnalysisIndex<double, 16> transforms;
+        AnalysisIndex<uint64_t, 3> largeReferenceSets;
+        std::vector<ReferenceList> referenceLists;
+        std::vector<ReferenceNode> referenceNodes;
+        const bool uniformTransform = !parts.empty() && std::all_of(parts.begin(), parts.end(), [&](const auto* part) {
+            return part->transform == parts.front()->transform;
+        });
+        const size_t missingVertex = std::numeric_limits<size_t>::max();
+        std::vector<size_t> originalIds;
+        if (result.mode == TopologyMode::originalIndex && uniformTransform) { originalIds.assign(data.points.size(), missingVertex); }
+        else if (result.mode == TopologyMode::originalIndex) { reserveAnalysisIndex(originalVertices, data.points.size()); }
+        else { reserveAnalysisIndex(exactVertices, data.points.size()); }
+        std::vector<size_t> visited(data.indices.size() / 3, 0);
+        size_t generation = 0;
+        uint64_t previousPart = 0;
+        size_t selectedFaces = 0;
+        for (const auto* part : parts) {
+            selectedFaces += std::min(part->indexCount / 3, data.indices.size() / 3 - selectedFaces);
+        }
+        const auto selectedVertices = std::min(data.points.size(), selectedFaces * 3);
+        result.vertices.reserve(selectedVertices);
+        result.faces.reserve(selectedFaces);
+        referenceLists.reserve(selectedVertices);
+        referenceNodes.reserve(selectedVertices);
+        for (const auto* part : parts) {
+            if (generation == 0 || previousPart != part->partId) { ++generation; previousPart = part->partId; }
+            const auto transform = analysisIndex(transforms, part->transform);
+            for (size_t i = part->firstIndex; i < part->firstIndex + part->indexCount; i += 3) {
+                canceled(stop);
+                if (visited[i/3] == generation) { continue; }
+                visited[i/3] = generation;
+                std::array<Point, 3> points{};
+                for (size_t j = 0; j < 3; ++j) {
+                    const auto p = promoteSourcePoint(data.points[data.indices[i+j]]);
+                    const auto& m = part->transform;
+                    for (size_t k = 0; k < 3; ++k) {
+                        const double value = m[k]*p[0] + m[k+4]*p[1] + m[k+8]*p[2] + m[k+12];
+                        if (!std::isfinite(value) || std::abs(value) > std::numeric_limits<float>::max()) {
+                            throw std::invalid_argument("Topology requires finite renderable world coordinates.");
+                        }
+                        points[j][k] = value;
                     }
-                    points[j][k] = value;
                 }
-            }
-            // Needle/cap thresholds must never change connectivity.
-            if (exactTriangleCollapsed(points)) { ++result.excludedCollapsedFaces; continue; }
-            TopologyFace face;
-            face.reference = {source.fileId, part->partId, i/3};
-            for (size_t j = 0; j < 3; ++j) {
-                const auto id = data.indices[i+j];
-                size_t vertex = 0;
-                if (result.mode == TopologyMode::originalIndex) {
-                    if (uniformTransform) {
-                        if (originalIds[id] == missingVertex) { originalIds[id] = result.vertices.size(); }
-                        vertex = originalIds[id];
-                    } else { vertex = analysisIndex(originalVertices, std::array<size_t, 2>{id, transform}); }
-                } else {
-                    vertex = analysisIndex(exactVertices, points[j]);
-                }
-                if (vertex == result.vertices.size()) { TopologyVertex value; value.position = points[j]; result.vertices.push_back(std::move(value)); }
-                auto& references = result.vertices[vertex].references;
-                const auto matches = [&](const auto& ref) { return ref.partId == part->partId && ref.pointId == id; };
-                if (references.empty() || !matches(references.back())) {
-                    bool found;
-                    if (references.size() < 8) { found = std::any_of(references.begin(), references.end(), matches); }
-                    else {
-                        // Exact-position welding can merge arbitrarily many
-                        // source IDs. Avoid a quadratic scan at those vertices.
-                        if (references.size() == 8) {
-                            for (const auto& ref : references) {
-                                (void)analysisIndex(largeReferenceSets, std::array<uint64_t,3>{vertex, ref.partId, ref.pointId});
+                // Needle/cap thresholds must never change connectivity.
+                if (exactTriangleCollapsed(points)) { ++result.excludedCollapsedFaces; continue; }
+                TopologyFace face;
+                face.reference = {source.fileId, part->partId, i/3};
+                for (size_t j = 0; j < 3; ++j) {
+                    const auto id = data.indices[i+j];
+                    size_t vertex = 0;
+                    if (result.mode == TopologyMode::originalIndex) {
+                        if (uniformTransform) {
+                            if (originalIds[id] == missingVertex) { originalIds[id] = result.vertices.size(); }
+                            vertex = originalIds[id];
+                        } else { vertex = analysisIndex(originalVertices, std::array<size_t, 2>{id, transform}); }
+                    } else {
+                        vertex = analysisIndex(exactVertices, points[j]);
+                    }
+                    if (vertex == result.vertices.size()) {
+                        TopologyVertex value; value.position = points[j]; result.vertices.push_back(value);
+                        referenceLists.emplace_back();
+                    }
+                    auto& references = referenceLists[vertex];
+                    const auto matches = [&](const auto& ref) { return ref.partId == part->partId && ref.pointId == id; };
+                    if (references.count == 0 || !matches(referenceNodes[references.last].value)) {
+                        bool found = false;
+                        if (references.count < 8) {
+                            for (auto node = references.first; node != noReference; node = referenceNodes[node].next) {
+                                if (matches(referenceNodes[node].value)) { found = true; break; }
                             }
                         }
-                        const auto count = largeReferenceSets.keys.size();
-                        found = analysisIndex(largeReferenceSets, std::array<uint64_t,3>{vertex, part->partId, id}) < count;
+                        else {
+                            // Exact-position welding can merge arbitrarily many
+                            // source IDs. Avoid a quadratic scan at those vertices.
+                            if (references.count == 8) {
+                                for (auto node = references.first; node != noReference; node = referenceNodes[node].next) {
+                                    const auto& ref = referenceNodes[node].value;
+                                    (void)analysisIndex(largeReferenceSets, std::array<uint64_t,3>{vertex, ref.partId, ref.pointId});
+                                }
+                            }
+                            const auto count = largeReferenceSets.keys.size();
+                            found = analysisIndex(largeReferenceSets, std::array<uint64_t,3>{vertex, part->partId, id}) < count;
+                        }
+                        if (!found) {
+                            const auto node = referenceNodes.size();
+                            referenceNodes.push_back({{part->partId, id}});
+                            if (references.count == 0) { references.first = node; }
+                            else { referenceNodes[references.last].next = node; }
+                            references.last = node; ++references.count;
+                        }
                     }
-                    if (!found) { references.push_back({part->partId, id}); }
+                    face.vertices[j] = vertex;
                 }
-                face.vertices[j] = vertex;
+                result.faces.push_back(face);
             }
-            result.faces.push_back(face);
         }
-    }
+        incidence->pointReferences.reserve(referenceNodes.size());
+        for (size_t v = 0; v < result.vertices.size(); ++v) {
+            canceled(stop);
+            const auto& references = referenceLists[v];
+            const auto first = incidence->pointReferences.size();
+            for (auto node = references.first; node != noReference; node = referenceNodes[node].next) {
+                canceled(stop);
+                incidence->pointReferences.push_back(referenceNodes[node].value);
+            }
+            result.vertices[v].references = std::span<const TopologyPointReference>(incidence->pointReferences)
+                .subspan(first, references.count);
+        }
+    } // Release welding, source-face visitation and reference-list scratch.
     const auto faceOrder = [&](const auto& a, const auto& b) {
         canceled(stop);
         return std::tie(a.reference.triangleId, a.reference.partId) < std::tie(b.reference.triangleId, b.reference.partId);
@@ -359,115 +408,130 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
     if (!std::is_sorted(result.faces.begin(), result.faces.end(), faceOrder)) {
         std::sort(result.faces.begin(), result.faces.end(), faceOrder);
     }
-    auto incidence = std::make_shared<TopologyIncidence>();
-    const size_t corners = result.faces.size() * 3;
-    incidence->vertexFaces.resize(corners);
-    incidence->vertexLinks.resize(corners);
-    incidence->edgeUses.resize(corners);
-    std::vector<size_t> degrees(result.vertices.size()), starts(result.vertices.size() + 1);
-    for (const auto& face : result.faces) {
-        canceled(stop);
-        for (size_t k = 0; k < 3; ++k) {
-            ++degrees[face.vertices[k]];
-            ++starts[std::min(face.vertices[k], face.vertices[(k+1)%3]) + 1];
-        }
-    }
-    size_t offset = 0;
-    for (size_t v = 0; v < result.vertices.size(); ++v) {
-        auto& vertex = result.vertices[v];
-        vertex.faces = std::span(incidence->vertexFaces).subspan(offset, degrees[v]);
-        vertex.link = std::span(incidence->vertexLinks).subspan(offset, degrees[v]);
-        offset += degrees[v];
-        starts[v+1] += starts[v];
-    }
-    // Counting-sort by the smaller endpoint. Each small vertex bucket is then
-    // sorted by the other endpoint and face, retaining the old canonical order.
-    std::vector<std::array<size_t, 2>> entries(corners);
-    auto cursor = starts;
-    std::fill(degrees.begin(), degrees.end(), 0);
-    for (size_t f = 0; f < result.faces.size(); ++f) {
-        canceled(stop);
-        const auto& ids = result.faces[f].vertices;
-        for (size_t k = 0; k < 3; ++k) {
-            const auto a = ids[k], b = ids[(k+1)%3];
-            entries[cursor[std::min(a,b)]++] = {std::max(a,b), f*3+k};
-            const auto position = static_cast<size_t>(result.vertices[a].faces.data() - incidence->vertexFaces.data()) + degrees[a]++;
-            incidence->vertexFaces[position] = f;
-            incidence->vertexLinks[position] = {b, ids[(k+2)%3]};
-        }
-    }
-    std::fill(degrees.begin(), degrees.end(), 0);
-    std::vector<size_t> boundaryDegrees(result.vertices.size());
-    result.edges.reserve(corners);
-    for (size_t a = 0; a < result.vertices.size(); ++a) {
-        canceled(stop);
-        std::sort(entries.begin() + static_cast<ptrdiff_t>(starts[a]), entries.begin() + static_cast<ptrdiff_t>(starts[a+1]));
-        for (size_t begin = starts[a]; begin < starts[a+1];) {
-            const auto b = entries[begin][0];
-            size_t end = begin + 1;
-            while (end < starts[a+1] && entries[end][0] == b) { ++end; }
-            const auto index = result.edges.size();
-            for (size_t i = begin; i < end; ++i) {
-                canceled(stop);
-                const auto corner = entries[i][1];
-                auto& face = result.faces[corner/3];
-                incidence->edgeUses[i] = {corner/3, face.vertices[corner%3] == a};
-                face.edges[corner%3] = index;
-            }
-            const auto uses = std::span<const TopologyEdgeUse>(incidence->edgeUses).subspan(begin, end-begin);
-            ++degrees[a]; ++degrees[b];
-            if (uses.size() == 1) { ++boundaryDegrees[a]; ++boundaryDegrees[b]; }
-            result.edges.push_back({{a,b}, uses, uses.size() == 2 && uses[0].forward == uses[1].forward, false});
-            begin = end;
-        }
-    }
-    incidence->vertexEdges.resize(result.edges.size() * 2);
-    size_t boundaryCount = 0;
-    for (const auto count : boundaryDegrees) { boundaryCount += count; }
-    incidence->boundaryEdges.resize(boundaryCount);
-    offset = 0; size_t boundaryOffset = 0;
-    for (size_t v = 0; v < result.vertices.size(); ++v) {
-        result.vertices[v].edges = std::span(incidence->vertexEdges).subspan(offset, degrees[v]);
-        result.vertices[v].boundaryEdges = std::span(incidence->boundaryEdges).subspan(boundaryOffset, boundaryDegrees[v]);
-        offset += degrees[v]; boundaryOffset += boundaryDegrees[v];
-    }
-    std::fill(degrees.begin(), degrees.end(), 0);
-    std::fill(boundaryDegrees.begin(), boundaryDegrees.end(), 0);
-    for (size_t e = 0; e < result.edges.size(); ++e) {
-        canceled(stop);
-        for (const auto v : result.edges[e].vertices) {
-            const auto position = static_cast<size_t>(result.vertices[v].edges.data() - incidence->vertexEdges.data()) + degrees[v]++;
-            incidence->vertexEdges[position] = e;
-            if (result.edges[e].incidentFaces.size() == 1) {
-                const auto boundaryPosition = static_cast<size_t>(result.vertices[v].boundaryEdges.data() - incidence->boundaryEdges.data()) + boundaryDegrees[v]++;
-                incidence->boundaryEdges[boundaryPosition] = e;
-            }
-        }
-    }
-    result.incidence = std::move(incidence);
-    // Edge-connected components include non-manifold edges, without an O(n^2)
-    // neighbor clique when many faces meet at one edge.
-    std::vector<bool> seenFaces(result.faces.size()), seenEdges(result.edges.size());
-    for (size_t seed = 0; seed < result.faces.size(); ++seed) {
-        canceled(stop);
-        if (seenFaces[seed]) { continue; }
-        std::vector<size_t> component{seed};
-        seenFaces[seed] = true;
-        for (size_t head = 0; head < component.size(); ++head) {
+    {
+        const size_t corners = result.faces.size() * 3;
+        incidence->vertexFaces.resize(corners);
+        incidence->edgeUses.resize(corners);
+        std::vector<size_t> degrees(result.vertices.size()), starts(result.vertices.size() + 1);
+        for (const auto& face : result.faces) {
             canceled(stop);
-            auto& face = result.faces[component[head]];
-            face.component = result.components.size();
-            for (const auto edge : face.edges) {
-                if (seenEdges[edge]) { continue; }
-                seenEdges[edge] = true;
-                for (const auto& use : result.edges[edge].incidentFaces) {
+            for (size_t k = 0; k < 3; ++k) {
+                ++degrees[face.vertices[k]];
+                ++starts[std::min(face.vertices[k], face.vertices[(k+1)%3]) + 1];
+            }
+        }
+        size_t offset = 0;
+        for (size_t v = 0; v < result.vertices.size(); ++v) {
+            auto& vertex = result.vertices[v];
+            vertex.faces = std::span(incidence->vertexFaces).subspan(offset, degrees[v]);
+            offset += degrees[v];
+            starts[v+1] += starts[v];
+        }
+        // Counting-sort by the smaller endpoint. Each small vertex bucket is then
+        // sorted by the other endpoint and face, retaining the old canonical order.
+        std::vector<std::array<size_t, 2>> entries(corners);
+        auto cursor = starts;
+        std::fill(degrees.begin(), degrees.end(), 0);
+        for (size_t f = 0; f < result.faces.size(); ++f) {
+            canceled(stop);
+            const auto& ids = result.faces[f].vertices;
+            for (size_t k = 0; k < 3; ++k) {
+                const auto a = ids[k], b = ids[(k+1)%3];
+                entries[cursor[std::min(a,b)]++] = {std::max(a,b), f*3+k};
+                const auto position = static_cast<size_t>(result.vertices[a].faces.data() - incidence->vertexFaces.data()) + degrees[a]++;
+                incidence->vertexFaces[position] = f;
+            }
+        }
+        std::fill(degrees.begin(), degrees.end(), 0);
+        std::vector<size_t> boundaryDegrees(result.vertices.size());
+        // Sort each bucket once, then count unique endpoints before allocating edges.
+        // A closed manifold needs about 1.5 edges per face, not the 3-corner bound.
+        size_t edgeCount = 0;
+        for (size_t a = 0; a < result.vertices.size(); ++a) {
+            canceled(stop);
+            std::sort(entries.begin() + static_cast<ptrdiff_t>(starts[a]), entries.begin() + static_cast<ptrdiff_t>(starts[a+1]),
+                [&](const auto& x, const auto& y) { canceled(stop); return x < y; });
+            for (size_t i = starts[a]; i < starts[a+1]; ++i) {
+                canceled(stop);
+                edgeCount += i == starts[a] || entries[i][0] != entries[i-1][0];
+            }
+        }
+        result.edges.reserve(edgeCount);
+        for (size_t a = 0; a < result.vertices.size(); ++a) {
+            canceled(stop);
+            for (size_t begin = starts[a]; begin < starts[a+1];) {
+                const auto b = entries[begin][0];
+                size_t end = begin + 1;
+                while (end < starts[a+1] && entries[end][0] == b) { ++end; }
+                const auto index = result.edges.size();
+                for (size_t i = begin; i < end; ++i) {
                     canceled(stop);
-                    if (!seenFaces[use.face]) { seenFaces[use.face] = true; component.push_back(use.face); }
+                    const auto corner = entries[i][1];
+                    auto& face = result.faces[corner/3];
+                    incidence->edgeUses[i] = {corner/3, face.vertices[corner%3] == a};
+                    face.edges[corner%3] = index;
+                }
+                const auto uses = std::span<const TopologyEdgeUse>(incidence->edgeUses).subspan(begin, end-begin);
+                ++degrees[a]; ++degrees[b];
+                if (uses.size() == 1) { ++boundaryDegrees[a]; ++boundaryDegrees[b]; }
+                result.edges.push_back({{a,b}, uses, uses.size() == 2 && uses[0].forward == uses[1].forward, false});
+                begin = end;
+            }
+        }
+        // The corner sort is no longer needed when allocating vertex-edge incidence.
+        std::vector<std::array<size_t, 2>>().swap(entries);
+        std::vector<size_t>().swap(starts);
+        std::vector<size_t>().swap(cursor);
+        incidence->vertexEdges.resize(result.edges.size() * 2);
+        size_t boundaryCount = 0;
+        for (const auto count : boundaryDegrees) { boundaryCount += count; }
+        incidence->boundaryEdges.resize(boundaryCount);
+        offset = 0; size_t boundaryOffset = 0;
+        for (size_t v = 0; v < result.vertices.size(); ++v) {
+            result.vertices[v].edges = std::span(incidence->vertexEdges).subspan(offset, degrees[v]);
+            result.vertices[v].boundaryEdges = std::span(incidence->boundaryEdges).subspan(boundaryOffset, boundaryDegrees[v]);
+            offset += degrees[v]; boundaryOffset += boundaryDegrees[v];
+        }
+        std::fill(degrees.begin(), degrees.end(), 0);
+        std::fill(boundaryDegrees.begin(), boundaryDegrees.end(), 0);
+        for (size_t e = 0; e < result.edges.size(); ++e) {
+            canceled(stop);
+            for (const auto v : result.edges[e].vertices) {
+                const auto position = static_cast<size_t>(result.vertices[v].edges.data() - incidence->vertexEdges.data()) + degrees[v]++;
+                incidence->vertexEdges[position] = e;
+                if (result.edges[e].incidentFaces.size() == 1) {
+                    const auto boundaryPosition = static_cast<size_t>(result.vertices[v].boundaryEdges.data() - incidence->boundaryEdges.data()) + boundaryDegrees[v]++;
+                    incidence->boundaryEdges[boundaryPosition] = e;
                 }
             }
         }
-        result.components.push_back(std::move(component));
-    }
+    } // Release degree/cursor buffers before component traversal.
+    result.incidence = std::move(incidence);
+    {
+        // Edge-connected components include non-manifold edges, without an O(n^2)
+        // neighbor clique when many faces meet at one edge.
+        std::vector<bool> seenFaces(result.faces.size()), seenEdges(result.edges.size());
+        for (size_t seed = 0; seed < result.faces.size(); ++seed) {
+            canceled(stop);
+            if (seenFaces[seed]) { continue; }
+            std::vector<size_t> component{seed};
+            seenFaces[seed] = true;
+            for (size_t head = 0; head < component.size(); ++head) {
+                canceled(stop);
+                auto& face = result.faces[component[head]];
+                face.component = result.components.size();
+                for (const auto edge : face.edges) {
+                    if (seenEdges[edge]) { continue; }
+                    seenEdges[edge] = true;
+                    for (const auto& use : result.edges[edge].incidentFaces) {
+                        canceled(stop);
+                        if (!seenFaces[use.face]) { seenFaces[use.face] = true; component.push_back(use.face); }
+                    }
+                }
+            }
+            result.components.push_back(std::move(component));
+        }
+    } // Release component visitation before allocating orientation scratch.
     // Relative flip constraints on manifold edges reveal non-orientable regions.
     // Contradiction edges are deterministic witnesses, not repair instructions.
     if (std::none_of(result.edges.begin(), result.edges.end(), [](const auto& edge) { return edge.windingConflict; })) {
@@ -586,6 +650,8 @@ MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, Topo
     canceled(stop);
     MeshTopology result;
     result.mode = normalizedTopologyMode(mode);
+    auto sourceStorage = std::make_shared<std::vector<SourceTopology>>();
+    sourceStorage->reserve(sources.size());
     std::vector<const DuplicateSource*> sorted;
     for (const auto& source : sources) { canceled(stop); sorted.push_back(&source); }
     std::sort(sorted.begin(), sorted.end(), [&](const auto* a, const auto* b) { canceled(stop); return a->fileId < b->fileId; });
@@ -615,8 +681,10 @@ MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, Topo
             if (begin == 1) { inspectBoundaries(result, source, stop); }
             if (begin == 2) { inspectFinPatches(result, source, stop); }
         }, source.faces.size() >= 4096 ? 3 : 4096);
-        result.sources.push_back(std::move(source));
+        sourceStorage->push_back(std::move(source));
+        result.sources = *sourceStorage;
     }
+    result.sourceStorage = std::move(sourceStorage);
     for (const auto& [file, triangle, part] : windingFaces) { canceled(stop); result.windingFaces.push_back({file, part, triangle}); }
     (void)filterTopologyFindings(result, {}, stop);
     return result;

@@ -1,12 +1,20 @@
 #include "model_mesh.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 #include <utility>
 
 namespace woby {
+uint64_t nextMeshContentRevision()
+{
+    static std::atomic<uint64_t> revision{0};
+    return revision.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+void renewMeshContentRevision(Mesh& mesh) { mesh.contentRevision = nextMeshContentRevision(); }
+
 namespace {
 
 std::array<float, 3> subtract(const std::array<float, 3>& lhs, const std::array<float, 3>& rhs)
@@ -135,6 +143,7 @@ Coordinate coordinateOrigin(const std::vector<Coordinate>& points)
 }
 void localizeMesh(Mesh& mesh)
 {
+    renewMeshContentRevision(mesh);
     if (mesh.precisePositions.size() != mesh.vertices.size()) {
         throw std::invalid_argument("Source and render position counts differ.");
     }
@@ -148,6 +157,7 @@ void localizeMesh(Mesh& mesh)
 
 void rebaseMesh(Mesh& mesh, const Coordinate& origin)
 {
+    renewMeshContentRevision(mesh);
     if (!finiteCoordinate(origin)) { throw std::invalid_argument("Non-finite mesh origin."); }
     if (mesh.origin == origin) { return; }
     const auto delta = relativePosition(mesh.origin, origin);
@@ -305,6 +315,7 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance, std::span<const 
 
 void finalizeMesh(Mesh& mesh, bool generateMissingSmoothNormals, const ModelLoadProgressCallback& progress)
 {
+    renewMeshContentRevision(mesh);
     if (empty(mesh)) {
         throw std::runtime_error("Mesh did not contain renderable triangles, lines or points.");
     }
