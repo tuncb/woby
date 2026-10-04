@@ -28,6 +28,10 @@ struct GpuMarkerPicker {
     int samples = 4;
     uint64_t epoch = 0, sequence = 0, latestSequence = 0;
     uint64_t sceneGeneration = 0, sceneRevision = 0;
+    const UiState* owner = nullptr;
+    uint64_t resourceSignature = 0;
+    SceneCamera camera;
+    SceneUpAxis upAxis = SceneUpAxis::z;
     std::array<float, 4> query{}, options{};
     MarkerDrawContext context;
     std::array<MarkerReadback, 8> requests;
@@ -47,10 +51,11 @@ struct GpuMarkerPicker {
 [[nodiscard]] bool supportsGpuMarkerPicking(const woby::graphics::Caps& caps);
 // Call every viewport frame, including disabled frames, to invalidate old results.
 [[nodiscard]] bool beginGpuMarkerPicking(GpuMarkerPicker& picker, const std::filesystem::path& assets,
-    const UiState& state, const SceneViewport& viewport, MousePosition mouse, bool enabled, int samples = 4);
+    const UiState& state, const SceneViewport& viewport, MousePosition mouse, bool enabled, int samples = 4,
+    uint64_t resourceSignature = 0);
 void submitGpuMarkerPicking(GpuMarkerPicker& picker, const SceneViewport& viewport);
 void pollGpuMarkerPicking(GpuMarkerPicker& picker, uint32_t frame, const UiState& state,
-    const std::vector<LoadedModelRuntime>& runtimes);
+    const std::vector<LoadedModelRuntime>& runtimes, uint64_t resourceSignature = 0);
 // Flush readbacks before their CPU storage is released. Call before woby::graphics::shutdown.
 void destroyGpuMarkerPicker(GpuMarkerPicker& picker);
 [[nodiscard]] std::optional<HoveredVertex> resolveMarkerCoordinates(uint32_t id,

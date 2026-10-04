@@ -8,6 +8,7 @@
 
 namespace woby {
 namespace points { struct Cloud; }
+struct SceneQueryRuntime;
 
 using PickMatrix = std::array<float, 16>;
 using PickPoint = std::array<float, 2>;
@@ -79,7 +80,7 @@ struct SceneTriangleHit {
 [[nodiscard]] SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts,
     const ScenePickView& view, PickPoint point, SceneTriangleHit* triangle = nullptr);
 void uvProbeLines(std::span<const ScenePickPart> parts, const UiState& state,
-    std::vector<std::array<float,3>>& lines);
+    std::vector<std::array<float,3>>& lines, SceneQueryRuntime* queries = nullptr);
 [[nodiscard]] std::vector<std::array<float, 3>> sceneSelectionLines(std::span<const ScenePickPart> parts);
 void sceneSelectionLines(std::span<const ScenePickPart> parts, std::vector<std::array<float, 3>>& lines);
 

@@ -40,7 +40,9 @@ void updateAnnotationPreparation(AnnotationPreparationRuntime& runtime, UiState&
         const auto& job = *runtime.job;
         for (auto& file : state.files) {
             auto& mesh = file.mesh;
-            if (mesh.vertices.data() == job.vertices && mesh.indices.data() == job.indices
+            if (job.owner == &state && job.generation == state.sceneGeneration
+                && job.fileId == file.objectId && job.contentRevision == mesh.contentRevision
+                && mesh.vertices.data() == job.vertices && mesh.indices.data() == job.indices
                 && mesh.vertices.size() == job.vertexCount && mesh.indices.size() == job.indexCount) {
                 mesh.annotationCache = job.result;
             }
@@ -54,6 +56,8 @@ void updateAnnotationPreparation(AnnotationPreparationRuntime& runtime, UiState&
         const auto& mesh = file.mesh;
         if (mesh.indices.empty() || mesh.nodes.empty() || annotationMeshSnapshotReady(mesh)) { continue; }
         auto job = std::make_unique<AnnotationPreparationJob>();
+        job->owner = &state; job->generation = state.sceneGeneration;
+        job->fileId = file.objectId; job->contentRevision = mesh.contentRevision;
         job->vertices = mesh.vertices.data(); job->indices = mesh.indices.data();
         job->vertexCount = mesh.vertices.size(); job->indexCount = mesh.indices.size();
         // Spans survive moves of Mesh/UiFileState (e.g. append/reallocation).

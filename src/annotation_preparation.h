@@ -7,6 +7,9 @@
 
 namespace woby {
 struct AnnotationPreparationJob {
+    const UiState* owner = nullptr;
+    uint64_t generation = 0, contentRevision = 0;
+    SceneObjectId fileId = 0;
     const Vertex* vertices = nullptr;
     const uint32_t* indices = nullptr;
     size_t vertexCount = 0, indexCount = 0;

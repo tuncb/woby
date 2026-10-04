@@ -25,7 +25,9 @@ void recordResultPublication(ComparisonResultRuntime& results, uint32_t stages)
 uint64_t comparisonCurrentSignature(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id)
 {
     const auto& queries = runtime.inspector.queries;
-    return comparisonInspectorCacheCurrent(queries, state, id) ? queries.signature : comparisonGeometrySignature(state, id);
+    return queries.owner == &state && queries.objectId == id && queries.generation == state.sceneGeneration
+        && queries.geometryRevision == state.revisions.geometry && queries.analysisRevision == state.revisions.analysis
+        ? queries.signature : comparisonGeometrySignature(state, id);
 }
 
 bool comparisonDetectorReady(const ComparisonRuntime& runtime, const ComparisonSettings& settings,
@@ -77,7 +79,7 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
     }
     const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0
         && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
-    return comparisonResultsReady(runtime, state, id, comparisonGeometrySignature(state, id), both, fullResults);
+    return comparisonResultsReady(runtime, state, id, comparisonCurrentSignature(runtime, state, id), both, fullResults);
 }
 
 bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id,
@@ -644,7 +646,7 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
         validateComparisonDiagnosticFocus(state, runtime.results.value,
             runtime.gpu.ready ? runtime.results.signature : 0, comparison.objectId, runtime.inspector.queries.signature);
         validateUvFindingFocus(state, runtime.results.value.original.source,
-            runtime.gpu.ready ? runtime.results.signature : 0, comparison.objectId);
+            runtime.gpu.ready ? runtime.results.signature : 0, comparison.objectId, runtime.inspector.queries.signature);
     }
 }
 

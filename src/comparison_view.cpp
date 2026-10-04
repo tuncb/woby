@@ -1122,7 +1122,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     if (settings.type == AnalysisType::uvQuality) {
         const auto* quality = inspectorStagesReady(runtime, state, id, comparisonSource)
             ? runtime.results.value.original.source.uvQuality.get() : nullptr;
-        drawUvQualityControls(state, settings, quality, id);
+        drawUvQualityControls(state, settings, quality, id, comparisonCurrentSignature(runtime, state, id));
     } else {
         drawVisibilityField("UV coloring", settings.uvGrid.enabled);
         int mode = static_cast<int>(settings.uvGrid.mode);

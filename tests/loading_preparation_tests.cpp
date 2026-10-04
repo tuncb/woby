@@ -138,6 +138,35 @@ TEST_CASE("annotation cache preparation cancellation releases borrowed geometry 
     CHECK(checks == 3);
 }
 
+TEST_CASE("annotation preparation rejects late results for reused storage and documents")
+{
+    const PreparationDirectory directory;
+    auto state = preparationScene();
+    state.files[0].path = std::filesystem::absolute(directory.path / "surface.obj");
+    woby::AnnotationPreparationRuntime runtime;
+    woby::updateAnnotationPreparation(runtime, state);
+    REQUIRE(runtime.job);
+    runtime.job->worker.join(); // End borrowed access before simulating replacement.
+    const auto stale = runtime.job->result;
+    REQUIRE(stale);
+    const auto* storage = state.files[0].mesh.vertices.data();
+    SUBCASE("same-sized in-place mesh") {
+        state.files[0].mesh.vertices[0].position[0] += 1;
+        woby::renewMeshContentRevision(state.files[0].mesh);
+    }
+    SUBCASE("new document with reused identifiers") { ++state.sceneGeneration; }
+    SUBCASE("reused storage for another file") { ++state.files[0].objectId; }
+    woby::updateAnnotationPreparation(runtime, state);
+    CHECK_FALSE(state.files[0].mesh.annotationCache);
+    CHECK(state.files[0].mesh.vertices.data() == storage);
+    REQUIRE(runtime.job);
+    runtime.job->worker.join();
+    woby::updateAnnotationPreparation(runtime, state);
+    REQUIRE(state.files[0].mesh.annotationCache);
+    CHECK(state.files[0].mesh.annotationCache != stale);
+    CHECK(woby::annotationPreparationReady(state));
+}
+
 TEST_CASE("saved annotation target validation waits for background fingerprints")
 {
     auto state = preparationScene();

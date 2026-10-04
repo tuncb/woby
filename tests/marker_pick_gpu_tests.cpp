@@ -98,7 +98,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
         const auto view = woby::scenePickView(state.camera, state.upAxis, state.sceneBounds,
             viewport.width, viewport.height, woby::graphics::getCaps()->homogeneousDepth, 1.0f);
         REQUIRE(woby::beginGpuMarkerPicking(picker, assets, state, viewport,
-            {static_cast<float>(viewport.width)/2, static_cast<float>(viewport.height)/2}, true, samples));
+            {static_cast<float>(viewport.width)/2, static_cast<float>(viewport.height)/2}, true, samples, woby::hoverSceneSignature(state, fixture.runtimes)));
         // Exercise exact byte encoding above float's 24-bit integer precision.
         picker.context.list.nextId = 16777217;
         woby::graphics::setViewTransform(1, view.view.data(), view.renderProjection.data(), true);
@@ -116,7 +116,8 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
             fixture.captureReady = woby::graphics::readTexture(fixture.staging, fixture.pixels.data());
             fixture.capturePending = true;
         }
-        woby::pollGpuMarkerPicking(picker, woby::graphics::frame(), state, fixture.runtimes);
+        woby::pollGpuMarkerPicking(picker, woby::graphics::frame(), state, fixture.runtimes,
+            woby::hoverSceneSignature(state, fixture.runtimes));
     };
     render(true);
     CHECK_FALSE(picker.coordinates); // Highlight is already in the captured GPU frame.
@@ -132,19 +133,35 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     CHECK(highlightedPixels >= 40);
     CHECK(picker.context.list.draws[0].firstId != picker.context.list.draws[1].firstId);
 
+    const auto stableEpoch = picker.epoch;
+    const auto savedView = woby::createView(state);
+    woby::renameView(state, savedView, "Hover labels");
+    woby::markSceneDirty(state, woby::SceneChange::appearance | woby::SceneChange::labels);
+    render();
+    CHECK(picker.epoch == stableEpoch);
+    CHECK(picker.coordinates.has_value());
+    woby::setMasterVertexPointSize(state, 14);
+    render();
+    CHECK(picker.epoch > stableEpoch);
+    CHECK_FALSE(picker.coordinates);
+    const auto resourceEpoch = picker.epoch;
+    ++fixture.runtimes[0].gpuMesh.resourceRevision;
+    render();
+    CHECK(picker.epoch > resourceEpoch);
+
     viewport = {9, 96, 80, 7}; samples = 1;
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
     CHECK(picker.coordinates->localPosition[2] == 1);
-    state.files[1].fileSettings.opacity = .4f; ++state.sceneEditRevision;
+    state.files[1].fileSettings.opacity = .4f; woby::notifySceneEdit(state);
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
     CHECK(picker.coordinates->localPosition[2] == 1);
-    state.files[1].fileSettings.visible = false; ++state.sceneEditRevision;
+    state.files[1].fileSettings.visible = false; woby::notifySceneEdit(state);
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
     CHECK(picker.coordinates->localPosition[2] == 0);
-    state.files[0].fileSettings.opacity = 0; ++state.sceneEditRevision;
+    state.files[0].fileSettings.opacity = 0; woby::notifySceneEdit(state);
     for (int i = 0; i < 12; ++i) { render(); }
     CHECK_FALSE(picker.coordinates);
 
@@ -159,10 +176,10 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     front.mesh.vertices[2].position = {0, 1, 1};
     woby::destroyGpuMesh(fixture.runtimes[1].gpuMesh);
     fixture.runtimes[1].gpuMesh = woby::createGpuMesh(front.mesh, woby::meshVertexLayout(), woby::gpuMeshPoints);
-    ++state.sceneEditRevision;
+    woby::notifySceneEdit(state);
     for (int i = 0; i < 12; ++i) { render(); }
     CHECK_FALSE(picker.coordinates);
-    front.fileSettings.opacity = .4f; ++state.sceneEditRevision;
+    front.fileSettings.opacity = .4f; woby::notifySceneEdit(state);
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
     CHECK(picker.coordinates->localPosition == std::array<float, 3>{0, 0, 0});
@@ -179,18 +196,19 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     fixture.runtimes[0].gpuMesh = woby::createGpuMesh(rear.mesh, woby::meshVertexLayout(), woby::gpuMeshPoints);
     woby::recalculateSceneBounds(state);
     woby::lookAtUiCamera(state, {0, 0, 1000000}, {0, 0, 999999});
-    ++state.sceneEditRevision;
+    woby::notifySceneEdit(state);
     CHECK(woby::cameraDepthRange(state.camera, state.sceneBounds, state.upAxis).nearPlane > 1000);
     for (int i = 0; i < 12; ++i) { render(); }
     REQUIRE(picker.coordinates);
     CHECK(picker.coordinates->localPosition == std::array<float, 3>{0, 0, 0});
 
-    ++state.sceneEditRevision;
+    woby::notifySceneEdit(state);
     render(); // Cancel a hit while its ID is still in flight.
     CHECK_FALSE(woby::beginGpuMarkerPicking(picker, assets, state, viewport, {48, 40}, false, samples));
     ++state.sceneGeneration;
     state.files.clear(); woby::destroyModelRuntimes(fixture.runtimes);
-    for (int i = 0; i < 12; ++i) { woby::pollGpuMarkerPicking(picker, woby::graphics::frame(), state, fixture.runtimes); }
+    for (int i = 0; i < 12; ++i) { woby::pollGpuMarkerPicking(picker, woby::graphics::frame(), state, fixture.runtimes,
+            woby::hoverSceneSignature(state, fixture.runtimes)); }
     CHECK_FALSE(picker.coordinates);
     CHECK(std::none_of(picker.requests.begin(), picker.requests.end(), [](const auto& request) { return request.pending; }));
 }
