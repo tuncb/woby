@@ -1,5 +1,6 @@
 #include "model_load.h"
 #include "obj_mesh.h"
+#include "scene_buffer_size.h"
 #include "utf8_path.h"
 #include "background_load.h"
 #include "control_scene.h"
@@ -14,7 +15,9 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <nlohmann/json.hpp>
+#include <sstream>
 #include <stdexcept>
 
 namespace {
@@ -59,6 +62,194 @@ void loadObjAndDiscard(const std::filesystem::path& path)
 }
 
 } // namespace
+
+TEST_CASE("OBJ early capacity validation uses buffer representation limits")
+{
+    constexpr size_t vertexLimit = std::numeric_limits<woby::SceneBufferSize>::max() / sizeof(woby::Vertex);
+    constexpr size_t indexLimit = std::numeric_limits<woby::SceneBufferSize>::max() / sizeof(uint32_t);
+    const auto cloud = [](size_t points) { return woby::ObjMeshCounts{points, 0, 0, points, true}; };
+    for (const auto points : {size_t{0}, size_t{100000000}, vertexLimit - 1, vertexLimit}) {
+        CHECK_NOTHROW(woby::validateObjMeshCounts(cloud(points)));
+    }
+    for (const auto points : {vertexLimit + 1, size_t{268979477}, size_t{429615314}, std::numeric_limits<size_t>::max()}) {
+        CHECK_THROWS_WITH(woby::validateObjMeshCounts(cloud(points)),
+            "Scene exceeds the supported 32-bit GPU buffer size.");
+    }
+    for (const auto count : {indexLimit - 1, indexLimit}) {
+        CHECK_NOTHROW(woby::validateObjMeshCounts({3, count, 0, 0, false}));
+        CHECK_NOTHROW(woby::validateObjMeshCounts({2, 0, count, 0, false}));
+    }
+    CHECK_THROWS_WITH(woby::validateObjMeshCounts({3, indexLimit + 1, 0, 0, false}),
+        "Scene exceeds the supported 32-bit GPU buffer size.");
+    CHECK_THROWS_WITH(woby::validateObjMeshCounts({2, 0, indexLimit + 1, 0, false}),
+        "Scene exceeds the supported 32-bit GPU buffer size.");
+}
+
+TEST_CASE("OBJ capacity checks do not confuse source positions or repeated point references with GPU vertices")
+{
+    constexpr size_t vertexLimit = std::numeric_limits<woby::SceneBufferSize>::max() / sizeof(woby::Vertex);
+    constexpr size_t indexLimit = std::numeric_limits<woby::SceneBufferSize>::max() / sizeof(uint32_t);
+    CHECK_NOTHROW(woby::validateObjMeshCounts({vertexLimit + 1, 3, 0, 0, false}));
+    CHECK_NOTHROW(woby::validateObjMeshCounts({vertexLimit + 1, 0, 2, 0, false}));
+    CHECK_NOTHROW(woby::validateObjMeshCounts({vertexLimit + 1, 0, 0, 1, false}));
+    // Repeated explicit p records can collapse to a single GPU point per group.
+    CHECK_NOTHROW(woby::validateObjMeshCounts({1, 0, 0, indexLimit + 1, false}));
+    // Freeform-only control points are not a standalone vertex cloud either.
+    CHECK_NOTHROW(woby::validateObjMeshCounts({vertexLimit + 1, 0, 0, 0, false}));
+}
+
+TEST_CASE("OBJ capacity validation rejects index arithmetic overflow without allocations")
+{
+    constexpr size_t maxIndices = std::numeric_limits<uint32_t>::max();
+    CHECK_NOTHROW(woby::validateObjMeshCounts({3, 3, 2, maxIndices - 5, false}));
+    for (const auto counts : {woby::ObjMeshCounts{3, 3, 2, maxIndices - 4, false},
+             woby::ObjMeshCounts{3, 3, 0, maxIndices, false},
+             woby::ObjMeshCounts{1, 0, 0, std::numeric_limits<size_t>::max(), false},
+             woby::ObjMeshCounts{size_t(std::numeric_limits<int32_t>::max()) + 1, 3, 0, 0, false}}) {
+        CHECK_THROWS_WITH(woby::validateObjMeshCounts(counts), "OBJ exceeds the supported vertex or index range.");
+    }
+}
+
+TEST_CASE("OBJ polygon expansion is checked before triangulation allocations")
+{
+    CHECK(woby::objTriangleIndexCount(0, 0) == 0);
+    CHECK(woby::objTriangleIndexCount(3, 1) == 3);
+    CHECK(woby::objTriangleIndexCount(4, 1) == 6);
+    CHECK(woby::objTriangleIndexCount(12, 3) == 18); // A triangle, quad and pentagon.
+    constexpr size_t maxTriangles = std::numeric_limits<woby::SceneBufferSize>::max() / (3 * sizeof(uint32_t));
+    CHECK(woby::objTriangleIndexCount(maxTriangles * 3, maxTriangles) == maxTriangles * 3);
+    CHECK_THROWS_WITH((void)woby::objTriangleIndexCount((maxTriangles + 1) * 3, maxTriangles + 1),
+        "Scene exceeds the supported 32-bit GPU buffer size.");
+    // Quads can exceed the buffer even when their unexpanded corners fit.
+    CHECK_THROWS_WITH((void)woby::objTriangleIndexCount((maxTriangles / 2 + 1) * 4, maxTriangles / 2 + 1),
+        "Scene exceeds the supported 32-bit GPU buffer size.");
+    CHECK_THROWS_AS((void)woby::objTriangleIndexCount(std::numeric_limits<size_t>::max(), 1), std::runtime_error);
+    CHECK_THROWS_AS((void)woby::objTriangleIndexCount(3, std::numeric_limits<size_t>::max()), std::runtime_error);
+    CHECK_THROWS_AS((void)woby::objTriangleIndexCount(2, 1), std::runtime_error);
+    CHECK_THROWS_AS((void)woby::objTriangleIndexCount(3, 0), std::runtime_error);
+}
+
+TEST_CASE("GPU buffer byte counts reject multiplication overflow at the shared boundary")
+{
+    constexpr size_t maxBytes = std::numeric_limits<woby::SceneBufferSize>::max();
+    CHECK(woby::sceneBufferBytes(0, sizeof(woby::Vertex)) == 0);
+    CHECK(woby::sceneBufferBytes(maxBytes, 1) == maxBytes);
+    CHECK(woby::sceneBufferBytes(maxBytes / sizeof(woby::Vertex), sizeof(woby::Vertex)) == maxBytes - 31);
+    CHECK_THROWS_AS((void)woby::sceneBufferBytes(std::numeric_limits<size_t>::max(), sizeof(woby::Vertex)), std::runtime_error);
+    CHECK_THROWS_AS((void)woby::sceneBufferBytes(2, std::numeric_limits<size_t>::max()), std::runtime_error);
+    CHECK_THROWS_AS((void)woby::sceneBufferBytes(1, 0), std::invalid_argument);
+}
+
+TEST_CASE("OBJ loading can cancel after parsing before coordinate and mesh expansion")
+{
+    const ObjTestDirectory fixture;
+    const auto path = fixture.path / "cancel-before-expansion.obj";
+    writeText(path, "v 0 0 0\nv 1 0 0\nv 0 1 0\n");
+    size_t cancelChecks = 0;
+    std::vector<woby::ModelLoadStage> stages;
+    woby::ImportCallbacks callbacks;
+    callbacks.canceled = [&] { return ++cancelChecks == 2; };
+    callbacks.stageProgress = [&](const auto& progress) { stages.push_back(progress.stage); };
+    const auto loaded = woby::loadModel(path, {}, callbacks);
+    CHECK(loaded.canceled);
+    CHECK(woby::empty(loaded.mesh));
+    CHECK(stages == std::vector<woby::ModelLoadStage>{woby::ModelLoadStage::reading});
+    CHECK(woby::loadModel(path).mesh.vertices.size() == 3);
+}
+
+TEST_CASE("OBJ cloud preflight counts position rows without retaining coordinates")
+{
+    std::istringstream input("# v 99 99 99\n\n\t v 0 0 0\r\n"
+        "o cloud\ng points\n"
+        "v 1 2 3 1 # f 1 2 3\nv -1 +2 3e-1");
+    REQUIRE(woby::scanObjCapacity(input) == 3);
+}
+
+TEST_CASE("OBJ cloud preflight defers attribute-rich meshes and later primitives to parsed counts")
+{
+    for (const auto primitive : {"vn 0 0 1", "vt 0 0", "vp 1 2 3", "f 1 2 3", "l 1 2", "p 1",
+             "curv 0 1 1 2", "curv2 1 2", "surf 0 1 0 1 1 2 3 4"}) {
+        std::istringstream input(std::string("v 0 0 0\nv 1 0 0\nv 0 1 0\n  ") + primitive);
+        CHECK_FALSE(woby::scanObjCapacity(input).has_value());
+    }
+}
+
+TEST_CASE("OBJ cloud preflight preserves keywords and comments across read blocks")
+{
+    for (size_t padding = woby::objPreflightBlockBytes - 6; padding < woby::objPreflightBlockBytes + 4; ++padding) {
+        const auto prefix = "#" + std::string(padding, 'x') + "\n";
+        std::istringstream cloud(prefix + "v 1 2 3\nv 4 5 6\n");
+        CHECK(woby::scanObjCapacity(cloud) == 2);
+        std::istringstream surface(prefix + "surf 0 1 0 1 1 2 3 4\n");
+        CHECK_FALSE(woby::scanObjCapacity(surface).has_value());
+    }
+    std::istringstream longComment("#" + std::string(3 * woby::objPreflightBlockBytes, 'v') + "\nv 0 0 0\n");
+    CHECK(woby::scanObjCapacity(longComment) == 1);
+}
+
+TEST_CASE("OBJ cloud preflight stays cancellable and never accepts an I/O failure as a complete cloud")
+{
+    std::istringstream input("#" + std::string(3 * woby::objPreflightBlockBytes, 'x') + "\nv 0 0 0\n");
+    size_t callbacks = 0;
+    CHECK_THROWS_WITH((void)woby::scanObjCapacity(input, [&](const auto& update) {
+        CHECK(update.stage == woby::ModelLoadStage::reading);
+        if (++callbacks == 2) { throw std::runtime_error("canceled preflight"); }
+    }), "canceled preflight");
+    CHECK(callbacks == 2);
+    CHECK(input.tellg() == static_cast<std::streamoff>(woby::objPreflightBlockBytes));
+    std::istringstream broken;
+    broken.setstate(std::ios::badbit);
+    CHECK_THROWS_WITH((void)woby::scanObjCapacity(broken), "Failed to read OBJ capacity preflight.");
+    broken.clear(std::ios::failbit);
+    CHECK_THROWS_WITH((void)woby::scanObjCapacity(broken), "Failed to read OBJ capacity preflight.");
+}
+
+TEST_CASE("OBJ explicit point preflight uses a conservative distinct vertex lower bound")
+{
+    woby::ObjPointCapacity capacity;
+    for (const size_t position : {10u, 2u, 5u, 10u, 11u, 3u, 12u}) {
+        woby::checkObjPointReference(capacity, position);
+    }
+    CHECK(capacity.highestPosition == 12);
+    CHECK(capacity.distinctLowerBound == 3); // Never count duplicates or guess uniqueness.
+    constexpr size_t vertexLimit = std::numeric_limits<woby::SceneBufferSize>::max() / sizeof(woby::Vertex);
+    capacity = {vertexLimit, vertexLimit - 1};
+    CHECK_NOTHROW(woby::checkObjPointReference(capacity, vertexLimit + 1));
+    CHECK(capacity.distinctLowerBound == vertexLimit);
+    CHECK_NOTHROW(woby::checkObjPointReference(capacity, vertexLimit));
+    CHECK_THROWS_WITH(woby::checkObjPointReference(capacity, vertexLimit + 2),
+        "Scene exceeds the supported 32-bit GPU buffer size.");
+    CHECK(capacity.highestPosition == vertexLimit + 1);
+    CHECK(capacity.distinctLowerBound == vertexLimit);
+    capacity = {0, std::numeric_limits<size_t>::max()};
+    CHECK_THROWS_AS(woby::checkObjPointReference(capacity, 1), std::runtime_error);
+}
+
+TEST_CASE("OBJ explicit point preflight scans signed repeated and split references to EOF")
+{
+    for (size_t padding = woby::objPreflightBlockBytes - 31; padding < woby::objPreflightBlockBytes + 9; ++padding) {
+        std::istringstream input("v 0 0 0\nv 1 1 1\n#" + std::string(padding, 'x')
+            + "\np +000001 -1 2 1 # repeated references\nv 2 2 2\np -1\n");
+        CHECK_FALSE(woby::scanObjCapacity(input).has_value());
+        CHECK(input.eof()); // p records are checked, not an immediate parser fallback.
+    }
+    // A point reference does not make all the other source positions renderable.
+    std::istringstream sparse("v 0 0 0\nv 1 1 1\nv 2 2 2\np 1");
+    CHECK_FALSE(woby::scanObjCapacity(sparse).has_value());
+    CHECK(sparse.eof());
+}
+
+TEST_CASE("OBJ preflight estimates only skip extra scanning and never reject geometry")
+{
+    const std::string text = "v 0 0 0\np 1\n#" + std::string(2 * woby::objPreflightBlockBytes, 'x');
+    std::istringstream smallEstimate(text);
+    CHECK_FALSE(woby::scanObjCapacity(smallEstimate, {}, text.size()).has_value());
+    CHECK(smallEstimate.tellg() == static_cast<std::streamoff>(woby::objPreflightBlockBytes));
+    // Even an enormous size estimate is not grounds to reject a valid model.
+    std::istringstream largeEstimate(text);
+    CHECK_NOTHROW((void)woby::scanObjCapacity(largeEstimate, {}, std::numeric_limits<uintmax_t>::max()));
+    CHECK(largeEstimate.eof());
+}
 
 TEST_CASE("OBJ text import shares polygon construction with file import")
 {

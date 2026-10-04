@@ -1,5 +1,6 @@
 #include "obj_mesh.h"
 #include "obj_freeform.h"
+#include "scene_buffer_size.h"
 #include <sstream>
 #include "utf8_path.h"
 
@@ -7,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -65,10 +67,14 @@ uint32_t vertexIndex(VertexIndexTable& table, const IndexKey& key)
 {
     auto& primary = table.primary[static_cast<size_t>(key.vertex)];
     if (table.direct) {
-        if (primary == emptyBucket) { primary = table.next++; }
+        if (primary == emptyBucket) {
+            (void)sceneBufferBytes(size_t(table.next) + 1, sizeof(Vertex));
+            primary = table.next++;
+        }
         return primary;
     }
     if (primary == emptyBucket) {
+        (void)sceneBufferBytes(table.keys.size() + 1, sizeof(Vertex));
         primary = static_cast<uint32_t>(table.keys.size());
         table.keys.push_back(key);
         return primary;
@@ -81,6 +87,7 @@ uint32_t vertexIndex(VertexIndexTable& table, const IndexKey& key)
         if (table.keys[id] == key) { return id; }
         bucket = (bucket + 1) & (table.buckets.size() - 1);
     }
+    (void)sceneBufferBytes(table.keys.size() + 1, sizeof(Vertex));
     if (table.secondaryCount >= table.buckets.size() * 3 / 4) {
         growSecondary(table);
         bucket = indexHash(key) & (table.buckets.size() - 1);
@@ -119,6 +126,23 @@ rapidobj::Result parseObj(const std::filesystem::path& path)
     return rapidobj::ParseFile(path, rapidobj::MaterialLibrary::Default(rapidobj::Load::Optional));
 }
 
+void preflightObjCapacity(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
+{
+    // The shortest valid position row is "v 0 0 0\n" (the final newline may
+    // be absent). File size only decides whether a scan could help; it never
+    // rejects a file. Smaller files cannot contain an oversized vertex cloud.
+    constexpr uintmax_t minimumOversizedCloudBytes =
+        (uintmax_t(std::numeric_limits<SceneBufferSize>::max()) / sizeof(Vertex) + 1) * 8 - 1;
+    std::error_code error;
+    const auto bytes = std::filesystem::file_size(path, error);
+    if (error || bytes < minimumOversizedCloudBytes) { return; }
+    std::ifstream input(path, std::ios::binary);
+    if (!input) { return; } // Let the parser report its usual path-aware error.
+    if (const auto count = scanObjCapacity(input, progress, bytes)) {
+        validateObjMeshCounts({*count, 0, 0, *count, true});
+    }
+}
+
 Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPatches,
     const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
 {
@@ -135,6 +159,34 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     if (result.error) {
         throwLoadError("Failed to load OBJ");
     }
+
+    // Reject known failures before allocating double coordinates, vertex maps,
+    // render vertices or upload copies. Polygon expansion, line segment and
+    // standalone cloud counts are known from the parsed primitive records.
+    reportModelLoadProgress(progress, ModelLoadStage::reading);
+    ObjMeshCounts counts;
+    counts.sourcePositions = result.attributes.positions.size() / 3;
+    size_t primitiveVisits = 0;
+    for (const auto& shape : result.shapes) {
+        counts.triangleIndices += objTriangleIndexCount(shape.mesh.indices.size(), shape.mesh.num_face_vertices.size());
+        counts.pointIndices += shape.points.indices.size();
+        size_t lineVertices = 0;
+        for (const auto count : shape.lines.num_line_vertices) {
+            if (primitiveVisits++ % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::reading); }
+            if (count < 2) { throw std::runtime_error("OBJ polyline needs at least two vertices."); }
+            lineVertices += static_cast<size_t>(count);
+            counts.lineIndices += (static_cast<size_t>(count) - 1) * 2;
+            (void)sceneBufferBytes(counts.lineIndices, sizeof(uint32_t));
+        }
+        if (lineVertices != shape.lines.indices.size()) { throw std::runtime_error("Invalid OBJ polyline range."); }
+        validateObjMeshCounts(counts);
+        if (primitiveVisits++ % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::reading); }
+    }
+    counts.vertexCloud = counts.triangleIndices == 0 && counts.lineIndices == 0
+        && counts.pointIndices == 0 && freeformPatches.empty();
+    if (counts.vertexCloud) { counts.pointIndices = counts.sourcePositions; }
+    validateObjMeshCounts(counts);
+
     std::vector<Coordinate> sourcePoints;
     sourcePoints.reserve(result.attributes.positions.size() / 3);
     for (size_t i = 0; i < result.attributes.positions.size(); i += 3) {
@@ -160,29 +212,20 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     source->points = std::move(sourcePoints);
     reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, source->points.size(), source->points.size());
     VertexIndexTable vertexMap;
-    size_t indexCount = 0, lineIndexCount = 0, pointIndexCount = 0;
+    counts.triangleIndices = 0;
     for (const auto& shape : shapes) {
-        indexCount += shape.mesh.indices.size();
-        pointIndexCount += shape.points.indices.size();
-        size_t lineVertices = 0;
-        for (const auto count : shape.lines.num_line_vertices) {
-            if (count < 2) { throw std::runtime_error("OBJ polyline needs at least two vertices."); }
-            lineVertices += static_cast<size_t>(count);
-            lineIndexCount += (static_cast<size_t>(count) - 1) * 2;
-        }
-        if (lineVertices != shape.lines.indices.size()) { throw std::runtime_error("Invalid OBJ polyline range."); }
+        counts.triangleIndices += shape.mesh.indices.size();
+        validateObjMeshCounts(counts);
     }
     // Vertex-only OBJ files are commonly used as point clouds. In files with
     // primitives, only explicit p records become standalone point geometry.
-    const bool vertexCloud = indexCount == 0 && lineIndexCount == 0 && pointIndexCount == 0 && freeformPatches.empty();
-    if (vertexCloud) { pointIndexCount = source->points.size(); }
+    const auto indexCount = counts.triangleIndices;
+    const auto lineIndexCount = counts.lineIndices;
+    const auto pointIndexCount = counts.pointIndices;
     const size_t totalIndices = indexCount + lineIndexCount + pointIndexCount;
-    if (totalIndices > std::numeric_limits<uint32_t>::max()
-        || source->points.size() > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
-        throw std::runtime_error("OBJ exceeds the supported vertex or index range.");
-    }
     // Position count is only an estimate: normal/UV seams can split vertices.
-    const size_t vertexCapacity = std::min(attrib.positions.size() / 3u, totalIndices);
+    const size_t vertexCapacity = std::min({attrib.positions.size() / 3u, totalIndices,
+        size_t(std::numeric_limits<SceneBufferSize>::max() / sizeof(Vertex))});
     mesh.indices.reserve(indexCount);
     mesh.lineIndices.reserve(lineIndexCount);
     mesh.pointIndices.reserve(pointIndexCount);
@@ -190,7 +233,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     mesh.precisePositions.reserve(vertexCapacity);
     mesh.nodes.reserve(shapes.size());
     source->indices.reserve(indexCount);
-    reserveIndexTable(vertexMap, source->points.size(), totalIndices,
+    reserveIndexTable(vertexMap, source->points.size(), vertexCapacity,
         attrib.normals.empty() && attrib.texcoords.empty());
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);
 
@@ -268,7 +311,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
         for (size_t suffix = 2; !names.insert(name).second; ++suffix) { name = base + " (" + std::to_string(suffix) + ")"; }
         return name;
     };
-    size_t primitiveVisits = 0;
+    primitiveVisits = 0;
     const auto primitiveVertex = [&](int positionIndex) {
         if (positionIndex < 0 || static_cast<size_t>(positionIndex) >= source->points.size()) {
             throw std::runtime_error("OBJ contains an invalid source position index.");
@@ -315,7 +358,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
             mesh.nodes.push_back(std::move(node));
         }
     }
-    if (vertexCloud && !source->points.empty()) {
+    if (counts.vertexCloud && !source->points.empty()) {
         MeshNode node;
         node.name = "Points";
         for (size_t i = 0; i < source->points.size(); ++i) { mesh.pointIndices.push_back(primitiveVertex(static_cast<int>(i))); }
@@ -336,9 +379,149 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
 
 } // namespace
 
+size_t objTriangleIndexCount(size_t corners, size_t faces)
+{
+    if (faces > corners / 3 || (faces == 0 && corners != 0)) {
+        throw std::runtime_error("Invalid OBJ polygon range.");
+    }
+    const auto triangles = corners - 2 * faces;
+    (void)sceneBufferBytes(triangles, 3 * sizeof(uint32_t));
+    return triangles * 3;
+}
+
+void validateObjMeshCounts(const ObjMeshCounts& counts)
+{
+    (void)sceneBufferBytes(counts.triangleIndices, sizeof(uint32_t));
+    (void)sceneBufferBytes(counts.lineIndices, sizeof(uint32_t));
+    if (counts.vertexCloud) { (void)sceneBufferBytes(counts.sourcePositions, sizeof(Vertex)); }
+    // Explicit point references are deduplicated per group by the renderer.
+    // Their source count is not an exact GPU point-buffer size.
+    constexpr size_t maxIndices = std::numeric_limits<uint32_t>::max();
+    if (counts.sourcePositions > static_cast<size_t>(std::numeric_limits<int32_t>::max())
+        || counts.pointIndices > maxIndices
+        || counts.triangleIndices > maxIndices - counts.pointIndices
+        || counts.lineIndices > maxIndices - counts.pointIndices - counts.triangleIndices) {
+        throw std::runtime_error("OBJ exceeds the supported vertex or index range.");
+    }
+}
+
+void checkObjPointReference(ObjPointCapacity& capacity, size_t position)
+{
+    if (position <= capacity.highestPosition) { return; }
+    (void)sceneBufferBytes(capacity.distinctLowerBound, sizeof(Vertex));
+    (void)sceneBufferBytes(capacity.distinctLowerBound + 1, sizeof(Vertex));
+    capacity.highestPosition = position;
+    ++capacity.distinctLowerBound;
+}
+
+std::optional<size_t> scanObjCapacity(std::istream& input, const ModelLoadProgressCallback& progress, uintmax_t fileBytesHint)
+{
+    std::vector<char> buffer(objPreflightBlockBytes);
+    std::array<char, 5> keyword;
+    size_t keywordLength = 0, positions = 0;
+    enum class ScanState { keyword, skipLine, points };
+    auto state = ScanState::keyword;
+    ObjPointCapacity pointCapacity;
+    size_t pointValue = 0;
+    bool hasPoints = false, pointStarted = false, pointDigits = false, pointNegative = false;
+    bool firstBlock = true;
+    const auto finishKeyword = [&] {
+        const std::string_view token(keyword.data(), keywordLength);
+        state = ScanState::skipLine;
+        if (token == "v") { ++positions; return true; }
+        if (token == "p") { hasPoints = true; state = ScanState::points; return true; }
+        // Attribute-rich files commonly precede faces with long position and
+        // normal/UV sections. Avoid duplicating that full parse; the parsed
+        // count checks still run before coordinate and mesh expansion.
+        return token != "vn" && token != "vt" && token != "vp" && token != "f" && token != "l"
+            && token != "curv" && token != "curv2" && token != "surf";
+    };
+    const auto finishPoint = [&] {
+        if (!pointStarted) { return true; }
+        if (!pointDigits || pointValue == 0 || (pointNegative && pointValue > positions)) { return false; }
+        const auto position = pointNegative ? positions - (pointValue - 1) : pointValue;
+        checkObjPointReference(pointCapacity, position);
+        pointValue = 0;
+        pointStarted = pointDigits = pointNegative = false;
+        return true;
+    };
+    while (input) {
+        reportModelLoadProgress(progress, ModelLoadStage::reading);
+        input.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const char* cursor = buffer.data();
+        const char* end = cursor + input.gcount();
+        while (cursor != end) {
+            // Position rows dominate simple clouds. Skip their numeric
+            // payload without token construction; block boundaries use the
+            // same general scanner below.
+            if (state == ScanState::keyword && keywordLength == 0 && end - cursor >= 3) {
+                if (cursor[0] == 'v' && (cursor[1] == ' ' || cursor[1] == '\t')) {
+                    ++positions; cursor += 2; state = ScanState::skipLine; continue;
+                }
+            }
+            if (state == ScanState::skipLine) {
+                const auto* newline = static_cast<const char*>(std::memchr(cursor, '\n', static_cast<size_t>(end - cursor)));
+                if (!newline) { break; }
+                cursor = newline + 1;
+                state = ScanState::keyword;
+                keywordLength = 0;
+                continue;
+            }
+            const char ch = *cursor++;
+            if (state == ScanState::points) {
+                if (ch == '\n' || ch == '\r' || ch == ' ' || ch == '\t' || ch == '#') {
+                    if (!finishPoint()) { return std::nullopt; }
+                    if (ch == '\n') { state = ScanState::keyword; }
+                    if (ch == '#') { state = ScanState::skipLine; }
+                } else if ((ch == '+' || ch == '-') && !pointStarted) {
+                    pointStarted = true;
+                    pointNegative = ch == '-';
+                } else if (ch >= '0' && ch <= '9') {
+                    const auto digit = static_cast<size_t>(ch - '0');
+                    constexpr auto maxPrefix = std::numeric_limits<size_t>::max() / 10;
+                    constexpr auto maxDigit = std::numeric_limits<size_t>::max() % 10;
+                    if (pointValue > maxPrefix || (pointValue == maxPrefix && digit > maxDigit)) { return std::nullopt; }
+                    pointValue = pointValue * 10 + digit;
+                    pointStarted = pointDigits = true;
+                } else { return std::nullopt; }
+                continue;
+            }
+            if (ch == '\n' || ch == '\r' || ch == ' ' || ch == '\t') {
+                if (keywordLength != 0) {
+                    if (!finishKeyword()) { return std::nullopt; }
+                    keywordLength = 0;
+                    if (ch == '\n') { state = ScanState::keyword; }
+                }
+            } else if (keywordLength < keyword.size()) {
+                keyword[keywordLength++] = ch;
+            } else {
+                keywordLength = 0;
+                state = ScanState::skipLine; // Longer keywords cannot describe geometry here.
+            }
+        }
+        if (firstBlock && fileBytesHint && input.good()) {
+            // Sampling decides only whether to continue this optional scan.
+            // Never reject from an estimate: the parser and incremental mesh
+            // checks remain authoritative even when row lengths vary later.
+            const auto estimate = static_cast<long double>(positions) * static_cast<long double>(fileBytesHint)
+                / static_cast<long double>(input.gcount());
+            if (estimate <= std::numeric_limits<SceneBufferSize>::max() / sizeof(Vertex)) { return std::nullopt; }
+        }
+        firstBlock = false;
+    }
+    if (input.bad() || (input.fail() && !input.eof())) {
+        throw std::runtime_error("Failed to read OBJ capacity preflight.");
+    }
+    if (keywordLength != 0 && !finishKeyword()) { return std::nullopt; }
+    if (state == ScanState::points && !finishPoint()) { return std::nullopt; }
+    if (hasPoints) { return std::nullopt; }
+    return positions;
+}
+
 Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
 {
     reportModelLoadProgress(progress, ModelLoadStage::reading);
+    preflightObjCapacity(path, progress);
     auto result = parseObj(path);
     std::vector<FreeformPatch> freeformPatches;
     if (result.error && objFreeformStatement(result.error.line)) {

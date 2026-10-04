@@ -8,9 +8,10 @@ from pathlib import Path
 import tempfile
 import time
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from run import add_memory_limit_arguments, fixture_copy, memory_stop_reason, summarize_frames, wait_detector
+from run import (add_load_timeout_argument, add_memory_limit_arguments, fixture_copy,
+                 memory_stop_reason, operation, request, summarize_frames, wait_detector)
 from prepare_derivatives import finite_vertices
 from summarize import aggregate, analysis_summary, collect, resource_summary
 
@@ -18,6 +19,67 @@ from summarize import aggregate, analysis_summary, collect, resource_summary
 def sample(frame, timestamp, gpu=2):
     return dict(frameIndex=frame, midpoint=timestamp, frameMilliseconds=10,
                 gpuFrameMilliseconds=gpu, stagesMilliseconds={"events": 1})
+
+
+def test_load_deadline_is_optional():
+    parser = argparse.ArgumentParser()
+    add_load_timeout_argument(parser)
+    assert parser.parse_args([]).load_timeout == 0
+    assert parser.parse_args(["--load-timeout", "600"]).load_timeout == 600
+
+
+def pending_load():
+    return {"error": {"code": -32003, "data": {"state": "running", "commandId": "cmd-1"}}}
+
+
+def test_unlimited_load_polls_original_command_until_completion():
+    state = {"process": Mock(poll=Mock(return_value=None))}
+    responses = [pending_load(), {"result": {"state": "running"}},
+                 {"result": {"state": "succeeded", "result": {"objects": ["file-1"]}}}]
+    with patch("run.rpc_request", side_effect=responses) as rpc, patch("run.time.sleep"):
+        assert request(state, "model.add", {"path": "model.obj"}, 0) == {"result": {"objects": ["file-1"]}}
+    assert [call.args[1] for call in rpc.call_args_list] == ["model.add", "command.get", "command.get"]
+    assert rpc.call_args_list[1].args[2] == {"id": "cmd-1"}
+
+
+def test_unlimited_load_preserves_terminal_errors():
+    state = {"process": Mock(poll=Mock(return_value=None))}
+    error = {"code": -32002, "message": "Load canceled"}
+    for payload in ({"error": error}, {"result": {"state": "failed", "error": error}}):
+        with patch("run.rpc_request", side_effect=[pending_load(), payload]):
+            assert request(state, "model.add", timeout=0) == {"error": error}
+    expired = {"error": {"code": -32003, "data": {"state": "expired-before-start"}}}
+    with patch("run.rpc_request", return_value=expired) as rpc:
+        assert request(state, "model.add", timeout=0) == expired
+        assert rpc.call_count == 1
+
+
+def test_unlimited_load_stops_on_process_exit_or_transport_failure():
+    with patch("run.rpc_request", return_value=pending_load()) as rpc:
+        with unittest.TestCase().assertRaisesRegex(RuntimeError, "Viewer exited"):
+            request({"process": Mock(poll=Mock(return_value=1))}, "model.add", timeout=0)
+        assert rpc.call_count == 1
+    with patch("run.rpc_request", side_effect=TimeoutError("transport")) as rpc:
+        with unittest.TestCase().assertRaises(TimeoutError):
+            request({}, "model.add", timeout=0)
+        assert rpc.call_count == 1
+
+
+def test_explicit_load_deadline_does_not_poll_after_timeout():
+    with patch("run.rpc_request", return_value=pending_load()) as rpc:
+        assert request({}, "model.add", timeout=600) == pending_load()
+        assert rpc.call_count == 1
+        assert rpc.call_args.args[-1] == 600
+
+
+def test_operation_keeps_zero_load_timeout():
+    with tempfile.TemporaryDirectory() as directory:
+        state = dict(directory=Path(directory).resolve(), args=SimpleNamespace(operation_timeout=240),
+                     resources=[], operations=[], started=time.perf_counter(), case="load")
+        with patch("run.request", return_value={"result": {}}) as rpc:
+            operation(state, "load", "model.add", timeout=0)
+            assert rpc.call_args.args[-1] == 0
+        assert state["operations"][0]["timeout_seconds"] == 0
 
 
 def test_fps_uses_frame_counter_and_elapsed_time():

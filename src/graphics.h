@@ -1,5 +1,7 @@
 #pragma once
 
+#include "scene_buffer_size.h"
+
 // Woby's render submission interface. The implementation owns NoGraphicsAPI
 // resources, explicit frame ordering, descriptor lifetimes and timeline fences.
 #include <array>
@@ -126,7 +128,7 @@ struct TransientIndexBuffer
 struct Memory
 {
     uint8_t *data = nullptr;
-    uint32_t size = 0;
+    SceneBufferSize size = 0;
     bool owned = false;
     void (*release)(void *, void *) = nullptr;
     void *user = nullptr;
@@ -172,9 +174,9 @@ uint32_t frame();
 void setDebug(uint32_t flags);
 void dbgTextClear();
 
-const Memory *alloc(uint32_t bytes);
-const Memory *copy(const void *data, uint32_t bytes);
-const Memory *makeRef(const void *data, uint32_t bytes, void (*release)(void *, void *) = nullptr,
+const Memory *alloc(SceneBufferSize bytes);
+const Memory *copy(const void *data, SceneBufferSize bytes);
+const Memory *makeRef(const void *data, SceneBufferSize bytes, void (*release)(void *, void *) = nullptr,
                       void *user = nullptr);
 VertexBufferHandle createVertexBuffer(const Memory *, const VertexLayout &, uint16_t flags = 0);
 IndexBufferHandle createIndexBuffer(const Memory *, uint16_t flags = 0);

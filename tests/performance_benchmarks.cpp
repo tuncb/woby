@@ -7,12 +7,41 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <thread>
 
 namespace {
 using Clock = std::chrono::steady_clock;
+
+int loadBenchmark(const std::filesystem::path& path, size_t repetitions)
+{
+    std::cout << "run,stage,milliseconds\n";
+    for (size_t run = 0; run < repetitions; ++run) {
+        const auto start = Clock::now();
+        auto previous = start;
+        auto stage = woby::ModelLoadStage::reading;
+        std::map<woby::ModelLoadStage, double> elapsed;
+        const auto record = [&] {
+            const auto now = Clock::now();
+            elapsed[stage] += std::chrono::duration<double, std::milli>(now - previous).count();
+            previous = now;
+        };
+        const auto mesh = woby::loadObjMesh(path, [&](const auto& update) {
+            record();
+            stage = update.stage;
+        });
+        record();
+        for (const auto& [key, milliseconds] : elapsed) {
+            std::cout << run << ',' << woby::modelLoadStageName(key) << ',' << milliseconds << '\n';
+        }
+        std::cout << run << ",total," << std::chrono::duration<double, std::milli>(previous - start).count()
+                  << "\nvertices=" << mesh.vertices.size() << " triangles=" << mesh.indices.size() / 3
+                  << " groups=" << mesh.nodes.size() << std::endl;
+    }
+    return 0;
+}
 
 woby::Mesh grid(uint32_t width, float z)
 {
@@ -128,6 +157,12 @@ int main(int argc, char** argv)
 {
     try {
         const std::string workload = argc > 1 ? argv[1] : "distance";
+        if (workload == "load") {
+            if (argc < 3) { throw std::invalid_argument("Expected load model.obj [repetitions]."); }
+            const size_t repetitions = argc > 3 ? std::stoul(argv[3]) : 3u;
+            if (!repetitions || repetitions > 100) { throw std::invalid_argument("Expected repetitions 1..100."); }
+            return loadBenchmark(argv[2], repetitions);
+        }
         if (workload == "detectors" || workload == "detectors-expanded" || workload == "intersections") {
             if (argc < 3) { throw std::invalid_argument("Expected detectors model.obj [repetitions]."); }
             const size_t repetitions = argc > 3 ? std::stoul(argv[3]) : 3u;

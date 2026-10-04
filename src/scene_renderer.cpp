@@ -1,4 +1,5 @@
 #include "scene_renderer.h"
+#include "scene_buffer_size.h"
 #include "marker_pick.h"
 #include "scene_dimensions.h"
 
@@ -8,7 +9,6 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <limits>
 #include <memory>
 #include <stdexcept>
 
@@ -19,14 +19,6 @@ namespace {
 static_assert(sizeof(Vertex) == 32 && offsetof(Vertex, position) == 0);
 
 using HelperLineVertex = std::array<float, 3>;
-
-uint32_t sceneBufferBytes(size_t count, size_t elementBytes)
-{
-    if (count > std::numeric_limits<uint32_t>::max() / elementBytes) {
-        throw std::runtime_error("Scene exceeds the supported 32-bit GPU buffer size.");
-    }
-    return static_cast<uint32_t>(count * elementBytes);
-}
 
 template <typename T>
 const woby::graphics::Memory* ownedBuffer(std::vector<T> values)
