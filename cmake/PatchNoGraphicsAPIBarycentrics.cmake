@@ -9,6 +9,10 @@ foreach(path IN ITEMS include/NoGraphicsAPI/NoGraphicsAPI.hpp src/NoGraphicsAPI.
         file(WRITE "${NGAPI_SOURCE}/${path}" "${updated}")
     endif()
 endforeach()
+# std::strcmp requires <cstring>; <string.h> only guarantees the global name.
+replace_exact(src/NoGraphicsAPI.cpp
+    "#include <string.h>"
+    "#include <string.h>\n#include <cstring>")
 # Optional Vulkan feature; unsupported devices and Metal use vertex pulling.
 replace_exact(include/NoGraphicsAPI/NoGraphicsAPI.hpp
     "    bool indirect_mesh_draw = false;"
