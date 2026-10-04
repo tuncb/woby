@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "visibility.h"
 #include "scene_buffer_size.h"
 #include <SDL3/SDL.h>
 #include <algorithm>
@@ -38,7 +39,10 @@ gpu::PSO* pipeline(Renderer& r,const std::string& kind,bool blend) {
     if (const auto found=r.pipelines.find(key);found!=r.pipelines.end()) return found->second;
     std::string vs="vs_mesh",fs=r.options.ids?"fs_marker_mesh":"fs_mesh";
     auto topology=gpu::PrimitiveTopology::triangles;
-    if (kind=="point") { vs="vs_point_sprite"; fs=r.options.ids?"fs_marker_point":"fs_point_sprite"; topology=gpu::PrimitiveTopology::triangle_strip; }
+    if (kind=="point" || kind=="compacted") {
+        vs=kind=="compacted"?"vs_point_compacted":"vs_point_sprite";
+        fs=r.options.ids?"fs_marker_point":"fs_point_sprite"; topology=gpu::PrimitiveTopology::triangle_strip;
+    }
     if (kind=="line") { vs="vs_color"; fs=r.options.ids?"fs_marker_line":"fs_color"; topology=gpu::PrimitiveTopology::lines; }
     if (kind=="barycentric") fs=r.options.ids?"fs_overlay_native_ids":"fs_overlay_native";
     if (kind=="pulled") { vs="vs_overlay_pull"; fs=r.options.ids?"fs_overlay_pull_ids":"fs_overlay_pull"; }
@@ -83,8 +87,8 @@ void uploadBytes(Renderer& r,gpu::GpuHeap& buffer,const void* data,uint64_t byte
 }
 void barrier(gpu::CommandBuffer* commands) {
     gpu::barrier(commands,gpu::Stage::all_commands,
-        gpu::Access::color_write|gpu::Access::depth_stencil_write|gpu::Access::transfer_write|gpu::Access::shader_write,
-        gpu::Stage::all_commands,gpu::Access::shader_read|gpu::Access::index_read|gpu::Access::color_write
+        gpu::Access::color_write|gpu::Access::depth_stencil_write|gpu::Access::transfer_write|gpu::Access::transfer_read|gpu::Access::shader_write,
+        gpu::Stage::all_commands,gpu::Access::shader_read|gpu::Access::shader_write|gpu::Access::index_read|gpu::Access::color_write
             |gpu::Access::depth_stencil_read|gpu::Access::depth_stencil_write|gpu::Access::transfer_read);
 }
 void complete(Renderer& r,gpu::CommandBuffer* commands) {
@@ -118,12 +122,12 @@ Renderer::~Renderer() {
     gpu::wait_idle(device);
     uploads.reset();
     for (auto& [key,pso]:pipelines) { (void)key; gpu::destroy_pso(pso); }
-    gpu::destroy_pso(capture);
+    gpu::destroy_pso(capture); gpu::destroy_pso(depthCapture);
     release(*this,color); release(*this,ids); release(*this,depth); release(*this,resolved);
     textures.reset(); gpu::destroy_texture_heap(textureHeap);
     gpu::destroy_texture_descriptor_heap(descriptors);
-    arena.reset(); gpu::destroy_gpu_heap(roots); gpu::destroy_gpu_heap(readback); gpu::destroy_gpu_heap(captureIds);
-    for (auto* buffer:{&scene.vertices,&scene.triangles,&scene.edges,&scene.points}) gpu::destroy_gpu_heap(*buffer);
+    arena.reset(); gpu::destroy_gpu_heap(roots); gpu::destroy_gpu_heap(readback); gpu::destroy_gpu_heap(captureIds); gpu::destroy_gpu_heap(captureDepth);
+    for (auto* buffer:{&scene.vertices,&scene.triangles,&scene.edges,&scene.points,&scene.filtered}) gpu::destroy_gpu_heap(*buffer);
     gpu::destroy_command_pool(pool); gpu::destroy_timeline_semaphore(timeline); gpu::destroy_device(device);
 }
 void initialize(Renderer& r,Options options) {
@@ -142,18 +146,24 @@ void initialize(Renderer& r,Options options) {
     require(r.roots.range.cpu!=nullptr,r.roots.error);
     r.arena=std::make_unique<gpu::BumpAllocator>(r.roots.range);
     const uint64_t imageBytes=uint64_t(options.width)*options.height*4;
-    r.readback=gpu::create_gpu_heap(r.device,imageBytes*2,gpu::MemoryType::readback);
+    r.readback=gpu::create_gpu_heap(r.device,imageBytes*(options.samples+2),gpu::MemoryType::readback);
     require(r.readback.range.cpu!=nullptr,r.readback.error);
     auto* commands=gpu::begin_commands(r.pool);
     r.color=image(r,commands,gpu::Format::rgba8_unorm,options.samples);
-    r.depth=image(r,commands,gpu::Format::d32_float,options.samples);
+    r.depth=image(r,commands,gpu::Format::d32_float,options.samples,true);
+    r.descriptors=gpu::create_texture_descriptor_heap(r.device,2);
+    require(r.descriptors!=nullptr,"Overlay descriptor allocation failed");
+    gpu::write_texture_descriptor(r.descriptors,1,r.depth.allocation.texture,gpu::TextureDescriptorType::sampled);
+    r.captureDepth=gpu::create_gpu_heap(r.device,imageBytes,gpu::MemoryType::gpu_only);
+    require(r.captureDepth.owner!=nullptr,r.captureDepth.error);
+    const auto depthCode=shader("cs_capture_depth");
+    r.depthCapture=gpu::create_compute_pso(r.device,stage(depthCode,"cs_capture_depth"));
+    require(r.depthCapture!=nullptr,"Overlay depth capture pipeline creation failed");
     if (options.samples>1) r.resolved=image(r,commands,gpu::Format::rgba8_unorm,1);
     if (options.ids) {
         r.ids=image(r,commands,gpu::Format::rgba8_unorm,options.samples,true);
-        r.descriptors=gpu::create_texture_descriptor_heap(r.device,1);
-        require(r.descriptors!=nullptr,"Overlay descriptor allocation failed");
         gpu::write_texture_descriptor(r.descriptors,0,r.ids.allocation.texture,gpu::TextureDescriptorType::sampled);
-        r.captureIds=gpu::create_gpu_heap(r.device,imageBytes,gpu::MemoryType::gpu_only);
+        r.captureIds=gpu::create_gpu_heap(r.device,imageBytes*options.samples,gpu::MemoryType::gpu_only);
         require(r.captureIds.owner!=nullptr,r.captureIds.error);
         const auto code=shader("cs_capture_ids");
         r.capture=gpu::create_compute_pso(r.device,stage(code,"cs_capture_ids"));
@@ -178,6 +188,23 @@ void upload(Renderer& r,const Mesh& mesh) {
     uploadBytes(r,r.scene.points,prepared->pointVertexIndices.data(),prepared->pointVertexIndices.size()*sizeof(uint32_t));
     uploadBytes(r,r.scene.edges,prepared->edgeIndices.data(),prepared->edgeIndices.size()*sizeof(uint32_t));
     r.uploads->wait();
+    r.scene.markerVertices=std::move(prepared->pointVertexIndices);
+}
+
+void installMarkerSelection(Renderer& r,const MarkerSelection& selection) {
+    require(selection.groups.size()==r.scene.groups.size(),"Marker selection group mismatch");
+    for (size_t i=0;i<selection.groups.size();++i) {
+        const auto& range=selection.groups[i];
+        require(uint64_t(range.offset)+range.count<=selection.markers.size(),"Invalid marker selection range");
+        r.scene.groups[i].filteredOffset=range.offset; r.scene.groups[i].filteredCount=range.count;
+    }
+    for (const auto marker:selection.markers) require(marker<r.scene.markerCount,"Invalid original marker ID");
+    gpu::destroy_gpu_heap(r.scene.filtered); r.scene.filtered={};
+    if (!selection.markers.empty()) {
+        const auto retained=r.scene.bytes;
+        uploadBytes(r,r.scene.filtered,selection.markers.data(),selection.markers.size()*sizeof(uint32_t));
+        r.scene.bytes=retained; r.uploads->wait();
+    }
 }
 
 Measurement render(Renderer& r,const Display& d,const std::array<float,16>& viewProjection,Capture* capture) {
@@ -190,7 +217,7 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
     auto* solidPso=pipeline(r,"mesh",d.opacity<.999f);
     auto* depthPso=pipeline(r,"depth",false);
     auto* edgePso=pipeline(r,"line",d.opacity<.999f);
-    auto* pointPso=pipeline(r,"point",d.opacity<.999f);
+    auto* pointPso=pipeline(r,d.compacted?"compacted":"point",d.opacity<.999f);
     auto* surfacePso=shaderEdges?pipeline(r,edgeKind,d.opacity<.999f || !d.solid):solidPso;
     gpu::reset_command_pool(r.pool); r.arena->reset(); r.timestamps={};
     const auto start=Clock::now();
@@ -211,7 +238,9 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
         const auto& range=group.range;
         const bool isPoint=std::strcmp(kind,"point")==0,isLine=std::strcmp(kind,"line")==0;
         const bool isDepth=std::strcmp(kind,"depth")==0,isOverlay=std::strcmp(kind,"overlay")==0;
-        if ((isPoint && range.pointIndexCount==0) || (!isPoint && range.triangleIndexCount==0)) return;
+        const auto pointCount=d.compacted?group.filteredCount:range.pointIndexCount;
+        const auto pointOffset=d.compacted?group.filteredOffset:range.pointIndexOffset;
+        if ((isPoint && pointCount==0) || (!isPoint && range.triangleIndexCount==0)) return;
         auto root=r.arena->allocate<WobyRoot>(); require(root.cpu!=nullptr,"Overlay root arena exhausted");
         *root.cpu={};
         float mvp[16]; bx::mtxMul(mvp,group.model.data(),viewProjection.data());
@@ -221,9 +250,11 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
         root.cpu->color={std::min(1.0f,group.color[0]*scale),std::min(1.0f,group.color[1]*scale),
             std::min(1.0f,group.color[2]*scale),d.opacity};
         root.cpu->vertices=reinterpret_cast<float*>(r.scene.vertices.range.gpu); root.cpu->stride=sizeof(Vertex)/4;
-        root.cpu->pointIds=reinterpret_cast<uint32_t*>(r.scene.points.range.gpu);
+        root.cpu->pointIds=reinterpret_cast<uint32_t*>((isPoint && d.compacted?r.scene.filtered:r.scene.points).range.gpu);
+        // Experiment-only extra indirection preserves the original packed ID.
+        root.cpu->freeform=reinterpret_cast<float*>(r.scene.points.range.gpu);
         root.cpu->pointParams[0]={d.pointSize,float(r.options.width),float(r.options.height),0};
-        root.cpu->pointParams[1]={float(range.pointIndexOffset&65535u),float(range.pointIndexOffset>>16),0,0};
+        root.cpu->pointParams[1]={float(pointOffset&65535u),float(pointOffset>>16),0,0};
         const uint32_t first=range.pointIndexOffset+1;
         root.cpu->markerBase={float(first&65535u),float(first>>16),0,0};
         root.cpu->markerOptions={0,d.edgeHalfWidth,d.solid && group.solid?1.0f:0.0f,0};
@@ -234,7 +265,7 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
             .depth_compare=isLine || isPoint || (isOverlay && !(d.solid && group.solid))
                 ?gpu::CompareOp::greater_equal:gpu::CompareOp::greater});
         gpu::bind_pso(commands,isPoint?pointPso:isLine?edgePso:isDepth?depthPso:isOverlay?surfacePso:solidPso);
-        if (isPoint) gpu::draw(commands,root.gpu,4,range.pointIndexCount);
+        if (isPoint) gpu::draw(commands,root.gpu,4,pointCount);
         else if (isOverlay && d.method==Method::pulled) {
             root.cpu->pointIds=reinterpret_cast<uint32_t*>(r.scene.triangles.range.gpu)+range.triangleIndexOffset;
             gpu::draw(commands,root.gpu,range.triangleIndexCount);
@@ -283,7 +314,18 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
             gpu::bind_pso(commands,r.capture);
             gpu::dispatch(commands,root.gpu,{(r.options.width+7)/8,(r.options.height+7)/8,1});
             barrier(commands);
-            gpu::copy_memory(commands,{r.captureIds.range.gpu,bytes},{r.readback.range.gpu+bytes,bytes});
+            const auto sampleBytes=bytes*r.options.samples;
+            gpu::copy_memory(commands,{r.captureIds.range.gpu,sampleBytes},{r.readback.range.gpu+bytes,sampleBytes});
+        }
+        if (capture->depthRequested) {
+            auto root=r.arena->allocate<WobyRoot>(); require(root.cpu!=nullptr,"Overlay depth capture arena exhausted");
+            *root.cpu={}; root.cpu->texture0=1; root.cpu->markerQuery={0,0,float(r.options.width),float(r.options.height)};
+            root.cpu->markerOptions={float(r.options.samples),0,0,0};
+            root.cpu->pointIds=reinterpret_cast<uint32_t*>(r.captureDepth.range.gpu);
+            gpu::bind_pso(commands,r.depthCapture);
+            gpu::dispatch(commands,root.gpu,{(r.options.width+7)/8,(r.options.height+7)/8,1});
+            barrier(commands);
+            gpu::copy_memory(commands,{r.captureDepth.range.gpu,bytes},{r.readback.range.gpu+bytes*(r.options.samples+1),bytes});
         }
         gpu::barrier(commands,gpu::Stage::transfer,gpu::Access::transfer_write,gpu::Stage::host,gpu::Access::host_read);
     }
@@ -302,7 +344,21 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
         const size_t bytes=size_t(r.options.width)*r.options.height*4;
         capture->rgba.resize(bytes); std::memcpy(capture->rgba.data(),r.readback.range.cpu,bytes);
         capture->ids.clear();
-        if (r.options.ids) { capture->ids.resize(bytes/4); std::memcpy(capture->ids.data(),r.readback.range.cpu+bytes,bytes); }
+        capture->sampleIds.clear(); capture->minimumSampleDepth.clear();
+        if (r.options.ids) {
+            capture->sampleIds.resize(bytes/4*r.options.samples);
+            std::memcpy(capture->sampleIds.data(),r.readback.range.cpu+bytes,bytes*r.options.samples);
+            capture->ids.resize(bytes/4);
+            for (size_t pixel=0;pixel<capture->ids.size();++pixel) {
+                capture->ids[pixel]=0;
+                for (uint32_t sample=0;sample<r.options.samples;++sample)
+                    if (const auto id=capture->sampleIds[pixel*r.options.samples+sample]) { capture->ids[pixel]=id; break; }
+            }
+        }
+        if (capture->depthRequested) {
+            capture->minimumSampleDepth.resize(bytes/4);
+            std::memcpy(capture->minimumSampleDepth.data(),r.readback.range.cpu+bytes*(r.options.samples+1),bytes);
+        }
     }
     return measurement;
 }

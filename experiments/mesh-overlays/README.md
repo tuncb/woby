@@ -92,7 +92,9 @@ All methods retain the same original geometry, marker IDs, and control edge
 buffer in a process. This isolates drawing costs from residency changes. The
 native path does not use that edge buffer for visible surface edges; its possible
 memory saving is reported as a calculated payload, not a measured VRAM reduction.
-No geometry decimation, marker sampling, or visibility culling is implemented.
+The default edge comparison does not decimate geometry, sample markers, or cull
+their visibility. The separate visibility diagnostic below constructs filtered
+draw lists outside its timed frames.
 Model colors are deterministic per group; global opacity is the transparency
 control. Arbitrary saved scenes, imported lines, detectors, and interleaved opaque
 and transparent groups remain production-integration work.
@@ -109,6 +111,28 @@ uv run experiments/mesh-overlays/analyze.py build/overlay-summary-new `
 
 See [the measured results](../../doc/overlay-prototype-results.md) for the
 initial five-model comparison and the recommended integration scope.
+
+## Vertex visibility diagnostic
+
+Add `--visibility` to run the offline marker-visibility investigation. It enables
+all-sample ID capture and compares all markers, whole-footprint frustum culling,
+conservative opaque-depth culling, a deliberately unsafe center-only test, and
+the set of original IDs that contribute to the baseline's final MSAA image.
+The latter is called `oracle`: discovering that list requires the original draw,
+so its timing is an upper bound on potential savings, not an implemented speedup.
+
+All readback, CPU classification, selection construction, and upload are excluded
+from timed frames. The marker shader reads the original marker offset through
+the compacted list, preserving order and provenance. Every preserving variant
+must match the baseline's RGBA bytes and all picking samples or the run fails.
+This experiment covers opaque markers; final IDs do not encode every blended
+contribution from transparent markers.
+
+By default it tests 1/4/8-pixel markers with surfaces/edges and alone. Use
+`--point-size 4`, `--solid 1`, `--zoom 0.35`, or `--orthographic` for controls. The
+same serial-run and memory guards apply. See the
+[investigation and measured results](../../doc/vertex-visibility-investigation.md)
+for reproduction, limits, and the proposed next GPU prototypes.
 
 References: [issue 106](https://github.com/tuncb/woby/issues/106),
 [Khronos barycentric sample](https://docs.vulkan.org/samples/latest/samples/extensions/fragment_shader_barycentric/README.html).

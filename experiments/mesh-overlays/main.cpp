@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "visibility_run.h"
 #include "obj_mesh.h"
 #include "utf8_path.h"
 #include <nlohmann/json.hpp>
@@ -45,13 +46,16 @@ int main(int argc,char** argv) {
         o::Options options;
         int rounds=3;
         double seconds=2,warmup=1;
-        bool fixture=false,orthographic=false;
+        bool fixture=false,orthographic=false,visibility=false;
         float zoom=1;
+        float pointSize=0;
+        int solid=-1;
         std::string methodFilter,scenarioFilter;
         for (int i=1;i<argc;++i) {
             const std::string arg=argv[i];
             if (arg=="--fixture") { fixture=true; continue; }
             if (arg=="--orthographic") { orthographic=true; continue; }
+            if (arg=="--visibility") { visibility=true; continue; }
             if (i+1==argc) throw std::invalid_argument("Option needs a value: "+arg);
             const std::string value=argv[++i];
             if (arg=="--model") model=woby::pathFromUtf8(value);
@@ -64,6 +68,11 @@ int main(int argc,char** argv) {
             else if (arg=="--seconds") seconds=std::stod(value);
             else if (arg=="--warmup") warmup=std::stod(value);
             else if (arg=="--zoom") zoom=std::stof(value);
+            else if (arg=="--point-size") { pointSize=std::stof(value); o::validate(options,{.pointSize=pointSize}); }
+            else if (arg=="--solid") {
+                if (value!="0" && value!="1") throw std::invalid_argument("Solid must be 0 or 1");
+                solid=value=="1"?1:0;
+            }
             else if (arg=="--method") methodFilter=value;
             else if (arg=="--scenario") scenarioFilter=value;
             else throw std::invalid_argument("Unknown option: "+arg);
@@ -72,6 +81,7 @@ int main(int argc,char** argv) {
             || !std::isfinite(seconds) || seconds<=0 || seconds>60
             || !std::isfinite(warmup) || warmup<0 || warmup>60)
             throw std::invalid_argument("Usage: woby_overlay_prototype (--model FILE | --fixture) --output NEW_DIRECTORY [--samples 1|4 --ids 0|1 --rounds 3 --seconds 2 --warmup 1 --method NAME --scenario NAME --zoom 1 --orthographic]");
+        if (visibility) options.ids=true;
         o::validate(options,{});
         output=std::filesystem::absolute(output);
         if (std::filesystem::exists(output)) throw std::invalid_argument("Output directory must be new");
@@ -87,6 +97,11 @@ int main(int argc,char** argv) {
         std::array<float,16> projection{};
         if (fixture) bx::mtxIdentity(projection.data());
         else projection=o::fittedProjection(mesh.bounds,options.width,options.height,zoom,orthographic);
+        if (visibility) {
+            o::measureVisibility(renderer,mesh,projection,{output,fixture?"fixture":std::filesystem::absolute(model).string(),
+                rounds,solid,seconds,warmup,pointSize,zoom,orthographic});
+            return 0;
+        }
         std::vector<o::Method> methods{o::Method::legacy,o::Method::ordered};
         if (gpu::get_device_caps(renderer.device).fragment_barycentric) methods.push_back(o::Method::barycentric);
         methods.push_back(o::Method::pulled);

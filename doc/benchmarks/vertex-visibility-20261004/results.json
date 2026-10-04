@@ -1,0 +1,2592 @@
+{
+  "schema": 1,
+  "notes": "Three-round medians of draw-only GPU measurements. All offline readback/classification/compaction/upload costs are excluded. Oracle is a known-contributor upper bound, not an implemented faster visibility algorithm.",
+  "runs": [
+    {
+      "camera_matrix": [
+        0.4499015808105469,
+        -0.42457079887390137,
+        0.0034490881953388453,
+        -0.8524512648582458,
+        -0.8641801476478577,
+        -0.2210361808538437,
+        0.0017956328811123967,
+        -0.44379541277885437,
+        0.0,
+        1.6645969152450562,
+        0.0011181577574461699,
+        -0.27635565400123596,
+        1.1048671007156372,
+        7.059486389160156,
+        0.07837679982185364,
+        12.102605819702148
+      ],
+      "device": "NVIDIA GeForce RTX 3070 Laptop GPU",
+      "experiment": "vertex_visibility_static_selection",
+      "height": 720,
+      "id_attachment": true,
+      "markers": 38414391,
+      "measurement_seconds": 1.0,
+      "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "notes": "Offline current-frame depth readback, CPU selection, compaction and upload excluded from draw timings. Oracle selection uses all final MSAA marker IDs and is an upper bound, not an executable faster visibility algorithm. Selections preserve order and original IDs. Center-only selection intentionally tests an unsafe approximation. Reversed-depth min pyramid covers full padded square footprints; no transparent occluders. Quad area is a geometric estimate, not fragment invocation count.",
+      "orthographic": false,
+      "retained_geometry_bytes": 4110709572,
+      "rounds": 3,
+      "samples": 4,
+      "schema": 1,
+      "triangles": 75771986,
+      "vertices": 38414391,
+      "warmup_seconds": 0.5,
+      "width": 1280,
+      "zoom": 1.0,
+      "run": "vertex-beartrap-fit",
+      "guard": {
+        "command": [
+          "D:\\.worktree\\woby-overlay-build\\bin\\Release\\woby_overlay_prototype.exe",
+          "--model",
+          "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+          "--output",
+          "D:\\.worktree\\woby-overlay-build\\measurements\\vertex-beartrap-fit\\captures",
+          "--visibility",
+          "--rounds",
+          "3",
+          "--seconds",
+          "1",
+          "--warmup",
+          "0.5"
+        ],
+        "status": "completed",
+        "exit_code": 0,
+        "elapsed_seconds": 400.6391854000103,
+        "peak_private_bytes": 13071605760,
+        "minimum_available_bytes": 40808144896,
+        "sample_interval_seconds": 0.2,
+        "private_limit_gib": 38,
+        "available_limit_gib": 6,
+        "overlapping_workloads": [],
+        "source_revision": "c58a9dec36225c13ff2aed31bf1580ae284a3702",
+        "source_sha256": {
+          "experiments\\mesh-overlays\\analysis_tests.py": "59fa27a39d2d5985126fe82733471c90f007108be778d62531c20093e4b04468",
+          "experiments\\mesh-overlays\\analyze.py": "ca07449235525f20b70b5b58b2cc2ed394bbb8c4f0dfd5a46d632b63f2af6a46",
+          "experiments\\mesh-overlays\\CMakeLists.txt": "62d8b210380295e87c196afcec891cd909bd2420cba75b557cbc6fa0713eff14",
+          "experiments\\mesh-overlays\\main.cpp": "ab0c79d7b3a3bb8af81d6fc914e230cf6211b2eeae96f28dd4aaab594bbc43c5",
+          "experiments\\mesh-overlays\\overlay.slang": "2ff364b1c6f221e143d5a234f58214afb73cf1695529f7d83e3df4783d3e958f",
+          "experiments\\mesh-overlays\\README.md": "6ed42fd34ca7c18e33ad7ee97d4554ddb2771a3fccf04720662c773d41692c49",
+          "experiments\\mesh-overlays\\renderer.cpp": "a7fc3fe3ffe22b442a5b36c440102d688c5de5f76d9109fd60ec0db0d1994acf",
+          "experiments\\mesh-overlays\\renderer.h": "54ede48d676a4cb1c3ca3d51ffd915942462c50ee920c1bc68873e26c9dd0ee6",
+          "experiments\\mesh-overlays\\run.py": "52b89fc8e9be112b8b11fcf8c6e809b8e83d279f5c0382d28c4bec34118ab2b6",
+          "experiments\\mesh-overlays\\tests.cpp": "e661b42f2387230d8afb63d12acf0b61c18ce326a87b72f3ed049d74e4ac2c9a",
+          "experiments\\mesh-overlays\\visibility.cpp": "b576ac0628a4571ae8146c1cad6bcaeac911bc16cee5375b6fa554b1f4ecac6c",
+          "experiments\\mesh-overlays\\visibility.h": "62266c7755333fbabc8a135732ebf98da0d3d809ceb7fd5371c4b06384f0c66d",
+          "experiments\\mesh-overlays\\visibility_run.cpp": "de05ba2cb1e1bfcdb3c41a5171d521779f160b800f564197edd8c9b95cf0d2c5",
+          "experiments\\mesh-overlays\\visibility_run.h": "fe81e14e0c663e040a69813eda4affe32b90e1821f82306d08e67d482585d1af",
+          "shaders\\native\\woby.slang": "f1d9d07515066c96536333ba176a5b0043f1941f253a54d63500e79985b22243",
+          "shaders\\native\\root.h": "24d455efeecf53a5753d4424d876341bdb84e4c04cd49d3d8fbf3f8da5b2a7ef",
+          "src\\scene_mesh_preparation.cpp": "263a0e09435ae6984209f79f1fcb33ede0cc8e0a5f800c207484d87c47bde368",
+          "src\\obj_mesh.cpp": "8bea04fdfa6fb3d61e9f146d644be4c829b11ec5e1b0fd160aa99cd7b0c82f49",
+          "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+          "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f"
+        },
+        "model_sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329",
+        "executable_sha256": "00f9e016d6bd271e2f13c19cdfbc8a21434adf232f8a178f1f6a82ae3d58412f"
+      },
+      "raw_results": "D:\\.worktree\\woby-overlay-build\\measurements\\vertex-beartrap-fit\\captures\\results.json",
+      "raw_sha256": "d67dbebef040b3f9d6d9c26d5b590b83df23250f202ca3888641024a2ac99f50",
+      "capture_sha256": {
+        "points_1-all-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_1-center-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_1-conservative-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_1-frustum-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_1-oracle-r0.png": "595461581e5ae3d40d48f6ba476a9ee5ffaecedd3d6b7859c6c05951af944c23",
+        "points_4-all-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_4-center-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_4-conservative-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_4-frustum-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_4-oracle-r0.png": "798c9c0f523ff3e1b42888b6dd2ce83812b0e21eb1548a4027c05705ed0351cc",
+        "points_8-all-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "points_8-center-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "points_8-conservative-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "points_8-frustum-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "points_8-oracle-r0.png": "a3fa94df5168b1cd3d25dcf2e3191d9f58e7fa5fc96f5cc17cf1137d5e3f0cb7",
+        "surface_1-all-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_1-center-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_1-conservative-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_1-frustum-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_1-oracle-r0.png": "68e9bf0b76e322187fcbac3e8e7d9b7039c23a87c80fe903e89151fda54a935b",
+        "surface_4-all-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_4-center-r0.png": "b9ed7816867f18716068cbb112109daafd8a5ec0e32b326a183e1f9a751db56e",
+        "surface_4-conservative-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_4-frustum-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_4-oracle-r0.png": "3d6d8f14fe909311d6669b43f2c9914855539da0d8febc5b1b0b2dc8946bb178",
+        "surface_8-all-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926",
+        "surface_8-center-r0.png": "0c30983c2dc6498966a43176c9f35c2612d3fdea10460cf5b088ba6d1a8bf3d1",
+        "surface_8-conservative-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926",
+        "surface_8-frustum-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926",
+        "surface_8-oracle-r0.png": "f4f8586258fde60158fa45af62fff470b27b5751adb7f5d04a9bb8aaad4f6926"
+      }
+    },
+    {
+      "camera_matrix": [
+        0.4499015808105469,
+        -0.42457085847854614,
+        0.0036856597289443016,
+        -0.8524512648582458,
+        -0.8641801476478577,
+        -0.22103619575500488,
+        0.0019187945872545242,
+        -0.44379541277885437,
+        0.0,
+        1.6645969152450562,
+        0.0011948519386351109,
+        -0.27635568380355835,
+        1.1048673391342163,
+        7.059486389160156,
+        0.08374956250190735,
+        3.8585407733917236
+      ],
+      "device": "NVIDIA GeForce RTX 3070 Laptop GPU",
+      "experiment": "vertex_visibility_static_selection",
+      "height": 720,
+      "id_attachment": true,
+      "markers": 38414391,
+      "measurement_seconds": 1.0,
+      "model": "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+      "notes": "Offline current-frame depth readback, CPU selection, compaction and upload excluded from draw timings. Oracle selection uses all final MSAA marker IDs and is an upper bound, not an executable faster visibility algorithm. Selections preserve order and original IDs. Center-only selection intentionally tests an unsafe approximation. Reversed-depth min pyramid covers full padded square footprints; no transparent occluders. Quad area is a geometric estimate, not fragment invocation count.",
+      "orthographic": false,
+      "retained_geometry_bytes": 4110709572,
+      "rounds": 3,
+      "samples": 4,
+      "schema": 1,
+      "triangles": 75771986,
+      "vertices": 38414391,
+      "warmup_seconds": 0.5,
+      "width": 1280,
+      "zoom": 0.3499999940395355,
+      "run": "vertex-beartrap-close",
+      "guard": {
+        "command": [
+          "D:\\.worktree\\woby-overlay-build\\bin\\Release\\woby_overlay_prototype.exe",
+          "--model",
+          "D:\\temp\\obj_tests\\20190810_BearTrap_Ground_Model.obj",
+          "--output",
+          "D:\\.worktree\\woby-overlay-build\\measurements\\vertex-beartrap-close\\captures",
+          "--visibility",
+          "--rounds",
+          "3",
+          "--seconds",
+          "1",
+          "--warmup",
+          "0.5",
+          "--point-size",
+          "4",
+          "--zoom",
+          "0.35"
+        ],
+        "status": "completed",
+        "exit_code": 0,
+        "elapsed_seconds": 115.64232909999555,
+        "peak_private_bytes": 13071015936,
+        "minimum_available_bytes": 40474669056,
+        "sample_interval_seconds": 0.2,
+        "private_limit_gib": 38,
+        "available_limit_gib": 6,
+        "overlapping_workloads": [],
+        "source_revision": "c58a9dec36225c13ff2aed31bf1580ae284a3702",
+        "source_sha256": {
+          "experiments\\mesh-overlays\\analysis_tests.py": "59fa27a39d2d5985126fe82733471c90f007108be778d62531c20093e4b04468",
+          "experiments\\mesh-overlays\\analyze.py": "ca07449235525f20b70b5b58b2cc2ed394bbb8c4f0dfd5a46d632b63f2af6a46",
+          "experiments\\mesh-overlays\\CMakeLists.txt": "62d8b210380295e87c196afcec891cd909bd2420cba75b557cbc6fa0713eff14",
+          "experiments\\mesh-overlays\\main.cpp": "ab0c79d7b3a3bb8af81d6fc914e230cf6211b2eeae96f28dd4aaab594bbc43c5",
+          "experiments\\mesh-overlays\\overlay.slang": "2ff364b1c6f221e143d5a234f58214afb73cf1695529f7d83e3df4783d3e958f",
+          "experiments\\mesh-overlays\\README.md": "6ed42fd34ca7c18e33ad7ee97d4554ddb2771a3fccf04720662c773d41692c49",
+          "experiments\\mesh-overlays\\renderer.cpp": "a7fc3fe3ffe22b442a5b36c440102d688c5de5f76d9109fd60ec0db0d1994acf",
+          "experiments\\mesh-overlays\\renderer.h": "54ede48d676a4cb1c3ca3d51ffd915942462c50ee920c1bc68873e26c9dd0ee6",
+          "experiments\\mesh-overlays\\run.py": "52b89fc8e9be112b8b11fcf8c6e809b8e83d279f5c0382d28c4bec34118ab2b6",
+          "experiments\\mesh-overlays\\tests.cpp": "e661b42f2387230d8afb63d12acf0b61c18ce326a87b72f3ed049d74e4ac2c9a",
+          "experiments\\mesh-overlays\\visibility.cpp": "b576ac0628a4571ae8146c1cad6bcaeac911bc16cee5375b6fa554b1f4ecac6c",
+          "experiments\\mesh-overlays\\visibility.h": "62266c7755333fbabc8a135732ebf98da0d3d809ceb7fd5371c4b06384f0c66d",
+          "experiments\\mesh-overlays\\visibility_run.cpp": "de05ba2cb1e1bfcdb3c41a5171d521779f160b800f564197edd8c9b95cf0d2c5",
+          "experiments\\mesh-overlays\\visibility_run.h": "fe81e14e0c663e040a69813eda4affe32b90e1821f82306d08e67d482585d1af",
+          "shaders\\native\\woby.slang": "f1d9d07515066c96536333ba176a5b0043f1941f253a54d63500e79985b22243",
+          "shaders\\native\\root.h": "24d455efeecf53a5753d4424d876341bdb84e4c04cd49d3d8fbf3f8da5b2a7ef",
+          "src\\scene_mesh_preparation.cpp": "263a0e09435ae6984209f79f1fcb33ede0cc8e0a5f800c207484d87c47bde368",
+          "src\\obj_mesh.cpp": "8bea04fdfa6fb3d61e9f146d644be4c829b11ec5e1b0fd160aa99cd7b0c82f49",
+          "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+          "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f"
+        },
+        "model_sha256": "7abcb6005617270f3c799292991b858a16e0cddf39b9655eb3f1d691b2a45329",
+        "executable_sha256": "00f9e016d6bd271e2f13c19cdfbc8a21434adf232f8a178f1f6a82ae3d58412f"
+      },
+      "raw_results": "D:\\.worktree\\woby-overlay-build\\measurements\\vertex-beartrap-close\\captures\\results.json",
+      "raw_sha256": "804b3728c911d957c27f93eb055b8c4b1cb822d13b9ca8e9b050e1b410b4aae6",
+      "capture_sha256": {
+        "points_4-all-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "points_4-center-r0.png": "009d7aab021334785b8dde7868b6755f16dc55c7759f0691a63fa8fed3f94bc9",
+        "points_4-conservative-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "points_4-frustum-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "points_4-oracle-r0.png": "d4bc874ad3a123c559d035521247b1d3bd9cc4d856bb4e946acb8dfbc665041f",
+        "surface_4-all-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3",
+        "surface_4-center-r0.png": "58494be664108d4490fa510813cca0ee13dd6434e5ace04f5bd5dfe777668e22",
+        "surface_4-conservative-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3",
+        "surface_4-frustum-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3",
+        "surface_4-oracle-r0.png": "c9c8ee6f1c9695676ee044a6e0dd6feea21b2dcfc563cbeee8b180e51af09bd3"
+      }
+    },
+    {
+      "camera_matrix": [
+        0.4499015808105469,
+        -0.42457082867622375,
+        0.003449189942330122,
+        -0.8524513244628906,
+        -0.8641802072525024,
+        -0.2210361808538437,
+        0.0017956857336685061,
+        -0.44379541277885437,
+        -7.258941447929601e-09,
+        1.6645970344543457,
+        0.0011181907029822469,
+        -0.27635565400123596,
+        0.5970870852470398,
+        4.353714942932129,
+        0.5542294979095459,
+        115.87596893310547
+      ],
+      "device": "NVIDIA GeForce RTX 3070 Laptop GPU",
+      "experiment": "vertex_visibility_static_selection",
+      "height": 720,
+      "id_attachment": true,
+      "markers": 9021669,
+      "measurement_seconds": 1.0,
+      "model": "D:\\temp\\obj_tests\\san-miguel.obj",
+      "notes": "Offline current-frame depth readback, CPU selection, compaction and upload excluded from draw timings. Oracle selection uses all final MSAA marker IDs and is an upper bound, not an executable faster visibility algorithm. Selections preserve order and original IDs. Center-only selection intentionally tests an unsafe approximation. Reversed-depth min pyramid covers full padded square footprints; no transparent occluders. Quad area is a geometric estimate, not fragment invocation count.",
+      "orthographic": false,
+      "retained_geometry_bytes": 684076352,
+      "rounds": 3,
+      "samples": 4,
+      "schema": 1,
+      "triangles": 9980699,
+      "vertices": 9021391,
+      "warmup_seconds": 0.5,
+      "width": 1280,
+      "zoom": 1.0,
+      "run": "vertex-san-miguel-fit",
+      "guard": {
+        "command": [
+          "D:\\.worktree\\woby-overlay-build\\bin\\Release\\woby_overlay_prototype.exe",
+          "--model",
+          "D:\\temp\\obj_tests\\san-miguel.obj",
+          "--output",
+          "D:\\.worktree\\woby-overlay-build\\measurements\\vertex-san-miguel-fit\\captures",
+          "--visibility",
+          "--rounds",
+          "3",
+          "--seconds",
+          "1",
+          "--warmup",
+          "0.5",
+          "--point-size",
+          "4"
+        ],
+        "status": "completed",
+        "exit_code": 0,
+        "elapsed_seconds": 72.59010400000261,
+        "peak_private_bytes": 2614001664,
+        "minimum_available_bytes": 50089725952,
+        "sample_interval_seconds": 0.2,
+        "private_limit_gib": 38,
+        "available_limit_gib": 6,
+        "overlapping_workloads": [],
+        "source_revision": "c58a9dec36225c13ff2aed31bf1580ae284a3702",
+        "source_sha256": {
+          "experiments\\mesh-overlays\\analysis_tests.py": "59fa27a39d2d5985126fe82733471c90f007108be778d62531c20093e4b04468",
+          "experiments\\mesh-overlays\\analyze.py": "ca07449235525f20b70b5b58b2cc2ed394bbb8c4f0dfd5a46d632b63f2af6a46",
+          "experiments\\mesh-overlays\\CMakeLists.txt": "62d8b210380295e87c196afcec891cd909bd2420cba75b557cbc6fa0713eff14",
+          "experiments\\mesh-overlays\\main.cpp": "ab0c79d7b3a3bb8af81d6fc914e230cf6211b2eeae96f28dd4aaab594bbc43c5",
+          "experiments\\mesh-overlays\\overlay.slang": "2ff364b1c6f221e143d5a234f58214afb73cf1695529f7d83e3df4783d3e958f",
+          "experiments\\mesh-overlays\\README.md": "6ed42fd34ca7c18e33ad7ee97d4554ddb2771a3fccf04720662c773d41692c49",
+          "experiments\\mesh-overlays\\renderer.cpp": "a7fc3fe3ffe22b442a5b36c440102d688c5de5f76d9109fd60ec0db0d1994acf",
+          "experiments\\mesh-overlays\\renderer.h": "54ede48d676a4cb1c3ca3d51ffd915942462c50ee920c1bc68873e26c9dd0ee6",
+          "experiments\\mesh-overlays\\run.py": "52b89fc8e9be112b8b11fcf8c6e809b8e83d279f5c0382d28c4bec34118ab2b6",
+          "experiments\\mesh-overlays\\tests.cpp": "e661b42f2387230d8afb63d12acf0b61c18ce326a87b72f3ed049d74e4ac2c9a",
+          "experiments\\mesh-overlays\\visibility.cpp": "b576ac0628a4571ae8146c1cad6bcaeac911bc16cee5375b6fa554b1f4ecac6c",
+          "experiments\\mesh-overlays\\visibility.h": "62266c7755333fbabc8a135732ebf98da0d3d809ceb7fd5371c4b06384f0c66d",
+          "experiments\\mesh-overlays\\visibility_run.cpp": "de05ba2cb1e1bfcdb3c41a5171d521779f160b800f564197edd8c9b95cf0d2c5",
+          "experiments\\mesh-overlays\\visibility_run.h": "fe81e14e0c663e040a69813eda4affe32b90e1821f82306d08e67d482585d1af",
+          "shaders\\native\\woby.slang": "f1d9d07515066c96536333ba176a5b0043f1941f253a54d63500e79985b22243",
+          "shaders\\native\\root.h": "24d455efeecf53a5753d4424d876341bdb84e4c04cd49d3d8fbf3f8da5b2a7ef",
+          "src\\scene_mesh_preparation.cpp": "263a0e09435ae6984209f79f1fcb33ede0cc8e0a5f800c207484d87c47bde368",
+          "src\\obj_mesh.cpp": "8bea04fdfa6fb3d61e9f146d644be4c829b11ec5e1b0fd160aa99cd7b0c82f49",
+          "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+          "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f"
+        },
+        "model_sha256": "22533258be1d94aa1ece29053e98f11c91ebc17a8a3626545dee3cecf90b71e3",
+        "executable_sha256": "00f9e016d6bd271e2f13c19cdfbc8a21434adf232f8a178f1f6a82ae3d58412f"
+      },
+      "raw_results": "D:\\.worktree\\woby-overlay-build\\measurements\\vertex-san-miguel-fit\\captures\\results.json",
+      "raw_sha256": "a634b12b9b4d742c2ec3f0c9075718b41fc116e88ab719e9d631dea52ec65b44",
+      "capture_sha256": {
+        "points_4-all-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-center-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-conservative-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-frustum-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "points_4-oracle-r0.png": "5fffc3ad38754b49be1a08f97be62f1f82b3febb7a53cd8e2a1d1679ef07382b",
+        "surface_4-all-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-center-r0.png": "a44802f7e1546137e1f8bac0730d140383998d04cbda9ad92a9e9585c987dddc",
+        "surface_4-conservative-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-frustum-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68",
+        "surface_4-oracle-r0.png": "26d62368f9a0475e8ae9eb7cb7fb58b7176d9fcba262822838ccb6f8a8c03a68"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_1",
+      "center_occluded": 26342788,
+      "center_outside": 0,
+      "center_retained": 12071603,
+      "conservative_retained": 21760828,
+      "depth_clipped": 0,
+      "footprint_occluded": 16653563,
+      "frustum_retained": 38414391,
+      "identified_pixels": 47172,
+      "offline_classification_seconds": 2.3368688,
+      "offscreen": 0,
+      "oracle_retained": 140055,
+      "point_size": 1.0,
+      "projected_quad_pixels": 38414391.00268555,
+      "solid": true,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_4",
+      "center_occluded": 26342788,
+      "center_outside": 0,
+      "center_retained": 12071603,
+      "conservative_retained": 27632178,
+      "depth_clipped": 0,
+      "footprint_occluded": 10782213,
+      "frustum_retained": 38414391,
+      "identified_pixels": 50032,
+      "offline_classification_seconds": 2.3778944,
+      "offscreen": 0,
+      "oracle_retained": 88768,
+      "point_size": 4.0,
+      "projected_quad_pixels": 614630256.0233154,
+      "solid": true,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_8",
+      "center_occluded": 26342788,
+      "center_outside": 0,
+      "center_retained": 12071603,
+      "conservative_retained": 31888567,
+      "depth_clipped": 0,
+      "footprint_occluded": 6525824,
+      "frustum_retained": 38414391,
+      "identified_pixels": 52362,
+      "offline_classification_seconds": 2.607231,
+      "offscreen": 0,
+      "oracle_retained": 68882,
+      "point_size": 8.0,
+      "projected_quad_pixels": 2458521024.0925293,
+      "solid": true,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_1",
+      "center_occluded": 0,
+      "center_outside": 0,
+      "center_retained": 38414391,
+      "conservative_retained": 38414391,
+      "depth_clipped": 0,
+      "footprint_occluded": 0,
+      "frustum_retained": 38414391,
+      "identified_pixels": 47525,
+      "offline_classification_seconds": 2.4192102,
+      "offscreen": 0,
+      "oracle_retained": 142775,
+      "point_size": 1.0,
+      "projected_quad_pixels": 38414391.00268555,
+      "solid": false,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_4",
+      "center_occluded": 0,
+      "center_outside": 0,
+      "center_retained": 38414391,
+      "conservative_retained": 38414391,
+      "depth_clipped": 0,
+      "footprint_occluded": 0,
+      "frustum_retained": 38414391,
+      "identified_pixels": 50044,
+      "offline_classification_seconds": 2.404084,
+      "offscreen": 0,
+      "oracle_retained": 88768,
+      "point_size": 4.0,
+      "projected_quad_pixels": 614630256.0233154,
+      "solid": false,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_8",
+      "center_occluded": 0,
+      "center_outside": 0,
+      "center_retained": 38414391,
+      "conservative_retained": 38414391,
+      "depth_clipped": 0,
+      "footprint_occluded": 0,
+      "frustum_retained": 38414391,
+      "identified_pixels": 52362,
+      "offline_classification_seconds": 2.475241,
+      "offscreen": 0,
+      "oracle_retained": 68882,
+      "point_size": 8.0,
+      "projected_quad_pixels": 2458521024.0925293,
+      "solid": false,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "surface_4",
+      "center_occluded": 30189552,
+      "center_outside": 14387,
+      "center_retained": 7457313,
+      "conservative_retained": 14459948,
+      "depth_clipped": 0,
+      "footprint_occluded": 23201304,
+      "frustum_retained": 37661252,
+      "identified_pixels": 482599,
+      "offline_classification_seconds": 2.5950555,
+      "offscreen": 753139,
+      "oracle_retained": 649935,
+      "point_size": 4.0,
+      "projected_quad_pixels": 602349254.639344,
+      "solid": true,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "points_4",
+      "center_occluded": 0,
+      "center_outside": 14387,
+      "center_retained": 37646865,
+      "conservative_retained": 37661252,
+      "depth_clipped": 0,
+      "footprint_occluded": 0,
+      "frustum_retained": 37661252,
+      "identified_pixels": 491531,
+      "offline_classification_seconds": 2.7734364,
+      "offscreen": 753139,
+      "oracle_retained": 654980,
+      "point_size": 4.0,
+      "projected_quad_pixels": 602349254.639344,
+      "solid": false,
+      "submitted": 38414391
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "surface_4",
+      "center_occluded": 8301589,
+      "center_outside": 0,
+      "center_retained": 720080,
+      "conservative_retained": 2226156,
+      "depth_clipped": 0,
+      "footprint_occluded": 6795513,
+      "frustum_retained": 9021669,
+      "identified_pixels": 5524,
+      "offline_classification_seconds": 0.628138,
+      "offscreen": 0,
+      "oracle_retained": 3233,
+      "point_size": 4.0,
+      "projected_quad_pixels": 144346703.99975586,
+      "solid": true,
+      "submitted": 9021669
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "points_4",
+      "center_occluded": 0,
+      "center_outside": 0,
+      "center_retained": 9021669,
+      "conservative_retained": 9021669,
+      "depth_clipped": 0,
+      "footprint_occluded": 0,
+      "frustum_retained": 9021669,
+      "identified_pixels": 17200,
+      "offline_classification_seconds": 0.7241981,
+      "offscreen": 0,
+      "oracle_retained": 8915,
+      "point_size": 4.0,
+      "projected_quad_pixels": 144346703.99975586,
+      "solid": false,
+      "submitted": 9021669
+    }
+  ],
+  "results": [
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_1",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 59.866624,
+      "gpu_ms_rounds": [
+        59.40736,
+        59.866624,
+        60.278784
+      ],
+      "gpu_ms_minimum": 59.40736,
+      "gpu_ms_maximum": 60.278784,
+      "point_and_resolve_ms": 45.052415999999994,
+      "point_and_resolve_ms_rounds": [
+        44.71039999999999,
+        45.052415999999994,
+        45.449728
+      ],
+      "point_and_resolve_ms_minimum": 44.71039999999999,
+      "point_and_resolve_ms_maximum": 45.449728,
+      "surface_ms": 14.796288,
+      "surface_ms_rounds": [
+        14.587904,
+        14.796288,
+        14.829056
+      ],
+      "surface_ms_minimum": 14.587904,
+      "surface_ms_maximum": 14.829056,
+      "cpu_submit_ms": 0.1895,
+      "cpu_submit_ms_rounds": [
+        0.20265,
+        0.17765,
+        0.1895
+      ],
+      "cpu_submit_ms_minimum": 0.17765,
+      "cpu_submit_ms_maximum": 0.20265
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_1",
+      "method": "frustum",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 59.78368,
+      "gpu_ms_rounds": [
+        59.669504,
+        59.78368,
+        60.289536
+      ],
+      "gpu_ms_minimum": 59.669504,
+      "gpu_ms_maximum": 60.289536,
+      "point_and_resolve_ms": 45.018112,
+      "point_and_resolve_ms_rounds": [
+        44.986368,
+        45.018112,
+        45.429248
+      ],
+      "point_and_resolve_ms_minimum": 44.986368,
+      "point_and_resolve_ms_maximum": 45.429248,
+      "surface_ms": 14.794751999999999,
+      "surface_ms_rounds": [
+        14.684159999999999,
+        14.794751999999999,
+        14.902272
+      ],
+      "surface_ms_minimum": 14.684159999999999,
+      "surface_ms_maximum": 14.902272,
+      "cpu_submit_ms": 0.2017,
+      "cpu_submit_ms_rounds": [
+        0.20134999999999997,
+        0.2051,
+        0.2017
+      ],
+      "cpu_submit_ms_minimum": 0.20134999999999997,
+      "cpu_submit_ms_maximum": 0.2051
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_1",
+      "method": "conservative",
+      "submitted_markers": 21760828,
+      "frames": 74,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 40.858624,
+      "gpu_ms_rounds": [
+        40.753152,
+        40.858624,
+        41.166848
+      ],
+      "gpu_ms_minimum": 40.753152,
+      "gpu_ms_maximum": 41.166848,
+      "point_and_resolve_ms": 25.94304,
+      "point_and_resolve_ms_rounds": [
+        25.841663999999998,
+        25.94304,
+        26.123264
+      ],
+      "point_and_resolve_ms_minimum": 25.841663999999998,
+      "point_and_resolve_ms_maximum": 26.123264,
+      "surface_ms": 14.963712,
+      "surface_ms_rounds": [
+        14.918655999999999,
+        14.963712,
+        15.044608
+      ],
+      "surface_ms_minimum": 14.918655999999999,
+      "surface_ms_maximum": 15.044608,
+      "cpu_submit_ms": 0.1895,
+      "cpu_submit_ms_rounds": [
+        0.1966,
+        0.1895,
+        0.185
+      ],
+      "cpu_submit_ms_minimum": 0.185,
+      "cpu_submit_ms_maximum": 0.1966
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_1",
+      "method": "center",
+      "submitted_markers": 12071603,
+      "frames": 102,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 41,
+      "gpu_ms": 28.971007999999998,
+      "gpu_ms_rounds": [
+        28.971007999999998,
+        28.951552,
+        29.198847999999998
+      ],
+      "gpu_ms_minimum": 28.951552,
+      "gpu_ms_maximum": 29.198847999999998,
+      "point_and_resolve_ms": 13.821952,
+      "point_and_resolve_ms_rounds": [
+        13.821952,
+        13.816831999999998,
+        13.930496
+      ],
+      "point_and_resolve_ms_minimum": 13.816831999999998,
+      "point_and_resolve_ms_maximum": 13.930496,
+      "surface_ms": 15.149056,
+      "surface_ms_rounds": [
+        15.126528,
+        15.149056,
+        15.269376
+      ],
+      "surface_ms_minimum": 15.126528,
+      "surface_ms_maximum": 15.269376,
+      "cpu_submit_ms": 0.1875,
+      "cpu_submit_ms_rounds": [
+        0.19490000000000002,
+        0.1875,
+        0.1856
+      ],
+      "cpu_submit_ms_minimum": 0.1856,
+      "cpu_submit_ms_maximum": 0.19490000000000002
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_1",
+      "method": "oracle",
+      "submitted_markers": 140055,
+      "frames": 187,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 15.49824,
+      "gpu_ms_rounds": [
+        15.255552,
+        15.670271999999999,
+        15.49824
+      ],
+      "gpu_ms_minimum": 15.255552,
+      "gpu_ms_maximum": 15.670271999999999,
+      "point_and_resolve_ms": 0.104448,
+      "point_and_resolve_ms_rounds": [
+        0.104448,
+        0.104448,
+        0.104448
+      ],
+      "point_and_resolve_ms_minimum": 0.104448,
+      "point_and_resolve_ms_maximum": 0.104448,
+      "surface_ms": 15.392767999999998,
+      "surface_ms_rounds": [
+        15.151104,
+        15.5648,
+        15.392767999999998
+      ],
+      "surface_ms_minimum": 15.151104,
+      "surface_ms_maximum": 15.5648,
+      "cpu_submit_ms": 0.1773,
+      "cpu_submit_ms_rounds": [
+        0.1773,
+        0.173,
+        0.1854
+      ],
+      "cpu_submit_ms_minimum": 0.173,
+      "cpu_submit_ms_maximum": 0.1854
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_4",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 100.80409599999999,
+      "gpu_ms_rounds": [
+        100.33971199999999,
+        100.80409599999999,
+        100.948992
+      ],
+      "gpu_ms_minimum": 100.33971199999999,
+      "gpu_ms_maximum": 100.948992,
+      "point_and_resolve_ms": 86.084608,
+      "point_and_resolve_ms_rounds": [
+        85.68473599999999,
+        86.084608,
+        86.184448
+      ],
+      "point_and_resolve_ms_minimum": 85.68473599999999,
+      "point_and_resolve_ms_maximum": 86.184448,
+      "surface_ms": 14.685696,
+      "surface_ms_rounds": [
+        14.604287999999999,
+        14.686207999999999,
+        14.685696
+      ],
+      "surface_ms_minimum": 14.604287999999999,
+      "surface_ms_maximum": 14.686207999999999,
+      "cpu_submit_ms": 0.2,
+      "cpu_submit_ms_rounds": [
+        0.2,
+        0.19369999999999998,
+        0.2157
+      ],
+      "cpu_submit_ms_minimum": 0.19369999999999998,
+      "cpu_submit_ms_maximum": 0.2157
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_4",
+      "method": "frustum",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 100.527616,
+      "gpu_ms_rounds": [
+        100.442112,
+        100.527616,
+        101.401088
+      ],
+      "gpu_ms_minimum": 100.442112,
+      "gpu_ms_maximum": 101.401088,
+      "point_and_resolve_ms": 85.91308799999999,
+      "point_and_resolve_ms_rounds": [
+        85.75999999999999,
+        85.91308799999999,
+        86.68415999999999
+      ],
+      "point_and_resolve_ms_minimum": 85.75999999999999,
+      "point_and_resolve_ms_maximum": 86.68415999999999,
+      "surface_ms": 14.602751999999999,
+      "surface_ms_rounds": [
+        14.602751999999999,
+        14.60224,
+        14.686207999999999
+      ],
+      "surface_ms_minimum": 14.60224,
+      "surface_ms_maximum": 14.686207999999999,
+      "cpu_submit_ms": 0.19565,
+      "cpu_submit_ms_rounds": [
+        0.2136,
+        0.19565,
+        0.1923
+      ],
+      "cpu_submit_ms_minimum": 0.1923,
+      "cpu_submit_ms_maximum": 0.2136
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_4",
+      "method": "conservative",
+      "submitted_markers": 27632178,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 87.292416,
+      "gpu_ms_rounds": [
+        86.831104,
+        87.292416,
+        87.41888
+      ],
+      "gpu_ms_minimum": 86.831104,
+      "gpu_ms_maximum": 87.41888,
+      "point_and_resolve_ms": 72.538112,
+      "point_and_resolve_ms_rounds": [
+        72.22988799999999,
+        72.538112,
+        72.734208
+      ],
+      "point_and_resolve_ms_minimum": 72.22988799999999,
+      "point_and_resolve_ms_maximum": 72.734208,
+      "surface_ms": 14.686207999999999,
+      "surface_ms_rounds": [
+        14.60224,
+        14.68672,
+        14.686207999999999
+      ],
+      "surface_ms_minimum": 14.60224,
+      "surface_ms_maximum": 14.68672,
+      "cpu_submit_ms": 0.1982,
+      "cpu_submit_ms_rounds": [
+        0.1982,
+        0.19315,
+        0.2025
+      ],
+      "cpu_submit_ms_minimum": 0.19315,
+      "cpu_submit_ms_maximum": 0.2025
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_4",
+      "method": "center",
+      "submitted_markers": 12071603,
+      "frames": 60,
+      "color_pixel_changes": 11,
+      "id_sample_changes": 5145,
+      "gpu_ms": 51.859455999999994,
+      "gpu_ms_rounds": [
+        51.67308799999999,
+        51.859455999999994,
+        52.010496
+      ],
+      "gpu_ms_minimum": 51.67308799999999,
+      "gpu_ms_maximum": 52.010496,
+      "point_and_resolve_ms": 37.081599999999995,
+      "point_and_resolve_ms_rounds": [
+        36.88704,
+        37.081599999999995,
+        37.14304
+      ],
+      "point_and_resolve_ms_minimum": 36.88704,
+      "point_and_resolve_ms_maximum": 37.14304,
+      "surface_ms": 14.831104,
+      "surface_ms_rounds": [
+        14.758911999999999,
+        14.832128,
+        14.831104
+      ],
+      "surface_ms_minimum": 14.758911999999999,
+      "surface_ms_maximum": 14.832128,
+      "cpu_submit_ms": 0.1931,
+      "cpu_submit_ms_rounds": [
+        0.20534999999999998,
+        0.1931,
+        0.18885
+      ],
+      "cpu_submit_ms_minimum": 0.18885,
+      "cpu_submit_ms_maximum": 0.20534999999999998
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_4",
+      "method": "oracle",
+      "submitted_markers": 88768,
+      "frames": 187,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 15.614463999999998,
+      "gpu_ms_rounds": [
+        15.489023999999999,
+        15.614463999999998,
+        15.616
+      ],
+      "gpu_ms_minimum": 15.489023999999999,
+      "gpu_ms_maximum": 15.616,
+      "point_and_resolve_ms": 0.094208,
+      "point_and_resolve_ms_rounds": [
+        0.094208,
+        0.094208,
+        0.095232
+      ],
+      "point_and_resolve_ms_minimum": 0.094208,
+      "point_and_resolve_ms_maximum": 0.095232,
+      "surface_ms": 15.519744,
+      "surface_ms_rounds": [
+        15.39584,
+        15.519744,
+        15.520767999999999
+      ],
+      "surface_ms_minimum": 15.39584,
+      "surface_ms_maximum": 15.520767999999999,
+      "cpu_submit_ms": 0.17395,
+      "cpu_submit_ms_rounds": [
+        0.1718,
+        0.17395,
+        0.1744
+      ],
+      "cpu_submit_ms_minimum": 0.1718,
+      "cpu_submit_ms_maximum": 0.1744
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_8",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 197.11334399999998,
+      "gpu_ms_rounds": [
+        197.001216,
+        197.147648,
+        197.11334399999998
+      ],
+      "gpu_ms_minimum": 197.001216,
+      "gpu_ms_maximum": 197.147648,
+      "point_and_resolve_ms": 182.381568,
+      "point_and_resolve_ms_rounds": [
+        182.08153599999997,
+        182.432768,
+        182.381568
+      ],
+      "point_and_resolve_ms_minimum": 182.08153599999997,
+      "point_and_resolve_ms_maximum": 182.432768,
+      "surface_ms": 14.685696,
+      "surface_ms_rounds": [
+        14.686207999999999,
+        14.685696,
+        14.685184
+      ],
+      "surface_ms_minimum": 14.685184,
+      "surface_ms_maximum": 14.686207999999999,
+      "cpu_submit_ms": 0.20215,
+      "cpu_submit_ms_rounds": [
+        0.20215,
+        0.20805,
+        0.19774999999999998
+      ],
+      "cpu_submit_ms_minimum": 0.19774999999999998,
+      "cpu_submit_ms_maximum": 0.20805
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_8",
+      "method": "frustum",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 197.021184,
+      "gpu_ms_rounds": [
+        197.021184,
+        196.99660799999998,
+        197.245952
+      ],
+      "gpu_ms_minimum": 196.99660799999998,
+      "gpu_ms_maximum": 197.245952,
+      "point_and_resolve_ms": 182.33651199999997,
+      "point_and_resolve_ms_rounds": [
+        182.33651199999997,
+        182.31040000000002,
+        182.56127999999998
+      ],
+      "point_and_resolve_ms_minimum": 182.31040000000002,
+      "point_and_resolve_ms_maximum": 182.56127999999998,
+      "surface_ms": 14.685184,
+      "surface_ms_rounds": [
+        14.685184,
+        14.685184,
+        14.685184
+      ],
+      "surface_ms_minimum": 14.685184,
+      "surface_ms_maximum": 14.685184,
+      "cpu_submit_ms": 0.1974,
+      "cpu_submit_ms_rounds": [
+        0.19695000000000001,
+        0.1974,
+        0.21239999999999998
+      ],
+      "cpu_submit_ms_minimum": 0.19695000000000001,
+      "cpu_submit_ms_maximum": 0.21239999999999998
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_8",
+      "method": "conservative",
+      "submitted_markers": 31888567,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 187.91321599999998,
+      "gpu_ms_rounds": [
+        187.987968,
+        187.91321599999998,
+        187.75091199999997
+      ],
+      "gpu_ms_minimum": 187.75091199999997,
+      "gpu_ms_maximum": 187.987968,
+      "point_and_resolve_ms": 173.2224,
+      "point_and_resolve_ms_rounds": [
+        173.2224,
+        173.22752,
+        173.065216
+      ],
+      "point_and_resolve_ms_minimum": 173.065216,
+      "point_and_resolve_ms_maximum": 173.22752,
+      "surface_ms": 14.686207999999999,
+      "surface_ms_rounds": [
+        14.686207999999999,
+        14.686207999999999,
+        14.686207999999999
+      ],
+      "surface_ms_minimum": 14.686207999999999,
+      "surface_ms_maximum": 14.686207999999999,
+      "cpu_submit_ms": 0.19465,
+      "cpu_submit_ms_rounds": [
+        0.2106,
+        0.19265,
+        0.19465
+      ],
+      "cpu_submit_ms_minimum": 0.19265,
+      "cpu_submit_ms_maximum": 0.2106
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_8",
+      "method": "center",
+      "submitted_markers": 12071603,
+      "frames": 60,
+      "color_pixel_changes": 8,
+      "id_sample_changes": 15302,
+      "gpu_ms": 106.97267199999999,
+      "gpu_ms_rounds": [
+        106.86207999999999,
+        106.977792,
+        106.97267199999999
+      ],
+      "gpu_ms_minimum": 106.86207999999999,
+      "gpu_ms_maximum": 106.977792,
+      "point_and_resolve_ms": 92.286464,
+      "point_and_resolve_ms_rounds": [
+        92.047872,
+        92.29311999999999,
+        92.286464
+      ],
+      "point_and_resolve_ms_minimum": 92.047872,
+      "point_and_resolve_ms_maximum": 92.29311999999999,
+      "surface_ms": 14.685696,
+      "surface_ms_rounds": [
+        14.685696,
+        14.685696,
+        14.685184
+      ],
+      "surface_ms_minimum": 14.685184,
+      "surface_ms_maximum": 14.685696,
+      "cpu_submit_ms": 0.20245,
+      "cpu_submit_ms_rounds": [
+        0.20245,
+        0.21495,
+        0.19355
+      ],
+      "cpu_submit_ms_minimum": 0.19355,
+      "cpu_submit_ms_maximum": 0.21495
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "surface_8",
+      "method": "oracle",
+      "submitted_markers": 68882,
+      "frames": 186,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 15.82592,
+      "gpu_ms_rounds": [
+        15.698944,
+        15.82592,
+        15.82592
+      ],
+      "gpu_ms_minimum": 15.698944,
+      "gpu_ms_maximum": 15.82592,
+      "point_and_resolve_ms": 0.1792,
+      "point_and_resolve_ms_rounds": [
+        0.178176,
+        0.1792,
+        0.1792
+      ],
+      "point_and_resolve_ms_minimum": 0.178176,
+      "point_and_resolve_ms_maximum": 0.1792,
+      "surface_ms": 15.646719999999998,
+      "surface_ms_rounds": [
+        15.520767999999999,
+        15.646719999999998,
+        15.646719999999998
+      ],
+      "surface_ms_minimum": 15.520767999999999,
+      "surface_ms_maximum": 15.646719999999998,
+      "cpu_submit_ms": 0.17170000000000002,
+      "cpu_submit_ms_rounds": [
+        0.17035,
+        0.17170000000000002,
+        0.18225
+      ],
+      "cpu_submit_ms_minimum": 0.17035,
+      "cpu_submit_ms_maximum": 0.18225
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_1",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 66,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 46.013951999999996,
+      "gpu_ms_rounds": [
+        45.702144,
+        46.013951999999996,
+        46.027263999999995
+      ],
+      "gpu_ms_minimum": 45.702144,
+      "gpu_ms_maximum": 46.027263999999995,
+      "point_and_resolve_ms": 46.013951999999996,
+      "point_and_resolve_ms_rounds": [
+        45.702144,
+        46.013951999999996,
+        46.027263999999995
+      ],
+      "point_and_resolve_ms_minimum": 45.702144,
+      "point_and_resolve_ms_maximum": 46.027263999999995,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.183,
+      "cpu_submit_ms_rounds": [
+        0.1885,
+        0.1829,
+        0.183
+      ],
+      "cpu_submit_ms_minimum": 0.1829,
+      "cpu_submit_ms_maximum": 0.1885
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_1",
+      "method": "frustum",
+      "submitted_markers": 38414391,
+      "frames": 66,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 46.163456,
+      "gpu_ms_rounds": [
+        46.163456,
+        46.055424,
+        46.427136
+      ],
+      "gpu_ms_minimum": 46.055424,
+      "gpu_ms_maximum": 46.427136,
+      "point_and_resolve_ms": 46.163456,
+      "point_and_resolve_ms_rounds": [
+        46.163456,
+        46.055424,
+        46.427136
+      ],
+      "point_and_resolve_ms_minimum": 46.055424,
+      "point_and_resolve_ms_maximum": 46.427136,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.18080000000000002,
+      "cpu_submit_ms_rounds": [
+        0.18445,
+        0.17885,
+        0.18080000000000002
+      ],
+      "cpu_submit_ms_minimum": 0.17885,
+      "cpu_submit_ms_maximum": 0.18445
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_1",
+      "method": "conservative",
+      "submitted_markers": 38414391,
+      "frames": 66,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 46.0672,
+      "gpu_ms_rounds": [
+        46.055424,
+        46.244352,
+        46.0672
+      ],
+      "gpu_ms_minimum": 46.055424,
+      "gpu_ms_maximum": 46.244352,
+      "point_and_resolve_ms": 46.0672,
+      "point_and_resolve_ms_rounds": [
+        46.055424,
+        46.244352,
+        46.0672
+      ],
+      "point_and_resolve_ms_minimum": 46.055424,
+      "point_and_resolve_ms_maximum": 46.244352,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.19125,
+      "cpu_submit_ms_rounds": [
+        0.1916,
+        0.1759,
+        0.19125
+      ],
+      "cpu_submit_ms_minimum": 0.1759,
+      "cpu_submit_ms_maximum": 0.1916
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_1",
+      "method": "center",
+      "submitted_markers": 38414391,
+      "frames": 66,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 46.12096,
+      "gpu_ms_rounds": [
+        46.056448,
+        46.12096,
+        46.261759999999995
+      ],
+      "gpu_ms_minimum": 46.056448,
+      "gpu_ms_maximum": 46.261759999999995,
+      "point_and_resolve_ms": 46.12096,
+      "point_and_resolve_ms_rounds": [
+        46.056448,
+        46.12096,
+        46.261759999999995
+      ],
+      "point_and_resolve_ms_minimum": 46.056448,
+      "point_and_resolve_ms_maximum": 46.261759999999995,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.18480000000000002,
+      "cpu_submit_ms_rounds": [
+        0.18145,
+        0.18480000000000002,
+        0.18785000000000002
+      ],
+      "cpu_submit_ms_minimum": 0.18145,
+      "cpu_submit_ms_maximum": 0.18785000000000002
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_1",
+      "method": "oracle",
+      "submitted_markers": 142775,
+      "frames": 9873,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 0.106496,
+      "gpu_ms_rounds": [
+        0.106496,
+        0.106496,
+        0.106496
+      ],
+      "gpu_ms_minimum": 0.106496,
+      "gpu_ms_maximum": 0.106496,
+      "point_and_resolve_ms": 0.106496,
+      "point_and_resolve_ms_rounds": [
+        0.106496,
+        0.106496,
+        0.106496
+      ],
+      "point_and_resolve_ms_minimum": 0.106496,
+      "point_and_resolve_ms_maximum": 0.106496,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.0775,
+      "cpu_submit_ms_rounds": [
+        0.077,
+        0.0782,
+        0.0775
+      ],
+      "cpu_submit_ms_minimum": 0.077,
+      "cpu_submit_ms_maximum": 0.0782
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_4",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 100.235776,
+      "gpu_ms_rounds": [
+        99.733504,
+        100.238336,
+        100.235776
+      ],
+      "gpu_ms_minimum": 99.733504,
+      "gpu_ms_maximum": 100.238336,
+      "point_and_resolve_ms": 100.235776,
+      "point_and_resolve_ms_rounds": [
+        99.733504,
+        100.238336,
+        100.235776
+      ],
+      "point_and_resolve_ms_minimum": 99.733504,
+      "point_and_resolve_ms_maximum": 100.238336,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.1904,
+      "cpu_submit_ms_rounds": [
+        0.17404999999999998,
+        0.20550000000000002,
+        0.1904
+      ],
+      "cpu_submit_ms_minimum": 0.17404999999999998,
+      "cpu_submit_ms_maximum": 0.20550000000000002
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_4",
+      "method": "frustum",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 100.36223999999999,
+      "gpu_ms_rounds": [
+        99.734016,
+        100.36223999999999,
+        100.399104
+      ],
+      "gpu_ms_minimum": 99.734016,
+      "gpu_ms_maximum": 100.399104,
+      "point_and_resolve_ms": 100.36223999999999,
+      "point_and_resolve_ms_rounds": [
+        99.734016,
+        100.36223999999999,
+        100.399104
+      ],
+      "point_and_resolve_ms_minimum": 99.734016,
+      "point_and_resolve_ms_maximum": 100.399104,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.1914,
+      "cpu_submit_ms_rounds": [
+        0.2019,
+        0.1914,
+        0.1877
+      ],
+      "cpu_submit_ms_minimum": 0.1877,
+      "cpu_submit_ms_maximum": 0.2019
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_4",
+      "method": "conservative",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 100.35353599999999,
+      "gpu_ms_rounds": [
+        100.35353599999999,
+        100.271104,
+        100.429824
+      ],
+      "gpu_ms_minimum": 100.271104,
+      "gpu_ms_maximum": 100.429824,
+      "point_and_resolve_ms": 100.35353599999999,
+      "point_and_resolve_ms_rounds": [
+        100.35353599999999,
+        100.271104,
+        100.429824
+      ],
+      "point_and_resolve_ms_minimum": 100.271104,
+      "point_and_resolve_ms_maximum": 100.429824,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.188,
+      "cpu_submit_ms_rounds": [
+        0.17964999999999998,
+        0.188,
+        0.1969
+      ],
+      "cpu_submit_ms_minimum": 0.17964999999999998,
+      "cpu_submit_ms_maximum": 0.1969
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_4",
+      "method": "center",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 100.361728,
+      "gpu_ms_rounds": [
+        100.361728,
+        100.39295999999999,
+        100.348928
+      ],
+      "gpu_ms_minimum": 100.348928,
+      "gpu_ms_maximum": 100.39295999999999,
+      "point_and_resolve_ms": 100.361728,
+      "point_and_resolve_ms_rounds": [
+        100.361728,
+        100.39295999999999,
+        100.348928
+      ],
+      "point_and_resolve_ms_minimum": 100.348928,
+      "point_and_resolve_ms_maximum": 100.39295999999999,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.18455,
+      "cpu_submit_ms_rounds": [
+        0.18455,
+        0.1883,
+        0.18455
+      ],
+      "cpu_submit_ms_minimum": 0.18455,
+      "cpu_submit_ms_maximum": 0.1883
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_4",
+      "method": "oracle",
+      "submitted_markers": 88768,
+      "frames": 10429,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 0.09215999999999999,
+      "gpu_ms_rounds": [
+        0.09215999999999999,
+        0.09215999999999999,
+        0.091136
+      ],
+      "gpu_ms_minimum": 0.091136,
+      "gpu_ms_maximum": 0.09215999999999999,
+      "point_and_resolve_ms": 0.09215999999999999,
+      "point_and_resolve_ms_rounds": [
+        0.09215999999999999,
+        0.09215999999999999,
+        0.091136
+      ],
+      "point_and_resolve_ms_minimum": 0.091136,
+      "point_and_resolve_ms_maximum": 0.09215999999999999,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.0778,
+      "cpu_submit_ms_rounds": [
+        0.0778,
+        0.0771,
+        0.0819
+      ],
+      "cpu_submit_ms_minimum": 0.0771,
+      "cpu_submit_ms_maximum": 0.0819
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_8",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 222.155264,
+      "gpu_ms_rounds": [
+        221.41951999999998,
+        222.155264,
+        225.004032
+      ],
+      "gpu_ms_minimum": 221.41951999999998,
+      "gpu_ms_maximum": 225.004032,
+      "point_and_resolve_ms": 222.155264,
+      "point_and_resolve_ms_rounds": [
+        221.41951999999998,
+        222.155264,
+        225.004032
+      ],
+      "point_and_resolve_ms_minimum": 221.41951999999998,
+      "point_and_resolve_ms_maximum": 225.004032,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.19765,
+      "cpu_submit_ms_rounds": [
+        0.21125,
+        0.19765,
+        0.1731
+      ],
+      "cpu_submit_ms_minimum": 0.1731,
+      "cpu_submit_ms_maximum": 0.21125
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_8",
+      "method": "frustum",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 222.60224,
+      "gpu_ms_rounds": [
+        222.60224,
+        222.230528,
+        226.885632
+      ],
+      "gpu_ms_minimum": 222.230528,
+      "gpu_ms_maximum": 226.885632,
+      "point_and_resolve_ms": 222.60224,
+      "point_and_resolve_ms_rounds": [
+        222.60224,
+        222.230528,
+        226.885632
+      ],
+      "point_and_resolve_ms_minimum": 222.230528,
+      "point_and_resolve_ms_maximum": 226.885632,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.19445,
+      "cpu_submit_ms_rounds": [
+        0.2137,
+        0.19445,
+        0.17859999999999998
+      ],
+      "cpu_submit_ms_minimum": 0.17859999999999998,
+      "cpu_submit_ms_maximum": 0.2137
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_8",
+      "method": "conservative",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 222.592512,
+      "gpu_ms_rounds": [
+        222.703616,
+        222.16089599999998,
+        222.592512
+      ],
+      "gpu_ms_minimum": 222.16089599999998,
+      "gpu_ms_maximum": 222.703616,
+      "point_and_resolve_ms": 222.592512,
+      "point_and_resolve_ms_rounds": [
+        222.703616,
+        222.16089599999998,
+        222.592512
+      ],
+      "point_and_resolve_ms_minimum": 222.16089599999998,
+      "point_and_resolve_ms_maximum": 222.703616,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.1951,
+      "cpu_submit_ms_rounds": [
+        0.1913,
+        0.2054,
+        0.1951
+      ],
+      "cpu_submit_ms_minimum": 0.1913,
+      "cpu_submit_ms_maximum": 0.2054
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_8",
+      "method": "center",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 222.539264,
+      "gpu_ms_rounds": [
+        222.48038400000002,
+        222.539264,
+        222.625792
+      ],
+      "gpu_ms_minimum": 222.48038400000002,
+      "gpu_ms_maximum": 222.625792,
+      "point_and_resolve_ms": 222.539264,
+      "point_and_resolve_ms_rounds": [
+        222.48038400000002,
+        222.539264,
+        222.625792
+      ],
+      "point_and_resolve_ms_minimum": 222.48038400000002,
+      "point_and_resolve_ms_maximum": 222.625792,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.1993,
+      "cpu_submit_ms_rounds": [
+        0.2014,
+        0.18805,
+        0.1993
+      ],
+      "cpu_submit_ms_minimum": 0.18805,
+      "cpu_submit_ms_maximum": 0.2014
+    },
+    {
+      "run": "vertex-beartrap-fit",
+      "case": "points_8",
+      "method": "oracle",
+      "submitted_markers": 68882,
+      "frames": 7919,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 0.172032,
+      "gpu_ms_rounds": [
+        0.172032,
+        0.172032,
+        0.169984
+      ],
+      "gpu_ms_minimum": 0.169984,
+      "gpu_ms_maximum": 0.172032,
+      "point_and_resolve_ms": 0.172032,
+      "point_and_resolve_ms_rounds": [
+        0.172032,
+        0.172032,
+        0.169984
+      ],
+      "point_and_resolve_ms_minimum": 0.169984,
+      "point_and_resolve_ms_maximum": 0.172032,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.0777,
+      "cpu_submit_ms_rounds": [
+        0.0777,
+        0.0777,
+        0.1074
+      ],
+      "cpu_submit_ms_minimum": 0.0777,
+      "cpu_submit_ms_maximum": 0.1074
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "surface_4",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 74.83238399999999,
+      "gpu_ms_rounds": [
+        70.501376,
+        76.923904,
+        74.83238399999999
+      ],
+      "gpu_ms_minimum": 70.501376,
+      "gpu_ms_maximum": 76.923904,
+      "point_and_resolve_ms": 59.400192,
+      "point_and_resolve_ms_rounds": [
+        55.647231999999995,
+        61.827072,
+        59.400192
+      ],
+      "point_and_resolve_ms_minimum": 55.647231999999995,
+      "point_and_resolve_ms_maximum": 61.827072,
+      "surface_ms": 15.565311999999999,
+      "surface_ms_rounds": [
+        14.677503999999999,
+        15.571456,
+        15.565311999999999
+      ],
+      "surface_ms_minimum": 14.677503999999999,
+      "surface_ms_maximum": 15.571456,
+      "cpu_submit_ms": 0.21815,
+      "cpu_submit_ms_rounds": [
+        0.2152,
+        0.22885,
+        0.21815
+      ],
+      "cpu_submit_ms_minimum": 0.2152,
+      "cpu_submit_ms_maximum": 0.22885
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "surface_4",
+      "method": "frustum",
+      "submitted_markers": 37661252,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 72.079872,
+      "gpu_ms_rounds": [
+        70.09894399999999,
+        72.079872,
+        74.211328
+      ],
+      "gpu_ms_minimum": 70.09894399999999,
+      "gpu_ms_maximum": 74.211328,
+      "point_and_resolve_ms": 57.634304,
+      "point_and_resolve_ms_rounds": [
+        55.92064,
+        57.634304,
+        58.968064
+      ],
+      "point_and_resolve_ms_minimum": 55.92064,
+      "point_and_resolve_ms_maximum": 58.968064,
+      "surface_ms": 14.240255999999999,
+      "surface_ms_rounds": [
+        14.161407999999998,
+        14.240255999999999,
+        15.400959999999998
+      ],
+      "surface_ms_minimum": 14.161407999999998,
+      "surface_ms_maximum": 15.400959999999998,
+      "cpu_submit_ms": 0.21865,
+      "cpu_submit_ms_rounds": [
+        0.21865,
+        0.22665,
+        0.21275
+      ],
+      "cpu_submit_ms_minimum": 0.21275,
+      "cpu_submit_ms_maximum": 0.22665
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "surface_4",
+      "method": "conservative",
+      "submitted_markers": 14459948,
+      "frames": 67,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 44.52352,
+      "gpu_ms_rounds": [
+        43.421696,
+        44.52352,
+        47.353856
+      ],
+      "gpu_ms_minimum": 43.421696,
+      "gpu_ms_maximum": 47.353856,
+      "point_and_resolve_ms": 29.684735999999997,
+      "point_and_resolve_ms_rounds": [
+        28.908544,
+        29.684735999999997,
+        31.619072
+      ],
+      "point_and_resolve_ms_minimum": 28.908544,
+      "point_and_resolve_ms_maximum": 31.619072,
+      "surface_ms": 14.52032,
+      "surface_ms_rounds": [
+        14.359551999999999,
+        14.52032,
+        15.55968
+      ],
+      "surface_ms_minimum": 14.359551999999999,
+      "surface_ms_maximum": 15.55968,
+      "cpu_submit_ms": 0.1968,
+      "cpu_submit_ms_rounds": [
+        0.2152,
+        0.1968,
+        0.1957
+      ],
+      "cpu_submit_ms_minimum": 0.1957,
+      "cpu_submit_ms_maximum": 0.2152
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "surface_4",
+      "method": "center",
+      "submitted_markers": 7457313,
+      "frames": 94,
+      "color_pixel_changes": 3760,
+      "id_sample_changes": 208829,
+      "gpu_ms": 31.662591999999997,
+      "gpu_ms_rounds": [
+        31.662591999999997,
+        31.168,
+        33.145855999999995
+      ],
+      "gpu_ms_minimum": 31.168,
+      "gpu_ms_maximum": 33.145855999999995,
+      "point_and_resolve_ms": 16.242176,
+      "point_and_resolve_ms_rounds": [
+        16.242176,
+        16.05632,
+        17.313792
+      ],
+      "point_and_resolve_ms_minimum": 16.05632,
+      "point_and_resolve_ms_maximum": 17.313792,
+      "surface_ms": 15.07584,
+      "surface_ms_rounds": [
+        15.07584,
+        14.95552,
+        16.064512
+      ],
+      "surface_ms_minimum": 14.95552,
+      "surface_ms_maximum": 16.064512,
+      "cpu_submit_ms": 0.2029,
+      "cpu_submit_ms_rounds": [
+        0.21334999999999998,
+        0.2029,
+        0.2021
+      ],
+      "cpu_submit_ms_minimum": 0.2021,
+      "cpu_submit_ms_maximum": 0.21334999999999998
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "surface_4",
+      "method": "oracle",
+      "submitted_markers": 649935,
+      "frames": 172,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 17.257472,
+      "gpu_ms_rounds": [
+        17.257472,
+        16.166912,
+        17.842688
+      ],
+      "gpu_ms_minimum": 16.166912,
+      "gpu_ms_maximum": 17.842688,
+      "point_and_resolve_ms": 0.6543359999999999,
+      "point_and_resolve_ms_rounds": [
+        0.6502399999999999,
+        0.656384,
+        0.6543359999999999
+      ],
+      "point_and_resolve_ms_minimum": 0.6502399999999999,
+      "point_and_resolve_ms_maximum": 0.656384,
+      "surface_ms": 16.594943999999998,
+      "surface_ms_rounds": [
+        16.594943999999998,
+        15.512576,
+        16.939519999999998
+      ],
+      "surface_ms_minimum": 15.512576,
+      "surface_ms_maximum": 16.939519999999998,
+      "cpu_submit_ms": 0.20475,
+      "cpu_submit_ms_rounds": [
+        0.2066,
+        0.2014,
+        0.20475
+      ],
+      "cpu_submit_ms_minimum": 0.2014,
+      "cpu_submit_ms_maximum": 0.2066
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "points_4",
+      "method": "all",
+      "submitted_markers": 38414391,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 71.373312,
+      "gpu_ms_rounds": [
+        70.98624,
+        71.373312,
+        71.45164799999999
+      ],
+      "gpu_ms_minimum": 70.98624,
+      "gpu_ms_maximum": 71.45164799999999,
+      "point_and_resolve_ms": 71.373312,
+      "point_and_resolve_ms_rounds": [
+        70.98624,
+        71.373312,
+        71.45164799999999
+      ],
+      "point_and_resolve_ms_minimum": 70.98624,
+      "point_and_resolve_ms_maximum": 71.45164799999999,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.19945000000000002,
+      "cpu_submit_ms_rounds": [
+        0.1915,
+        0.21805000000000002,
+        0.19945000000000002
+      ],
+      "cpu_submit_ms_minimum": 0.1915,
+      "cpu_submit_ms_maximum": 0.21805000000000002
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "points_4",
+      "method": "frustum",
+      "submitted_markers": 37661252,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 71.183872,
+      "gpu_ms_rounds": [
+        70.963712,
+        71.183872,
+        71.613952
+      ],
+      "gpu_ms_minimum": 70.963712,
+      "gpu_ms_maximum": 71.613952,
+      "point_and_resolve_ms": 71.183872,
+      "point_and_resolve_ms_rounds": [
+        70.963712,
+        71.183872,
+        71.613952
+      ],
+      "point_and_resolve_ms_minimum": 70.963712,
+      "point_and_resolve_ms_maximum": 71.613952,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.1904,
+      "cpu_submit_ms_rounds": [
+        0.18275,
+        0.19425,
+        0.1904
+      ],
+      "cpu_submit_ms_minimum": 0.18275,
+      "cpu_submit_ms_maximum": 0.19425
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "points_4",
+      "method": "conservative",
+      "submitted_markers": 37661252,
+      "frames": 60,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 71.712768,
+      "gpu_ms_rounds": [
+        71.100928,
+        73.985536,
+        71.712768
+      ],
+      "gpu_ms_minimum": 71.100928,
+      "gpu_ms_maximum": 73.985536,
+      "point_and_resolve_ms": 71.712768,
+      "point_and_resolve_ms_rounds": [
+        71.100928,
+        73.985536,
+        71.712768
+      ],
+      "point_and_resolve_ms_minimum": 71.100928,
+      "point_and_resolve_ms_maximum": 73.985536,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.19795000000000001,
+      "cpu_submit_ms_rounds": [
+        0.19365,
+        0.21075,
+        0.19795000000000001
+      ],
+      "cpu_submit_ms_minimum": 0.19365,
+      "cpu_submit_ms_maximum": 0.21075
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "points_4",
+      "method": "center",
+      "submitted_markers": 37646865,
+      "frames": 60,
+      "color_pixel_changes": 2,
+      "id_sample_changes": 8187,
+      "gpu_ms": 71.391744,
+      "gpu_ms_rounds": [
+        70.68415999999999,
+        71.391744,
+        71.460352
+      ],
+      "gpu_ms_minimum": 70.68415999999999,
+      "gpu_ms_maximum": 71.460352,
+      "point_and_resolve_ms": 71.391744,
+      "point_and_resolve_ms_rounds": [
+        70.68415999999999,
+        71.391744,
+        71.460352
+      ],
+      "point_and_resolve_ms_minimum": 70.68415999999999,
+      "point_and_resolve_ms_maximum": 71.460352,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.19774999999999998,
+      "cpu_submit_ms_rounds": [
+        0.19135000000000002,
+        0.21625,
+        0.19774999999999998
+      ],
+      "cpu_submit_ms_minimum": 0.19135000000000002,
+      "cpu_submit_ms_maximum": 0.21625
+    },
+    {
+      "run": "vertex-beartrap-close",
+      "case": "points_4",
+      "method": "oracle",
+      "submitted_markers": 654980,
+      "frames": 2975,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 0.6911999999999999,
+      "gpu_ms_rounds": [
+        0.684544,
+        0.6911999999999999,
+        0.693248
+      ],
+      "gpu_ms_minimum": 0.684544,
+      "gpu_ms_maximum": 0.693248,
+      "point_and_resolve_ms": 0.6911999999999999,
+      "point_and_resolve_ms_rounds": [
+        0.684544,
+        0.6911999999999999,
+        0.693248
+      ],
+      "point_and_resolve_ms_minimum": 0.684544,
+      "point_and_resolve_ms_maximum": 0.693248,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.11705,
+      "cpu_submit_ms_rounds": [
+        0.11705,
+        0.121,
+        0.1123
+      ],
+      "cpu_submit_ms_minimum": 0.1123,
+      "cpu_submit_ms_maximum": 0.121
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "surface_4",
+      "method": "all",
+      "submitted_markers": 9021669,
+      "frames": 138,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 17.049087999999998,
+      "gpu_ms_rounds": [
+        17.049087999999998,
+        16.54016,
+        18.101248
+      ],
+      "gpu_ms_minimum": 16.54016,
+      "gpu_ms_maximum": 18.101248,
+      "point_and_resolve_ms": 14.81984,
+      "point_and_resolve_ms_rounds": [
+        14.81984,
+        14.581247999999999,
+        15.933951999999998
+      ],
+      "point_and_resolve_ms_minimum": 14.581247999999999,
+      "point_and_resolve_ms_maximum": 15.933951999999998,
+      "surface_ms": 1.950208,
+      "surface_ms_rounds": [
+        1.9292159999999998,
+        1.950208,
+        1.9624959999999998
+      ],
+      "surface_ms_minimum": 1.9292159999999998,
+      "surface_ms_maximum": 1.9624959999999998,
+      "cpu_submit_ms": 3.92985,
+      "cpu_submit_ms_rounds": [
+        4.25225,
+        3.64565,
+        3.92985
+      ],
+      "cpu_submit_ms_minimum": 3.64565,
+      "cpu_submit_ms_maximum": 4.25225
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "surface_4",
+      "method": "frustum",
+      "submitted_markers": 9021669,
+      "frames": 134,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 17.491456,
+      "gpu_ms_rounds": [
+        16.933888,
+        17.788928,
+        17.491456
+      ],
+      "gpu_ms_minimum": 16.933888,
+      "gpu_ms_maximum": 17.788928,
+      "point_and_resolve_ms": 15.505408,
+      "point_and_resolve_ms_rounds": [
+        14.962688,
+        15.589376,
+        15.505408
+      ],
+      "point_and_resolve_ms_minimum": 14.962688,
+      "point_and_resolve_ms_maximum": 15.589376,
+      "surface_ms": 1.959936,
+      "surface_ms_rounds": [
+        1.9394559999999998,
+        1.9630079999999999,
+        1.959936
+      ],
+      "surface_ms_minimum": 1.9394559999999998,
+      "surface_ms_maximum": 1.9630079999999999,
+      "cpu_submit_ms": 3.8495,
+      "cpu_submit_ms_rounds": [
+        3.7917,
+        3.8495,
+        4.25705
+      ],
+      "cpu_submit_ms_minimum": 3.7917,
+      "cpu_submit_ms_maximum": 4.25705
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "surface_4",
+      "method": "conservative",
+      "submitted_markers": 2226156,
+      "frames": 273,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 7.735296,
+      "gpu_ms_rounds": [
+        7.870463999999999,
+        7.426048,
+        7.735296
+      ],
+      "gpu_ms_minimum": 7.426048,
+      "gpu_ms_maximum": 7.870463999999999,
+      "point_and_resolve_ms": 5.4835199999999995,
+      "point_and_resolve_ms_rounds": [
+        5.4835199999999995,
+        5.476351999999999,
+        5.511168
+      ],
+      "point_and_resolve_ms_minimum": 5.476351999999999,
+      "point_and_resolve_ms_maximum": 5.511168,
+      "surface_ms": 1.9496959999999999,
+      "surface_ms_rounds": [
+        1.9496959999999999,
+        1.9496959999999999,
+        1.959936
+      ],
+      "surface_ms_minimum": 1.9496959999999999,
+      "surface_ms_maximum": 1.959936,
+      "cpu_submit_ms": 2.5235,
+      "cpu_submit_ms_rounds": [
+        2.3503,
+        2.5365,
+        2.5235
+      ],
+      "cpu_submit_ms_minimum": 2.3503,
+      "cpu_submit_ms_maximum": 2.5365
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "surface_4",
+      "method": "center",
+      "submitted_markers": 720080,
+      "frames": 381,
+      "color_pixel_changes": 282,
+      "id_sample_changes": 983,
+      "gpu_ms": 4.70528,
+      "gpu_ms_rounds": [
+        4.460544,
+        4.70528,
+        4.863488
+      ],
+      "gpu_ms_minimum": 4.460544,
+      "gpu_ms_maximum": 4.863488,
+      "point_and_resolve_ms": 2.509824,
+      "point_and_resolve_ms_rounds": [
+        2.509824,
+        2.5088,
+        2.533888
+      ],
+      "point_and_resolve_ms_minimum": 2.5088,
+      "point_and_resolve_ms_maximum": 2.533888,
+      "surface_ms": 1.9496959999999999,
+      "surface_ms_rounds": [
+        1.948672,
+        1.9496959999999999,
+        1.9609599999999998
+      ],
+      "surface_ms_minimum": 1.948672,
+      "surface_ms_maximum": 1.9609599999999998,
+      "cpu_submit_ms": 2.2557,
+      "cpu_submit_ms_rounds": [
+        2.2073,
+        2.3529,
+        2.2557
+      ],
+      "cpu_submit_ms_minimum": 2.2073,
+      "cpu_submit_ms_maximum": 2.3529
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "surface_4",
+      "method": "oracle",
+      "submitted_markers": 3233,
+      "frames": 577,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 1.9681279999999999,
+      "gpu_ms_rounds": [
+        1.9681279999999999,
+        1.967104,
+        1.9865599999999999
+      ],
+      "gpu_ms_minimum": 1.967104,
+      "gpu_ms_maximum": 1.9865599999999999,
+      "point_and_resolve_ms": 0.018432,
+      "point_and_resolve_ms_rounds": [
+        0.018432,
+        0.018432,
+        0.018432
+      ],
+      "point_and_resolve_ms_minimum": 0.018432,
+      "point_and_resolve_ms_maximum": 0.018432,
+      "surface_ms": 1.9496959999999999,
+      "surface_ms_rounds": [
+        1.9496959999999999,
+        1.948672,
+        1.9681279999999999
+      ],
+      "surface_ms_minimum": 1.948672,
+      "surface_ms_maximum": 1.9681279999999999,
+      "cpu_submit_ms": 2.4946,
+      "cpu_submit_ms_rounds": [
+        2.0771,
+        2.57865,
+        2.4946
+      ],
+      "cpu_submit_ms_minimum": 2.0771,
+      "cpu_submit_ms_maximum": 2.57865
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "points_4",
+      "method": "all",
+      "submitted_markers": 9021669,
+      "frames": 136,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 18.89792,
+      "gpu_ms_rounds": [
+        18.93376,
+        18.89792,
+        18.894848
+      ],
+      "gpu_ms_minimum": 18.894848,
+      "gpu_ms_maximum": 18.93376,
+      "point_and_resolve_ms": 18.89792,
+      "point_and_resolve_ms_rounds": [
+        18.93376,
+        18.89792,
+        18.894848
+      ],
+      "point_and_resolve_ms_minimum": 18.894848,
+      "point_and_resolve_ms_maximum": 18.93376,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 2.17255,
+      "cpu_submit_ms_rounds": [
+        2.1316,
+        2.17255,
+        2.7575
+      ],
+      "cpu_submit_ms_minimum": 2.1316,
+      "cpu_submit_ms_maximum": 2.7575
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "points_4",
+      "method": "frustum",
+      "submitted_markers": 9021669,
+      "frames": 133,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 18.980864,
+      "gpu_ms_rounds": [
+        18.935296,
+        21.229568,
+        18.980864
+      ],
+      "gpu_ms_minimum": 18.935296,
+      "gpu_ms_maximum": 21.229568,
+      "point_and_resolve_ms": 18.980864,
+      "point_and_resolve_ms_rounds": [
+        18.935296,
+        21.229568,
+        18.980864
+      ],
+      "point_and_resolve_ms_minimum": 18.935296,
+      "point_and_resolve_ms_maximum": 21.229568,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 2.0912,
+      "cpu_submit_ms_rounds": [
+        2.0584,
+        2.0912,
+        2.25795
+      ],
+      "cpu_submit_ms_minimum": 2.0584,
+      "cpu_submit_ms_maximum": 2.25795
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "points_4",
+      "method": "conservative",
+      "submitted_markers": 9021669,
+      "frames": 131,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 19.210752,
+      "gpu_ms_rounds": [
+        19.003391999999998,
+        21.035007999999998,
+        19.210752
+      ],
+      "gpu_ms_minimum": 19.003391999999998,
+      "gpu_ms_maximum": 21.035007999999998,
+      "point_and_resolve_ms": 19.21024,
+      "point_and_resolve_ms_rounds": [
+        19.003391999999998,
+        21.035007999999998,
+        19.21024
+      ],
+      "point_and_resolve_ms_minimum": 19.003391999999998,
+      "point_and_resolve_ms_maximum": 21.035007999999998,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 2.1606,
+      "cpu_submit_ms_rounds": [
+        2.0912499999999996,
+        2.1606,
+        3.19225
+      ],
+      "cpu_submit_ms_minimum": 2.0912499999999996,
+      "cpu_submit_ms_maximum": 3.19225
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "points_4",
+      "method": "center",
+      "submitted_markers": 9021669,
+      "frames": 132,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 20.579327999999997,
+      "gpu_ms_rounds": [
+        19.026944,
+        20.73088,
+        20.579327999999997
+      ],
+      "gpu_ms_minimum": 19.026944,
+      "gpu_ms_maximum": 20.73088,
+      "point_and_resolve_ms": 20.579327999999997,
+      "point_and_resolve_ms_rounds": [
+        19.026944,
+        20.73088,
+        20.579327999999997
+      ],
+      "point_and_resolve_ms_minimum": 19.026944,
+      "point_and_resolve_ms_maximum": 20.73088,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 2.6149,
+      "cpu_submit_ms_rounds": [
+        2.9198,
+        2.6149,
+        2.0182
+      ],
+      "cpu_submit_ms_minimum": 2.0182,
+      "cpu_submit_ms_maximum": 2.9198
+    },
+    {
+      "run": "vertex-san-miguel-fit",
+      "case": "points_4",
+      "method": "oracle",
+      "submitted_markers": 8915,
+      "frames": 4573,
+      "color_pixel_changes": 0,
+      "id_sample_changes": 0,
+      "gpu_ms": 0.033791999999999996,
+      "gpu_ms_rounds": [
+        0.033791999999999996,
+        0.033791999999999996,
+        0.033791999999999996
+      ],
+      "gpu_ms_minimum": 0.033791999999999996,
+      "gpu_ms_maximum": 0.033791999999999996,
+      "point_and_resolve_ms": 0.033791999999999996,
+      "point_and_resolve_ms_rounds": [
+        0.033791999999999996,
+        0.033791999999999996,
+        0.032768
+      ],
+      "point_and_resolve_ms_minimum": 0.032768,
+      "point_and_resolve_ms_maximum": 0.033791999999999996,
+      "surface_ms": 0.0,
+      "surface_ms_rounds": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "surface_ms_minimum": 0.0,
+      "surface_ms_maximum": 0.0,
+      "cpu_submit_ms": 0.40774999999999995,
+      "cpu_submit_ms_rounds": [
+        0.40774999999999995,
+        0.3657,
+        0.50205
+      ],
+      "cpu_submit_ms_minimum": 0.3657,
+      "cpu_submit_ms_maximum": 0.50205
+    }
+  ],
+  "comparisons": 150,
+  "exact_preserving_comparisons": 120,
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 3070 Laptop GPU",
+    "driver": "616.92",
+    "vram_mib": 8192
+  }
+}

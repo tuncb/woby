@@ -34,15 +34,40 @@ MarkerOutput fs_overlay_native_ids(VertexOutput v, noperspective float3 bary : S
 }
 MarkerOutput fs_overlay_pull_ids(PullOutput v) { return MarkerOutput(overlayColor(v.mesh,v.bary),float4(0)); }
 
-// Capture the first nonzero sample's provenance without averaging packed IDs.
+// Capture every sample's provenance without averaging packed IDs.
 // Only runs outside measured frames. The production sample-aware picker uses
 // the same attachment and packed ID convention.
 [numthreads(8,8,1)] void cs_capture_ids(uint3 thread : SV_DispatchThreadID) {
     if (any(thread.xy >= uint2(root.markerQuery.zw))) return;
-    uint id = 0;
     for (uint sampleIndex=0;sampleIndex<uint(root.markerOptions.x);++sampleIndex) {
-        uint candidate = readId(int2(thread.xy),sampleIndex,root.markerOptions.x>1);
-        if (candidate != 0) { id=candidate; break; }
+        uint offset=(thread.y*uint(root.markerQuery.z)+thread.x)*uint(root.markerOptions.x)+sampleIndex;
+        root.pointIds[offset]=readId(int2(thread.xy),sampleIndex,root.markerOptions.x>1);
     }
-    root.pointIds[thread.y*uint(root.markerQuery.z)+thread.x] = id;
+}
+
+[numthreads(8,8,1)] void cs_capture_depth(uint3 thread : SV_DispatchThreadID) {
+    if (any(thread.xy >= uint2(root.markerQuery.zw))) return;
+    float depth=1;
+    for (uint sampleIndex=0;sampleIndex<uint(root.markerOptions.x);++sampleIndex) {
+        float candidate=root.markerOptions.x>1
+            ? gpu_texture<Texture2DMS<float>>(root.texture0).Load(int2(thread.xy),sampleIndex)
+            : gpu_texture<Texture2D<float>>(root.texture0).Load(int3(thread.xy,0));
+        depth=min(depth,candidate); // Reversed depth: furthest MSAA sample.
+    }
+    root.pointIds[thread.y*uint(root.markerQuery.z)+thread.x]=asuint(depth);
+}
+
+VertexOutput vs_point_compacted(uint vertex : SV_VertexID,uint instance : SV_InstanceID) {
+    VertexOutput v = {};
+    uint base = uint(root.pointParams[1].x) + uint(root.pointParams[1].y)*65536u;
+    uint original = root.pointIds[base+instance];
+    uint index = ((uint*)root.freeform)[original];
+    // Keep the production quad math and full circular fragment coverage.
+    float2 corner = float2(1.0-float((vertex>>1)&1),float(vertex&1))-0.5;
+    float4 center = mul(root.modelViewProj,float4(positionAt(index),1));
+    center.xy += corner * root.pointParams[0].x * float2(2.0/root.pointParams[0].y,2.0/root.pointParams[0].z) * center.w;
+    v.position = clipPosition(center);
+    v.uv = corner;
+    v.id = original+1;
+    return v;
 }

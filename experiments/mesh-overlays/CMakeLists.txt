@@ -5,7 +5,8 @@ endif()
 set(shader_outputs)
 foreach(entry IN ITEMS vs_mesh vs_color vs_point_sprite fs_mesh fs_color fs_point_sprite
         fs_marker_mesh fs_marker_line fs_marker_point vs_overlay_pull fs_overlay_pull
-        fs_overlay_native fs_overlay_native_ids fs_overlay_pull_ids cs_capture_ids)
+        fs_overlay_native fs_overlay_native_ids fs_overlay_pull_ids cs_capture_ids
+        cs_capture_depth vs_point_compacted)
     if(entry MATCHES "^vs_")
         set(stage vertex)
     elseif(entry MATCHES "^fs_")
@@ -34,7 +35,7 @@ foreach(entry IN ITEMS vs_mesh vs_color vs_point_sprite fs_mesh fs_color fs_poin
 endforeach()
 add_custom_target(woby_overlay_shaders DEPENDS ${shader_outputs})
 
-add_library(woby_overlay_experiment STATIC renderer.cpp
+add_library(woby_overlay_experiment STATIC renderer.cpp visibility.cpp
     ../../src/model_mesh.cpp ../../src/obj_mesh.cpp ../../src/obj_freeform.cpp
     ../../src/freeform.cpp ../../src/freeform_trim.cpp ../../src/scene_mesh_preparation.cpp ../../src/camera.cpp)
 target_include_directories(woby_overlay_experiment PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -47,7 +48,7 @@ target_compile_definitions(woby_overlay_experiment PRIVATE NOMINMAX
     WOBY_OVERLAY_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders")
 woby_enable_project_warnings(woby_overlay_experiment)
 add_dependencies(woby_overlay_experiment woby_overlay_shaders)
-add_executable(woby_overlay_prototype main.cpp)
+add_executable(woby_overlay_prototype main.cpp visibility_run.cpp)
 target_link_libraries(woby_overlay_prototype PRIVATE woby_overlay_experiment nlohmann_json::nlohmann_json)
 woby_enable_project_warnings(woby_overlay_prototype)
 if(BUILD_TESTING)

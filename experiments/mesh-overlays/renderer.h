@@ -24,6 +24,7 @@ struct Display {
     Method method = Method::ordered;
     bool solid = true, edges = true, points = true, xray = false;
     float pointSize = 4, opacity = 1, edgeHalfWidth = .5f;
+    bool compacted = false;
 };
 void validate(const Options& options, const Display& display);
 struct Group {
@@ -31,9 +32,11 @@ struct Group {
     std::array<float,16> model{1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
     std::array<float,4> color{.35f,.45f,.6f,1};
     bool solid = true, edges = true, points = true;
+    uint32_t filteredOffset = 0, filteredCount = 0;
 };
 struct Scene {
-    gpu::GpuHeap vertices{}, triangles{}, edges{}, points{};
+    gpu::GpuHeap vertices{}, triangles{}, edges{}, points{}, filtered{};
+    std::vector<uint32_t> markerVertices;
     std::vector<Group> groups;
     size_t vertexCount = 0, triangleCount = 0, markerCount = 0;
     uint64_t bytes = 0;
@@ -49,12 +52,13 @@ struct Renderer {
     gpu::TextureHeap textureHeap{};
     std::unique_ptr<gpu::TextureAllocator> textures;
     std::unique_ptr<gpu::UploadQueue> uploads;
-    gpu::GpuHeap roots{}, readback{}, captureIds{};
+    gpu::GpuHeap roots{}, readback{}, captureIds{}, captureDepth{};
     std::unique_ptr<gpu::BumpAllocator> arena;
     gpu::TextureDescriptorHeap* descriptors = nullptr;
     Image color, ids, depth, resolved;
     std::map<std::pair<std::string,bool>,gpu::PSO*> pipelines;
     gpu::PSO* capture = nullptr;
+    gpu::PSO* depthCapture = nullptr;
     Options options;
     uint64_t sequence = 0;
     std::array<uint64_t,4> timestamps{};
@@ -74,6 +78,9 @@ struct Capture {
     uint32_t width = 0, height = 0;
     std::vector<uint8_t> rgba;
     std::vector<uint32_t> ids;
+    std::vector<uint32_t> sampleIds;
+    bool depthRequested = false;
+    std::vector<float> minimumSampleDepth;
 };
 void initialize(Renderer& renderer, Options options);
 void upload(Renderer& renderer, const Mesh& mesh);

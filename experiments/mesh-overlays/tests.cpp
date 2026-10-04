@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 #include "renderer.h"
+#include "visibility.h"
 #include <algorithm>
 #include <limits>
 
@@ -27,6 +28,61 @@ TEST_CASE("Overlay experiment rejects invalid workload settings") {
     CHECK_THROWS(o::validate({},{.opacity=std::numeric_limits<float>::quiet_NaN()}));
     CHECK_THROWS(o::validate({},{.edgeHalfWidth=-1}));
     CHECK_THROWS(o::fittedProjection({},0,720));
+}
+TEST_CASE("Visibility diagnostics retain footprint fringes and reject invalid depth or provenance") {
+    woby::Mesh mesh;
+    for (const auto& p:std::array<std::array<float,3>,3>{{{0,0,.2f},{1.1f,0,.7f},{0,0,1.1f}}}) {
+        woby::Vertex v; v.position=p; mesh.vertices.push_back(v);
+    }
+    o::Scene scene; scene.markerVertices={0,1,2}; scene.markerCount=3;
+    o::Group group; group.range.pointIndexCount=3; scene.groups.push_back(group);
+    std::vector<float> depth(64,.6f);
+    const auto audit=o::inspectVisibility(mesh,scene,identity(),8,8,1,depth);
+    CHECK(audit.submitted==3); CHECK(audit.depthClipped==1); CHECK(audit.centerOutside==1);
+    CHECK(audit.footprintOccluded==1); CHECK(audit.conservative.markers==std::vector<uint32_t>{1});
+    std::fill(depth.begin(),depth.end(),0.0f);
+    CHECK(o::inspectVisibility(mesh,scene,identity(),8,8,1,depth).conservative.markers==std::vector<uint32_t>{0,1});
+    CHECK_THROWS(o::inspectVisibility(mesh,scene,identity(),7,8,1,depth));
+    depth[0]=std::numeric_limits<float>::quiet_NaN();
+    CHECK_THROWS(o::inspectVisibility(mesh,scene,identity(),8,8,1,depth));
+    const std::array<uint32_t,3> ids{3,1,3};
+    CHECK(o::finalMarkerOracle(scene,ids).markers==std::vector<uint32_t>{0,2});
+    const std::array<uint32_t,1> invalid{4}; CHECK_THROWS(o::finalMarkerOracle(scene,invalid));
+}
+
+TEST_CASE("Overlay GPU full-footprint visibility preserves every color and MSAA provenance sample") {
+    auto mesh=o::fixtureMesh();
+    for (const auto& p:std::array<std::array<float,3>,5>{{{0,0,.3f},{.405f,0,.3f},{1.02f,0,.7f},{0,0,1.1f},{.405f,0,.3f}}}) {
+        woby::Vertex v; v.position=p; v.normal={0,0,1};
+        mesh.pointIndices.push_back(static_cast<uint32_t>(mesh.vertices.size())); mesh.vertices.push_back(v);
+    }
+    woby::MeshNode node; node.name="diagnostic markers"; node.pointIndexCount=5; mesh.nodes.push_back(node);
+    for (const uint32_t samples:{1u,4u}) {
+        o::Renderer r; o::initialize(r,{128,96,samples,true}); o::upload(r,mesh);
+        r.scene.groups[0].points=false; r.scene.groups[1].points=false;
+        for (const bool solid:{false,true}) for (const float size:{1.0f,4.0f,8.0f,40.0f}) {
+            CAPTURE(samples); CAPTURE(solid); CAPTURE(size);
+            o::Display d{.solid=solid,.edges=false,.pointSize=size};
+            const auto baseline=capture(r,d);
+            o::Capture depth; depth.depthRequested=true;
+            auto surface=d; surface.points=false; (void)o::render(r,surface,identity(),&depth);
+            const auto audit=o::inspectVisibility(mesh,r.scene,identity(),128,96,size,depth.minimumSampleDepth);
+            CHECK(audit.submitted==5); CHECK(audit.depthClipped==1);
+            if (solid && size<=8) { CHECK(audit.footprintOccluded>=1); }
+            if (!solid) { CHECK(audit.footprintOccluded==0); }
+            const auto oracle=o::finalMarkerOracle(r.scene,baseline.sampleIds);
+            d.compacted=true;
+            for (const auto* selection:{&audit.frustum,&audit.conservative,&oracle}) {
+                o::installMarkerSelection(r,*selection);
+                o::Capture filtered; (void)o::render(r,d,identity(),&filtered);
+                CHECK(filtered.rgba==baseline.rgba); CHECK(filtered.sampleIds==baseline.sampleIds);
+            }
+            if (solid && size==40) {
+                o::installMarkerSelection(r,audit.center);
+                CHECK(difference(capture(r,d),baseline)>0);
+            }
+        }
+    }
 }
 TEST_CASE("Overlay GPU surfaces-first rendering is independent of opaque group order") {
     for (const uint32_t samples:{1u,4u}) {
