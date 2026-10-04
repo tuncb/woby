@@ -1,0 +1,178 @@
+{
+  "issue": 104,
+  "date": "2026-10-04",
+  "baseline_commit": "761274c86cf7a8025e5840b01023b5545a380e85",
+  "build": "vs2026-vcpkg / Release / NoGraphicsAPI Vulkan",
+  "model": {
+    "path": "D:/temp/obj_tests/20190810_BearTrap_Ground_Model.obj",
+    "bytes": 7108991827,
+    "vertices": 38414391,
+    "triangles": 75771986
+  },
+  "guards": {
+    "max_private_gib": 38,
+    "min_available_gib": 6
+  },
+  "measurements": {
+    "before": {
+      "status": "completed",
+      "import_seconds": 34.73050429999421,
+      "longest_finalization_frame_ms": 3292.563,
+      "pending_io_on_longest_frame_ms": 3290.06,
+      "graphics_frame_on_longest_frame_ms": 1.6982,
+      "peak_private_gib": 12.815185546875,
+      "steady_fps": 58.216135258869095,
+      "drawable": {
+        "height": 2041,
+        "width": 1903
+      },
+      "viewport": {
+        "height": 2008,
+        "width": 1428,
+        "x": 475,
+        "y": 33
+      },
+      "capture_sha256": "5708a0bbf888930aabb2913e4cde1507635e7d0e5e9526bbc11e970717c029e1",
+      "evidence_directory": "D:\\.worktree\\woby-issue104-before\\load-20190810_BearTrap_Ground_Model-r0"
+    },
+    "after": {
+      "status": "completed",
+      "import_seconds": 34.0295710000064,
+      "longest_finalization_frame_ms": 64.997,
+      "pending_io_on_longest_frame_ms": 63.1366,
+      "graphics_frame_on_longest_frame_ms": 1.3872,
+      "peak_private_gib": 12.81085205078125,
+      "steady_fps": 58.54932563993166,
+      "drawable": {
+        "height": 2041,
+        "width": 1903
+      },
+      "viewport": {
+        "height": 2008,
+        "width": 1428,
+        "x": 475,
+        "y": 33
+      },
+      "capture_sha256": "5708a0bbf888930aabb2913e4cde1507635e7d0e5e9526bbc11e970717c029e1",
+      "evidence_directory": "D:\\.worktree\\woby-issue104-after\\load-20190810_BearTrap_Ground_Model-r0",
+      "worker_upload_preparation_ms": 2307.6837,
+      "upload_cpu_ms": 531.062,
+      "longest_upload_step_ms": 60.7729,
+      "upload_bytes": 2138524344
+    }
+  },
+  "validation": {
+    "debug_build": "passed without compiler warnings",
+    "release_build": "passed without compiler warnings",
+    "ctest": {
+      "passed": 881,
+      "failed": 0,
+      "includes_slow_tests": true
+    },
+    "final_upload_regressions": {
+      "cases": 11,
+      "assertions": 137,
+      "failed": 0
+    },
+    "identical_captures": true,
+    "lifecycle_after": {
+      "status": "completed",
+      "peak_private_gib": 24.17797088623047,
+      "evidence_directory": "D:\\.worktree\\woby-issue104-lifecycle\\lifecycle-20190810_BearTrap_Ground_Model-r0",
+      "operations": [
+        {
+          "name": "model_add",
+          "status": "ok",
+          "seconds": 29.046764700004132
+        },
+        {
+          "name": "scene_reopen_live",
+          "status": "ok",
+          "seconds": 37.630608499996015
+        },
+        {
+          "name": "scene_reopen_empty",
+          "status": "ok",
+          "seconds": 26.44233650001115
+        },
+        {
+          "name": "clear_after_reopen",
+          "status": "ok",
+          "seconds": 0.276710499994806
+        }
+      ],
+      "reopened_stats": {
+        "fileCount": 1,
+        "vertexCount": 38414391,
+        "triangleCount": 75771986
+      },
+      "empty_stats": {
+        "fileCount": 0,
+        "vertexCount": 0,
+        "triangleCount": 0
+      },
+      "populated_replacement_longest_commit_frame_ms": 550.3012
+    },
+    "lifecycle_before": {
+      "status": "completed",
+      "evidence_directory": "D:\\.worktree\\woby-issue104-lifecycle-before\\lifecycle-20190810_BearTrap_Ground_Model-r0",
+      "populated_replacement_upload_frame_ms": 2522.6269,
+      "populated_replacement_commit_frame_ms": 395.1833,
+      "operations": [
+        {
+          "name": "model_add",
+          "status": "ok",
+          "seconds": 31.372794300012174
+        },
+        {
+          "name": "scene_reopen_live",
+          "status": "ok",
+          "seconds": 29.520149699994363
+        },
+        {
+          "name": "scene_reopen_empty",
+          "status": "ok",
+          "seconds": 27.011316600008286
+        },
+        {
+          "name": "clear_after_reopen",
+          "status": "ok",
+          "seconds": 0.26100480000604875
+        }
+      ],
+      "timing_caveat": "A separate Woby process for issue 105 ran concurrently with this extra baseline lifecycle run (started 15:08:41, baseline started 15:08:42). Do not use these end-to-end times for a controlled throughput comparison. The main before/after load comparison and fixed lifecycle run finished before that process started."
+    },
+    "cancellation": "Worker cancellation tests plus Noop/native partial GPU-upload abort tests, including destroying pending buffers before submission and retaining an existing usable mesh. Native Cancel/Escape dialog interaction was not automated.",
+    "lifetime": "Native readback validates vertices, triangles, imported lines, mesh edges and point IDs after chunked upload across frames and immediate source destruction."
+  },
+  "limitations": [
+    "Single-machine before/after observations, not statistical latency guarantees. OS cache was not flushed.",
+    "Baseline slow-frame threshold was 250 ms; after threshold was 20 ms. Frame summaries retain maximums across every 120 frames.",
+    "GPU allocation and individual staging operations are indivisible; the 4 ms frame budget is soft.",
+    "Screenshot readback still costs about 591 ms in graphics_frame; it occurs after import and was unchanged by this fix.",
+    "Populated BearTrap scene replacement still has a 550 ms commit/cleanup frame; undo/redo and clearing old scene data also retain separate synchronous costs."
+  ],
+  "commands": [
+    "cmake --build D:/.worktree/woby-issue104-build --config Debug --parallel 2",
+    "ctest --test-dir D:/.worktree/woby-issue104-build -C Debug --output-on-failure --parallel 2",
+    "uv run --with psutil tests/stress/run.py <Release/woby.exe> D:/temp/obj_tests <fresh-output-directory> --suite load --select BearTrap --max-private-gib 38 --min-available-gib 6",
+    "uv run --with psutil tests/stress/run.py <Release/woby.exe> D:/temp/obj_tests <fresh-output-directory> --suite lifecycle --select BearTrap --max-private-gib 38 --min-available-gib 6"
+  ],
+  "measurement_script": "D:/.worktree/woby-issue104-measure.py (copy of tests/stress/run.py with slow-frame threshold changed from 250 to 20 ms)",
+  "baseline_executable_sha256": "2ae06932c82572a175f836efc91a9d6e96749b25551a28ebea7dbe18128f2e42",
+  "fixed_executable_sha256": "a69aed7aac26ff12de002bf8a01f173214aaa37d13f2358ae884b121821e5320",
+  "source_sha256": {
+    "CMakeLists.txt": "bcd97d6afc5ea757c311fc9a8b191a2b18862d1a883ecdc4fcac78d2465749a7",
+    "src/background_load.cpp": "461f98c5bcade458a79842445c77ac61b6f763349b5da8292b6c8f07e1423d9f",
+    "src/background_load.h": "d002e6c19f9a35dab3ec458826eac014ff83c54b1392bac2d0e467abec6c9251",
+    "src/graphics.cpp": "411a804cd95b3d2a3aa4b881db20fd8ed2d347192a7d4ff5b1f2857d3aa794a4",
+    "src/graphics.h": "5b9400fc837d617658a6bd3a16e65a07ebfbf94272ca9daaf3796b75587ef001",
+    "src/main.cpp": "f9190f969342824a4e53f9ef6fe8c24e2398de6b7f47962c804c9bb828b048da",
+    "src/scene_renderer.cpp": "2aaac3ceeae5c16daad6ee5df46a135c193d1202409d53904c52ac5e40b8a84c",
+    "src/scene_renderer.h": "9c7ed18e8edec4305062e2f7ab9490af3c69afe194c05fa367e3c9782a0338ac",
+    "tests/background_load_tests.cpp": "b1eb54b2bdc32767393f63d39fd1a4f2f61b2a5b940730e84e0569769c99dbcb",
+    "tests/scene_renderer_tests.cpp": "327f26889c8d047a62a74abdb3bd192732576e4df846befa70bc1e73940541b0",
+    "src/scene_mesh_preparation.cpp": "72da03d74711182be175150aaedeadf4fd9a968ed465b2f7266783bc6be5a3f3",
+    "src/scene_mesh_preparation.h": "4b71a0ed86167b401ebd31c764a6125a55907b0de41baaa0d7f4e8941798f541"
+  }
+}

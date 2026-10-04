@@ -525,23 +525,22 @@ void uploadTexture(const std::shared_ptr<Texture> &texture)
     gpu::copy_memory_to_texture(current().preparations, {memory.gpu, texture->pixels.size()},
                                 texture->image->placed.texture);
 }
-std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool index32)
+std::shared_ptr<Buffer> createBufferStorage(uint32_t bytes, uint16_t stride, bool index32)
 {
-    MemoryOwner memory(source, freeMemory);
-    require(memory && memory->size > 0, "Cannot create an empty GPU buffer");
-    require(stride > 0 && memory->size % stride == 0, "GPU buffer size must match its element stride");
+    require(bytes > 0, "Cannot create an empty GPU buffer");
+    require(stride > 0 && bytes % stride == 0, "GPU buffer size must match its element stride");
     auto result = std::shared_ptr<Buffer>(new Buffer,
                                           [](Buffer *value)
                                           {
                                               gpu::destroy_gpu_heap(value->heap);
                                               delete value;
                                           });
-    result->bytes = memory->size;
+    result->bytes = bytes;
     result->stride = stride;
     result->index32 = index32;
     if (!noop())
     {
-        const auto heapBytes = (uint64_t(memory->size) + 15) & ~uint64_t{15};
+        const auto heapBytes = (uint64_t(bytes) + 15) & ~uint64_t{15};
 #if defined(__APPLE__)
         result->heap = gpu::create_gpu_heap(state().device, heapBytes, gpu::MemoryType::gpu_only);
 #else
@@ -551,7 +550,7 @@ std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool
             const char* reason = failure.api_result == VK_ERROR_OUT_OF_DEVICE_MEMORY ? " (out of device memory)"
                 : failure.api_result == VK_ERROR_OUT_OF_HOST_MEMORY ? " (out of host memory)"
                 : failure.api_result == VK_ERROR_DEVICE_LOST ? " (device lost)" : "";
-            throw std::runtime_error("Cannot allocate GPU geometry: requested " + std::to_string(memory->size)
+            throw std::runtime_error("Cannot allocate GPU geometry: requested " + std::to_string(bytes)
                 + " bytes; " + (failure.operation ? failure.operation : "unknown operation")
                 + " returned VkResult " + std::to_string(failure.api_result) + reason
                 + " (allocation " + std::to_string(failure.allocation_bytes)
@@ -559,14 +558,34 @@ std::shared_ptr<Buffer> createBuffer(const Memory *source, uint16_t stride, bool
         }
 #endif
         require(result->heap.owner != nullptr, "Cannot allocate GPU geometry");
-        // Retain the destination before submitting any upload chunks. A later
-        // exception must not free memory that an earlier chunk still writes.
-        state().trash->push_back(result);
+    }
+    return result;
+}
+void uploadBufferRange(const std::shared_ptr<Buffer>& buffer, uint32_t offset, const void* data, uint32_t bytes)
+{
+    require(data && bytes && offset <= buffer->bytes && bytes <= buffer->bytes - offset,
+        "GPU buffer upload range is invalid");
+    require(offset % 4 == 0 && bytes % 4 == 0, "GPU buffer uploads must be four-byte aligned");
+    if (noop()) { return; }
+    // Retain before recording the copy, including when its handle is destroyed
+    // by cancellation before frame(). The upload queue copies the source now.
+    state().trash->push_back(buffer);
+    state().uploads->upload_buffer(
+        {static_cast<byte*>(buffer->heap.range.gpu) + offset, bytes},
+        {static_cast<const byte*>(data), bytes});
+}
+std::shared_ptr<Buffer> createBuffer(const Memory* source, uint16_t stride, bool index32)
+{
+    MemoryOwner memory(source, freeMemory);
+    require(memory && memory->size > 0, "Cannot create an empty GPU buffer");
+    auto result = createBufferStorage(memory->size, stride, index32);
+    if (!noop()) {
+        // Legacy 16-bit buffers can end with half a copy-alignment unit.
         const uint64_t paddedBytes = (uint64_t(memory->size) + 3) & ~uint64_t{3};
-        if (paddedBytes == memory->size)
+        state().trash->push_back(result);
+        if (paddedBytes == memory->size) {
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {memory->data, paddedBytes});
-        else
-        {
+        } else {
             std::vector<byte> padded(static_cast<size_t>(paddedBytes));
             std::memcpy(padded.data(), memory->data, memory->size);
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {padded.data(), paddedBytes});
@@ -952,6 +971,23 @@ IndexBufferHandle createIndexBuffer(const Memory *memory, uint16_t flags)
 {
     const bool index32 = (flags & WOBY_GPU_BUFFER_INDEX32) != 0;
     return insert<IndexBufferHandle>(state().indexBuffers, createBuffer(memory, index32 ? 4u : 2u, index32));
+}
+VertexBufferHandle createVertexBufferStorage(uint32_t bytes, const VertexLayout& layout)
+{
+    return insert<VertexBufferHandle>(state().vertexBuffers, createBufferStorage(bytes, layout.stride, false));
+}
+IndexBufferHandle createIndexBufferStorage(uint32_t bytes, uint16_t flags)
+{
+    const bool index32 = (flags & WOBY_GPU_BUFFER_INDEX32) != 0;
+    return insert<IndexBufferHandle>(state().indexBuffers, createBufferStorage(bytes, index32 ? 4u : 2u, index32));
+}
+void uploadBufferRange(VertexBufferHandle handle, uint32_t offset, const void* data, uint32_t bytes)
+{
+    uploadBufferRange(resource(state().vertexBuffers, handle), offset, data, bytes);
+}
+void uploadBufferRange(IndexBufferHandle handle, uint32_t offset, const void* data, uint32_t bytes)
+{
+    uploadBufferRange(resource(state().indexBuffers, handle), offset, data, bytes);
 }
 bool isTextureValid(uint16_t depth, bool cube, uint16_t layers, TextureFormat::Enum format, uint64_t flags)
 {

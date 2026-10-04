@@ -192,6 +192,8 @@ add_executable(woby
     src/scene_lifecycle.h
     src/scene_file.cpp
     src/scene_file.h
+    src/scene_mesh_preparation.cpp
+    src/scene_mesh_preparation.h
     src/scene_renderer.cpp
     src/freeform_gpu.cpp
     src/scene_renderer.h
@@ -483,6 +485,8 @@ if(BUILD_TESTING)
         src/scene_objects.h
         src/graphics_helpers.cpp
         src/graphics_helpers.h
+        src/scene_mesh_preparation.cpp
+        src/scene_mesh_preparation.h
         src/scene_renderer.cpp
         src/freeform_gpu.cpp
         src/scene_renderer.h

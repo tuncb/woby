@@ -74,28 +74,6 @@ std::vector<uint32_t> buildLineIndices(const std::vector<uint32_t>& triangleIndi
     return lineIndices;
 }
 
-uint32_t appendPointIndicesForRange(
-    std::span<const uint32_t> triangleIndices,
-    uint32_t triangleIndexOffset,
-    uint32_t triangleIndexCount,
-    std::vector<size_t>& vertexGroups,
-    size_t groupIndex,
-    std::vector<uint32_t>& pointIndices)
-{
-    const uint32_t pointOffset = static_cast<uint32_t>(pointIndices.size());
-
-    const uint32_t endIndex = triangleIndexOffset + triangleIndexCount;
-    for (uint32_t index = triangleIndexOffset; index < endIndex; ++index) {
-        const uint32_t vertexIndex = triangleIndices[index];
-        if (vertexGroups[vertexIndex] != groupIndex) {
-            vertexGroups[vertexIndex] = groupIndex;
-            pointIndices.push_back(vertexIndex);
-        }
-    }
-
-    return static_cast<uint32_t>(pointIndices.size()) - pointOffset;
-}
-
 uint64_t renderState(
     uint64_t depthTest,
     bool writeDepth,
@@ -246,90 +224,95 @@ woby::graphics::VertexLayout helperLineVertexLayout()
     return {static_cast<uint16_t>(3 * sizeof(float))};
 }
 
-uint8_t requestedGpuMeshFeatures(const UiFileState& file)
+GpuMeshUpload beginGpuMeshUpload(SceneMeshPreparation prepared)
 {
-    uint8_t features = 0;
-    if (!file.fileSettings.visible || file.fileSettings.opacity <= 0) { return features; }
-    for (const auto& group : file.groupSettings) {
-        if (!group.visible || group.opacity <= 0) { continue; }
-        if (group.showTriangles) { features |= gpuMeshEdges; }
-        if (group.showVertices) { features |= gpuMeshPoints; }
-    }
-    return features;
+    GpuMeshUpload upload;
+    upload.mesh.nodeRanges = std::move(prepared.nodeRanges);
+    upload.mesh.pointVertexIndices = std::move(prepared.pointVertexIndices);
+    upload.edgeIndices = std::move(prepared.edgeIndices);
+    upload.features = prepared.features;
+    upload.totalBytes = prepared.uploadBytes;
+    return upload;
 }
 
-GpuMesh createGpuMesh(
-    const Mesh& mesh,
-    const woby::graphics::VertexLayout& meshLayout,
-    uint8_t features)
+bool stepGpuMeshUpload(GpuMeshUpload& upload, const Mesh& source,
+    const woby::graphics::VertexLayout& layout, uint32_t byteBudget)
 {
-    GpuMesh gpuMesh;
-    const auto vertexBytes = sceneBufferBytes(mesh.vertices.size(), sizeof(Vertex));
-    const auto indexBytes = sceneBufferBytes(mesh.indices.size(), sizeof(uint32_t));
-    if (empty(mesh) || mesh.indices.size() % 3 != 0 || mesh.lineIndices.size() % 2 != 0) {
-        throw std::runtime_error("Scene needs valid triangles, line segments or points.");
-    }
-    for (const auto index : mesh.indices) {
-        if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid vertex index."); }
-    }
-    for (const auto index : mesh.lineIndices) {
-        if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid line vertex index."); }
-    }
-    for (const auto index : mesh.pointIndices) {
-        if (index >= mesh.vertices.size()) { throw std::runtime_error("Scene contains an invalid point vertex index."); }
-    }
-    gpuMesh.nodeRanges.reserve(mesh.nodes.size());
-    // Keep compact CPU point ranges for picking and geometry tooltips, even
-    // when the compact GPU point-ID buffer has not been requested yet.
-    gpuMesh.pointVertexIndices.reserve(mesh.vertices.size());
-    std::vector<size_t> vertexGroups(mesh.vertices.size(), mesh.nodes.size());
-    for (size_t nodeIndex = 0; nodeIndex < mesh.nodes.size(); ++nodeIndex) {
-        const auto& node = mesh.nodes[nodeIndex];
-        if (size_t(node.indexOffset) + node.indexCount > mesh.indices.size()
-            || node.indexOffset % 3 != 0 || node.indexCount % 3 != 0
-            || size_t(node.lineIndexOffset) + node.lineIndexCount > mesh.lineIndices.size()
-            || node.lineIndexOffset % 2 != 0 || node.lineIndexCount % 2 != 0
-            || size_t(node.pointIndexOffset) + node.pointIndexCount > mesh.pointIndices.size()
-            || (node.indexCount && node.lineIndexCount)
-            || (node.pointIndexCount && (node.indexCount || node.lineIndexCount))) {
-            throw std::runtime_error("Scene contains an invalid primitive range.");
+    if (byteBudget < sizeof(Vertex)) { throw std::invalid_argument("Mesh upload budget must fit one vertex."); }
+    // Keep chunks aligned for both Vulkan copies and vertex-buffer strides.
+    byteBudget -= byteBudget % sizeof(Vertex);
+    while (upload.bufferIndex < 5) {
+        const void* data = nullptr;
+        uint32_t bytes = 0;
+        woby::graphics::IndexBufferHandle* indexBuffer = nullptr;
+        uint16_t flags = WOBY_GPU_BUFFER_INDEX32;
+        switch (upload.bufferIndex) {
+        case 0:
+            data = source.vertices.data();
+            bytes = sceneBufferBytes(source.vertices.size(), sizeof(Vertex));
+            break;
+        case 1:
+            data = source.indices.data();
+            bytes = sceneBufferBytes(source.indices.size(), sizeof(uint32_t));
+            indexBuffer = &upload.mesh.triangleIndexBuffer;
+            break;
+        case 2:
+            data = source.lineIndices.data();
+            bytes = sceneBufferBytes(source.lineIndices.size(), sizeof(uint32_t));
+            indexBuffer = &upload.mesh.importedLineBuffer;
+            flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
+            break;
+        case 3:
+            data = upload.edgeIndices.data();
+            bytes = sceneBufferBytes(upload.edgeIndices.size(), sizeof(uint32_t));
+            indexBuffer = &upload.mesh.lineIndexBuffer;
+            break;
+        case 4:
+            data = upload.mesh.pointVertexIndices.data();
+            if (upload.features & gpuMeshPoints) {
+                bytes = sceneBufferBytes(upload.mesh.pointVertexIndices.size(), sizeof(uint32_t));
+            }
+            indexBuffer = &upload.mesh.pointIdBuffer;
+            flags |= WOBY_GPU_BUFFER_COMPUTE_READ;
+            break;
         }
-        GpuNodeRange range;
-        range.triangleIndexOffset = node.indexOffset;
-        range.triangleIndexCount = node.indexCount;
-        range.lineIndexOffset = node.indexOffset * 2u;
-        range.lineIndexCount = node.indexCount * 2u;
-        range.pointIndexOffset = static_cast<uint32_t>(gpuMesh.pointVertexIndices.size());
-        const auto indices = meshNodeIndices(mesh, node);
-        range.pointIndexCount = appendPointIndicesForRange(indices, 0, static_cast<uint32_t>(indices.size()),
-            vertexGroups, nodeIndex, gpuMesh.pointVertexIndices);
-        (void)sceneBufferBytes(gpuMesh.pointVertexIndices.size(), sizeof(uint32_t));
-        gpuMesh.nodeRanges.push_back(range);
+        if (bytes == upload.bufferOffset) {
+            ++upload.bufferIndex;
+            upload.bufferOffset = 0;
+            continue;
+        }
+        if (byteBudget < sizeof(Vertex)) { return false; }
+        if (upload.bufferOffset == 0) {
+            if (indexBuffer) { *indexBuffer = woby::graphics::createIndexBufferStorage(bytes, flags); }
+            else { upload.mesh.vertexBuffer = woby::graphics::createVertexBufferStorage(bytes, layout); }
+        }
+        const uint32_t count = std::min(bytes - upload.bufferOffset, byteBudget);
+        const auto* chunk = static_cast<const uint8_t*>(data) + upload.bufferOffset;
+        if (indexBuffer) { woby::graphics::uploadBufferRange(*indexBuffer, upload.bufferOffset, chunk, count); }
+        else { woby::graphics::uploadBufferRange(upload.mesh.vertexBuffer, upload.bufferOffset, chunk, count); }
+        upload.bufferOffset += count;
+        upload.uploadedBytes += count;
+        byteBudget -= count;
     }
-    try {
-        gpuMesh.vertexBuffer = woby::graphics::createVertexBuffer(
-            woby::graphics::copy(mesh.vertices.data(), vertexBytes),
-            meshLayout, WOBY_GPU_BUFFER_COMPUTE_READ);
+    return true;
+}
 
-        if (!mesh.indices.empty()) { gpuMesh.triangleIndexBuffer = woby::graphics::createIndexBuffer(
-            woby::graphics::copy(mesh.indices.data(), indexBytes),
-            WOBY_GPU_BUFFER_INDEX32); }
-        if (!mesh.lineIndices.empty()) {
-            gpuMesh.importedLineBuffer = woby::graphics::createIndexBuffer(
-                woby::graphics::copy(mesh.lineIndices.data(), sceneBufferBytes(mesh.lineIndices.size(), sizeof(uint32_t))),
-                WOBY_GPU_BUFFER_INDEX32 | WOBY_GPU_BUFFER_COMPUTE_READ);
-            if (!woby::graphics::isValid(gpuMesh.importedLineBuffer)) { throw std::runtime_error("Failed to allocate line segment buffer."); }
-        }
-        if (!woby::graphics::isValid(gpuMesh.vertexBuffer)
-            || (!mesh.indices.empty() && !woby::graphics::isValid(gpuMesh.triangleIndexBuffer))) {
-            throw std::runtime_error("Failed to allocate scene GPU buffers.");
-        }
-        prepareGpuMeshFeatures(gpuMesh, mesh, features);
+void abortGpuMeshUpload(GpuMeshUpload& upload)
+{
+    destroyGpuMesh(upload.mesh);
+    upload = {};
+}
+
+GpuMesh createGpuMesh(const Mesh& mesh, const woby::graphics::VertexLayout& meshLayout, uint8_t features)
+{
+    auto upload = beginGpuMeshUpload(*prepareSceneMesh(mesh, features));
+    try {
+        while (!stepGpuMeshUpload(upload, mesh, meshLayout, 4u * 1024 * 1024)) {}
     } catch (...) {
-        destroyGpuMesh(gpuMesh);
+        abortGpuMeshUpload(upload);
         throw;
     }
-    return gpuMesh;
+    return std::move(upload.mesh);
 }
 
 void prepareGpuMeshFeatures(GpuMesh& gpuMesh, const Mesh& mesh,

@@ -3,6 +3,8 @@
 
 #include <doctest/doctest.h>
 #include <limits>
+#include <future>
+#include <cstring>
 
 namespace {
 
@@ -20,6 +22,149 @@ struct RendererFixture {
 };
 
 } // namespace
+
+TEST_CASE("Scene upload preparation is owned worker data with cancellable validation and range building")
+{
+    woby::Mesh mesh;
+    mesh.vertices.resize(8);
+    mesh.indices = {6, 1, 6, 1, 3, 6, 3, 1, 7};
+    mesh.nodes = {{"first", 0, 6}, {"shared", 6, 3}, {"overlap", 0, 3}};
+    auto worker = std::async(std::launch::async, [source = mesh] {
+        return woby::prepareSceneMesh(source, woby::gpuMeshEdges | woby::gpuMeshPoints);
+    });
+    mesh.indices.clear(); // The result does not borrow this source or the worker snapshot.
+    const auto prepared = worker.get();
+    REQUIRE(prepared);
+    CHECK(prepared->pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 3, 1, 7, 6, 1});
+    CHECK(prepared->edgeIndices == std::vector<uint32_t>{6, 1, 1, 6, 6, 6, 1, 3, 3, 6, 6, 1, 3, 1, 1, 7, 7, 3});
+    REQUIRE(prepared->nodeRanges.size() == 3);
+    CHECK(prepared->nodeRanges[2].pointIndexOffset == 6);
+    CHECK(prepared->nodeRanges[2].pointIndexCount == 2);
+
+    mesh.indices.assign(300000, 0);
+    mesh.nodes = {{"large", 0, 300000}};
+    // Cancel in initial validation, range preparation, and optional edge generation.
+    for (const size_t stop : {1u, 4u, 9u, 14u}) {
+        size_t polls = 0;
+        CHECK_FALSE(woby::prepareSceneMesh(mesh, woby::gpuMeshEdges, [&] { return ++polls == stop; }));
+        CHECK(polls == stop);
+    }
+    CHECK(woby::prepareSceneMesh(mesh).has_value());
+}
+
+TEST_CASE("Staged mesh uploads bound bytes and complete every primitive buffer before publication")
+{
+    RendererFixture fixture;
+    woby::graphics::Init init;
+    init.type = woby::graphics::RendererType::Noop;
+    fixture.initialized = woby::graphics::init(init);
+    REQUIRE(fixture.initialized);
+    woby::Mesh mesh;
+    mesh.vertices.resize(8);
+    mesh.indices = {6, 1, 3, 3, 1, 7};
+    mesh.lineIndices = {0, 2};
+    mesh.pointIndices = {5, 4, 5};
+    mesh.nodes = {{"triangles", 0, 6}, {"lines"}, {"points"}};
+    mesh.nodes[1].lineIndexCount = 2;
+    mesh.nodes[2].pointIndexCount = 3;
+    auto prepared = woby::prepareSceneMesh(mesh, woby::gpuMeshEdges | woby::gpuMeshPoints);
+    REQUIRE(prepared);
+    auto upload = woby::beginGpuMeshUpload(std::move(*prepared));
+    // Moving the source between steps is safe: no pointer is retained by upload.
+    auto moved = std::move(mesh);
+    bool complete = false;
+    size_t steps = 0;
+    while (!complete && steps < 100) {
+        const auto previous = upload.uploadedBytes;
+        complete = woby::stepGpuMeshUpload(upload, moved, woby::meshVertexLayout(), 32);
+        CHECK(upload.uploadedBytes - previous <= 32);
+        if (!complete) { CHECK(upload.bufferIndex < 5); }
+        ++steps;
+    }
+    REQUIRE(complete);
+    CHECK(steps > 1);
+    CHECK(upload.uploadedBytes == 256 + 24 + 8 + 48 + 32);
+    CHECK(upload.uploadedBytes == upload.totalBytes);
+    fixture.mesh = std::move(upload.mesh);
+    CHECK(woby::graphics::isValid(fixture.mesh.vertexBuffer));
+    CHECK(woby::graphics::isValid(fixture.mesh.triangleIndexBuffer));
+    CHECK(woby::graphics::isValid(fixture.mesh.importedLineBuffer));
+    CHECK(woby::graphics::isValid(fixture.mesh.lineIndexBuffer));
+    CHECK(woby::graphics::isValid(fixture.mesh.pointIdBuffer));
+    CHECK(fixture.mesh.pointVertexIndices == std::vector<uint32_t>{6, 1, 3, 7, 0, 2, 5, 4});
+}
+
+TEST_CASE("Canceling a partial mesh upload destroys its buffers and allows a fresh upload")
+{
+    RendererFixture fixture;
+    woby::graphics::Init init;
+    init.type = woby::graphics::RendererType::Noop;
+    fixture.initialized = woby::graphics::init(init);
+    REQUIRE(fixture.initialized);
+    woby::Mesh mesh;
+    mesh.vertices.resize(3);
+    mesh.indices = {0, 1, 2};
+    mesh.nodes = {{"triangle", 0, 3}};
+    auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(mesh));
+    CHECK_FALSE(woby::stepGpuMeshUpload(upload, mesh, woby::meshVertexLayout(), 32));
+    const auto canceledBuffer = upload.mesh.vertexBuffer;
+    woby::abortGpuMeshUpload(upload);
+    CHECK_FALSE(woby::graphics::isValid(upload.mesh.vertexBuffer));
+    CHECK(upload.mesh.pointVertexIndices.empty());
+    const std::array<uint32_t, 8> data{};
+    CHECK_THROWS(woby::graphics::uploadBufferRange(canceledBuffer, 0, data.data(), 32));
+    fixture.mesh = woby::createGpuMesh(mesh, woby::meshVertexLayout());
+    CHECK(woby::graphics::isValid(fixture.mesh.triangleIndexBuffer));
+    CHECK_THROWS(woby::graphics::uploadBufferRange(fixture.mesh.vertexBuffer, 92, data.data(), 8));
+    CHECK_THROWS(woby::graphics::uploadBufferRange(fixture.mesh.vertexBuffer, 1, data.data(), 4));
+    CHECK_THROWS(woby::graphics::uploadBufferRange(fixture.mesh.vertexBuffer, 0, nullptr, 4));
+    CHECK_THROWS(woby::graphics::createVertexBufferStorage(31, woby::meshVertexLayout()));
+}
+
+TEST_CASE("Staged native GPU uploads preserve complete geometry across frames and source destruction")
+{
+    namespace g = woby::graphics;
+    RendererFixture fixture;
+    fixture.initialized = g::init({});
+    REQUIRE(fixture.initialized);
+    woby::Mesh source;
+    source.vertices.resize(7);
+    for (size_t i = 0; i < source.vertices.size(); ++i) {
+        source.vertices[i].position = {static_cast<float>(i), -2.0f, 3.0f};
+    }
+    source.indices = {2, 0, 1, 1, 3, 2};
+    source.lineIndices = {4, 6};
+    source.pointIndices = {5, 5, 6};
+    source.nodes = {{"triangles", 0, 6}, {"lines"}, {"points"}};
+    source.nodes[1].lineIndexCount = 2;
+    source.nodes[2].pointIndexCount = 3;
+    const auto expected = source;
+    auto upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(source, woby::gpuMeshEdges | woby::gpuMeshPoints));
+    while (!woby::stepGpuMeshUpload(upload, source, woby::meshVertexLayout(), 64)) { g::frame(); }
+    fixture.mesh = std::move(upload.mesh);
+    source = {}; // Including the last chunk, staging must own bytes before frame().
+    upload = {};
+    std::vector<woby::Vertex> vertices(expected.vertices.size());
+    std::vector<uint32_t> triangles(expected.indices.size()), lines(expected.lineIndices.size());
+    std::vector<uint32_t> edges(expected.indices.size() * 2), points(fixture.mesh.pointVertexIndices.size());
+    g::readBuffer(fixture.mesh.vertexBuffer, vertices.data());
+    g::readBuffer(fixture.mesh.triangleIndexBuffer, triangles.data());
+    g::readBuffer(fixture.mesh.importedLineBuffer, lines.data());
+    g::readBuffer(fixture.mesh.lineIndexBuffer, edges.data());
+    const auto ready = g::readBuffer(fixture.mesh.pointIdBuffer, points.data());
+    while (g::frame() < ready) {}
+    CHECK(std::memcmp(vertices.data(), expected.vertices.data(), vertices.size() * sizeof(woby::Vertex)) == 0);
+    CHECK(triangles == expected.indices);
+    CHECK(lines == expected.lineIndices);
+    CHECK(edges == std::vector<uint32_t>{2, 0, 0, 1, 1, 2, 1, 3, 3, 2, 2, 1});
+    CHECK(points == fixture.mesh.pointVertexIndices);
+
+    upload = woby::beginGpuMeshUpload(*woby::prepareSceneMesh(expected));
+    CHECK_FALSE(woby::stepGpuMeshUpload(upload, expected, woby::meshVertexLayout(), 32));
+    woby::abortGpuMeshUpload(upload); // Destroy before queued GPU copy has been submitted.
+    for (int i = 0; i < 4; ++i) { g::frame(); }
+    CHECK_NOTHROW(g::setVertexBuffer(0, fixture.mesh.vertexBuffer)); // Existing scene still usable.
+}
 
 TEST_CASE("GPU point ranges preserve first occurrence order independently for each group")
 {
