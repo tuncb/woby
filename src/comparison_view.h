@@ -48,9 +48,7 @@ struct IntersectionRuntime {
 
 struct ComparisonRuntime
 {
-    uint64_t sidebarRevision = uint64_t(-1);
-    std::array<ComparisonInputSummary, 2> sidebarInputs;
-    std::string sidebarSources;
+    mutable ComparisonInspectorCache inspector;
     std::array<std::array<DiagnosticSummary, 2>, diagnosticCategoryCount> diagnosticSummaries{};
     std::stop_source preparationStop;
     std::future<std::shared_ptr<const PreparedComparisonInputs>> preparationWorker;
@@ -101,6 +99,9 @@ struct ComparisonNameEdit {
     SceneObjectId id, bool fullResults = false);
 [[nodiscard]] bool comparisonStagesReady(const ComparisonRuntime& runtime, const UiState& state,
     SceneObjectId id, uint32_t stages, bool requireGpu = false);
+// Reuse resolved scene inputs, but always evaluate live result/settings/GPU state.
+[[nodiscard]] bool comparisonStagesReady(const ComparisonRuntime& runtime, const ComparisonSettings& settings,
+    uint64_t signature, uint32_t stages, bool requireGpu = false);
 [[nodiscard]] ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime,
     const UiState& state, SceneObjectId id);
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);

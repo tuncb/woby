@@ -609,13 +609,14 @@ void navigateUvFinding(UiState& state, const Mesh& display, uint64_t resultSigna
 }
 
 namespace {
-bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison)
+bool diagnosticFocusCurrent(const UiState& state, const UiComparison& comparison,
+    std::optional<uint64_t> geometrySignature = {})
 {
     const auto& focus = comparison.diagnosticFocus;
     return focus && comparison.settings.enabled && focus->signature != 0
         && focus->side == comparison.settings.diagnosticSide
         && focus->category == comparison.settings.diagnosticCategory
-        && focus->signature == comparisonGeometrySignature(state, comparison.objectId);
+        && focus->signature == (geometrySignature ? *geometrySignature : comparisonGeometrySignature(state, comparison.objectId));
 }
 
 bool diagnosticResultSettingsCurrent(const UiComparison& comparison, const MeshComparison& result, const DiagnosticFocus& focus)
@@ -639,10 +640,10 @@ bool diagnosticResultSettingsCurrent(const UiComparison& comparison, const MeshC
 } // namespace
 
 const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
-    const MeshComparison& result, uint64_t resultSignature, SceneObjectId id)
+    const MeshComparison& result, uint64_t resultSignature, SceneObjectId id, std::optional<uint64_t> geometrySignature)
 {
     const auto* comparison = findComparison(state, id);
-    if (!comparison || !diagnosticFocusCurrent(state, *comparison)
+    if (!comparison || !diagnosticFocusCurrent(state, *comparison, geometrySignature)
         || comparison->diagnosticFocus->signature != resultSignature) { return nullptr; }
     const auto& focus = *comparison->diagnosticFocus;
     if (comparisonDetectorStatus(result, focus.category).phase != IntersectionPhase::complete) { return nullptr; }
@@ -660,11 +661,11 @@ void resetComparisonDiagnosticFocus(UiState& state, SceneObjectId id)
 }
 
 void validateComparisonDiagnosticFocus(UiState& state, const MeshComparison& result,
-    uint64_t resultSignature, SceneObjectId id)
+    uint64_t resultSignature, SceneObjectId id, std::optional<uint64_t> geometrySignature)
 {
     if (auto* comparison = findComparison(state, id); comparison && comparison->pendingDiagnosticFocus) {
         const auto pending = *comparison->pendingDiagnosticFocus;
-        if (!comparison->settings.enabled || pending.signature != comparisonGeometrySignature(state, id)
+        if (!comparison->settings.enabled || pending.signature != (geometrySignature ? *geometrySignature : comparisonGeometrySignature(state, id))
             || pending.side != comparison->settings.diagnosticSide || pending.category != comparison->settings.diagnosticCategory) {
             resetComparisonDiagnosticFocus(state, id);
             return;
@@ -675,7 +676,7 @@ void validateComparisonDiagnosticFocus(UiState& state, const MeshComparison& res
         comparison->diagnosticFocus = pending;
         comparison->pendingDiagnosticFocus.reset();
     }
-    if (!focusedComparisonDiagnostic(state, result, resultSignature, id)) {
+    if (!focusedComparisonDiagnostic(state, result, resultSignature, id, geometrySignature)) {
         resetComparisonDiagnosticFocus(state, id);
     }
 }

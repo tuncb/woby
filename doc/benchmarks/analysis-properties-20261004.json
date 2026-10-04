@@ -1,0 +1,277 @@
+{
+  "issue": "https://github.com/tuncb/woby/issues/100",
+  "date": "2026-10-04",
+  "base_commit": "7d5f1f9",
+  "version": "0.26.0",
+  "implementation": "Revision-cached source trees, summaries, checkbox counts and geometry signature shared by Properties and sidebar. Readiness evaluates live settings, results and GPU state.",
+  "cache_key": [
+    "UiState identity",
+    "scene generation",
+    "scene edit revision",
+    "analysis object ID"
+  ],
+  "validation": {
+    "preset": "vs2026-vcpkg",
+    "debug_build": "passed without warnings",
+    "release_woby_build": "passed without warnings",
+    "command": "ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure",
+    "tests_passed": 825,
+    "tests_failed": 0,
+    "slow_tests_included": 4,
+    "seconds": 924.93,
+    "new_regressions": [
+      "unchanged collapsed/expanded draws",
+      "membership, names, transforms, replacement geometry and missing sources",
+      "undo/redo and replacement scenes with reused IDs",
+      "live result/settings/GPU readiness",
+      "final partial findings page and stale selection"
+    ]
+  },
+  "synthetic_debug": {
+    "description": "Three shared vertices, one triangle per group, nine completed detectors, no findings. Median of nine warm-cache complete Properties draws; no timing assertion.",
+    "command": "build/vs2026-vcpkg/bin/Debug/woby_tests.exe --test-case=\"analysis inspector unchanged draw benchmark\" --no-skip=true --no-colors",
+    "groups": [
+      1,
+      256,
+      2203
+    ],
+    "median_ms": [
+      1.4574,
+      1.2296,
+      1.1473
+    ],
+    "investigation_baseline_median_ms": [
+      1.6293,
+      67.5154,
+      598.821
+    ],
+    "baseline_source": "D:/.worktree/woby-investigation-20261004/investigation/issue100-probe-results.txt",
+    "limit": "Debug metadata probe, not Release FPS. New fixture includes a folder above the file."
+  },
+  "san_miguel_release": {
+    "renderer": "NoGraphicsAPI Vulkan",
+    "model": "D:/temp/obj_tests/san-miguel.obj",
+    "model_bytes": 1143041382,
+    "vertices": 9021391,
+    "triangles": 9980699,
+    "groups": 2203,
+    "source_hidden": true,
+    "selected_object": "mesh checks analysis",
+    "sources_tree": "collapsed",
+    "camera_unchanged": true,
+    "camera": {
+      "distance": 102.12390899658203,
+      "effectiveNearPlane": 1.0212390422821045,
+      "eye": [
+        71.21131896972656,
+        -51.89282989501953,
+        60.40886688232422
+      ],
+      "farPlane": 253.4185791015625,
+      "nearPlane": 0.10000000149011612,
+      "pitchDegrees": 35.26438903808594,
+      "rollDegrees": 0.0,
+      "target": [
+        12.250049591064453,
+        7.0684356689453125,
+        1.4475998878479004
+      ],
+      "up": [
+        -0.40824827551841736,
+        0.40824827551841736,
+        0.8164965510368347
+      ],
+      "upAxis": "z",
+      "verticalFovDegrees": 60.0,
+      "yawDegrees": -45.0
+    },
+    "detector_summaries_equal_archived_baseline": true,
+    "detectors": {
+      "boundary_edges": {
+        "count": 1436491,
+        "countUnit": "edges",
+        "findingCount": 1436491,
+        "status": "complete",
+        "topologyMode": "original_index",
+        "unavailableSources": 0
+      },
+      "degenerate_tris": {
+        "count": 31343,
+        "status": "complete",
+        "unavailableSources": 0
+      },
+      "duplicate_points": {
+        "count": 146389,
+        "status": "complete",
+        "unavailableSources": 0
+      },
+      "duplicate_tris": {
+        "count": 12454,
+        "status": "complete",
+        "unavailableSources": 0
+      },
+      "fins": {
+        "count": 14563,
+        "countUnit": "edges",
+        "findingCount": 14563,
+        "status": "complete",
+        "topologyMode": "original_index",
+        "unavailableSources": 0
+      },
+      "holes": {
+        "count": 8168,
+        "countUnit": "edges",
+        "findingCount": 8168,
+        "status": "complete",
+        "topologyMode": "original_index",
+        "unavailableSources": 0
+      },
+      "inconsistently_oriented_tris": {
+        "count": 7110,
+        "countUnit": "unique triangle instances",
+        "findingCount": 5211,
+        "status": "complete",
+        "topologyMode": "original_index",
+        "unavailableSources": 0
+      },
+      "non_manifold_edges": {
+        "count": 39096,
+        "countUnit": "edges",
+        "findingCount": 39096,
+        "status": "complete",
+        "topologyMode": "original_index",
+        "unavailableSources": 0
+      },
+      "non_manifold_vertices": {
+        "count": 13573,
+        "countUnit": "edges",
+        "findingCount": 13573,
+        "status": "complete",
+        "topologyMode": "original_index",
+        "unavailableSources": 0
+      },
+      "self_intersections": {
+        "count": null,
+        "detectionTruncated": false,
+        "status": "not_checked",
+        "topologyMode": "original_index",
+        "unavailableSources": 0
+      }
+    },
+    "warmup_seconds": 3,
+    "sample_window_seconds": 10,
+    "sequence": [
+      {
+        "properties": "visible",
+        "raw_scenario": "properties_visible_final",
+        "samples": 89,
+        "seconds": 9.969834199990146,
+        "fps": 18.35537044339021,
+        "drawable_pixels": {
+          "height": 1255,
+          "width": 1903
+        },
+        "viewport_pixels": {
+          "height": 1222,
+          "width": 903,
+          "x": 475,
+          "y": 33
+        },
+        "median_stage_ms": {
+          "events": 0.0968,
+          "graphics_frame": 1.268,
+          "hover_pick": 0.0055,
+          "imgui_build": 0.6153,
+          "imgui_render": 0.0644,
+          "pending_io": 0.0078,
+          "scene_state": 2.722,
+          "state_update": 0.0043,
+          "submit_helpers": 21.9157,
+          "submit_scene": 23.8444,
+          "view_setup": 2.3879
+        }
+      },
+      {
+        "properties": "hidden",
+        "raw_scenario": "large_properties_visible",
+        "samples": 91,
+        "seconds": 9.93111135000072,
+        "fps": 18.426940706891454,
+        "drawable_pixels": {
+          "height": 1255,
+          "width": 1903
+        },
+        "viewport_pixels": {
+          "height": 1222,
+          "width": 1428,
+          "x": 475,
+          "y": 33
+        },
+        "median_stage_ms": {
+          "events": 0.0745,
+          "graphics_frame": 1.1734,
+          "hover_pick": 0.0047,
+          "imgui_build": 0.2636,
+          "imgui_render": 0.0355,
+          "pending_io": 0.0073,
+          "scene_state": 2.6115,
+          "state_update": 0.004,
+          "submit_helpers": 21.4762,
+          "submit_scene": 23.2798,
+          "view_setup": 2.2985
+        }
+      },
+      {
+        "properties": "restored",
+        "raw_scenario": "properties_restored",
+        "samples": 92,
+        "seconds": 9.952336849994026,
+        "fps": 22.507276770895718,
+        "drawable_pixels": {
+          "height": 1255,
+          "width": 1903
+        },
+        "viewport_pixels": {
+          "height": 1222,
+          "width": 1053,
+          "x": 475,
+          "y": 33
+        },
+        "median_stage_ms": {
+          "events": 0.09054999999999999,
+          "graphics_frame": 1.1941000000000002,
+          "hover_pick": 0.28805000000000003,
+          "imgui_build": 0.5125,
+          "imgui_render": 0.05945,
+          "pending_io": 0.0078,
+          "scene_state": 2.37825,
+          "state_update": 0.0041,
+          "submit_helpers": 18.82185,
+          "submit_scene": 20.1264,
+          "view_setup": 1.9594
+        }
+      }
+    ],
+    "historical_issue_baseline_imgui_ms": {
+      "visible": 46.7509,
+      "hidden": 0.16,
+      "restored": 46.45
+    },
+    "resource_guards": {
+      "max_private_gib": 38,
+      "min_system_available_gib": 6
+    },
+    "peak_private_bytes": 12505755648,
+    "minimum_system_available_bytes": 10622300160,
+    "executable_sha256": "0e084c930dc4f01815891488561643da8bd9bf829810262393f40ba6fd669c51",
+    "raw_evidence": "build/issue100/san-miguel-retry/native-san-miguel-r0",
+    "limits": [
+      "Other local viewer/build/test runs were active. FPS is observational, not a controlled speedup claim.",
+      "UI observation and viewport width establish that raw scenario large_properties_visible actually had Properties hidden; the original raw label is preserved.",
+      "Drawable dimensions stayed constant in the selected sequence. The restored Properties pane was narrower after interactive resizing: 375 vs 525 drawable pixels.",
+      "This does not reproduce the historical outer window size; historical drawable dimensions were not recorded.",
+      "Native expanded-Sources timing was not completed; expanded query reuse is covered by the 2203-group ImGui regression.",
+      "The initial load encountered a file-sharing lock. A fresh retry completed using the original model."
+    ]
+  }
+}

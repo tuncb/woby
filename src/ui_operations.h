@@ -60,11 +60,13 @@ void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t result
 void selectUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, size_t index, SceneObjectId id);
 void navigateUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, int step, SceneObjectId id);
 // A zero/stale result signature is unavailable. Navigation wraps within one side/category.
+// Callers may supply the geometry signature from a current scene-revision cache.
 [[nodiscard]] const DiagnosticEdge* focusedComparisonDiagnostic(const UiState& state,
-    const MeshComparison& result, uint64_t resultSignature, SceneObjectId id);
+    const MeshComparison& result, uint64_t resultSignature, SceneObjectId id,
+    std::optional<uint64_t> geometrySignature = {});
 void resetComparisonDiagnosticFocus(UiState& state, SceneObjectId id);
 void validateComparisonDiagnosticFocus(UiState& state, const MeshComparison& result,
-    uint64_t resultSignature, SceneObjectId id);
+    uint64_t resultSignature, SceneObjectId id, std::optional<uint64_t> geometrySignature = {});
 void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
     uint64_t resultSignature, size_t index, SceneObjectId id);
 void navigateComparisonDiagnostic(UiState& state, const MeshComparison& result,

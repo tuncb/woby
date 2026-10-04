@@ -126,8 +126,8 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     woby::ComparisonRuntimes runtimes;
     auto& runtime = runtimes.objects[f.id];
     runtime.ready = true;
-    runtime.sidebarInputs[0].enabledPartCount = 1;
-    runtime.sidebarSources = "inspection-source.obj";
+    runtime.inspector.inputs[0].summary.enabledPartCount = 1;
+    runtime.inspector.sources = "inspection-source.obj";
     for (auto& check : runtime.diagnosticSummaries) { check[0].state = woby::AnalysisResultState::ready; }
     runtime.diagnosticSummaries[0][0].count = 3;
     runtime.diagnosticSummaries[1][0].state = woby::AnalysisResultState::notRun;
@@ -141,11 +141,14 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     }
     SUBCASE("input issues appear directly in the hint") {
         woby::clearComparisonGroup(f.state, woby::ComparisonSide::a, f.id);
-        runtime.sidebarInputs[0].enabledPartCount = 0;
-        runtime.sidebarInputs[0].issue = "Add an enabled source to this input.";
+        runtime.inspector.inputs[0].summary.enabledPartCount = 0;
+        runtime.inspector.inputs[0].summary.issue = "Add an enabled source to this input.";
         expectedStatus = "Needs inputs"; missing = true;
     }
-    runtime.sidebarRevision = f.state.sceneEditRevision;
+    runtime.inspector.owner = &f.state;
+    runtime.inspector.objectId = f.id;
+    runtime.inspector.generation = f.state.sceneGeneration;
+    runtime.inspector.revision = f.state.sceneEditRevision;
     std::string contents;
     float endY = 0;
     ImVec2 row;
@@ -174,7 +177,7 @@ TEST_CASE("analysis rows show only names and reveal metadata in the hover hint")
     CHECK(contents.find(expectedStatus) != std::string::npos);
     CHECK(contents.find("Sources: inspection-source.obj") != std::string::npos);
     CHECK(contents.find("Double-click to rename") != std::string::npos);
-    if (missing) { CHECK(contents.find(runtime.sidebarInputs[0].issue) != std::string::npos); }
+    if (missing) { CHECK(contents.find(runtime.inspector.inputs[0].summary.issue) != std::string::npos); }
     else if (woby::comparisonSettings(f.state, f.id).mode != woby::ComparisonMode::surfaceQuality) {
         CHECK(contents.find("1 checks with findings | 1 not run") != std::string::npos);
     }

@@ -416,6 +416,7 @@ if(BUILD_TESTING)
         tests/keyboard_input_tests.cpp
         src/scene_inspector.cpp
         tests/comparison_name_tests.cpp
+        tests/comparison_inspector_tests.cpp
         src/main_menu.cpp
         src/main_menu.h
         src/settings_dialog.cpp

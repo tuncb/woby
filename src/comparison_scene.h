@@ -29,6 +29,29 @@ struct ComparisonInputSummary
 [[nodiscard]] ComparisonInputSummary comparisonInputSummary(
     const UiState& state, ComparisonSide side, SceneObjectId id);
 
+struct ComparisonInspectorInput {
+    std::vector<ComparisonTreeNode> roots;
+    ComparisonInputSummary summary;
+    size_t triangleCount = 0;
+    // Include missing references in the root checkbox, so they can be disabled.
+    size_t memberCount = 0, enabledMemberCount = 0;
+};
+
+// Runtime-only derived data. Scene operations notify sceneEditRevision; New/Open
+// changes sceneGeneration. Camera, selection and detector publication need no rebuild.
+struct ComparisonInspectorCache {
+    const UiState* owner = nullptr;
+    SceneObjectId objectId = invalidSceneObjectId;
+    uint64_t generation = 0, revision = 0, builds = 0;
+    uint64_t signature = 0;
+    std::array<ComparisonInspectorInput, 2> inputs;
+    std::string sources;
+};
+[[nodiscard]] bool comparisonInspectorCacheCurrent(const ComparisonInspectorCache& cache,
+    const UiState& state, SceneObjectId id);
+const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspectorCache& cache,
+    const UiState& state, SceneObjectId id);
+
 // A filtered view of the source hierarchy; empty branches are omitted.
 // Membership is owned by the comparison; source objects are never reparented.
 [[nodiscard]] std::vector<ComparisonTreeNode> comparisonTree(const UiState& state, ComparisonSide side, SceneObjectId id = invalidSceneObjectId);

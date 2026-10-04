@@ -3472,7 +3472,13 @@ int main(int argc, char** argv)
                                 || payload.action == A::importersScan || payload.action == A::importersForget) {
                                 result = woby::applyControlImporterOperation(payload, importerSettingsPath, rememberedImporters);
                             } else if (payload.action == A::performance) {
+                                uint32_t drawableWidth = 0, drawableHeight = 0;
+                                getDrawableSize(window.get(), drawableWidth, drawableHeight);
+                                const auto measuredViewport = canvasLayout(window.get(), ui).viewport;
                                 result = {{"frameIndex", lastFrameTimings.frameIndex}, {"fps", fps},
+                                    {"drawable", {{"width", drawableWidth}, {"height", drawableHeight}}},
+                                    {"viewport", {{"x", measuredViewport.x}, {"y", measuredViewport.y},
+                                        {"width", measuredViewport.width}, {"height", measuredViewport.height}}},
                                     {"frameMilliseconds", lastFrameTimings.totalMilliseconds},
                                     {"cpuFrameMilliseconds", lastFrameTimings.graphicsCpuFrameMilliseconds},
                                     {"cpuSubmitMilliseconds", lastFrameTimings.graphicsCpuSubmitMilliseconds},

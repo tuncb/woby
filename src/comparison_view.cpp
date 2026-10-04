@@ -30,11 +30,37 @@ constexpr size_t diagnosticPageSize = 25;
 
 enum class ComparisonActivity { idle, queued, calculating, failed };
 
+const ComparisonInspectorCache& inspectorQueries(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id)
+{
+    return updateComparisonInspectorCache(runtime.inspector, state, id);
+}
+
+bool inspectorStagesReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id, uint32_t stages)
+{
+    return comparisonStagesReady(runtime, comparisonSettings(state, id), inspectorQueries(runtime, state, id).signature, stages);
+}
+
+bool inspectorDetectorReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id, DiagnosticCategory category)
+{
+    return comparisonDetectorStatus(runtime.result, category).phase == IntersectionPhase::complete
+        && inspectorStagesReady(runtime, state, id, comparisonDiagnosticStage(category));
+}
+
+size_t inspectorEnabledPartCount(const ComparisonRuntime& runtime, const UiState& state, ComparisonSide side, SceneObjectId id)
+{
+    return inspectorQueries(runtime, state, id).inputs[side == ComparisonSide::a ? 0 : 1].summary.enabledPartCount;
+}
+
+bool resultsReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id,
+    uint64_t signature, bool both, bool fullResults);
+
 ComparisonActivity comparisonActivity(const UiState& state, const ComparisonRuntime& runtime, SceneObjectId id)
 {
-    if (!canInspectComparison(state, id) || !comparisonSettings(state, id).enabled
-        || comparisonResultsReady(runtime, state, id)) { return ComparisonActivity::idle; }
-    const auto signature = comparisonGeometrySignature(state, id);
+    const auto& queries = inspectorQueries(runtime, state, id);
+    const auto signature = queries.signature;
+    const bool both = queries.inputs[0].summary.enabledPartCount && queries.inputs[1].summary.enabledPartCount;
+    if (!signature || !comparisonSettings(state, id).enabled
+        || resultsReady(runtime, state, id, signature, both, false)) { return ComparisonActivity::idle; }
     if (!runtime.error.empty() && runtime.attemptedSignature == signature) { return ComparisonActivity::failed; }
     return ((runtime.preparationWorker.valid() && runtime.preparationSignature == signature && !runtime.preparationStop.stop_requested())
         || (runtime.worker.valid() && runtime.workerSignature == signature && !runtime.stop.stop_requested()))
@@ -244,18 +270,8 @@ void uploadQuality(ComparisonGpuSurface& gpu, const SurfaceComparison& surface,
     gpu.quality = handle;
 }
 void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectId id,
-    const std::vector<SceneObjectId>& objects)
+    const std::vector<SceneObjectId>& objects, size_t total, size_t checked)
 {
-    const auto* comparison = findComparison(state, id);
-    if (!comparison) { return; }
-    const auto& members = side == ComparisonSide::a ? comparison->a : comparison->b;
-    const auto parts = comparisonObjectParts(state, objects);
-    size_t total = 0, checked = 0;
-    for (const auto& member : members) {
-        if (!objects.empty() && !std::binary_search(parts.begin(), parts.end(), member.objectId)) { continue; }
-        ++total;
-        if (member.enabled) { ++checked; }
-    }
     bool enabled = total != 0 && checked == total;
     ImGui::BeginDisabled(total == 0);
     ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, checked != 0 && checked != total);
@@ -270,9 +286,10 @@ void comparisonEnabledCheckbox(UiState& state, ComparisonSide side, SceneObjectI
 
 void drawComparisonTreeNode(UiState& state, ComparisonSide side, const ComparisonTreeNode& node, SceneObjectId id)
 {
+    const auto revision = state.sceneEditRevision;
     const auto nodeId = std::to_string(node.objectId);
     ImGui::PushID(nodeId.c_str());
-    comparisonEnabledCheckbox(state, side, id, {node.objectId});
+    comparisonEnabledCheckbox(state, side, id, {node.objectId}, node.partCount, node.enabledPartCount);
     const bool leaf = node.children.empty();
     const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_FramePadding
         | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
@@ -303,26 +320,31 @@ void drawComparisonTreeNode(UiState& state, ComparisonSide side, const Compariso
         ImGui::EndPopup();
     }
     if (open && !leaf) {
-        for (const auto& child : node.children) { drawComparisonTreeNode(state, side, child, id); }
+        for (const auto& child : node.children) {
+            if (state.sceneEditRevision != revision) { break; }
+            drawComparisonTreeNode(state, side, child, id);
+        }
         ImGui::TreePop();
     }
     ImGui::PopID();
 }
 
-void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
+void membershipTree(UiState& state, const ComparisonRuntime& runtime, ComparisonSide side, SceneObjectId id)
 {
     const bool uv = isUvAnalysis(comparisonSettings(state, id).type);
     const bool checks = isSingleSourceMeshTask(comparisonTask(state, id));
     const char* label = checks ? "Sources" : uv ? "Source" : side == ComparisonSide::a ? "Group A" : "Group B";
     ImGui::PushID(label);
-    comparisonEnabledCheckbox(state, side, id, {});
-    const auto summary = comparisonInputSummary(state, side, id);
-    const auto roots = comparisonTree(state, side, id);
-    size_t triangles = 0;
-    for (const auto& root : roots) { triangles += root.triangleCount; }
+    const auto sideIndex = side == ComparisonSide::a ? 0 : 1;
+    const auto& before = inspectorQueries(runtime, state, id).inputs[sideIndex];
+    comparisonEnabledCheckbox(state, side, id, {}, before.memberCount, before.enabledMemberCount);
+    const auto& input = inspectorQueries(runtime, state, id).inputs[sideIndex];
+    const auto& summary = input.summary;
+    const auto& roots = input.roots;
+    const auto revision = state.sceneEditRevision;
     const bool open = ImGui::TreeNodeEx("root", ImGuiTreeNodeFlags_FramePadding,
         "%s (%zu/%zu %s on) %zu triangles", label, summary.enabledPartCount, summary.partCount,
-        summary.partCount == 1 ? "part" : "parts", triangles);
+        summary.partCount == 1 ? "part" : "parts", input.triangleCount);
     if (ImGui::BeginDragDropTarget()) {
         if (const auto* payload = ImGui::AcceptDragDropPayload(comparisonSourcePayload)) {
             if (payload->DataSize > 0 && payload->DataSize % sizeof(SceneObjectId) == 0) {
@@ -348,7 +370,7 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
         ImGui::PopID();
         return;
     }
-    const auto current = comparisonInputSummary(state, side, id);
+    const auto& current = summary;
     if (members.empty()) {
         ImGui::TextDisabled("No input");
     } else if (!current.issue.empty()) { ImGui::TextWrapped("%s", current.issue.c_str()); }
@@ -357,6 +379,7 @@ void membershipTree(UiState& state, ComparisonSide side, SceneObjectId id)
         setLastItemTooltip("Remove references to parts that are no longer in the scene from this input.");
     }
     for (const auto& root : roots) {
+        if (state.sceneEditRevision != revision) { break; }
         drawComparisonTreeNode(state, side, root, id);
     }
     ImGui::TreePop();
@@ -510,7 +533,7 @@ const char* diagnosticHint(DiagnosticCategory category)
     return "";
 }
 
-void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool current,
+void diagnosticRow(UiState& state, const ComparisonRuntime& runtime,
     const char* name, DiagnosticCategory category, bool hasA, bool hasB, SceneObjectId id)
 {
     ImGui::PushID(name);
@@ -542,7 +565,7 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
     }
-    current = comparisonDetectorReady(runtime, state, id, category);
+    const bool current = inspectorDetectorReady(runtime, state, id, category);
     if (!hasA && !hasB) { ImGui::TableNextColumn(); ImGui::TextDisabled("--"); }
     for (const auto side : {ComparisonSide::a, ComparisonSide::b}) {
         if ((side == ComparisonSide::a && !hasA) || (side == ComparisonSide::b && !hasB)) { continue; }
@@ -603,11 +626,11 @@ void diagnosticRow(UiState& state, const ComparisonRuntime& runtime, bool curren
 void drawDuplicateFindings(UiState& state, const ComparisonRuntime& runtime, bool current, SceneObjectId id)
 {
     const auto settings = comparisonSettings(state, id);
-    const bool hasTarget = enabledComparisonPartCount(state, settings.diagnosticSide, id) != 0;
+    const bool hasTarget = inspectorEnabledPartCount(runtime, state, settings.diagnosticSide, id) != 0;
     const bool points = settings.diagnosticCategory == DiagnosticCategory::duplicatePoints;
     if (!points && settings.diagnosticCategory != DiagnosticCategory::duplicateTriangles) { return; }
     const auto& result = comparisonDuplicates(runtime.result, settings.diagnosticSide, settings.diagnosticCategory);
-    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
+    current = inspectorDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current || !hasTarget) { return; }
     if (result.unavailableSources) {
         ImGui::TextWrapped("%zu source(s) unavailable: original source records were not retained.", result.unavailableSources);
@@ -670,7 +693,7 @@ void drawIntersectionFindings(UiState& state, const ComparisonRuntime& runtime, 
         ImGui::Text("Checking... %.1f s", std::chrono::duration<double>(std::chrono::steady_clock::now()-runtime.intersection.started).count());
     }
     if (!inspection.error.empty()) { ImGui::TextWrapped("%s", inspection.error.c_str()); }
-    if (!comparisonStagesReady(runtime, state, id, comparisonIntersections)) {
+    if (!inspectorStagesReady(runtime, state, id, comparisonIntersections)) {
         if (inspection.hasResult) { ImGui::TextWrapped("Previous result: %zu known pairs. Update to inspect current geometry.", inspection.findings.size()); }
         return;
     }
@@ -710,9 +733,9 @@ void drawDegenerateFindings(UiState& state, const ComparisonRuntime& runtime, bo
     auto settings = comparisonSettings(state, id);
     if (settings.diagnosticCategory != DiagnosticCategory::degenerateTriangles) { return; }
     ImGui::TextWrapped("Collapsed or collinear triangles, needles, and caps. Each source triangle / transformed part is counted once; reason counts can overlap.");
-    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
+    current = inspectorDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current
-        || enabledComparisonPartCount(state, settings.diagnosticSide, id) == 0) { return; }
+        || inspectorEnabledPartCount(runtime, state, settings.diagnosticSide, id) == 0) { return; }
     const auto& result = (settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).degenerates;
     if (result.unavailableSources) { ImGui::TextWrapped("%zu source(s) unavailable: retained source records are missing.", result.unavailableSources); }
     ImGui::TextWrapped("%zu affected triangles: %zu collapsed / collinear, %zu needles, %zu caps", result.findings.size(), result.collapsedCount, result.needleCount, result.capCount);
@@ -768,7 +791,7 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
     const bool holes = settings.diagnosticCategory == DiagnosticCategory::holes;
     const bool fins = settings.diagnosticCategory == DiagnosticCategory::fins;
     if (!holes && !fins && settings.diagnosticCategory != DiagnosticCategory::nonManifoldVertices) { return; }
-    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
+    current = inspectorDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current) { return; }
     const auto& topology = (settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired).topology;
     ImGui::TextWrapped("%s; per source; status: %s. %zu collapsed faces excluded.", topologyModeName(topology.mode), fins ? finStatus(topology) : topologyStatus(topology), topology.excludedCollapsedFaces);
@@ -787,7 +810,7 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
     const size_t count = fins ? topology.fins.size() : holes ? topology.holes.size() : topology.nonManifoldVertices.size();
     if (!count) { return; }
     const auto* comparison = findComparison(state, id);
-    const auto* focused = focusedComparisonDiagnostic(state, runtime.result, runtime.resultSignature, id);
+    const auto* focused = focusedComparisonDiagnostic(state, runtime.result, runtime.resultSignature, id, inspectorQueries(runtime, state, id).signature);
     const size_t selected = focused ? comparison->diagnosticFocus->index : 0;
     const size_t page = selected / diagnosticPageSize;
     ImGui::PushID("topology_inspection_findings");
@@ -858,7 +881,7 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     const auto settings = comparisonSettings(state, id);
     const auto category = settings.diagnosticCategory;
     if (category != DiagnosticCategory::boundary && category != DiagnosticCategory::nonManifold && category != DiagnosticCategory::winding) { return; }
-    current = comparisonDetectorReady(runtime, state, id, settings.diagnosticCategory);
+    current = inspectorDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current) { return; }
     const auto& surface = settings.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired;
     const auto& topology = surface.topology;
@@ -950,7 +973,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity.\nExact positions join exactly equal world coordinates within a file, with no epsilon.");
     }
-    validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
+    validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id, inspectorQueries(runtime, state, id).signature);
     constexpr struct {
         const char* name;
         DiagnosticCategory category;
@@ -990,8 +1013,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
             setComparisonDiagnosticsVisible(state, allVisible, id);
         }
         for (const auto& row : rows) {
-            const bool rowCurrent = comparisonDetectorReady(runtime, state, id, row.category);
-            diagnosticRow(state, runtime, rowCurrent, row.name, row.category, hasA, hasB, id);
+            diagnosticRow(state, runtime, row.name, row.category, hasA, hasB, id);
         }
         ImGui::EndTable();
     }
@@ -1001,7 +1023,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         if (row.category == selected.diagnosticCategory) { ImGui::TextUnformatted(row.name); break; }
     }
     const auto& findings = comparisonDiagnosticEdges(runtime.result, selected.diagnosticSide, selected.diagnosticCategory);
-    const bool ready = comparisonDetectorReady(runtime, state, id, selected.diagnosticCategory);
+    const bool ready = inspectorDetectorReady(runtime, state, id, selected.diagnosticCategory);
     const auto selectedPhase = comparisonDetectorStatus(runtime.result, selected.diagnosticCategory).phase;
     const auto selectedSummary = diagnosticSummary(selected.diagnosticSide == ComparisonSide::a ? runtime.result.original : runtime.result.repaired,
         selected.diagnosticCategory, selectedPhase, ready);
@@ -1015,12 +1037,12 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     if (ImGui::Button("Next finding")) { step = 1; }
     ImGui::EndDisabled();
     if (step) { navigateComparisonDiagnostic(state, runtime.result, runtime.resultSignature, step, id); }
-    ImGui::BeginDisabled(!comparisonStagesReady(runtime, state, id, comparisonSource));
+    ImGui::BeginDisabled(!inspectorStagesReady(runtime, state, id, comparisonSource));
     if (ImGui::Button("Full result")) { frameComparison(state, id); }
     setLastItemTooltip("Clear finding focus and frame the full analysis result.");
     ImGui::EndDisabled();
-    current = comparisonStagesReady(runtime, state, id, comparisonSource);
-    validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id);
+    current = inspectorStagesReady(runtime, state, id, comparisonSource);
+    validateComparisonDiagnosticFocus(state, runtime.result, current ? runtime.resultSignature : 0, id, inspectorQueries(runtime, state, id).signature);
     const auto* comparison = findComparison(state, id);
     if (!current) { ImGui::TextWrapped("Diagnostics unavailable until results are ready"); }
     else if (comparison->diagnosticFocus) {
@@ -1085,8 +1107,12 @@ uint64_t nextResultsRevision()
 bool comparisonStagesReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id,
     uint32_t stages, bool requireGpu)
 {
-    const auto signature = comparisonGeometrySignature(state, id);
-    const auto settings = comparisonSettings(state, id);
+    return comparisonStagesReady(runtime, comparisonSettings(state, id), comparisonGeometrySignature(state, id), stages, requireGpu);
+}
+
+bool comparisonStagesReady(const ComparisonRuntime& runtime, const ComparisonSettings& settings,
+    uint64_t signature, uint32_t stages, bool requireGpu)
+{
     if (!signature || runtime.resultSignature != signature || runtime.cache.signature != signature
         || (runtime.cache.completed & stages) != stages
         || (requireGpu && (runtime.uploadedStages & stages) != stages)) { return false; }
@@ -1111,9 +1137,16 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
 {
     const bool both = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0
         && enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
+    return resultsReady(runtime, state, id, comparisonGeometrySignature(state, id), both, fullResults);
+}
+
+namespace {
+bool resultsReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id,
+    uint64_t signature, bool both, bool fullResults)
+{
     const auto settings = comparisonSettings(state, id);
     const auto required = requestedComparisonStages(settings, both, fullResults) & ~(comparisonDetectors | comparisonIntersections);
-    if (!comparisonStagesReady(runtime, state, id, required) || (!fullResults && !runtime.ready)) { return false; }
+    if (!comparisonStagesReady(runtime, settings, signature, required) || (!fullResults && !runtime.ready)) { return false; }
     const auto* comparison = findComparison(state, id);
     for (size_t i = 0; i < backgroundDetectorCount; ++i) {
         const auto category = static_cast<DiagnosticCategory>(i);
@@ -1121,10 +1154,13 @@ bool comparisonResultsReady(const ComparisonRuntime& runtime, const UiState& sta
         if (comparison && comparison->detectorRequests[i].revision != runtime.consumedDetectorRequests[i]) { return false; }
         if (phase == IntersectionPhase::queued || phase == IntersectionPhase::running) { return false; }
         if (diagnosticAutoUpdate(settings, category) && phase != IntersectionPhase::canceled
-            && phase != IntersectionPhase::failed && !comparisonDetectorReady(runtime, state, id, category)) { return false; }
+            && phase != IntersectionPhase::failed && !(phase == IntersectionPhase::complete
+                && comparisonStagesReady(runtime, settings, signature, comparisonDiagnosticStage(category)))) { return false; }
     }
     return true;
 }
+
+} // namespace
 
 ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id)
 {
@@ -1521,15 +1557,7 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
             active += item.second.preparationWorker.valid();
             active += item.second.worker.valid(); active += item.second.intersection.worker.valid();
         }
-        if (runtime.sidebarRevision != state.sceneEditRevision) {
-            runtime.sidebarInputs = {comparisonInputSummary(state, ComparisonSide::a, comparison.objectId),
-                comparisonInputSummary(state, ComparisonSide::b, comparison.objectId)};
-            const auto& a = runtime.sidebarInputs[0];
-            const auto& b = runtime.sidebarInputs[1];
-            runtime.sidebarSources = a.enabledPartCount && b.enabledPartCount ? a.sourceNames + " / " + b.sourceNames
-                : b.enabledPartCount ? b.sourceNames : a.sourceNames;
-            runtime.sidebarRevision = state.sceneEditRevision;
-        }
+        updateComparisonInspectorCache(runtime.inspector, state, comparison.objectId);
         updateComparisonRuntime(runtime, state, comparison.objectId, active < 2);
         for (size_t index = 0; index < diagnosticCategoryCount; ++index) {
             const auto category = static_cast<DiagnosticCategory>(index);
@@ -1777,7 +1805,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     ImGui::SetNextItemWidth(-1);
     if (ImGui::Combo("##uv_view", &viewMode, views, 2)) { settings.uvView = static_cast<UvView>(viewMode); }
     if (settings.type == AnalysisType::uvQuality) {
-        const auto* quality = comparisonStagesReady(runtime, state, id, comparisonSource)
+        const auto* quality = inspectorStagesReady(runtime, state, id, comparisonSource)
             ? runtime.result.original.source.uvQuality.get() : nullptr;
         drawUvQualityControls(state, settings, quality, id);
     } else {
@@ -1805,7 +1833,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     }
     if (settings != initial) { setComparisonSettings(state, settings, id); }
     ImGui::SeparatorText("Results");
-    ImGui::BeginDisabled(!canInspectComparison(state, id));
+    ImGui::BeginDisabled(inspectorQueries(runtime, state, id).signature == 0);
     if (ImGui::Button("Full result")) { frameComparison(state, id); }
     ImGui::SameLine();
     if (ImGui::Button("Fit scene")) { frameCameraToScene(state); }
@@ -1826,7 +1854,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     } else {
         ImGui::TextWrapped("Blue: %.5g | Yellow: %.5g", settings.uvGrid.minimum, settings.uvGrid.maximum);
     }
-    if (!comparisonStagesReady(runtime, state, id, comparisonSource)) {
+    if (!inspectorStagesReady(runtime, state, id, comparisonSource)) {
         ImGui::TextDisabled("Results are not current. See activity above."); return;
     }
     const auto& display = runtime.result.original.source;
@@ -1875,22 +1903,22 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
             task = tasks[selectedTask];
         }
     } else { ImGui::TextUnformatted(analysisTaskLabel(task)); }
-    const bool hasA = enabledComparisonPartCount(state, ComparisonSide::a, id) != 0;
-    const bool hasB = enabledComparisonPartCount(state, ComparisonSide::b, id) != 0;
-    const bool both = hasA && hasB;
     ImGui::SeparatorText(isSingleSourceMeshTask(task) ? "Sources" : "Inputs");
     ImGui::SameLine();
     drawInformationIcon("comparison_info", "Analysis inputs",
         isSingleSourceMeshTask(task)
             ? "Drag models onto Sources, or use Analysis membership in the model context menu. Hidden models are included. Expand Sources to enable, isolate, or remove parts."
             : "Drag models onto an input, or use Analysis membership in the model context menu. Hidden source models are included. Expand an input to enable, isolate, or remove its parts.");
-    const bool resultReady = comparisonStagesReady(runtime, state, id, comparisonDistance);
-    membershipTree(state, isSingleSourceMeshTask(task) && comparison->a.empty() && !comparison->b.empty() ? ComparisonSide::b : ComparisonSide::a, id);
+    membershipTree(state, runtime, isSingleSourceMeshTask(task) && comparison->a.empty() && !comparison->b.empty() ? ComparisonSide::b : ComparisonSide::a, id);
     if (isUvAnalysis(comparison->settings.type)) {
         drawUvInspector(state, runtime, id);
         return;
     }
-    if (task == AnalysisTask::surfaceComparison) { membershipTree(state, ComparisonSide::b, id); }
+    if (task == AnalysisTask::surfaceComparison) { membershipTree(state, runtime, ComparisonSide::b, id); }
+    const bool hasA = inspectorEnabledPartCount(runtime, state, ComparisonSide::a, id) != 0;
+    const bool hasB = inspectorEnabledPartCount(runtime, state, ComparisonSide::b, id) != 0;
+    const bool both = hasA && hasB;
+    const bool resultReady = inspectorStagesReady(runtime, state, id, comparisonDistance);
     ImGui::Separator();
     if (task == AnalysisTask::surfaceComparison && both) {
         if (ImGui::Button("Swap inputs A / B")) { swapComparisonGroups(state, id); }
@@ -1898,7 +1926,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     }
     auto settings = comparisonSettings(state, id);
     const auto initial = settings;
-    const bool valid = canInspectComparison(state, id);
+    const bool valid = (inspectorQueries(runtime, state, id).signature != 0);
     {
         if (task == AnalysisTask::surfaceComparison) {
             ImGui::SeparatorText("Display");
@@ -1988,14 +2016,14 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (task == AnalysisTask::meshChecks) { drawDiagnosticNavigation(state, runtime, validVisible, hasA, hasB, id); }
     if (!validVisible) { return; }
     if (task == AnalysisTask::meshQuality) {
-        const bool qualityReady = comparisonStagesReady(runtime, state, id, comparisonQuality);
+        const bool qualityReady = inspectorStagesReady(runtime, state, id, comparisonQuality);
         if (qualityReady) { drawSurfaceQualityStatistics(runtime.result, comparisonSettings(state, id)); }
         drawSurfaceQualitySizeLimits(state, id, qualityReady ? &runtime.result : nullptr);
     }
     // Diagnostic focus temporarily changes the drawn surface, not the measured direction.
     const bool useOriginal = !hasB || (hasA && originalActive(comparisonSettings(state, id)));
     const auto &surface = useOriginal ? runtime.result.original : runtime.result.repaired;
-    if (both && comparisonSettings(state, id).mode == ComparisonMode::distance && comparisonStagesReady(runtime, state, id, comparisonDistance))
+    if (both && comparisonSettings(state, id).mode == ComparisonMode::distance && inspectorStagesReady(runtime, state, id, comparisonDistance))
     {
         if (surface.maximum > comparisonSettings(state, id).colorRange) {
             ImGui::PushTextWrapPos();
@@ -2010,7 +2038,7 @@ void drawComparisonContents(UiState &state, ComparisonRuntime &runtime, SceneObj
     if (task != AnalysisTask::meshChecks) { return; }
     const auto &a = runtime.result.original.diagnostics;
     const auto &b = runtime.result.repaired.diagnostics;
-    if (!comparisonStagesReady(runtime, state, id, comparisonTopology)) { return; }
+    if (!inspectorStagesReady(runtime, state, id, comparisonTopology)) { return; }
     if (both) {
         ImGui::TextWrapped("Numerically collapsed triangles: %zu -> %zu", a.degenerateTriangles, b.degenerateTriangles);
         ImGui::TextWrapped("Geometric duplicate triangles: %zu -> %zu", a.duplicateTriangles, b.duplicateTriangles);
@@ -2342,9 +2370,9 @@ static void drawComparisonObjectHint(const UiState& state, const UiComparison& c
     ImGui::TextUnformatted(comparison.name.c_str());
     const auto id = comparison.objectId;
     const auto& settings = comparison.settings;
-    const bool currentInputs = runtime && runtime->sidebarRevision == state.sceneEditRevision;
-    const bool hasA = currentInputs && runtime->sidebarInputs[0].enabledPartCount != 0;
-    const bool hasB = currentInputs && runtime->sidebarInputs[1].enabledPartCount != 0;
+    const bool currentInputs = runtime && comparisonInspectorCacheCurrent(runtime->inspector, state, id);
+    const bool hasA = currentInputs && runtime->inspector.inputs[0].summary.enabledPartCount != 0;
+    const bool hasB = currentInputs && runtime->inspector.inputs[1].summary.enabledPartCount != 0;
     const auto task = comparisonTask(state, id);
     ImGui::TextDisabled("%s", analysisTaskLabel(task));
     ImGui::SameLine();
@@ -2372,8 +2400,8 @@ static void drawComparisonObjectHint(const UiState& state, const UiComparison& c
     }
     ImGui::TextDisabled("| %s", status);
     if (currentInputs) {
-        const auto& a = runtime->sidebarInputs[0];
-        const auto& b = runtime->sidebarInputs[1];
+        const auto& a = runtime->inspector.inputs[0].summary;
+        const auto& b = runtime->inspector.inputs[1].summary;
         if (task == AnalysisTask::meshChecks && (hasA || hasB)) {
             size_t withFindings = 0, notRun = 0, incomplete = 0;
             for (const auto& check : runtime->diagnosticSummaries) {
@@ -2389,7 +2417,7 @@ static void drawComparisonObjectHint(const UiState& state, const UiComparison& c
             ImGui::TextWrapped("%zu checks with findings | %zu not run%s", withFindings, notRun,
                 incomplete ? " | incomplete results" : "");
         }
-        ImGui::TextWrapped("Sources: %s", runtime->sidebarSources.c_str());
+        ImGui::TextWrapped("Sources: %s", runtime->inspector.sources.c_str());
         if (!canInspectComparison(state, id)) {
             if (!a.issue.empty()) { ImGui::TextWrapped("%s", a.issue.c_str()); }
             if (!b.issue.empty()) { ImGui::TextWrapped("%s", b.issue.c_str()); }
