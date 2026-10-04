@@ -9,6 +9,7 @@ set(NGAPI_SOURCE "${woby_ngapi_SOURCE_DIR}")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPI.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIPacing.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIDiagnostics.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIAllocations.cmake")
 
 find_program(WOBY_SLANGC slangc HINTS "$ENV{SLANG_ROOT}/bin" REQUIRED)
 execute_process(COMMAND "${WOBY_SLANGC}" -version OUTPUT_VARIABLE slang_version ERROR_VARIABLE slang_error)
