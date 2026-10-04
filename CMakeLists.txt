@@ -374,6 +374,11 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
     include(doctest)
+    add_subdirectory(tests/utility_fixture)
+    add_executable(woby_utility_allocation_tests tests/utility_allocation_tests.cpp)
+    target_link_libraries(woby_utility_allocation_tests PRIVATE doctest::doctest woby_utility_allocation_fixture)
+    woby_enable_project_warnings(woby_utility_allocation_tests)
+    add_test(NAME woby_utility_allocations COMMAND woby_utility_allocation_tests)
 
     add_executable(woby_tests
         tests/graphics_tests.cpp
