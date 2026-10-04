@@ -1679,50 +1679,7 @@ replace_exact(src/NoGraphicsAPIMetal.mm
     }
 ]====])
 
-replace_exact(src/NoGraphicsAPIMetal.mm
-[====[    }
-}
-
-void register_buffer(Device* device, GpuHeapOwner* owner, uint64 base, uint64 size)
-{
-    uint64 occupied = __atomic_load_n(&device->occupied_buffers, __ATOMIC_RELAXED);
-    for (;;)
-    {
-        assert(occupied != ~uint64{0});
-        const uint32 slot = static_cast<uint32>(__builtin_ctzll(~occupied));
-        if (__atomic_compare_exchange_n(&device->occupied_buffers, &occupied, occupied | (uint64{1} << slot), true,
-                                        __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
-]====]
-[====[    }
-}
-
-bool register_buffer(Device* device, GpuHeapOwner* owner, uint64 base, uint64 size)
-{
-    uint64 occupied = __atomic_load_n(&device->occupied_buffers, __ATOMIC_RELAXED);
-    for (;;)
-    {
-        if (occupied == ~uint64{0}) return false;
-        const uint32 slot = static_cast<uint32>(__builtin_ctzll(~occupied));
-        if (__atomic_compare_exchange_n(&device->occupied_buffers, &occupied, occupied | (uint64{1} << slot), true,
-                                        __ATOMIC_ACQ_REL, __ATOMIC_RELAXED))
-]====])
-
-replace_exact(src/NoGraphicsAPIMetal.mm
-[====[    __atomic_store_n(&owner->record->size, size, __ATOMIC_RELAXED);
-    __atomic_store_n(&owner->record->buffer, reinterpret_cast<uintptr>(owner->buffer), __ATOMIC_RELAXED);
-    update_buffer_index(device, owner->record, true);
-}
-
-void unregister_buffer(Device* device, GpuHeapOwner* owner)
-]====]
-[====[    __atomic_store_n(&owner->record->size, size, __ATOMIC_RELAXED);
-    __atomic_store_n(&owner->record->buffer, reinterpret_cast<uintptr>(owner->buffer), __ATOMIC_RELAXED);
-    update_buffer_index(device, owner->record, true);
-    return true;
-}
-
-void unregister_buffer(Device* device, GpuHeapOwner* owner)
-]====])
+include("${CMAKE_CURRENT_LIST_DIR}/PatchNoGraphicsAPIMetalBuffers.cmake")
 
 replace_exact(src/NoGraphicsAPIMetal.mm
 [====[{

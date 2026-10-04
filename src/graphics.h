@@ -44,7 +44,8 @@ inline constexpr uint64_t WOBY_GPU_CAPS_COMPUTE = 1ull << 0, WOBY_GPU_CAPS_VERTE
                           WOBY_GPU_CAPS_TEXTURE_READ_BACK = 1ull << 4, WOBY_GPU_CAPS_TEXTURE_BLIT = 1ull << 5,
                           WOBY_GPU_CAPS_BLEND_INDEPENDENT = 1ull << 6, WOBY_GPU_CAPS_PRIMITIVE_ID = 1ull << 7,
                           WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC = 1ull << 8,
-                          WOBY_GPU_CAPS_OPAQUE_POINTS = 1ull << 9;
+                          WOBY_GPU_CAPS_OPAQUE_POINTS = 1ull << 9, // 64-bit atomic maximum.
+                          WOBY_GPU_CAPS_POINT_COMPUTE = 1ull << 10; // 32-bit atomics + 64-bit integer math.
 
 namespace woby::graphics
 {
@@ -263,8 +264,19 @@ struct OpaquePointTask {
     uint32_t offset=0, count=0, group=0;
     bool query=false;
 };
-void submitOpaquePoints(ViewId, VertexBufferHandle winners,
-    ProgramHandle clear, ProgramHandle raster, ProgramHandle resolve,
+enum class PointBackend { automatic, quads, atomic32, atomic64 };
+struct PointPrograms {
+    ProgramHandle clear{}, raster{}, resolve{}, batchClear{}, ids{}, merge{};
+};
+// A preference is a runtime/testing choice, not a user-visible scene property.
+[[nodiscard]] constexpr PointBackend selectPointBackend(uint64_t capabilities, PointBackend preference=PointBackend::automatic) {
+    if (preference==PointBackend::quads) return PointBackend::quads;
+    if (preference!=PointBackend::atomic32 && (capabilities&WOBY_GPU_CAPS_OPAQUE_POINTS)) return PointBackend::atomic64;
+    if (capabilities&WOBY_GPU_CAPS_POINT_COMPUTE) return PointBackend::atomic32;
+    return PointBackend::quads;
+}
+void submitOpaquePoints(ViewId, PointBackend, VertexBufferHandle winners, VertexBufferHandle batch,
+    const PointPrograms&,
     std::span<const OpaquePointGroup> groups, std::span<const OpaquePointTask> tasks,
     std::array<uint32_t,4> queryRectangle, bool reset, bool budgeted);
 void blit(ViewId, TextureHandle destination, uint16_t x, uint16_t y, TextureHandle source, uint16_t sourceX = 0,

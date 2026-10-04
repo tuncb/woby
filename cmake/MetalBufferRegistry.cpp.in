@@ -1,0 +1,69 @@
+// WOBY_METAL_BUFFER_REGISTRY: dynamically sized, sorted GPU-address registry.
+// The lock covers publication, lookup and removal, including array growth.
+// Command/frame ownership still keeps the resolved native buffers alive.
+size_t buffer_lower_bound(Device* device, uint64 address)
+{
+    size_t first = 0, last = device->buffer_count;
+    while (first < last) {
+        const size_t middle = first + (last - first) / 2;
+        if (device->buffer_records[middle].base < address) first = middle + 1;
+        else last = middle;
+    }
+    return first;
+}
+
+bool register_buffer(Device* device, GpuHeapOwner* owner, uint64 base, uint64 size)
+{
+    os_unfair_lock_lock(&device->buffer_lock);
+    if (device->buffer_count == device->buffer_capacity) {
+        const size_t capacity = device->buffer_capacity ? device->buffer_capacity * 2 : 16;
+        if (capacity < device->buffer_capacity ||
+            !detail::reserve_backend_array(device->buffer_records, device->buffer_capacity, capacity)) {
+            os_unfair_lock_unlock(&device->buffer_lock);
+            return false;
+        }
+    }
+    const size_t index = buffer_lower_bound(device, base);
+    memmove(device->buffer_records + index + 1, device->buffer_records + index,
+        (device->buffer_count - index) * sizeof(BufferRecord));
+    device->buffer_records[index] = {base, size, reinterpret_cast<uintptr>(owner->buffer)};
+    ++device->buffer_count;
+    owner->buffer_base = base;
+    os_unfair_lock_unlock(&device->buffer_lock);
+    return true;
+}
+
+void unregister_buffer(Device* device, GpuHeapOwner* owner)
+{
+    os_unfair_lock_lock(&device->buffer_lock);
+    const size_t index = buffer_lower_bound(device, owner->buffer_base);
+    assert(index < device->buffer_count && device->buffer_records[index].base == owner->buffer_base);
+    memmove(device->buffer_records + index, device->buffer_records + index + 1,
+        (device->buffer_count - index - 1) * sizeof(BufferRecord));
+    --device->buffer_count;
+    os_unfair_lock_unlock(&device->buffer_lock);
+}
+
+id<MTLBuffer> resolve_buffer(Device* device, GpuRange range, uint64* offset)
+{
+    const uint64 address = reinterpret_cast<uintptr>(range.gpu);
+    os_unfair_lock_lock(&device->buffer_lock);
+    size_t first = 0, last = device->buffer_count;
+    while (first < last) {
+        const size_t middle = first + (last - first) / 2;
+        if (device->buffer_records[middle].base <= address) first = middle + 1;
+        else last = middle;
+    }
+    id<MTLBuffer> buffer = nil;
+    *offset = 0;
+    if (first) {
+        const auto& record = device->buffer_records[first - 1];
+        const uint64 relative = address - record.base;
+        if (relative <= record.size && range.size <= record.size - relative) {
+            *offset = relative;
+            buffer = reinterpret_cast<id<MTLBuffer>>(record.buffer);
+        }
+    }
+    os_unfair_lock_unlock(&device->buffer_lock);
+    return buffer;
+}
