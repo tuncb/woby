@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scene_file.h"
+#include "scene_mesh_preparation.h"
 #include "ui_state.h"
 
 #include <filesystem>
@@ -30,6 +31,7 @@ struct ModelInputOutcome {
 struct ModelBatchCpuLoadResult {
     std::vector<ModelInputOutcome> outcomes;
     std::vector<UiFileState> files;
+    std::vector<SceneMeshPreparation> preparations;
     size_t requestedCount = 0;
     size_t addedCount = 0;
     size_t skippedCount = 0;
@@ -43,6 +45,7 @@ struct SceneCpuLoadResult {
     std::filesystem::path scenePath;
     SceneDocument document;
     std::vector<UiFileState> files;
+    std::vector<SceneMeshPreparation> preparations;
     bool canceled = false;
 };
 
@@ -50,11 +53,13 @@ struct SceneCpuLoadResult {
     const std::vector<std::filesystem::path>& modelPaths,
     size_t firstColorIndex,
     const BackgroundLoadProgressCallback& progress,
-    const BackgroundLoadCancelCallback& shouldCancel);
+    const BackgroundLoadCancelCallback& shouldCancel,
+    bool prepareRenderData = false);
 
 [[nodiscard]] SceneCpuLoadResult loadSceneCpu(
     const std::filesystem::path& scenePath,
     const BackgroundLoadProgressCallback& progress,
-    const BackgroundLoadCancelCallback& shouldCancel);
+    const BackgroundLoadCancelCallback& shouldCancel,
+    bool prepareRenderData = false);
 
 } // namespace woby

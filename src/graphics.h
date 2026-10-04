@@ -180,6 +180,13 @@ const Memory *makeRef(const void *data, SceneBufferSize bytes, void (*release)(v
                       void *user = nullptr);
 VertexBufferHandle createVertexBuffer(const Memory *, const VertexLayout &, uint16_t flags = 0);
 IndexBufferHandle createIndexBuffer(const Memory *, uint16_t flags = 0);
+// Allocate without copying. Do not draw until all ranges have been filled.
+VertexBufferHandle createVertexBufferStorage(SceneBufferSize bytes, const VertexLayout&);
+IndexBufferHandle createIndexBufferStorage(SceneBufferSize bytes, uint16_t flags = 0);
+// Copies source into owned staging before returning; offset/bytes must be multiples of four.
+void uploadBufferRange(VertexBufferHandle, uint32_t offset, const void* data, SceneBufferSize bytes);
+void uploadBufferRange(IndexBufferHandle, uint32_t offset, const void* data, SceneBufferSize bytes);
+
 TextureHandle createTexture2D(uint16_t width, uint16_t height, bool mipmaps, uint16_t layers,
                               TextureFormat::Enum format, uint64_t flags = 0, const Memory *data = nullptr);
 bool isTextureValid(uint16_t depth, bool cube, uint16_t layers, TextureFormat::Enum format, uint64_t flags);
