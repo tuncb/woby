@@ -1,6 +1,7 @@
 #include "comparison_runtime.h"
 #include "comparison_gpu.h"
 #include "ui_operations.h"
+#include <spdlog/spdlog.h>
 #include <algorithm>
 #include <stdexcept>
 
@@ -110,7 +111,7 @@ ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime, con
     const auto requested = comparisonSettings(state, id);
     const auto ready = [&](uint32_t stage) { return comparisonStagesReady(runtime, requested, signature, stage, true); };
     if ((settings.mode == ComparisonMode::distance && !ready(comparisonDistance))
-        || (settings.mode == ComparisonMode::surfaceQuality && (!ready(comparisonQuality) || runtime.gpu.uploadedQualityMetric != settings.quality.metric))) {
+        || (settings.mode == ComparisonMode::surfaceQuality && !ready(comparisonQuality))) {
         const bool original = settings.mode == ComparisonMode::distance ? settings.distanceOnOriginal : settings.quality.onOriginal;
         settings.mode = original ? ComparisonMode::original : ComparisonMode::repaired;
     }
@@ -410,7 +411,13 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 runtime.jobs.stop = std::stop_source{};
                 runtime.jobs.worker = std::async(std::launch::async, [inputs = runtime.sources.inputs, stage = runtime.jobs.workerStages,
                     degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.jobs.stop.get_token()] {
-                    return computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode);
+                    const auto started = std::chrono::steady_clock::now();
+                    auto result = computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode);
+                    if (stage & comparisonQuality) {
+                        spdlog::info("Surface quality CPU preparation: {:.3f} ms (worker; values, distributions and all display metrics)",
+                            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
+                    }
+                    return result;
                 });
             } else if (job.requested && !runtime.jobs.worker.valid() && !job.worker.valid()) {
                 job.requested = false; job.workerSignature = wanted; job.workerRevision = job.revision;
@@ -440,13 +447,22 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
             comparisonDegenerates, comparisonQuality, comparisonDistance, comparisonIntersections}) {
             if (!(pending & stage)) { continue; }
             try {
+                const auto started = std::chrono::steady_clock::now();
                 uploadSurface(runtime.gpu.original, runtime.results.value.original, stage, runtime.sources.prepared ? &runtime.sources.prepared->buffers[0] : nullptr);
                 uploadSurface(runtime.gpu.repaired, runtime.results.value.repaired, stage, runtime.sources.prepared ? &runtime.sources.prepared->buffers[1] : nullptr);
+                if (stage & comparisonQuality) {
+                    spdlog::info("Surface quality GPU upload: {:.3f} ms (allocation and staging; all display metrics)",
+                        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
+                }
                 runtime.gpu.uploadedStages |= stage;
                 for (size_t i = 0; i < runtime.gpu.stageRevisions.size(); ++i) {
                     if (stage & (1u << i)) { runtime.gpu.stageRevisions[i] = runtime.results.stageRevisions[i]; }
                 }
                 if (stage & comparisonSource) { runtime.sources.prepared.reset(); }
+                if (stage & comparisonQuality) {
+                    std::vector<Vertex>().swap(runtime.results.value.original.qualityVertices);
+                    std::vector<Vertex>().swap(runtime.results.value.repaired.qualityVertices);
+                }
             } catch (const std::bad_alloc&) {
                 throw;
             } catch (const std::exception& error) {
@@ -463,18 +479,6 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                     }
                 }
             }
-        }
-        if ((runtime.results.cache.completed & comparisonQuality) && settings.mode == ComparisonMode::surfaceQuality
-            && !(runtime.jobs.failedStages & comparisonQuality) && (runtime.gpu.uploadedQualityMetric != settings.quality.metric
-                || (!runtime.results.value.original.source.indices.empty() && !woby::graphics::isValid(runtime.gpu.original.quality))
-                || (!runtime.results.value.repaired.source.indices.empty() && !woby::graphics::isValid(runtime.gpu.repaired.quality)))) {
-            try {
-                const auto& distribution = runtime.results.value.qualityDistributions.at(static_cast<size_t>(settings.quality.metric));
-                uploadQuality(runtime.gpu.original, runtime.results.value.original, settings.quality.metric, distribution);
-                uploadQuality(runtime.gpu.repaired, runtime.results.value.repaired, settings.quality.metric, distribution);
-                runtime.gpu.uploadedQualityMetric = settings.quality.metric;
-            } catch (const std::bad_alloc&) { throw; }
-            catch (const std::exception& error) { runtime.jobs.failedStages |= comparisonQuality; runtime.jobs.error = error.what(); }
         }
     }
     runtime.gpu.ready = wanted && settings.enabled && (runtime.results.cache.completed & comparisonSource) && (runtime.gpu.uploadedStages & comparisonSource);
@@ -637,7 +641,7 @@ bool comparisonsReadyForScreenshot(const UiState& state, const ComparisonRuntime
             || phase == IntersectionPhase::queued || phase == IntersectionPhase::running
             || findComparison(state, comparison.objectId)->intersectionRequestRevision != runtime.jobs.intersection.consumedRequest)) { ready = false; }
         if (comparison.settings.mode == ComparisonMode::surfaceQuality) {
-            ready = ready && runtime.gpu.uploadedQualityMetric == comparison.settings.quality.metric &&
+            ready = ready &&
                 (runtime.results.value.original.source.indices.empty() || woby::graphics::isValid(runtime.gpu.original.quality)) &&
                 (runtime.results.value.repaired.source.indices.empty() || woby::graphics::isValid(runtime.gpu.repaired.quality));
         }

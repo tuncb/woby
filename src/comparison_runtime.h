@@ -79,7 +79,6 @@ struct ComparisonGpuRuntime {
     ComparisonGpuSurface original, repaired;
     uint32_t uploadedStages = 0;
     std::array<uint64_t, 8> stageRevisions{};
-    SurfaceQualityMetric uploadedQualityMetric = SurfaceQualityMetric::longestEdge;
     bool ready = false;
 };
 struct ComparisonInspectorRuntime {
