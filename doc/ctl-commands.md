@@ -736,7 +736,7 @@ pixels, camera restoration, object framing, and save/load with a temporary viewe
 | `importers scan PATH [--remember]` | `importers.scan` | Discover and load importer libraries in a folder. |
 | `importers forget PATH` | `importers.forget` | Forget a startup registration. The library remains loaded until exit. |
 | `stats` | `stats` | Mesh/visibility counts, scene settings and bounds, renderer name, FPS. |
-| `performance get` | `performance.get` | Last completed frame's stage/total/CPU timings and FPS. GPU timing is null when unavailable. |
+| `performance get` | `performance.get` | Last completed frame's stage/total/CPU timings and FPS, plus current drawable size and scene viewport rectangle in pixels. GPU timing is null when unavailable. |
 
 Imports return `outcomes` per discovered/requested path, `addedIds` (file IDs),
 `requestedCount`, `addedCount`, `failedCount`, `skippedCount`, `canceled`, and `dirty`.

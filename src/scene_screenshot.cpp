@@ -279,11 +279,11 @@ void submitSceneScreenshotCapture(
             const auto settings = effectiveComparisonSettings(ui, item.objectId);
             for (const auto& text : comparisonReportLines(item.name, a.enabledPartCount == 0 ? "" : a.sourceNames,
                      b.enabledPartCount == 0 ? "" : b.sourceNames, settings,
-                     comparison->objects.at(item.objectId).result, options)) { line(text); }
+                     comparison->objects.at(item.objectId).results.value, options)) { line(text); }
             if (options.legend && (settings.mode == ComparisonMode::distance || settings.mode == ComparisonMode::surfaceQuality)) {
                 const float used = settings.mode == ComparisonMode::surfaceQuality ?
                     drawSurfaceQualityLegend(annotationDraw, {x, y}, wrap, fontSize, settings.quality.metric,
-                        comparison->objects.at(item.objectId).result.qualityDistributions.at(static_cast<size_t>(settings.quality.metric))) :
+                        comparison->objects.at(item.objectId).results.value.qualityDistributions.at(static_cast<size_t>(settings.quality.metric))) :
                     drawComparisonLegend(annotationDraw, {x, y}, wrap, fontSize, settings);
                 y += used;
                 if (y > static_cast<float>(screenshot.height) - 24) {

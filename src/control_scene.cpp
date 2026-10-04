@@ -654,7 +654,13 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     }
     // Read-only and session-only operations return above. Struct-level setters
     // in this batch need one scene-edit notification for history recording.
-    markSceneDirty(state);
+    auto change = SceneChange::all;
+    if (command.action == A::transformSet || command.action == A::transformReset) { change = SceneChange::geometry; }
+    else if (command.action == A::opacity || command.action == A::render) { change = SceneChange::appearance | SceneChange::visibility; }
+    else if (command.action == A::visibility) { change = SceneChange::visibility; }
+    else if (command.action == A::colorSet || command.action == A::colorReset || command.action == A::vertexSize
+        || command.action == A::grid || command.action == A::dimensions || command.action == A::origin) { change = SceneChange::appearance; }
+    markSceneDirty(state, change);
     recalculateSceneBounds(state);
     updateSceneDirty(state, cleanDocument);
     if (command.objectId != invalidSceneObjectId) {

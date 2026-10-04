@@ -121,23 +121,47 @@ void appendAppearanceTargets(const UiState& state, const UiSceneNode& node, bool
     }
 }
 
+struct PropertyTargetContext {
+    std::vector<SceneObjectInfo> objects;
+    boost::unordered_flat_map<SceneObjectId, const SceneObjectInfo*> byId;
+    std::array<boost::unordered_flat_set<SceneObjectId>, 3> eligible;
+};
+PropertyTargetContext propertyTargetContext(const UiState& state)
+{
+    PropertyTargetContext context;
+    context.objects = sceneObjects(state);
+    context.byId.reserve(context.objects.size());
+    for (const auto& object : context.objects) { context.byId.emplace(object.id, &object); }
+    for (const auto& file : state.files) {
+        for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
+            const auto id = file.groupSettings[i].objectId;
+            const auto& node = file.mesh.nodes[i];
+            if (node.hasTexcoords) { context.eligible[0].insert(id); }
+            if (node.lineIndexCount) { context.eligible[1].insert(id); }
+            if (!node.lineIndexCount && !node.pointIndexCount) { context.eligible[2].insert(id); }
+        }
+    }
+    return context;
+}
+
 std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectProperty property,
-    const std::vector<SceneObjectId>* objectsOverride = nullptr)
+    const std::vector<SceneObjectId>* objectsOverride = nullptr, const PropertyTargetContext* context = nullptr)
 {
     const auto& selection = objectsOverride ? *objectsOverride : state.selectedSceneObjects;
     std::vector<SceneObjectId> targets;
     const bool parts = isPartAppearanceProperty(property);
     // A large selection must not rescan every scene object for each selected ID.
     // Small selections retain direct lookup without building a scene index.
-    const auto objects = selection.size() > 8 ? sceneObjects(state) : std::vector<SceneObjectInfo>{};
+    const auto objects = !context && selection.size() > 8 ? sceneObjects(state) : std::vector<SceneObjectInfo>{};
     boost::unordered_flat_map<SceneObjectId, const SceneObjectInfo*> byId;
     byId.reserve(objects.size());
     for (const auto& object : objects) { byId.emplace(object.id, &object); }
     for (const auto id : selection) {
         std::optional<SceneObjectInfo> single;
         const SceneObjectInfo* object = nullptr;
-        if (selection.size() > 8) {
-            if (const auto found = byId.find(id); found != byId.end()) { object = found->second; }
+        if (context || selection.size() > 8) {
+            const auto& lookup = context ? context->byId : byId;
+            if (const auto found = lookup.find(id); found != lookup.end()) { object = found->second; }
         } else {
             single = findSceneObject(state, id);
             if (single) { object = &*single; }
@@ -165,7 +189,10 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     std::erase_if(targets, [&](SceneObjectId id) { return !seen.insert(id).second; });
     const bool lines = property == UiObjectProperty::lineWidth || property == UiObjectProperty::lineDepthTest;
     const bool triangles = property == UiObjectProperty::solidMesh || property == UiObjectProperty::triangles;
-    if (isUvProperty(property) || lines || triangles) {
+    if (context && (isUvProperty(property) || lines || triangles)) {
+        const auto& eligible = context->eligible[isUvProperty(property) ? 0 : lines ? 1 : 2];
+        std::erase_if(targets, [&](SceneObjectId id) { return !eligible.contains(id); });
+    } else if (isUvProperty(property) || lines || triangles) {
         boost::unordered_flat_set<SceneObjectId> eligible;
         for (const auto& file : state.files) {
             for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
@@ -269,7 +296,7 @@ bool setObjectColor(UiState& state, const std::vector<SceneObjectId>& objects,
             ++colorIndex;
         }
     }
-    if (changed) { markSceneDirty(state); }
+    if (changed) { markSceneDirty(state, SceneChange::appearance); }
     return true;
 }
 
@@ -293,7 +320,7 @@ bool setObjectLineStyle(UiState& state, const std::vector<SceneObjectId>& object
             setGroupLineStyle(part, settings);
         }
     }
-    if (changed) { markSceneDirty(state); }
+    if (changed) { markSceneDirty(state, SceneChange::appearance); }
     return available;
 }
 
@@ -331,7 +358,7 @@ bool setObjectUvGrid(UiState& state, const std::vector<SceneObjectId>& objects,
             setGroupUvGrid(part, settings);
         }
     }
-    if (changed) { markSceneDirty(state); }
+    if (changed) { markSceneDirty(state, SceneChange::appearance); }
     return available;
 }
 
@@ -375,6 +402,57 @@ UiPropertyValue selectedObjectProperty(const UiState& state, UiObjectProperty pr
     return result;
 }
 
+std::array<UiPropertyValue, uiObjectPropertyCount> selectedObjectProperties(const UiState& state)
+{
+    using P = UiObjectProperty;
+    const auto context = propertyTargetContext(state);
+    const auto family = [](P property) -> size_t {
+        if (property == P::vertexSize) { return 1; }
+        if (isUvProperty(property)) { return 3; }
+        if (property == P::lineWidth || property == P::lineDepthTest) { return 4; }
+        if (property == P::solidMesh || property == P::triangles) { return 5; }
+        return isPartAppearanceProperty(property) ? 2 : 0;
+    };
+    constexpr std::array representatives{P::translationX, P::vertexSize, P::red, P::uvGrid, P::lineWidth, P::solidMesh};
+    std::array<std::vector<SceneObjectId>, representatives.size()> targets;
+    using Values = std::array<std::optional<float>, uiObjectPropertyCount>;
+    boost::unordered_flat_map<SceneObjectId, Values> values;
+    for (size_t i = 0; i < targets.size(); ++i) {
+        targets[i] = propertyTargets(state, representatives[i], nullptr, &context);
+        for (const auto id : targets[i]) { values.try_emplace(id); }
+    }
+    const auto include = [&](SceneObjectId id, const auto& settings, std::optional<float> vertexSize = {}) {
+        if (const auto it = values.find(id); it != values.end()) {
+            for (size_t p = 0; p < uiObjectPropertyCount; ++p) {
+                it->second[p] = propertyValue(settings, static_cast<P>(p));
+            }
+            if (vertexSize) { it->second[static_cast<size_t>(P::vertexSize)] = vertexSize; }
+        }
+    };
+    for (const auto& file : state.files) {
+        include(file.objectId, file.fileSettings, file.vertexSizeScale);
+        for (const auto& part : file.groupSettings) { include(part.objectId, part); }
+    }
+    const auto folders = [&](auto&& self, const std::vector<UiSceneNode>& nodes) -> void {
+        for (const auto& node : nodes) {
+            if (node.kind == UiSceneNodeKind::folder) { include(node.objectId, node.settings); }
+            self(self, node.children);
+        }
+    };
+    folders(folders, state.sceneNodes);
+    std::array<UiPropertyValue, uiObjectPropertyCount> result{};
+    for (size_t p = 0; p < result.size(); ++p) {
+        auto& value = result[p];
+        for (const auto id : targets[family(static_cast<P>(p))]) {
+            const auto item = values.at(id)[p];
+            if (!item) { value = {}; break; }
+            if (value.available) { value.mixed = value.mixed || value.value != *item; }
+            else { value.value = *item; value.available = true; }
+        }
+    }
+    return result;
+}
+
 void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float value)
 {
     if (!std::isfinite(value) || !selectedObjectProperty(state, property).available) { return; }
@@ -389,7 +467,14 @@ void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float 
         }
         changed = changed || before != objectProperty(state, id, property);
     }
-    if (changed) { recalculateSceneBounds(state); markSceneDirty(state); }
+    if (changed) {
+        const bool transform = property <= UiObjectProperty::scale;
+        const bool visibility = property == UiObjectProperty::opacity || property == UiObjectProperty::solidMesh
+            || property == UiObjectProperty::triangles || property == UiObjectProperty::vertices;
+        if (transform || visibility) { recalculateSceneBounds(state); }
+        markSceneDirty(state, transform ? SceneChange::geometry : visibility
+            ? SceneChange::appearance | SceneChange::visibility : SceneChange::appearance);
+    }
 }
 
 UiPropertyValue selectedObjectVisibility(const UiState& state)
@@ -402,22 +487,40 @@ UiPropertyValue selectedObjectVisibility(const UiState& state)
         if (!result.available) { result.value = value; }
         result.available = true;
     };
+    struct Counts { size_t visible = 0, total = 0; };
+    boost::unordered_flat_map<SceneObjectId, Counts> counts;
+    for (const auto& file : state.files) {
+        counts.emplace(file.objectId, Counts{countVisibleFileGroups(file), file.groupSettings.size()});
+        for (const auto& part : file.groupSettings) { counts.emplace(part.objectId, Counts{part.visible ? 1u : 0u, 1}); }
+    }
+    const auto visit = [&](auto&& self, const UiSceneNode& node) -> Counts {
+        Counts count;
+        if (node.kind == UiSceneNodeKind::group) {
+            if (node.fileIndex < state.files.size() && node.groupIndex < state.files[node.fileIndex].groupSettings.size()) {
+                const auto& file = state.files[node.fileIndex];
+                count = {file.fileSettings.visible && file.groupSettings[node.groupIndex].visible ? 1u : 0u, 1};
+            }
+            return count;
+        }
+        if (node.kind == UiSceneNodeKind::file && node.children.empty() && node.fileIndex < state.files.size()) {
+            const auto& file = state.files[node.fileIndex];
+            return {countVisibleFileGroups(file), file.groupSettings.size()};
+        }
+        for (const auto& child : node.children) {
+            const auto childCount = self(self, child);
+            count.visible += childCount.visible; count.total += childCount.total;
+        }
+        if (node.kind == UiSceneNodeKind::folder) {
+            if (!node.settings.visible) { count.visible = 0; }
+            counts.emplace(node.objectId, count);
+        } else if (node.fileIndex >= state.files.size() || !state.files[node.fileIndex].fileSettings.visible) { count.visible = 0; }
+        return count;
+    };
+    for (const auto& node : state.sceneNodes) { visit(visit, node); }
     for (const auto id : state.selectedSceneObjects) {
-        const auto object = findSceneObject(state, id);
-        if (!object || object->kind == SceneObjectKind::comparison || object->kind == SceneObjectKind::annotation) { return {}; }
-        if (const auto* folder = findFolderNode(state.sceneNodes, id)) {
-            include(countVisibleSceneNodeGroups(state, *folder), countSceneNodeGroups(state, *folder));
-            continue;
-        }
-        for (const auto& file : state.files) {
-            if (file.objectId == id) {
-                include(countVisibleFileGroups(file), file.groupSettings.size());
-                break;
-            }
-            for (const auto& part : file.groupSettings) {
-                if (part.objectId == id) { include(part.visible ? 1u : 0u, 1u); }
-            }
-        }
+        const auto found = counts.find(id);
+        if (found == counts.end()) { return {}; }
+        include(found->second.visible, found->second.total);
     }
     return result;
 }
@@ -442,7 +545,7 @@ void setSelectedObjectsVisible(UiState& state, bool visible)
         }
     }
     refreshSceneTreeFolderVisibility(state);
-    if (before != createSceneDocument(state)) { recalculateSceneBounds(state); markSceneDirty(state); }
+    if (before != createSceneDocument(state)) { recalculateSceneBounds(state); markSceneDirty(state, SceneChange::visibility); }
 }
 
 void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
@@ -482,7 +585,7 @@ void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
             }
         }
     }
-    if (before != createSceneDocument(state)) { recalculateSceneBounds(state); markSceneDirty(state); }
+    if (before != createSceneDocument(state)) { recalculateSceneBounds(state); markSceneDirty(state, group == UiPropertyGroup::appearance ? SceneChange::appearance | SceneChange::visibility : SceneChange::geometry); }
 }
 
 } // namespace woby

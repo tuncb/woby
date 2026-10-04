@@ -294,8 +294,8 @@ TEST_CASE("degenerate scene operations navigation persistence and report agree")
     selectComparisonDiagnostic(state, result, signature, 0, id);
     CHECK_FALSE(findComparison(state, id)->diagnosticFocus); // Old threshold results cannot be selected.
     ComparisonRuntime runtime;
-    runtime.ready = true; runtime.resultSignature = signature;
-    runtime.cache = {signature, requestedComparisonStages(settings, false)};
+    runtime.gpu.ready = true; runtime.results.signature = signature;
+    runtime.results.cache = {signature, requestedComparisonStages(settings, false)};
     CHECK_FALSE(comparisonResultsReady(runtime, state, id));
     const auto document = createSceneDocument(state);
     const auto saved = fixture.root/"saved.woby";

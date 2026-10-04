@@ -259,4 +259,3 @@ TEST_CASE("parser error does not consume a synchronous stream prefetch")
     CHECK(probe.completions == 0);
     CHECK(probe.frees == 2);
 }
-

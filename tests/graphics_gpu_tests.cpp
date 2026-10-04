@@ -106,33 +106,33 @@ TEST_CASE("Native comparison distance upload failures clean up both sides and su
     auto& runtime = comparison.runtimes.objects[id];
     runtime.fullResultsRequested = true;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(15);
-    while (!comparisonResultsReady(runtime, comparison.state, id, true) && runtime.error.empty()
+    while (!comparisonResultsReady(runtime, comparison.state, id, true) && runtime.jobs.error.empty()
         && std::chrono::steady_clock::now() < deadline) {
         updateComparisonRuntimes(comparison.runtimes, comparison.state);
         g::frame();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    INFO(runtime.error);
+    INFO(runtime.jobs.error);
     REQUIRE(comparisonResultsReady(runtime, comparison.state, id, true));
     for (const auto skip : {0u, 1u}) {
-        for (auto* surface : {&runtime.originalGpu, &runtime.repairedGpu}) {
+        for (auto* surface : {&runtime.gpu.original, &runtime.gpu.repaired}) {
             g::destroy(surface->samples);
             surface->samples = WOBY_GPU_INVALID_HANDLE;
         }
-        runtime.uploadedStages &= ~comparisonDistance;
+        runtime.gpu.uploadedStages &= ~comparisonDistance;
         gpu::fail_heap_allocation_for_test("vkAllocateMemory", -2, skip);
         CHECK_NOTHROW(updateComparisonRuntimes(comparison.runtimes, comparison.state));
-        CHECK((runtime.failedStages & comparisonDistance) != 0);
-        CHECK((runtime.uploadedStages & comparisonDistance) == 0);
-        CHECK_FALSE(g::isValid(runtime.originalGpu.samples));
-        CHECK_FALSE(g::isValid(runtime.repairedGpu.samples));
-        CHECK(runtime.error.find("VkResult -2") != std::string::npos);
+        CHECK((runtime.jobs.failedStages & comparisonDistance) != 0);
+        CHECK((runtime.gpu.uploadedStages & comparisonDistance) == 0);
+        CHECK_FALSE(g::isValid(runtime.gpu.original.samples));
+        CHECK_FALSE(g::isValid(runtime.gpu.repaired.samples));
+        CHECK(runtime.jobs.error.find("VkResult -2") != std::string::npos);
         CHECK_FALSE(comparisonResultsReady(runtime, comparison.state, id, true));
         for (size_t i = 0; i < 5; ++i) { g::frame(); }
         // The same state changes as the UI Retry button; CPU results survive.
         runtime.attemptedSignature = 0;
-        runtime.failedStages = 0;
-        runtime.error.clear();
+        runtime.jobs.failedStages = 0;
+        runtime.jobs.error.clear();
         updateComparisonRuntimes(comparison.runtimes, comparison.state);
         CHECK(comparisonResultsReady(runtime, comparison.state, id, true));
     }
