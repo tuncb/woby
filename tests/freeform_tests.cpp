@@ -83,6 +83,27 @@ TEST_CASE("OBJ freeform supports rational curves negative indexes and continuati
     CHECK(middle[0]+mesh.origin[0] == doctest::Approx(std::sqrt(.5)));
 }
 
+TEST_CASE("large native OBJ falls back safely after asynchronous polygon parsing") {
+    const Fixture fixture;
+    // Exercise the two early parser rejections present in issue #91's models.
+    std::string text = "vp 0 0\n" + plane;
+    SUBCASE("parameter vertices") {}
+    SUBCASE("weighted control points") {
+        text = "v 0 0 0 1\nv 2 0 0 1\nv 0 3 0 1\nv 2 3 0 1\n"
+            "cstype rat bezier\ndeg 1 1\nsurf 0 1 0 1 1 2 3 4\nparm u 0 1\nparm v 0 1\nend\n";
+    }
+    const auto comment = "#" + std::string(126, 'x') + "\n";
+    while (text.size() < 2 * 1024 * 1024) { text += comment; }
+    const auto path = fixture.write(text);
+    for (int repeat = 0; repeat < 3; ++repeat) {
+        const auto mesh = woby::loadObjMesh(path);
+        REQUIRE(mesh.freeform);
+        CHECK(mesh.freeform->patches.size() == 1);
+        CHECK(mesh.vertices.size() == 33 * 33);
+        CHECK(mesh.indices.size() == 32 * 32 * 6);
+    }
+}
+
 TEST_CASE("OBJ freeform mixes ordinary primitives without changing authored normals") {
     const Fixture f;
     const auto mesh=woby::loadObjMesh(f.write("v 0 0 0\nv 1 0 0\nv 0 1 0\nvn 0 0 -1\n"
@@ -180,16 +201,32 @@ TEST_CASE("Freeform nonuniform cubic derivatives agree with finite differences")
     CHECK(woby::evaluateFreeform(p,1).position==woby::Coordinate{4,0,0});
 }
 
-TEST_CASE("Freeform tessellation bounds allocation and supports cancellation") {
+TEST_CASE("Freeform tessellation supports large grids and cancellation within index bounds") {
     woby::Mesh mesh;
-    SUBCASE("grid limit") {
+    SUBCASE("grid beyond the former two million vertex limit") {
         woby::FreeformPatch p;
         p.surface=true; p.degreeU=1; p.degreeV=1; p.countU=100; p.countV=100;
         p.controls.resize(10000,{0,0,0,1}); p.domainU={0,99}; p.domainV={0,99};
         p.knotsU.push_back(0);
         for (int i=0;i<100;++i) { p.knotsU.push_back(i); }
         p.knotsU.push_back(99); p.knotsV=p.knotsU;
-        CHECK_THROWS_WITH(woby::appendFreeformGeometry(mesh,{p}),"Freeform tessellation exceeds the vertex limit.");
+        struct Canceled {};
+        size_t planned = 0;
+        CHECK_THROWS_AS(woby::appendFreeformGeometry(mesh,{p},[&](const auto& update) {
+            planned = update.total;
+            throw Canceled{};
+        }),Canceled);
+        CHECK(planned == 3169u * 3169u);
+        CHECK(mesh.vertices.empty());
+    }
+    SUBCASE("32-bit index format cannot address the generated triangles") {
+        woby::FreeformPatch p;
+        p.surface=true; p.degreeU=1; p.degreeV=1; p.countU=1000; p.countV=1000;
+        p.controls.resize(1000000,{0,0,0,1}); p.domainU={0,999}; p.domainV={0,999};
+        p.knotsU.push_back(0);
+        for (int i=0;i<1000;++i) { p.knotsU.push_back(i); }
+        p.knotsU.push_back(999); p.knotsV=p.knotsU;
+        CHECK_THROWS_WITH(woby::appendFreeformGeometry(mesh,{p}),"Freeform geometry exceeds the supported index range.");
         CHECK(mesh.vertices.empty());
     }
     SUBCASE("cancellation") {

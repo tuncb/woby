@@ -138,7 +138,6 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
                 if (key == "v") {
                     if (words.size() != 4 && words.size() != 5 && words.size() != 7 && words.size() != 8) { throw std::runtime_error("Invalid OBJ vertex."); }
                     positions.push_back({number(words[1]),number(words[2]),number(words[3]),words.size() == 5 ? number(words[4]) : 1});
-                    if (positions.size() > maxFreeformVertices) { throw std::runtime_error("Freeform OBJ control table exceeds the vertex limit."); }
                     logical = "v " + words[1] + " " + words[2] + " " + words[3];
                 } else if (key == "vt") {
                     if (words.size() < 2 || words.size() > 4) { throw std::runtime_error("Invalid texture vertex."); }
@@ -152,7 +151,6 @@ ObjFreeformInput readObjFreeform(const std::filesystem::path& path, const ModelL
                 } else if (key == "vp") {
                     if (words.size() < 2 || words.size() > 4) { throw std::runtime_error("Invalid parameter vertex."); }
                     parameters.push_back({number(words[1]),words.size() > 2 ? number(words[2]) : 0,words.size() > 3 ? number(words[3]) : 1});
-                    if (parameters.size() > maxFreeformVertices) { throw std::runtime_error("OBJ parameter vertex table exceeds the limit."); }
                     keep = false;
                 } else if (key == "g" || key == "o") {
                     currentName.clear();

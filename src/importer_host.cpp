@@ -171,16 +171,16 @@ MeshNode importGroup(const WobyImportGroup& group, std::set<std::string>& names,
 }
 
 struct FreeformImportBudget {
-    size_t controls = 0, trimItems = 0;
+    size_t trimItems = 0;
 };
 
-FreeformPatch copySpline(const WobyImportSpline& input, FreeformImportBudget& budget,
+FreeformPatch copySpline(const WobyImportSpline& input,
     const ModelLoadProgressCallback& progress, bool trimCurve = false)
 {
     if (input.struct_size < sizeof(WobyImportSpline) || input.kind > WOBY_IMPORT_SPLINE_SURFACE
         || (input.flags & ~(WOBY_IMPORT_HAS_NORMALS | WOBY_IMPORT_HAS_TEXCOORDS)) != 0
         || input.degree_u < 1 || input.degree_u > maxFreeformDegree || input.count_u <= input.degree_u
-        || input.control_count > maxFreeformVertices - budget.controls || input.controls == nullptr
+        || input.controls == nullptr
         || uint64_t(input.count_u) * input.count_v != input.control_count
         || uint64_t(input.count_u) + input.degree_u + 1 != input.knot_count_u || !input.knots_u) {
         throw std::runtime_error("Invalid importer spline buffers, dimensions or size limits.");
@@ -194,7 +194,6 @@ FreeformPatch copySpline(const WobyImportSpline& input, FreeformImportBudget& bu
     if (trimCurve && (surface || input.flags != 0 || input.control_count > 4096u)) {
         throw std::runtime_error("Importer UV trim curves require curve geometry, no attributes and at most 4096 controls.");
     }
-    budget.controls += input.control_count;
     FreeformPatch patch;
     patch.surface = surface;
     patch.degreeU = input.degree_u; patch.degreeV = input.degree_v;
@@ -252,14 +251,14 @@ std::vector<FreeformPatch> copyFreeform(const WobyImportFreeform& input,
     FreeformImportBudget budget;
     std::vector<std::shared_ptr<const FreeformPatch>> curves;
     for (uint32_t i = 0; i < input.trim_curve_count; ++i) {
-        curves.push_back(std::make_shared<FreeformPatch>(copySpline(input.trim_curves[i], budget, progress, true)));
+        curves.push_back(std::make_shared<FreeformPatch>(copySpline(input.trim_curves[i], progress, true)));
     }
     std::vector<FreeformPatch> patches;
     for (uint32_t i = 0; i < input.patch_count; ++i) {
         const auto& source = input.patches[i];
         if (source.group.index_offset || source.group.index_count) { throw std::runtime_error("Importer patch group ranges must be zero."); }
         groups.push_back(importGroup(source.group, names, nameBytes));
-        auto patch = copySpline(source.spline, budget, progress);
+        auto patch = copySpline(source.spline, progress);
         patch.name = groups.back().name;
         addTrimItems(budget, source.region_count, source.regions);
         if (source.region_count) {

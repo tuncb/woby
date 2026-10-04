@@ -1,4 +1,5 @@
 #include "freeform_trim_fixture.h"
+#include "freeform_trim.h"
 #include "obj_freeform.h"
 #include "obj_mesh.h"
 #include "scene_pick.h"
@@ -166,14 +167,14 @@ TEST_CASE("Trimming preserves small features adjacent to grid constraints") {
     CHECK(area(mesh.freeform->grids[0])==doctest::Approx(6e-12).epsilon(1e-6).scale(1e-12));
 }
 
-TEST_CASE("Trimming limits intersection work before allocation and cancels during preparation") {
+TEST_CASE("Trimming checks triangulator index capacity and cancels during preparation") {
     auto p=trimTestPatch();
-    SUBCASE("work limit") {
-        p.countU=p.countV=101; p.knotsU={0}; p.domainU=p.domainV={0,100}; p.controls.clear(); p.texcoords.clear();
-        for (int i=0;i<=100;++i) { p.knotsU.push_back(i); }
-        p.knotsU.push_back(100); p.knotsV=p.knotsU;
-        for (int y=0;y<=100;++y) for (int x=0;x<=100;++x) { p.controls.push_back({double(x),double(y),0,1}); }
-        CHECK_THROWS_WITH((void)tessellate(p),doctest::Contains("work limit"));
+    SUBCASE("32-bit triangulator capacity") {
+        woby::FreeformGrid grid;
+        for (size_t i=0;i<50000;++i) { grid.u.push_back(double(i)/49999); }
+        grid.v=grid.u;
+        CHECK_THROWS_WITH(woby::triangulateFreeformTrim(p,grid,{}),doctest::Contains("supported triangulator index range"));
+        CHECK(grid.samples.empty());
     }
     SUBCASE("cancellation") {
         struct Canceled {};
