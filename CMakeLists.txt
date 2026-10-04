@@ -517,6 +517,8 @@ if(BUILD_TESTING)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
         target_sources(woby_tests PRIVATE tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp)
+        target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_GPU_ALLOCATION_TESTS)
+        target_compile_definitions(woby_tests PRIVATE WOBY_GPU_ALLOCATION_TESTS)
     endif()
     target_compile_features(woby_tests PRIVATE cxx_std_20)
     target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include"
