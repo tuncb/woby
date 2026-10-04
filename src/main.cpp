@@ -4173,11 +4173,14 @@ int main(int argc, char** argv)
 
         return 0;
     } catch (const std::exception& exception) {
+        const char* message = dynamic_cast<const std::bad_alloc*>(&exception)
+            ? "Insufficient CPU memory. Woby could not continue." : exception.what();
+        // Report before cleanup, using static storage even if all allocations fail.
+        std::fprintf(stderr, "%s\n", message);
         automation.reset();
         woby::unloadImporters();
-        std::fprintf(stderr, "%s\n", exception.what());
         if (!headlessLaunchRequested && !woby::hasStandardError()) {
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Woby could not continue", exception.what(), nullptr);
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Woby could not continue", message, nullptr);
         }
         if (graphicsInitialized) {
             woby::graphics::shutdown();

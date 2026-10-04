@@ -36,5 +36,6 @@ replace_exact(src/NoGraphicsAPI.cpp
 #endif
     if (presentation)
     {
-        state->swapchain = new Swapchain;]==])
+        state->swapchain = new Swapchain;]==]
+    "    state->caps.point_buffer_int64_atomics = point_atomics;")
 target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_OPAQUE_POINTS)

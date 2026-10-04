@@ -1,4 +1,5 @@
 #include "graphics_diagnostics.h"
+#include <cstdio>
 
 namespace woby::graphics {
 namespace {
@@ -20,12 +21,23 @@ std::string apiVersion(uint32_t version)
 }
 } // namespace
 
-void collectDeviceDiagnostic(void* context, const gpu::DeviceDiagnostic& diagnostic)
+void collectDeviceDiagnostic(void* context, const gpu::DeviceDiagnostic& diagnostic) noexcept
 {
     auto& diagnostics = *static_cast<DeviceCreationDiagnostics*>(context);
-    diagnostics.entries.push_back({diagnostic.kind, diagnostic.detail ? diagnostic.detail : "",
-        diagnostic.device_name ? diagnostic.device_name : "", diagnostic.driver_info ? diagnostic.driver_info : "",
-        diagnostic.driver_version, diagnostic.api_version, diagnostic.error, diagnostic.api_result});
+    if (diagnostic.kind == gpu::DeviceDiagnosticKind::initialization_error) {
+        std::snprintf(diagnostics.emergencyDetail.data(), diagnostics.emergencyDetail.size(), "%s",
+            diagnostic.detail ? diagnostic.detail : "Unknown initialization operation");
+        diagnostics.emergencyApiResult = diagnostic.api_result;
+    }
+    try {
+        diagnostics.entries.push_back({diagnostic.kind, diagnostic.detail ? diagnostic.detail : "",
+            diagnostic.device_name ? diagnostic.device_name : "", diagnostic.driver_info ? diagnostic.driver_info : "",
+            diagnostic.driver_version, diagnostic.api_version, diagnostic.error, diagnostic.api_result});
+    } catch (...) {
+        diagnostics.incomplete = true;
+        std::fputs("Insufficient memory to retain GPU diagnostics.\n", stderr);
+        if (diagnostic.detail) { std::fputs(diagnostic.detail, stderr); std::fputc('\n', stderr); }
+    }
 }
 
 std::string formatDeviceCreationFailure(const DeviceCreationDiagnostics& diagnostics, gpu::Error error, bool metal)
@@ -79,6 +91,12 @@ std::string formatDeviceCreationFailure(const DeviceCreationDiagnostics& diagnos
         }
     }
     std::string message = "NoGraphicsAPI renderer initialization failed (" + std::string(errorName(error)) + ").\n";
+    if (diagnostics.incomplete) {
+        message += "Some GPU diagnostics could not be retained because CPU memory was exhausted.\n";
+        if (diagnostics.emergencyDetail[0])
+            message += "Last initialization error: " + std::string(diagnostics.emergencyDetail.data())
+                + " (API result " + std::to_string(diagnostics.emergencyApiResult) + ").\n";
+    }
     if (noSuitableDevice && !initializationFailure)
         message += "No detected GPU meets the renderer requirements.\n";
     message += details;

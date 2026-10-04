@@ -2,6 +2,7 @@
 
 #include <NoGraphicsAPI/NoGraphicsAPI.hpp>
 #include <cstdint>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -21,9 +22,14 @@ struct DeviceDiagnostic {
 
 struct DeviceCreationDiagnostics {
     std::vector<DeviceDiagnostic> entries;
+    // The callback may run inside an exception-disabled backend. Preserve the
+    // last initialization error even if owning the full diagnostics fails.
+    std::array<char, 512> emergencyDetail{};
+    int32_t emergencyApiResult = 0;
+    bool incomplete = false;
 };
 
-void collectDeviceDiagnostic(void* context, const gpu::DeviceDiagnostic& diagnostic);
+void collectDeviceDiagnostic(void* context, const gpu::DeviceDiagnostic& diagnostic) noexcept;
 std::string formatDeviceCreationFailure(const DeviceCreationDiagnostics& diagnostics, gpu::Error error,
     bool metal = false);
 
