@@ -929,6 +929,17 @@ both findings and nested entries. Before any export it reports `idle`. The outer
 command itself; use `export.state` to track the export job. Poll status
 until terminal; cancellation is cooperative and may race with successful completion.
 
+Progress is published in batches; the terminal `entriesWritten` count is exact.
+Status includes `timings.snapshotMs` after preparation. Terminal status also reports
+`bytesWritten` (bytes successfully submitted to the stream before completion or
+cleanup), and `timings.writeMs`, `serializationMs`, `streamWriteMs`, `publishMs`,
+and `totalMs`. `writeMs` covers serialization and writing, including stream close;
+`streamWriteMs` measures the buffered stream writes and close, and
+`serializationMs` is the remaining wall time. These are not CPU-time or physical
+disk-durability measurements: filesystem caching and thread scheduling still
+affect them. `totalMs` starts at snapshot preparation, excludes result-readiness
+waiting and status polling, and is recorded before the worker releases its snapshot.
+
 Only one export can run per viewer, and status retains the latest job. Export
 captures diagnostic data once, so later edits do not change the file. Capturing the
 snapshot requires memory proportional to the retained diagnostics; writing then

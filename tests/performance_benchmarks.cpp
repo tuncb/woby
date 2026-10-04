@@ -12,6 +12,8 @@
 #include <string>
 #include <thread>
 
+int analysisExportBenchmark(size_t count, size_t repetitions, const std::filesystem::path& directory);
+
 namespace {
 using Clock = std::chrono::steady_clock;
 
@@ -163,6 +165,14 @@ int main(int argc, char** argv)
 {
     try {
         const std::string workload = argc > 1 ? argv[1] : "distance";
+        if (workload == "export") {
+            if (argc != 5) { throw std::invalid_argument("Expected export findings repetitions absolute-output-directory."); }
+            const size_t count = std::stoul(argv[2]), repetitions = std::stoul(argv[3]);
+            if (!count || count > 1000000 || !repetitions || repetitions > 100) {
+                throw std::invalid_argument("Expected findings 1..1000000 and repetitions 1..100.");
+            }
+            return analysisExportBenchmark(count, repetitions, argv[4]);
+        }
         if (workload == "load") {
             if (argc < 3) { throw std::invalid_argument("Expected load model.obj [repetitions]."); }
             const size_t repetitions = argc > 3 ? std::stoul(argv[3]) : 3u;
