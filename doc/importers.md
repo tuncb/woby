@@ -49,8 +49,12 @@ when the whole installation moves.
 
 Loading order is explicit CLI options, remembered registrations, then portable
 packages sorted by folder path. Earlier registrations win ID/extension conflicts.
-Invalid manifests or libraries produce startup diagnostics and do not stop other
-packages from loading. Restart woby after adding or replacing a package. To remove
+Invalid manifests or libraries produce a startup message naming each failed
+package and giving a brief reason; they do not stop other packages from loading.
+Full diagnostics are written to stderr and to the log file when logging is enabled.
+Logging is off by default. To save diagnostics, launch with
+`--log-level warn --log-file C:\path\to\woby.log`; the log is at the path you specify.
+Restart woby after adding or replacing a package. To remove
 an automatic importer, close woby and remove its package folder; `importers forget`
 only removes remembered registrations.
 
