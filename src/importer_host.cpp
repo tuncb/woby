@@ -15,6 +15,7 @@
 #include <sstream>
 #include <set>
 #include <stdexcept>
+#include <system_error>
 #include <utility>
 
 #ifdef _WIN32
@@ -56,6 +57,31 @@ std::string utf8(const std::filesystem::path& path)
     const auto value = path.u8string();
     return {reinterpret_cast<const char*>(value.data()), value.size()};
 }
+
+#ifdef _WIN32
+std::string libraryLoadError(DWORD code)
+{
+    std::string reason;
+    switch (code) {
+    case ERROR_MOD_NOT_FOUND:
+        reason = "The importer or one of its DLL dependencies is missing.";
+        break;
+    case ERROR_BAD_EXE_FORMAT:
+        reason = "The DLL is invalid or its architecture does not match woby.";
+        break;
+    case ERROR_PROC_NOT_FOUND:
+        reason = "A required entry point is missing from a DLL dependency.";
+        break;
+    case ERROR_DLL_INIT_FAILED:
+        reason = "The importer or a DLL dependency failed to initialize.";
+        break;
+    default:
+        reason = std::system_category().message(static_cast<int>(code));
+        break;
+    }
+    return reason + " (Windows error " + std::to_string(code) + ").";
+}
+#endif
 
 std::string lowercase(std::string value)
 {
@@ -285,6 +311,32 @@ std::vector<FreeformPatch> copyFreeform(const WobyImportFreeform& input,
 
 } // namespace
 
+ImporterLoadFailure importerLoadFailure(const std::filesystem::path& path, const std::exception& error)
+{
+    std::string reason = error.what();
+    if (const auto* filesystemError = dynamic_cast<const std::filesystem::filesystem_error*>(&error)) {
+        reason = filesystemError->code() == std::errc::no_such_file_or_directory
+            ? "File or folder not found." : filesystemError->code().message();
+    } else if (dynamic_cast<const nlohmann::json::parse_error*>(&error)) {
+        reason = "Invalid importer manifest JSON.";
+    }
+    return {path, std::move(reason), error.what()};
+}
+
+std::string importerLoadFailureSummary(const std::vector<ImporterLoadFailure>& failures)
+{
+    if (failures.empty()) { return {}; }
+    std::string result = "Could not load importers:";
+    for (const auto& failure : failures) {
+        const auto name = failure.path.filename() == "importer.json" || failure.path.filename().empty()
+            ? failure.path.parent_path().filename() : failure.path.filename();
+        const auto label = failure.path.empty() ? std::string("Importer settings")
+            : utf8(name.empty() ? failure.path : name);
+        result += "\n" + label + ": " + failure.reason;
+    }
+    return result;
+}
+
 void loadImporter(const std::filesystem::path& path)
 {
     auto& host = registry();
@@ -303,21 +355,21 @@ void loadImporter(const std::filesystem::path& path)
     HMODULE module = LoadLibraryExW(absolutePath.c_str(), nullptr,
         LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
     if (module == nullptr) {
-        throw std::runtime_error("Cannot load importer " + utf8(path) + " (Windows error "
-            + std::to_string(GetLastError()) + "). Check architecture and dependencies.");
+        const DWORD error = GetLastError();
+        throw std::runtime_error(libraryLoadError(error));
     }
     entry.library = std::shared_ptr<void>(module, [](void* handle) { FreeLibrary(static_cast<HMODULE>(handle)); });
     const auto symbol = GetProcAddress(module, "woby_get_importer_api");
 #else
     void* module = dlopen(absolutePath.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (module == nullptr) {
-        throw std::runtime_error("Cannot load importer " + utf8(path) + ": " + dlerror());
+        throw std::runtime_error(dlerror());
     }
     entry.library = std::shared_ptr<void>(module, [](void* handle) { dlclose(handle); });
     const auto symbol = dlsym(module, "woby_get_importer_api");
 #endif
     if (symbol == nullptr) {
-        throw std::runtime_error("Missing woby_get_importer_api export: " + utf8(path));
+        throw std::runtime_error("Missing woby_get_importer_api export; this library is not a woby importer.");
     }
     WobyGetImporterApi getApi = nullptr;
     static_assert(sizeof(getApi) == sizeof(symbol));
@@ -326,7 +378,7 @@ void loadImporter(const std::filesystem::path& path)
     if (api == nullptr || api->struct_size < sizeof(WobyImporterApi)
         || api->abi_version != WOBY_IMPORTER_ABI_VERSION || api->import_file == nullptr
         || api->release_result == nullptr) {
-        throw std::runtime_error("Incompatible importer API: " + utf8(path));
+        throw std::runtime_error("Incompatible importer API; rebuild the plugin for this version of woby.");
     }
     entry.api = *api;
     if (api->struct_size >= sizeof(WobyImporterApiWithHierarchy)) {
@@ -419,9 +471,9 @@ std::vector<std::filesystem::path> discoverImporterFiles(const std::filesystem::
     return result;
 }
 
-std::vector<std::string> loadPortableImporters(const std::filesystem::path& folder)
+std::vector<ImporterLoadFailure> loadPortableImporters(const std::filesystem::path& folder)
 {
-    std::vector<std::string> errors;
+    std::vector<ImporterLoadFailure> errors;
     std::vector<std::filesystem::path> packages;
     try {
         if (!std::filesystem::exists(folder)) { return errors; }
@@ -429,7 +481,7 @@ std::vector<std::string> loadPortableImporters(const std::filesystem::path& fold
             packages.push_back(entry.path());
         }
     } catch (const std::exception& error) {
-        errors.push_back(utf8(folder) + ": " + error.what());
+        errors.push_back(importerLoadFailure(folder, error));
     }
     std::sort(packages.begin(), packages.end());
     for (const auto& package : packages) {
@@ -438,7 +490,7 @@ std::vector<std::string> loadPortableImporters(const std::filesystem::path& fold
             if (!std::filesystem::is_directory(package) || !std::filesystem::exists(manifest)) { continue; }
             loadImporter(importerManifestLibrary(manifest));
         } catch (const std::exception& error) {
-            errors.push_back(utf8(manifest) + ": " + error.what());
+            errors.push_back(importerLoadFailure(manifest, error));
         }
     }
     return errors;

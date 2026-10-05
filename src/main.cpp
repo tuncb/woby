@@ -2241,22 +2241,24 @@ int main(int argc, char** argv)
 
         std::filesystem::path importerSettingsPath;
         std::vector<std::filesystem::path> rememberedImporters;
-        bool importerLoadFailed = false;
-        const auto reportImporterError = [&](const std::string& message) {
-            importerLoadFailed = true;
+        std::vector<woby::ImporterLoadFailure> importerLoadFailures;
+        const auto reportImporterError = [&](const woby::ImporterLoadFailure& failure) {
+            importerLoadFailures.push_back(failure);
+            const auto message = failure.path.empty() ? failure.details
+                : woby::pathToUtf8(failure.path) + ": " + failure.details;
             std::fprintf(stderr, "%s\n", message.c_str());
             spdlog::warn("{}", message);
         };
         // CLI entries take precedence over saved registrations; each folder is sorted.
         const auto tryLoadImporter = [&](const std::filesystem::path& path) {
             try { woby::loadImporter(path); }
-            catch (const std::exception& error) { reportImporterError(path.string() + ": " + error.what()); }
+            catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(path, error)); }
         };
         for (const auto& source : commandLine.pluginPaths) {
             if (source.folder) {
                 try {
                     for (const auto& path : woby::discoverImporterFiles(source.path)) { tryLoadImporter(path); }
-                } catch (const std::exception& error) { reportImporterError(error.what()); }
+                } catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(source.path, error)); }
             } else {
                 tryLoadImporter(source.path);
             }
@@ -2267,14 +2269,16 @@ int main(int argc, char** argv)
             try {
                 rememberedImporters = woby::readImporterSettings(importerSettingsPath);
                 for (const auto& path : rememberedImporters) { tryLoadImporter(path); }
-            } catch (const std::exception& error) { reportImporterError(error.what()); }
+            } catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(importerSettingsPath, error)); }
         } else {
-            reportImporterError("Importer settings directory is unavailable; registrations are session-only.");
+            reportImporterError(woby::importerLoadFailure({},
+                std::runtime_error("Importer settings directory is unavailable; registrations are session-only.")));
         }
+        std::filesystem::path portableImporterFolder;
         try {
-            const auto folder = woby::updateExecutablePath().parent_path() / "importers";
-            for (const auto& error : woby::loadPortableImporters(folder)) { reportImporterError(error); }
-        } catch (const std::exception& error) { reportImporterError(error.what()); }
+            portableImporterFolder = woby::updateExecutablePath().parent_path() / "importers";
+            for (const auto& error : woby::loadPortableImporters(portableImporterFolder)) { reportImporterError(error); }
+        } catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(portableImporterFolder, error)); }
 
         const auto requestedSize = commandLine.windowSize.value_or(commandLine.drawableSize.value_or(std::array<int, 2>{1280, 720}));
         const SDL_WindowFlags windowFlags = (commandLine.windowSize || commandLine.drawableSize ? 0 : SDL_WINDOW_RESIZABLE)
@@ -2524,8 +2528,8 @@ int main(int argc, char** argv)
         bool requestDirtyQuitWarning = false;
         bool requestDirtyNewWarning = false;
         ToastMessage toast;
-        if (importerLoadFailed) {
-            setToastMessage(toast, "Some importers could not be loaded. See the log for details.");
+        if (!importerLoadFailures.empty()) {
+            setToastMessage(toast, woby::importerLoadFailureSummary(importerLoadFailures));
         }
         uint64_t observedModelFileDialogStatusVersion = 0;
         uint64_t observedSceneFileDialogStatusVersion = 0;
