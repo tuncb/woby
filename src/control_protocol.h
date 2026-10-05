@@ -17,7 +17,7 @@ enum class ControlAction {
     opacity, colorSet, colorReset, vertexSize, grid, dimensions, origin, upAxis,
     viewList, viewCreate, viewApply, viewUpdate, viewRename, viewDelete, cameraView,
     cameraGet, cameraFrame, cameraSet, cameraLookAt, cameraOrbit, cameraPan, cameraRoll, cameraDolly, cameraMove,
-    modelAdd, modelRemove, folderAdd, importersList, importersAdd, importersScan,
+    modelAdd, modelRemove, modelSet, folderAdd, importersList, importersAdd, importersScan,
     importersForget, stats, performance, performanceBegin, performanceEnd, pane,
     comparisonCreate, comparisonDelete, comparisonSet, comparisonAdd, comparisonRemove,
     comparisonClear, comparisonSwap, comparisonFindings, comparisonExport, comparisonExportStatus, comparisonExportCancel, comparisonResults, comparisonFocus, comparisonEnable, comparisonRun, comparisonCancel,
@@ -36,6 +36,7 @@ struct ControlOperation {
     bool remember = false;
     std::optional<bool> visible, solid, triangles, vertices, xray, adaptivePoints;
     std::optional<bool> propertiesVisible;
+    std::optional<std::string> analysisMode;
     std::optional<bool> uvThresholdEnabled, uvOverlapEnabled, uvRangeEnabled;
     std::optional<float> uvThreshold, uvNearCollapse, uvRangeMinimum, uvRangeMaximum;
     std::optional<std::string> uvOverlapScope;

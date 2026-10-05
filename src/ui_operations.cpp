@@ -938,11 +938,13 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
                 value.uvNearCollapse, value.uvRangeEnabled, value.uvRangeMinimum, value.uvRangeMaximum);
         };
         const bool inputsChanged = before.type != settings.type || before.task != settings.task
+            || before.analysisMode != settings.analysisMode
             || ((isUvAnalysis(before.type) || isUvAnalysis(settings.type)) && uvInputs(before) != uvInputs(settings));
         const bool wasEnabled = comparison->settings.enabled;
         if (settings.intersections.limits != comparison->settings.intersections.limits
             || settings.diagnosticSide != comparison->settings.diagnosticSide || settings.diagnosticCategory != comparison->settings.diagnosticCategory
             || normalizedTopologyMode(settings.topologyMode) != comparison->settings.topologyMode
+            || settings.analysisMode != comparison->settings.analysisMode
             || normalizedTopologyInspectionSettings(settings.topologyInspection).finMaxAreaRatio != comparison->settings.topologyInspection.finMaxAreaRatio
             || normalizedTopologyInspectionSettings(settings.topologyInspection).holeSizeRatioTolerance != comparison->settings.topologyInspection.holeSizeRatioTolerance
             || !sameDegenerateThresholds(normalizedDegenerateSettings(settings.degenerates), comparison->settings.degenerates)) {
@@ -963,6 +965,20 @@ void setComparisonSettings(UiState& state, ComparisonSettings settings, SceneObj
 void setPropertiesPaneVisible(UiState& state, bool visible)
 {
     state.propertiesPaneVisible = visible;
+}
+
+bool setModelAnalysisMode(UiState& state, SceneObjectId id, AnalysisMode mode)
+{
+    if (mode != AnalysisMode::perVolume && mode != AnalysisMode::whole) { return false; }
+    for (auto& file : state.files) {
+        if (file.objectId != id || id == invalidSceneObjectId) { continue; }
+        if (file.fileSettings.analysisMode != mode) {
+            file.fileSettings.analysisMode = mode;
+            markSceneDirty(state, SceneChange::analysis);
+        }
+        return true;
+    }
+    return false;
 }
 
 void setScreenshotSettings(UiState& state, ScreenshotSettings settings)

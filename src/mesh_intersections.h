@@ -20,6 +20,7 @@ struct IntersectionFinding {
     SourceProvenance provenance = SourceProvenance::importerVertices;
     TopologyMode mode = TopologyMode::originalIndex;
     std::array<std::array<float, 3>, 6> geometry{};
+    uint64_t batchId = 0;
 };
 enum class IntersectionPhase { notChecked, queued, running, complete, outdated, canceled, failed };
 struct MeshIntersections {

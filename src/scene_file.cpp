@@ -372,6 +372,8 @@ void assignSceneFileValue(SceneFileRecord& record, const std::string& key, std::
         if (origin.size() != 3) { throw std::runtime_error("Expected 3 mesh origin coordinates."); }
         for (double v : origin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite mesh origin."); } }
         record.coordinateOrigin = {origin[0], origin[1], origin[2]};
+    } else if (key == "analysis_mode") {
+        record.settings.analysisMode = parseModelAnalysisMode(parseTomlString(value));
     } else if (key == "importer_id") {
         record.importerId = parseTomlString(value);
     } else if (key == "visible") {
@@ -578,6 +580,7 @@ void assignComparisonValue(SceneComparisonRecord& record, const std::string& key
     } else if (key == "analysis_holes_enabled") { record.settings.topologyInspection.holes = parseTomlBool(value);
     } else if (key == "analysis_show_holes") { record.settings.topologyInspection.showHoles = parseTomlBool(value);
     } else if (key == "analysis_hole_size_ratio_tolerance") { record.settings.topologyInspection.holeSizeRatioTolerance = parseTomlFloat(value);
+    } else if (key == "analysis_processing_mode") { record.settings.analysisMode = parseAnalysisMode(parseTomlString(value));
     } else if (key == "topology_mode") { record.settings.topologyMode = parseTopologyMode(parseTomlString(value));
     } else if (key == "analysis_show_winding") { record.settings.showWinding = parseTomlBool(value);
     } else if ((key == "self_intersections_enabled" || key == "self_intersections_auto_update")) { record.settings.intersections.autoUpdate = parseTomlBool(value);
@@ -680,6 +683,7 @@ void writeComparisonSettings(std::ostream& stream, const ComparisonSettings& set
     stream << "analysis_holes_enabled = " << (comparison.topologyInspection.holes ? "true" : "false") << "\n";
     stream << "analysis_show_holes = " << (comparison.topologyInspection.showHoles ? "true" : "false") << "\n";
     stream << "analysis_hole_size_ratio_tolerance = " << comparison.topologyInspection.holeSizeRatioTolerance << "\n";
+    stream << "analysis_processing_mode = \"" << analysisModeName(comparison.analysisMode) << "\"\n";
     stream << "topology_mode = \"" << topologyModeName(comparison.topologyMode) << "\"\n";
     stream << "analysis_show_winding = " << (comparison.showWinding ? "true" : "false") << "\n";
     stream << "self_intersections_auto_update = " << (comparison.intersections.autoUpdate ? "true" : "false") << "\n";
@@ -1251,6 +1255,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
             for (double v : *file.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite mesh origin."); } }
             stream << "coordinate_origin = "; writeTomlFloat3(stream, *file.coordinateOrigin); stream << '\n';
         }
+        stream << "analysis_mode = \"" << analysisModeName(file.settings.analysisMode) << "\"\n";
         stream << "visible = " << (file.settings.visible ? "true" : "false") << "\n";
         stream << "scale = ";
         writeTomlFloat(stream, file.settings.scale);

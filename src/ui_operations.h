@@ -92,9 +92,10 @@ enum class UiObjectProperty {
     rotationX, rotationY, rotationZ,
     scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue,
     uvGrid, uvDensityU, uvDensityV, uvColorMode, uvMinimum, uvMaximum,
-    lineWidth, lineDepthTest,
+    lineWidth, lineDepthTest, analysisMode,
 };
-inline constexpr size_t uiObjectPropertyCount = static_cast<size_t>(UiObjectProperty::lineDepthTest) + 1;
+inline constexpr size_t uiObjectPropertyCount = static_cast<size_t>(UiObjectProperty::analysisMode) + 1;
+bool setModelAnalysisMode(UiState& state, SceneObjectId id, AnalysisMode mode);
 enum class UiPropertyGroup { translation, rotation, scale, transform, appearance };
 struct UiPropertyValue {
     float value = 0.0f;

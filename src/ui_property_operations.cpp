@@ -69,7 +69,7 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
     case P::red: case P::green: case P::blue:
     case P::uvGrid: case P::uvDensityU: case P::uvDensityV: case P::uvColorMode: case P::uvMinimum: case P::uvMaximum:
-    case P::lineWidth: case P::lineDepthTest: break;
+    case P::lineWidth: case P::lineDepthTest: case P::analysisMode: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
         switch (property) {
@@ -90,8 +90,11 @@ std::optional<float> propertyValue(const Settings& settings, UiObjectProperty pr
         case P::blue: return settings.color[2];
         case P::translationX: case P::translationY: case P::translationZ:
         case P::rotationX: case P::rotationY: case P::rotationZ:
-        case P::scale: case P::opacity: break;
+        case P::scale: case P::opacity: case P::analysisMode: break;
         }
+    }
+    if constexpr (std::is_same_v<Settings, UiFileSettings>) {
+        if (property == P::analysisMode) { return static_cast<float>(settings.analysisMode); }
     }
     return std::nullopt;
 }
@@ -234,7 +237,7 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
     case P::vertexSize: case P::solidMesh: case P::triangles: case P::vertices:
     case P::red: case P::green: case P::blue:
     case P::uvGrid: case P::uvDensityU: case P::uvDensityV: case P::uvColorMode: case P::uvMinimum: case P::uvMaximum:
-    case P::lineWidth: case P::lineDepthTest: break;
+    case P::lineWidth: case P::lineDepthTest: case P::analysisMode: break;
     }
     if constexpr (std::is_same_v<Settings, UiGroupState>) {
         switch (property) {
@@ -259,8 +262,11 @@ void setProperty(Settings& settings, UiObjectProperty property, float value)
         case P::blue: settings.color[2] = std::clamp(value, 0.0f, 1.0f); return;
         case P::translationX: case P::translationY: case P::translationZ:
         case P::rotationX: case P::rotationY: case P::rotationZ:
-        case P::scale: case P::opacity: break;
+        case P::scale: case P::opacity: case P::analysisMode: break;
         }
+    }
+    if constexpr (std::is_same_v<Settings, UiFileSettings>) {
+        if (property == P::analysisMode) { settings.analysisMode = value >= 2.0f ? AnalysisMode::whole : AnalysisMode::perVolume; }
     }
 }
 
@@ -472,7 +478,7 @@ void setSelectedObjectProperty(UiState& state, UiObjectProperty property, float 
         const bool visibility = property == UiObjectProperty::opacity || property == UiObjectProperty::solidMesh
             || property == UiObjectProperty::triangles || property == UiObjectProperty::vertices;
         if (transform || visibility) { recalculateSceneBounds(state); }
-        markSceneDirty(state, transform ? SceneChange::geometry : visibility
+        markSceneDirty(state, property == UiObjectProperty::analysisMode ? SceneChange::analysis : transform ? SceneChange::geometry : visibility
             ? SceneChange::appearance | SceneChange::visibility
             : (property == UiObjectProperty::vertexSize || property == UiObjectProperty::lineWidth || property == UiObjectProperty::lineDepthTest)
                 ? SceneChange::appearance | SceneChange::picking : SceneChange::appearance);

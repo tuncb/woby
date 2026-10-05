@@ -42,6 +42,8 @@ struct SceneFileSettings {
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
 
+    AnalysisMode analysisMode = AnalysisMode::perVolume;
+
     friend bool operator==(const SceneFileSettings&, const SceneFileSettings&) = default;
 };
 

@@ -129,7 +129,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
         }
         const auto finding = [&] {
             DuplicateFinding value;
-            value.fileId = source.fileId;
+            value.fileId = source.fileId; value.batchId = source.batchId;
             value.source = source.name;
             value.provenance = data.provenance;
             return value;
@@ -250,7 +250,8 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
     for (auto* detector : {&result.points, &result.triangles}) {
         std::sort(detector->findings.begin(), detector->findings.end(), [&](const auto& a, const auto& b) {
             canceled(stop);
-            return a.fileId != b.fileId ? a.fileId < b.fileId : a.members.front().id < b.members.front().id;
+            return a.fileId != b.fileId ? a.fileId < b.fileId : a.batchId != b.batchId ? a.batchId < b.batchId
+                : a.members.front().id < b.members.front().id;
         });
     }
     return result;

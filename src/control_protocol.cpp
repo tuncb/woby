@@ -65,6 +65,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::cameraDolly, "camera.dolly", "camera dolly", {}, {"factor"}, {"factor"}, false, true},
         {ControlAction::cameraMove, "camera.move", "camera move", {}, {"right", "up", "forward"}, {}, true, true},
         {ControlAction::modelAdd, "model.add", "model add", "path", {}, {}, false, true},
+        {ControlAction::modelSet, "model.set", "model set", "target", {"analysisMode"}, {"analysisMode"}, false, true},
         {ControlAction::modelRemove, "model.remove", "model remove", "target", {}, {}, false, true},
         {ControlAction::folderAdd, "folder.add", "folder add", "path", {"tree"}, {}, false, true},
         {ControlAction::importersList, "importers.list", "importers list", {}, {}, {}},
@@ -79,13 +80,13 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::comparisonCreate, "analysis.create", "analysis create", {}, {"type", "name", "a", "b"}, {}, false, true},
         {ControlAction::comparisonDelete, "analysis.delete", "analysis delete", "target", {}, {}, false, true},
         {ControlAction::comparisonSet, "analysis.set", "analysis set", "target",
-            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
+            {"uvThresholdEnabled", "uvOverlapEnabled", "uvRangeEnabled", "uvThreshold", "uvNearCollapse", "uvRangeMinimum", "uvRangeMaximum", "uvOverlapScope", "uvSeparated", "uvLinkedSelection", "uvMetric", "uvNormalization", "uvView", "uvGrid", "uvDensityU", "uvDensityV", "uvColor", "uvMinimum", "uvMaximum", "intersectionPairLimit", "intersectionCandidateLimit", "autoUpdateBoundaries", "autoUpdateNonManifold", "autoUpdateWinding", "name", "visible", "mode", "distanceOnA", "tolerance", "colorRange", "showEdges", "showBoundaries", "showNonManifold", "showWinding", "topologyMode", "analysisMode", "qualityMetric", "qualityOnA", "qualityMinimumEnabled", "qualityMaximumEnabled", "qualityMinimumSize", "qualityMaximumSize", "duplicatePoints", "duplicateTriangles", "showDuplicatePoints", "showDuplicateTriangles", "selfIntersections", "autoUpdateSelfIntersections", "showSelfIntersections", "degenerateTriangles", "showDegenerateTriangles", "needleThresholdRatio", "capMinAngleDegrees", "nonManifoldVertices", "showNonManifoldVertices", "holes", "showHoles", "holeSizeRatioTolerance", "fins", "showFins", "finMaxAreaRatio"}, {}, true, true},
         {ControlAction::comparisonAdd, "analysis.add", "analysis add", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonRemove, "analysis.remove", "analysis remove", "target", {"side", "object"}, {"side", "object"}, false, true},
         {ControlAction::comparisonEnable, "analysis.enable", "analysis enable", "target", {"side", "enabled", "object", "isolate"}, {"side", "enabled"}, false, true},
         {ControlAction::comparisonClear, "analysis.clear", "analysis clear", "target", {"side"}, {"side"}, false, true},
         {ControlAction::comparisonSwap, "analysis.swap", "analysis swap", "target", {}, {}, false, true},
-        {ControlAction::comparisonRun, "analysis.run", "analysis run", "target", {"detector"}, {"detector"}, false, true},
+        {ControlAction::comparisonRun, "analysis.run", "analysis run", "target", {"detector", "analysisMode"}, {"detector"}, false, true},
         {ControlAction::comparisonCancel, "analysis.cancel", "analysis cancel", "target", {"detector"}, {"detector"}, false, true},
         {ControlAction::comparisonFindings, "analysis.findings", "analysis findings", "target",
             {"side", "detector", "collection", "offset", "limit", "revision"}, {"side", "detector"}},
@@ -128,7 +129,7 @@ bool booleanOption(const std::string& name)
 }
 bool stringOption(const std::string& name)
 {
-    return name == "uvOverlapScope" || name == "uvColor" || name == "uvMetric" || name == "uvNormalization" || name == "type" || name == "uvView" || name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
+    return name == "analysisMode" || name == "uvOverlapScope" || name == "uvColor" || name == "uvMetric" || name == "uvNormalization" || name == "type" || name == "uvView" || name == "path" || name == "collection" || name == "revision" || name == "detector" || name == "shape" || name == "comments" || name == "name" || name == "mode" || name == "side" || name == "a" || name == "b" || name == "object" || name == "topologyMode" || name == "qualityMetric";
 }
 bool integerOption(const std::string& name)
 {
@@ -185,6 +186,7 @@ std::string cliOption(const std::string& name)
     if (name == "holes") { return "--holes"; }
     if (name == "showHoles") { return "--show-holes"; }
     if (name == "holeSizeRatioTolerance") { return "--hole-size-ratio-tolerance"; }
+    if (name == "analysisMode") { return "--analysis-mode"; }
     if (name == "topologyMode") { return "--topology-mode"; }
     if (name == "showNonManifold") { return "--show-non-manifold"; }
     if (name == "autoUpdateBoundaries") { return "--auto-update-boundaries"; }
@@ -349,7 +351,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
         command.cameraTarget = params["target"].get<std::array<float, 3>>();
     }
 #define STRING_FIELD(field) if (params.contains(#field)) { command.field = params[#field].get<std::string>(); }
-    STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
+    STRING_FIELD(analysisMode) STRING_FIELD(detector) STRING_FIELD(qualityMetric) STRING_FIELD(topologyMode) STRING_FIELD(name) STRING_FIELD(mode) STRING_FIELD(side) STRING_FIELD(a) STRING_FIELD(b) STRING_FIELD(object)
     STRING_FIELD(shape) STRING_FIELD(comments) STRING_FIELD(collection) STRING_FIELD(revision)
     STRING_FIELD(uvOverlapScope)
     STRING_FIELD(uvColor) STRING_FIELD(uvMetric) STRING_FIELD(uvNormalization) STRING_FIELD(type) STRING_FIELD(uvView)
@@ -378,6 +380,10 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     }
     if (command.detector && std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), *command.detector) == diagnosticCategoryKeys.end()) {
         throw std::invalid_argument("Unknown detector. Use a detector key from analysis.results.");
+    }
+    if (command.analysisMode) {
+        if (command.action == ControlAction::modelSet) { (void)parseModelAnalysisMode(*command.analysisMode); }
+        else { (void)parseAnalysisMode(*command.analysisMode); }
     }
     if (command.topologyMode && *command.topologyMode != "original_index" && *command.topologyMode != "exact_position") {
         throw std::invalid_argument("topologyMode must be original_index or exact_position.");
@@ -458,7 +464,7 @@ Json controlOperationParams(const ControlOperation& command)
     if (command.action == ControlAction::folderAdd) { result["tree"] = command.tree; }
     if (command.action == ControlAction::importersAdd || command.action == ControlAction::importersScan) { result["remember"] = command.remember; }
 #define FIELD(field) if (command.field) { result[#field] = *command.field; }
-    FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(adaptivePoints) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
+    FIELD(analysisMode) FIELD(visible) FIELD(propertiesVisible) FIELD(solid) FIELD(xray) FIELD(adaptivePoints) FIELD(triangles) FIELD(vertices) FIELD(translation) FIELD(rotationDegrees) FIELD(rgb) FIELD(barycentric)
     FIELD(lineWidth) FIELD(lineDepthTest) FIELD(uvGrid) FIELD(uvDensityU) FIELD(uvDensityV)
     FIELD(uvThresholdEnabled) FIELD(uvOverlapEnabled) FIELD(uvRangeEnabled) FIELD(uvThreshold) FIELD(uvNearCollapse) FIELD(uvRangeMinimum) FIELD(uvRangeMaximum) FIELD(uvOverlapScope)
     FIELD(uvSeparated) FIELD(uvLinkedSelection) FIELD(uvColor) FIELD(uvMinimum) FIELD(uvMaximum) FIELD(uvMetric) FIELD(uvNormalization) FIELD(isolate)

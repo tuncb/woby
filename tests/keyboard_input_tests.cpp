@@ -97,12 +97,23 @@ TEST_CASE("inspector axis inputs align across columns at different pane widths a
                         if (vertex.col == fieldColor) { corners.push_back(vertex.pos); }
                     }
                     for (size_t i = 0; i + 3 < corners.size(); i += 4) {
-                        fields.emplace_back(corners[i], corners[i + 2]);
+                        const ImRect field(corners[i], corners[i + 2]);
+                        // Checkboxes also use FrameBg; only wide numeric fields
+                        // participate in the three-column alignment assertion.
+                        if (field.GetWidth() > field.GetHeight()) { fields.push_back(field); }
                     }
                 }
                 ImGui::End();
                 ImGui::EndFrame();
                 if (frame == 0) { continue; }
+                // Ignore single controls such as the analysis-mode combo. The
+                // transform inputs have three fields on each row.
+                const auto allFields = fields;
+                std::erase_if(fields, [&](const auto& field) {
+                    return std::count_if(allFields.begin(), allFields.end(), [&](const auto& other) {
+                        return other.Min.y == field.Min.y;
+                    }) != 3;
+                });
                 REQUIRE(fields.size() >= 6);
                 std::sort(fields.begin(), fields.end(), [](const auto& a, const auto& b) {
                     return a.Min.y != b.Min.y ? a.Min.y < b.Min.y : a.Min.x < b.Min.x;

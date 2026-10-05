@@ -215,6 +215,8 @@ TEST_CASE("duplicate analysis navigation persistence signatures and CLI agree")
     const auto id = state.activeComparisonId;
     state.files[0].groupSettings[1].translation = {10,0,0};
     woby::setComparisonTranslation(state, id, {100,0,0});
+    // This case deliberately inspects duplicate records across child parts.
+    REQUIRE(woby::setModelAnalysisMode(state, state.files[0].objectId, woby::AnalysisMode::whole));
     const auto mesh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, id);
     const auto result = woby::compareMeshes(mesh, {});
     REQUIRE(result.original.duplicates.triangles.findings.size() == 1);

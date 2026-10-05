@@ -1386,9 +1386,11 @@ TEST_CASE("analysis snapshots share indexed vertices within each transformed par
     }
     CHECK(world.bounds.max == std::array<float, 3>{11, 1, 0});
     REQUIRE(world.duplicateInput);
-    REQUIRE(world.duplicateInput->sources.size() == 1);
-    CHECK(world.duplicateInput->sources[0].wholeFile);
-    CHECK(world.duplicateInput->sources[0].parts.size() == 2);
+    REQUIRE(world.duplicateInput->sources.size() == 2);
+    for (const auto& batch : world.duplicateInput->sources) {
+        CHECK_FALSE(batch.wholeFile);
+        CHECK(batch.parts.size() == 1);
+    }
     CHECK(state.files[0].mesh.indices == input.indices);
 }
 

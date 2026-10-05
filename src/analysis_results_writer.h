@@ -95,7 +95,7 @@ inline void point(Writer& w, const TopologyPointReference& p) {
     auto o = object(w); idField(o, "partId", p.partId); field(o, "pointId", p.pointId + 1); end(o);
 }
 inline void sourceFields(Object& o, const SourceTopology& s) {
-    field(o, "source", s.source); idField(o, "sourceId", s.fileId); field(o, "topologyMode", topologyModeName(s.mode));
+    field(o, "source", s.source); idField(o, "sourceId", s.fileId); idField(o, "batchId", s.batchId); field(o, "topologyMode", topologyModeName(s.mode));
 }
 inline void source(Writer& w, const SourceTopology& s) {
     auto o = object(w); sourceFields(o, s);
@@ -158,7 +158,7 @@ inline void fin(Writer& w, const MeshTopology& t, size_t index) {
     arrayField(o, "cutBoundaryEdgeIds", p.cutBoundaryEdges.size(), [&](size_t i) { value(w, p.cutBoundaryEdges[i] + 1); }); end(o);
 }
 inline void duplicate(Writer& w, const DuplicateFinding& f) {
-    auto o = object(w); idField(o, "sourceId", f.fileId); field(o, "source", f.source);
+    auto o = object(w); idField(o, "sourceId", f.fileId); field(o, "source", f.source); idField(o, "batchId", f.batchId);
     field(o, "provenance", sourceProvenanceName(f.provenance)); field(o, "representativeId", f.members.front().id + 1);
     field(o, "memberCount", f.members.size()); field(o, "membersTruncated", false);
     arrayField(o, "members", f.members.size(), [&](size_t i) {
@@ -166,7 +166,7 @@ inline void duplicate(Writer& w, const DuplicateFinding& f) {
     }); end(o);
 }
 inline void degenerate(Writer& w, const DegenerateFinding& f) {
-    auto o = object(w); idField(o, "sourceId", f.fileId); idField(o, "partId", f.partId); field(o, "source", f.source);
+    auto o = object(w); idField(o, "sourceId", f.fileId); idField(o, "partId", f.partId); field(o, "source", f.source); idField(o, "batchId", f.batchId);
     field(o, "provenance", sourceProvenanceName(f.provenance)); field(o, "triangleId", f.triangleId + 1);
     // Json's number formatter preserves the existing non-finite -> null policy.
     field(o, "edgeRatio", f.reasons.edgeRatio); field(o, "maximumAngleDegrees", f.reasons.maximumAngleDegrees);
@@ -175,7 +175,7 @@ inline void degenerate(Writer& w, const DegenerateFinding& f) {
     end(reasons); end(o);
 }
 inline void intersection(Writer& w, const IntersectionFinding& f) {
-    auto o = object(w); field(o, "source", f.source); field(o, "provenance", sourceProvenanceName(f.provenance));
+    auto o = object(w); field(o, "source", f.source); idField(o, "batchId", f.batchId); field(o, "provenance", sourceProvenanceName(f.provenance));
     field(o, "topologyMode", topologyModeName(f.mode)); key(o, "faces");
     // These two faces were an inline JSON value, not lazy array entries, in the
     // original exporter. Keep entriesWritten's established counting convention.

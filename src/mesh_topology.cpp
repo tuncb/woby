@@ -261,6 +261,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
 {
     SourceTopology result;
     result.fileId = source.fileId;
+    result.batchId = source.batchId;
     result.source = source.name;
     result.mode = mode;
     if (!source.data) { result.available = false; return result; }
@@ -654,7 +655,9 @@ MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, Topo
     sourceStorage->reserve(sources.size());
     std::vector<const DuplicateSource*> sorted;
     for (const auto& source : sources) { canceled(stop); sorted.push_back(&source); }
-    std::sort(sorted.begin(), sorted.end(), [&](const auto* a, const auto* b) { canceled(stop); return a->fileId < b->fileId; });
+    std::sort(sorted.begin(), sorted.end(), [&](const auto* a, const auto* b) {
+        canceled(stop); return std::tie(a->fileId, a->batchId) < std::tie(b->fileId, b->batchId);
+    });
     std::set<std::tuple<uint64_t, size_t, uint64_t>> windingFaces;
     for (const auto* input : sorted) {
         canceled(stop);

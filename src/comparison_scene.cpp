@@ -369,6 +369,36 @@ static void validateComparisonInput(const UiState& state, ComparisonSide side, S
     }
 }
 
+struct AnalysisBatch {
+    SceneObjectId id = 0;
+    std::string name;
+};
+
+// This is only a partition of the detector input. Neither the scene tree nor
+// importer geometry is edited. Children of an imported container stay together.
+static std::vector<AnalysisBatch> modelAnalysisBatches(const UiFileState& file, AnalysisMode mode)
+{
+    std::vector<AnalysisBatch> batches(file.mesh.nodes.size());
+    const bool separate = mode == AnalysisMode::perVolume
+        || (mode == AnalysisMode::model && file.fileSettings.analysisMode == AnalysisMode::perVolume);
+    if (!separate) { return batches; }
+    for (size_t i = 0; i < batches.size(); ++i) {
+        batches[i] = {file.groupSettings.at(i).objectId, meshNodeDisplayName(file.mesh.nodes[i])};
+    }
+    const auto& hierarchy = file.mesh.hierarchy;
+    std::vector<size_t> roots(hierarchy.size());
+    std::vector<SceneObjectId> representatives(hierarchy.size());
+    for (size_t i = 0; i < hierarchy.size(); ++i) {
+        const auto& node = hierarchy[i];
+        roots[i] = node.parentIndex == UINT32_MAX ? i : roots.at(node.parentIndex);
+        if (node.groupIndex == UINT32_MAX) { continue; }
+        auto& representative = representatives[roots[i]];
+        if (!representative) { representative = file.groupSettings.at(node.groupIndex).objectId; }
+        batches.at(node.groupIndex) = {representative, hierarchy[roots[i]].name};
+    }
+    return batches;
+}
+
 template <typename Visit>
 static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSettings& settings,
     const Coordinate& origin, std::stop_token stop)
@@ -389,15 +419,22 @@ static Mesh buildComparisonWorldMesh(const Visit& visit, const ComparisonSetting
     result.indices.reserve(triangleCount * 3);
     WorldVertexRemap remap;
     auto duplicateInput = std::make_shared<DuplicateInput>();
-    boost::unordered_flat_map<SceneObjectId, size_t> sourceIndices;
+    boost::unordered_flat_map<std::pair<SceneObjectId, SceneObjectId>, size_t> sourceIndices;
+    boost::unordered_flat_map<SceneObjectId, std::vector<AnalysisBatch>> batches;
     duplicateInput->settings = settings.duplicates;
     visit([&](const UiFileState& file, size_t index, const double* parent) {
+        auto [batchEntry, newFile] = batches.try_emplace(file.objectId);
+        if (newFile) { batchEntry->second = modelAnalysisBatches(file, settings.analysisMode); }
+        const auto& batch = batchEntry->second.at(index);
+        const auto [entry, inserted] = sourceIndices.try_emplace(std::pair{file.objectId, batch.id}, duplicateInput->sources.size());
         appendGroup(result, remap, file, index, parent, stop);
-        const auto [entry, inserted] = sourceIndices.try_emplace(file.objectId, duplicateInput->sources.size());
+        result.analysisVertexBatches.resize(result.vertices.size(), static_cast<uint32_t>(entry->second));
         if (inserted) {
             DuplicateSource source;
             source.fileId = file.objectId;
+            source.batchId = batch.id;
             source.name = pathToUtf8(file.path.filename());
+            if (batch.id) { source.name += " / " + batch.name; }
             source.data = file.mesh.sourceData;
             std::copy_n(parent, 16, source.unusedPointTransform.begin());
             duplicateInput->sources.push_back(std::move(source));
@@ -547,6 +584,7 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
     uint64_t seed = 17;
     hashCombine(seed, state.sceneGeneration);
     const auto settings = comparisonSettings(state, id);
+    if (!boundsOnly) { hashCombine(seed, static_cast<uint64_t>(settings.analysisMode)); }
     hashCombine(seed, boundsOnly ? static_cast<uint64_t>(isUvAnalysis(settings.type)) : static_cast<uint64_t>(settings.type));
     if (isUvAnalysis(settings.type)) {
         hashCombine(seed, static_cast<uint64_t>(settings.uvView));
@@ -568,6 +606,7 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
         visitParts(state, side, id, [&](const UiFileState& file, size_t index, const double* parent) {
             ++count;
             hashCombine(seed, file.objectId);
+            if (!boundsOnly && settings.analysisMode == AnalysisMode::model) { hashCombine(seed, static_cast<int>(file.fileSettings.analysisMode)); }
             hashCombine(seed, file.groupSettings[index].objectId);
             hashCombine(seed, file.mesh.contentRevision);
             hashCombine(seed, file.mesh.precisePositions.size());

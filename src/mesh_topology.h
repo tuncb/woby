@@ -65,6 +65,7 @@ struct SourceTopology {
     std::vector<TopologyEdge> edges;
     std::vector<std::vector<size_t>> components;
     std::shared_ptr<const TopologyIncidence> incidence;
+    uint64_t batchId = 0;
 };
 struct TopologyEdgeFinding { size_t source = 0, edge = 0; };
 struct TopologyVertexFinding { size_t source = 0, vertex = 0, linkComponents = 0; };

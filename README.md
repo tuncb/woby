@@ -474,6 +474,16 @@ inputs are populated, measurements in both directions including maximum/mean/P95
 distance and area above tolerance. With one input, unavailable distance metrics
 and the absent side are `null`.
 
+Mesh checks use **Analysis mode: Per volume** by default. An analysis of a parent
+checks its existing child volumes/parts independently and combines the findings.
+Imported top-level folders keep their patches together; flat models use one batch
+per mesh group. The hierarchy is unchanged. Set the model's **Analysis mode** to
+**Whole** to check it as a whole, or use **Analysis mode** in the analysis
+Diagnostics controls to override the model setting. Exact-position topology joins
+split vertices only within each batch. Intersections and duplicates between
+batches are excluded. Both settings support scene save/load and Undo/Redo; see the
+[CLI analysis controls](doc/ctl-commands.md).
+
 Analysis retains separate caches for topology, duplicate points, duplicate triangles,
 surface quality, and distances. Automatic updates control scheduling; turning them
 off retains current results and allows manual updates. Show only changes the overlay. Group A/B and

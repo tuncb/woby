@@ -56,6 +56,7 @@ struct UiFileSettings {
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
     Coordinate coordinateOffset{}; // Mesh origin minus the stable scene origin.
+    AnalysisMode analysisMode = AnalysisMode::perVolume;
 };
 
 struct UiFileState {
