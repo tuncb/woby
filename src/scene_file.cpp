@@ -477,6 +477,7 @@ void assignCameraValue(SceneCamera& camera, const std::string& key, std::string_
     } else if (key == "distance") { camera.distance = parseTomlFloat(value);
     } else if (key == "vertical_fov_degrees") { camera.verticalFovDegrees = parseTomlFloat(value);
     } else if (key == "near_plane") { camera.nearPlane = parseTomlFloat(value);
+    } else if (key == "automatic_near_plane") { camera.automaticNearPlane = parseTomlBool(value);
     }
     // Report invalid numbers at their source line; clamp only after
     // all fields are read so near-plane limits are order-independent.
@@ -724,6 +725,7 @@ void writeCamera(std::ostream& stream, const SceneCamera& value)
     writeTomlFloat(stream, camera.verticalFovDegrees);
     stream << "\nnear_plane = ";
     writeTomlFloat(stream, camera.nearPlane);
+    stream << "\nautomatic_near_plane = " << (camera.automaticNearPlane ? "true" : "false");
     stream << "\n";
 }
 
@@ -854,6 +856,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             }
             if (text == "[[views]]") {
                 document.views.emplace_back();
+                document.views.back().scene.camera.automaticNearPlane = false;
                 viewCameraSeen = false;
                 section = Section::view;
                 continue;
@@ -878,6 +881,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
             if (text == "[camera]") {
                 if (document.camera) { throw std::runtime_error("Duplicate camera table."); }
                 document.camera.emplace();
+                document.camera->automaticNearPlane = false;
                 section = Section::camera;
                 continue;
             }
@@ -923,7 +927,7 @@ SceneDocument readSceneDocument(const std::filesystem::path& scenePath)
                 if (key == "version") {
                     const int version = parseTomlInteger(value);
                     sceneVersion = version;
-                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23) {
+                    if (version != 2 && version != 3 && version != 4 && version != 5 && version != 6 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17 && version != 18 && version != 19 && version != 20 && version != 21 && version != 22 && version != 23 && version != 24) {
                         throw std::runtime_error("Unsupported scene version.");
                     }
                 } else if (key == "coordinate_origin") {
@@ -1222,7 +1226,7 @@ void writeSceneDocument(const std::filesystem::path& scenePath, const SceneDocum
     stream.exceptions(std::ios::badbit | std::ios::failbit);
 
     stream << "# woby scene\n";
-    stream << "version = 23\n";
+    stream << "version = 24\n";
     if (document.coordinateOrigin) {
         for (double v : *document.coordinateOrigin) { if (!std::isfinite(v)) { throw std::runtime_error("Non-finite scene origin."); } }
         stream << "coordinate_origin = "; writeTomlFloat3(stream, *document.coordinateOrigin); stream << '\n';

@@ -18,6 +18,7 @@ struct SceneCamera {
     float distance = 1.0f;
     float verticalFovDegrees = 60.0f;
     float nearPlane = 0.1f;
+    bool automaticNearPlane = true;
 
     friend bool operator==(const SceneCamera&, const SceneCamera&) = default;
 };
@@ -33,6 +34,7 @@ enum class CameraView { top, bottom, front, back, left, right, isometric };
 struct CameraPlacement {
     std::optional<std::array<float, 3>> target;
     std::optional<float> yawDegrees, pitchDegrees, rollDegrees, distance, fovDegrees, nearPlane;
+    std::optional<bool> automaticNearPlane;
 };
 
 [[nodiscard]] SceneCamera cameraWithPlacement(SceneCamera camera, const CameraPlacement& placement);
@@ -61,8 +63,9 @@ struct CameraDepthRange {
     float nearPlane = 0.1f;
     float farPlane = 10.0f;
 };
-// The persisted near plane is a minimum. Raise it only into known empty space
-// before the scene's bounding sphere; retain close geometry when inside it.
+// Automatic clipping retreats to a small near plane inside the bounding sphere.
+// Manual clipping retains the persisted minimum. Raise either only into known
+// empty space before the scene's bounding sphere.
 [[nodiscard]] CameraDepthRange cameraDepthRange(const SceneCamera& camera, const Bounds& bounds,
     SceneUpAxis upAxis = SceneUpAxis::z);
 [[nodiscard]] float cameraFarPlane(const SceneCamera& camera, const Bounds& bounds,

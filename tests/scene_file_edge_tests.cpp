@@ -1,4 +1,5 @@
 #include "scene_file.h"
+#include "automation_registry.h"
 
 #include <doctest/doctest.h>
 
@@ -8,6 +9,13 @@
 #include <string>
 
 namespace {
+
+struct CameraDirectory {
+    std::filesystem::path root = std::filesystem::absolute(std::filesystem::temp_directory_path())
+        / ("woby-camera-" + woby::automationRandomHex(8));
+    CameraDirectory() { std::filesystem::create_directory(root); }
+    ~CameraDirectory() { std::error_code ignored; std::filesystem::remove_all(root, ignored); }
+};
 
 void writeText(const std::filesystem::path& path, const char* text)
 {
@@ -29,10 +37,13 @@ void checkReadThrowsContaining(const std::filesystem::path& path, const std::str
 
 TEST_CASE("camera records clamp finite ranges and use defaults for missing fields")
 {
-    const auto path = std::filesystem::temp_directory_path() / "woby-camera-ranges.woby";
+    const CameraDirectory directory;
+    const auto path = directory.root / "ranges.woby";
     writeText(path, "version = 6\n[camera]\n");
     REQUIRE(woby::readSceneDocument(path).camera);
-    CHECK(*woby::readSceneDocument(path).camera == woby::SceneCamera{});
+    woby::SceneCamera legacy;
+    legacy.automaticNearPlane = false;
+    CHECK(*woby::readSceneDocument(path).camera == legacy);
     writeText(path, "version = 6\n[camera]\ntarget = [3e38, -3e38, 2]\n"
         "pitch_radians = 30\ndistance = -1\nvertical_fov_degrees = 300\nnear_plane = -2\n");
     const auto camera = *woby::readSceneDocument(path).camera;
@@ -55,7 +66,8 @@ TEST_CASE("camera records clamp finite ranges and use defaults for missing field
 
 TEST_CASE("camera records reject nonfinite and malformed values with line context")
 {
-    const auto path = std::filesystem::temp_directory_path() / "woby-camera-errors.woby";
+    const CameraDirectory directory;
+    const auto path = directory.root / "errors.woby";
     for (const auto* key : {"yaw_radians", "pitch_radians", "roll_radians", "distance",
         "vertical_fov_degrees", "near_plane"}) {
         for (const auto* value : {"nan", "inf", "-inf"}) {
@@ -75,7 +87,38 @@ TEST_CASE("camera records reject nonfinite and malformed values with line contex
     checkReadThrowsContaining(path, ":3: Expected TOML float value.");
     writeText(path, "version = 6\n[camera]\n[camera]\n");
     checkReadThrowsContaining(path, ":3: Duplicate camera table.");
+    writeText(path, "version = 24\n[camera]\nautomatic_near_plane = 1\n");
+    checkReadThrowsContaining(path, ":3: Expected TOML boolean value.");
     std::filesystem::remove(path);
+}
+
+TEST_CASE("camera clipping modes and retained manual distances round trip for scenes and named views")
+{
+    const CameraDirectory directory;
+    const auto path = directory.root / "clipping.woby";
+    for (const bool automatic : {false, true}) {
+        woby::SceneDocument document;
+        document.camera.emplace();
+        document.camera->nearPlane = .025f;
+        document.camera->automaticNearPlane = automatic;
+        document.views.emplace_back();
+        document.views.back().name = "Close view";
+        document.views.back().scene.camera.nearPlane = .075f;
+        document.views.back().scene.camera.automaticNearPlane = !automatic;
+        woby::writeSceneDocument(path, document);
+        const auto restored = woby::readSceneDocument(path);
+        CHECK(restored.camera == document.camera);
+        REQUIRE(restored.views.size() == 1);
+        CHECK(restored.views[0].scene.camera == document.views[0].scene.camera);
+    }
+    writeText(path, "version = 19\n[camera]\nnear_plane = 0.1\n[[views]]\nname = \"Legacy\"\n[views.camera]\nnear_plane = 0.05\n");
+    const auto legacy = woby::readSceneDocument(path);
+    REQUIRE(legacy.camera);
+    CHECK_FALSE(legacy.camera->automaticNearPlane);
+    CHECK(legacy.camera->nearPlane == doctest::Approx(.1f));
+    REQUIRE(legacy.views.size() == 1);
+    CHECK_FALSE(legacy.views[0].scene.camera.automaticNearPlane);
+    CHECK(legacy.views[0].scene.camera.nearPlane == doctest::Approx(.05f));
 }
 
 TEST_CASE("scene path helpers normalize saved and referenced paths")

@@ -125,7 +125,11 @@ SceneCamera cameraWithPlacement(SceneCamera camera, const CameraPlacement& place
         camera.distance = *placement.distance;
     }
     if (placement.fovDegrees) { camera.verticalFovDegrees = *placement.fovDegrees; }
-    if (placement.nearPlane) { camera.nearPlane = *placement.nearPlane; }
+    if (placement.nearPlane) {
+        camera.nearPlane = *placement.nearPlane;
+        camera.automaticNearPlane = false;
+    }
+    if (placement.automaticNearPlane) { camera.automaticNearPlane = *placement.automaticNearPlane; }
     return normalizedSceneCamera(camera);
 }
 
@@ -172,8 +176,9 @@ SceneCamera fitCameraBounds(SceneCamera camera, const Bounds& bounds)
     camera.target = bounds.center;
     const float radius = std::max(bounds.radius, 0.001f);
     const float halfFovRadians = camera.verticalFovDegrees * pi / 360.0f;
+    const float minimumNear = camera.automaticNearPlane ? 0.0001f : camera.nearPlane;
     camera.distance = std::max((radius / std::sin(halfFovRadians)) * 1.35f,
-        radius + camera.nearPlane * 1.35f);
+        radius + minimumNear * 1.35f);
     return normalizedSceneCamera(camera);
 }
 
@@ -235,7 +240,8 @@ CameraDepthRange cameraDepthRange(const SceneCamera& camera, const Bounds& bound
     const double radius = bounds.radius;
     const double front = centerDepth - radius;
     const double automaticNear = front > 0 ? std::min(centerDepth * 0.01, front * 0.5) : 0;
-    const double nearPlane = std::max(static_cast<double>(camera.nearPlane), automaticNear);
+    const double minimumNear = camera.automaticNearPlane ? 0.0001 : static_cast<double>(camera.nearPlane);
+    const double nearPlane = std::max(minimumNear, automaticNear);
     const double padding = std::max({radius * 0.05, std::abs(centerDepth) * 0.00001, 0.0001});
     // Preserve the previous generous helper extent, but also cover scenes that
     // are far beyond the camera target after keyboard movement or look-at.

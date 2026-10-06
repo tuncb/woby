@@ -25,11 +25,24 @@ PickMatrix compose(const PickMatrix& parent, const PickMatrix& child)
     bx::mtxMul(result.data(), parent.data(), child.data());
     return result;
 }
-Clip transform(const PickMatrix& m, const Clip& p)
+template<typename Scalar>
+Clip transform(const std::array<Scalar, 16>& m, const Clip& p)
 {
     Clip result{};
     for (size_t row = 0; row < 4; ++row) {
         for (size_t column = 0; column < 4; ++column) { result[row] += m[column * 4 + row] * p[column]; }
+    }
+    return result;
+}
+std::array<double, 16> composeDouble(const PickMatrix& parent, const PickMatrix& child)
+{
+    std::array<double, 16> result{};
+    for (size_t column = 0; column < 4; ++column) {
+        for (size_t row = 0; row < 4; ++row) {
+            for (size_t k = 0; k < 4; ++k) {
+                result[column * 4 + row] += static_cast<double>(child[k * 4 + row]) * parent[column * 4 + k];
+            }
+        }
     }
     return result;
 }
@@ -355,15 +368,18 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
     if (view.width == 0 || view.height == 0 || !std::isfinite(point[0]) || !std::isfinite(point[1]) ||
         point[0] < 0 || point[1] < 0 || point[0] >= view.width || point[1] >= view.height) { return invalidSceneObjectId; }
     PickMatrix inverse;
-    // bx::mtxMul(a,b) composes column-vector transforms as b*a.
-    const auto viewProjection = compose(view.view, view.projection);
-    bx::mtxInverse(inverse.data(), viewProjection.data());
+    // Inverting a combined float matrix can erase a tiny near distance next to
+    // a large camera translation. Unproject in view space, then move to world
+    // space with double intermediates to preserve the separation of ray points.
+    bx::mtxInverse(inverse.data(), view.projection.data());
+    PickMatrix inverseView;
+    bx::mtxInverse(inverseView.data(), view.view.data());
     const double x = 2.0 * point[0] / view.width - 1.0, y = 1.0 - 2.0 * point[1] / view.height;
-    const auto near = position(inverse, {x, y, view.homogeneousDepth ? -1.0 : 0.0});
+    const auto near = position(inverseView, position(inverse, {x, y, view.homogeneousDepth ? -1.0 : 0.0}));
     // With a very large far/near ratio, float projection coefficients can put
     // the far endpoint at infinity. Use an interior point to define the ray,
     // then check each hit against the renderer's clip volume.
-    const auto middle = position(inverse, {x, y, view.homogeneousDepth ? 0.0 : 0.5});
+    const auto middle = position(inverseView, position(inverse, {x, y, view.homogeneousDepth ? 0.0 : 0.5}));
     double depthBuffer = 1.0;
     SceneObjectId hit = invalidSceneObjectId;
     struct Candidate {
@@ -408,7 +424,10 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
         for (const auto& part : parts) {
             if (layer != (part.annotationOverlay ? 2 : part.lineIndexCount ? 1 : 0)) { continue; }
             if (part.objectId == invalidSceneObjectId || part.opacity <= 0) { continue; }
-            const auto mvp = compose(part.model, viewProjection);
+            // Keep the projection's near term when composing with translated
+            // geometry; float composition otherwise rounds visible hits to the
+            // cleared far depth and rejects them during CPU selection.
+            const auto mvp = composeDouble(compose(part.model, view.view), view.projection);
             bx::mtxInverse(inverse.data(), part.model.data());
             const auto origin = position(inverse, near), end = position(inverse, middle);
             const auto direction = subtract(end, origin);

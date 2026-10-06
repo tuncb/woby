@@ -558,6 +558,52 @@ TEST_CASE("Settings toolbar opens a dialog that closes and reopens without chang
     CHECK(fixture.state.uiScale == 1.5f);
 }
 
+TEST_CASE("Settings camera controls switch clipping modes and retain the manual distance")
+{
+    KeyboardFixture fixture;
+    fixture.state.camera.distance = .336f;
+    fixture.state.sceneBounds.radius = .466f;
+    bool requestOpen = true;
+    const auto frame = [&]() {
+        ImGui::NewFrame();
+        const auto result = woby::drawSettingsDialog(fixture.state, requestOpen);
+        requestOpen = false;
+        CHECK(result.open);
+        CHECK_FALSE(result.scaleChanged);
+        ImGui::EndFrame();
+    };
+    frame(); frame();
+    auto* dialog = ImGui::FindWindowByName("Settings");
+    REQUIRE(dialog);
+    const auto automaticId = dialog->GetID("Automatic near clipping");
+    const auto manualId = dialog->GetID("Manual near distance");
+    REQUIRE(fixture.state.camera.automaticNearPlane);
+    ImGui::ActivateItemByID(automaticId);
+    frame();
+    REQUIRE_FALSE(fixture.state.camera.automaticNearPlane);
+    CHECK(woby::cameraDepthRange(fixture.state.camera, fixture.state.sceneBounds).nearPlane == doctest::Approx(.1f));
+    ImGui::ActivateItemByID(manualId);
+    frame();
+    REQUIRE(ImGui::GetCurrentContext()->ActiveId == manualId);
+    auto& io = ImGui::GetIO();
+    io.AddInputCharactersUTF8("0.02");
+    frame();
+    io.AddKeyEvent(ImGuiKey_Enter, true);
+    frame();
+    io.AddKeyEvent(ImGuiKey_Enter, false);
+    frame();
+    CHECK(fixture.state.camera.nearPlane == doctest::Approx(.02f));
+    ImGui::ActivateItemByID(automaticId);
+    frame();
+    CHECK(fixture.state.camera.automaticNearPlane);
+    CHECK(fixture.state.camera.nearPlane == doctest::Approx(.02f));
+    CHECK(woby::cameraDepthRange(fixture.state.camera, fixture.state.sceneBounds).nearPlane < .02f);
+    ImGui::ActivateItemByID(automaticId);
+    frame();
+    CHECK_FALSE(fixture.state.camera.automaticNearPlane);
+    CHECK(woby::cameraDepthRange(fixture.state.camera, fixture.state.sceneBounds).nearPlane == doctest::Approx(.02f));
+}
+
 TEST_CASE("Help update controls emit actions and guard dirty and busy installations")
 {
     KeyboardFixture fixture;

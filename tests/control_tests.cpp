@@ -454,6 +454,32 @@ TEST_CASE("absolute camera positioning is repeatable normalized and transient fo
     }
 }
 
+TEST_CASE("camera clipping controls retain manual values and explicit near distances select manual mode")
+{
+    auto state = scene();
+    const auto clean = woby::createSceneDocument(state);
+    state.camera.distance = .05f;
+    REQUIRE(state.camera.automaticNearPlane);
+    CHECK(parse({"camera", "set", "--automatic-near-plane", "false"}).operation.automaticNearPlane == false);
+    CHECK(woby::controlOperationParams(parse({"camera", "set", "--automatic-near-plane", "true"}).operation)
+        == Json({{"automaticNearPlane", true}}));
+    CHECK_THROWS(parse({"camera", "set", "--automatic-near-plane", "yes"}));
+    CHECK_THROWS(woby::parseControlOperation(*woby::findControlMethod("camera.set"), {{"automaticNearPlane", 1}}));
+    const auto manual = run(state, clean, "camera.set", {{"nearPlane", .2f}})["camera"];
+    CHECK_FALSE(manual["automaticNearPlane"].get<bool>());
+    CHECK(manual["effectiveNearPlane"].get<float>() == doctest::Approx(.2f));
+    const auto automatic = run(state, clean, "camera.set", {{"automaticNearPlane", true}})["camera"];
+    CHECK(automatic["automaticNearPlane"].get<bool>());
+    CHECK(automatic["nearPlane"] == manual["nearPlane"]);
+    CHECK(automatic["effectiveNearPlane"].get<float>() < .05f);
+    run(state, clean, "camera.set", {{"nearPlane", .3f}, {"automaticNearPlane", true}});
+    CHECK(state.camera.automaticNearPlane);
+    CHECK(state.camera.nearPlane == doctest::Approx(.3f));
+    run(state, clean, "camera.set", {{"automaticNearPlane", false}});
+    CHECK(woby::controlCameraInfo(state)["effectiveNearPlane"].get<float>() == doctest::Approx(.3f));
+    CHECK_FALSE(state.isDirty);
+}
+
 TEST_CASE("look at reconstructs world eye and target including poles and rejects degenerate poses atomically")
 {
     for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {

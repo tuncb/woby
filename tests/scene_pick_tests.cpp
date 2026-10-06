@@ -7,6 +7,7 @@
 
 #include <limits>
 #include <cmath>
+#include <algorithm>
 
 namespace {
 woby::Mesh triangle(float z = .4f)
@@ -67,6 +68,7 @@ TEST_CASE("camera depth range retreats for close geometry and honors explicit ne
 {
     woby::Bounds bounds; bounds.radius = 10;
     woby::SceneCamera camera; camera.distance = 10.1f; camera.nearPlane = .0001f;
+    camera.automaticNearPlane = false;
     auto depth = woby::cameraDepthRange(camera, bounds);
     CHECK(depth.nearPlane == doctest::Approx((camera.distance - bounds.radius) * .5f));
     camera.distance = 10.0001f;
@@ -86,6 +88,7 @@ TEST_CASE("reversed render projection separates distant layers while preserving 
 {
     woby::Bounds bounds; bounds.radius = 60000;
     woby::SceneCamera camera; camera.distance = 33000; camera.nearPlane = .1f;
+    camera.automaticNearPlane = false;
     const auto saved = camera;
     const auto depth = woby::cameraDepthRange(camera, bounds);
     REQUIRE(depth.nearPlane == camera.nearPlane);
@@ -123,6 +126,78 @@ TEST_CASE("camera far plane covers geometry beyond an off center target for both
         CHECK(woby::cameraFarPlane(camera, bounds, up) == depth.farPlane);
         // Previously distance + 4 * radius put the far plane at just 401.
         CHECK(depth.farPlane > 2000 * (camera.distance + 4 * bounds.radius));
+    }
+}
+
+TEST_CASE("automatic near clipping restores the saved Bennu close view without changing its manual value")
+{
+    woby::Bounds bounds;
+    bounds.center = {0.00244650245f, 0.00804309547f, 0.00492233783f};
+    bounds.radius = 0.466231018f;
+    woby::SceneCamera camera;
+    camera.target = bounds.center;
+    camera.yawRadians = -1.80000055f;
+    camera.pitchRadians = -0.694796681f;
+    camera.distance = 0.33627674f;
+    const auto saved = camera;
+    const auto automatic = woby::cameraDepthRange(camera, bounds);
+    CHECK(automatic.nearPlane == doctest::Approx(.0001f));
+    CHECK(automatic.nearPlane < .07707666f); // Closest measured source vertex.
+    CHECK(camera == saved);
+    camera.automaticNearPlane = false;
+    CHECK(woby::cameraDepthRange(camera, bounds).nearPlane > .07707666f);
+    CHECK(camera.nearPlane == saved.nearPlane);
+}
+
+TEST_CASE("automatic near clipping retreats while orbiting and zooming without inheriting the manual minimum")
+{
+    for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+        woby::Bounds bounds; bounds.center = {4, -3, 2}; bounds.radius = 1;
+        woby::SceneCamera camera; camera.target = bounds.center; camera.nearPlane = 4;
+        for (const float distance : {100.0f, 4.0f, 1.01f, .5f, .001f}) {
+            camera.distance = distance;
+            for (int turn = 0; turn < 4; ++turn) {
+                woby::orbitCamera(camera, 50, -10, up);
+                const auto saved = camera;
+                const auto depth = woby::cameraDepthRange(camera, bounds, up);
+                const float expected = distance > 1 ? std::max(.0001f, std::min(distance * .01f, (distance - 1) * .5f)) : .0001f;
+                CHECK(depth.nearPlane == doctest::Approx(expected));
+                CHECK(depth.farPlane > depth.nearPlane);
+                CHECK(camera == saved);
+            }
+        }
+        const auto fitted = woby::fitCameraBounds(camera, bounds);
+        CHECK(fitted.distance < camera.nearPlane);
+    }
+}
+
+TEST_CASE("automatic clipping keeps close surfaces pickable across scales axes and projection conventions")
+{
+    for (const float scale : {.01f, 1.0f, 1000000.0f}) {
+        auto mesh = triangle(0);
+        for (auto& vertex : mesh.vertices) { for (auto& value : vertex.position) { value *= scale; } }
+        mesh.bounds = woby::calculateBounds(mesh.vertices);
+        woby::UiState state;
+        state.files.push_back(woby::createUiFileState("close.obj", std::move(mesh), 0));
+        woby::appendDefaultSceneNodesForFiles(state, 0);
+        woby::assignSceneObjectIds(state);
+        woby::recalculateSceneBounds(state);
+        for (const auto up : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
+            auto camera = woby::cameraLookingAt({}, {0, 0, .05f * scale}, {0, 0, -.3f * scale}, up);
+            camera.nearPlane = .1f * scale;
+            for (const bool homogeneous : {false, true}) {
+                CAPTURE(scale); CAPTURE(up); CAPTURE(homogeneous);
+                for (const bool automatic : {false, true}) {
+                    camera.automaticNearPlane = automatic;
+                    const auto projected = woby::scenePickView(camera, up, state.sceneBounds, 320, 240, homogeneous, 1);
+                    const auto hit = woby::pickSceneObject(woby::scenePickParts(state), projected, {160, 120});
+                    CHECK(hit == (automatic ? state.files[0].groupSettings[0].objectId : woby::invalidSceneObjectId));
+                    const auto& render = projected.renderProjection;
+                    const float depth = (render[10] * (.05f * scale) + render[14]) / (render[11] * (.05f * scale));
+                    CHECK((depth <= 1 && depth >= 0) == automatic);
+                }
+            }
+        }
     }
 }
 

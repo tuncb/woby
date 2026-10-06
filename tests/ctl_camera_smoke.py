@@ -161,9 +161,47 @@ def main():
                 close = ctl("camera", "get")["camera"]
                 assert close["effectiveNearPlane"] == close["nearPlane"], close
                 red_bounds(capture("large-close"))
+
+                # A manual cutoff exposes the rear surface of this small model.
+                # Auto must restore the front surface, including after movement
+                # and a save/load cycle, while retaining the manual value.
+                ctl("scene", "new", "--on-dirty", "discard")
+                small = root / "close-clipping.obj"
+                small.write_text("o front\nv -.04 -.04 .25\nv .04 -.04 .25\nv 0 .04 .25\nf 1 2 3\n"
+                                 "o rear\nv -.4 -.4 0\nv .4 -.4 0\nv 0 .4 0\nf 4 5 6\n", encoding="utf-8")
+                ctl("model", "add", small)
+                groups = [item for item in ctl("objects")["objects"] if item["kind"] == "group"]
+                front = next(item["id"] for item in groups if item["name"] == "front")
+                rear = next(item["id"] for item in groups if item["name"] == "rear")
+                ctl("render", "set", "scene", "--solid", "true", "--triangles", "false", "--vertices", "false")
+                ctl("color", "set", front, "--rgb", 1, 0, 0)
+                ctl("color", "set", rear, "--rgb", 0, 1, 0)
+                for control in ("grid", "origin", "dimensions"):
+                    ctl(control, "set", "--visible", "false")
+                ctl("up-axis", "set", "y")
+                ctl("camera", "look-at", "--eye", 0, 0, .3, "--target", 0, 0, 0)
+                manual = ctl("camera", "set", "--near-plane", .1)["camera"]
+                assert not manual["automaticNearPlane"], manual
+                manual_picture = capture("small-manual")
+                assert all(r <= g + 30 for r, g, b in manual_picture.getdata()), "Manual cutoff did not clip the front surface"
+                automatic = ctl("camera", "set", "--automatic-near-plane", "true")["camera"]
+                assert automatic["automaticNearPlane"] and automatic["nearPlane"] == manual["nearPlane"], automatic
+                assert automatic["effectiveNearPlane"] < .05, automatic
+                red_bounds(capture("small-auto"))
+                ctl("camera", "orbit", "--yaw-degrees", 8, "--pitch-degrees", 5)
+                red_bounds(capture("small-auto-orbit"))
+                ctl("camera", "dolly", "--factor", .95)
+                red_bounds(capture("small-auto-dolly"))
+                automatic_camera = ctl("camera", "get")["camera"]
+                automatic_picture = capture("small-auto-saved")
+                ctl("scene", "save-as", root / "clipping.woby")
+                ctl("camera", "set", "--automatic-near-plane", "false")
+                ctl("scene", "open", root / "clipping.woby")
+                assert ctl("camera", "get")["camera"] == automatic_camera
+                assert ImageChops.difference(automatic_picture, capture("small-auto-reloaded")).getbbox() is None
                 ctl("quit", "--on-dirty", "discard")
                 assert viewer.wait(timeout=15) == 0
-                print("Camera smoke passed: pixels, framed presets, zoom, pan, roll, look-at, restored captures, persistence, object framing, large depth range, close geometry, and errors.")
+                print("Camera smoke passed: pixels, framed presets, zoom, pan, roll, look-at, restored captures, persistence, object framing, large depth range, close geometry, automatic/manual clipping, and errors.")
             finally:
                 if viewer.poll() is None:
                     viewer.kill()
