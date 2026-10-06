@@ -12,7 +12,12 @@ endif()
 if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS version (Metal 4)")
 endif()
-project(woby_obj_viewer VERSION 0.26.0 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.27.0 LANGUAGES CXX)
+
+if(APPLE)
+    # Enable Objective-C++ in the common scope of the backend and Metal tests.
+    enable_language(OBJCXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -164,6 +169,7 @@ add_executable(woby
     src/settings_dialog.cpp
     src/settings_dialog.h
     src/scene_inspector_queries.cpp
+    src/scene_queries.cpp
     src/scene_inspector.cpp
     src/scene_inspector.h
     src/ui_icon_controls.cpp
@@ -440,6 +446,10 @@ if(BUILD_TESTING)
             Boost::multiprecision nlohmann_json::nlohmann_json)
         woby_enable_project_warnings(woby_obj_prototype_contract)
     endif()
+    add_executable(woby_graphics_diagnostics_allocation_tests tests/graphics_diagnostics_allocation_tests.cpp)
+    target_link_libraries(woby_graphics_diagnostics_allocation_tests PRIVATE doctest::doctest woby_graphics)
+    woby_enable_project_warnings(woby_graphics_diagnostics_allocation_tests)
+    add_test(NAME woby_graphics_diagnostics_allocations COMMAND woby_graphics_diagnostics_allocation_tests)
     add_subdirectory(tests/utility_fixture)
     add_executable(woby_utility_allocation_tests tests/utility_allocation_tests.cpp)
     target_link_libraries(woby_utility_allocation_tests PRIVATE doctest::doctest woby_utility_allocation_fixture)
@@ -494,10 +504,12 @@ if(BUILD_TESTING)
         src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
         src/scene_inspector_queries.cpp
+        src/scene_queries.cpp
         src/scene_inspector.cpp
         tests/comparison_name_tests.cpp
         tests/comparison_inspector_tests.cpp
         tests/scene_inspector_queries_tests.cpp
+        tests/scene_queries_tests.cpp
         src/main_menu.cpp
         src/main_menu.h
         src/settings_dialog.cpp
@@ -608,9 +620,12 @@ if(BUILD_TESTING)
     if(WOBY_BUILD_HASH_BENCHMARKS)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
-    if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
-        target_sources(woby_tests PRIVATE tests/adaptive_points_gpu_tests.cpp tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/graphics_gpu_tests.cpp tests/freeform_gpu_tests.cpp
+    if(WOBY_TEST_HEADLESS)
+        target_sources(woby_tests PRIVATE tests/adaptive_points_gpu_tests.cpp tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/freeform_gpu_tests.cpp
             tests/scene_renderer_gpu_tests.cpp)
+    endif()
+    if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))
+        target_sources(woby_tests PRIVATE tests/graphics_gpu_tests.cpp)
         target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_GPU_ALLOCATION_TESTS)
         target_compile_definitions(woby_tests PRIVATE WOBY_GPU_ALLOCATION_TESTS)
     endif()
@@ -634,6 +649,35 @@ if(BUILD_TESTING)
         woby_enable_project_warnings(woby_native_allocation_tests)
         add_test(NAME woby_native_allocations COMMAND woby_native_allocation_tests)
         add_dependencies(woby_tests woby_native_allocation_tests)
+        add_executable(woby_native_command_tests tests/native_command_tests.cpp)
+        target_include_directories(woby_native_command_tests SYSTEM PRIVATE
+            "${woby_ngapi_SOURCE_DIR}/include" "${woby_ngapi_SOURCE_DIR}/src")
+        target_link_libraries(woby_native_command_tests PRIVATE doctest::doctest Vulkan::Vulkan)
+        woby_enable_project_warnings(woby_native_command_tests)
+        add_test(NAME woby_native_commands COMMAND woby_native_command_tests)
+        add_dependencies(woby_tests woby_native_command_tests)
+        add_executable(woby_native_device_allocation_tests tests/native_device_allocation_tests.cpp)
+        target_include_directories(woby_native_device_allocation_tests SYSTEM PRIVATE
+            "${woby_ngapi_SOURCE_DIR}/include" "${woby_ngapi_SOURCE_DIR}/src")
+        target_link_libraries(woby_native_device_allocation_tests PRIVATE doctest::doctest Vulkan::Vulkan)
+        woby_enable_project_warnings(woby_native_device_allocation_tests)
+        add_test(NAME woby_native_device_allocations COMMAND woby_native_device_allocation_tests)
+        set_tests_properties(woby_native_device_allocations PROPERTIES TIMEOUT 120)
+        add_dependencies(woby_tests woby_native_device_allocation_tests)
+    endif()
+    if(APPLE)
+        add_executable(woby_native_metal_allocation_tests tests/native_metal_allocation_tests.mm)
+        target_include_directories(woby_native_metal_allocation_tests SYSTEM PRIVATE
+            "${woby_ngapi_SOURCE_DIR}/include" "${woby_ngapi_SOURCE_DIR}/src")
+        target_link_libraries(woby_native_metal_allocation_tests PRIVATE doctest::doctest
+            "-framework Metal" "-framework Foundation" "-framework QuartzCore")
+        set_target_properties(woby_native_metal_allocation_tests PROPERTIES OBJCXX_STANDARD 20 OBJCXX_STANDARD_REQUIRED YES)
+        target_compile_options(woby_native_metal_allocation_tests PRIVATE -fno-objc-arc -Wall -Wextra -Wpedantic
+            -Wno-missing-field-initializers)
+        woby_enable_project_warnings(woby_native_metal_allocation_tests)
+        add_test(NAME woby_native_metal_allocations COMMAND woby_native_metal_allocation_tests)
+        set_tests_properties(woby_native_metal_allocations PROPERTIES TIMEOUT 120)
+        add_dependencies(woby_tests woby_native_metal_allocation_tests)
     endif()
     target_link_libraries(woby_tests PRIVATE
         CDT::CDT

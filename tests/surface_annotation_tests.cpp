@@ -349,6 +349,7 @@ TEST_CASE("background annotation commands publish once through operations and hi
     submitAnnotationWork(executor, command.work);
     waitAnnotationWork(command.work);
     CHECK(findAnnotation(fixture.state, id)->geometry == original);
+    CAPTURE(command.work->error);
     REQUIRE(command.work->error.empty());
     const auto format = [](SceneObjectId object) { return std::to_string(object); };
     SUBCASE("publish then undo redo") {
@@ -378,8 +379,17 @@ TEST_CASE("background annotation commands publish once through operations and hi
     }
     SUBCASE("geometry cache invalidation rejects same-address geometry changes") {
         fixture.state.files[0].mesh.vertices[0].position[0] += 1;
-        ++fixture.state.sceneEditRevision;
+        renewMeshContentRevision(fixture.state.files[0].mesh);
         CHECK_THROWS((void)publishAnnotationCommand(fixture.state, clean, command, format));
+    }
+    SUBCASE("labels and colors preserve a completed request") {
+        renameAnnotation(fixture.state, id, "Renamed while computing");
+        const auto viewId = createView(fixture.state);
+        renameView(fixture.state, viewId, "Saved view label");
+        REQUIRE(setObjectColor(fixture.state, {fixture.target()}, std::array<float, 3>{.1f,.2f,.3f}));
+        CHECK_NOTHROW((void)publishAnnotationCommand(fixture.state, clean, command, format));
+        CHECK(findAnnotation(fixture.state, id)->geometry != original);
+        CHECK(findAnnotation(fixture.state, id)->settings.name == "Renamed while computing");
     }
     SUBCASE("canceled command has no history entry") {
         cancelAnnotationWork(command.work);

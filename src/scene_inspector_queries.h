@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scene_dimensions.h"
+#include "scene_queries.h"
 #include "ui_operations.h"
 
 namespace woby {
@@ -28,11 +28,14 @@ struct SceneInspectorSnapshot {
 };
 
 struct SceneInspectorRuntime {
+    SceneQueryRuntime localQueries;
+    SceneQueryRuntime* sharedQueries = nullptr;
+    const SceneQueryRuntime* queryOwner = nullptr;
+    const ComparisonRuntimes* comparisons = nullptr;
     const UiState* owner = nullptr;
     std::optional<PropertiesKey> key;
     SceneInspectorSnapshot snapshot;
     uint64_t builds = 0, dimensionBuilds = 0;
-    uint64_t geometryRevision = 0, visibilityRevision = 0;
 };
 
 // Call before drawing. Edits are applied after drawing, so this snapshot remains stable.

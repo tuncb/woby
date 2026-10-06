@@ -65,6 +65,7 @@ Json modeCount(size_t enabled, size_t total)
 Json fileInfo(const UiFileState& file)
 {
     auto result = settingsInfo(file.fileSettings);
+    result["analysisMode"] = analysisModeName(file.fileSettings.analysisMode);
     result["vertexSizeScale"] = file.vertexSizeScale;
     Json modes = Json::object();
     for (auto mode : {UiRenderMode::solidMesh, UiRenderMode::triangles, UiRenderMode::vertices}) {
@@ -110,7 +111,7 @@ Json localObjectDetails(const UiState& state, SceneObjectId id)
                 {"qualityMetric", surfaceQualityMetricKey(settings.quality.metric)}, {"qualityOnA", settings.quality.onOriginal},
                 {"qualityMinimumEnabled", settings.quality.minimumEnabled}, {"qualityMaximumEnabled", settings.quality.maximumEnabled},
                 {"qualityMinimumSize", settings.quality.minimumSize}, {"qualityMaximumSize", settings.quality.maximumSize},
-                {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}, {"showWinding", settings.showWinding}, {"topologyMode", topologyModeName(settings.topologyMode)}}},
+                {"showBoundaries", settings.showBoundaries}, {"showNonManifold", settings.showNonManifold}, {"showWinding", settings.showWinding}, {"topologyMode", topologyModeName(settings.topologyMode)}, {"analysisMode", analysisModeName(settings.analysisMode)}}},
                 {"valid", canInspectComparison(state, id)}, {"missingPartCount", missingComparisonPartCount(state, id)},
                 {"aPartCount", comparison->a.size()}, {"bPartCount", comparison->b.size()}};
         }
@@ -394,6 +395,12 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.action == A::comparisonRun && !canInspectComparison(state, id)) { throw std::invalid_argument("Analysis needs valid input before running a check."); }
             const auto detector = std::find(diagnosticCategoryKeys.begin(), diagnosticCategoryKeys.end(), command.detector.value_or(""));
             if (detector == diagnosticCategoryKeys.end()) { throw std::invalid_argument("Unknown detector."); }
+            if (command.analysisMode) {
+                auto settings = comparisonSettings(state, id);
+                settings.analysisMode = parseAnalysisMode(*command.analysisMode);
+                setComparisonSettings(state, settings, id);
+                updateSceneDirty(state, cleanDocument);
+            }
             requestComparisonDetector(state, id, static_cast<DiagnosticCategory>(detector - diagnosticCategoryKeys.begin()), command.action == A::comparisonCancel);
             return {{"target", formatId(id)}, {"detector", *detector}, {"status", command.action == A::comparisonCancel ? "cancel_requested" : "queued"}};
         }
@@ -486,6 +493,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
             if (command.colorRange) { settings.colorRange = *command.colorRange; }
             if (command.showEdges) { settings.showEdges = *command.showEdges; }
             if (command.showBoundaries) { settings.showBoundaries = *command.showBoundaries; }
+            if (command.analysisMode) { settings.analysisMode = parseAnalysisMode(*command.analysisMode); }
             if (command.topologyMode) { settings.topologyMode = parseTopologyMode(*command.topologyMode); }
             if (command.showWinding) { settings.showWinding = *command.showWinding; }
             if (command.showNonManifold) { settings.showNonManifold = *command.showNonManifold; }
@@ -543,6 +551,11 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     case A::sceneTree: return {{"nodes", controlSceneTree(state, formatId)}};
     case A::sceneBounds: return {{"bounds", boundsInfo(state.sceneBounds, state.coordinateOrigin.value_or(Coordinate{}))}, {"visibleOnly", true}, {"emptyFallback", boundsInfo(defaultDisplayBounds())}};
     case A::transformGet: return {{"target", command.target}, {"settings", localObjectDetails(state, command.objectId)["settings"]}};
+    case A::modelSet:
+        if (!command.analysisMode || !setModelAnalysisMode(state, command.objectId, parseModelAnalysisMode(*command.analysisMode))) {
+            throw std::invalid_argument("Model analysis mode requires a model file ID and analysisMode.");
+        }
+        break;
     case A::visibility:
         if (scene) { setAllSceneVisible(state, *command.visible); }
         else if (target.group) { setGroupVisible(state, *target.file, *target.group, *command.visible); }
@@ -661,7 +674,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
     }
     // Read-only and session-only operations return above. Struct-level setters
     // in this batch need one scene-edit notification for history recording.
-    auto change = SceneChange::all;
+    auto change = command.action == A::modelSet ? SceneChange::analysis : SceneChange::all;
     if (command.action == A::transformSet || command.action == A::transformReset) { change = SceneChange::geometry; }
     else if (command.action == A::opacity || command.action == A::render) { change = SceneChange::appearance | SceneChange::visibility; }
     else if (command.action == A::visibility) { change = SceneChange::visibility; }
@@ -737,7 +750,7 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
             {"percentile95", measured ? Json(value.percentile95) : Json(nullptr)},
             {"percentAboveTolerance", measured ? Json(surfacePercentAboveTolerance(value, tolerance)) : Json(nullptr)},
             {"detectors", [&] {
-                Json detectors = {{"schemaVersion", 1}, {"idBase", 1}, {"scope", "per-source; selected parts, including unused points when whole file selected"}};
+                Json detectors = {{"schemaVersion", 1}, {"idBase", 1}, {"scope", "per-source batch; selected parts, including unused points when whole file selected"}};
                 if (includeDetectors) {
                     const auto side = &value == &result.original ? ComparisonSide::a : ComparisonSide::b;
                     for (const auto* key : diagnosticCategoryKeys) { detectors[key] = analysisDetectorSummary(result, side, key); }

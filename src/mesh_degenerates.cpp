@@ -151,7 +151,7 @@ MeshDegenerates inspectDegenerates(const std::vector<DuplicateSource>& sources, 
                 finding.reasons = classifyDegenerateTriangle(points, result.settings);
                 const auto& reasons = finding.reasons;
                 if (!reasons.collapsed && !reasons.needle && !reasons.cap) { continue; }
-                finding.fileId = source.fileId; finding.partId = part.partId; finding.triangleId = i/3;
+                finding.fileId = source.fileId; finding.batchId = source.batchId; finding.partId = part.partId; finding.triangleId = i/3;
                 finding.source = source.name; finding.provenance = data.provenance;
                 findings.push_back(std::move(finding));
             }

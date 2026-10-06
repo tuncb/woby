@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <cstdio>
 #include <limits>
 #include <map>
 #include <memory>
@@ -40,9 +41,17 @@ int64_t ticks()
 }
 void require(bool value, const char *message)
 {
-    if (!value)
-        throw std::runtime_error(message);
+    if (!value) {
+        try { throw std::runtime_error(message); }
+        catch (const std::bad_alloc&) {
+            // Preserve the useful error even if constructing the exception fails.
+            std::fputs(message, stderr);
+            std::fputc('\n', stderr);
+            throw;
+        }
+    }
 }
+void checkCommands(const char* error) { require(error == nullptr, error); }
 
 struct Buffer
 {
@@ -133,8 +142,9 @@ enum class OperationType
 };
 struct PointPacket
 {
-    std::shared_ptr<Buffer> winners;
-    std::shared_ptr<Program> clear, raster;
+    PointBackend backend = PointBackend::quads;
+    std::shared_ptr<Buffer> winners, batch;
+    std::shared_ptr<Program> clear, raster, batchClear, ids, merge;
     std::vector<OpaquePointGroup> groups;
     std::vector<OpaquePointTaskData> tasks;
     std::vector<std::shared_ptr<Buffer>> buffers;
@@ -207,7 +217,7 @@ struct Context
     Stats stats;
     uint32_t width = 1, height = 1, flags = 0, frameNumber = 0;
     uint64_t submitted = 0, textureBytes = 0;
-    bool windowed = false, frameOpen = false;
+    bool windowed = false, frameOpen = false, frameFailed = false;
     std::array<Frame, framesInFlight> frames;
     std::array<View, 256> views;
     std::array<uint32_t, 256> palette{};
@@ -227,7 +237,7 @@ struct Context
     std::map<uint32_t, gpu::PSO *> computePipelines;
 };
 std::unique_ptr<Context> context;
-std::string initError;
+std::array<char, 32768> initError{};
 Context &state()
 {
     require(bool(context), "NoGraphicsAPI renderer is not initialized");
@@ -311,6 +321,7 @@ void collectReadbacks(bool force)
 void beginFrame()
 {
     auto &c = state();
+    require(!c.frameFailed, "Renderer frame failed; shut down before reinitializing the renderer.");
     if (c.frameOpen)
         return;
     auto &f = current();
@@ -332,7 +343,7 @@ void beginFrame()
         c.stats.pointRasterBudgeted = f.pointBudgeted;
         c.deletes->tick();
         c.uploads->reclaim();
-        gpu::reset_command_pool(f.pool);
+        checkCommands(gpu::reset_command_pool(f.pool));
     }
     f.pointTimestamps = {}; f.pointCount = 0;
     f.operations.clear();
@@ -342,8 +353,10 @@ void beginFrame()
     f.activeArena = 0;
     for (auto &page : f.arenas)
         page.allocator->reset();
-    if (!noop())
+    if (!noop()) {
         f.preparations = gpu::begin_commands(f.pool);
+        require(f.preparations != nullptr, gpu::command_pool_error(f.pool));
+    }
     c.frameOpen = true;
 }
 gpu::GpuCpuRange<byte> allocate(uint64_t bytes)
@@ -602,6 +615,7 @@ void uploadBufferRange(const std::shared_ptr<Buffer>& buffer, uint32_t offset, c
     state().uploads->upload_buffer(
         {static_cast<byte*>(buffer->heap.range.gpu) + offset, bytes},
         {static_cast<const byte*>(data), bytes});
+    checkCommands(state().uploads->error);
 }
 std::shared_ptr<Buffer> createBuffer(const Memory* source, uint16_t stride, bool index32)
 {
@@ -619,6 +633,7 @@ std::shared_ptr<Buffer> createBuffer(const Memory* source, uint16_t stride, bool
             std::memcpy(padded.data(), memory->data, memory->size);
             state().uploads->upload_buffer({result->heap.range.gpu, paddedBytes}, {padded.data(), paddedBytes});
         }
+        checkCommands(state().uploads->error);
     }
     return result;
 }
@@ -683,8 +698,13 @@ Attachments attachments(const Framebuffer &framebuffer, const View &view, bool f
 }
 gpu::ShaderStage shaderStage(const std::shared_ptr<Shader> &shader)
 {
+    // Metal dispatches use explicit threadgroup dimensions; SPIR-V embeds them.
+    gpu::uint32x3 threads{1,1,1};
+    if (shader->entry=="cs_freeform") threads={64,1,1};
+    else if (shader->entry=="cs_opaque_raster" || shader->entry=="cs_opaque_depth" || shader->entry=="cs_opaque_ids") threads={128,1,1};
+    else if (shader->entry=="cs_opaque_clear" || shader->entry=="cs_opaque_batch_clear" || shader->entry=="cs_opaque_merge") threads={8,8,1};
     return {.code = {reinterpret_cast<const byte *>(shader->code.data()), shader->bytes},
-            .entry_point = shader->entry.c_str()};
+            .entry_point = shader->entry.c_str(), .threadgroup_size = threads};
 }
 gpu::PSO *pipeline(const Operation &op, const Attachments &targets)
 {
@@ -794,12 +814,46 @@ void computeOperation(gpu::CommandBuffer *commands, const Operation &op, const V
     gpu::dispatch(commands,root.gpu,op.groups);
     ++state().stats.numCompute;
 }
+void pointQuadOperation(gpu::CommandBuffer* commands,const Operation& op,const View& view,const Attachments& target) {
+    const auto& packet=*op.points;
+    auto& f=current(); f.pointCount=packet.pointCount; f.pointFrame=state().frameNumber; f.pointBudgeted=packet.budgeted;
+    gpu::write_timestamp(commands,&f.pointTimestamps[0]);
+    gpu::begin_render_pass(commands,{.colors={target.colors.data(),target.count},.depth=target.depth});
+    gpu::set_viewport(commands,{float(view.x),float(view.y),float(view.width),float(view.height)});
+    gpu::set_depth_stencil(commands,{.depth_test=true,.depth_write=true,.depth_compare=gpu::CompareOp::greater_equal});
+    gpu::bind_pso(commands,pipeline(op,target));
+    for (const auto& task:packet.tasks) {
+        const auto& group=packet.groups[task.group];
+        WobyRoot root{};
+        float modelView[16],mvp[16];
+        bx::mtxMul(modelView,group.model.data(),view.view.data()); bx::mtxMul(mvp,modelView,view.projection.data());
+        matrix(root.modelViewProj,mvp);
+        std::memcpy(&root.color,group.color.data(),sizeof(root.color));
+        root.vertices=reinterpret_cast<float*>(task.points); root.stride=sizeof(OpaquePoint)/sizeof(float);
+        root.pointParams[0]={group.pointSize,float(view.width),float(view.height),1};
+        root.pointParams[1]={0,0,float(group.sourceFirstId&65535u),float(group.sourceFirstId>>16u)};
+        root.markerBase={float(group.firstId&65535u),float(group.firstId>>16u),0,0};
+        if (task.query) {
+            const auto& q=packet.query;
+            if (q[2]<=q[0] || q[3]<=q[1]) continue;
+            gpu::set_scissor(commands,{int32_t(view.x+q[0]),int32_t(view.y+q[1]),q[2]-q[0],q[3]-q[1]});
+        } else gpu::set_scissor(commands,{view.x,view.y,view.width,view.height});
+        auto data=allocateRoot(root); gpu::draw(commands,data.gpu,4,task.count); ++state().stats.numDraw;
+    }
+    gpu::end_render_pass(commands);
+    gpu::write_timestamp(commands,&f.pointTimestamps[1]);
+}
 void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View& view,const Attachments& target) {
     const auto& packet=*op.points;
     require(view.reversedDepth && (target.samples==1 || target.samples==4),"Unsupported opaque point target");
+    if (packet.backend==PointBackend::quads) { pointQuadOperation(commands,op,view,target); return; }
     require(uint64_t(view.width)*view.height*target.samples*sizeof(uint64_t)<=packet.winners->bytes,"Point target exceeds winner buffer");
     OpaquePointRoot root{};
     root.winners=reinterpret_cast<uint64_t*>(packet.winners->heap.range.gpu);
+    if (packet.batch) {
+        require(packet.batch->bytes>=packet.winners->bytes,"Point scratch buffer is too small");
+        root.batch=reinterpret_cast<uint2*>(packet.batch->heap.range.gpu);
+    }
     root.width=view.width; root.height=view.height; root.samples=target.samples;
     root.x=view.x; root.y=view.y; root.groupCount=static_cast<uint32_t>(packet.groups.size());
     root.query={packet.query[0],packet.query[1],packet.query[2],packet.query[3]};
@@ -828,10 +882,19 @@ void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View&
         auto data=allocateRoot(root);
         auto& f=current(); f.pointCount=packet.pointCount; f.pointFrame=state().frameNumber; f.pointBudgeted=packet.budgeted;
         gpu::write_timestamp(commands,&f.pointTimestamps[0]);
-        gpu::bind_pso(commands,computePipeline(packet.raster));
-        gpu::dispatch(commands,data.gpu,{root.dispatchWidth,(root.taskCount+root.dispatchWidth-1)/root.dispatchWidth,1});
+        const gpu::uint32x3 pixels{(root.width+7)/8,(root.height+7)/8,1};
+        const gpu::uint32x3 tasksGrid{root.dispatchWidth,(root.taskCount+root.dispatchWidth-1)/root.dispatchWidth,1};
+        const auto dispatch=[&](const auto& program,gpu::uint32x3 grid) {
+            gpu::bind_pso(commands,computePipeline(program)); gpu::dispatch(commands,data.gpu,grid);
+            ++state().stats.numCompute; allBarrier(commands);
+        };
+        if (packet.backend==PointBackend::atomic32) dispatch(packet.batchClear,pixels);
+        dispatch(packet.raster,tasksGrid);
+        if (packet.backend==PointBackend::atomic32) {
+            dispatch(packet.ids,tasksGrid);
+            dispatch(packet.merge,pixels);
+        }
         gpu::write_timestamp(commands,&f.pointTimestamps[1]);
-        ++state().stats.numCompute; allBarrier(commands);
     }
     gpu::begin_render_pass(commands,{.colors={target.colors.data(),target.count},.depth=target.depth});
     gpu::set_viewport(commands,{float(view.x),float(view.y),float(view.width),float(view.height)});
@@ -888,19 +951,18 @@ bool init(const Init &options)
 {
     if (context)
     {
-        initError = "Renderer already initialized";
+        std::snprintf(initError.data(), initError.size(), "%s", "Renderer already initialized");
         return false;
     }
-    initError.clear();
-    context = std::make_unique<Context>();
-    auto &c = *context;
-    c.width = std::max(1u, options.resolution.width);
-    c.height = std::max(1u, options.resolution.height);
-    c.flags = options.resolution.reset;
-    if (options.type == RendererType::Noop)
-        return true;
-    try
-    {
+    initError[0] = '\0';
+    try {
+        context = std::make_unique<Context>();
+        auto &c = *context;
+        c.width = std::max(1u, options.resolution.width);
+        c.height = std::max(1u, options.resolution.height);
+        c.flags = options.resolution.reset;
+        if (options.type == RendererType::Noop)
+            return true;
         auto *window = static_cast<SDL_Window *>(options.platformData.window);
         gpu::DeviceDesc deviceOptions{.swapchain_format = gpu::Format::bgra8_unorm};
 #if defined(_WIN32)
@@ -962,6 +1024,8 @@ bool init(const Init &options)
             c.caps.supported |= WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC;
         if (gpu::get_device_caps(c.device).point_buffer_int64_atomics)
             c.caps.supported |= WOBY_GPU_CAPS_OPAQUE_POINTS;
+        if (gpu::get_device_caps(c.device).point_compute)
+            c.caps.supported |= WOBY_GPU_CAPS_POINT_COMPUTE;
         c.timeline = gpu::create_timeline_semaphore(c.device);
         c.descriptors = gpu::create_texture_descriptor_heap(c.device, descriptorCapacity);
         c.samplers = gpu::create_sampler_descriptor_heap(c.device, 2);
@@ -992,14 +1056,16 @@ bool init(const Init &options)
     }
     catch (const std::exception &error)
     {
-        initError = error.what();
+        const char* message = dynamic_cast<const std::bad_alloc*>(&error)
+            ? "Insufficient CPU memory while initializing the renderer." : error.what();
+        std::snprintf(initError.data(), initError.size(), "%s", message);
         shutdown();
         return false;
     }
 }
 const char *initializationError()
 {
-    return initError.c_str();
+    return initError.data();
 }
 const Caps *getCaps()
 {
@@ -1432,24 +1498,40 @@ void dispatch(ViewId id, ProgramHandle h, uint32_t x, uint32_t y, uint32_t z)
                                     .groups = {x, y, z}});
     resetEncoder();
 }
-void submitOpaquePoints(ViewId id,VertexBufferHandle winners,ProgramHandle clear,ProgramHandle raster,ProgramHandle resolve,
+void submitOpaquePoints(ViewId id,PointBackend backend,VertexBufferHandle winners,VertexBufferHandle batch,const PointPrograms& programs,
     std::span<const OpaquePointGroup> groups,std::span<const OpaquePointTask> tasks,std::array<uint32_t,4> query,bool reset,bool budgeted) {
     beginFrame();
-    require((state().caps.supported&WOBY_GPU_CAPS_OPAQUE_POINTS)!=0,"Opaque point atomics unsupported");
+    require(backend!=PointBackend::automatic && selectPointBackend(state().caps.supported,backend)==backend,"Point backend unsupported");
     require(!groups.empty(),"Empty opaque point groups");
     auto packet=std::make_shared<PointPacket>();
-    packet->winners=resource(state().vertexBuffers,winners);
-    packet->clear=resource(state().programs,clear); packet->raster=resource(state().programs,raster);
+    packet->backend=backend;
+    if (backend!=PointBackend::quads) {
+        packet->winners=resource(state().vertexBuffers,winners);
+        packet->clear=resource(state().programs,programs.clear); packet->raster=resource(state().programs,programs.raster);
+    }
+    if (backend==PointBackend::atomic32) {
+        packet->batch=resource(state().vertexBuffers,batch);
+        packet->batchClear=resource(state().programs,programs.batchClear);
+        packet->ids=resource(state().programs,programs.ids); packet->merge=resource(state().programs,programs.merge);
+    }
     packet->groups.assign(groups.begin(),groups.end()); packet->reset=reset; packet->query=query; packet->budgeted=budgeted;
     packet->tasks.reserve(tasks.size()); packet->buffers.reserve(tasks.size());
     for (const auto& task:tasks) {
         auto buffer=resource(state().vertexBuffers,task.buffer);
         require(task.group<groups.size() && uint64_t(task.offset+uint64_t(task.count))*sizeof(OpaquePoint)<=buffer->bytes,"Invalid point task");
-        packet->tasks.push_back({reinterpret_cast<OpaquePoint*>(buffer->heap.range.gpu)+task.offset,task.count,task.group,task.query?1u:0u,0});
+        auto* points=reinterpret_cast<OpaquePoint*>(buffer->heap.range.gpu)+task.offset;
+        if (backend==PointBackend::quads && !packet->tasks.empty() && packet->buffers.back()==buffer) {
+            auto& previous=packet->tasks.back();
+            if (previous.group==task.group && previous.query==uint32_t(task.query) && previous.points+previous.count==points) {
+                previous.count+=task.count; packet->pointCount+=task.count; continue;
+            }
+        }
+        packet->tasks.push_back({points,task.count,task.group,task.query?1u:0u,0});
         packet->buffers.push_back(std::move(buffer)); packet->pointCount+=task.count;
     }
-    Operation op; op.view=id; op.type=OperationType::points; op.program=resource(state().programs,resolve);
+    Operation op; op.view=id; op.type=OperationType::points; op.program=resource(state().programs,programs.resolve);
     op.encoder.state=WOBY_GPU_STATE_WRITE_RGB|WOBY_GPU_STATE_WRITE_A;
+    if (backend==PointBackend::quads) op.encoder.state|=WOBY_GPU_STATE_PT_TRISTRIP;
     op.points=std::move(packet); current().operations.push_back(std::move(op)); resetEncoder();
 }
 void blit(ViewId id, TextureHandle destination, uint16_t x, uint16_t y, TextureHandle source, uint16_t sourceX,
@@ -1496,6 +1578,7 @@ uint32_t readBuffer(IndexBufferHandle handle, void *destination)
 }
 
 uint32_t frame()
+try
 {
     beginFrame();
     auto &c = state();
@@ -1510,7 +1593,9 @@ uint32_t frame()
     }
     // Acquire before finalizing the upload command buffer: resize may create targets.
     auto *commands = gpu::begin_commands(f.pool);
+    require(commands != nullptr, gpu::command_pool_error(f.pool));
     auto swap = c.windowed ? gpu::acquire(commands) : gpu::SwapchainFrame{};
+    checkCommands(swap.error);
     c.stats.presentationSubmitted = swap.render_view != nullptr;
     c.stats.drawableWidth = swap.render_view ? swap.extent.x : 0;
     c.stats.drawableHeight = swap.render_view ? swap.extent.y : 0;
@@ -1553,7 +1638,7 @@ uint32_t frame()
                                          });
     if (needsOutput || swap.render_view)
         ensureOutput(f);
-    gpu::end_commands(f.preparations);
+    checkCommands(gpu::end_commands(f.preparations));
     gpu::set_texture_descriptor_heap(commands, c.descriptors);
     gpu::set_sampler_descriptor_heap(commands, c.samplers);
     gpu::write_timestamp(commands, &f.timestamps[0]);
@@ -1660,20 +1745,22 @@ uint32_t frame()
     }
     gpu::barrier(commands, gpu::Stage::transfer, gpu::Access::transfer_write, gpu::Stage::host, gpu::Access::host_read);
     gpu::write_timestamp(commands, &f.timestamps[1]);
-    gpu::end_commands(commands);
+    checkCommands(gpu::end_commands(commands));
     const auto uploaded = c.uploads->flush();
+    checkCommands(c.uploads->error);
     // SubmitDesc borrows its spans. Initializer-list storage would expire at
     // the declaration below, before submit() reads it in an optimized build.
     const std::array submittedCommands{f.preparations, commands};
     const std::array uploadWaits{uploaded};
     const gpu::SubmitDesc submission{
         .commands = submittedCommands, .waits = uploadWaits, .completion = {c.timeline, signal}};
-    if (swap.render_view)
-        gpu::submit_and_present(c.device, submission);
-    else
-        gpu::submit(c.device, submission);
-    c.submitted = signal;
-    f.completion = signal;
+    const auto submitted = swap.render_view ? gpu::submit_and_present(c.device, submission)
+                                           : gpu::submit(c.device, submission);
+    if (submitted.submitted) {
+        c.submitted = signal;
+        f.completion = signal;
+    }
+    checkCommands(submitted.error);
     if (!c.trash->empty())
     {
         auto nextTrash = std::make_unique<std::vector<std::shared_ptr<void>>>();
@@ -1689,11 +1776,19 @@ uint32_t frame()
     c.stats.cpuTimeFrame = c.stats.cpuTimeEnd - begin;
     return c.frameNumber;
 }
+catch (...) {
+    if (context) {
+        context->frameFailed = true;
+        gpu::abandon_acquired_image(context->device);
+    }
+    throw;
+}
 void shutdown()
 {
     if (!context)
         return;
     auto &c = *context;
+    gpu::abandon_acquired_image(c.device);
     if (c.uploads)
         c.uploads->wait();
     if (c.device)

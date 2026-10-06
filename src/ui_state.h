@@ -56,6 +56,7 @@ struct UiFileSettings {
     std::array<float, 3> translation{};
     std::array<float, 3> rotationDegrees{};
     Coordinate coordinateOffset{}; // Mesh origin minus the stable scene origin.
+    AnalysisMode analysisMode = AnalysisMode::perVolume;
 };
 
 struct UiFileState {
@@ -200,6 +201,7 @@ struct UiAnnotation {
     AnnotationSettings settings;
     AnnotationGeometry geometry;
     // Derived at load/geometry replacement boundaries, never serialized.
+    uint64_t geometryRevision = 0; // Session-only attachment/outline identity.
     bool targetValid = false;
     bool targetPending = false;
 };
@@ -207,12 +209,18 @@ struct UiAnnotation {
 // Derived-data dependencies. These counters are session metadata, never scene content.
 // geometry: mesh content, hierarchy, transforms and coordinate frames.
 // appearance: property values/colors; visibility: contributors to visible bounds (also opacity/render modes).
-// labels: names/paths; analysis: membership and analysis settings. Navigation is independent.
+// labels: names/paths; analysis: membership and source/UV inputs.
+// annotations: attachment/outline/visibility/readiness; presentation: analysis display/settings.
+// picking: point sizes, line widths/depth and edge x-ray. Navigation and saved view records are independent.
 // Unknown edits must use all. History advances all counters monotonically; New/Open changes sceneGeneration.
-enum class SceneChange : uint32_t { geometry = 1, appearance = 2, labels = 4, analysis = 8, visibility = 16, all = 31 };
+enum class SceneChange : uint32_t {
+    none = 0, geometry = 1, appearance = 2, labels = 4, analysis = 8, visibility = 16,
+    annotations = 32, presentation = 64, picking = 128, all = 255
+};
 constexpr SceneChange operator|(SceneChange a, SceneChange b) { return static_cast<SceneChange>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b)); }
 struct SceneRevisions {
     uint64_t geometry = 0, appearance = 0, labels = 0, analysis = 0, visibility = 0;
+    uint64_t annotations = 0, presentation = 0, picking = 0;
 };
 
 struct UiState {

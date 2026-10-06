@@ -83,22 +83,29 @@ AnnotationPartsSnapshot snapshotAnnotationParts(std::span<const ScenePickPart> p
 AnnotationWorkIdentity annotationWorkIdentity(const UiState& state)
 {
     AnnotationWorkIdentity result;
-    result.generation = state.sceneGeneration; result.revision = state.sceneEditRevision;
-    result.camera = state.camera; result.selection = state.selectedSceneObjects;
+    result.owner = &state; result.generation = state.sceneGeneration;
+    result.geometry = state.revisions.geometry; result.visibility = state.revisions.visibility;
+    result.annotations = state.revisions.annotations; result.upAxis = state.upAxis;
+    result.camera = state.camera; result.bounds = state.sceneBounds; result.selection = state.selectedSceneObjects;
     for (const auto& file : state.files) {
         const auto& mesh = file.mesh;
-        result.sources.push_back({mesh.vertices.data(), mesh.indices.data(), mesh.vertices.size(), mesh.indices.size(), mesh.annotationCache});
+        result.sources.push_back({mesh.contentRevision, file.objectId, mesh.vertices.data(), mesh.indices.data(), mesh.vertices.size(), mesh.indices.size(), mesh.annotationCache});
     }
     return result;
 }
 bool annotationWorkCurrent(const AnnotationWorkIdentity& identity, const UiState& state, bool selection)
 {
-    if (identity.generation != state.sceneGeneration || identity.revision != state.sceneEditRevision
-        || identity.camera != state.camera || (selection && identity.selection != state.selectedSceneObjects)
+    if (identity.owner != &state || identity.generation != state.sceneGeneration
+        || identity.geometry != state.revisions.geometry || identity.visibility != state.revisions.visibility
+        || identity.annotations != state.revisions.annotations || identity.upAxis != state.upAxis
+        || identity.camera != state.camera || identity.bounds.min != state.sceneBounds.min || identity.bounds.max != state.sceneBounds.max
+        || identity.bounds.center != state.sceneBounds.center || identity.bounds.radius != state.sceneBounds.radius
+        || (selection && identity.selection != state.selectedSceneObjects)
         || identity.sources.size() != state.files.size()) { return false; }
     for (size_t i = 0; i < identity.sources.size(); ++i) {
         const auto& source = identity.sources[i]; const auto& mesh = state.files[i].mesh;
-        if (source.vertices != mesh.vertices.data() || source.indices != mesh.indices.data()
+        if (source.contentRevision != mesh.contentRevision || source.fileId != state.files[i].objectId
+            || source.vertices != mesh.vertices.data() || source.indices != mesh.indices.data()
             || source.vertexCount != mesh.vertices.size() || source.indexCount != mesh.indices.size()
             // Publishing the first cache does not change a small owned snapshot.
             // Replacing/invalidating an existing cache still rejects old work.

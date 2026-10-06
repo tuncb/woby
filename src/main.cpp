@@ -691,7 +691,7 @@ void drawPropertiesPaneToggleButton(woby::UiState& state)
     }
 }
 
-void drawCameraToolbar(woby::UiState& state)
+void drawCameraToolbar(woby::UiState& state, const woby::SceneSelectionQueries& selection)
 {
     const std::array<std::pair<const char*, woby::CameraView>, 6> views = {{
         {"Top", woby::CameraView::top}, {"Bottom", woby::CameraView::bottom},
@@ -708,7 +708,7 @@ void drawCameraToolbar(woby::UiState& state)
         woby::fitCameraToScene(state);
     }
     ImGui::SameLine();
-    const bool selectionAvailable = woby::selectedSceneBounds(state).has_value();
+    const bool selectionAvailable = selection.bounds.has_value();
     if (drawRenderModeIconButton("fit_selection", frameSceneIcon,
             "Fit selection", RenderModeState::off, !selectionAvailable)) {
         woby::fitCameraToSelection(state);
@@ -882,7 +882,7 @@ void drawGroupControls(
     const woby::MeshNode& node,
     const GpuNodeRange& range,
     LoadedModelFile& file,
-    size_t nodeIndex)
+    size_t nodeIndex, const woby::SceneTreeQueries& queries)
 {
     ImGui::PushID(static_cast<int>(nodeIndex));
     auto& settings = file.groupSettings[nodeIndex];
@@ -890,8 +890,8 @@ void drawGroupControls(
         woby::toggleGroupVisible(state, file, settings);
     }
     ImGui::SameLine();
-    const bool memberA = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::a);
-    const bool memberB = woby::comparisonContains(state, settings.objectId, woby::ComparisonSide::b);
+    const bool memberA = woby::sceneTreeMember(queries, settings.objectId, woby::ComparisonSide::a);
+    const bool memberB = woby::sceneTreeMember(queries, settings.objectId, woby::ComparisonSide::b);
     const char* badge = memberA ? (memberB ? "[A B] " : "[A] ") : (memberB ? "[B] " : "");
     drawClippedTextItem("##name", woby::meshNodeDisplayName(node).c_str(), ImGui::GetContentRegionAvail().x,
         woby::sceneObjectSelected(state, settings.objectId), badge);
@@ -912,11 +912,11 @@ void drawSceneTreeNode(
     std::vector<LoadedModelRuntime>& runtimes,
     woby::UiSceneNode& node,
     std::optional<size_t>& removeFileIndex,
-    std::span<const woby::SceneObjectId> revealPath)
+    std::span<const woby::SceneObjectId> revealPath, const woby::SceneTreeQueries& queries)
 {
     if (node.kind == woby::UiSceneNodeKind::folder) {
-        const size_t groupCount = woby::countSceneNodeGroups(state, node);
-        const size_t visibleCount = woby::countVisibleSceneNodeGroups(state, node);
+        const size_t groupCount = woby::sceneTreeSummary(queries, node.objectId).parts;
+        const size_t visibleCount = woby::sceneTreeSummary(queries, node.objectId).visible;
         if (drawTriStateVisibilityButton(
                 "visible",
                 "Folder",
@@ -934,7 +934,7 @@ void drawSceneTreeNode(
         if (folderOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath, queries);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -951,8 +951,8 @@ void drawSceneTreeNode(
         const ImGuiStyle& style = ImGui::GetStyle();
         const float rowStartX = ImGui::GetCursorPosX();
         const float analysisControlStartX = rowStartX + ImGui::GetContentRegionAvail().x - renderModeButtonSize();
-        const size_t fileGroupCount = woby::countSceneNodeGroups(state, node);
-        const size_t fileVisibleCount = woby::countVisibleSceneNodeGroups(state, node);
+        const size_t fileGroupCount = woby::sceneTreeSummary(queries, node.objectId).parts;
+        const size_t fileVisibleCount = woby::sceneTreeSummary(queries, node.objectId).visible;
         if (drawTriStateVisibilityButton(
                 "visible",
                 "File",
@@ -994,7 +994,7 @@ void drawSceneTreeNode(
         if (fileTreeOpen) {
             for (size_t childIndex = 0; childIndex < node.children.size(); ++childIndex) {
                 ImGui::PushID(static_cast<int>(childIndex));
-                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath);
+                drawSceneTreeNode(state, runtimes, node.children[childIndex], removeFileIndex, revealPath, queries);
                 ImGui::PopID();
             }
             ImGui::TreePop();
@@ -1017,7 +1017,7 @@ void drawSceneTreeNode(
         file.mesh.nodes[node.groupIndex],
         gpuMesh.nodeRanges[node.groupIndex],
         file,
-        node.groupIndex);
+        node.groupIndex, queries);
     if (!revealPath.empty() && revealPath.back() == node.objectId) { ImGui::SetScrollHereY(.5f); }
 }
 
@@ -2241,22 +2241,24 @@ int main(int argc, char** argv)
 
         std::filesystem::path importerSettingsPath;
         std::vector<std::filesystem::path> rememberedImporters;
-        bool importerLoadFailed = false;
-        const auto reportImporterError = [&](const std::string& message) {
-            importerLoadFailed = true;
+        std::vector<woby::ImporterLoadFailure> importerLoadFailures;
+        const auto reportImporterError = [&](const woby::ImporterLoadFailure& failure) {
+            importerLoadFailures.push_back(failure);
+            const auto message = failure.path.empty() ? failure.details
+                : woby::pathToUtf8(failure.path) + ": " + failure.details;
             std::fprintf(stderr, "%s\n", message.c_str());
             spdlog::warn("{}", message);
         };
         // CLI entries take precedence over saved registrations; each folder is sorted.
         const auto tryLoadImporter = [&](const std::filesystem::path& path) {
             try { woby::loadImporter(path); }
-            catch (const std::exception& error) { reportImporterError(path.string() + ": " + error.what()); }
+            catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(path, error)); }
         };
         for (const auto& source : commandLine.pluginPaths) {
             if (source.folder) {
                 try {
                     for (const auto& path : woby::discoverImporterFiles(source.path)) { tryLoadImporter(path); }
-                } catch (const std::exception& error) { reportImporterError(error.what()); }
+                } catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(source.path, error)); }
             } else {
                 tryLoadImporter(source.path);
             }
@@ -2267,14 +2269,16 @@ int main(int argc, char** argv)
             try {
                 rememberedImporters = woby::readImporterSettings(importerSettingsPath);
                 for (const auto& path : rememberedImporters) { tryLoadImporter(path); }
-            } catch (const std::exception& error) { reportImporterError(error.what()); }
+            } catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(importerSettingsPath, error)); }
         } else {
-            reportImporterError("Importer settings directory is unavailable; registrations are session-only.");
+            reportImporterError(woby::importerLoadFailure({},
+                std::runtime_error("Importer settings directory is unavailable; registrations are session-only.")));
         }
+        std::filesystem::path portableImporterFolder;
         try {
-            const auto folder = woby::updateExecutablePath().parent_path() / "importers";
-            for (const auto& error : woby::loadPortableImporters(folder)) { reportImporterError(error); }
-        } catch (const std::exception& error) { reportImporterError(error.what()); }
+            portableImporterFolder = woby::updateExecutablePath().parent_path() / "importers";
+            for (const auto& error : woby::loadPortableImporters(portableImporterFolder)) { reportImporterError(error); }
+        } catch (const std::exception& error) { reportImporterError(woby::importerLoadFailure(portableImporterFolder, error)); }
 
         const auto requestedSize = commandLine.windowSize.value_or(commandLine.drawableSize.value_or(std::array<int, 2>{1280, 720}));
         const SDL_WindowFlags windowFlags = (commandLine.windowSize || commandLine.drawableSize ? 0 : SDL_WINDOW_RESIZABLE)
@@ -2524,8 +2528,8 @@ int main(int argc, char** argv)
         bool requestDirtyQuitWarning = false;
         bool requestDirtyNewWarning = false;
         ToastMessage toast;
-        if (importerLoadFailed) {
-            setToastMessage(toast, "Some importers could not be loaded. See the log for details.");
+        if (!importerLoadFailures.empty()) {
+            setToastMessage(toast, woby::importerLoadFailureSummary(importerLoadFailures));
         }
         uint64_t observedModelFileDialogStatusVersion = 0;
         uint64_t observedSceneFileDialogStatusVersion = 0;
@@ -2542,12 +2546,14 @@ int main(int argc, char** argv)
         uint64_t frameIndex = 0;
         HoverPickCache hoverPickCache;
         woby::HoverNavigationState hoverNavigation{camera, ui.upAxis};
-        woby::SceneDimensionsCache dimensionsCache;
         woby::SceneInspectorRuntime inspector;
         woby::SceneRenderScratch renderScratch;
+        inspector.sharedQueries = &renderScratch.queries;
+        inspector.comparisons = &comparison;
         WindowTitleCache windowTitleCache;
         woby::ScenePointerGesture scenePointer;
         woby::AnnotationInteraction annotationInteraction;
+        annotationInteraction.queries = &renderScratch.queries;
         woby::AnnotationExecutor annotationExecutor, annotationPointerExecutor;
         annotationInteraction.executor = &annotationPointerExecutor;
         std::optional<woby::AnnotationCommand> annotationCommand;
@@ -2557,10 +2563,10 @@ int main(int argc, char** argv)
         bool scenePointerAvailable = false;
         std::vector<woby::SceneObjectId> canvasSelectionPath;
         const auto selectAt = [&](const woby::ScenePickView& view, woby::PickPoint point, bool toggle) {
-            auto parts = woby::scenePickParts(ui);
+            std::vector<woby::ScenePickPart> parts;
+            woby::resolveSceneParts(renderScratch.queries, ui, parts);
             woby::appendVisibleComparisonPickParts(parts, ui, comparison);
-            std::vector<std::vector<woby::DiagnosticEdge>> annotationPickStorage;
-            woby::appendAnnotationPickParts(parts, ui, annotationPickStorage);
+            woby::appendSceneAnnotationParts(renderScratch.queries, ui, parts);
             woby::SceneTriangleHit triangle;
             woby::attachPointHierarchies(parts, runtimes);
             const auto id = woby::pickSceneObject(parts, view, point, &triangle);
@@ -3189,7 +3195,8 @@ int main(int argc, char** argv)
                                 "SceneContent",
                                 ImVec2(0.0f, sceneContentHeight),
                                 ImGuiChildFlags_None)) {
-                            drawCameraToolbar(ui);
+                            woby::updateSceneSelectionQueries(renderScratch.queries, ui, &comparison);
+                            drawCameraToolbar(ui, renderScratch.queries.selection);
                             if (drawRenderModeIconButton(
                                     "origin",
                                     originIcon,
@@ -3296,7 +3303,9 @@ int main(int argc, char** argv)
                             ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthStretch);
                             ImGui::TableNextRow(); ImGui::TableNextColumn();
                             const auto groupCount = woby::totalGroupCount(ui);
-                            const auto visibleCount = woby::countVisibleSceneGroups(ui);
+                            woby::updateSceneTreeQueries(renderScratch.queries.tree, ui);
+                            size_t visibleCount = 0;
+                            for (const auto& node : ui.sceneNodes) { visibleCount += woby::sceneTreeSummary(renderScratch.queries.tree, node.objectId).visible; }
                             if (drawTriStateVisibilityButton("models_visible", "Models", visibleCount, groupCount, "parts")) {
                                 woby::setAllModelsVisible(ui, visibleCount != groupCount);
                             }
@@ -3310,7 +3319,7 @@ int main(int argc, char** argv)
                             std::optional<size_t> removeFileIndex;
                             for (size_t nodeIndex = 0; nodeIndex < ui.sceneNodes.size(); ++nodeIndex) {
                                 ImGui::PushID(static_cast<int>(nodeIndex));
-                                drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath);
+                                drawSceneTreeNode(ui, runtimes, ui.sceneNodes[nodeIndex], removeFileIndex, canvasSelectionPath, renderScratch.queries.tree);
                                 ImGui::PopID();
                             }
                             if (removeFileIndex.has_value() && removeFileIndex.value() < files.size()) {
@@ -3402,7 +3411,7 @@ int main(int argc, char** argv)
                 woby::updateSceneDirty(ui, cleanSceneDocument);
             }
 
-            woby::recalculateSceneBounds(ui);
+            woby::updateSceneBoundsQuery(renderScratch.queries, ui);
             updateAppWindowTitle(window.get(), currentScenePath, ui.isDirty, instanceId, windowTitleCache);
             // Both UI and CTL use the same restoration and failure-consumption path.
             const auto runSceneHistory = [&](bool redo) {
@@ -3898,7 +3907,6 @@ int main(int argc, char** argv)
                     sceneViewportWidth, sceneViewportHeight, homogeneousDepth,
                     static_cast<float>(width) / canvasLayout(window.get(), ui).width);
                 const auto* view = currentPickView.view.data();
-                const auto* projection = currentPickView.projection.data();
                 presentedPickView = currentPickView;
                 presentedViewport = viewport;
                 woby::graphics::setViewTransform(sceneView, view, currentPickView.renderProjection.data(), true);
@@ -3939,7 +3947,7 @@ int main(int argc, char** argv)
                 bool gpuHover = false;
                 try {
                     gpuHover = woby::beginGpuMarkerPicking(markerPicker, assets, ui, viewport, mouse,
-                        hoverPickingEnabled && markersVisible);
+                        hoverPickingEnabled && markersVisible, 4, woby::hoverSceneSignature(ui, runtimes) ^ woby::sceneComparisonRevision(ui, comparison));
                 } catch (const std::exception& error) {
                     woby::destroyGpuMarkerPicker(markerPicker);
                     markerPicker.unavailable = true;
@@ -3949,32 +3957,12 @@ int main(int argc, char** argv)
                     hoverPickCache.hoveredVertex.reset();
                     hoverPickCache.valid = false;
                 } else {
-                    const uint64_t hoverSignature = hoverPickSignature(
-                        files,
-                        ui.sceneNodes,
-                        runtimes,
-                        mouse,
-                        mouseInsideViewport,
-                        masterVertexPointSize,
-                        camera,
-                        ui.upAxis,
-                        sceneBounds,
-                        sceneViewportWidth,
-                        sceneViewportHeight,
-                        homogeneousDepth);
+                    const uint64_t hoverSignature = hoverPickSignature(hoverPickCache, ui, runtimes, mouse,
+                        mouseInsideViewport, sceneViewportWidth, sceneViewportHeight, homogeneousDepth);
                     if (!hoverPickCache.valid || hoverPickCache.signature != hoverSignature) {
                         hoverPickCache.hoveredVertex.reset();
-                        hoverPickCache.hoveredVertex = findHoveredVertex(
-                            files,
-                            ui.sceneNodes,
-                            runtimes,
-                            mouse,
-                            masterVertexPointSize,
-                            view,
-                            projection,
-                            sceneViewportWidth,
-                            sceneViewportHeight,
-                            homogeneousDepth);
+                        woby::resolveSceneParts(renderScratch.queries, ui, renderScratch.parts);
+                        hoverPickCache.hoveredVertex = findHoveredVertex(ui, renderScratch.parts, runtimes, mouse, currentPickView);
                         hoverPickCache.signature = hoverSignature;
                         hoverPickCache.valid = true;
                     }
@@ -3982,7 +3970,7 @@ int main(int argc, char** argv)
                 hoveredVertex = gpuHover ? markerPicker.coordinates : hoverPickCache.hoveredVertex;
                 recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
-                woby::updateSceneDrawPlan(renderScratch.drawCache, ui);
+                woby::updateSceneDrawPlan(renderScratch.drawCache, ui, &renderScratch.queries);
                 woby::prepareAdaptivePoints(adaptivePoints, assets, renderScratch.drawCache.plan, currentPickView,
                     ui.adaptivePoints, std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(),
                     gpuHover, {mouse.x,mouse.y});
@@ -4014,7 +4002,8 @@ int main(int argc, char** argv)
                 recordFrameStage(frameTimings, woby::FrameStage::submitScene, stageStart);
 
                 submitSceneHelpers(helperView, ui, helperLayout, colorProgram, colorUniform);
-                woby::submitSceneAnnotations(helperView, ui, currentPickView, helperLayout, annotationProgram, colorUniform, renderScratch, &annotationInteraction);
+                woby::prepareSceneAnnotations(ui, currentPickView, renderScratch, &annotationInteraction);
+                woby::submitSceneAnnotations(helperView, ui, helperLayout, annotationProgram, colorUniform, renderScratch, &annotationInteraction);
                 const float annotationMessageBottom = woby::drawAnnotationOverlay(ui, annotationInteraction, currentPickView,
                     static_cast<float>(viewport.x) / currentPickView.pixelScale, 1.0f / currentPickView.pixelScale,
                     scenePointerAvailable && !cameraInteractionActive
@@ -4022,17 +4011,17 @@ int main(int argc, char** argv)
                     static_cast<float>(viewport.y) / currentPickView.pixelScale);
                 if (!ui.selectedSceneObjects.empty()) {
                     auto& selectedParts = renderScratch.parts;
-                    woby::scenePickParts(ui, selectedParts);
+                    woby::resolveSceneParts(renderScratch.queries, ui, selectedParts);
                     woby::appendVisibleComparisonPickParts(selectedParts, ui, comparison);
                     woby::submitSceneSelection(helperView, selectedParts, ui, helperLayout, colorProgram, colorUniform, renderScratch);
                     if (ui.showDimensions) {
-                        woby::updateSceneDimensions(dimensionsCache, selectedParts, ui.sceneGeneration, ui.sceneEditRevision);
+                        woby::updateSceneSelectionQueries(renderScratch.queries, ui, &comparison);
                     }
                 }
                 if (ui.showGrid || ui.showDimensions) {
                     const float pixelScale = 1.0f / currentPickView.pixelScale;
                     woby::drawSceneScaleOverlay(*ImGui::GetBackgroundDrawList(), ui,
-                        ui.selectedSceneObjects.empty() ? std::nullopt : dimensionsCache.dimensions,
+                        ui.selectedSceneObjects.empty() ? std::nullopt : renderScratch.queries.selection.dimensions,
                         currentPickView, {static_cast<float>(viewport.x) * pixelScale, static_cast<float>(viewport.y) * pixelScale}, pixelScale, ImGui::GetFontSize());
                 }
                 drawToastMessage(toast, viewport, width, std::max(annotationMessageBottom, static_cast<float>(viewport.y) / currentPickView.pixelScale));
@@ -4088,7 +4077,8 @@ int main(int argc, char** argv)
             recordFrameStage(frameTimings, woby::FrameStage::imguiRender, stageStart);
 
             const uint32_t frameNumber = woby::graphics::frame();
-            woby::pollGpuMarkerPicking(markerPicker, frameNumber, ui, runtimes);
+            woby::pollGpuMarkerPicking(markerPicker, frameNumber, ui, runtimes,
+                woby::hoverSceneSignature(ui, runtimes) ^ woby::sceneComparisonRevision(ui, comparison));
             try {
                 const std::optional<std::string> screenshotStatus = completeSceneScreenshotReadback(
                     sceneScreenshot,
@@ -4187,11 +4177,14 @@ int main(int argc, char** argv)
 
         return 0;
     } catch (const std::exception& exception) {
+        const char* message = dynamic_cast<const std::bad_alloc*>(&exception)
+            ? "Insufficient CPU memory. Woby could not continue." : exception.what();
+        // Report before cleanup, using static storage even if all allocations fail.
+        std::fprintf(stderr, "%s\n", message);
         automation.reset();
         woby::unloadImporters();
-        std::fprintf(stderr, "%s\n", exception.what());
         if (!headlessLaunchRequested && !woby::hasStandardError()) {
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Woby could not continue", exception.what(), nullptr);
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Woby could not continue", message, nullptr);
         }
         if (graphicsInitialized) {
             woby::graphics::shutdown();

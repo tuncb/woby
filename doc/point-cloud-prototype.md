@@ -253,9 +253,25 @@ occluder can change without leaving stale point visibility. GPU timing uses the
 existing frame timeline; it does not add a per-frame completion wait. The 8 ms
 raster budget is feedback, not a deadline, and excludes the surface pass and UI.
 
-The optional Vulkan path requires 64-bit buffer atomics and standard sample
-locations. Unsupported devices, freeform geometry, smaller meshes, and scenes
-containing transparency keep full-detail drawing. Compact quad fallback preserves
+The original measured Vulkan path requires 64-bit buffer atomics and standard
+sample locations. The subsequent Metal implementation adds a portable 32-bit
+atomic path: select batch depth, select IDs at that depth after a barrier, then
+merge each batch winner into persistent visibility with one invocation per sample.
+It preserves the depth/ID tie rule without 64-bit atomics, at the cost of a second
+raster pass, barriers, and eight scratch bytes per sample. Runtime capability
+checks select 32-bit compute on M1 and permit 64-bit maximum on supported M2+
+macOS devices. Metal's default 1x/4x sample positions are verified at device creation.
+
+Adaptive selection also feeds compact hardware quads independently of compute
+capabilities. Quads redraw the selected navigation cut and cached full-source
+cursor-query ranges every frame; after navigation they draw all source points.
+They do not accumulate persistent refinement. Point timing includes the selected
+backend's work. The Metal buffer address registry grows dynamically instead of
+limiting chunk uploads to 64 allocations.
+
+Freeform geometry, smaller meshes, and scenes containing transparent point draws
+keep full-detail drawing. Transparent surfaces and edges alone retain the optimized
+point path and the existing markers-last rendering order. Compact quad fallback preserves
 source identities, colors and opacity. Screenshot exports also use full source
 detail. In the hardware fallback, ties between overlapping points at equal depth
 and transparent last-drawn picks follow spatial storage order; picked IDs still

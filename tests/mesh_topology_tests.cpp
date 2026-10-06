@@ -8,6 +8,8 @@
 #include "scene_pick.h"
 #include "obj_mesh.h"
 #include "ui_operations.h"
+#include "command_line.h"
+#include "scene_inspector_queries.h"
 
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
@@ -924,4 +926,165 @@ TEST_CASE("exact position topology retains large welded provenance sets without 
         REQUIRE(references.size() == 5000);
         for (size_t i = 0; i < references.size(); ++i) { CHECK(references[i].pointId == i*3+v); }
     }
+}
+
+
+TEST_CASE("parent analysis batches existing child volumes without merging their contact surfaces")
+{
+    Fixture fixture;
+    UiState state;
+    auto data = std::make_shared<SourceMeshData>();
+    Mesh mesh;
+    // Two tetrahedra sharing a face. Every face has its own vertex records,
+    // representing importer UV/normal splits within each volume.
+    const std::array<Point, 5> points{{{0,0,0}, {1,0,0}, {0,1,0}, {0,0,1}, {0,0,-1}}};
+    const std::array<std::array<size_t, 3>, 8> triangles{{
+        {0,2,1}, {0,1,3}, {1,2,3}, {2,0,3},
+        {0,1,2}, {0,4,1}, {1,4,2}, {2,4,0}}};
+    for (size_t i = 0; i < triangles.size(); ++i) {
+        for (const auto index : triangles[i]) {
+            data->indices.push_back(static_cast<uint32_t>(data->points.size()));
+            data->points.push_back(points[index]);
+            Vertex v;
+            for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(points[index][k]); }
+            mesh.vertices.push_back(v);
+        }
+        mesh.nodes.push_back({"patch" + std::to_string(i), static_cast<uint32_t>(i * 3), 3});
+    }
+    mesh.indices = data->indices; mesh.sourceData = data; mesh.bounds = calculateBounds(mesh.vertices);
+    mesh.hierarchy = {{"Upper", UINT32_MAX, UINT32_MAX}, {"Lower", UINT32_MAX, UINT32_MAX}};
+    for (uint32_t i = 0; i < 8; ++i) { mesh.hierarchy.push_back({"patch", i / 4, i}); }
+    state.files.push_back(createUiFileState(fixture.root / "volumes.obj", std::move(mesh), 0));
+    appendDefaultSceneNodesForFiles(state, 0);
+    const auto tree = createSceneDocument(state).nodes;
+    const auto modelId = state.files[0].objectId;
+    const auto id = createComparison(state);
+    setComparisonObjects(state, {modelId}, ComparisonSide::a, true, id);
+    auto settings = comparisonSettings(state, id);
+    settings.topologyMode = TopologyMode::exactPosition;
+    setComparisonSettings(state, settings, id);
+    const auto signature = comparisonGeometrySignature(state, id);
+    const auto input = comparisonWorldMesh(state, ComparisonSide::a, id);
+    REQUIRE(input.duplicateInput);
+    REQUIRE(input.duplicateInput->sources.size() == 2);
+    CHECK(input.duplicateInput->sources[0].fileId == modelId);
+    CHECK(input.duplicateInput->sources[0].parts.size() == 4);
+    CHECK(input.duplicateInput->sources[1].parts.size() == 4);
+    CHECK(input.duplicateInput->sources[0].data.get() == data.get());
+    CHECK(input.duplicateInput->sources[1].data.get() == data.get());
+    const auto topology = buildMeshTopology(input.duplicateInput->sources, settings.topologyMode);
+    CHECK(topology.boundaries.empty()); CHECK(topology.nonManifoldEdges.empty()); CHECK(topology.windingEdges.empty());
+    CHECK(topology.sources.size() == 2);
+    CHECK(inspectMesh(input).nonManifoldEdges.empty());
+    CHECK(inspectMesh(input).duplicateTriangles == 0);
+    CHECK(inspectIntersections(topology).findings.empty());
+    CHECK(jsonFor(topology, "boundary_edges")["sources"][0]["batchId"] != "0");
+    // Owned worker snapshots retain the same batches and transforms.
+    const auto snapshot = snapshotComparisonInputs(state, id);
+    const auto captured = comparisonWorldMesh(snapshot, ComparisonSide::a);
+    CHECK(buildMeshTopology(captured.duplicateInput->sources, settings.topologyMode).nonManifoldEdges.empty());
+    REQUIRE(setModelAnalysisMode(state, modelId, AnalysisMode::whole));
+    CHECK(comparisonGeometrySignature(state, id) != signature);
+    const auto combined = comparisonWorldMesh(state, ComparisonSide::a, id);
+    REQUIRE(combined.duplicateInput->sources.size() == 1);
+    CHECK(inspectMesh(combined).nonManifoldEdges.size() == 3);
+    CHECK(buildMeshTopology(combined.duplicateInput->sources, settings.topologyMode).nonManifoldEdges.size() == 3);
+    CHECK_FALSE(inspectIntersections(buildMeshTopology(combined.duplicateInput->sources, settings.topologyMode)).findings.empty());
+    settings.analysisMode = AnalysisMode::perVolume;
+    setComparisonSettings(state, settings, id);
+    CHECK(comparisonWorldMesh(state, ComparisonSide::a, id).duplicateInput->sources.size() == 2);
+    CHECK(createSceneDocument(state).nodes == tree);
+    // A defect stays visible in its own batch, with source references intact.
+    auto broken = *input.duplicateInput;
+    broken.sources[0].parts.erase(broken.sources[0].parts.begin());
+    const auto damaged = buildMeshTopology(broken.sources, settings.topologyMode);
+    CHECK(damaged.boundaries.size() == 3);
+    for (const auto& finding : damaged.boundaries) { CHECK(damaged.sources[finding.source].fileId == modelId); }
+}
+
+TEST_CASE("flat child batches isolate every detector and settings persist through CLI history and scenes")
+{
+    Fixture fixture;
+    const auto path = fixture.write("parts.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\no first\nf 1 2 3\no second\nf 1 2 3\n");
+    UiState state;
+    state.files.push_back(createUiFileState(path, loadObjMesh(path), 0));
+    appendDefaultSceneNodesForFiles(state, 0);
+    const auto model = state.files[0].objectId;
+    const auto id = createComparison(state);
+    setComparisonObjects(state, {model}, ComparisonSide::a, true, id);
+    const auto clean = createSceneDocument(state);
+    SceneHistory history; resetSceneHistory(history, state);
+    const auto split = comparisonWorldMesh(state, ComparisonSide::a, id);
+    REQUIRE(split.duplicateInput->sources.size() == 2);
+    CHECK(inspectDuplicates(*split.duplicateInput).triangles.duplicateCount == 0);
+    for (const auto& triangle : inspectSurfaceMeshQuality(split).triangles) { CHECK_FALSE(std::isfinite(triangle.values[3])); }
+    CHECK(inspectIntersections(buildMeshTopology(split.duplicateInput->sources)).findings.empty());
+    CHECK(inspectDegenerates(split.duplicateInput->sources, {}).availableSources == 2);
+    selectSceneObject(state, model);
+    CHECK(selectedObjectProperty(state, UiObjectProperty::analysisMode).value == 1);
+    setSelectedObjectProperty(state, UiObjectProperty::analysisMode, 2);
+    CHECK(state.files[0].fileSettings.analysisMode == AnalysisMode::whole);
+    REQUIRE(recordSceneHistory(history, state));
+    auto undo = prepareSceneHistoryStep(history, state, clean, false); REQUIRE(undo);
+    commitSceneHistoryStep(history, state, std::move(*undo), false);
+    CHECK(state.files[0].fileSettings.analysisMode == AnalysisMode::perVolume);
+    auto redo = prepareSceneHistoryStep(history, state, clean, true); REQUIRE(redo);
+    commitSceneHistoryStep(history, state, std::move(*redo), true);
+    CHECK(state.files[0].fileSettings.analysisMode == AnalysisMode::whole);
+    const auto combined = comparisonWorldMesh(state, ComparisonSide::a, id);
+    REQUIRE(combined.duplicateInput->sources.size() == 1);
+    CHECK(inspectDuplicates(*combined.duplicateInput).triangles.duplicateCount == 1);
+    for (const auto& triangle : inspectSurfaceMeshQuality(combined).triangles) { CHECK(triangle.values[3] == doctest::Approx(1)); }
+    CHECK(inspectIntersections(buildMeshTopology(combined.duplicateInput->sources)).findings.size() == 1);
+    auto command = parseControlOperation(*findControlMethod("model.set"), {{"target", "model"}, {"analysisMode", "per_volume"}});
+    command.objectId = model;
+    (void)applyControlSceneOperation(state, clean, command, [](auto v) { return std::to_string(v); }, 200, 800);
+    CHECK(state.files[0].fileSettings.analysisMode == AnalysisMode::perVolume);
+    CHECK(controlOperationParams(command)["analysisMode"] == "per_volume");
+    command.objectId = state.files[0].groupSettings[0].objectId;
+    CHECK_THROWS((void)applyControlSceneOperation(state, clean, command, [](auto v) { return std::to_string(v); }, 200, 800));
+    command = parseControlOperation(*findControlMethod("analysis.run"), {{"target", "analysis"}, {"detector", "boundary_edges"}, {"analysisMode", "whole"}});
+    command.objectId = id;
+    const auto before = comparisonGeometrySignature(state, id);
+    ComparisonInspectorCache inputCache;
+    updateComparisonInspectorCache(inputCache, state, id);
+    CHECK(inputCache.signature == before);
+    (void)applyControlSceneOperation(state, clean, command, [](auto v) { return std::to_string(v); }, 200, 800);
+    CHECK(comparisonSettings(state, id).analysisMode == AnalysisMode::whole);
+    CHECK(comparisonGeometrySignature(state, id) != before);
+    updateComparisonInspectorCache(inputCache, state, id);
+    CHECK(inputCache.signature == comparisonGeometrySignature(state, id));
+    CHECK(controlOperationParams(command)["analysisMode"] == "whole");
+    REQUIRE(recordSceneHistory(history, state));
+    undo = prepareSceneHistoryStep(history, state, clean, false); REQUIRE(undo);
+    commitSceneHistoryStep(history, state, std::move(*undo), false);
+    CHECK(comparisonSettings(state, id).analysisMode == AnalysisMode::model);
+    redo = prepareSceneHistoryStep(history, state, clean, true); REQUIRE(redo);
+    commitSceneHistoryStep(history, state, std::move(*redo), true);
+    CHECK(comparisonSettings(state, id).analysisMode == AnalysisMode::whole);
+    REQUIRE(setModelAnalysisMode(state, model, AnalysisMode::whole));
+    const auto saved = fixture.root / "scene.woby";
+    writeSceneDocument(saved, createSceneDocument(state));
+    const auto document = readSceneDocument(saved);
+    CHECK(document.files[0].settings.analysisMode == AnalysisMode::whole);
+    CHECK(document.comparisons[0].settings.analysisMode == AnalysisMode::whole);
+    UiState loaded;
+    loaded.files.push_back(createUiFileState(path, loadObjMesh(path), 0));
+    applySceneFileRecord(loaded.files[0], document.files[0]);
+    CHECK(loaded.files[0].fileSettings.analysisMode == AnalysisMode::whole);
+    CHECK_THROWS((void)parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"}, {"analysisMode", "invalid"}}));
+    CHECK_THROWS((void)parseControlOperation(*findControlMethod("analysis.set"), {{"target", "analysis"}, {"analysisMode", "whole_file"}}));
+    CHECK_THROWS((void)parseControlOperation(*findControlMethod("model.set"), {{"target", "model"}, {"analysisMode", "model"}}));
+    CHECK_THROWS((void)parseControlOperation(*findControlMethod("model.set"), {{"target", "model"}, {"analysisMode", true}}));
+    CHECK_FALSE(setModelAnalysisMode(state, model, AnalysisMode::model));
+    CHECK(state.files[0].fileSettings.analysisMode == AnalysisMode::whole);
+    CHECK_THROWS((void)readSceneDocument(fixture.write("bad-model-mode.woby", "version = 22\n[[files]]\npath = \"parts.obj\"\nanalysis_mode = \"model\"\n")));
+    CHECK_THROWS((void)readSceneDocument(fixture.write("bad-batch.woby", "version = 22\n[[analyses]]\nanalysis_processing_mode = \"invalid\"\n")));
+    // CLI uses the same protocol fields and validation.
+    std::vector<std::string> args{"woby", "ctl", "--instance", "batch-test", "analysis", "set", "analysis", "--analysis-mode", "per_volume"};
+    std::vector<char*> argv; for (auto& arg : args) { argv.push_back(arg.data()); }
+    CHECK(parseCommandLine(static_cast<int>(argv.size()), argv.data()).control.operation.analysisMode == "per_volume");
+    args = {"woby", "ctl", "--instance", "mode-test", "model", "set", "model", "--analysis-mode", "whole"};
+    argv.clear(); for (auto& arg : args) { argv.push_back(arg.data()); }
+    CHECK(parseCommandLine(static_cast<int>(argv.size()), argv.data()).control.operation.analysisMode == "whole");
 }

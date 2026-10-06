@@ -1,13 +1,15 @@
 #include "scene_draw_plan.h"
 #include "scene_pick.h"
+#include "scene_queries.h"
 
 namespace woby {
 
-SceneDrawPlan buildSceneDrawPlan(const UiState& state)
+static SceneDrawPlan buildSceneDrawPlan(const UiState& state, SceneQueryRuntime* queries)
 {
     SceneDrawPlan plan;
     plan.triangleEdgeXray = state.triangleEdgeXray;
-    const auto parts = scenePickParts(state);
+    std::vector<ScenePickPart> parts;
+    if (queries) { resolveSceneParts(*queries, state, parts); } else { scenePickParts(state, parts); }
     plan.items.reserve(parts.size());
     for (const auto& part : parts) {
         const auto& file = state.files[part.fileIndex];
@@ -28,13 +30,16 @@ SceneDrawPlan buildSceneDrawPlan(const UiState& state)
     return plan;
 }
 
-bool updateSceneDrawPlan(SceneDrawCache& cache, const UiState& state)
+SceneDrawPlan buildSceneDrawPlan(const UiState& state) { return buildSceneDrawPlan(state, nullptr); }
+
+bool updateSceneDrawPlan(SceneDrawCache& cache, const UiState& state, SceneQueryRuntime* queries)
 {
     const auto& revision = state.revisions;
-    if (cache.valid && cache.generation == state.sceneGeneration
+    if (cache.owner == &state && cache.valid && cache.generation == state.sceneGeneration
         && cache.geometry == revision.geometry && cache.appearance == revision.appearance
         && cache.visibility == revision.visibility) { return false; }
-    cache.plan = buildSceneDrawPlan(state);
+    cache.plan = buildSceneDrawPlan(state, queries);
+    cache.owner = &state;
     cache.generation = state.sceneGeneration; cache.geometry = revision.geometry;
     cache.appearance = revision.appearance; cache.visibility = revision.visibility;
     cache.valid = true;

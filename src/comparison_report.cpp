@@ -93,7 +93,7 @@ std::vector<std::string> comparisonReportLines(
                     + (status.hasResult ? "; previous result: " + std::to_string(status.knownCounts[side - 1]) + " known findings" : ""));
             }
             const auto& topology = surface->topology;
-            lines.push_back(label + " topology: " + topologyModeName(topology.mode) + "; per source (" + topologyStatus(topology) + ")");
+            lines.push_back(label + " topology: " + topologyModeName(topology.mode) + "; per batch (" + topologyStatus(topology) + ")");
             if (ready(DiagnosticCategory::boundary) && ready(DiagnosticCategory::nonManifold) && ready(DiagnosticCategory::winding)) {
                 lines.push_back(label + " known boundary / non-manifold edges / inconsistent triangles: "
                     + std::to_string(topology.boundaries.size()) + " / " + std::to_string(topology.nonManifoldEdges.size())

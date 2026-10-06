@@ -213,7 +213,8 @@ replace_exact(src/NoGraphicsAPIMetal.mm
 [==[        return new PSO{.device = device, .render = state, .rasterization = desc.rasterization};]==]
 [==[        return new PSO{.device = device, .render = state, .rasterization = desc.rasterization,
             .primitive = desc.topology == PrimitiveTopology::lines ? MTLPrimitiveTypeLine :
-                desc.topology == PrimitiveTopology::triangle_strip ? MTLPrimitiveTypeTriangleStrip : MTLPrimitiveTypeTriangle};]==])
+                desc.topology == PrimitiveTopology::triangle_strip ? MTLPrimitiveTypeTriangleStrip : MTLPrimitiveTypeTriangle};]==]
+    "                desc.topology == PrimitiveTopology::triangle_strip ? MTLPrimitiveTypeTriangleStrip : MTLPrimitiveTypeTriangle};")
 replace_exact(src/NoGraphicsAPIMetal.mm
 [==[drawPrimitives:MTLPrimitiveTypeTriangle]==]
 [==[drawPrimitives:commands->pso->primitive]==])

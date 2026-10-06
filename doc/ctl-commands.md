@@ -209,12 +209,36 @@ The RPC names are `duplicatePoints`, `duplicateTriangles`, `showDuplicatePoints`
 and `showDuplicateTriangles`. The first two enable computation; Show changes only
 presentation. These checks have no tolerance parameter.
 
+Mesh checks use `per_volume` analysis mode by default: each existing top-level importer folder or
+group is checked independently, keeping its descendant patches together. Flat
+models use one batch per mesh group. Selecting the parent still creates one
+analysis with combined findings; it does not edit the model hierarchy.
+
+- `model set FILE_ID --analysis-mode per_volume|whole` changes the model's
+  analysis mode (`per_volume` by default).
+- `analysis set ANALYSIS_ID --analysis-mode model|per_volume|whole` follows the
+  model property (the default), forces separate batches, or combines each file.
+- `analysis run ANALYSIS_ID --detector boundary_edges --analysis-mode whole`
+  sets the analysis override and queues that detector. The override remains in
+  effect for subsequent checks; it is not a temporary command-only setting.
+
+Both settings are saved in `.woby` scenes and participate in Undo/Redo. Inspect
+`ctl object FILE_ID` or the analysis object for `settings.analysisMode`.
+Changing analysis mode invalidates cached detector results.
+Topology, duplicate, degenerate and self-intersection checks run independently
+per batch; contacts between batches are not checked. Their findings retain the
+original file/part/triangle references and identify the batch with `batchId`
+(`"0"` for whole-file checking, otherwise a representative part ID scoped to the
+file). Topology edge/vertex IDs are local to a batch. Source counts count batches.
+Quality neighbor relationships and the diagnostics summary also respect batches.
+Unreferenced points are included only when a single batch contains the whole file.
+
 Topology inspection uses `--topology-mode original_index|exact_position`.
 Original-index mode is the default and preserves source indices for OBJ and importer
-vertex tables. Both modes inspect selected parts separately within each source file;
+vertex tables. Both modes inspect selected parts separately within each source batch;
 coincident points in different files are never joined. Original source point IDs
 are partitioned by world transform when parts move independently. Exact-position
-mode joins exactly equal double-precision world positions, normalizing signed zero,
+mode joins exactly equal double-precision world positions within a batch, normalizing signed zero,
 without an epsilon. Analysis display offsets do not affect topology.
 
 `--show-winding` and `--show-non-manifold` control independent overlays and do not

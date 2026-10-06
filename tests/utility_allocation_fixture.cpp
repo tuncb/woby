@@ -70,9 +70,19 @@ CommandPool* create_command_pool(Device*, uint32) noexcept
     return &pool;
 }
 void destroy_command_pool(CommandPool* value) noexcept { if (value) --utilityProbe.pools; }
-void reset_command_pool(CommandPool*) noexcept {}
-CommandBuffer* begin_commands(CommandPool*) noexcept { return &commands; }
-void end_commands(CommandBuffer*) noexcept {}
+const char* command_pool_error(const CommandPool*) noexcept { return "Injected command failure."; }
+const char* reset_command_pool(CommandPool*) noexcept
+{
+    return ++utilityProbe.commandStep == utilityProbe.failCommandAt ? "Injected reset failure." : nullptr;
+}
+CommandBuffer* begin_commands(CommandPool*) noexcept
+{
+    return ++utilityProbe.commandStep == utilityProbe.failCommandAt ? nullptr : &commands;
+}
+const char* end_commands(CommandBuffer*) noexcept
+{
+    return ++utilityProbe.commandStep == utilityProbe.failCommandAt ? "Injected recording failure." : nullptr;
+}
 SizeAlign get_texture_size_align(Device*, const TextureDesc& desc) noexcept { return {uint64{desc.extent.x} * 16, 16}; }
 Texture* create_texture(CommandBuffer*, const TextureDesc&, const TextureHeap&, uint64 offset) noexcept
 {
@@ -84,12 +94,26 @@ Texture* create_texture(CommandBuffer*, const TextureDesc&, const TextureHeap&, 
 }
 void destroy_texture(Texture* value) noexcept { if (value) --utilityProbe.textures; }
 uint64 timeline_completed_value(const TimelineSemaphore*) noexcept { return ~uint64{0}; }
-void wait_timeline(TimelinePoint) noexcept {}
+void wait_timeline(TimelinePoint point) noexcept {
+    utilityProbe.waitedValue = point.value;
+    if (point.value > utilityProbe.submittedValue) ++utilityProbe.unexpectedCalls;
+}
 void read_timestamps(CommandPool*) noexcept {}
 void barrier(CommandBuffer*, Stage, Access, Stage, Access) noexcept {}
-void submit(Device*, const SubmitDesc&, uint32) noexcept {}
-void copy_memory(CommandBuffer*, GpuRange, GpuRange) noexcept { ++utilityProbe.unexpectedCalls; }
-void copy_memory_to_texture(CommandBuffer*, GpuRange, Texture*, const TextureCopyDesc&) noexcept { ++utilityProbe.unexpectedCalls; }
+SubmitResult submit(Device*, const SubmitDesc& desc, uint32) noexcept {
+    if (++utilityProbe.commandStep == utilityProbe.failCommandAt) return {"Injected submission failure."};
+    utilityProbe.submittedValue = desc.completion.value;
+    ++utilityProbe.submissions;
+    return {nullptr, true};
+}
+void copy_memory(CommandBuffer* value, GpuRange, GpuRange) noexcept {
+    if (!value) ++utilityProbe.unexpectedCalls;
+    ++utilityProbe.copies;
+}
+void copy_memory_to_texture(CommandBuffer* value, GpuRange, Texture*, const TextureCopyDesc&) noexcept {
+    if (!value) ++utilityProbe.unexpectedCalls;
+    ++utilityProbe.copies;
+}
 void write_timestamp(CommandBuffer*, uint64*, Stage) noexcept { ++utilityProbe.unexpectedCalls; }
 } // namespace gpu
 
@@ -101,3 +125,4 @@ gpu::TimelineSemaphore* utilityTestTimeline() noexcept { return &gpu::timeline; 
 #include <texture_allocator.cpp>
 #include <delete_queue.cpp>
 #include <upload_queue.cpp>
+#include <texture_upload.cpp>

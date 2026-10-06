@@ -215,6 +215,16 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
     // Keep the target identity visible while scrolling through its properties.
     // The selection-scoped child also starts new targets at the top.
     if (ImGui::BeginChild("property_fields")) {
+        const auto analysisMode = inspectorProperty(snapshot, UiObjectProperty::analysisMode);
+        if (analysisMode.available) {
+            int mode = static_cast<int>(analysisMode.value) - 1;
+            if (analysisMode.mixed) { ImGui::PushItemFlag(ImGuiItemFlags_MixedValue, true); }
+            if (ImGui::Combo("Analysis mode", &mode, "Per volume\0Whole\0")) {
+                setSelectedObjectProperty(editor, UiObjectProperty::analysisMode, static_cast<float>(mode + 1));
+            }
+            if (analysisMode.mixed) { ImGui::PopItemFlag(); }
+            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Check each top-level importer folder or group independently.\nFlat models use one batch per mesh group. Analyses can override this setting."); }
+        }
         if (propertyHeading(editor, "Transform",
                 "Reset translation, rotation, and scale on selected objects.", UiPropertyGroup::transform, true)) {
             axisFields(editor, "Translation", "Reset translation on selected objects to zero.",

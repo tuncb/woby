@@ -494,6 +494,7 @@ SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop, Degenerate
     result.source.bounds = mesh.bounds;
     result.source.origin = mesh.origin;
     result.source.precisePositions = copyWithCancellation(mesh.precisePositions, stop);
+    result.source.analysisVertexBatches = copyWithCancellation(mesh.analysisVertexBatches, stop);
     result.quality = inspectSurfaceMeshQuality(mesh, stop);
     return result;
 }
@@ -660,6 +661,9 @@ ComparisonSettings normalizedComparisonSettings(ComparisonSettings settings)
     settings.degenerates = normalizedDegenerateSettings(settings.degenerates);
     settings.topologyInspection = normalizedTopologyInspectionSettings(settings.topologyInspection);
     settings.topologyMode = normalizedTopologyMode(settings.topologyMode);
+    if (settings.analysisMode != AnalysisMode::perVolume && settings.analysisMode != AnalysisMode::whole) {
+        settings.analysisMode = AnalysisMode::model;
+    }
     settings.intersections.limits.pairs = std::min(settings.intersections.limits.pairs, size_t{2147483647});
     settings.intersections.limits.candidateTests = std::min(settings.intersections.limits.candidateTests, size_t{2147483647});
     if (isUvAnalysis(settings.type)) { settings.mode = ComparisonMode::original; }
@@ -731,7 +735,7 @@ MeshDiagnostics inspectTriangles(const Mesh& mesh, std::stop_token stop)
     }
     MeshDiagnostics result;
     // Preserve first-use geometric IDs, including OBJ seams and signed zero.
-    AnalysisIndex<double, 3> vertexIds;
+    AnalysisIndex<double, 4> vertexIds;
     reserveAnalysisIndex(vertexIds, mesh.vertices.size());
     constexpr size_t missing = std::numeric_limits<size_t>::max();
     std::vector<size_t> remap(mesh.vertices.size(), missing);
@@ -751,7 +755,10 @@ MeshDiagnostics inspectTriangles(const Mesh& mesh, std::stop_token stop)
         std::array<size_t, 3> ids;
         for (size_t k = 0; k < 3; ++k) {
             auto& id = remap[mesh.indices[i+k]];
-            if (id == missing) { id = analysisIndex(vertexIds, triangle[k]); }
+            if (id == missing) {
+                const auto batch = mesh.analysisVertexBatches.empty() ? 0 : mesh.analysisVertexBatches.at(mesh.indices[i+k]);
+                id = analysisIndex(vertexIds, std::array<double, 4>{triangle[k][0], triangle[k][1], triangle[k][2], static_cast<double>(batch)});
+            }
             ids[k] = id;
         }
         faces.push_back(ids);
@@ -1089,6 +1096,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             surface.source.bounds = mesh.bounds;
             surface.source.origin = mesh.origin;
             surface.source.precisePositions = copyWithCancellation(mesh.precisePositions, stop);
+            surface.source.analysisVertexBatches = copyWithCancellation(mesh.analysisVertexBatches, stop);
         }
         std::vector<uint32_t> tasks;
         if (stages & comparisonDegenerates) { tasks.push_back(comparisonDegenerates); }

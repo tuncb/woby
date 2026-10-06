@@ -48,6 +48,7 @@ struct DuplicateSource {
     std::vector<SourcePartInstance> parts;
     // Unreferenced points belong to the source file, not an arbitrary mesh part.
     std::array<double, 16> unusedPointTransform = {1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1};
+    uint64_t batchId = 0; // Zero means whole file; otherwise a stable representative part ID.
 };
 
 struct DuplicateInput {
@@ -67,6 +68,7 @@ struct DuplicateFinding {
     std::vector<DuplicateMember> members; // Representative first.
     // World positions of all selected instances; points or triangle triples.
     std::vector<std::array<float, 3>> geometry;
+    uint64_t batchId = 0;
 };
 
 struct DuplicateResult {

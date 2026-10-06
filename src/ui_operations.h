@@ -57,7 +57,8 @@ void frameComparison(UiState& state, SceneObjectId id);
 // UV navigation retains the analysis inspector and uses only matching results.
 [[nodiscard]] const UvFindingFocus* focusedUvFinding(const UiState& state, uint64_t resultSignature, SceneObjectId id,
     std::optional<uint64_t> geometrySignature = {});
-void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t resultSignature, SceneObjectId id);
+void validateUvFindingFocus(UiState& state, const Mesh& display, uint64_t resultSignature, SceneObjectId id,
+    std::optional<uint64_t> geometrySignature = {});
 void selectUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, size_t index, SceneObjectId id);
 void navigateUvFinding(UiState& state, const Mesh& display, uint64_t resultSignature, int step, SceneObjectId id);
 // A zero/stale result signature is unavailable. Navigation wraps within one side/category.
@@ -91,9 +92,10 @@ enum class UiObjectProperty {
     rotationX, rotationY, rotationZ,
     scale, opacity, vertexSize, solidMesh, triangles, vertices, red, green, blue,
     uvGrid, uvDensityU, uvDensityV, uvColorMode, uvMinimum, uvMaximum,
-    lineWidth, lineDepthTest,
+    lineWidth, lineDepthTest, analysisMode,
 };
-inline constexpr size_t uiObjectPropertyCount = static_cast<size_t>(UiObjectProperty::lineDepthTest) + 1;
+inline constexpr size_t uiObjectPropertyCount = static_cast<size_t>(UiObjectProperty::analysisMode) + 1;
+bool setModelAnalysisMode(UiState& state, SceneObjectId id, AnalysisMode mode);
 enum class UiPropertyGroup { translation, rotation, scale, transform, appearance };
 struct UiPropertyValue {
     float value = 0.0f;

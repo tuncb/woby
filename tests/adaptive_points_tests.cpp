@@ -20,6 +20,30 @@ woby::Mesh cloudMesh(uint32_t count) {
     return mesh;
 }
 }
+TEST_CASE("Adaptive point queue rejects transparent points independently of scene eligibility") {
+    woby::GpuMesh mesh;
+    mesh.pointCloud=std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(cloudMesh(16),8,4));
+    woby::AdaptivePointRuntime runtime; runtime.enabled=true;
+    woby::SceneDrawItem item; item.points=true;
+    bx::mtxIdentity(item.model.data());
+    for (const float alpha:{0.0f,.35f,.998f,.999f,1.0f}) {
+        item.color={.4f,.5f,.6f,alpha}; runtime.draws.clear();
+        CHECK(woby::queueAdaptivePoints(runtime,mesh,item,1)==(alpha>=.999f));
+        CHECK(runtime.draws.size()==(alpha>=.999f?1u:0u));
+    }
+}
+TEST_CASE("Point backend selection retains adaptive rendering without 64 bit atomics") {
+    using namespace woby::graphics;
+    constexpr auto portable=WOBY_GPU_CAPS_POINT_COMPUTE;
+    constexpr auto native=portable|WOBY_GPU_CAPS_OPAQUE_POINTS;
+    CHECK(selectPointBackend(0)==PointBackend::quads);
+    CHECK(selectPointBackend(portable)==PointBackend::atomic32);
+    CHECK(selectPointBackend(native)==PointBackend::atomic64);
+    CHECK(selectPointBackend(native,PointBackend::atomic32)==PointBackend::atomic32);
+    CHECK(selectPointBackend(native,PointBackend::quads)==PointBackend::quads);
+    CHECK(selectPointBackend(portable,PointBackend::atomic64)==PointBackend::atomic32);
+    CHECK(selectPointBackend(0,PointBackend::atomic32)==PointBackend::quads);
+}
 TEST_CASE("Adaptive point controls persist through views scene files and history") {
     PointDirectory directory;
     woby::UiState state; REQUIRE(state.adaptivePoints);

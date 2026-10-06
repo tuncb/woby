@@ -72,6 +72,60 @@ std::filesystem::path installPortableImporter(const std::filesystem::path& folde
 
 } // namespace
 
+TEST_CASE("Importer startup summary names every failed library and portable package")
+{
+    ImporterTestScope scope;
+    CHECK(woby::importerLoadFailureSummary({}).empty());
+    const auto library = scope.root / "plugin.dll";
+    const auto package = scope.root / woby::pathFromUtf8("caf\xc3\xa9 importer") / "importer.json";
+    const std::vector<woby::ImporterLoadFailure> failures{
+        woby::importerLoadFailure(library, std::runtime_error("Missing importer export.")),
+        woby::importerLoadFailure(package, std::runtime_error("Incompatible importer API."))};
+    CHECK(woby::importerLoadFailureSummary(failures) == "Could not load importers:\n"
+        "plugin.dll: Missing importer export.\n"
+        "caf\xc3\xa9 importer: Incompatible importer API.");
+    CHECK(failures[0].path == library);
+    CHECK(failures[0].details == "Missing importer export.");
+    CHECK(woby::importerLoadFailureSummary({woby::importerLoadFailure({},
+        std::runtime_error("Settings directory unavailable."))})
+        == "Could not load importers:\nImporter settings: Settings directory unavailable.");
+}
+
+TEST_CASE("Missing importer summary is concise and retains full filesystem diagnostics")
+{
+    ImporterTestScope scope;
+    const auto path = scope.root / "missing.dll";
+    try {
+        woby::loadImporter(path);
+        FAIL("Missing importer unexpectedly loaded");
+    } catch (const std::filesystem::filesystem_error& error) {
+        const auto failure = woby::importerLoadFailure(path, error);
+        CHECK(failure.reason == "File or folder not found.");
+        CHECK(failure.details == error.what());
+        CHECK(failure.details.find("missing.dll") != std::string::npos);
+        CHECK(woby::importerLoadFailureSummary({failure})
+            == "Could not load importers:\nmissing.dll: File or folder not found.");
+    }
+}
+
+#ifdef _WIN32
+TEST_CASE("Windows importer errors explain invalid DLLs and retain the system error code")
+{
+    ImporterTestScope scope;
+    const auto path = scope.root / "invalid.dll";
+    writeFile(path, "not a Windows DLL");
+    try {
+        woby::loadImporter(path);
+        FAIL("Invalid DLL unexpectedly loaded");
+    } catch (const std::runtime_error& error) {
+        const auto failure = woby::importerLoadFailure(path, error);
+        CHECK(failure.reason == "The DLL is invalid or its architecture does not match woby. (Windows error 193).");
+        CHECK(woby::importerLoadFailureSummary({failure}).find("invalid.dll: The DLL is invalid") != std::string::npos);
+    }
+    CHECK(woby::loadedImporters().empty());
+}
+#endif
+
 TEST_CASE("DLL importer registration validates ABI exports conflicts and deduplicates paths")
 {
     ImporterTestScope scope;
@@ -260,8 +314,11 @@ TEST_CASE("Portable importer failures are isolated and conflicts use sorted pack
     installPortableImporter(folder / "30-independent", WOBY_TEST_OFF_IMPORTER);
     const auto errors = woby::loadPortableImporters(folder);
     REQUIRE(errors.size() == 2u);
-    CHECK(errors[0].find("00-bad-abi") != std::string::npos);
-    CHECK(errors[1].find("extension already registered") != std::string::npos);
+    CHECK(errors[0].path == folder / "00-bad-abi" / "importer.json");
+    CHECK(errors[0].reason.find("Incompatible importer API") != std::string::npos);
+    CHECK(errors[1].reason.find("extension already registered") != std::string::npos);
+    CHECK(woby::importerLoadFailureSummary(errors).find("00-bad-abi: Incompatible importer API") != std::string::npos);
+    CHECK(woby::importerLoadFailureSummary(errors).find("20-conflict: Importer extension already registered") != std::string::npos);
     REQUIRE(woby::loadedImporters().size() == 2u);
     CHECK(woby::loadedImporters()[0].id == "org.woby.test");
     CHECK(woby::loadedImporters()[1].id == "org.woby.example.off");
@@ -306,7 +363,15 @@ TEST_CASE("Portable manifests reject malformed metadata and paths outside their 
     installPortableImporter(folder / "good", WOBY_TEST_OFF_IMPORTER);
     const auto errors = woby::loadPortableImporters(folder);
     REQUIRE(errors.size() == 1u);
-    CHECK(errors[0].find("importer.json") != std::string::npos);
+    CHECK(errors[0].path == package / "importer.json");
+    if (contents == "{") {
+        CHECK(errors[0].reason == "Invalid importer manifest JSON.");
+        CHECK(errors[0].details.find("parse_error") != std::string::npos);
+        CHECK(woby::importerLoadFailureSummary(errors) == "Could not load importers:\nbad: Invalid importer manifest JSON.");
+    }
+    if (manifest["library"] == "missing.dll") {
+        CHECK(errors[0].reason == "File or folder not found.");
+    }
     REQUIRE(woby::loadedImporters().size() == 1u);
     CHECK(woby::loadedImporters()[0].id == "org.woby.example.off");
 }
@@ -342,7 +407,7 @@ TEST_CASE("Portable manifests reject library links escaping their package")
         {"library", woby::pathToUtf8(link.filename())}}.dump());
     const auto errors = woby::loadPortableImporters(folder);
     REQUIRE(errors.size() == 1u);
-    CHECK(errors[0].find("inside its package") != std::string::npos);
+    CHECK(errors[0].reason.find("inside its package") != std::string::npos);
     CHECK(woby::loadedImporters().empty());
 }
 
@@ -353,7 +418,9 @@ TEST_CASE("Portable importer folder errors are reported without throwing")
     writeFile(folder);
     const auto errors = woby::loadPortableImporters(folder);
     REQUIRE(errors.size() == 1u);
-    CHECK(errors[0].find("importers") != std::string::npos);
+    CHECK(errors[0].path == folder);
+    CHECK_FALSE(errors[0].reason.empty());
+    CHECK(woby::importerLoadFailureSummary(errors).find("importers: ") != std::string::npos);
 }
 
 TEST_CASE("Importer settings round trip Unicode spaces and removals")

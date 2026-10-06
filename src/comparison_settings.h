@@ -9,11 +9,27 @@
 
 #include <cstddef>
 #include <string>
+#include <stdexcept>
 
 namespace woby
 {
 
 enum class ComparisonSide { a, b };
+enum class AnalysisMode { model, perVolume, whole };
+inline const char* analysisModeName(AnalysisMode mode) {
+    return mode == AnalysisMode::perVolume ? "per_volume" : mode == AnalysisMode::whole ? "whole" : "model";
+}
+inline AnalysisMode parseAnalysisMode(const std::string& name) {
+    if (name == "model") { return AnalysisMode::model; }
+    if (name == "per_volume") { return AnalysisMode::perVolume; }
+    if (name == "whole") { return AnalysisMode::whole; }
+    throw std::invalid_argument("analysisMode must be model, per_volume or whole.");
+}
+inline AnalysisMode parseModelAnalysisMode(const std::string& name) {
+    const auto mode = parseAnalysisMode(name);
+    if (mode == AnalysisMode::model) { throw std::invalid_argument("Model analysisMode must be per_volume or whole."); }
+    return mode;
+}
 enum class DiagnosticCategory { boundary, nonManifold, winding, duplicatePoints, duplicateTriangles, degenerateTriangles, nonManifoldVertices, holes, fins, selfIntersections };
 inline constexpr size_t backgroundDetectorCount = static_cast<size_t>(DiagnosticCategory::selfIntersections);
 inline constexpr size_t diagnosticCategoryCount = backgroundDetectorCount + 1;
@@ -88,6 +104,7 @@ struct ComparisonSettings
     bool autoUpdateBoundaries = true, autoUpdateNonManifold = true, autoUpdateWinding = true;
     TopologyInspectionSettings topologyInspection;
     TopologyMode topologyMode = TopologyMode::originalIndex;
+    AnalysisMode analysisMode = AnalysisMode::model;
     ComparisonSide diagnosticSide = ComparisonSide::a;
     DiagnosticCategory diagnosticCategory = DiagnosticCategory::boundary;
     SurfaceQualitySettings quality;

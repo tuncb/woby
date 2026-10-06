@@ -1,5 +1,6 @@
 #include "marker_pick.h"
 #include "graphics_helpers.h"
+#include "hash_utils.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -105,16 +106,31 @@ void setMarkerRenderState(uint64_t state, bool markerIds)
     } else { woby::graphics::setState(state); }
 }
 
+static uint64_t markerSceneRevision(const UiState& state)
+{
+    uint64_t signature = 17;
+    hashCombine(signature, state.revisions.geometry); hashCombine(signature, state.revisions.visibility);
+    hashCombine(signature, state.revisions.picking); hashCombine(signature, state.revisions.analysis);
+    hashCombine(signature, state.revisions.presentation);
+    hashBounds(signature, state.sceneBounds);
+    return signature;
+}
+
 bool beginGpuMarkerPicking(GpuMarkerPicker& picker, const std::filesystem::path& assets,
-    const UiState& state, const SceneViewport& viewport, MousePosition mouse, bool enabled, int samples)
+    const UiState& state, const SceneViewport& viewport, MousePosition mouse, bool enabled, int samples, uint64_t resourceSignature)
 {
     const bool resized = picker.width != viewport.width || picker.height != viewport.height || picker.samples != samples;
-    const bool changed = picker.sceneGeneration != state.sceneGeneration || picker.sceneRevision != state.sceneEditRevision || resized;
+    const auto signature = markerSceneRevision(state);
+    const bool changed = picker.owner != &state || picker.sceneGeneration != state.sceneGeneration
+        || picker.sceneRevision != signature || picker.resourceSignature != resourceSignature || resized
+        || picker.camera != state.camera || picker.upAxis != state.upAxis
+        || picker.query[0] != mouse.x || picker.query[1] != mouse.y;
     if (changed || !enabled || !picker.active) {
         ++picker.epoch;
         picker.coordinates.reset();
     }
-    picker.sceneGeneration = state.sceneGeneration; picker.sceneRevision = state.sceneEditRevision;
+    picker.owner = &state; picker.sceneGeneration = state.sceneGeneration; picker.sceneRevision = signature;
+    picker.camera = state.camera; picker.upAxis = state.upAxis; picker.resourceSignature = resourceSignature;
     picker.active = false;
     picker.context.list.draws.clear(); picker.context.list.nextId = 1; picker.context.list.largestPoint = 0;
     woby::graphics::setViewFrameBuffer(sceneView, WOBY_GPU_INVALID_HANDLE);
@@ -187,7 +203,7 @@ std::optional<HoveredVertex> resolveMarkerCoordinates(uint32_t id, std::span<con
 }
 
 void pollGpuMarkerPicking(GpuMarkerPicker& picker, uint32_t frame, const UiState& state,
-    const std::vector<LoadedModelRuntime>& runtimes)
+    const std::vector<LoadedModelRuntime>& runtimes, uint64_t resourceSignature)
 {
     picker.frame = frame;
     for (auto& request : picker.requests) {
@@ -201,7 +217,9 @@ void pollGpuMarkerPicking(GpuMarkerPicker& picker, uint32_t frame, const UiState
         }
         if (!markerFrameReached(frame, request.readyFrame)) { continue; }
         request.pending = false;
-        if (picker.active && state.sceneGeneration == picker.sceneGeneration && state.sceneEditRevision == picker.sceneRevision
+        if (picker.active && picker.owner == &state && state.sceneGeneration == picker.sceneGeneration
+            && picker.camera == state.camera && picker.upAxis == state.upAxis
+            && picker.sceneRevision == markerSceneRevision(state) && picker.resourceSignature == resourceSignature
             && acceptMarkerCompletion(request.epoch, picker.epoch, request.sequence, picker.latestSequence)) {
             picker.latestSequence = request.sequence;
             const auto id = decodeMarkerPixel(request.pixel);

@@ -128,6 +128,6 @@ void annotationWorldLines(const UiAnnotation& item, std::span<const ScenePickPar
 void appendAnnotationPickParts(std::vector<ScenePickPart>& parts, const UiState& state,
     std::vector<std::vector<DiagnosticEdge>>& storage);
 [[nodiscard]] bool annotationEdgeHit(const UiAnnotation& item, std::span<const ScenePickPart> parts,
-    const ScenePickView& view, PickPoint point);
+    const ScenePickView& view, PickPoint point, const std::vector<DiagnosticEdge>* cachedLines = nullptr);
 
 } // namespace woby

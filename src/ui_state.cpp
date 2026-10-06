@@ -733,6 +733,7 @@ void refreshSceneTreeFolderCenters(UiState& state)
 SceneFileSettings sceneFileSettings(const UiFileSettings& settings)
 {
     SceneFileSettings result;
+    result.analysisMode = settings.analysisMode;
     result.visible = settings.visible;
     result.scale = settings.scale;
     result.opacity = settings.opacity;
@@ -888,6 +889,7 @@ void applySceneFileRecord(UiFileState& file, const SceneFileRecord& record)
         }
     }
     file.fileSettings.visible = record.settings.visible;
+    file.fileSettings.analysisMode = record.settings.analysisMode;
     file.fileSettings.scale = clampFinite(record.settings.scale, minGroupScale, maxGroupScale, 1.0f);
     file.fileSettings.opacity = clampFinite(record.settings.opacity, minGroupOpacity, maxGroupOpacity, 1.0f);
     file.fileSettings.translation = finiteArrayOrZero(record.settings.translation);

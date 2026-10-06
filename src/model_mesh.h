@@ -113,6 +113,8 @@ struct Mesh {
     std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
     std::shared_ptr<const FreeformGeometry> freeform;
     uint64_t contentRevision = nextMeshContentRevision();
+    // Prepared analysis geometry only: source batch per vertex. Empty means one batch.
+    std::vector<uint32_t> analysisVertexBatches;
 };
 
 // After editing published geometry, renew this identity and notify the owning UiState.

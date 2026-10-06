@@ -33,6 +33,13 @@ points::Selection sourceRange(const AdaptivePointKey& key) {
     }
     return result;
 }
+void destroyPointPrograms(AdaptivePointRuntime& runtime) {
+    for (auto* program:{&runtime.clear,&runtime.raster,&runtime.resolve,&runtime.resolveIds,&runtime.batchClear,&runtime.ids,&runtime.merge}) {
+        if (graphics::isValid(*program)) graphics::destroy(*program);
+        *program={};
+    }
+    runtime.loadedBackend=graphics::PointBackend::automatic;
+}
 } // namespace
 
 void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::path& assets,
@@ -42,24 +49,42 @@ void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::
     runtime.queryEnabled=queryEnabled; runtime.query=query;
     bx::mtxMul(runtime.projection.data(),view.view.data(),view.renderProjection.data());
     const auto* caps=graphics::getCaps();
-    runtime.enabled=!runtime.unavailable && (caps->supported&WOBY_GPU_CAPS_OPAQUE_POINTS)!=0
-        && view.width && view.height && uint64_t(view.width)*view.height*4*sizeof(uint64_t)<=UINT32_MAX
-        && std::none_of(plan.items.begin(),plan.items.end(),[](const auto& item) { return item.color[3]<.999f; });
+    runtime.backend=graphics::selectPointBackend(caps->supported,runtime.preference);
+    if (uint64_t(view.width)*view.height*4*sizeof(uint64_t)>UINT32_MAX) runtime.backend=graphics::PointBackend::quads;
+    runtime.enabled=!runtime.unavailable
+        && view.width && view.height
+        // Surface/edge transparency preserves the existing markers-last order.
+        // Transparent points still require every blended point contribution.
+        && std::none_of(plan.items.begin(),plan.items.end(),[](const auto& item) { return item.points && item.color[3]<.999f; });
     if (!runtime.enabled) { runtime.keys.clear(); return; }
+    if (runtime.loadedBackend!=runtime.backend) destroyPointPrograms(runtime);
     if (!graphics::isValid(runtime.resolve)) {
         try {
             const auto path=assets/"shaders"/rendererShaderFolder(caps->rendererType);
-            runtime.clear=graphics::createProgram(loadShader(path/"cs_opaque_clear.bin"),true);
-            runtime.raster=graphics::createProgram(loadShader(path/"cs_opaque_raster.bin"),true);
-            runtime.resolve=loadProgram(assets,"vs_opaque_resolve.bin","fs_opaque_color.bin");
-            runtime.resolveIds=loadProgram(assets,"vs_opaque_resolve.bin","fs_opaque_resolve.bin");
+            if (runtime.backend==graphics::PointBackend::quads) {
+                runtime.resolve=loadProgram(assets,"vs_point_sprite.bin","fs_point_sprite.bin");
+                runtime.resolveIds=loadProgram(assets,"vs_point_sprite.bin","fs_marker_point.bin");
+            } else {
+                runtime.clear=graphics::createProgram(loadShader(path/"cs_opaque_clear.bin"),true);
+                const bool split=runtime.backend==graphics::PointBackend::atomic32;
+                runtime.raster=graphics::createProgram(loadShader(path/(split?"cs_opaque_depth.bin":"cs_opaque_raster.bin")),true);
+                if (split) {
+                    runtime.batchClear=graphics::createProgram(loadShader(path/"cs_opaque_batch_clear.bin"),true);
+                    runtime.ids=graphics::createProgram(loadShader(path/"cs_opaque_ids.bin"),true);
+                    runtime.merge=graphics::createProgram(loadShader(path/"cs_opaque_merge.bin"),true);
+                }
+                runtime.resolve=loadProgram(assets,"vs_opaque_resolve.bin","fs_opaque_color.bin");
+                runtime.resolveIds=loadProgram(assets,"vs_opaque_resolve.bin","fs_opaque_resolve.bin");
+            }
+            runtime.loadedBackend=runtime.backend;
         } catch (const std::exception& error) {
+            destroyPointPrograms(runtime);
             runtime.error=error.what(); runtime.unavailable=true; runtime.enabled=false;
         }
     }
 }
 bool queueAdaptivePoints(AdaptivePointRuntime& runtime,const GpuMesh& mesh,const SceneDrawItem& item,uint32_t firstId) {
-    if (!runtime.enabled || !mesh.pointCloud || item.importedLines || !firstId) return false;
+    if (!runtime.enabled || !mesh.pointCloud || item.importedLines || !firstId || item.color[3]<.999f) return false;
     const auto& source=mesh.pointCloud->groups.at(item.groupIndex);
     AdaptivePointDraw draw;
     draw.mesh=&mesh; draw.key.cloud=mesh.pointCloud; draw.key.sourceGroup=static_cast<uint32_t>(item.groupIndex);
@@ -87,13 +112,23 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
     const bool resized=runtime.width!=runtime.previousWidth || runtime.height!=runtime.previousHeight;
     const bool keysChanged=runtime.keys.size()!=runtime.draws.size() || !std::equal(runtime.keys.begin(),runtime.keys.end(),runtime.draws.begin(),
             [](const auto& key,const auto& draw) { return same(key,draw.key); });
-    const bool changed=resized || runtime.adaptive!=runtime.previousAdaptive || runtime.projection!=runtime.previousProjection || keysChanged;
-    bool reset=changed || !graphics::isValid(runtime.winners);
-    if (resized || !graphics::isValid(runtime.winners)) {
+    const bool quads=runtime.backend==graphics::PointBackend::quads;
+    const bool changed=resized || runtime.backend!=runtime.previousBackend || runtime.adaptive!=runtime.previousAdaptive || runtime.projection!=runtime.previousProjection || keysChanged;
+    bool reset=changed || (!quads && !graphics::isValid(runtime.winners));
+    if (!quads && (resized || !graphics::isValid(runtime.winners))) {
         const auto replacement=graphics::createVertexBufferStorage(static_cast<uint32_t>(uint64_t(runtime.width)*runtime.height*4*sizeof(uint64_t)),{sizeof(uint64_t)});
         if (graphics::isValid(runtime.winners)) graphics::destroy(runtime.winners);
         runtime.winners=replacement;
     }
+    if (runtime.backend==graphics::PointBackend::atomic32 && (resized || !graphics::isValid(runtime.batch))) {
+        const auto replacement=graphics::createVertexBufferStorage(static_cast<uint32_t>(uint64_t(runtime.width)*runtime.height*4*sizeof(uint64_t)),{sizeof(uint64_t)});
+        if (graphics::isValid(runtime.batch)) graphics::destroy(runtime.batch);
+        runtime.batch=replacement;
+    }
+    if (runtime.backend!=graphics::PointBackend::atomic32 && graphics::isValid(runtime.batch)) {
+        graphics::destroy(runtime.batch); runtime.batch={};
+    }
+    if (quads && graphics::isValid(runtime.winners)) { graphics::destroy(runtime.winners); runtime.winners={}; }
     if (changed) {
         ++runtime.epoch; runtime.lastChange=runtime.now; runtime.queryValid=false;
         runtime.keys.clear(); runtime.full.clear(); runtime.total=runtime.refined=0;
@@ -104,6 +139,7 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         if (keysChanged) { runtime.navigation.clear(); runtime.navigationBudget=0; }
         runtime.previousProjection=runtime.projection; runtime.previousWidth=runtime.width; runtime.previousHeight=runtime.height;
         runtime.previousAdaptive=runtime.adaptive;
+        runtime.previousBackend=runtime.backend;
     }
     std::vector<graphics::OpaquePointTask> tasks;
     if (runtime.pending.valid() && runtime.pending.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
@@ -139,10 +175,16 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
             for (const auto& key:runtime.keys)
                 runtime.navigation.push_back(points::navigationDetail(*key.cloud,std::max(1u,runtime.budget/static_cast<uint32_t>(runtime.keys.size())),key.sourceGroup));
         }
-        if (reset || newCut) {
+        if (reset || newCut || quads) {
             for (size_t i=0;i<runtime.draws.size();++i)
                 appendTasks(tasks,runtime.draws[i],runtime.navigation[i],static_cast<uint32_t>(i));
         }
+    } else if (quads) {
+        // Hardware targets are redrawn each frame. Progressive accumulation is
+        // a compute-backend property, independent of navigation selection.
+        for (size_t i=0;i<runtime.draws.size();++i)
+            appendTasks(tasks,runtime.draws[i],runtime.full[i],static_cast<uint32_t>(i));
+        runtime.refined=runtime.total;
     } else {
         uint32_t remaining=runtime.adaptive?runtime.budget:UINT32_MAX;
         for (size_t i=0;i<runtime.draws.size() && remaining;++i) {
@@ -152,7 +194,8 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         }
     }
     std::array<uint32_t,4> query{};
-    if (runtime.queryEnabled && runtime.refined<runtime.total && (!runtime.queryValid || runtime.query!=runtime.previousQuery)) {
+    const bool newQuery=!runtime.queryValid || runtime.query!=runtime.previousQuery;
+    if (runtime.queryEnabled && runtime.refined<runtime.total && newQuery) {
         runtime.previousQuery=runtime.query; runtime.queryValid=true;
         float radius=5;
         for (const auto& key:runtime.keys) radius=std::max(radius,key.group.pointSize+5);
@@ -160,24 +203,33 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         query={bound(std::floor(runtime.query[0]-radius),runtime.width),bound(std::floor(runtime.query[1]-radius),runtime.height),
             bound(std::ceil(runtime.query[0]+radius+1),runtime.width),bound(std::ceil(runtime.query[1]+radius+1),runtime.height)};
         const std::array<float,4> rectangle{float(query[0]),float(query[1]),float(query[2]),float(query[3])};
+        runtime.queryRectangle=query; runtime.querySelections.clear();
         for (size_t i=0;i<runtime.draws.size();++i) {
             const auto& draw=runtime.draws[i]; points::Matrix matrix;
             bx::mtxMul(matrix.data(),draw.key.group.model.data(),runtime.projection.data());
-            const auto selection=points::queryFootprints(*draw.key.cloud,draw.key.sourceGroup,matrix,runtime.width,runtime.height,
-                draw.key.group.pointSize,rectangle);
-            appendTasks(tasks,draw,selection,static_cast<uint32_t>(i),true);
+            runtime.querySelections.push_back(points::queryFootprints(*draw.key.cloud,draw.key.sourceGroup,matrix,runtime.width,runtime.height,
+                draw.key.group.pointSize,rectangle));
         }
+    }
+    if (runtime.queryEnabled && runtime.refined<runtime.total && (quads || newQuery)) {
+        query=runtime.queryRectangle;
+        for (size_t i=0;i<runtime.draws.size();++i)
+            appendTasks(tasks,runtime.draws[i],runtime.querySelections[i],static_cast<uint32_t>(i),true);
     }
     std::vector<graphics::OpaquePointGroup> groups; groups.reserve(runtime.keys.size());
     for (const auto& key:runtime.keys) groups.push_back(key.group);
     for (const auto& task:tasks) runtime.submitted+=task.count;
-    graphics::submitOpaquePoints(view,runtime.winners,runtime.clear,runtime.raster,markerIds?runtime.resolveIds:runtime.resolve,groups,tasks,query,reset,runtime.adaptive);
+    const graphics::PointPrograms programs{runtime.clear,runtime.raster,markerIds?runtime.resolveIds:runtime.resolve,
+        runtime.batchClear,runtime.ids,runtime.merge};
+    graphics::submitOpaquePoints(view,runtime.backend,runtime.winners,runtime.batch,programs,groups,tasks,query,reset,
+        runtime.adaptive && (!quads || navigating));
     runtime.active=true; runtime.draws.clear();
 }
 void destroyAdaptivePoints(AdaptivePointRuntime& runtime) {
     if (runtime.pending.valid()) { runtime.pending.wait(); runtime.pending={}; }
-    for (const auto program:{runtime.clear,runtime.raster,runtime.resolve,runtime.resolveIds}) if (graphics::isValid(program)) graphics::destroy(program);
+    destroyPointPrograms(runtime);
     if (graphics::isValid(runtime.winners)) graphics::destroy(runtime.winners);
+    if (graphics::isValid(runtime.batch)) graphics::destroy(runtime.batch);
     runtime={};
 }
 void attachPointHierarchies(std::span<ScenePickPart> parts,const std::vector<LoadedModelRuntime>& runtimes) {

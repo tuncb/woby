@@ -94,7 +94,7 @@ TEST_CASE("ctl parses every extended command family with explicit units and reor
         {"camera", "look-at", "--eye", "10", "20", "30", "--target", "1", "2", "3"},
         {"camera", "pan", "--right", "2", "--up", "-3"}, {"camera", "roll", "--roll-degrees", "90"},
         {"camera", "dolly", "--factor", "0.5"}, {"camera", "move", "--forward", "1"},
-        {"model", "add", path}, {"model", "remove", "object"}, {"folder", "add", path, "--tree"},
+        {"model", "add", path}, {"model", "remove", "object"}, {"model", "set", "object", "--analysis-mode", "whole"}, {"folder", "add", path, "--tree"},
         {"importers", "list"}, {"importers", "add", path, "--remember"}, {"importers", "scan", path},
         {"importers", "forget", path}, {"stats"}, {"performance", "get"}, {"performance", "begin"}, {"performance", "end"},
         {"pane", "set", "--visible", "false", "--width", "450", "--properties-visible", "true"},

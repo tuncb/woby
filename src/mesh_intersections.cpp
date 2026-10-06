@@ -385,7 +385,7 @@ MeshIntersections inspectIntersections(const MeshTopology& topology, Intersectio
                     if (limits.pairs && result.findings.size() >= limits.pairs) { result.truncated = true; result.truncationReason = "pair_limit"; break; }
                     IntersectionFinding finding;
                     finding.faces = {source.faces[a].reference, source.faces[b].reference};
-                    finding.source = source.source; finding.provenance = source.provenance; finding.mode = source.mode;
+                    finding.batchId = source.batchId; finding.source = source.source; finding.provenance = source.provenance; finding.mode = source.mode;
                     for (size_t j = 0; j < 3; ++j) { for (size_t k = 0; k < 3; ++k) {
                         finding.geometry[j][k] = static_cast<float>(ap[j][k]); finding.geometry[j+3][k] = static_cast<float>(bp[j][k]);
                     } }

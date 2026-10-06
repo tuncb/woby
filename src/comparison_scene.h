@@ -45,7 +45,7 @@ struct ComparisonInspectorCache {
     SceneObjectId objectId = invalidSceneObjectId;
     uint64_t generation = 0, builds = 0;
     uint64_t geometryRevision = 0, analysisRevision = 0, labelsRevision = 0, signatureBuilds = 0;
-    uint64_t signature = 0, preparationSignature = 0;
+    uint64_t signature = 0, preparationSignature = 0, boundsSignature = 0;
     std::array<ComparisonInspectorInput, 2> inputs;
     std::string sources;
 };
@@ -64,7 +64,9 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
 [[nodiscard]] uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id = invalidSceneObjectId);
 // Source/layout identity, excluding UV metrics, overlap and presentation settings.
 [[nodiscard]] uint64_t comparisonPreparationSignature(const UiState& state, SceneObjectId id);
-[[nodiscard]] std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id);
+[[nodiscard]] uint64_t comparisonBoundsSignature(const UiState& state, SceneObjectId id);
+[[nodiscard]] std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id,
+    std::optional<uint64_t> signature = {});
 // Source triangle in scene coordinates, independent of analysis display/layout and visibility.
 [[nodiscard]] std::optional<std::array<Coordinate, 3>> comparisonSourceTriangle(
     const UiState& state, SceneObjectId analysisId, SceneObjectId partId, size_t triangle);

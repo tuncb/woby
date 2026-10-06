@@ -34,6 +34,14 @@ including `VK_EXT_descriptor_heap`, `VK_KHR_device_address_commands`,
 number alone does not establish compatibility. macOS requires Apple silicon,
 macOS 26+, and Metal 4. Woby reports unsupported devices at startup.
 
+Large opaque point sets share adaptive navigation across renderers. M1 uses a
+32-bit atomic compute path with progressive refinement and cached visibility;
+supported M2-and-newer Macs can use 64-bit atomic maximum. Devices without the
+compute requirements use adaptive point quads, returning to full-source drawing
+when navigation stops. These paths retain original point identities for picking.
+Metal performance and native GPU correctness still require validation on real Macs;
+the recorded large-cloud benchmark results are from Vulkan.
+
 Vulkan startup errors list each rejected GPU, its API and driver information,
 and exact missing extensions or queried feature flags. Unqueried features are
 identified as unchecked. Surface and logical-device creation failures report
@@ -466,6 +474,16 @@ inputs are populated, measurements in both directions including maximum/mean/P95
 distance and area above tolerance. With one input, unavailable distance metrics
 and the absent side are `null`.
 
+Mesh checks use **Analysis mode: Per volume** by default. An analysis of a parent
+checks its existing child volumes/parts independently and combines the findings.
+Imported top-level folders keep their patches together; flat models use one batch
+per mesh group. The hierarchy is unchanged. Set the model's **Analysis mode** to
+**Whole** to check it as a whole, or use **Analysis mode** in the analysis
+Diagnostics controls to override the model setting. Exact-position topology joins
+split vertices only within each batch. Intersections and duplicates between
+batches are excluded. Both settings support scene save/load and Undo/Redo; see the
+[CLI analysis controls](doc/ctl-commands.md).
+
 Analysis retains separate caches for topology, duplicate points, duplicate triangles,
 surface quality, and distances. Automatic updates control scheduling; turning them
 off retains current results and allows manual updates. Show only changes the overlay. Group A/B and
@@ -730,6 +748,13 @@ cmake --preset vs2026-vcpkg -DWOBY_TEST_HEADLESS=ON
 cmake --build --preset vs2026-vcpkg
 ctest --preset vs2026-vcpkg
 ```
+
+On a Mac with a supported GPU, the same renderer/readback tests can be enabled
+with `cmake --preset ninja-vcpkg -DWOBY_TEST_HEADLESS=ON`, then
+`cmake --build --preset ninja-vcpkg` and `ctest --preset ninja-vcpkg`.
+The point suite exercises 32-bit compute on every compatible GPU and also tests
+64-bit compute when available. Native Metal allocation tests cover registry
+growth beyond 64 buffers, concurrent lookup, and allocation-failure recovery.
 
 To check annotated screenshots immediately after startup, run this regression on
 a machine with a desktop. It launches four fresh viewers and saves their PNGs and

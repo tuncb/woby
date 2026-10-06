@@ -24,6 +24,7 @@ struct DegenerateFinding {
     SourceProvenance provenance = SourceProvenance::importerVertices;
     TriangleDegeneracy reasons;
     std::array<std::array<float, 3>, 3> geometry{};
+    uint64_t batchId = 0;
 };
 
 struct MeshDegenerates {

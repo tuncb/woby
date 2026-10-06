@@ -9,6 +9,41 @@
 
 namespace woby {
 
+uint64_t hoverSceneSignature(const UiState& state, const std::vector<LoadedModelRuntime>& runtimes)
+{
+    uint64_t key = 17;
+    hashCombine(key, reinterpret_cast<uintptr_t>(&state));
+    hashCombine(key, state.sceneGeneration);
+    hashCombine(key, state.revisions.geometry);
+    hashCombine(key, state.revisions.visibility);
+    hashCombine(key, state.revisions.picking);
+    hashCombine(key, state.files.size()); hashCombine(key, runtimes.size());
+    for (size_t i = 0; i < std::min(state.files.size(), runtimes.size()); ++i) {
+        const auto& file = state.files[i]; const auto& mesh = runtimes[i].gpuMesh;
+        hashCombine(key, file.objectId); hashCombine(key, file.mesh.contentRevision);
+        hashCombine(key, mesh.resourceRevision);
+        hashCombine(key, mesh.vertexBuffer.idx); hashCombine(key, mesh.pointIdBuffer.idx);
+        hashCombine(key, mesh.triangleIndexBuffer.idx); hashCombine(key, mesh.importedLineBuffer.idx);
+        hashCombine(key, reinterpret_cast<uintptr_t>(meshPointVertexIndices(mesh).data()));
+        hashCombine(key, meshPointVertexIndices(mesh).size()); hashCombine(key, mesh.nodeRanges.size());
+    }
+    return key;
+}
+
+uint64_t hoverPickSignature(HoverPickCache& cache, const UiState& state,
+    const std::vector<LoadedModelRuntime>& runtimes, MousePosition mouse, bool inside,
+    uint32_t width, uint32_t height, bool homogeneousDepth)
+{
+    const auto scene = hoverSceneSignature(state, runtimes);
+    if (!cache.sceneBuilds || scene != cache.sceneSignature) { cache.sceneSignature = scene; ++cache.sceneBuilds; }
+    uint64_t key = scene;
+    hashFloat(key, mouse.x); hashFloat(key, mouse.y); hashBool(key, inside);
+    hashCamera(key, state.camera); hashCombine(key, static_cast<uint64_t>(state.upAxis));
+    hashBounds(key, state.sceneBounds);
+    hashCombine(key, width); hashCombine(key, height); hashBool(key, homogeneousDepth);
+    return key;
+}
+
 bool hoverNavigationPaused(HoverNavigationState& state, const SceneCamera& camera,
     SceneUpAxis upAxis, const CameraInput& input, double nowSeconds)
 {
@@ -413,6 +448,35 @@ uint64_t hoverPickSignature(
     }
 
     return seed;
+}
+
+std::optional<HoveredVertex> findHoveredVertex(const UiState& state, std::span<const ScenePickPart> parts,
+    const std::vector<LoadedModelRuntime>& runtimes, MousePosition mouse, const ScenePickView& view)
+{
+    std::optional<HoveredVertex> hovered;
+    for (const auto& part : parts) {
+        if (!part.mesh || !part.vertices || part.fileIndex >= runtimes.size() || part.fileIndex >= state.files.size()) { continue; }
+        const auto& groups = state.files[part.fileIndex].groupSettings;
+        if (part.groupIndex >= groups.size()) { continue; }
+        // Preserve the CPU fallback's separate inherited/group opacity cutoffs.
+        const float opacity = groups[part.groupIndex].opacity;
+        if (opacity <= vertexHoverEpsilon || part.opacity / opacity <= vertexHoverEpsilon) { continue; }
+        const auto& gpu = runtimes[part.fileIndex].gpuMesh;
+        if (part.groupIndex >= gpu.nodeRanges.size()) { continue; }
+        const float radius = std::max(part.pointSize * .5f, vertexHoverMinRadius);
+        std::vector<uint32_t> scratch;
+        const auto candidates = hoverCandidates(gpu, part.groupIndex, part.model.data(), view.view.data(), view.projection.data(),
+            view.width, view.height, view.homogeneousDepth, mouse, radius, scratch);
+        for (const auto index : candidates) {
+            if (index >= part.mesh->vertices.size()) { continue; }
+            const auto& local = part.mesh->vertices[index].position;
+            const auto projected = projectPosition(local, part.model.data(), view.view.data(), view.projection.data(),
+                view.width, view.height, view.homogeneousDepth);
+            if (!projected.visible) { continue; }
+            updateHoveredVertexCandidate(local, transformPosition(part.model.data(), local), projected, mouse, radius, hovered);
+        }
+    }
+    return hovered;
 }
 
 std::optional<HoveredVertex> findHoveredVertex(

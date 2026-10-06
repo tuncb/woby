@@ -526,7 +526,7 @@ void drawIntersectionFindings(UiState& state, const ComparisonRuntime& runtime, 
 {
     const auto settings = comparisonSettings(state, id);
     if (settings.diagnosticCategory != DiagnosticCategory::selfIntersections) { return; }
-    ImGui::TextWrapped("Exact triangle intersections within each source file. Valid shared vertices and edges are excluded; coplanar overlap is included. Run checks once. Update checks changed geometry. The settings menu offers automatic updates.");
+    ImGui::TextWrapped("Exact triangle intersections within each source batch. Valid shared vertices and edges are excluded; coplanar overlap is included. Run checks once. Update checks changed geometry. The settings menu offers automatic updates.");
     (void)current;
     const auto& inspection = (settings.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired).intersections;
     if (inspection.phase == IntersectionPhase::running) {
@@ -634,7 +634,7 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
     current = inspectorDetectorReady(runtime, state, id, settings.diagnosticCategory);
     if (!current) { return; }
     const auto& topology = (settings.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired).topology;
-    ImGui::TextWrapped("%s; per source; status: %s. %zu collapsed faces excluded.", topologyModeName(topology.mode), fins ? finStatus(topology) : topologyStatus(topology), topology.excludedCollapsedFaces);
+    ImGui::TextWrapped("%s; per batch; status: %s. %zu collapsed faces excluded.", topologyModeName(topology.mode), fins ? finStatus(topology) : topologyStatus(topology), topology.excludedCollapsedFaces);
     if (fins) {
         if (topology.unavailableFinAreaSources) { ImGui::TextWrapped("Area ratios are unavailable for %zu sources because their boundary patch areas cannot be represented as positive finite doubles.", topology.unavailableFinAreaSources); }
         ImGui::TextWrapped("Woby fin candidates (heuristic): %zu patches pass area ratio <= %.6g. Physical boundary must not be one simple loop; at least two split components per source required. Cut boundaries are kept separate.", topology.fins.size(), settings.topologyInspection.finMaxAreaRatio);
@@ -725,7 +725,7 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
     if (!current) { return; }
     const auto& surface = settings.diagnosticSide == ComparisonSide::a ? runtime.results.value.original : runtime.results.value.repaired;
     const auto& topology = surface.topology;
-    ImGui::TextWrapped("Topology: %s; files inspected separately. Status: %s. Collapsed faces excluded: %zu.",
+    ImGui::TextWrapped("Topology: %s; batches inspected separately. Status: %s. Collapsed faces excluded: %zu.",
         topologyModeName(topology.mode), topologyStatus(topology), topology.excludedCollapsedFaces);
     if (topology.unavailableSources) { ImGui::TextWrapped("%zu sources unavailable. Original source records were not retained.", topology.unavailableSources); }
     const auto& findings = topologyFindings(topology, category);
@@ -793,17 +793,24 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
     auto settings = comparisonSettings(state, id);
     ImGui::SameLine();
     drawInformationIcon("diagnostics_info", "Surface diagnostics",
-        "Topology is inspected separately within each source file. Original indices preserve source connectivity; exact positions join equal coordinates. "
+        "Checks run independently within each source batch. By default, existing child volumes/parts are separate batches. Original indices preserve source connectivity; exact positions join equal coordinates. "
         "Open boundaries may be intentional. Run Self-intersections to check crossings and coplanar overlap.\n\n"
         "Use Previous finding and Next finding to inspect edges or duplicate groups across the sources. "
         "Navigation wraps; Next starts at the first finding and Previous at the last.\n\n"
-        "Duplicate points use exactly equal imported coordinates within each source file. "
+        "Duplicate points use exactly equal imported coordinates within each source batch. "
         "Duplicate triangles use the same three source point IDs regardless of winding. "
         "Counts are extra records; navigation visits groups. No tolerance is applied.\n\n"
         "Whole-file inspection includes unused points; selected parts include referenced points. "
         "OBJ IDs precede UV/normal splitting. Triangle IDs identify generated triangles, not original polygons. "
         "Plugin IDs describe the importer vertex table. "
         "Partial results show a known count followed by '+ Partial'; hover the count for details.");
+    int analysisMode = static_cast<int>(settings.analysisMode);
+    if (ImGui::Combo("Analysis mode", &analysisMode, "Model setting\0Per volume\0Whole\0")) {
+        settings.analysisMode = static_cast<AnalysisMode>(analysisMode);
+        setComparisonSettings(state, settings, id);
+        current = false;
+    }
+    if (ImGui::IsItemHovered()) { ImGui::SetTooltip("Run checks independently on existing child volumes/parts, or combine each file.\nThe scene hierarchy is unchanged."); }
     int topologyMode = static_cast<int>(settings.topologyMode);
     if (ImGui::Combo("Topology", &topologyMode, "Original indices\0Exact positions\0")) {
         settings.topologyMode = static_cast<TopologyMode>(topologyMode);
@@ -811,7 +818,7 @@ void drawDiagnosticNavigation(UiState& state, const ComparisonRuntime& runtime, 
         current = false;
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity.\nExact positions join exactly equal world coordinates within a file, with no epsilon.");
+        ImGui::SetTooltip("Files stay separate. Original indices preserve source connectivity.\nExact positions join exactly equal world coordinates within each batch, with no epsilon.");
     }
     validateComparisonDiagnosticFocus(state, runtime.results.value, current ? runtime.results.signature : 0, id, runtime.inspector.queries.signature);
     constexpr struct {
@@ -1122,7 +1129,7 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
     if (settings.type == AnalysisType::uvQuality) {
         const auto* quality = inspectorStagesReady(runtime, state, id, comparisonSource)
             ? runtime.results.value.original.source.uvQuality.get() : nullptr;
-        drawUvQualityControls(state, settings, quality, id);
+        drawUvQualityControls(state, settings, quality, id, comparisonCurrentSignature(runtime, state, id));
     } else {
         drawVisibilityField("UV coloring", settings.uvGrid.enabled);
         int mode = static_cast<int>(settings.uvGrid.mode);

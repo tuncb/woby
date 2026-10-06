@@ -79,7 +79,7 @@ SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token s
     if (mesh.indices.size() % 3 != 0) { throw std::invalid_argument("Quality requires triangle indices."); }
     SurfaceMeshQuality result;
     std::pmr::monotonic_buffer_resource arena;
-    std::pmr::map<Point, size_t> vertices{&arena};
+    std::pmr::map<std::pair<uint32_t, Point>, size_t> vertices{&arena};
     constexpr size_t unassigned = std::numeric_limits<size_t>::max();
     std::vector<size_t> welded(mesh.vertices.size(), unassigned);
     // Sort/reduce contiguous edge records instead of allocating a tree node
@@ -115,7 +115,10 @@ SurfaceMeshQuality inspectSurfaceMeshQuality(const Mesh& mesh, std::stop_token s
         std::array<size_t, 3> ids;
         for (size_t k = 0; k < 3; ++k) {
             auto& id = welded[mesh.indices[face * 3 + k]];
-            if (id == unassigned) { id = vertices.emplace(p[k], vertices.size()).first->second; }
+            if (id == unassigned) {
+                const auto batch = mesh.analysisVertexBatches.empty() ? 0 : mesh.analysisVertexBatches.at(mesh.indices[face * 3 + k]);
+                id = vertices.emplace(std::pair{batch, p[k]}, vertices.size()).first->second;
+            }
             ids[k] = id;
         }
         for (size_t k = 0; k < 3; ++k) {
