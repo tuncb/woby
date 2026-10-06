@@ -76,6 +76,70 @@ TEST_CASE("properties snapshot matches queries for overlapping mixed and unsuppo
     f.check();
 }
 
+TEST_CASE("point cloud opacity is disabled for parts files and folders without disabling other properties") {
+    PropertiesFixture f(1);
+    auto& file = f.state.files[0];
+    file.mesh.indices.clear(); file.mesh.pointIndices = {0,1,2};
+    file.mesh.nodes[0].indexCount = 0; file.mesh.nodes[0].pointIndexCount = 3;
+    file.groupSettings[0].showVertices = true;
+    file.fileSettings.opacity = 0; file.groupSettings[0].opacity = .2f;
+    notifySceneEdit(f.state, SceneChange::geometry);
+    for (const auto id : {file.groupSettings[0].objectId, file.objectId, f.state.sceneNodes[0].objectId}) {
+        selectSceneObject(f.state, id); f.check();
+        CHECK_FALSE(inspectorProperty(f.runtime.snapshot, UiObjectProperty::opacity).available);
+        CHECK(inspectorProperty(f.runtime.snapshot, UiObjectProperty::scale).available);
+        CHECK(inspectorProperty(f.runtime.snapshot, UiObjectProperty::vertexSize).available);
+        CHECK(inspectorProperty(f.runtime.snapshot, UiObjectProperty::red).available);
+        CHECK(f.runtime.snapshot.dimensions.has_value());
+        const auto before = createSceneDocument(f.state);
+        clearSceneDirty(f.state);
+        setSelectedObjectProperty(f.state, UiObjectProperty::opacity, .5f);
+        CHECK(createSceneDocument(f.state) == before); CHECK_FALSE(f.state.isDirty);
+    }
+    selectSceneObject(f.state, file.groupSettings[0].objectId);
+    setSelectedObjectProperty(f.state, UiObjectProperty::vertexSize, 3);
+    setSelectedObjectProperty(f.state, UiObjectProperty::red, .1f);
+    resetSelectedObjectProperties(f.state, UiPropertyGroup::appearance);
+    CHECK(file.groupSettings[0].vertexSizeScale == 1);
+    CHECK(file.groupSettings[0].color == defaultGroupColor(0));
+    CHECK(file.groupSettings[0].showVertices);
+}
+
+TEST_CASE("mixed point cloud and surface opacity edits affect only eligible selected objects") {
+    PropertiesFixture f(1);
+    auto surface = f.state.files[0];
+    auto& cloud = f.state.files[0];
+    cloud.mesh.indices.clear(); cloud.mesh.pointIndices = {0,1,2};
+    cloud.mesh.nodes[0].indexCount = 0; cloud.mesh.nodes[0].pointIndexCount = 3;
+    cloud.groupSettings[0].showVertices = true;
+    cloud.fileSettings.opacity = .2f;
+    surface.path = f.root / "surface.obj"; surface.objectId = 0;
+    surface.groupSettings[0].objectId = 0;
+    f.state.files.push_back(std::move(surface));
+    appendDefaultSceneNodesForFiles(f.state, 1); assignSceneObjectIds(f.state);
+    notifySceneEdit(f.state, SceneChange::geometry);
+    for (const bool parts : {false, true}) {
+        f.state.selectedSceneObjects.clear();
+        for (const auto& file : f.state.files) {
+            f.state.selectedSceneObjects.push_back(parts ? file.groupSettings[0].objectId : file.objectId);
+        }
+        f.check();
+        const auto opacity = inspectorProperty(f.runtime.snapshot, UiObjectProperty::opacity);
+        REQUIRE(opacity.available); CHECK_FALSE(opacity.mixed); CHECK(opacity.value == 1);
+        setSelectedObjectProperty(f.state, UiObjectProperty::opacity, .4f); f.check();
+        CHECK(f.state.files[0].fileSettings.opacity == .2f);
+        CHECK(f.state.files[0].groupSettings[0].opacity == 1);
+        CHECK((parts ? f.state.files[1].groupSettings[0].opacity : f.state.files[1].fileSettings.opacity) == .4f);
+        setSelectedObjectProperty(f.state, UiObjectProperty::opacity, 1);
+    }
+    f.state.sceneNodes[0].children.push_back(std::move(f.state.sceneNodes[1]));
+    f.state.sceneNodes.resize(1); notifySceneEdit(f.state, SceneChange::geometry);
+    selectSceneObject(f.state, f.state.sceneNodes[0].objectId); f.check();
+    CHECK(inspectorProperty(f.runtime.snapshot, UiObjectProperty::opacity).available);
+    setSelectedObjectProperty(f.state, UiObjectProperty::opacity, 0);
+    CHECK(scenePickParts(f.state).size() == 1);
+}
+
 TEST_CASE("properties snapshot has allocation-free hits and refreshes after operation boundaries") {
     PropertiesFixture f(2203);
     f.check();

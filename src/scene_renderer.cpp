@@ -430,6 +430,8 @@ void submitSceneFiles(
     };
     const auto points = [&](const SceneDrawItem& item, const GpuMesh& mesh, const GpuNodeRange& range) {
         if (!item.points || !range.pointIndexCount || (!mesh.pointCloud && !graphics::isValid(mesh.pointIdBuffer))) { return; }
+        auto color = scaledRgbColor(item.color, 1.5f);
+        color[3] = 1.0f;
         uint32_t firstId=0;
         if (markers || mesh.pointCloud) {
             MarkerDraw draw;
@@ -453,7 +455,6 @@ void submitSceneFiles(
                     params[3]=1;
                     const auto sourceFirst=range.pointIndexOffset+1;
                     params[6]=float(sourceFirst&65535u); params[7]=float(sourceFirst>>16u);
-                    const auto color=scaledRgbColor(item.color,1.5f);
                     graphics::setTransform(item.model.data()); graphics::setUniform(colorUniform,color.data());
                     graphics::setUniform(pointParamsUniform,params.data(),2);
                     if (markers) {
@@ -469,12 +470,12 @@ void submitSceneFiles(
             return;
         }
         submitPointSpriteRange(viewId, mesh, pointSpriteProgram, colorUniform, pointParamsUniform,
-            item.model.data(), scaledRgbColor(item.color, 1.5f), item.pointSize, width, height,
+            item.model.data(), color, item.pointSize, width, height,
             range.pointIndexOffset, range.pointIndexCount, markerIds);
     };
     if (importedLinesOnly) {
         each([&](const auto& item, const auto& mesh, const auto& range) {
-            if (item.lineIndexCount && graphics::isValid(mesh.importedLineBuffer)) {
+            if (item.color[3] > 0 && item.lineIndexCount && graphics::isValid(mesh.importedLineBuffer)) {
                 const auto params = pointSpriteParameters(item.lineWidth, width, height, item.lineIndexOffset);
                 graphics::setTransform(item.model.data());
                 graphics::setUniform(colorUniform, item.color.data());
@@ -533,14 +534,14 @@ void submitSceneFiles(
     // Preserve stable source order for transparent blending; never fuse its edges.
     for (const bool opaque : {true, false}) {
         each([&](const auto& item, const auto& mesh, const auto& range) {
-            if (!item.solid || (item.color[3] >= .999f) != opaque) { return; }
+            if (!item.solid || item.color[3] <= 0 || (item.color[3] >= .999f) != opaque) { return; }
             if (opaque && item.edges && !plan.triangleEdgeXray) { triangleEdges(item, mesh, range, false); }
             else { submitTriangleRange(viewId, mesh, meshProgram, uvGridUniform, colorUniform,
                 item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.uvGrid); }
         });
     }
     each([&](const auto& item, const auto& mesh, const auto& range) {
-        if (!item.edges) { return; }
+        if (!item.edges || item.color[3] <= 0) { return; }
         const bool hardwareLines = plan.triangleEdgeXray || item.color[3] < .999f;
         if (hardwareLines || !item.solid) { triangleEdges(item, mesh, range, hardwareLines); }
     });

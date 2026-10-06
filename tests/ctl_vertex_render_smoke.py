@@ -89,9 +89,9 @@ f 4 5 6
             assert areas[1] > 3 * areas[0] and areas[2] > 5 * areas[1], areas
             opaque = capture("opaque")
             ctl("opacity", "set", file_id, "--value", .5)
-            transparent = capture("transparent")
-            assert len(components(transparent)) == 6
-            assert ImageChops.difference(opaque, transparent).getbbox() is not None
+            assert ImageChops.difference(opaque, capture("half-opacity")).getbbox() is None
+            ctl("opacity", "set", file_id, "--value", 0)
+            assert ImageChops.difference(opaque, capture("zero-opacity")).getbbox() is None
             ctl("opacity", "set", file_id, "--value", 1)
             ctl("render", "set", groups[0], "--vertices", "false")
             assert len(components(capture("second-group"))) == 3
@@ -101,6 +101,7 @@ f 4 5 6
             assert sum(item[0] for item in components(capture("solid"))) > areas[-1] * 10
             ctl("render", "set", "scene", "--solid", "false")
             ctl("transform", "set", file_id, "--translation", .2, .1, 0)
+            ctl("opacity", "set", file_id, "--value", 0)
             transformed = capture("transformed")
             assert len(components(transformed)) == 6
             assert ImageChops.difference(opaque, transformed).getbbox() is not None

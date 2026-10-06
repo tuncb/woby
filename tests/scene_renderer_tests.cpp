@@ -248,6 +248,10 @@ TEST_CASE("GPU display demand follows visible file and part settings")
     CHECK(woby::requestedGpuMeshFeatures(file) == 0);
     file.fileSettings.visible = true;
     file.fileSettings.opacity = 0;
+    CHECK(woby::requestedGpuMeshFeatures(file) == woby::gpuMeshPoints);
+    file.groupSettings[0].opacity = 0;
+    CHECK(woby::requestedGpuMeshFeatures(file) == woby::gpuMeshPoints);
+    file.groupSettings[0].showVertices = false;
     CHECK(woby::requestedGpuMeshFeatures(file) == 0);
 }
 

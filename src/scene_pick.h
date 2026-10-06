@@ -37,7 +37,7 @@ struct ScenePickPart {
     std::optional<Bounds> bounds;
     bool solid = false, edges = false, vertices = false, selected = false;
     bool edgeXray = true, surfaceLessEqual = false;
-    float opacity = 1.0f, pointSize = 4.0f;
+    float opacity = 1.0f, pointSize = 4.0f; // Opacity applies to surfaces/edges, never vertices.
     std::span<const DiagnosticEdge> diagnosticEdges;
     size_t lineIndexOffset = 0, lineIndexCount = 0;
     float lineWidth = 0;

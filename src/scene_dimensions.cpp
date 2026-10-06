@@ -19,7 +19,8 @@ DimensionPoint transformed(const PickMatrix& model, const DimensionPoint& point)
 
 bool measurable(const ScenePickPart& part)
 {
-    return part.selected && part.mesh && (part.indexCount != 0 || part.lineIndexCount != 0 || part.pointIndexCount != 0) && part.opacity > 0;
+    return part.selected && part.mesh && (part.indexCount != 0 || part.lineIndexCount != 0 || part.pointIndexCount != 0)
+        && (part.vertices || part.opacity > 0);
 }
 
 } // namespace

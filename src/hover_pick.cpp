@@ -224,9 +224,7 @@ void findHoveredGroupVertex(
     }
 
     const auto& settings = file.groupSettings[nodeIndex];
-    if (!settings.visible
-        || !settings.showVertices
-        || settings.opacity <= vertexHoverEpsilon) {
+    if (!settings.visible || !settings.showVertices) {
         return;
     }
 
@@ -279,7 +277,6 @@ void findHoveredSceneNodeVertex(
     const MousePosition& mouse,
     float masterVertexPointSize,
     const float* parentModel,
-    float parentOpacity,
     const float* view,
     const float* projection,
     uint32_t viewportWidth,
@@ -288,7 +285,7 @@ void findHoveredSceneNodeVertex(
     std::optional<HoveredVertex>& hoveredVertex)
 {
     if (node.kind == UiSceneNodeKind::folder) {
-        if (!node.settings.visible || node.settings.opacity * parentOpacity <= vertexHoverEpsilon) {
+        if (!node.settings.visible) {
             return;
         }
 
@@ -296,7 +293,6 @@ void findHoveredSceneNodeVertex(
         float model[16];
         sceneNodeTransformMatrix(node.settings, nodeModel);
         bx::mtxMul(model, parentModel, nodeModel);
-        const float opacity = parentOpacity * node.settings.opacity;
         for (const auto& child : node.children) {
             findHoveredSceneNodeVertex(
                 files,
@@ -305,7 +301,6 @@ void findHoveredSceneNodeVertex(
                 mouse,
                 masterVertexPointSize,
                 model,
-                opacity,
                 view,
                 projection,
                 viewportWidth,
@@ -322,8 +317,7 @@ void findHoveredSceneNodeVertex(
         }
 
         const auto& file = files[node.fileIndex];
-        if (!file.fileSettings.visible
-            || file.fileSettings.opacity * parentOpacity <= vertexHoverEpsilon) {
+        if (!file.fileSettings.visible) {
             return;
         }
 
@@ -331,7 +325,6 @@ void findHoveredSceneNodeVertex(
         float model[16];
         fileTransformMatrix(file.fileSettings, fileModel);
         bx::mtxMul(model, parentModel, fileModel);
-        const float opacity = parentOpacity * file.fileSettings.opacity;
         const auto& gpuMesh = runtimes[node.fileIndex].gpuMesh;
         if (node.children.empty()) {
             const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
@@ -361,7 +354,6 @@ void findHoveredSceneNodeVertex(
                 mouse,
                 masterVertexPointSize,
                 model,
-                opacity,
                 view,
                 projection,
                 viewportWidth,
@@ -458,9 +450,6 @@ std::optional<HoveredVertex> findHoveredVertex(const UiState& state, std::span<c
         if (!part.mesh || !part.vertices || part.fileIndex >= runtimes.size() || part.fileIndex >= state.files.size()) { continue; }
         const auto& groups = state.files[part.fileIndex].groupSettings;
         if (part.groupIndex >= groups.size()) { continue; }
-        // Preserve the CPU fallback's separate inherited/group opacity cutoffs.
-        const float opacity = groups[part.groupIndex].opacity;
-        if (opacity <= vertexHoverEpsilon || part.opacity / opacity <= vertexHoverEpsilon) { continue; }
         const auto& gpu = runtimes[part.fileIndex].gpuMesh;
         if (part.groupIndex >= gpu.nodeRanges.size()) { continue; }
         const float radius = std::max(part.pointSize * .5f, vertexHoverMinRadius);
@@ -503,7 +492,6 @@ std::optional<HoveredVertex> findHoveredVertex(
                 mouse,
                 masterVertexPointSize,
                 identity,
-                1.0f,
                 view,
                 projection,
                 viewportWidth,
@@ -518,7 +506,7 @@ std::optional<HoveredVertex> findHoveredVertex(
     for (size_t fileIndex = 0; fileIndex < fileCount; ++fileIndex) {
         const auto& file = files[fileIndex];
         const auto& gpuMesh = runtimes[fileIndex].gpuMesh;
-        if (!file.fileSettings.visible || file.fileSettings.opacity <= vertexHoverEpsilon) {
+        if (!file.fileSettings.visible) {
             continue;
         }
 
@@ -527,9 +515,7 @@ std::optional<HoveredVertex> findHoveredVertex(
         const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
         for (size_t nodeIndex = 0; nodeIndex < groupCount; ++nodeIndex) {
             const auto& settings = file.groupSettings[nodeIndex];
-            if (!settings.visible
-                || !settings.showVertices
-                || settings.opacity <= vertexHoverEpsilon) {
+            if (!settings.visible || !settings.showVertices) {
                 continue;
             }
 

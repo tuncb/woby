@@ -71,7 +71,7 @@ void appendGroup(std::vector<ScenePickPart>& parts, const UiState& state, size_t
     const auto& group = file.groupSettings[groupIndex];
     const auto& node = file.mesh.nodes[groupIndex];
     opacity *= group.opacity;
-    if (!includeHidden && (!group.visible || opacity <= 0.0f
+    if (!includeHidden && (!group.visible || (opacity <= 0.0f && !group.showVertices)
         || (node.pointIndexCount ? !group.showVertices : (!node.lineIndexCount && !group.showSolidMesh && !group.showTriangles && !group.showVertices)))) { return; }
     PickMatrix local;
     groupTransformMatrix(group, local.data());
@@ -120,7 +120,6 @@ void appendNode(std::vector<ScenePickPart>& parts, const UiState& state, const U
         opacity *= file.fileSettings.opacity;
         fileTransformMatrix(file.fileSettings, local.data());
     }
-    if (!includeHidden && opacity <= 0.0f) { return; }
     const auto model = compose(parent, local);
     if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
         for (size_t i = 0; i < state.files[node.fileIndex].groupSettings.size(); ++i) {
@@ -286,7 +285,7 @@ void scenePickParts(const UiState& state, std::vector<ScenePickPart>& result, bo
     } else {
         for (size_t i = 0; i < state.files.size(); ++i) {
             const auto& file = state.files[i];
-            if (!includeHidden && (!file.fileSettings.visible || file.fileSettings.opacity <= 0)) { continue; }
+            if (!includeHidden && !file.fileSettings.visible) { continue; }
             PickMatrix model;
             fileTransformMatrix(file.fileSettings, model.data());
             for (size_t j = 0; j < file.groupSettings.size(); ++j) {
@@ -395,7 +394,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
     };
     const auto surface = [&](const Candidate& candidate) {
         const auto& part = *candidate.part;
-        if (candidate.surface && (part.surfaceLessEqual ? *candidate.surface <= depthBuffer : *candidate.surface < depthBuffer)) {
+        if (part.opacity > 0 && candidate.surface && (part.surfaceLessEqual ? *candidate.surface <= depthBuffer : *candidate.surface < depthBuffer)) {
             if (part.solid) {
                 hit = part.objectId;
                 if (detail) { *detail = candidate.detail; }
@@ -405,7 +404,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
     };
     const auto edge = [&](const Candidate& candidate) {
         const auto& part = *candidate.part;
-        if (candidate.edge && (part.edgeXray || *candidate.edge <= depthBuffer + 1e-7)) {
+        if (part.opacity > 0 && candidate.edge && (part.edgeXray || *candidate.edge <= depthBuffer + 1e-7)) {
             if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
             hit = part.objectId;
             if (part.lineIndexCount && !part.edgeXray && part.opacity >= .999f) { depthBuffer = *candidate.edge; }
@@ -416,14 +415,14 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
         if (candidate.point && *candidate.point <= depthBuffer + 1e-7) {
             if (detail && (detail->partId != part.objectId || detail->analysisId != part.analysisId)) { *detail = {}; }
             hit = part.objectId;
-            if (part.opacity >= .999f) { depthBuffer = *candidate.point; }
+            depthBuffer = *candidate.point;
         }
     };
     for (int layer = 0; layer < 3; ++layer) {
         candidates.clear();
         for (const auto& part : parts) {
             if (layer != (part.annotationOverlay ? 2 : part.lineIndexCount ? 1 : 0)) { continue; }
-            if (part.objectId == invalidSceneObjectId || part.opacity <= 0) { continue; }
+            if (part.objectId == invalidSceneObjectId || (part.opacity <= 0 && !part.vertices)) { continue; }
             // Keep the projection's near term when composing with translated
             // geometry; float composition otherwise rounds visible hits to the
             // cleared far depth and rejects them during CPU selection.
@@ -431,7 +430,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             bx::mtxInverse(inverse.data(), part.model.data());
             const auto origin = position(inverse, near), end = position(inverse, middle);
             const auto direction = subtract(end, origin);
-            const bool testSurface = (part.solid || hiddenLineDepth(part)) && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
+            const bool testSurface = part.opacity > 0 && (part.solid || hiddenLineDepth(part)) && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));
             if (!testSurface && !part.edges && !part.vertices && part.diagnosticEdges.empty()) { continue; }
             std::optional<double> surfaceDepth, edgeDepth, pointDepth;
             SceneTriangleHit surfaceHit;

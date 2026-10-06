@@ -9,9 +9,9 @@ namespace woby {
 uint8_t requestedGpuMeshFeatures(const UiFileState& file)
 {
     uint8_t features = 0;
-    if (!file.fileSettings.visible || file.fileSettings.opacity <= 0) { return features; }
+    if (!file.fileSettings.visible) { return features; }
     for (const auto& group : file.groupSettings) {
-        if (!group.visible || group.opacity <= 0) { continue; }
+        if (!group.visible) { continue; }
         // Triangle overlays read the existing triangle buffer, including X-ray.
         if (group.showVertices) { features |= gpuMeshPoints; }
     }

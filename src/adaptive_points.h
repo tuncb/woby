@@ -41,7 +41,7 @@ struct AdaptivePointRuntime {
     std::string error;
 };
 void prepareAdaptivePoints(AdaptivePointRuntime&,const std::filesystem::path& assets,
-    const SceneDrawPlan&,const ScenePickView&,bool adaptive,double now,bool queryEnabled=false,
+    const ScenePickView&,bool adaptive,double now,bool queryEnabled=false,
     std::array<float,2> query={});
 bool queueAdaptivePoints(AdaptivePointRuntime&,const GpuMesh&,const SceneDrawItem&,uint32_t firstId);
 void submitAdaptivePoints(AdaptivePointRuntime&,graphics::ViewId,bool markerIds=false);

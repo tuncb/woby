@@ -2,6 +2,8 @@
 #include "scene_viewport.h"
 #include "ui_operations.h"
 #include "allocation_probe.h"
+#include "scene_queries.h"
+#include "scene_draw_plan.h"
 
 #include <doctest/doctest.h>
 
@@ -370,6 +372,68 @@ TEST_CASE("canvas picker handles clipping reversed winding and malformed triangl
     SUBCASE("degenerate triangle") { state.files[0].mesh.indices = {0, 0, 0}; }
     SUBCASE("out of range node") { state.files[0].mesh.nodes[0].indexOffset = 99; }
     CHECK(pick(state) == woby::invalidSceneObjectId);
+}
+
+TEST_CASE("opaque vertices survive zero group file and folder opacity in cached and direct scene queries")
+{
+    for (const bool cloud : {false, true}) for (const int level : {0, 1, 2, 3}) {
+        INFO("cloud=" << cloud << ", opacity level=" << level);
+        auto state = scene();
+        state.files[0].groupSettings[0].showVertices = true;
+        if (cloud) {
+            auto& mesh = state.files[0].mesh;
+            mesh.indices.clear(); mesh.pointIndices = {0, 1, 2};
+            mesh.nodes[0].indexCount = 0; mesh.nodes[0].pointIndexCount = 3;
+        }
+        if (level == 2) {
+            woby::UiSceneNode folder; folder.children = std::move(state.sceneNodes);
+            state.sceneNodes = {std::move(folder)}; woby::assignSceneObjectIds(state);
+        }
+        if (level == 3) { state.sceneNodes.clear(); }
+        const auto id = state.files[0].groupSettings[0].objectId;
+        woby::SceneQueryRuntime queries;
+        woby::SceneDrawCache draw;
+        for (const float alpha : {0.0f, .35f, 1.0f}) {
+            if (level == 0) { state.files[0].groupSettings[0].opacity = alpha; }
+            else if (level == 2) { state.sceneNodes[0].settings.opacity = alpha; }
+            else { state.files[0].fileSettings.opacity = alpha; }
+            woby::notifySceneEdit(state);
+            const auto direct = woby::scenePickParts(state);
+            std::vector<woby::ScenePickPart> cached;
+            woby::resolveSceneParts(queries, state, cached);
+            REQUIRE(direct.size() == 1); REQUIRE(cached.size() == 1);
+            CHECK(woby::pickSceneObject(direct, view(), {50, 10}) == id);
+            CHECK(woby::pickSceneObject(cached, view(), {50, 10}) == id);
+            const auto center = !cloud && alpha > 0 ? id : woby::invalidSceneObjectId;
+            CHECK(woby::pickSceneObject(direct, view(), {50, 50}) == center);
+            CHECK(woby::pickSceneObject(cached, view(), {50, 50}) == center);
+            REQUIRE(woby::updateSceneDrawPlan(draw, state, &queries));
+            REQUIRE(draw.plan.items.size() == 1);
+            CHECK(draw.plan.items[0].points);
+            CHECK(draw.plan.items[0].color[3] == alpha);
+        }
+        state.files[0].groupSettings[0].visible = false; woby::notifySceneEdit(state);
+        CHECK(woby::scenePickParts(state).empty());
+        std::vector<woby::ScenePickPart> cached; woby::resolveSceneParts(queries, state, cached);
+        CHECK(cached.empty());
+    }
+}
+
+TEST_CASE("opaque vertex object picking selects the nearest point at any surface opacity")
+{
+    for (const float alpha : {0.0f, .35f, 1.0f}) {
+        auto state = scene();
+        state.files.push_back(woby::createUiFileState("front.obj", triangle(.2f), 1));
+        woby::appendDefaultSceneNodesForFiles(state, 1); woby::assignSceneObjectIds(state);
+        for (auto& file : state.files) {
+            auto& group = file.groupSettings[0];
+            group.showSolidMesh = false; group.showVertices = true; group.opacity = alpha;
+        }
+        const auto front = state.files[1].groupSettings[0].objectId;
+        CHECK(pick(state, {50, 10}) == front);
+        std::reverse(state.sceneNodes.begin(), state.sceneNodes.end());
+        CHECK(pick(state, {50, 10}) == front);
+    }
 }
 
 TEST_CASE("wireframe and vertex only picking follows displayed primitives")

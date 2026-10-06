@@ -127,7 +127,7 @@ void appendAppearanceTargets(const UiState& state, const UiSceneNode& node, bool
 struct PropertyTargetContext {
     std::vector<SceneObjectInfo> objects;
     boost::unordered_flat_map<SceneObjectId, const SceneObjectInfo*> byId;
-    std::array<boost::unordered_flat_set<SceneObjectId>, 3> eligible;
+    std::array<boost::unordered_flat_set<SceneObjectId>, 4> eligible;
 };
 PropertyTargetContext propertyTargetContext(const UiState& state)
 {
@@ -136,14 +136,29 @@ PropertyTargetContext propertyTargetContext(const UiState& state)
     context.byId.reserve(context.objects.size());
     for (const auto& object : context.objects) { context.byId.emplace(object.id, &object); }
     for (const auto& file : state.files) {
+        bool opacity = file.mesh.pointIndices.empty();
         for (size_t i = 0; i < file.groupSettings.size() && i < file.mesh.nodes.size(); ++i) {
             const auto id = file.groupSettings[i].objectId;
             const auto& node = file.mesh.nodes[i];
             if (node.hasTexcoords) { context.eligible[0].insert(id); }
             if (node.lineIndexCount) { context.eligible[1].insert(id); }
             if (!node.lineIndexCount && !node.pointIndexCount) { context.eligible[2].insert(id); }
+            if (node.indexCount || node.lineIndexCount || !node.pointIndexCount) { context.eligible[3].insert(id); }
+            opacity = opacity || node.indexCount || node.lineIndexCount;
         }
+        if (opacity) { context.eligible[3].insert(file.objectId); }
     }
+    const auto folders = [&](auto&& self, const UiSceneNode& node) -> bool {
+        if (node.kind == UiSceneNodeKind::group) { return context.eligible[3].contains(node.objectId); }
+        if (node.kind == UiSceneNodeKind::file) {
+            return node.fileIndex < state.files.size() && context.eligible[3].contains(state.files[node.fileIndex].objectId);
+        }
+        bool opacity = node.children.empty();
+        for (const auto& child : node.children) { opacity = self(self, child) || opacity; }
+        if (opacity) { context.eligible[3].insert(node.objectId); }
+        return opacity;
+    };
+    for (const auto& node : state.sceneNodes) { folders(folders, node); }
     return context;
 }
 
@@ -190,6 +205,14 @@ std::vector<SceneObjectId> propertyTargets(const UiState& state, UiObjectPropert
     boost::unordered_flat_set<SceneObjectId> seen;
     seen.reserve(targets.size());
     std::erase_if(targets, [&](SceneObjectId id) { return !seen.insert(id).second; });
+    if (property == UiObjectProperty::opacity) {
+        if (context) {
+            std::erase_if(targets, [&](SceneObjectId id) { return !context->eligible[3].contains(id); });
+        } else {
+            const auto opacityContext = propertyTargetContext(state);
+            std::erase_if(targets, [&](SceneObjectId id) { return !opacityContext.eligible[3].contains(id); });
+        }
+    }
     const bool lines = property == UiObjectProperty::lineWidth || property == UiObjectProperty::lineDepthTest;
     const bool triangles = property == UiObjectProperty::solidMesh || property == UiObjectProperty::triangles;
     if (context && (isUvProperty(property) || lines || triangles)) {
@@ -413,13 +436,14 @@ std::array<UiPropertyValue, uiObjectPropertyCount> selectedObjectProperties(cons
     using P = UiObjectProperty;
     const auto context = propertyTargetContext(state);
     const auto family = [](P property) -> size_t {
+        if (property == P::opacity) { return 6; }
         if (property == P::vertexSize) { return 1; }
         if (isUvProperty(property)) { return 3; }
         if (property == P::lineWidth || property == P::lineDepthTest) { return 4; }
         if (property == P::solidMesh || property == P::triangles) { return 5; }
         return isPartAppearanceProperty(property) ? 2 : 0;
     };
-    constexpr std::array representatives{P::translationX, P::vertexSize, P::red, P::uvGrid, P::lineWidth, P::solidMesh};
+    constexpr std::array representatives{P::translationX, P::vertexSize, P::red, P::uvGrid, P::lineWidth, P::solidMesh, P::opacity};
     std::array<std::vector<SceneObjectId>, representatives.size()> targets;
     using Values = std::array<std::optional<float>, uiObjectPropertyCount>;
     boost::unordered_flat_map<SceneObjectId, Values> values;
@@ -559,7 +583,7 @@ void setSelectedObjectsVisible(UiState& state, bool visible)
 void resetSelectedObjectProperties(UiState& state, UiPropertyGroup group)
 {
     // An unsupported/missing target disables the complete reset, as in the UI.
-    if (!selectedObjectProperty(state, UiObjectProperty::opacity).available) { return; }
+    if (!selectedObjectProperty(state, UiObjectProperty::scale).available) { return; }
     const auto before = createSceneDocument(state);
     for (const auto id : state.selectedSceneObjects) {
         visitObjectSettings(state, id, [&](auto& settings) {

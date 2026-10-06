@@ -488,7 +488,12 @@ TEST_CASE("cached hover parts preserve CPU picking coordinates") {
         selectSceneObject(f.state, f.part());
         setSelectedObjectProperty(f.state, UiObjectProperty::opacity, .0001f);
     }
-    SUBCASE("invisible inherited opacity") { setSelectedObjectProperty(f.state, UiObjectProperty::opacity, .0000001f); }
+    SUBCASE("small inherited opacity") { setSelectedObjectProperty(f.state, UiObjectProperty::opacity, .0000001f); }
+    SUBCASE("zero inherited and group opacity") {
+        setSelectedObjectProperty(f.state, UiObjectProperty::opacity, 0);
+        selectSceneObject(f.state, f.part());
+        setSelectedObjectProperty(f.state, UiObjectProperty::opacity, 0);
+    }
     std::vector<LoadedModelRuntime> runtimes(1);
     runtimes[0].gpuMesh.nodeRanges.resize(1);
     runtimes[0].gpuMesh.nodeRanges[0].pointIndexCount = 3;

@@ -97,7 +97,7 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
             part.vertices = settings.showVertices;
             part.opacity = opacity * settings.opacity;
             record.framingVisible = visible && settings.visible && !file.mesh.vertices.empty();
-            record.visible = visible && settings.visible && part.opacity > 0 && (node.pointIndexCount
+            record.visible = visible && settings.visible && (part.vertices || part.opacity > 0) && (node.pointIndexCount
                 ? settings.showVertices : node.lineIndexCount || settings.showSolidMesh || settings.showTriangles || settings.showVertices);
             cache.records.push_back(std::move(record));
         };

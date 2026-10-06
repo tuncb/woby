@@ -9,7 +9,7 @@ struct SceneDrawItem {
     size_t fileIndex = 0, groupIndex = 0;
     SceneObjectId fileId = 0;
     std::array<float, 16> model{};
-    std::array<float, 4> color{}, uvGrid{};
+    std::array<float, 4> color{}, uvGrid{}; // Color alpha applies to surfaces/lines; points are opaque.
     float pointSize = 4, lineWidth = 1;
     uint32_t lineIndexOffset = 0, lineIndexCount = 0;
     bool solid = false, edges = false, points = false;

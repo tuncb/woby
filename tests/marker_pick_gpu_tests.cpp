@@ -163,7 +163,12 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     CHECK(picker.coordinates->localPosition[2] == 0);
     state.files[0].fileSettings.opacity = 0; woby::notifySceneEdit(state);
     for (int i = 0; i < 12; ++i) { render(); }
+    REQUIRE(picker.coordinates);
+    CHECK(picker.coordinates->localPosition[2] == 0);
+    state.files[0].fileSettings.visible = false; woby::notifySceneEdit(state);
+    for (int i = 0; i < 12; ++i) { render(); }
     CHECK_FALSE(picker.coordinates);
+    state.files[0].fileSettings.visible = true;
 
     // Opaque surfaces occlude rear markers. Transparent surfaces do not write
     // depth, so the later marker pass keeps the visible rear marker selectable.

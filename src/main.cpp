@@ -3971,7 +3971,7 @@ int main(int argc, char** argv)
                 recordFrameStage(frameTimings, woby::FrameStage::hoverPick, stageStart);
 
                 woby::updateSceneDrawPlan(renderScratch.drawCache, ui, &renderScratch.queries);
-                woby::prepareAdaptivePoints(adaptivePoints, assets, renderScratch.drawCache.plan, currentPickView,
+                woby::prepareAdaptivePoints(adaptivePoints, assets, currentPickView,
                     ui.adaptivePoints, std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(),
                     gpuHover, {mouse.x,mouse.y});
                 woby::graphics::setViewMode(sceneView, woby::graphics::ViewMode::Sequential);

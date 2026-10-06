@@ -43,7 +43,7 @@ void destroyPointPrograms(AdaptivePointRuntime& runtime) {
 } // namespace
 
 void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::path& assets,
-    const SceneDrawPlan& plan,const ScenePickView& view,bool adaptive,double now,bool queryEnabled,std::array<float,2> query) {
+    const ScenePickView& view,bool adaptive,double now,bool queryEnabled,std::array<float,2> query) {
     runtime.draws.clear(); runtime.active=false; runtime.submitted=0;
     runtime.width=view.width; runtime.height=view.height; runtime.now=now; runtime.adaptive=adaptive;
     runtime.queryEnabled=queryEnabled; runtime.query=query;
@@ -51,11 +51,7 @@ void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::
     const auto* caps=graphics::getCaps();
     runtime.backend=graphics::selectPointBackend(caps->supported,runtime.preference);
     if (uint64_t(view.width)*view.height*4*sizeof(uint64_t)>UINT32_MAX) runtime.backend=graphics::PointBackend::quads;
-    runtime.enabled=!runtime.unavailable
-        && view.width && view.height
-        // Surface/edge transparency preserves the existing markers-last order.
-        // Transparent points still require every blended point contribution.
-        && std::none_of(plan.items.begin(),plan.items.end(),[](const auto& item) { return item.points && item.color[3]<.999f; });
+    runtime.enabled=!runtime.unavailable && view.width && view.height;
     if (!runtime.enabled) { runtime.keys.clear(); return; }
     if (runtime.loadedBackend!=runtime.backend) destroyPointPrograms(runtime);
     if (!graphics::isValid(runtime.resolve)) {
@@ -84,12 +80,13 @@ void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::
     }
 }
 bool queueAdaptivePoints(AdaptivePointRuntime& runtime,const GpuMesh& mesh,const SceneDrawItem& item,uint32_t firstId) {
-    if (!runtime.enabled || !mesh.pointCloud || item.importedLines || !firstId || item.color[3]<.999f) return false;
+    if (!runtime.enabled || !mesh.pointCloud || item.importedLines || !firstId) return false;
     const auto& source=mesh.pointCloud->groups.at(item.groupIndex);
     AdaptivePointDraw draw;
     draw.mesh=&mesh; draw.key.cloud=mesh.pointCloud; draw.key.sourceGroup=static_cast<uint32_t>(item.groupIndex);
     auto& group=draw.key.group;
     group.model=item.model; group.color=item.color;
+    group.color[3]=1;
     for (size_t i=0;i<3;++i) group.color[i]=std::min(1.0f,group.color[i]*1.5f);
     group.firstId=firstId; group.endId=firstId+source.endId-source.firstId;
     group.sourceFirstId=source.firstId; group.pointSize=item.pointSize;

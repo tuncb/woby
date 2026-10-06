@@ -45,11 +45,11 @@ const char* objectType(SceneObjectKind kind)
 void numericInput(InspectorEditor& editor, UiObjectProperty property, float displayScale = 1.0f)
 {
     const auto current = inspectorProperty(editor.snapshot, property);
-    if (!current.available) { return; }
+    ImGui::BeginDisabled(!current.available);
     ImGui::PushID(static_cast<int>(property));
     char text[64]{};
     if (!current.mixed) {
-        const auto result = std::to_chars(text, text + sizeof(text) - 1, current.value * displayScale);
+        const auto result = std::to_chars(text, text + sizeof(text) - 1, (current.available ? current.value : 1.0f) * displayScale);
         *result.ptr = '\0';
     }
     ImGui::SetNextItemWidth(-1.0f);
@@ -61,12 +61,16 @@ void numericInput(InspectorEditor& editor, UiObjectProperty property, float disp
         const float value = std::strtof(text, &end);
         if (end != text && *end == '\0') { setSelectedObjectProperty(editor, property, value / displayScale); }
     }
+    if (property == UiObjectProperty::opacity && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip("Opacity affects surfaces and lines. Vertices and point clouds stay opaque.");
+    }
     ImGui::PopID();
+    ImGui::EndDisabled();
 }
 
 void scalarField(InspectorEditor& editor, const char* label, UiObjectProperty property, float displayScale = 1.0f)
 {
-    if (!inspectorProperty(editor.snapshot, property).available) { return; }
+    if (!inspectorProperty(editor.snapshot, property).available && property != UiObjectProperty::opacity) { return; }
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::AlignTextToFramePadding();
@@ -207,7 +211,7 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
         }
     }
     if (many) { ImGui::EndChild(); }
-    if (!inspectorProperty(editor.snapshot, UiObjectProperty::opacity).available) {
+    if (!inspectorProperty(editor.snapshot, UiObjectProperty::scale).available) {
         ImGui::TextDisabled("No shared properties");
         ImGui::PopID();
         return;
@@ -247,7 +251,8 @@ void drawSceneInspectorSnapshot(const SceneInspectorSnapshot& snapshot, std::vec
                 "Appearance overrides",
                 "Color and render modes apply to selected parts and all parts inside selected files or folders. "
                 "Mixed means these parts differ; click a mixed render mode to enable it for all targets.\n\n"
-                "Opacity stays local. File and part vertex size multipliers combine; folder vertex size edits contained file multipliers. "
+                "Opacity stays local and affects surfaces and lines; vertices and point clouds stay opaque. "
+                "File and part vertex size multipliers combine; folder vertex size edits contained file multipliers. "
                 "Empty containers keep unavailable controls disabled.\n\n"
                 "Visibility includes file and folder contents. Hiding objects keeps them selected; "
                 "click mixed visibility to show all selected objects.")) {

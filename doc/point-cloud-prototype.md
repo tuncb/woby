@@ -269,13 +269,14 @@ They do not accumulate persistent refinement. Point timing includes the selected
 backend's work. The Metal buffer address registry grows dynamically instead of
 limiting chunk uploads to 64 allocations.
 
-Freeform geometry, smaller meshes, and scenes containing transparent point draws
-keep full-detail drawing. Transparent surfaces and edges alone retain the optimized
-point path and the existing markers-last rendering order. Compact quad fallback preserves
-source identities, colors and opacity. Screenshot exports also use full source
-detail. In the hardware fallback, ties between overlapping points at equal depth
-and transparent last-drawn picks follow spatial storage order; picked IDs still
-map to the original source footprints. Transparent rendering performance,
+Freeform geometry and smaller meshes keep full-detail drawing. Mesh vertices and
+point clouds are always opaque, independent of group, file and folder opacity.
+Surface and edge opacity changes retain the optimized point path, cached point
+visibility and the existing markers-last rendering order. Compact quad fallback
+preserves source identities and colors. Screenshot exports also use full source
+detail with opaque points. In the hardware fallback, ties between overlapping
+points at equal depth follow spatial storage order; picked IDs still map to the
+original source footprints. General surface transparency ordering,
 out-of-core residency and the import
 capacity limits are separate work; issues #112 and #113 remain applicable.
 Dense surface meshes still retain surface buffers as well as compact markers.

@@ -84,7 +84,7 @@ void draw(PointGpuFixture& f,double now,bool adaptive=false,bool query=false,std
     f.markers.list={};
     g::setViewRect(0,3,5,static_cast<uint16_t>(f.view.width),static_cast<uint16_t>(f.view.height));
     g::setViewTransform(0,f.view.view.data(),f.view.renderProjection.data(),true); g::touch(0);
-    woby::prepareAdaptivePoints(f.runtime,WOBY_TEST_ASSET_DIRECTORY,f.plan,f.view,adaptive,now,query,position);
+    woby::prepareAdaptivePoints(f.runtime,WOBY_TEST_ASSET_DIRECTORY,f.view,adaptive,now,query,position);
     woby::submitSceneFiles(0,f.plan,f.models,f.mesh,f.uv,f.mesh,f.point,f.color,f.params,{},f.view.width,f.view.height,
         markerIds?&f.markers:nullptr,false,&f.runtime);
 }
@@ -164,8 +164,13 @@ TEST_CASE("Integrated opaque point GPU footprints IDs refinement and invalidatio
         f.runtime.budget=73; draw(f,7,true); (void)winners(f);
         for (uint32_t i=0;i<4 && f.runtime.refined<f.runtime.total;++i) { draw(f,8+i,true); (void)winners(f); }
         CHECK(f.runtime.refined==f.runtime.total); checkIds(winners(f),reference(f));
-        f.plan.items[0].color[3]=.35f; draw(f,20); CHECK_FALSE(f.runtime.enabled); CHECK_FALSE(f.runtime.active);
-        f.plan.items[0].color[3]=1; draw(f,21); checkIds(winners(f),reference(f));
+        const auto epoch=f.runtime.epoch;
+        for (const float alpha:{.35f,0.0f,1.0f}) {
+            f.plan.items[0].color[3]=alpha; draw(f,20+alpha,true);
+            REQUIRE(f.runtime.enabled); REQUIRE(f.runtime.active);
+            CHECK(f.runtime.epoch==epoch); CHECK(f.runtime.submitted==0);
+            checkIds(winners(f),reference(f)); checkColors(f,reference(f));
+        }
     }
 }
 TEST_CASE("Integrated reduced point GPU picking queries all original circle footprints") {
@@ -225,12 +230,13 @@ TEST_CASE("Transparent surfaces retain adaptive point rendering cached visibilit
                 CHECK(std::all_of(ids.begin(),ids.end(),[](uint8_t value) { return value==0; }));
             }
         }
-        // A small transparent mesh's visible vertices still require fallback.
+        // Enabling vertices on a small translucent mesh keeps the cloud optimized.
         f.plan.items.back().points=true;
-        draw(f,now++,adaptive); CHECK_FALSE(f.runtime.enabled); CHECK_FALSE(f.runtime.active);
+        draw(f,now++,adaptive); REQUIRE(f.runtime.enabled); REQUIRE(f.runtime.active);
+        CHECK(f.runtime.epoch==epoch); CHECK(f.runtime.submitted==0);
         g::frame();
         f.plan.items.back().points=false;
-        draw(f,now,adaptive); REQUIRE(f.runtime.active); CHECK(f.runtime.submitted>0);
+        draw(f,now,adaptive); REQUIRE(f.runtime.active); CHECK(f.runtime.submitted==0);
         checkIds(winners(f),expected); CHECK(captureIds()==pointIds);
     }
 }
@@ -266,10 +272,9 @@ TEST_CASE("Integrated cached points obey current opaque surfaces and color-only 
     }
 }
 TEST_CASE("Compact point fallback preserves full-source colors and valid original picking IDs") {
-    for (const uint32_t samples:{1u,4u}) for (const float alpha:{1.0f,.35f}) {
+    for (const uint32_t samples:{1u,4u}) for (const float alpha:{1.0f,.35f,0.0f}) {
         PointGpuFixture f; if (!initialize(f,samples,false)) return;
         f.runtime.unavailable=true;
-        for (auto& item:f.plan.items) item.color[3]=alpha;
         const auto capture=[&] {
             draw(f,0); CHECK_FALSE(f.runtime.active);
             std::vector<uint8_t> pixels(43*37*8);
@@ -277,9 +282,12 @@ TEST_CASE("Compact point fallback preserves full-source colors and valid origina
             const auto ready=g::readTexture(f.ids,pixels.data()+43*37*4); while (g::frame()<ready) {}
             return pixels;
         };
+        const auto opaque=capture();
+        for (auto& item:f.plan.items) item.color[3]=alpha;
         const auto compact=capture();
-        // Hardware ties and transparent last-drawn IDs follow spatial storage
-        // order. The ID must still identify a real source footprint; opaque
+        CHECK(compact==opaque);
+        // Hardware ties follow spatial storage order.
+        // The ID must still identify a real source footprint; opaque
         // winners must have the nearest depth. They need not choose the same
         // original ID as source-order drawing when several answers overlap.
         if (samples==1) {
@@ -296,10 +304,8 @@ TEST_CASE("Compact point fallback preserves full-source colors and valid origina
                 const float dx=(p[0]*.5f+.5f)*float(f.view.width)-(float(x)+.5f);
                 const float dy=(.5f-p[1]*.5f)*float(f.view.height)-(float(y)+.5f);
                 CHECK(dx*dx+dy*dy<=item.pointSize*item.pointSize*.25f+.0001f);
-                if (alpha==1) {
-                    const auto nearest=expected[size_t(y)*f.view.width+x]; REQUIRE(nearest);
-                    CHECK(p[2]==f.source.vertices[nearest-1].position[2]);
-                }
+                const auto nearest=expected[size_t(y)*f.view.width+x]; REQUIRE(nearest);
+                CHECK(p[2]==f.source.vertices[nearest-1].position[2]);
             }
             CHECK(picked>0);
         }

@@ -140,7 +140,7 @@ TEST_CASE("hover picking applies group transforms to hit testing")
     CHECK(hovered->transformedPosition[0] == doctest::Approx(0.2f));
 }
 
-TEST_CASE("hover picking ignores hidden transparent and invalid point ranges")
+TEST_CASE("hover picking ignores opacity and rejects hidden or invalid point ranges")
 {
     std::vector<woby::UiFileState> files = {pointFile()};
     std::vector<woby::LoadedModelRuntime> runtimes = {pointRuntime({0u})};
@@ -152,7 +152,7 @@ TEST_CASE("hover picking ignores hidden transparent and invalid point ranges")
 
     files[0].fileSettings.visible = true;
     files[0].fileSettings.opacity = 0.0f;
-    CHECK_FALSE(pick(files, runtimes, 50.0f, 50.0f).has_value());
+    CHECK(pick(files, runtimes, 50.0f, 50.0f).has_value());
 
     files[0].fileSettings.opacity = 1.0f;
     files[0].groupSettings[0].visible = false;
@@ -164,7 +164,7 @@ TEST_CASE("hover picking ignores hidden transparent and invalid point ranges")
 
     files[0].groupSettings[0].showVertices = true;
     files[0].groupSettings[0].opacity = 0.0f;
-    CHECK_FALSE(pick(files, runtimes, 50.0f, 50.0f).has_value());
+    CHECK(pick(files, runtimes, 50.0f, 50.0f).has_value());
 
     files[0].groupSettings[0].opacity = 1.0f;
     runtimes[0].gpuMesh.pointVertexIndices = {99u};
