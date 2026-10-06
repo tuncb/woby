@@ -14,7 +14,7 @@ void pointAtomicMax64(uint64* address, uint64 value) {
 void pointAtomicMax32(__ref uint destination, uint value) {
     __target_switch {
     case metal:
-        __intrinsic_asm "(void)atomic_fetch_max_explicit((device atomic_uint*)(&($0)), $1, memory_order_relaxed)";
+        __intrinsic_asm "(void)atomic_fetch_max_explicit((device atomic_uint*)($0), $1, memory_order_relaxed)";
     default:
         InterlockedMax(destination,value);
     }
