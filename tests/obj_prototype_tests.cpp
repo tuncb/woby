@@ -113,6 +113,129 @@ TEST_CASE("RapidOBJ prototype merges into caller storage and triangulates borrow
     CHECK(positions.data() == allocation);
 }
 
+TEST_CASE("RapidOBJ prototype balances medium inputs and preserves relative references") {
+    const PrototypeFixture fixture;
+    std::string text;
+    constexpr size_t count = 24000;
+    for (size_t i = 0; i < count; ++i) {
+        text += "v " + std::to_string(1000000000 + i) + ".125 1000000000.25 1000000000.5\np -1\n";
+    }
+    REQUIRE(text.size() > 1024 * 1024);
+    REQUIRE(text.size() < 4 * 1024 * 1024);
+    const auto path = fixture.write(text);
+    for (const bool fromFile : {false, true}) {
+        std::vector<woby::Coordinate> positions, normals;
+        std::vector<std::array<double, 2>> texcoords;
+        rapidobj::PrototypeOptions options;
+        options.workers = 4;
+        const rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+        const auto result = fromFile ? rapidobj::ParseFilePrototype(path, buffers, options)
+            : rapidobj::ParseMemoryPrototype(text, buffers, rapidobj::MaterialLibrary::Ignore(), options);
+        REQUIRE_FALSE(result.polygons.error);
+        CHECK(result.stats.workers == 4);
+        CHECK(result.stats.chunks == 4);
+        REQUIRE(positions.size() == count);
+        REQUIRE(result.polygons.shapes.size() == 1);
+        const auto& points = result.polygons.shapes[0].points.indices;
+        REQUIRE(points.size() == count);
+        for (size_t i = 0; i < count; ++i) {
+            CHECK(positions[i] == woby::Coordinate{1000000000.125 + static_cast<double>(i), 1000000000.25, 1000000000.5});
+            CHECK(points[i].position_index == static_cast<int>(i));
+        }
+    }
+}
+
+TEST_CASE("RapidOBJ file blocks keep bounded storage without publishing stale tail data") {
+    const PrototypeFixture fixture;
+    std::string text;
+    constexpr size_t count = 5000;
+    for (size_t i = 0; i < count; ++i) {
+        text += "v " + std::to_string(i) + ".125 2.25 -3.5\np -1\n";
+    }
+    text.pop_back(); // the final, shorter read ends in an unterminated physical line
+    rapidobj::PrototypeOptions options;
+    options.chunk_bytes = 4096; options.workers = 3;
+    std::vector<woby::Coordinate> positions, normals;
+    std::vector<std::array<double, 2>> texcoords;
+    positions.reserve(count + 19);
+    const auto* storage = positions.data();
+    const auto parsed = rapidobj::ParseFilePrototype(fixture.write(text), {positions, texcoords, normals}, options);
+    REQUIRE_FALSE(parsed.polygons.error);
+    REQUIRE(positions.size() == count);
+    REQUIRE(parsed.polygons.shapes.size() == 1);
+    const auto& points = parsed.polygons.shapes[0].points.indices;
+    REQUIRE(points.size() == count);
+    CHECK(positions.data() == storage);
+    CHECK(parsed.stats.input_bytes == text.size());
+    CHECK(parsed.stats.chunks > options.workers * 2);
+    CHECK(parsed.stats.peak_inflight_text_bytes <= options.chunk_bytes * options.workers);
+    for (size_t i = 0; i < count; ++i) {
+        CHECK(positions[i] == woby::Coordinate{static_cast<double>(i) + .125, 2.25, -3.5});
+        CHECK(points[i].position_index == static_cast<int>(i));
+    }
+}
+
+TEST_CASE("RapidOBJ native ranges preserve freeform bodies across read boundaries") {
+    const PrototypeFixture fixture;
+    const woby::ObjPrototypeOptions options{4 * 1024 * 1024, 256 * 1024, 4};
+    const auto pad = [](std::string& text, size_t target) {
+        while (text.size() < target) {
+            const auto amount = std::min(size_t{128}, target - text.size());
+            if (amount == 1) { text += '\n'; }
+            else { text += '#' + std::string(amount - 2, 'x') + '\n'; }
+        }
+    };
+    for (size_t split : {size_t{1}, size_t{11}, size_t{63}, size_t{127}}) {
+        std::string text = polygons;
+        pad(text, 256 * 1024 - split);
+        text += rationalTrimmed;
+        pad(text, 5 * 256 * 1024 + 13);
+        const auto path = fixture.write(text);
+        const auto memory = woby::loadObjMeshTextPrototype(text, {}, options);
+        woby::ObjPrototypeMetrics metrics;
+        const auto file = woby::loadObjMeshPrototype(path, {}, options, &metrics);
+        sameMesh(memory, file);
+        CHECK(metrics.inputBytes == text.size());
+        CHECK(metrics.workers == options.workers);
+        CHECK(metrics.peakInflightTextBytes <= options.chunkBytes * options.workers);
+    }
+}
+
+TEST_CASE("RapidOBJ native ranges fall back safely for long boundary records") {
+    const PrototypeFixture fixture;
+    std::string text = "v 1 2 3 #" + std::string(600000, 'x') + "\\\n";
+    for (size_t i = 0; i < 100000; ++i) { text += "#pad\n"; }
+    text += "v 4 5 6\np -2 -1";
+    REQUIRE(text.size() > 1024 * 1024);
+    const woby::ObjPrototypeOptions options{4 * 1024 * 1024, 256 * 1024, 4};
+    sameMesh(woby::loadObjMeshTextPrototype(text, {}, options), woby::loadObjMeshPrototype(fixture.write(text), {}, options));
+}
+
+TEST_CASE("RapidOBJ native ranges report the earliest error while prefetches are outstanding") {
+    const PrototypeFixture fixture;
+    std::string text;
+    for (size_t line = 1; line <= 200000; ++line) {
+        text += line == 30000 || line == 70000 ? "v broken\n" : "v 1 2 3\n";
+    }
+    std::vector<woby::Coordinate> positions, normals;
+    std::vector<std::array<double, 2>> texcoords;
+    rapidobj::PrototypeOptions options; options.workers = 4;
+    size_t expected_line = 30000;
+    auto expected_error = rapidobj::rapidobj_errc::ParseError;
+    SUBCASE("decoded failure after complete records") {}
+    SUBCASE("limit failure before the first complete record") {
+        text.replace(0, 8, "v 1234567 0 0\n");
+        options.max_statement_bytes = 8;
+        expected_line = 1;
+        expected_error = rapidobj::rapidobj_errc::LineTooLongError;
+    }
+    const auto result = rapidobj::ParseFilePrototype(fixture.write(text), {positions, texcoords, normals}, options);
+    REQUIRE(result.polygons.error);
+    CHECK(result.polygons.error.line_num == expected_line);
+    CHECK(result.polygons.error.code == rapidobj::make_error_code(expected_error));
+    CHECK(positions.empty()); CHECK(texcoords.empty()); CHECK(normals.empty());
+}
+
 TEST_CASE("RapidOBJ merge subdivisions preserve each range's negative reference flags") {
     namespace d = rapidobj::detail;
     const rapidobj::Index input[] = {{0, -1, -1}, {1, -1, -1}, {2, -1, -1}, {0, -1, -1}, {1, -1, -1}, {2, -1, -1}};
@@ -309,15 +432,136 @@ TEST_CASE("OBJ prototype validates numeric token endings without a delimiter pre
     }
 }
 
+TEST_CASE("RapidOBJ position fast path preserves optional fields comments and exact numbers") {
+    const PrototypeFixture fixture;
+    const std::string text = " \tv\t+1e2 -0 .25# comment\\\r\n"
+        "v 1 2 3 .5 # weight\r\n"
+        "v 2 4 6 .1 .2 .3# color\n"
+        "v 3 6 9 1 .1 .2 .3 # seven values\n"
+        "v 4 \\\n 8 12# continued\n";
+    const auto path = fixture.write(text);
+    for (size_t block : {size_t{3}, size_t{128}, size_t{4 * 1024 * 1024}}) {
+        for (int source = 0; source < 3; ++source) {
+            rapidobj::PrototypeOptions options; options.chunk_bytes = block; options.read_bytes = 2; options.workers = 3;
+            std::vector<woby::Coordinate> positions, normals;
+            std::vector<std::array<double, 2>> texcoords;
+            rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+            std::istringstream stream(text);
+            const auto result = source == 0 ? rapidobj::ParseMemoryPrototype(text, buffers, rapidobj::MaterialLibrary::Ignore(), options)
+                : source == 1 ? rapidobj::ParseStreamPrototype(stream, buffers, rapidobj::MaterialLibrary::Ignore(), options)
+                : rapidobj::ParseFilePrototype(path, buffers, options);
+            REQUIRE_FALSE(result.polygons.error);
+            REQUIRE(positions.size() == 5);
+            CHECK(positions[0] == woby::Coordinate{100, -0.0, .25});
+            CHECK(std::signbit(positions[0][1]));
+            for (size_t i = 1; i < positions.size(); ++i) {
+                const auto x = static_cast<double>(i);
+                CHECK(positions[i] == woby::Coordinate{x, x * 2, x * 3});
+            }
+            REQUIRE(result.weights.size() == 1);
+            CHECK(result.weights[0].position == 1);
+            CHECK(result.weights[0].weight == .5);
+        }
+    }
+    for (const std::string line : {"v 1 2 3 4 5#bad", "v 1 2#missing", "v 1 2 3 nan", "v 1 2 3 1 2 3 4 5", "v 1 2 3x#bad"}) {
+        CHECK(failureLine(line + "\n", {11, 3, 2}).find("line 1") != std::string::npos);
+    }
+}
+
+TEST_CASE("RapidOBJ incomplete position tuples leave caller storage reusable") {
+    for (const std::string invalid : {"v 4 5 nan", "v 4 5 6 7 8", "v 4 5 6 7x"}) {
+        std::vector<woby::Coordinate> positions, normals;
+        std::vector<std::array<double, 2>> texcoords;
+        positions.reserve(16);
+        const auto* storage = positions.data();
+        rapidobj::PrototypeOptions options; options.chunk_bytes = 9; options.workers = 3;
+        const rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+        const auto bad = rapidobj::ParseMemoryPrototype("v 1 2 3\n" + invalid + "\n", buffers,
+            rapidobj::MaterialLibrary::Ignore(), options);
+        REQUIRE(bad.polygons.error);
+        CHECK(bad.polygons.error.line_num == 2);
+        CHECK(positions.empty()); CHECK(texcoords.empty()); CHECK(normals.empty());
+        const auto good = rapidobj::ParseMemoryPrototype("v 9.125 8.25 7.5\np -1\n", buffers,
+            rapidobj::MaterialLibrary::Ignore(), options);
+        REQUIRE_FALSE(good.polygons.error);
+        REQUIRE(positions.size() == 1);
+        CHECK(positions[0] == woby::Coordinate{9.125, 8.25, 7.5});
+        CHECK(positions.data() == storage);
+    }
+}
+
+TEST_CASE("RapidOBJ point fast path preserves relative forward and multi-point references") {
+    const PrototypeFixture fixture;
+    const std::string text = "v 0 0 0\np 3\nv 1 0 0\np -1\nv 0 1 0\n"
+        "p 1#" + std::string(5000, 'x') + "\\\r\np -1\np 1 2 -1\n";
+    const auto path = fixture.write(text);
+    const int expected[] = {2, 1, 0, 2, 0, 1, 2};
+    for (size_t block : {size_t{17}, size_t{4096}, size_t{4 * 1024 * 1024}}) {
+        for (bool file : {false, true}) {
+            rapidobj::PrototypeOptions options; options.chunk_bytes = block; options.workers = 3;
+            std::vector<woby::Coordinate> positions, normals;
+            std::vector<std::array<double, 2>> texcoords;
+            rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+            const auto result = file ? rapidobj::ParseFilePrototype(path, buffers, options)
+                : rapidobj::ParseMemoryPrototype(text, buffers, rapidobj::MaterialLibrary::Ignore(), options);
+            REQUIRE_FALSE(result.polygons.error);
+            REQUIRE(result.polygons.shapes.size() == 1);
+            const auto& points = result.polygons.shapes[0].points.indices;
+            REQUIRE(points.size() == std::size(expected));
+            for (size_t i = 0; i < points.size(); ++i) {
+                CHECK(points[i].position_index == expected[i]);
+                CHECK(points[i].texcoord_index == -1);
+                CHECK(points[i].normal_index == -1);
+            }
+        }
+    }
+    for (const std::string line : {"p 0", "p -2", "p 2", "p 2147483648", "p -2147483649", "p 1x", "p 1/1", "p 1//1", "p +1"}) {
+        CHECK_FALSE(failureLine("v 0 0 0\n" + line + "\n", {7, 3, 3}).empty());
+    }
+    CHECK(failureLine("v 0 0 0\np " + std::string(4096, ' ') + "1\n", {31, 7, 3}).find("line 2") != std::string::npos);
+}
+
+TEST_CASE("RapidOBJ attribute fast paths preserve short UVs exact doubles and comments") {
+    const PrototypeFixture fixture;
+    const std::string text = "v 0 0 0\nvt +.123456789012345# short\r\nvt .5 .25 .9# third\n"
+        "vn +1e0 -0 .123456789012345# normal\\\r\nvn 0 \\\n1 0\n";
+    const auto path = fixture.write(text);
+    for (size_t block : {size_t{3}, size_t{31}, size_t{4 * 1024 * 1024}}) {
+        for (int source = 0; source < 3; ++source) {
+            rapidobj::PrototypeOptions options; options.chunk_bytes = block; options.read_bytes = 2; options.workers = 3;
+            std::vector<woby::Coordinate> positions, normals;
+            std::vector<std::array<double, 2>> texcoords;
+            std::istringstream stream(text);
+            rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+            const auto parsed = source == 0 ? rapidobj::ParseMemoryPrototype(text, buffers, rapidobj::MaterialLibrary::Ignore(), options)
+                : source == 1 ? rapidobj::ParseStreamPrototype(stream, buffers, rapidobj::MaterialLibrary::Ignore(), options)
+                : rapidobj::ParseFilePrototype(path, buffers, options);
+            REQUIRE_FALSE(parsed.polygons.error);
+            REQUIRE(texcoords.size() == 2); REQUIRE(normals.size() == 2);
+            CHECK(texcoords[0] == std::array<double, 2>{.123456789012345, 0});
+            CHECK(texcoords[1] == std::array<double, 2>{.5, .25});
+            CHECK(normals[0] == woby::Coordinate{1, -0.0, .123456789012345});
+            CHECK(std::signbit(normals[0][1]));
+            CHECK(normals[1] == woby::Coordinate{0, 1, 0});
+        }
+    }
+    for (const std::string line : {"vt", "vt .1 .2 .3 .4", "vt .1x", "vn 1 2", "vn 1 2 3 4", "vn 1 2 3x"}) {
+        CHECK_FALSE(failureLine("v 0 0 0\n" + line + "\n", {17, 2, 3}).empty());
+    }
+}
+
 TEST_CASE("RapidOBJ prototype joins native block reads when cancellation throws") {
     const PrototypeFixture fixture;
+    rapidobj::PrototypeOptions options; options.workers = 4;
+    size_t vertices = 10000;
+    SUBCASE("small native blocks") { options.chunk_bytes = 4096; }
+    SUBCASE("persistent native ranges") { options.chunk_bytes = 4 * 1024 * 1024; vertices = 200000; }
     std::string text;
-    for (size_t i = 0; i < 10000; ++i) { text += "v 0 0 0\n"; }
+    for (size_t i = 0; i < vertices; ++i) { text += "v 0 0 0\n"; }
     const auto path = fixture.write(text);
     std::vector<woby::Coordinate> positions, normals;
     std::vector<std::array<double, 2>> texcoords;
     struct Checkpoints { size_t calls = 0; std::thread::id caller = std::this_thread::get_id(); } checkpoints;
-    rapidobj::PrototypeOptions options; options.chunk_bytes = 4096; options.workers = 4;
     options.user = &checkpoints;
     options.checkpoint = [](void* data) {
         auto& state = *static_cast<Checkpoints*>(data);
@@ -330,16 +574,67 @@ TEST_CASE("RapidOBJ prototype joins native block reads when cancellation throws"
     CHECK(std::filesystem::remove(path));
 }
 
+TEST_CASE("RapidOBJ tuple construction joins index validation before returning failure") {
+    const PrototypeFixture fixture;
+    rapidobj::PrototypeOptions options;
+    SUBCASE("one worker") { options.workers = 1; }
+    SUBCASE("parallel workers") { options.workers = 4; }
+    std::string text;
+    for (size_t i = 0; i < 100000; ++i) { text += "v 1.25 2.5 3.75\np -1\n"; }
+    text += "p 100001\n"; // Global index validation fails during merge.
+    const auto path = fixture.write(text);
+    std::vector<woby::Coordinate> positions, normals;
+    std::vector<std::array<double, 2>> texcoords;
+    positions.reserve(100000);
+    const auto* storage = positions.data();
+    const auto parsed = rapidobj::ParseFilePrototype(path, {positions, texcoords, normals}, options);
+    REQUIRE(parsed.polygons.error);
+    CHECK(parsed.polygons.error.code == rapidobj::make_error_code(rapidobj::rapidobj_errc::IndexOutOfBoundsError));
+    CHECK(positions.empty()); CHECK(texcoords.empty()); CHECK(normals.empty());
+    CHECK(positions.data() == storage);
+    const auto retry = rapidobj::ParseMemoryPrototype("v 4 5 6\n", {positions, texcoords, normals},
+        rapidobj::MaterialLibrary::Ignore(), options);
+    REQUIRE_FALSE(retry.polygons.error);
+    REQUIRE(positions.size() == 1);
+    CHECK(positions.front() == woby::Coordinate{4, 5, 6});
+    CHECK(positions.data() == storage);
+}
+
+TEST_CASE("OBJ simple faces preserve attributed relative and larger face fallback") {
+    const PrototypeFixture fixture;
+    const std::string positions = "v 0 0 0\nv 1 0 0\nv 2 1 0\nv 1 2 0\nv 0 1 0\nvt .25 .5\nvn 0 0 1\n";
+    const std::string text = "g forward\nf 1 2 3\n" + positions
+        + "s 3\ng plain\nf\t1 2\t3 4 # quad\r\nf 1 2 3 4 5\n"
+          "g attributed\nf 1/1/1 2/1/1 3/1/1\nf -5 -4 -3\nf 1 2 \\\r\n3\n";
+    const auto path = fixture.write(text);
+    const auto reference = woby::loadObjMeshLegacy(fixture.write("g forward\nf 1 2 3\n" + positions
+        + "s 3\ng plain\nf 1 2 3 4\nf 1 2 3 4 5\n"
+          "g attributed\nf 1/1/1 2/1/1 3/1/1\nf -5 -4 -3\nf 1 2 3\n", "reference.obj"));
+    for (size_t block : {size_t{3}, size_t{64}, size_t{4 * 1024 * 1024}}) {
+        sameMesh(reference, woby::loadObjMeshPrototype(path, {}, {block, 2, 3}));
+        sameMesh(reference, woby::loadObjMeshTextPrototype(text, {}, {block, 2, 3}));
+    }
+    for (const std::string face : {"f 1 2", "f 1 2 0", "f 1 2 6", "f 1 2 2147483648", "f 1 2 3x", "f 1 2 3/"}) {
+        CHECK_FALSE(failureLine(positions + face + "\n", {23, 2, 3}).empty());
+    }
+}
+
 TEST_CASE("RapidOBJ prototype allows overlapping read-only opens of the same file") {
     const PrototypeFixture fixture;
-    const auto path = fixture.write(polygons);
+    rapidobj::PrototypeOptions options; options.workers = 3;
+    std::string text = polygons;
+    SUBCASE("small native blocks") { options.chunk_bytes = 31; }
+    SUBCASE("persistent native ranges") {
+        options.chunk_bytes = 4 * 1024 * 1024;
+        while (text.size() <= 1024 * 1024) { text += "# read sharing\n"; }
+    }
+    const auto path = fixture.write(text);
     // Keep the first handle alive: this catches exclusive sharing without a
     // timing-dependent race between two background loaders.
     const rapidobj::detail::sys::File firstReader(path, true);
     REQUIRE(static_cast<bool>(firstReader));
     std::vector<woby::Coordinate> positions, normals;
     std::vector<std::array<double, 2>> texcoords;
-    rapidobj::PrototypeOptions options; options.chunk_bytes = 31; options.workers = 3;
     const auto parsed = rapidobj::ParseFilePrototype(path, {positions, texcoords, normals}, options);
     REQUIRE_FALSE(parsed.polygons.error);
     CHECK(positions.size() == 7);

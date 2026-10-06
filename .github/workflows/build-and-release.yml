@@ -5,7 +5,17 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      rapidobj_prototype:
+        description: Validate the experimental RapidOBJ application path
+        type: boolean
+        default: false
   workflow_call:
+    inputs:
+      rapidobj_prototype:
+        description: Validate the experimental RapidOBJ application path
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -216,6 +226,7 @@ jobs:
             -B "build/${{ matrix.package_name }}" `
             -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
+            -DWOBY_RAPIDOBJ_PROTOTYPE=${{ inputs.rapidobj_prototype && 'ON' || 'OFF' }} `
             -DCMAKE_TOOLCHAIN_FILE="$env:WOBY_VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_MANIFEST_DIR="$env:GITHUB_WORKSPACE/build/ci-vcpkg" `
             -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/cmake/vcpkg-triplets" `

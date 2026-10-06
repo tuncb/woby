@@ -278,6 +278,11 @@ set(woby_runtime_targets woby woby-update-helper)
 
 include(CTest)
 
+option(WOBY_PROFILE_LOAD_WORKFLOW "Instrument the viewer for the opt-in load workflow experiment" OFF)
+if(WOBY_PROFILE_LOAD_WORKFLOW)
+    add_subdirectory(experiments/load-workflow)
+endif()
+
 option(WOBY_BUILD_OVERLAY_PROTOTYPE "Build the fixed-resolution mesh overlay experiment" OFF)
 if(WOBY_BUILD_OVERLAY_PROTOTYPE)
     add_subdirectory(experiments/mesh-overlays)
@@ -296,6 +301,7 @@ endif()
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
 option(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK "Build the RapidOBJ prototype/reference CPU comparison" OFF)
 if(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK)
+    add_subdirectory(experiments/parser-throughput)
     add_executable(woby_obj_prototype_benchmark experiments/rapidobj_prototype.cpp
         src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp
         src/mesh_duplicates.cpp src/uv_quality.cpp src/uv_overlap.cpp src/mesh_comparison.cpp
@@ -413,7 +419,16 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
     include(doctest)
+    # Standalone parser coverage also runs under sanitizers without viewer dependencies.
+    add_executable(woby_rapidobj_stress_tests tests/rapidobj_stress_tests.cpp)
+    target_include_directories(woby_rapidobj_stress_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+    target_link_libraries(woby_rapidobj_stress_tests PRIVATE doctest::doctest Threads::Threads)
+    woby_enable_project_warnings(woby_rapidobj_stress_tests)
+    add_test(NAME woby_rapidobj_stress COMMAND woby_rapidobj_stress_tests)
+    set_tests_properties(woby_rapidobj_stress PROPERTIES TIMEOUT 180)
     if(TARGET woby_obj_prototype_benchmark)
+        add_test(NAME woby_parser_throughput_analysis COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/experiments/parser-throughput/tests.py")
         # Fast development target; these cases also belong to woby_tests.
         get_target_property(prototype_sources woby_obj_prototype_benchmark SOURCES)
         list(REMOVE_ITEM prototype_sources experiments/rapidobj_prototype.cpp)

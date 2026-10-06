@@ -188,3 +188,107 @@ passed. The 16 focused parser cases passed 365,145 assertions, including every
 64-byte block alignment for continued freeform bodies and earliest diagnostics,
 file/memory/stream parity, numeric delimiters, statement limits, cancellation,
 and overlapping read-only file handles.
+
+### Complete viewer workflow (2026-10-05)
+
+This campaign predates the parser fixes documented in the following section.
+Its measurements are preserved for comparison.
+
+The [full workflow report](../../doc/load-workflow-performance/index.html)
+compares legacy, the fixed prototype, and the same prototype with its position
+copy deliberately restored. It contains per-model phase timings, min/max ranges,
+memory lifetimes and capacities, GPU upload and rendering measurements, ownership
+analysis, and reproduction instructions. The adjacent CSV and JSON contain the
+measurements and per-run summaries; complete raw events, memory/frame samples,
+logs and verified images are in the generated `build/workflow-results` directory.
+
+This campaign used the real desktop viewer: 81 fresh Release processes, nine
+workloads, three readers, three repetitions, rotated reader order, and OBJ input
+warmed immediately before each import. All geometry counts, major retained
+capacities, upload payloads and decoded verification-image pixels matched.
+Build/test/viewer interference guards recorded no excluded attempts. The GPU was
+an RTX 3070 Laptop with 8 GiB VRAM. The hidden viewer used an experiment-only
+foreground pacing override (240 FPS target); Woby normally throttles hidden
+windows to 20 FPS. These are controlled workflow timings, not physical display
+latency or cold-storage results.
+
+| Workload | Legacy first scene (ms) | Direct first scene (ms) | Legacy scene + annotations (ms) | Direct scene + annotations (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| 200 small files | 248.0 | 209.9 | 1081.3 | 1043.2 |
+| Weighted polygons + rational curve | 668.0 | 85.1 | 679.2 | 96.4 |
+| 250,000 quads, generated normals | 151.4 | 163.6 | 238.6 | 250.7 |
+| 200,000 positions, polylines + points | 76.8 | 89.0 | 76.8 | 89.0 |
+| 64 trimmed rational surfaces | 342.3 | 346.4 | 375.4 | 379.7 |
+| BusGameMap | 377.4 | 357.1 | 560.5 | 535.8 |
+| Semantic3D, 10 million points | 2611.8 | 2644.0 | 2611.8 | 2644.0 |
+| Bennu | 7028.1 | 6702.7 | 12120.8 | 11323.5 |
+| Powerplant | 6591.7 | 6510.0 | 9552.1 | 9038.4 |
+
+First scene means a submitted frame. Annotation publication is timed separately;
+point refinement, observed readiness, verified PNG export, startup, and steady
+and moving render timings are also reported. For triangle-free models no
+annotation snapshot job runs, so the annotation endpoint equals first scene.
+Their annotation-ready flag remains false under the existing snapshot policy;
+this does not prevent rendering and is documented separately in the report.
+
+The mixed grammar workload is about seven times faster through annotation
+preparation. Ordinary large models remain close to legacy with overlapping run
+ranges. Quads and lines expose remaining parser regressions. Direct ownership
+removes 228.9 MiB of temporary positions on the cloud, and restoring that copy
+takes 45.7 ms, but whole-workflow peak commitment is effectively unchanged
+(1496.5 MiB legacy, 1499.3 MiB direct). Later hierarchy/staging allocations set a
+larger peak than mesh construction. The earlier CPU-only 229 MiB peak saving
+must not be presented as a complete application peak saving.
+
+Larger downstream targets include point-hierarchy preparation (about 0.9 seconds
+for the cloud), tuple mapping (3.19 seconds for Powerplant), group bounds and
+annotation spatial indexing (1.47 and 2.89 seconds for Bennu), and duplicated
+annotation snapshot arrays (about 477–480 MiB on the two large triangle models).
+The 200-file batch also has an approximately 0.84-second annotation publication
+tail despite only 4.8 ms of measured annotation CPU work. The report distinguishes
+measured costs from proposed architectural savings.
+
+`experiments/load-workflow` contains the opt-in source instrumentation, runner,
+comparison validation, and report generator. Enable it with
+`cmake --preset vs2026-vcpkg -DWOBY_PROFILE_LOAD_WORKFLOW=ON`, then build `woby`
+in Release. Normal builds compile the original sources and the option defaults
+to OFF. Both the instrumented Debug and Release builds were warning-free;
+all 954 CTest checks passed, including the comparison-analysis test target.
+
+### Parser parity follow-up (2026-10-05)
+
+The [parser investigation](../../doc/parser-throughput-performance/README.md)
+documents the quad-grid, line and cloud regressions, rejected experiments and
+final results. All 12 models meet the roughly-legacy target in 180 fresh-process
+runs, with matching ordered fingerprints and no median regression above the
+5% / 0.1 ms gate.
+The report includes ranges and the final viewer cross-check; it does not claim
+every individual run or every possible model is faster.
+
+| Workload | Legacy | Previous prototype | Fixed prototype | Fixed / legacy |
+| --- | ---: | ---: | ---: | ---: |
+| 250,000-quad grid | 24.36 ms | 39.77 ms | 21.99 ms | 0.903× |
+| 200k positions, polylines and points | 13.82 ms | 34.25 ms | 12.82 ms | 0.928× |
+| 10M positions + 10M point records | 372.53 ms | 490.72 ms | 337.62 ms | 0.906× |
+
+Medium input balancing fixes the old four-worker quad and two-worker line paths.
+Complete-line, position, UV/normal, one-point and plain-face paths reduce ordinary decoding
+work. Persistent buffered file ranges overlap reads with decoding and retain
+bounded raw text, cancellation and ordered errors. Long boundary statements
+fall back to the general scanner. Typed position chunks bulk-construct Woby's
+vector in the merge pool, overlapping index work and avoiding explicit zero-fill.
+The cloud contains 10M vertex records and 10M point records. Direct ownership
+still avoids the later flat-to-Woby position copy, but does not remove the merge
+copy from worker tuples into the final vector.
+
+An earlier standalone campaign appeared to pass but failed the viewer cloud
+check; quieter follow-ups drove further changes. Both that data and unsuccessful
+pooling/unbuffered-I/O experiments are preserved. The final 18 repeated viewer
+runs and four extended-grammar checks match geometry counts, capacities, GPU input sizes
+and decoded pixels. All 966 CTest checks pass; Debug and Release builds are
+warning-free. See the report for exact scope and measurement limits.
+
+`experiments/parser-throughput` contains opt-in benchmark-only instrumentation,
+the corpus runner, validation and report/chart generation. Production headers
+have no new timer calls. The application switch remains OFF by default in source;
+these results do not merge or enable the prototype.

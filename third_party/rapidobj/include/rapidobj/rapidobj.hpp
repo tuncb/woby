@@ -4327,7 +4327,7 @@ inline OffsetFlags operator|(ApplyOffset lhs, ApplyOffset rhs) noexcept
     return static_cast<OffsetFlags>(lhs) | static_cast<OffsetFlags>(rhs);
 }
 
-template <typename T>
+template <typename T, size_t InitialSize = 4096>
 struct Buffer final {
     Buffer() noexcept = default;
     Buffer(size_t size) noexcept : m_size(size), m_room(0), m_data(new T[size]) {}
@@ -4341,6 +4341,15 @@ struct Buffer final {
     {
         m_data[m_size] = value;
         ++m_size, --m_room;
+    }
+
+    // The backing array already contains live T objects. Reserve first, then
+    // initialize every field before exposing the appended element to readers.
+    T& append_uninitialized() noexcept
+    {
+        assert(m_room);
+        --m_room;
+        return m_data[m_size++];
     }
 
     T pop_back() noexcept
@@ -4359,7 +4368,7 @@ struct Buffer final {
     void ensure_enough_room_for(size_t size)
     {
         if (size > m_room) {
-            auto cap = std::max(kInitialSize, 2 * (m_size + size));
+            auto cap = std::max(InitialSize, 2 * (m_size + size));
             auto src = std::unique_ptr<T[]>(std::move(m_data));
             m_data.reset(new T[cap]);
             if (src) {
@@ -4370,8 +4379,6 @@ struct Buffer final {
     }
 
   private:
-    static constexpr size_t kInitialSize = 4096;
-
     size_t               m_size{};
     size_t               m_room{};
     std::unique_ptr<T[]> m_data{};
@@ -4536,6 +4543,7 @@ struct Chunk final {
     Materials materials;
     Smoothing smoothing;
     Error     error;
+    Buffer<std::array<double, 3>, 4096 / 3> precise_positions;
     Buffer<double> precise_texcoords;
     Buffer<double> precise_normals;
 };
@@ -4547,6 +4555,7 @@ inline size_t SizeInBytes(const Chunk& chunk) noexcept
     size += chunk.positions.buffer.size() * sizeof(double);
     size += chunk.texcoords.buffer.size() * sizeof(float);
     size += chunk.normals.buffer.size() * sizeof(float);
+    size += chunk.precise_positions.size() * sizeof(std::array<double, 3>);
     size += chunk.precise_texcoords.size() * sizeof(double);
     size += chunk.precise_normals.size() * sizeof(double);
     size += chunk.colors.buffer.size() * sizeof(float);
@@ -4783,18 +4792,42 @@ struct CopyTuples {
     size_t size;
     size_t Cost() const noexcept { return size * N * kMergeCopyIntCost; }
     auto Execute() const noexcept {
-        for (size_t i = 0; i < size; ++i) {
-            for (size_t k = 0; k < N; ++k) { dst[i][k] = src[i * N + k]; }
-        }
+        static_assert(sizeof(std::array<double, N>) == N * sizeof(double));
+        // Copy object representations without treating a flat double buffer as
+        // an array-of-arrays through an aliasing cast. The destinations exist.
+        if (size) { std::memcpy(dst, src, size * sizeof(*dst)); }
         return rapidobj_errc::Success;
     }
     inline auto Subdivide(size_t num) const;
 };
 
+// One worker constructs this vector in order while the other merge workers
+// reconcile indices. Keeping one owner permits bulk vector construction without
+// a preceding zero-fill or concurrent mutation of vector metadata.
+struct ConstructPositions {
+    std::vector<std::array<double, 3>>* destination;
+    const std::vector<Chunk>* chunks;
+    size_t count;
+    size_t Cost() const noexcept { return count * 3 * kMergeCopyIntCost; }
+    auto Execute() const {
+        destination->reserve(count);
+        for (const auto& chunk : *chunks) {
+            assert(chunk.positions.buffer.size() == 0);
+            const auto& source = chunk.precise_positions;
+            if (source.size()) { destination->insert(destination->end(), source.data(), source.data() + source.size()); }
+        }
+        assert(destination->size() == count);
+        return rapidobj_errc::Success;
+    }
+    inline auto Subdivide(size_t) const;
+};
+
 using MergeTask =
     std::variant<CopyBytes, CopyInts, CopyFloats, CopyDoubles, CopyIndices, FillFloats, FillMaterialIds, FillSmoothingGroupIds,
-                 CopyTuples<2>, CopyTuples<3>>;
+                 CopyTuples<2>, CopyTuples<3>, ConstructPositions>;
 using MergeTasks = std::vector<MergeTask>;
+
+inline auto ConstructPositions::Subdivide(size_t) const { return MergeTasks{*this}; }
 
 template <size_t N>
 auto CopyTuples<N>::Subdivide(size_t num) const {
@@ -6449,6 +6482,10 @@ inline Result Merge(const std::vector<Chunk>& chunks, std::shared_ptr<SharedCont
 
     auto shapes = Shapes();
     auto tasks  = MergeTasks();
+    if (context->output) {
+        // Queue first so output construction overlaps the other merge tasks.
+        tasks.push_back(ConstructPositions{&context->output->positions, &chunks, count.position});
+    }
 
     shapes.reserve(shape_records.size());
 
@@ -6655,7 +6692,6 @@ inline Result Merge(const std::vector<Chunk>& chunks, std::shared_ptr<SharedCont
                                   { attribute_size_color } };
 
     if (context->output) {
-        context->output->positions.resize(count.position);
         context->output->texcoords.resize(count.texcoord);
         context->output->normals.resize(count.normal);
     }
@@ -6666,18 +6702,13 @@ inline Result Merge(const std::vector<Chunk>& chunks, std::shared_ptr<SharedCont
     auto normals_destination   = attributes.normals.data();
     auto colors_destination    = attributes.colors.data();
 
-    size_t output_position = 0, output_texcoord = 0, output_normal = 0;
+    size_t output_texcoord = 0, output_normal = 0;
     for (const Chunk& chunk : chunks) {
         if (chunk.positions.buffer.size()) {
             auto src  = chunk.positions.buffer.data();
             auto size = chunk.positions.buffer.size();
-            if (context->output) {
-                tasks.push_back(CopyTuples<3>{context->output->positions.data() + output_position, src, size / 3});
-                output_position += size / 3;
-            } else {
-                tasks.push_back(CopyDoubles(positions_destination, src, size));
-                positions_destination += size;
-            }
+            tasks.push_back(CopyDoubles(positions_destination, src, size));
+            positions_destination += size;
         }
         if (context->output && chunk.precise_texcoords.size()) {
             const auto size = chunk.precise_texcoords.size() / 2;

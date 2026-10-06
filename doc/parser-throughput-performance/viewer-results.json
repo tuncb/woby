@@ -1,0 +1,4766 @@
+{
+  "manifest": {
+    "revision": "de7ac08194f655573506798826cbd695dda8bbc0",
+    "executable_sha256": "2dfe3bdf37af8880838a96871d1ac27c37759a19f1ffaaf6b3b30c8ecaa2a81d",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "logical_cpus": 16,
+    "physical_cpus": 8,
+    "ram_bytes": 68564348928,
+    "rounds": 3,
+    "variants": [
+      "legacy",
+      "prototype"
+    ],
+    "guarded": true,
+    "max_background_cpu": 15.0,
+    "hidden_window": true,
+    "pacing": "foreground",
+    "viewport": [
+      1280,
+      720
+    ],
+    "warmup": "before every import",
+    "source_sha256": {
+      "src\\adaptive_points.cpp": "11239201601d5648d6c761f1fcd3ecd947a4dac87839787dfb219fa8dbda6c61",
+      "src\\analysis_presentation.cpp": "5d288ca46adeae07ded93ff4b56d8e10aee8301ea330aa9517fecccd23a3b958",
+      "src\\analysis_results.cpp": "4a3cbee5dce9375a01f2351d88dbf2a2295129d9856dcd28158463d639a5005e",
+      "src\\annotation_command.cpp": "1821812bebce67b5d23be7c7ea076bedba288dc08c63edf07a12b91ee00ba3c6",
+      "src\\annotation_preparation.cpp": "47c94522019bad783cda7c2c1724c69fbbe1c7b6590a5f628302a1298b711416",
+      "src\\annotation_ui.cpp": "d6e7e820ae700cb7fab871690357da4fc9922117e192f315e97b9fbec0fa2616",
+      "src\\annotation_work.cpp": "006ad891b12baa27f442307d7ed0b210a8e4d7998cca5e61edfc610e92523ac6",
+      "src\\automation.cpp": "684d9a85d85e7e19559ecb80f6ffd6b37ad37bc7442db8aab6b3484889fd2257",
+      "src\\automation_registry.cpp": "3031eadf05ba1e5639af5e6de42dc132a13b0073efe487b8ac3e1a93b07b283a",
+      "src\\background_load.cpp": "461f98c5bcade458a79842445c77ac61b6f763349b5da8292b6c8f07e1423d9f",
+      "src\\camera.cpp": "33c5c014922e9a5765bb0adfcbb7f5b91397d90e1d6cb61c80056a5bcd79d81f",
+      "src\\camera_sdl.cpp": "142d4913569e6792de04c479ce80674d095cb9a540752281b1c81bf9c608df1e",
+      "src\\command_line.cpp": "ed9876a91963c918114aaf73302663b4c37aafaae7237fda0397e614b707077f",
+      "src\\comparison_gpu.cpp": "6eba2652e8a2e0ca189efec78c1177d7c2d4249f1405a15b4f00b112be7fa8d7",
+      "src\\comparison_legend.cpp": "111b26df0a97ae0af486eb3baeb6332c286d7a87da2e06b783a3fe32aeb84e0f",
+      "src\\comparison_report.cpp": "5961c2401ea3010643e243ef2231145cd1cf0cc742ff5f777f132857facdd465",
+      "src\\comparison_runtime.cpp": "e7b774e9c361010a9567415d14a38e5ae1a7ff88d407a3957d31ce330693a81a",
+      "src\\comparison_scene.cpp": "2dedd9dfe64dbf39d19122ab4ea14fe424e687fefdde01511aecce458099576e",
+      "src\\comparison_view.cpp": "7307f080cd44e159a53bac859af088d2fca61e7b8b6f7211bd0dedc511cc06b3",
+      "src\\console.cpp": "8f12e006127065761746426c0379d3e0a1358309d3a16be8cefc10e23a1ebc0c",
+      "src\\control_annotation.cpp": "e2504a086de8938cd265b6231835994519b0b6e15e758b1e26e3ca18427345b0",
+      "src\\control_importers.cpp": "899191c9b57cc31624d4d9ed0076a5a1cd7ced7eb191a7b37881bd0beb11a1db",
+      "src\\control_protocol.cpp": "d6f2ca4e16966cfbc3958080c489cbca8d3df992ada314e77920581805ccfb06",
+      "src\\control_scene.cpp": "8d9ac996978c97b3ec5c8b89d31655755b5b6b1159862f04b64e6375986bd71b",
+      "src\\control_uv.cpp": "c99071b2434c008a027aecdb623b63ba09f1124fc657e4b0be0ca5e2486b5deb",
+      "src\\file_discovery.cpp": "7c49a0cf2991634a3490c76f706a779741dcf3192a9dbc3687d41f5d54ce1f24",
+      "src\\frame_pacing.cpp": "0400d23c9f1bcc76e693e51c6afb2f9c03483be69621d23318371d3f71432457",
+      "src\\freeform.cpp": "2b90bf6cade7cc46f9f053c42f0430a0e30b404afad48c238d8bdf50fad1051d",
+      "src\\freeform_gpu.cpp": "58d78fce0d7bed8cf54e4c19979754e9c582694686e6b4b8006632d3710efd3a",
+      "src\\freeform_trim.cpp": "3cf7700f63e037bf226c7df735e2a55c945e61c4bc5f972d5cec06ac7cc7fab6",
+      "src\\graphics.cpp": "0a5a8aaeefae6401621925c87aabe23aa3d86c4077f50dbcf036f40e48b19d00",
+      "src\\graphics_diagnostics.cpp": "bc70cf480d3bc63f7b29965d0f4286c71b06da4a50fb71960d347b87e9ef5999",
+      "src\\graphics_helpers.cpp": "84634470c50954417bc2a079b29bd1470b18e35d79c1e715efd72f6d68d5ea28",
+      "src\\hash_utils.cpp": "2ea3598875c53fa0bdc4d3ccf990ba9436f7edef6dd263ca20e9ae25731685fc",
+      "src\\hover_pick.cpp": "ac8b92ce41c61f1828f8e6900e04dc940a46a2b763037ab000b285c7123d23fd",
+      "src\\imgui_graphics.cpp": "6ebe07ab793c6cdfca0e6374de92020b823c7dc1f8473af13eabe808159ef248",
+      "src\\importer_host.cpp": "fe3980c49844cc6f039ab007167e47e888e52dd958fee1f46bc33eee07ec413b",
+      "src\\main.cpp": "3eb507bd6752c4d01a24773d54fa7d3d362723f7384889a98eaf5fdad857489d",
+      "src\\main_menu.cpp": "b5d9cb38c98a339847154b3dc9650496e4ad980b77802c60345578cd3d92d013",
+      "src\\manual_path_dialog.cpp": "e10c58d29a89d5e332323cfe58ac563cccb27854807b709a60925aebcd66f8ed",
+      "src\\manual_path_dialog_ui.cpp": "1442b0366970c83b30d6b3c9f8d42722d4fe9c8b4cfb2bce471599c428f6e39b",
+      "src\\marker_pick.cpp": "9f8f6d8de668aad9e8e69ecd1ead58ec1297c16929737bf6182cb6f5804b56f1",
+      "src\\marker_pick_logic.cpp": "34d7f7e7e64bf029dfc01eb240bf5e8f6386a93c6ce0566c263a254b157d9867",
+      "src\\mesh_comparison.cpp": "6fe952299f71bd272463f42b48e52ff79c849c7f9afc7f532916be831445b68f",
+      "src\\mesh_degenerates.cpp": "7290ae7b84941e8e096c0d157262c3e16ef6b3197602e465f6d31028e4471e31",
+      "src\\mesh_duplicates.cpp": "3d0530733b685fa6938a22236fbfbe78aad426af49c648f6b36d2c081bd19107",
+      "src\\mesh_intersections.cpp": "4736325fa9cb2570023b19cade08a2b14023811dbbbbce604337e008f974a555",
+      "src\\mesh_topology.cpp": "206fc9840ba509d22f36f10fc9d0ea6dbeb10c460cf2e4648c2eb45695f742e1",
+      "src\\model_load.cpp": "57d7e42330fe9d2a8f40257d944bc3c6977cfba136c82536e9bd80fe39558dd2",
+      "src\\model_mesh.cpp": "080bba9fa330d139521a7df91877499dd3cbd70487c1c79b9b4e29c62fbc5974",
+      "src\\native_dialogs.cpp": "79e0d0f6594f92bdaa06d00e1c453b054becf1464dd37c685928a6aef14fdf0c",
+      "src\\obj_freeform.cpp": "4fdb54b62b2c7be4ae4c649a093b18fa1c19edd97595054eec10f100d12b6d65",
+      "src\\obj_mesh.cpp": "b2eab228356a35c2853d4db1315a93484826e35409c78c2f85ae316374575db5",
+      "src\\performance_log.cpp": "0b00b39a78933e236145a6f40af08cb82a6e2fdd21ecf87d234dafbbb2268025",
+      "src\\point_cloud.cpp": "8223bb3801807bb7ad50b7f0261272d2a79d47f2efce4f651d08c9065f59ff07",
+      "src\\renderer_startup.cpp": "efd3f02d0c80aadc5191fd21d4ce33c8cc84f11f6e6c9a0e8542f12d5586a7ae",
+      "src\\scene_dimensions.cpp": "6db5a0cb2e4b8239340b9b1cd93fbdfd21cbe67be6a927e628386ad31118b8e2",
+      "src\\scene_draw_plan.cpp": "5d9c09abe6fdb80a7205a3eea96ceb26259d8a576b50564a956834aad08071bb",
+      "src\\scene_file.cpp": "d062992ca46f561b5e8422ea8048b943f122397be99aa981ed54c17607d9f8b3",
+      "src\\scene_history.cpp": "4b3890d445e33ee45285b821a02026a6ffed1785b1208b37abf157ae35ed9a4b",
+      "src\\scene_history_load.cpp": "341797dbb0524da681c7398cd3b21d6807b59bf53935128aa2b0e0677b533b1f",
+      "src\\scene_inspector.cpp": "de35a6c69c51f7a2a9b70666c4c89ebdef77e91cd0475cb5886fc6c83503165e",
+      "src\\scene_inspector_queries.cpp": "030df2e0c28a58cb7d529990641e9a18f381c81683d1c836464f01270eb99436",
+      "src\\scene_lifecycle.cpp": "bc572502840b1710ccb1f74546638dec040f60590ba402a83f9393355ccca0e4",
+      "src\\scene_mesh_preparation.cpp": "ed206ff2d1bc324fdf50aafac823237f6c2ed56d3a48ac2dfcf38a1f4705c8e9",
+      "src\\scene_objects.cpp": "bc6021523a0e6840a56dd7057d6eb12e10a803cade5ea52541421c6c12ea0bc7",
+      "src\\scene_pick.cpp": "3195db964c2b1716b44f1883084d11c3effb17965e9ed7afcc1d0f33b990b320",
+      "src\\scene_renderer.cpp": "edf6d62c7dea8f2e7a6a0424e5e86bdc50592b9ab32132b45444290e3b815569",
+      "src\\scene_scale_overlay.cpp": "2e3278388b66521a4b9a0d966aec816c17396d819cf43326aa63287ebe08eb0e",
+      "src\\scene_screenshot.cpp": "8c8ddf8b594bb29a014274504b7211d1b726ebd1ad5cd94118dbe27311c31fb2",
+      "src\\settings_dialog.cpp": "3e9fdaa65a7468e7b3ccf6d78d8c49d3eb0ff06dafb7421186cd5619e517edc6",
+      "src\\surface_annotation.cpp": "9bde6bfa1715b36358fc8dce045177138d308bd3eb005e0eb9b6d07d8d204b4b",
+      "src\\surface_mesh_quality.cpp": "6172160f4341d4f9df18019135b1aa22f0425e79843fcb92a6475fb2ed5b1f91",
+      "src\\ui_annotation_operations.cpp": "c261483a2827ff6ca2f1d0771fbc782043cf5f220a7ee03972f6f29b07d53e6e",
+      "src\\ui_icon_controls.cpp": "3e658aa82e93edc434c1e456cfa9e83940c4dd53c0b1d6abcc91308b0548b09a",
+      "src\\ui_operations.cpp": "b29a06bc3e508be0632a9ad18e159abb94f46d378069d30ed8a1f2691cadd4d4",
+      "src\\ui_property_operations.cpp": "57a32edcdc9e6e5b1a6a67d891f2a7ad5fc24bc0948320380e4c8fbb4a5c653b",
+      "src\\ui_state.cpp": "c229105d9665fd69201ec678949221c8cbcb7f5afc3c089c848612016c52c633",
+      "src\\ui_views.cpp": "dda78fcfc86d33f985f775b1093c202c52d47a0be4388a1f139f10662bb596fe",
+      "src\\ui_view_operations.cpp": "b3e16822bd96bbc2fccbcadd6c760826974f74e6b01dfbe9597d94697992e390",
+      "src\\update.cpp": "c26ebf76dd4704140ec83164fc91f8303f15d9479932700e0dd37fb3087011e2",
+      "src\\update_archive.cpp": "2d6a86a4a833d7b74be61941f026250be2edd8058857e68ac2329090cb7698bb",
+      "src\\update_core.cpp": "3e450766a5ae5e3d65a53350662a96ead75fcaf5715372f64c576916253e6931",
+      "src\\update_helper.cpp": "04145053e8c915af81c8206c5a57e6f7a5011dea90ad0867918d010bd25b7eeb",
+      "src\\update_platform.cpp": "b6f8ac6cadaf11a6ff80749fca4ada683214dbf33d7bc0e9a8b8d6e3b32c18f2",
+      "src\\update_ui.cpp": "b1f26168c76dbce2bb56a9b445bbecf4d9a846e871aff52c955fd1a929816b62",
+      "src\\uv_overlap.cpp": "313f5b8a36bd7896c63cff7a90adf8cc17d307b3c64cdd78986aeff6ec0b367d",
+      "src\\uv_quality.cpp": "9dface65eb82c859a47904a1067203a29d0eefeeef7f433b54ea05c846f89348",
+      "src\\uv_quality_view.cpp": "81d34cbe5ca250c3f3302676648cfd2ddaf1ce0a22533b20cddd73594f7dcbcd",
+      "src\\adaptive_points.h": "5ab91e848aaf60690f9acec07fc63e67a32f0fa7d7b07651414aadcfb98b8c38",
+      "src\\analysis_index.h": "6321533417517290fd89adc95056ddd09182caec891cc92f45a7f020463a8147",
+      "src\\analysis_presentation.h": "c0a72d21ee4b1e65deb734c13d43c7bd9676c977a6f3af6fbd299191f449f63d",
+      "src\\analysis_results.h": "15be6a498f94628eca45f8b598e303d08f9f603a658bff6b63f051d1c618c2ec",
+      "src\\analysis_results_writer.h": "454f7d59581271cf7c8a615533268a73d85d095341fb845262b8c1542059e201",
+      "src\\annotation_command.h": "4cfc73e8769b76ac1269e4208e417a62a697d5822250e602a5c234869b54b5ef",
+      "src\\annotation_preparation.h": "204b653b2b49c1d4c581f2307b4272af2b2eae550e796caa917b08a4c66ad424",
+      "src\\annotation_types.h": "e247636b21d9ef2bef5e9a631b662579a973eaf4e437830d1c12801d8a7a7f76",
+      "src\\annotation_ui.h": "d25fcd51a04eafaa38052f4b08fa2dfab02e2148dcf80382b9bea02b9dd25496",
+      "src\\annotation_work.h": "d521aeaa1f1ed9848907c315708d468fffe7178cf1729447398b8e5703f4d6d0",
+      "src\\automation.h": "f657a29f2d1e8edaff321f930bb3af108f112bb67d9c7607f59a54a4de88b6c2",
+      "src\\automation_registry.h": "7505dce84db28270ecfe861cfc1c9342caaaba5a9e06675f446425924c364dab",
+      "src\\background_load.h": "d002e6c19f9a35dab3ec458826eac014ff83c54b1392bac2d0e467abec6c9251",
+      "src\\camera.h": "162876ce40722b90b514a673217e4121ff9d1c93fd352d69783239fd2ab721e5",
+      "src\\command_line.h": "8d957dca1deff459f9ed962a281b4e5d1c43ee3921fbcbbcb1351a66f033a5dc",
+      "src\\comparison_gpu.h": "6f9c250c3f9fca4231e1dbc6ca1b9dea65a1a291545d4f2ce3a550052e12e74a",
+      "src\\comparison_legend.h": "703959f0df11de41622ca08d57e86672258a49a0dec3c0777e84cdeb7d6154dd",
+      "src\\comparison_report.h": "1e642b34fc58099e85199ba98b82d6784fc9f8794033b49299b4a04f211c8263",
+      "src\\comparison_runtime.h": "a33fe0f4881cebaa494a972b4ea27e05b2ae6492e853feef9c3e11ee17e1c924",
+      "src\\comparison_scene.h": "92417070465aa08d95cee74038d4878d3cc6b0621b8511865b01ff8afd63f8c2",
+      "src\\comparison_settings.h": "4db87dc7654f818d3bfe8eb55d47771d60e9d833f4ea021ef79cd75af7d84411",
+      "src\\comparison_view.h": "731ca04041313e5b4e6046618c036a3bfaec2a9f591419ffa8ec36e1d420b74f",
+      "src\\console.h": "17b2a47ffdbffad32d2be19d6ed91c7bb2151f253c20640224f8dcdb771742c4",
+      "src\\control_importers.h": "371b0688de82f8bf7066146491435977c811e87bc9f398cfbe19b52761f64042",
+      "src\\control_protocol.h": "ea53b57b85a74ba89f51de061273e9ce7d66020634faf4610f7cbdb75c9d07a6",
+      "src\\control_scene.h": "46e7ba804af13ad555cbd94cc45d3cddbf9129979c6f17c99bad1f8e14156d5a",
+      "src\\file_discovery.h": "6015c54d0e5fb0abaf14e44241fe0872499f2272d63c38c3aa88cf26f15df74b",
+      "src\\frame_pacing.h": "90e1f28ee7405ce6ad3ff82c6621f95e9242d11eb8e0301d6fa04217ad57bdc4",
+      "src\\freeform.h": "22c7fb5d895386ac9285331193bad77648f2a997d755ea243eb2406c7f771f4a",
+      "src\\freeform_gpu.h": "c4685d695f64446bcd7a4124eddca7df0d8e9413076e8c4a766703a527dcc479",
+      "src\\freeform_trim.h": "8f254983969fdf54309af339bd82335da0fe468f333c44696940f5685b2312a1",
+      "src\\graphics.h": "35bf28cdbb93c73e528f1a57b39459cc7dd93589df9ec39ad3d1b9962ea84e4e",
+      "src\\graphics_assets.h": "fd0c2d71a12540fafdc34753218e0be942b5e42a949e169a02f9aa739ddaace0",
+      "src\\graphics_diagnostics.h": "dfaa772a5bc2129b841d52f121e5ee2deddd375a38724a74bfce2297b625e3be",
+      "src\\graphics_helpers.h": "a851aa284d711dd7ca4b1c9b0aa99d40e2132b07b047123b25f8e59bb0dcf179",
+      "src\\hash_utils.h": "d73415a40728060534948aa668249081b5d48858ea29e7cf8a34f593956bb9f8",
+      "src\\hover_pick.h": "3ac1ea2e47861e24282b9d601ca75f30485dc026bc917ca346f0b463c5168027",
+      "src\\imgui_graphics.h": "4f62aaf0b687923a5bd5bcca31e422ad0e46e30c534b8cc69f75deb0e202ebf0",
+      "src\\importer_host.h": "7d148cd6cca3d772c68e1fee695a5b3d941d9438331190555b364d68f79edcdc",
+      "src\\line_style.h": "ce6bca18b30200ef41df9c765098712f3f2ca38002249492ca2c0b958130ea75",
+      "src\\load_progress.h": "cf2c8adb96d5759bb62660e0a78c4efd29ac67f59739f65642681f59e9d3d114",
+      "src\\main_menu.h": "27fb7da2a1fc9a6f85cdc0637a83c81d481b2e6e4e8093b8c4e3436050e45dc3",
+      "src\\manual_path_dialog.h": "0df19d63a16e154e369edca00402b1ed8e6e58a9391e234ecf972a87be7f0e36",
+      "src\\marker_pick.h": "f7b05830bc4e40afc2c7c0b73e74c707701f10cf8b5fe4aea4858e16aa3c29c5",
+      "src\\marker_pick_logic.h": "2dd822298a6591c6cb18b8313e938c21f7d48206b5efa5487954a621484f8b62",
+      "src\\mesh_comparison.h": "51aac686317e7d92550c8f76691bfa8b1672a878a0eef2c54ca1ee028e2763b3",
+      "src\\mesh_degenerates.h": "7402cb1e7dd60dd3b374d16de3ef0a4b48d75029134b692333f8460800f9f551",
+      "src\\mesh_duplicates.h": "faacf691bc4f9dbea03422004154b0019796a18c22020314ebab0ed335737072",
+      "src\\mesh_intersections.h": "59e8192de56bf780f88f9690784aef74278bb8c576200ef8da57b5218c7df06f",
+      "src\\mesh_topology.h": "0307deafb911d449e5ae4ab37e9385c157a7422b2a24ccf89ca58cc462b7eb40",
+      "src\\model_load.h": "13ce4381ad07ccd3b5027a49197e61c2ace79c0c78d926d1db8509ef611e275e",
+      "src\\model_mesh.h": "0aa6489921e445676eb64062612e05cbdb060b4c538c6ae38adf0e18717275f1",
+      "src\\native_dialogs.h": "62fe5f95b49b81da1b33688b99893631ef8f86cf00d6156269730a329332aaf1",
+      "src\\obj_freeform.h": "0d9ac614d74b8f08cd80f10d80b123290a1a2688c2d4f31f0d399c958af4d84e",
+      "src\\obj_mesh.h": "b6aeaf0ac89aba545bb4792c50e79aa1236a9df1327d47fffa7058da0d89328d",
+      "src\\parallel_work.h": "7a9db240f74db657d4e99eb27b3048c28fc0251b535946daf844195306c99839",
+      "src\\performance_capture.h": "2efb87aa3c866182d7d249711618b01a32df990724fbb88414398c90cea83186",
+      "src\\performance_log.h": "97eb55cbd48296a7f745045da22e6e3ac9361437c919616577ef8c4adb4469c3",
+      "src\\point_cloud.h": "42eeaa9509001eaa3d68d1e2030579280c65efc1c43321620f1d3e499a863836",
+      "src\\renderer_startup.h": "811b6a4bcd00458f03e0508dc1e66836851b2b2ed476c4cc2e0ad070b0535605",
+      "src\\scene_buffer_size.h": "6dd798e6bb7aed77595d4b8511392a2f3ba24ad3277690dba9d4b5a05162e0f2",
+      "src\\scene_dimensions.h": "25c365e6a747986c0f9d6191660549e1a71a035cc63eb2974dc2c3bd8b9995ab",
+      "src\\scene_draw_plan.h": "28645a49d4d1f665d42b100163546621a6282545a22fffe086d3e2ed1594b05b",
+      "src\\scene_file.h": "af77912a3521bd2c9b19b38b96f8f040784cb999521363ed0e9d8888fb30dbf4",
+      "src\\scene_history.h": "4faa2baaeb150803907c0bc8e53ff4d61b58eed7ce99b22e1be0f9cae698c834",
+      "src\\scene_history_load.h": "228ad271032e3d5ff2930946a5c669bf653d06d35fc04331c28b8950cec2ef15",
+      "src\\scene_inspector.h": "a2efe7dd7d340409f4d24323dcd07c5fb153f78ffb381f23db40d775b33c7c7d",
+      "src\\scene_inspector_queries.h": "d74d08a35ab89dd2fa69cc5aecd3ea45bf3c5e803f423b57f76f72dcbe3fb914",
+      "src\\scene_lifecycle.h": "17cf91f5eaa71a3a62bbcc3407a7b218fb13a7210263d27974b5457bf6da5917",
+      "src\\scene_lifecycle_types.h": "f827753cf503587133e8a6f70d3a18ca5de9a1bf1e10a9747fc75cce3621d8de",
+      "src\\scene_mesh_preparation.h": "2b8494f168afa0488e21bc2ff5f2b03d21741c4949d474222ee78aeb39f5b30d",
+      "src\\scene_objects.h": "972c98b1d57267019dab5e1af0fc71abdcc800d3eb0f7480f7c3e6e1f0f49b5b",
+      "src\\scene_pick.h": "7b7414a0cc686fea22f80c736f70982c366c09792a4006a22791ac05dadc84b7",
+      "src\\scene_renderer.h": "a0515a9920f9ad87e6912095bafbc8caa9574d3fc0d211d331d8737109a17a20",
+      "src\\scene_scale_overlay.h": "20d013bfd2b989e654929ffc0dd07964c91508cc6e8a2330fadd0c0fb9921cf7",
+      "src\\scene_screenshot.h": "5b8357e992f97d56f3da972821e74fd54db4c6b7f6503cc2c68a2c85f068309e",
+      "src\\scene_up_axis.h": "64ea3fc4c3ad4c1ab083d7752f1453fe77db9490c00b43b21f19a1b3a8ceab99",
+      "src\\scene_viewport.h": "dc3d2693e33778b5a4350103a89c4dec034c9ff1f2ac7cccc3612400791ec615",
+      "src\\settings_dialog.h": "84f5863f2739b0324a7bc74c5454934761affff727911bdf1d82f5e3a0605b5f",
+      "src\\surface_annotation.h": "a1d81152e7478503e1fffaaa6aaf02bc176a49a8d16ed69f8c8b43879f84454d",
+      "src\\surface_mesh_quality.h": "ed167bc225c946b03c484d643fb616409fc9fed5441108f265f7eb122efac04f",
+      "src\\ui_history_controls.h": "a297e17da645105f6c5f86ece6498d4791eb6eabcc56b6dc790432ef1e126fae",
+      "src\\ui_icon_controls.h": "cfc6cf2f682b79cf0e6f8e4086b197e32479581ff0fee89964b5cda0043e5e10",
+      "src\\ui_layout.h": "c3d01804681df99e67df8493d3e3f19feacbe634ff2520d727b98371284e25c7",
+      "src\\ui_operations.h": "025cdf00c593aeb45da74fa685d5930d3bcb467412c6ab07b9b3731c5385cedd",
+      "src\\ui_popup_controls.h": "913cac2b30dc424b7900242ba76d8819c60855c5eb516d7fcad391c79a581178",
+      "src\\ui_state.h": "27eb55ccdbb5cb777567cf3aa2c0bcbfb31377929992761fdd851164becb5bb8",
+      "src\\ui_views.h": "2fbb27dcd04296787f76d05fc1b7fe894c22763966cbe074b07ce7c542f0d802",
+      "src\\update.h": "1aac98f8f4802855c416bc13117b966b3ed809ef864ec26b89c0c3cc1baf66ae",
+      "src\\update_internal.h": "361141d0f394bd27746dff23fba290f656f098d96712a6aad0c84b3fe378f4bd",
+      "src\\update_ui.h": "b5839db727e685f6989684f4c7f98740feed9b40b42e4f25a66918bbeb0222ce",
+      "src\\utf8_path.h": "d548496c4575dde6a740cf050fd9aca8c114479496efa5fddbff5304ee80028f",
+      "src\\uv_analysis.h": "a0d9e587e0d4468a04139e71f86fd6cdc9c510aee63b3164540edd20bee6836c",
+      "src\\uv_grid.h": "3a210bfa2ab8613ee8ccfa2ca73bee9ccc8ad8abfa736669a4651f96fd4d82fa",
+      "src\\uv_quality.h": "ea05ab73f36c87b2d89742332f996a31bb3319232c5a537f5485e9efd81b51a0",
+      "src\\uv_quality_view.h": "e927be0306ab6cc6f36b7789360f888eec665c0e68aac487f725f38ab2507460",
+      "experiments\\load-workflow\\analyze.py": "ad5447bcc9c9ffc9630644ca4713123c071570d0617115c5018fcf81e645191b",
+      "experiments\\load-workflow\\CMakeLists.txt": "5712d7e597962c771a43a207c26b0f9fc059b0e4bd6034cbbe75f626dd78754a",
+      "experiments\\load-workflow\\generate.py": "c006776290f3cfae5c2fc2dffe76854e0a6249d7a640f1d149e2194fad894151",
+      "experiments\\load-workflow\\idle.py": "b27e73717aa53b4a1e94f85bba85c446099e8860add15ac51d9036aae9745e15",
+      "experiments\\load-workflow\\report.py": "4caed4ae8f1bf9b58e6155fa21b14e1b75a2416a71008b4101b7448e58768794",
+      "experiments\\load-workflow\\run.py": "f0d306827b3cd86158d7314c245c7e7953d5701cc745a0ab8da495206e554532",
+      "experiments\\load-workflow\\tests.py": "2ecef08105077d124d434f1212c31dfd6f78ef21ae92847d977401899d81fa2d",
+      "experiments\\load-workflow\\trace.cpp": "bfaa742563c53ba51a98e0b07e15ad2c2a7fe85d9e49f5ec8e57f01a163ed78c",
+      "experiments\\load-workflow\\trace.h": "1c2a06b0825790aa93e85be8db8c4a344569723c1fdc04c286f5465aa0dff53a",
+      "third_party\\rapidobj\\include\\rapidobj\\prototype.hpp": "4ebdbc79dc81f5b2f1ffa970b7a75cb82b37d5ea87df0531960d8877329b9792",
+      "third_party\\rapidobj\\include\\rapidobj\\rapidobj.hpp": "fa09c9e43f44a2b3fb7cb77fa314740fde825bf09388efd07f9b7023c2c45e04"
+    },
+    "workloads": [
+      {
+        "id": "quads",
+        "label": "250,000 quads, no normals",
+        "category": "polygon triangulation",
+        "path": "C:\\Users\\tuncb\\AppData\\Local\\Temp\\woby-load-workflow-inputs-357dqw8b\\quad_grid.obj",
+        "file_count": 1,
+        "input_bytes": 16722966,
+        "input_sha256": "d323d88669284d3a7eb9e08de247b8a280662b91ccdfa4dc5bb5cd0e667ad879"
+      },
+      {
+        "id": "lines",
+        "label": "200,000 positions, polylines + points",
+        "category": "lines and explicit points",
+        "path": "C:\\Users\\tuncb\\AppData\\Local\\Temp\\woby-load-workflow-inputs-357dqw8b\\lines_points.obj",
+        "file_count": 1,
+        "input_bytes": 7262184,
+        "input_sha256": "6fb618abf30ea8cd6604aa299e05531b15e54326545778fa423d612793f89fa2"
+      },
+      {
+        "id": "cloud",
+        "label": "Semantic3D \u00b7 10 million points",
+        "category": "positions and explicit point records",
+        "path": "D:\\temp\\obj_tests\\pointclouds\\semantic3d_sg27_station8_10000000_xyz_points.obj",
+        "file_count": 1,
+        "input_bytes": 312472131,
+        "input_sha256": "3f1fa9211d7287f39e933de94ef1ed1bf9b385ed15129e52281fbd2c4681fd3c"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "workload": "quads",
+      "variant": "legacy",
+      "round": 1,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 251001,
+        "triangleCount": 500000,
+        "lineSegmentCount": 0,
+        "pointCount": 0,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "d6e29e5845354f0218c97d3bd591ba5221f1d7e5bc032f85a839d6c1d52e321f"
+      },
+      "timings": {
+        "first_submitted_ms": 159.9197,
+        "scene_commit_ms": 155.1985,
+        "cpu_batch_ms": 143.3073,
+        "gpu_finalize_wall_ms": 9.469999999999999,
+        "upload_cpu_ms": 4.6571,
+        "fully_prepared_ms": 246.8047,
+        "annotation_publish_after_commit_ms": 91.6062,
+        "load_response_ms": 189.1470999980811,
+        "full_detail_observed_ms": 202.84820001688786,
+        "preparation_settled_observed_ms": 315.88820001343265,
+        "verified_image_ms": 830.9949999966193,
+        "capture_ms": 515.1075999892782,
+        "startup_ms": 821.3803000107873
+      },
+      "phases": {
+        "capacity_preflight": 0.2827,
+        "parse": 30.3344,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0065,
+        "source_adoption": 2.0699,
+        "coordinate_localization": 6.4364,
+        "triangulation": 5.1652,
+        "mesh_mapping": 33.1976,
+        "normals": 10.4099,
+        "mesh_bounds": 4.7617,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 20.579,
+        "gpu_input_validation": 2.3422,
+        "point_membership": 4.2784,
+        "point_hierarchy": 20.5888,
+        "annotation_blocks_fingerprints": 20.5426,
+        "annotation_spatial_index": 53.9761,
+        "annotation_snapshot_copy": 8.7714
+      },
+      "memory": {
+        "import_peak_commit_bytes": 359211008,
+        "import_peak_working_set_bytes": 162447360,
+        "prepared_private_bytes": 359133184,
+        "lifecycle_peak_commit_bytes": 495775744,
+        "copied_position_bytes": 6024024,
+        "source_adoption_private_bytes": 309055488
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 0,
+        "precise_position_bytes": 6024024,
+        "render_vertex_bytes": 8032032,
+        "source_id_bytes": 0,
+        "source_index_bytes": 6000000,
+        "source_position_bytes": 6024024,
+        "source_positions": 251001,
+        "triangle_index_bytes": 6000000
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 13312,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 4016016,
+        "cloud_points": 251001,
+        "cloud_proxies": 16934,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 1004004,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 18318992
+      },
+      "annotation_capacities": {
+        "block_bytes": 95920,
+        "snapshot_block_bytes": 78160,
+        "snapshot_index_bytes": 6000000,
+        "snapshot_vertex_bytes": 8032032,
+        "spatial_tree_bytes": 873936,
+        "spatial_triangle_bytes": 2000000
+      },
+      "steady": {
+        "gpu_ms": {
+          "median": 0.188416,
+          "minimum": 0.182272,
+          "maximum": 0.366592,
+          "p95": 0.362496,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 4.00035,
+          "minimum": 3.2541,
+          "maximum": 4.5523,
+          "p95": 4.301,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.154699999999991,
+          "minimum": 3.510400000000004,
+          "maximum": 4.696699999999964,
+          "p95": 4.43119999999999,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.37632,
+          "minimum": 0.359424,
+          "maximum": 0.874496,
+          "p95": 0.862208,
+          "count": 92
+        },
+        "cpu_submit_ms": {
+          "median": 3.94165,
+          "minimum": 3.5199,
+          "maximum": 4.4202,
+          "p95": 4.239,
+          "count": 92
+        },
+        "frame_interval_ms": {
+          "median": 4.154299999999978,
+          "minimum": 3.837999999999994,
+          "maximum": 4.574599999999975,
+          "p95": 4.475399999999979,
+          "count": 91
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": true,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\quads-legacy-r1-a1"
+    },
+    {
+      "workload": "quads",
+      "variant": "prototype",
+      "round": 1,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 251001,
+        "triangleCount": 500000,
+        "lineSegmentCount": 0,
+        "pointCount": 0,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "d6e29e5845354f0218c97d3bd591ba5221f1d7e5bc032f85a839d6c1d52e321f"
+      },
+      "timings": {
+        "first_submitted_ms": 145.55329999999998,
+        "scene_commit_ms": 140.9617,
+        "cpu_batch_ms": 128.7045,
+        "gpu_finalize_wall_ms": 9.4332,
+        "upload_cpu_ms": 4.611800000000001,
+        "fully_prepared_ms": 232.53110000000004,
+        "annotation_publish_after_commit_ms": 91.56940000000003,
+        "load_response_ms": 145.63479999196716,
+        "full_detail_observed_ms": 170.86969999945723,
+        "preparation_settled_observed_ms": 249.73769998177886,
+        "verified_image_ms": 756.9238999858499,
+        "capture_ms": 507.1870000101626,
+        "startup_ms": 639.4311999902129
+      },
+      "phases": {
+        "capacity_preflight": 0.2433,
+        "parse": 23.6096,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0251,
+        "mesh_validate": 0.0025,
+        "source_adoption": 0.0022,
+        "coordinate_localization": 4.9075,
+        "triangulation": 4.5506,
+        "mesh_mapping": 32.2335,
+        "normals": 9.7284,
+        "mesh_bounds": 4.5968,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 19.4903,
+        "gpu_input_validation": 2.3819,
+        "point_membership": 4.0277,
+        "point_hierarchy": 20.2989,
+        "annotation_blocks_fingerprints": 21.6074,
+        "annotation_spatial_index": 53.1867,
+        "annotation_snapshot_copy": 9.3928
+      },
+      "memory": {
+        "import_peak_commit_bytes": 366211072,
+        "import_peak_working_set_bytes": 157020160,
+        "prepared_private_bytes": 366198784,
+        "lifecycle_peak_commit_bytes": 502820864,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 308490240
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 0,
+        "precise_position_bytes": 6024024,
+        "render_vertex_bytes": 8032032,
+        "source_id_bytes": 0,
+        "source_index_bytes": 6000000,
+        "source_position_bytes": 6024024,
+        "source_positions": 251001,
+        "triangle_index_bytes": 6000000
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 13312,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 4016016,
+        "cloud_points": 251001,
+        "cloud_proxies": 16934,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 1004004,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 18318992
+      },
+      "annotation_capacities": {
+        "block_bytes": 95920,
+        "snapshot_block_bytes": 78160,
+        "snapshot_index_bytes": 6000000,
+        "snapshot_vertex_bytes": 8032032,
+        "spatial_tree_bytes": 873936,
+        "spatial_triangle_bytes": 2000000
+      },
+      "steady": {
+        "gpu_ms": {
+          "median": 0.188416,
+          "minimum": 0.18048,
+          "maximum": 0.198656,
+          "p95": 0.190464,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 4.02205,
+          "minimum": 3.4406,
+          "maximum": 4.4967,
+          "p95": 4.2687,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.165700000000001,
+          "minimum": 3.629199999999969,
+          "maximum": 4.663900000000012,
+          "p95": 4.447000000000003,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.362496,
+          "minimum": 0.18432,
+          "maximum": 0.379904,
+          "p95": 0.365568,
+          "count": 98
+        },
+        "cpu_submit_ms": {
+          "median": 3.93945,
+          "minimum": 3.4188,
+          "maximum": 4.3737,
+          "p95": 4.2638,
+          "count": 98
+        },
+        "frame_interval_ms": {
+          "median": 4.167900000000003,
+          "minimum": 3.8108999999999753,
+          "maximum": 4.549500000000023,
+          "p95": 4.475700000000003,
+          "count": 97
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": true,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\quads-prototype-r1-a1"
+    },
+    {
+      "workload": "lines",
+      "variant": "legacy",
+      "round": 1,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 199938,
+        "triangleCount": 0,
+        "lineSegmentCount": 196812,
+        "pointCount": 8000,
+        "groupCount": 2
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "b31fe30ba895f2f1d87b341b9c79783eac4b74a1661868b805ce729687039d27"
+      },
+      "timings": {
+        "first_submitted_ms": 76.882,
+        "scene_commit_ms": 71.3017,
+        "cpu_batch_ms": 62.8676,
+        "gpu_finalize_wall_ms": 4.673999999999992,
+        "upload_cpu_ms": 3.2851,
+        "fully_prepared_ms": 76.882,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 74.75689999409951,
+        "full_detail_observed_ms": 233.10350000974722,
+        "preparation_settled_observed_ms": 233.11259999172762,
+        "verified_image_ms": 751.8426000024192,
+        "capture_ms": 518.7292000046,
+        "startup_ms": 621.173399995314
+      },
+      "phases": {
+        "capacity_preflight": 0.2568,
+        "parse": 13.4068,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0173,
+        "source_adoption": 1.8858,
+        "coordinate_localization": 5.2498,
+        "triangulation": 0.0145,
+        "mesh_mapping": 10.457,
+        "normals": 0.6957,
+        "mesh_bounds": 3.724,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 5.5327,
+        "gpu_input_validation": 0.6134,
+        "point_membership": 1.9891,
+        "point_hierarchy": 17.4934,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 348868608,
+        "import_peak_working_set_bytes": 127139840,
+        "prepared_private_bytes": 348864512,
+        "lifecycle_peak_commit_bytes": 485498880,
+        "copied_position_bytes": 4800000,
+        "source_adoption_private_bytes": 297492480
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 1574496,
+        "point_index_bytes": 32000,
+        "precise_position_bytes": 4800000,
+        "render_vertex_bytes": 6400000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 4800000,
+        "source_positions": 200000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 184,
+        "cloud_navigation_bytes": 12704,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 3326976,
+        "cloud_points": 207936,
+        "cloud_proxies": 17367,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 8,
+        "cloud_source_mapping_bytes": 1199628,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 48,
+        "point_membership_bytes": 0,
+        "upload_bytes": 11577360
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.360448,
+          "minimum": 0.352256,
+          "maximum": 0.372736,
+          "p95": 0.362496,
+          "count": 245
+        },
+        "cpu_submit_ms": {
+          "median": 4.0073,
+          "minimum": 3.4838,
+          "maximum": 4.4647,
+          "p95": 4.2514,
+          "count": 245
+        },
+        "frame_interval_ms": {
+          "median": 4.162399999999991,
+          "minimum": 3.7708000000000084,
+          "maximum": 4.6118999999999915,
+          "p95": 4.4150000000000205,
+          "count": 244
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 1.0583040000000001,
+          "minimum": 0.35328,
+          "maximum": 1.332224,
+          "p95": 1.32096,
+          "count": 92
+        },
+        "cpu_submit_ms": {
+          "median": 3.87085,
+          "minimum": 3.1735,
+          "maximum": 4.3888,
+          "p95": 4.2658,
+          "count": 92
+        },
+        "frame_interval_ms": {
+          "median": 4.164800000000014,
+          "minimum": 3.6783000000000357,
+          "maximum": 4.591799999999978,
+          "p95": 4.5076,
+          "count": 91
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\lines-legacy-r1-a1"
+    },
+    {
+      "workload": "lines",
+      "variant": "prototype",
+      "round": 1,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 199938,
+        "triangleCount": 0,
+        "lineSegmentCount": 196812,
+        "pointCount": 8000,
+        "groupCount": 2
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "b31fe30ba895f2f1d87b341b9c79783eac4b74a1661868b805ce729687039d27"
+      },
+      "timings": {
+        "first_submitted_ms": 69.03729999999999,
+        "scene_commit_ms": 63.323800000000006,
+        "cpu_batch_ms": 57.5895,
+        "gpu_finalize_wall_ms": 4.7660000000000196,
+        "upload_cpu_ms": 3.3852,
+        "fully_prepared_ms": 69.03729999999999,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 84.64690000982955,
+        "full_detail_observed_ms": 242.9709999996703,
+        "preparation_settled_observed_ms": 242.97910000314005,
+        "verified_image_ms": 763.4650000254624,
+        "capture_ms": 520.4859000223223,
+        "startup_ms": 621.4994000038132
+      },
+      "phases": {
+        "capacity_preflight": 0.3616,
+        "parse": 12.6416,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0205,
+        "mesh_validate": 0.0138,
+        "source_adoption": 0.0021,
+        "coordinate_localization": 3.929,
+        "triangulation": 0.0067,
+        "mesh_mapping": 10.1112,
+        "normals": 0.7096,
+        "mesh_bounds": 3.6879,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 5.3749,
+        "gpu_input_validation": 0.6249,
+        "point_membership": 1.8785,
+        "point_hierarchy": 17.2932,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 350769152,
+        "import_peak_working_set_bytes": 126722048,
+        "prepared_private_bytes": 350760960,
+        "lifecycle_peak_commit_bytes": 487780352,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 292147200
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 1574496,
+        "point_index_bytes": 32000,
+        "precise_position_bytes": 4800000,
+        "render_vertex_bytes": 6400000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 4800000,
+        "source_positions": 200000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 184,
+        "cloud_navigation_bytes": 12704,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 3326976,
+        "cloud_points": 207936,
+        "cloud_proxies": 17367,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 8,
+        "cloud_source_mapping_bytes": 1199628,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 48,
+        "point_membership_bytes": 0,
+        "upload_bytes": 11577360
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.360448,
+          "minimum": 0.35328,
+          "maximum": 0.658432,
+          "p95": 0.37888,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.99025,
+          "minimum": 3.3508,
+          "maximum": 4.493,
+          "p95": 4.327,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.16089999999997,
+          "minimum": 3.5418999999999983,
+          "maximum": 4.663999999999987,
+          "p95": 4.476499999999987,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.993792,
+          "minimum": 0.352512,
+          "maximum": 1.281024,
+          "p95": 1.071104,
+          "count": 100
+        },
+        "cpu_submit_ms": {
+          "median": 3.90785,
+          "minimum": 3.4179,
+          "maximum": 4.3624,
+          "p95": 4.2115,
+          "count": 100
+        },
+        "frame_interval_ms": {
+          "median": 4.1662000000000035,
+          "minimum": 3.7523000000000017,
+          "maximum": 4.598799999999983,
+          "p95": 4.472400000000022,
+          "count": 99
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\lines-prototype-r1-a1"
+    },
+    {
+      "workload": "cloud",
+      "variant": "legacy",
+      "round": 1,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 10000000,
+        "triangleCount": 0,
+        "lineSegmentCount": 0,
+        "pointCount": 10000000,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "47bcf80b4aa07a35c7f0ee6bb51b7a5204458198f47ce5fffea8923951bfaba3"
+      },
+      "timings": {
+        "first_submitted_ms": 2700.6752,
+        "scene_commit_ms": 2694.9898000000003,
+        "cpu_batch_ms": 2644.7806,
+        "gpu_finalize_wall_ms": 48.878200000000106,
+        "upload_cpu_ms": 36.92850000000001,
+        "fully_prepared_ms": 2700.6752,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 2697.787999990396,
+        "full_detail_observed_ms": 2967.3213999776635,
+        "preparation_settled_observed_ms": 2967.3301999864634,
+        "verified_image_ms": 3514.051299978746,
+        "capture_ms": 546.7210000206251,
+        "startup_ms": 636.6325999842957
+      },
+      "phases": {
+        "capacity_preflight": 0.0358,
+        "parse": 348.6659,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0052,
+        "source_adoption": 80.7647,
+        "coordinate_localization": 255.6679,
+        "triangulation": 0.0237,
+        "mesh_mapping": 431.8529,
+        "normals": 39.2864,
+        "mesh_bounds": 223.2655,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 158.4922,
+        "gpu_input_validation": 39.9711,
+        "point_membership": 86.2515,
+        "point_hierarchy": 951.3728,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 1571819520,
+        "import_peak_working_set_bytes": 1341628416,
+        "prepared_private_bytes": 1569193984,
+        "lifecycle_peak_commit_bytes": 1705787392,
+        "copied_position_bytes": 240000000,
+        "source_adoption_private_bytes": 887566336
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 40000000,
+        "precise_position_bytes": 240000000,
+        "render_vertex_bytes": 320000000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 240000000,
+        "source_positions": 10000000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 115160,
+        "cloud_node_bytes": 922488,
+        "cloud_point_bytes": 160000000,
+        "cloud_points": 10000000,
+        "cloud_proxies": 1094079,
+        "cloud_proxy_bytes": 25196848,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 40000000,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 177505264
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.175104,
+          "minimum": 0.166912,
+          "maximum": 0.279552,
+          "p95": 0.275456,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.9732000000000003,
+          "minimum": 3.4418,
+          "maximum": 4.7084,
+          "p95": 4.2784,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.167300000000068,
+          "minimum": 3.698299999999989,
+          "maximum": 4.893899999999917,
+          "p95": 4.44380000000001,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 4.844544,
+          "minimum": 0.160768,
+          "maximum": 12.35968,
+          "p95": 8.704,
+          "count": 83
+        },
+        "cpu_submit_ms": {
+          "median": 4.454,
+          "minimum": 3.3398,
+          "maximum": 12.4294,
+          "p95": 8.9694,
+          "count": 83
+        },
+        "frame_interval_ms": {
+          "median": 4.725399999999979,
+          "minimum": 3.7432000000000016,
+          "maximum": 12.911599999999993,
+          "p95": 9.492000000000004,
+          "count": 82
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\cloud-legacy-r1-a1"
+    },
+    {
+      "workload": "cloud",
+      "variant": "prototype",
+      "round": 1,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 10000000,
+        "triangleCount": 0,
+        "lineSegmentCount": 0,
+        "pointCount": 10000000,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "47bcf80b4aa07a35c7f0ee6bb51b7a5204458198f47ce5fffea8923951bfaba3"
+      },
+      "timings": {
+        "first_submitted_ms": 2493.5535,
+        "scene_commit_ms": 2488.2963999999997,
+        "cpu_batch_ms": 2435.6504,
+        "gpu_finalize_wall_ms": 48.5015999999996,
+        "upload_cpu_ms": 36.6609,
+        "fully_prepared_ms": 2493.5535,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 2508.2424000138417,
+        "full_detail_observed_ms": 2773.1513000035193,
+        "preparation_settled_observed_ms": 2773.1612999923527,
+        "verified_image_ms": 3305.786899989471,
+        "capture_ms": 532.6233000087086,
+        "startup_ms": 624.9353000021074
+      },
+      "phases": {
+        "capacity_preflight": 0.0464,
+        "parse": 345.8838,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0107,
+        "mesh_validate": 0.0035,
+        "source_adoption": 0.0026,
+        "coordinate_localization": 195.2893,
+        "triangulation": 0.0179,
+        "mesh_mapping": 446.2327,
+        "normals": 35.0539,
+        "mesh_bounds": 215.5267,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 144.8056,
+        "gpu_input_validation": 17.4357,
+        "point_membership": 65.7803,
+        "point_hierarchy": 954.3921,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 1569234944,
+        "import_peak_working_set_bytes": 1303625728,
+        "prepared_private_bytes": 1565417472,
+        "lifecycle_peak_commit_bytes": 1702023168,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 644710400
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 40000000,
+        "precise_position_bytes": 240000000,
+        "render_vertex_bytes": 320000000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 240000000,
+        "source_positions": 10000000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 115160,
+        "cloud_node_bytes": 922488,
+        "cloud_point_bytes": 160000000,
+        "cloud_points": 10000000,
+        "cloud_proxies": 1094079,
+        "cloud_proxy_bytes": 25196848,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 40000000,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 177505264
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.168192,
+          "minimum": 0.161024,
+          "maximum": 0.173056,
+          "p95": 0.169984,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.9682500000000003,
+          "minimum": 3.074,
+          "maximum": 4.6056,
+          "p95": 4.2763,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.164900000000102,
+          "minimum": 3.583500000000015,
+          "maximum": 4.838700000000017,
+          "p95": 4.472100000000069,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 4.369408,
+          "minimum": 0.159744,
+          "maximum": 13.058048,
+          "p95": 9.541632,
+          "count": 85
+        },
+        "cpu_submit_ms": {
+          "median": 4.1049,
+          "minimum": 3.3323,
+          "maximum": 13.2588,
+          "p95": 9.8059,
+          "count": 85
+        },
+        "frame_interval_ms": {
+          "median": 4.489250000000027,
+          "minimum": 3.644800000000032,
+          "maximum": 13.902999999999992,
+          "p95": 10.081000000000017,
+          "count": 84
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\cloud-prototype-r1-a1"
+    },
+    {
+      "workload": "quads",
+      "variant": "prototype",
+      "round": 2,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 251001,
+        "triangleCount": 500000,
+        "lineSegmentCount": 0,
+        "pointCount": 0,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "d6e29e5845354f0218c97d3bd591ba5221f1d7e5bc032f85a839d6c1d52e321f"
+      },
+      "timings": {
+        "first_submitted_ms": 149.4822,
+        "scene_commit_ms": 144.9271,
+        "cpu_batch_ms": 131.4373,
+        "gpu_finalize_wall_ms": 9.521799999999985,
+        "upload_cpu_ms": 4.594200000000001,
+        "fully_prepared_ms": 236.5486,
+        "annotation_publish_after_commit_ms": 91.6215,
+        "load_response_ms": 166.5647000190802,
+        "full_detail_observed_ms": 195.87630001478828,
+        "preparation_settled_observed_ms": 383.2173000264447,
+        "verified_image_ms": 888.1133000249974,
+        "capture_ms": 504.8952999932226,
+        "startup_ms": 623.7656000012066
+      },
+      "phases": {
+        "capacity_preflight": 0.2432,
+        "parse": 22.5249,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0229,
+        "mesh_validate": 0.0041,
+        "source_adoption": 0.0024,
+        "coordinate_localization": 5.0322,
+        "triangulation": 5.0613,
+        "mesh_mapping": 33.8389,
+        "normals": 10.1047,
+        "mesh_bounds": 4.6286,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 19.919,
+        "gpu_input_validation": 2.3846,
+        "point_membership": 4.2064,
+        "point_hierarchy": 21.0444,
+        "annotation_blocks_fingerprints": 21.006,
+        "annotation_spatial_index": 54.1974,
+        "annotation_snapshot_copy": 9.6217
+      },
+      "memory": {
+        "import_peak_commit_bytes": 361984000,
+        "import_peak_working_set_bytes": 156815360,
+        "prepared_private_bytes": 361922560,
+        "lifecycle_peak_commit_bytes": 498565120,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 305303552
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 0,
+        "precise_position_bytes": 6024024,
+        "render_vertex_bytes": 8032032,
+        "source_id_bytes": 0,
+        "source_index_bytes": 6000000,
+        "source_position_bytes": 6024024,
+        "source_positions": 251001,
+        "triangle_index_bytes": 6000000
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 13312,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 4016016,
+        "cloud_points": 251001,
+        "cloud_proxies": 16934,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 1004004,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 18318992
+      },
+      "annotation_capacities": {
+        "block_bytes": 95920,
+        "snapshot_block_bytes": 78160,
+        "snapshot_index_bytes": 6000000,
+        "snapshot_vertex_bytes": 8032032,
+        "spatial_tree_bytes": 873936,
+        "spatial_triangle_bytes": 2000000
+      },
+      "steady": {
+        "gpu_ms": {
+          "median": 0.187392,
+          "minimum": 0.177152,
+          "maximum": 0.193536,
+          "p95": 0.190464,
+          "count": 244
+        },
+        "cpu_submit_ms": {
+          "median": 3.9935,
+          "minimum": 3.5135,
+          "maximum": 4.4772,
+          "p95": 4.2703,
+          "count": 244
+        },
+        "frame_interval_ms": {
+          "median": 4.1638000000000375,
+          "minimum": 3.719600000000014,
+          "maximum": 4.630400000000009,
+          "p95": 4.430700000000002,
+          "count": 243
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.193536,
+          "minimum": 0.18048,
+          "maximum": 0.366592,
+          "p95": 0.365568,
+          "count": 135
+        },
+        "cpu_submit_ms": {
+          "median": 3.9595,
+          "minimum": 3.3407,
+          "maximum": 4.6883,
+          "p95": 4.2365,
+          "count": 135
+        },
+        "frame_interval_ms": {
+          "median": 4.16934999999998,
+          "minimum": 3.609300000000019,
+          "maximum": 4.819500000000005,
+          "p95": 4.383499999999998,
+          "count": 134
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": true,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\quads-prototype-r2-a1"
+    },
+    {
+      "workload": "quads",
+      "variant": "legacy",
+      "round": 2,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 251001,
+        "triangleCount": 500000,
+        "lineSegmentCount": 0,
+        "pointCount": 0,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "d6e29e5845354f0218c97d3bd591ba5221f1d7e5bc032f85a839d6c1d52e321f"
+      },
+      "timings": {
+        "first_submitted_ms": 151.21519999999998,
+        "scene_commit_ms": 146.8525,
+        "cpu_batch_ms": 136.532,
+        "gpu_finalize_wall_ms": 9.444799999999987,
+        "upload_cpu_ms": 4.5362,
+        "fully_prepared_ms": 242.5207,
+        "annotation_publish_after_commit_ms": 95.66820000000001,
+        "load_response_ms": 171.84900000574999,
+        "full_detail_observed_ms": 204.91280002170242,
+        "preparation_settled_observed_ms": 296.67260000132956,
+        "verified_image_ms": 800.2639000187628,
+        "capture_ms": 503.5951000172645,
+        "startup_ms": 644.2936999956146
+      },
+      "phases": {
+        "capacity_preflight": 0.3565,
+        "parse": 24.8018,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0069,
+        "source_adoption": 2.1961,
+        "coordinate_localization": 6.7896,
+        "triangulation": 4.6086,
+        "mesh_mapping": 34.6455,
+        "normals": 9.6875,
+        "mesh_bounds": 4.551,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 19.4922,
+        "gpu_input_validation": 2.3021,
+        "point_membership": 3.9487,
+        "point_hierarchy": 20.3938,
+        "annotation_blocks_fingerprints": 26.919,
+        "annotation_spatial_index": 53.8336,
+        "annotation_snapshot_copy": 9.0201
+      },
+      "memory": {
+        "import_peak_commit_bytes": 358440960,
+        "import_peak_working_set_bytes": 162762752,
+        "prepared_private_bytes": 358346752,
+        "lifecycle_peak_commit_bytes": 495009792,
+        "copied_position_bytes": 6024024,
+        "source_adoption_private_bytes": 308420608
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 0,
+        "precise_position_bytes": 6024024,
+        "render_vertex_bytes": 8032032,
+        "source_id_bytes": 0,
+        "source_index_bytes": 6000000,
+        "source_position_bytes": 6024024,
+        "source_positions": 251001,
+        "triangle_index_bytes": 6000000
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 13312,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 4016016,
+        "cloud_points": 251001,
+        "cloud_proxies": 16934,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 1004004,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 18318992
+      },
+      "annotation_capacities": {
+        "block_bytes": 95920,
+        "snapshot_block_bytes": 78160,
+        "snapshot_index_bytes": 6000000,
+        "snapshot_vertex_bytes": 8032032,
+        "spatial_tree_bytes": 873936,
+        "spatial_triangle_bytes": 2000000
+      },
+      "steady": {
+        "gpu_ms": {
+          "median": 0.188416,
+          "minimum": 0.180224,
+          "maximum": 0.191488,
+          "p95": 0.190464,
+          "count": 246
+        },
+        "cpu_submit_ms": {
+          "median": 4.00435,
+          "minimum": 3.3398,
+          "maximum": 4.449,
+          "p95": 4.3067,
+          "count": 246
+        },
+        "frame_interval_ms": {
+          "median": 4.157499999999999,
+          "minimum": 3.69399999999996,
+          "maximum": 4.610200000000077,
+          "p95": 4.4570999999999685,
+          "count": 245
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.18944,
+          "minimum": 0.181248,
+          "maximum": 0.366592,
+          "p95": 0.365568,
+          "count": 111
+        },
+        "cpu_submit_ms": {
+          "median": 3.9355,
+          "minimum": 3.0688,
+          "maximum": 5.0682,
+          "p95": 4.3396,
+          "count": 111
+        },
+        "frame_interval_ms": {
+          "median": 4.15674999999999,
+          "minimum": 3.3198000000000008,
+          "maximum": 5.2761,
+          "p95": 4.491200000000006,
+          "count": 110
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": true,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\quads-legacy-r2-a1"
+    },
+    {
+      "workload": "lines",
+      "variant": "prototype",
+      "round": 2,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 199938,
+        "triangleCount": 0,
+        "lineSegmentCount": 196812,
+        "pointCount": 8000,
+        "groupCount": 2
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "b31fe30ba895f2f1d87b341b9c79783eac4b74a1661868b805ce729687039d27"
+      },
+      "timings": {
+        "first_submitted_ms": 72.4531,
+        "scene_commit_ms": 66.8124,
+        "cpu_batch_ms": 58.4337,
+        "gpu_finalize_wall_ms": 4.420599999999993,
+        "upload_cpu_ms": 3.1500000000000004,
+        "fully_prepared_ms": 72.4531,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 82.95179999549873,
+        "full_detail_observed_ms": 341.4168999879621,
+        "preparation_settled_observed_ms": 341.42829998745583,
+        "verified_image_ms": 860.8464999997523,
+        "capture_ms": 519.4153999909759,
+        "startup_ms": 659.618399979081
+      },
+      "phases": {
+        "capacity_preflight": 0.2493,
+        "parse": 13.4637,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0195,
+        "mesh_validate": 0.022,
+        "source_adoption": 0.0035,
+        "coordinate_localization": 3.9277,
+        "triangulation": 0.0085,
+        "mesh_mapping": 10.0663,
+        "normals": 0.7141,
+        "mesh_bounds": 3.7842,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 5.3044,
+        "gpu_input_validation": 0.621,
+        "point_membership": 1.8946,
+        "point_hierarchy": 17.4524,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 350773248,
+        "import_peak_working_set_bytes": 126595072,
+        "prepared_private_bytes": 350765056,
+        "lifecycle_peak_commit_bytes": 487899136,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 290668544
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 1574496,
+        "point_index_bytes": 32000,
+        "precise_position_bytes": 4800000,
+        "render_vertex_bytes": 6400000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 4800000,
+        "source_positions": 200000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 184,
+        "cloud_navigation_bytes": 12704,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 3326976,
+        "cloud_points": 207936,
+        "cloud_proxies": 17367,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 8,
+        "cloud_source_mapping_bytes": 1199628,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 48,
+        "point_membership_bytes": 0,
+        "upload_bytes": 11577360
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.361472,
+          "minimum": 0.35328,
+          "maximum": 0.367616,
+          "p95": 0.362496,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.99675,
+          "minimum": 3.3121,
+          "maximum": 4.4692,
+          "p95": 4.3031,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.155499999999961,
+          "minimum": 3.5460999999999956,
+          "maximum": 4.639700000000005,
+          "p95": 4.474699999999984,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.99456,
+          "minimum": 0.355328,
+          "maximum": 1.893376,
+          "p95": 1.417216,
+          "count": 105
+        },
+        "cpu_submit_ms": {
+          "median": 3.91,
+          "minimum": 3.4386,
+          "maximum": 4.4396,
+          "p95": 4.2515,
+          "count": 105
+        },
+        "frame_interval_ms": {
+          "median": 4.1684999999999945,
+          "minimum": 3.6765000000000043,
+          "maximum": 4.594700000000017,
+          "p95": 4.442699999999995,
+          "count": 104
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\lines-prototype-r2-a1"
+    },
+    {
+      "workload": "lines",
+      "variant": "legacy",
+      "round": 2,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 199938,
+        "triangleCount": 0,
+        "lineSegmentCount": 196812,
+        "pointCount": 8000,
+        "groupCount": 2
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "b31fe30ba895f2f1d87b341b9c79783eac4b74a1661868b805ce729687039d27"
+      },
+      "timings": {
+        "first_submitted_ms": 76.38580000000002,
+        "scene_commit_ms": 70.76240000000001,
+        "cpu_batch_ms": 62.8612,
+        "gpu_finalize_wall_ms": 4.376300000000015,
+        "upload_cpu_ms": 3.1638,
+        "fully_prepared_ms": 76.38580000000002,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 95.4042999946978,
+        "full_detail_observed_ms": 266.55299999401905,
+        "preparation_settled_observed_ms": 266.56160000129603,
+        "verified_image_ms": 823.123799986206,
+        "capture_ms": 556.5611000056379,
+        "startup_ms": 659.3756999936886
+      },
+      "phases": {
+        "capacity_preflight": 0.2812,
+        "parse": 14.7384,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0172,
+        "source_adoption": 1.9853,
+        "coordinate_localization": 5.1659,
+        "triangulation": 0.0147,
+        "mesh_mapping": 10.1678,
+        "normals": 0.7047,
+        "mesh_bounds": 3.5825,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 5.2443,
+        "gpu_input_validation": 0.62,
+        "point_membership": 1.9199,
+        "point_hierarchy": 16.8673,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 347160576,
+        "import_peak_working_set_bytes": 127045632,
+        "prepared_private_bytes": 347152384,
+        "lifecycle_peak_commit_bytes": 484352000,
+        "copied_position_bytes": 4800000,
+        "source_adoption_private_bytes": 295211008
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 1574496,
+        "point_index_bytes": 32000,
+        "precise_position_bytes": 4800000,
+        "render_vertex_bytes": 6400000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 4800000,
+        "source_positions": 200000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 184,
+        "cloud_navigation_bytes": 12704,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 3326976,
+        "cloud_points": 207936,
+        "cloud_proxies": 17367,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 8,
+        "cloud_source_mapping_bytes": 1199628,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 48,
+        "point_membership_bytes": 0,
+        "upload_bytes": 11577360
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.374784,
+          "minimum": 0.356608,
+          "maximum": 0.385024,
+          "p95": 0.379904,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.9827500000000002,
+          "minimum": 3.1173,
+          "maximum": 4.9661,
+          "p95": 4.2832,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.15679999999999,
+          "minimum": 3.4351999999999947,
+          "maximum": 5.117900000000006,
+          "p95": 4.4582999999999515,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.997376,
+          "minimum": 0.356352,
+          "maximum": 1.08544,
+          "p95": 1.069056,
+          "count": 97
+        },
+        "cpu_submit_ms": {
+          "median": 3.8974,
+          "minimum": 3.2368,
+          "maximum": 4.507,
+          "p95": 4.3437,
+          "count": 97
+        },
+        "frame_interval_ms": {
+          "median": 4.162099999999995,
+          "minimum": 3.5061999999999784,
+          "maximum": 4.726300000000009,
+          "p95": 4.550000000000011,
+          "count": 96
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\lines-legacy-r2-a1"
+    },
+    {
+      "workload": "cloud",
+      "variant": "prototype",
+      "round": 2,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 10000000,
+        "triangleCount": 0,
+        "lineSegmentCount": 0,
+        "pointCount": 10000000,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "47bcf80b4aa07a35c7f0ee6bb51b7a5204458198f47ce5fffea8923951bfaba3"
+      },
+      "timings": {
+        "first_submitted_ms": 2537.5514,
+        "scene_commit_ms": 2532.2111999999997,
+        "cpu_batch_ms": 2477.6654,
+        "gpu_finalize_wall_ms": 50.87239999999974,
+        "upload_cpu_ms": 37.23149999999999,
+        "fully_prepared_ms": 2537.5514,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 2539.0846999944188,
+        "full_detail_observed_ms": 2801.285399997141,
+        "preparation_settled_observed_ms": 2801.293299999088,
+        "verified_image_ms": 3334.2105000047013,
+        "capture_ms": 532.9162999987602,
+        "startup_ms": 617.640799988294
+      },
+      "phases": {
+        "capacity_preflight": 0.0358,
+        "parse": 353.3207,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0127,
+        "mesh_validate": 0.0033,
+        "source_adoption": 0.0024,
+        "coordinate_localization": 196.3891,
+        "triangulation": 0.0155,
+        "mesh_mapping": 431.6978,
+        "normals": 35.0364,
+        "mesh_bounds": 204.355,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 159.11,
+        "gpu_input_validation": 17.1258,
+        "point_membership": 67.1343,
+        "point_hierarchy": 996.1134,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 1569300480,
+        "import_peak_working_set_bytes": 1304772608,
+        "prepared_private_bytes": 1565011968,
+        "lifecycle_peak_commit_bytes": 1701597184,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 647172096
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 40000000,
+        "precise_position_bytes": 240000000,
+        "render_vertex_bytes": 320000000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 240000000,
+        "source_positions": 10000000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 115160,
+        "cloud_node_bytes": 922488,
+        "cloud_point_bytes": 160000000,
+        "cloud_points": 10000000,
+        "cloud_proxies": 1094079,
+        "cloud_proxy_bytes": 25196848,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 40000000,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 177505264
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.186368,
+          "minimum": 0.178176,
+          "maximum": 0.269312,
+          "p95": 0.18944,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.9976000000000003,
+          "minimum": 3.1108,
+          "maximum": 4.8745,
+          "p95": 4.31,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.170500000000061,
+          "minimum": 3.4465000000000146,
+          "maximum": 5.017799999999966,
+          "p95": 4.4915999999999485,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 4.33152,
+          "minimum": 0.166912,
+          "maximum": 13.04576,
+          "p95": 7.684096,
+          "count": 104
+        },
+        "cpu_submit_ms": {
+          "median": 4.0274,
+          "minimum": 3.1679,
+          "maximum": 13.4676,
+          "p95": 7.6024,
+          "count": 104
+        },
+        "frame_interval_ms": {
+          "median": 4.335899999999981,
+          "minimum": 3.558599999999956,
+          "maximum": 14.021699999999996,
+          "p95": 7.968299999999999,
+          "count": 103
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\cloud-prototype-r2-a1"
+    },
+    {
+      "workload": "cloud",
+      "variant": "legacy",
+      "round": 2,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 10000000,
+        "triangleCount": 0,
+        "lineSegmentCount": 0,
+        "pointCount": 10000000,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "47bcf80b4aa07a35c7f0ee6bb51b7a5204458198f47ce5fffea8923951bfaba3"
+      },
+      "timings": {
+        "first_submitted_ms": 2765.9343,
+        "scene_commit_ms": 2760.8535,
+        "cpu_batch_ms": 2709.7478,
+        "gpu_finalize_wall_ms": 50.35400000000027,
+        "upload_cpu_ms": 37.2595,
+        "fully_prepared_ms": 2765.9343,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 2805.0877999921795,
+        "full_detail_observed_ms": 3061.2415999930818,
+        "preparation_settled_observed_ms": 3061.249399994267,
+        "verified_image_ms": 3574.5498999895062,
+        "capture_ms": 513.2997000182513,
+        "startup_ms": 619.4727999973111
+      },
+      "phases": {
+        "capacity_preflight": 0.0417,
+        "parse": 426.477,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0055,
+        "source_adoption": 83.9865,
+        "coordinate_localization": 260.0609,
+        "triangulation": 0.0198,
+        "mesh_mapping": 453.3797,
+        "normals": 39.0462,
+        "mesh_bounds": 197.1226,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 155.1077,
+        "gpu_input_validation": 18.2053,
+        "point_membership": 74.614,
+        "point_hierarchy": 973.5609,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 1567760384,
+        "import_peak_working_set_bytes": 1341333504,
+        "prepared_private_bytes": 1563254784,
+        "lifecycle_peak_commit_bytes": 1699860480,
+        "copied_position_bytes": 240000000,
+        "source_adoption_private_bytes": 883781632
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 40000000,
+        "precise_position_bytes": 240000000,
+        "render_vertex_bytes": 320000000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 240000000,
+        "source_positions": 10000000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 115160,
+        "cloud_node_bytes": 922488,
+        "cloud_point_bytes": 160000000,
+        "cloud_points": 10000000,
+        "cloud_proxies": 1094079,
+        "cloud_proxy_bytes": 25196848,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 40000000,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 177505264
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.167936,
+          "minimum": 0.160768,
+          "maximum": 0.174336,
+          "p95": 0.171008,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.9613,
+          "minimum": 3.384,
+          "maximum": 4.5462,
+          "p95": 4.2727,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.16560000000004,
+          "minimum": 3.6854999999999905,
+          "maximum": 4.716599999999971,
+          "p95": 4.471199999999996,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 4.481024,
+          "minimum": 0.161792,
+          "maximum": 11.79648,
+          "p95": 7.995392,
+          "count": 93
+        },
+        "cpu_submit_ms": {
+          "median": 4.1155,
+          "minimum": 2.9455,
+          "maximum": 11.4334,
+          "p95": 8.3948,
+          "count": 93
+        },
+        "frame_interval_ms": {
+          "median": 4.41100000000003,
+          "minimum": 3.4354000000000156,
+          "maximum": 12.223399999999998,
+          "p95": 8.889899999999997,
+          "count": 92
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\cloud-legacy-r2-a1"
+    },
+    {
+      "workload": "quads",
+      "variant": "legacy",
+      "round": 3,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 251001,
+        "triangleCount": 500000,
+        "lineSegmentCount": 0,
+        "pointCount": 0,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "d6e29e5845354f0218c97d3bd591ba5221f1d7e5bc032f85a839d6c1d52e321f"
+      },
+      "timings": {
+        "first_submitted_ms": 147.2627,
+        "scene_commit_ms": 142.63479999999998,
+        "cpu_batch_ms": 132.5951,
+        "gpu_finalize_wall_ms": 9.300100000000015,
+        "upload_cpu_ms": 4.548399999999999,
+        "fully_prepared_ms": 234.39869999999996,
+        "annotation_publish_after_commit_ms": 91.76389999999998,
+        "load_response_ms": 149.2811000207439,
+        "full_detail_observed_ms": 179.0451000269968,
+        "preparation_settled_observed_ms": 362.1333000191953,
+        "verified_image_ms": 863.9618000015616,
+        "capture_ms": 501.8272000015713,
+        "startup_ms": 604.2868999938946
+      },
+      "phases": {
+        "capacity_preflight": 0.2974,
+        "parse": 24.28,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0061,
+        "source_adoption": 2.1682,
+        "coordinate_localization": 6.358,
+        "triangulation": 4.1964,
+        "mesh_mapping": 31.4739,
+        "normals": 9.7141,
+        "mesh_bounds": 4.5775,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 19.568,
+        "gpu_input_validation": 2.3421,
+        "point_membership": 4.0462,
+        "point_hierarchy": 20.679,
+        "annotation_blocks_fingerprints": 20.5135,
+        "annotation_spatial_index": 53.1369,
+        "annotation_snapshot_copy": 9.3374
+      },
+      "memory": {
+        "import_peak_commit_bytes": 358248448,
+        "import_peak_working_set_bytes": 162754560,
+        "prepared_private_bytes": 358187008,
+        "lifecycle_peak_commit_bytes": 494850048,
+        "copied_position_bytes": 6024024,
+        "source_adoption_private_bytes": 308146176
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 0,
+        "precise_position_bytes": 6024024,
+        "render_vertex_bytes": 8032032,
+        "source_id_bytes": 0,
+        "source_index_bytes": 6000000,
+        "source_position_bytes": 6024024,
+        "source_positions": 251001,
+        "triangle_index_bytes": 6000000
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 13312,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 4016016,
+        "cloud_points": 251001,
+        "cloud_proxies": 16934,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 1004004,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 18318992
+      },
+      "annotation_capacities": {
+        "block_bytes": 95920,
+        "snapshot_block_bytes": 78160,
+        "snapshot_index_bytes": 6000000,
+        "snapshot_vertex_bytes": 8032032,
+        "spatial_tree_bytes": 873936,
+        "spatial_triangle_bytes": 2000000
+      },
+      "steady": {
+        "gpu_ms": {
+          "median": 0.187392,
+          "minimum": 0.177152,
+          "maximum": 0.195584,
+          "p95": 0.190464,
+          "count": 245
+        },
+        "cpu_submit_ms": {
+          "median": 4.0142,
+          "minimum": 3.5083,
+          "maximum": 4.5628,
+          "p95": 4.2855,
+          "count": 245
+        },
+        "frame_interval_ms": {
+          "median": 4.174049999999994,
+          "minimum": 3.7247999999999593,
+          "maximum": 4.700200000000109,
+          "p95": 4.44539999999995,
+          "count": 244
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.36352,
+          "minimum": 0.183296,
+          "maximum": 0.859136,
+          "p95": 0.384,
+          "count": 99
+        },
+        "cpu_submit_ms": {
+          "median": 3.9719,
+          "minimum": 3.5061,
+          "maximum": 4.2965,
+          "p95": 4.2068,
+          "count": 99
+        },
+        "frame_interval_ms": {
+          "median": 4.187450000000027,
+          "minimum": 3.765900000000002,
+          "maximum": 4.525900000000007,
+          "p95": 4.423699999999997,
+          "count": 98
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": true,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\quads-legacy-r3-a1"
+    },
+    {
+      "workload": "quads",
+      "variant": "prototype",
+      "round": 3,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 251001,
+        "triangleCount": 500000,
+        "lineSegmentCount": 0,
+        "pointCount": 0,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "d6e29e5845354f0218c97d3bd591ba5221f1d7e5bc032f85a839d6c1d52e321f"
+      },
+      "timings": {
+        "first_submitted_ms": 146.6239,
+        "scene_commit_ms": 142.34660000000002,
+        "cpu_batch_ms": 129.9967,
+        "gpu_finalize_wall_ms": 10.821600000000018,
+        "upload_cpu_ms": 4.5265,
+        "fully_prepared_ms": 233.81960000000004,
+        "annotation_publish_after_commit_ms": 91.47300000000001,
+        "load_response_ms": 148.79789997939952,
+        "full_detail_observed_ms": 173.99499999010004,
+        "preparation_settled_observed_ms": 330.19519998924807,
+        "verified_image_ms": 849.5610999816563,
+        "capture_ms": 519.3658999924082,
+        "startup_ms": 628.6298000195529
+      },
+      "phases": {
+        "capacity_preflight": 0.2502,
+        "parse": 23.6096,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0225,
+        "mesh_validate": 0.0026,
+        "source_adoption": 0.0023,
+        "coordinate_localization": 4.8868,
+        "triangulation": 5.1358,
+        "mesh_mapping": 31.3566,
+        "normals": 9.7579,
+        "mesh_bounds": 4.5939,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 19.6144,
+        "gpu_input_validation": 2.307,
+        "point_membership": 4.4397,
+        "point_hierarchy": 21.5056,
+        "annotation_blocks_fingerprints": 22.3322,
+        "annotation_spatial_index": 54.2742,
+        "annotation_snapshot_copy": 9.2138
+      },
+      "memory": {
+        "import_peak_commit_bytes": 360873984,
+        "import_peak_working_set_bytes": 157450240,
+        "prepared_private_bytes": 360816640,
+        "lifecycle_peak_commit_bytes": 497422336,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 303755264
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 0,
+        "precise_position_bytes": 6024024,
+        "render_vertex_bytes": 8032032,
+        "source_id_bytes": 0,
+        "source_index_bytes": 6000000,
+        "source_position_bytes": 6024024,
+        "source_positions": 251001,
+        "triangle_index_bytes": 6000000
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 13312,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 4016016,
+        "cloud_points": 251001,
+        "cloud_proxies": 16934,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 1004004,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 18318992
+      },
+      "annotation_capacities": {
+        "block_bytes": 95920,
+        "snapshot_block_bytes": 78160,
+        "snapshot_index_bytes": 6000000,
+        "snapshot_vertex_bytes": 8032032,
+        "spatial_tree_bytes": 873936,
+        "spatial_triangle_bytes": 2000000
+      },
+      "steady": {
+        "gpu_ms": {
+          "median": 0.187392,
+          "minimum": 0.1792,
+          "maximum": 0.19456,
+          "p95": 0.190464,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 4.0016,
+          "minimum": 3.3064,
+          "maximum": 4.6076,
+          "p95": 4.2818,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.162800000000061,
+          "minimum": 3.5681999999999334,
+          "maximum": 4.942900000000009,
+          "p95": 4.451899999999995,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.36352,
+          "minimum": 0.183296,
+          "maximum": 0.862208,
+          "p95": 0.382976,
+          "count": 122
+        },
+        "cpu_submit_ms": {
+          "median": 3.97025,
+          "minimum": 3.5272,
+          "maximum": 4.4501,
+          "p95": 4.2363,
+          "count": 122
+        },
+        "frame_interval_ms": {
+          "median": 4.1632000000000176,
+          "minimum": 3.7878000000000043,
+          "maximum": 4.59050000000002,
+          "p95": 4.420399999999972,
+          "count": 121
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": true,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\quads-prototype-r3-a1"
+    },
+    {
+      "workload": "lines",
+      "variant": "legacy",
+      "round": 3,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 199938,
+        "triangleCount": 0,
+        "lineSegmentCount": 196812,
+        "pointCount": 8000,
+        "groupCount": 2
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "b31fe30ba895f2f1d87b341b9c79783eac4b74a1661868b805ce729687039d27"
+      },
+      "timings": {
+        "first_submitted_ms": 72.79039999999999,
+        "scene_commit_ms": 67.2871,
+        "cpu_batch_ms": 61.8535,
+        "gpu_finalize_wall_ms": 4.716700000000003,
+        "upload_cpu_ms": 3.2868000000000004,
+        "fully_prepared_ms": 72.79039999999999,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 71.79369998630136,
+        "full_detail_observed_ms": 254.90479997824878,
+        "preparation_settled_observed_ms": 254.9187999975402,
+        "verified_image_ms": 786.7972999811172,
+        "capture_ms": 531.8670000124257,
+        "startup_ms": 668.1152999808546
+      },
+      "phases": {
+        "capacity_preflight": 0.2446,
+        "parse": 13.3259,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0174,
+        "source_adoption": 1.6979,
+        "coordinate_localization": 5.1343,
+        "triangulation": 0.0152,
+        "mesh_mapping": 10.0929,
+        "normals": 0.7374,
+        "mesh_bounds": 3.6732,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 5.3377,
+        "gpu_input_validation": 0.63,
+        "point_membership": 1.8767,
+        "point_hierarchy": 17.4925,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 351948800,
+        "import_peak_working_set_bytes": 127557632,
+        "prepared_private_bytes": 351940608,
+        "lifecycle_peak_commit_bytes": 489136128,
+        "copied_position_bytes": 4800000,
+        "source_adoption_private_bytes": 298401792
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 1574496,
+        "point_index_bytes": 32000,
+        "precise_position_bytes": 4800000,
+        "render_vertex_bytes": 6400000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 4800000,
+        "source_positions": 200000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 184,
+        "cloud_navigation_bytes": 12704,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 3326976,
+        "cloud_points": 207936,
+        "cloud_proxies": 17367,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 8,
+        "cloud_source_mapping_bytes": 1199628,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 48,
+        "point_membership_bytes": 0,
+        "upload_bytes": 11577360
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.361472,
+          "minimum": 0.35328,
+          "maximum": 0.37376,
+          "p95": 0.364544,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 3.9932,
+          "minimum": 3.5189,
+          "maximum": 4.4327,
+          "p95": 4.2646,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.162299999999998,
+          "minimum": 3.775700000000029,
+          "maximum": 4.58970000000005,
+          "p95": 4.4266999999999825,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 0.9948159999999999,
+          "minimum": 0.354304,
+          "maximum": 2.081792,
+          "p95": 1.50528,
+          "count": 124
+        },
+        "cpu_submit_ms": {
+          "median": 3.92325,
+          "minimum": 3.3133,
+          "maximum": 4.6799,
+          "p95": 4.1962,
+          "count": 124
+        },
+        "frame_interval_ms": {
+          "median": 4.170900000000003,
+          "minimum": 3.514499999999998,
+          "maximum": 4.841199999999958,
+          "p95": 4.374500000000012,
+          "count": 123
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\lines-legacy-r3-a1"
+    },
+    {
+      "workload": "lines",
+      "variant": "prototype",
+      "round": 3,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 199938,
+        "triangleCount": 0,
+        "lineSegmentCount": 196812,
+        "pointCount": 8000,
+        "groupCount": 2
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "b31fe30ba895f2f1d87b341b9c79783eac4b74a1661868b805ce729687039d27"
+      },
+      "timings": {
+        "first_submitted_ms": 72.5317,
+        "scene_commit_ms": 66.8089,
+        "cpu_batch_ms": 58.2966,
+        "gpu_finalize_wall_ms": 4.492200000000011,
+        "upload_cpu_ms": 3.1679000000000004,
+        "fully_prepared_ms": 72.5317,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 71.47799999802373,
+        "full_detail_observed_ms": 246.2064999854192,
+        "preparation_settled_observed_ms": 246.2140999850817,
+        "verified_image_ms": 789.7260999889113,
+        "capture_ms": 543.5120000038296,
+        "startup_ms": 612.7401999838185
+      },
+      "phases": {
+        "capacity_preflight": 0.2417,
+        "parse": 13.0592,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0216,
+        "mesh_validate": 0.0142,
+        "source_adoption": 0.0028,
+        "coordinate_localization": 4.1418,
+        "triangulation": 0.0091,
+        "mesh_mapping": 10.0659,
+        "normals": 0.741,
+        "mesh_bounds": 3.7129,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 5.2928,
+        "gpu_input_validation": 0.6139,
+        "point_membership": 1.864,
+        "point_hierarchy": 17.4386,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 346144768,
+        "import_peak_working_set_bytes": 125882368,
+        "prepared_private_bytes": 346136576,
+        "lifecycle_peak_commit_bytes": 483344384,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 289886208
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 1574496,
+        "point_index_bytes": 32000,
+        "precise_position_bytes": 4800000,
+        "render_vertex_bytes": 6400000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 4800000,
+        "source_positions": 200000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 184,
+        "cloud_navigation_bytes": 12704,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 3326976,
+        "cloud_points": 207936,
+        "cloud_proxies": 17367,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 8,
+        "cloud_source_mapping_bytes": 1199628,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 48,
+        "point_membership_bytes": 0,
+        "upload_bytes": 11577360
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.36672,
+          "minimum": 0.355328,
+          "maximum": 0.659456,
+          "p95": 0.379904,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 4.0026,
+          "minimum": 3.3897,
+          "maximum": 4.6002,
+          "p95": 4.2802,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.17,
+          "minimum": 3.6492999999999256,
+          "maximum": 4.767400000000066,
+          "p95": 4.451800000000048,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 1.062912,
+          "minimum": 0.354304,
+          "maximum": 1.837056,
+          "p95": 1.37216,
+          "count": 96
+        },
+        "cpu_submit_ms": {
+          "median": 3.9076500000000003,
+          "minimum": 3.4099,
+          "maximum": 4.3909,
+          "p95": 4.1838,
+          "count": 96
+        },
+        "frame_interval_ms": {
+          "median": 4.1492000000000075,
+          "minimum": 3.8641000000000005,
+          "maximum": 4.5456,
+          "p95": 4.415199999999999,
+          "count": 95
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\lines-prototype-r3-a1"
+    },
+    {
+      "workload": "cloud",
+      "variant": "legacy",
+      "round": 3,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 10000000,
+        "triangleCount": 0,
+        "lineSegmentCount": 0,
+        "pointCount": 10000000,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "47bcf80b4aa07a35c7f0ee6bb51b7a5204458198f47ce5fffea8923951bfaba3"
+      },
+      "timings": {
+        "first_submitted_ms": 2682.6085,
+        "scene_commit_ms": 2677.4629,
+        "cpu_batch_ms": 2626.204,
+        "gpu_finalize_wall_ms": 48.55670000000009,
+        "upload_cpu_ms": 36.772499999999994,
+        "fully_prepared_ms": 2682.6085,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 2730.2297999849543,
+        "full_detail_observed_ms": 2988.1683999847155,
+        "preparation_settled_observed_ms": 2988.1767999904696,
+        "verified_image_ms": 3512.8734999743756,
+        "capture_ms": 524.6952000015881,
+        "startup_ms": 630.7579000131227
+      },
+      "phases": {
+        "capacity_preflight": 0.0419,
+        "parse": 401.0762,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0,
+        "mesh_validate": 0.0048,
+        "source_adoption": 84.0725,
+        "coordinate_localization": 256.5089,
+        "triangulation": 0.0229,
+        "mesh_mapping": 451.7564,
+        "normals": 37.8097,
+        "mesh_bounds": 206.7389,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 145.5604,
+        "gpu_input_validation": 17.9139,
+        "point_membership": 74.6745,
+        "point_hierarchy": 921.2012,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 1570467840,
+        "import_peak_working_set_bytes": 1341210624,
+        "prepared_private_bytes": 1565671424,
+        "lifecycle_peak_commit_bytes": 1702825984,
+        "copied_position_bytes": 240000000,
+        "source_adoption_private_bytes": 886390784
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 40000000,
+        "precise_position_bytes": 240000000,
+        "render_vertex_bytes": 320000000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 240000000,
+        "source_positions": 10000000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 115160,
+        "cloud_node_bytes": 922488,
+        "cloud_point_bytes": 160000000,
+        "cloud_points": 10000000,
+        "cloud_proxies": 1094079,
+        "cloud_proxy_bytes": 25196848,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 40000000,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 177505264
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.186368,
+          "minimum": 0.176384,
+          "maximum": 0.268288,
+          "p95": 0.191488,
+          "count": 240
+        },
+        "cpu_submit_ms": {
+          "median": 4.00065,
+          "minimum": 3.4349,
+          "maximum": 4.4733,
+          "p95": 4.3249,
+          "count": 240
+        },
+        "frame_interval_ms": {
+          "median": 4.1655000000000655,
+          "minimum": 3.652699999999996,
+          "maximum": 4.640199999999936,
+          "p95": 4.487800000000021,
+          "count": 239
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 4.361216,
+          "minimum": 0.17536,
+          "maximum": 15.346688,
+          "p95": 8.615936,
+          "count": 95
+        },
+        "cpu_submit_ms": {
+          "median": 4.1876,
+          "minimum": 3.2422,
+          "maximum": 15.813,
+          "p95": 8.7096,
+          "count": 95
+        },
+        "frame_interval_ms": {
+          "median": 4.447999999999979,
+          "minimum": 3.6601,
+          "maximum": 16.283199999999994,
+          "p95": 9.262,
+          "count": 94
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\cloud-legacy-r3-a1"
+    },
+    {
+      "workload": "cloud",
+      "variant": "prototype",
+      "round": 3,
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 10000000,
+        "triangleCount": 0,
+        "lineSegmentCount": 0,
+        "pointCount": 10000000,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "47bcf80b4aa07a35c7f0ee6bb51b7a5204458198f47ce5fffea8923951bfaba3"
+      },
+      "timings": {
+        "first_submitted_ms": 2529.8523,
+        "scene_commit_ms": 2524.4006,
+        "cpu_batch_ms": 2470.153,
+        "gpu_finalize_wall_ms": 49.71150000000034,
+        "upload_cpu_ms": 36.8088,
+        "fully_prepared_ms": 2529.8523,
+        "annotation_publish_after_commit_ms": 0,
+        "load_response_ms": 2529.518299998017,
+        "full_detail_observed_ms": 2824.9869999999646,
+        "preparation_settled_observed_ms": 2824.9947000003885,
+        "verified_image_ms": 3389.0047000022605,
+        "capture_ms": 564.0095999988262,
+        "startup_ms": 631.7045999749098
+      },
+      "phases": {
+        "capacity_preflight": 0.0413,
+        "parse": 364.4338,
+        "legacy_freeform_reparse": 0,
+        "freeform_resolve": 0.0117,
+        "mesh_validate": 0.0032,
+        "source_adoption": 0.0023,
+        "coordinate_localization": 199.575,
+        "triangulation": 0.0202,
+        "mesh_mapping": 434.8343,
+        "normals": 36.4589,
+        "mesh_bounds": 220.0344,
+        "freeform_tessellation_append": 0,
+        "ui_group_preparation": 159.9388,
+        "gpu_input_validation": 20.1938,
+        "point_membership": 68.5267,
+        "point_hierarchy": 949.5492,
+        "annotation_blocks_fingerprints": 0,
+        "annotation_spatial_index": 0,
+        "annotation_snapshot_copy": 0
+      },
+      "memory": {
+        "import_peak_commit_bytes": 1565634560,
+        "import_peak_working_set_bytes": 1303416832,
+        "prepared_private_bytes": 1563172864,
+        "lifecycle_peak_commit_bytes": 1699799040,
+        "copied_position_bytes": 0,
+        "source_adoption_private_bytes": 643702784
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 40000000,
+        "precise_position_bytes": 240000000,
+        "render_vertex_bytes": 320000000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 240000000,
+        "source_positions": 10000000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 115160,
+        "cloud_node_bytes": 922488,
+        "cloud_point_bytes": 160000000,
+        "cloud_points": 10000000,
+        "cloud_proxies": 1094079,
+        "cloud_proxy_bytes": 25196848,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 40000000,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 177505264
+      },
+      "annotation_capacities": {},
+      "steady": {
+        "gpu_ms": {
+          "median": 0.17408,
+          "minimum": 0.166912,
+          "maximum": 0.181248,
+          "p95": 0.177152,
+          "count": 244
+        },
+        "cpu_submit_ms": {
+          "median": 3.9791499999999997,
+          "minimum": 2.9682,
+          "maximum": 4.9942,
+          "p95": 4.2499,
+          "count": 244
+        },
+        "frame_interval_ms": {
+          "median": 4.164200000000051,
+          "minimum": 3.1654000000000053,
+          "maximum": 5.176700000000011,
+          "p95": 4.441399999999987,
+          "count": 243
+        }
+      },
+      "navigation": {
+        "gpu_ms": {
+          "median": 4.427776,
+          "minimum": 0.158976,
+          "maximum": 15.737856,
+          "p95": 8.3456,
+          "count": 89
+        },
+        "cpu_submit_ms": {
+          "median": 3.9865,
+          "minimum": 3.1587,
+          "maximum": 16.1994,
+          "p95": 8.8342,
+          "count": 89
+        },
+        "frame_interval_ms": {
+          "median": 4.3271000000000015,
+          "minimum": 3.5568000000000097,
+          "maximum": 16.616600000000005,
+          "p95": 9.018499999999989,
+          "count": 88
+        }
+      },
+      "pacing": {
+        "msaaSamples": 4,
+        "periodNanoseconds": 4166667,
+        "resetFlags": 3,
+        "targetFps": 239.99998080000154
+      },
+      "annotation_ready": false,
+      "source": "D:\\.worktree\\woby-rapidobj-prototype\\build\\parser-validated-workflow\\cloud-prototype-r3-a1"
+    }
+  ],
+  "comparisons": [
+    {
+      "workload": {
+        "id": "quads",
+        "label": "250,000 quads, no normals",
+        "category": "polygon triangulation",
+        "path": "C:\\Users\\tuncb\\AppData\\Local\\Temp\\woby-load-workflow-inputs-357dqw8b\\quad_grid.obj",
+        "file_count": 1,
+        "input_bytes": 16722966,
+        "input_sha256": "d323d88669284d3a7eb9e08de247b8a280662b91ccdfa4dc5bb5cd0e667ad879"
+      },
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 251001,
+        "triangleCount": 500000,
+        "lineSegmentCount": 0,
+        "pointCount": 0,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "d6e29e5845354f0218c97d3bd591ba5221f1d7e5bc032f85a839d6c1d52e321f"
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 0,
+        "precise_position_bytes": 6024024,
+        "render_vertex_bytes": 8032032,
+        "source_id_bytes": 0,
+        "source_index_bytes": 6000000,
+        "source_position_bytes": 6024024,
+        "source_positions": 251001,
+        "triangle_index_bytes": 6000000
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 13312,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 4016016,
+        "cloud_points": 251001,
+        "cloud_proxies": 16934,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 1004004,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 18318992
+      },
+      "annotation_capacities": {
+        "block_bytes": 95920,
+        "snapshot_block_bytes": 78160,
+        "snapshot_index_bytes": 6000000,
+        "snapshot_vertex_bytes": 8032032,
+        "spatial_tree_bytes": 873936,
+        "spatial_triangle_bytes": 2000000
+      },
+      "variants": {
+        "legacy": {
+          "timings": {
+            "first_submitted_ms": {
+              "median": 151.21519999999998,
+              "minimum": 147.2627,
+              "maximum": 159.9197,
+              "samples": 3
+            },
+            "scene_commit_ms": {
+              "median": 146.8525,
+              "minimum": 142.63479999999998,
+              "maximum": 155.1985,
+              "samples": 3
+            },
+            "cpu_batch_ms": {
+              "median": 136.532,
+              "minimum": 132.5951,
+              "maximum": 143.3073,
+              "samples": 3
+            },
+            "gpu_finalize_wall_ms": {
+              "median": 9.444799999999987,
+              "minimum": 9.300100000000015,
+              "maximum": 9.469999999999999,
+              "samples": 3
+            },
+            "upload_cpu_ms": {
+              "median": 4.548399999999999,
+              "minimum": 4.5362,
+              "maximum": 4.6571,
+              "samples": 3
+            },
+            "fully_prepared_ms": {
+              "median": 242.5207,
+              "minimum": 234.39869999999996,
+              "maximum": 246.8047,
+              "samples": 3
+            },
+            "annotation_publish_after_commit_ms": {
+              "median": 91.76389999999998,
+              "minimum": 91.6062,
+              "maximum": 95.66820000000001,
+              "samples": 3
+            },
+            "load_response_ms": {
+              "median": 171.84900000574999,
+              "minimum": 149.2811000207439,
+              "maximum": 189.1470999980811,
+              "samples": 3
+            },
+            "full_detail_observed_ms": {
+              "median": 202.84820001688786,
+              "minimum": 179.0451000269968,
+              "maximum": 204.91280002170242,
+              "samples": 3
+            },
+            "preparation_settled_observed_ms": {
+              "median": 315.88820001343265,
+              "minimum": 296.67260000132956,
+              "maximum": 362.1333000191953,
+              "samples": 3
+            },
+            "verified_image_ms": {
+              "median": 830.9949999966193,
+              "minimum": 800.2639000187628,
+              "maximum": 863.9618000015616,
+              "samples": 3
+            },
+            "capture_ms": {
+              "median": 503.5951000172645,
+              "minimum": 501.8272000015713,
+              "maximum": 515.1075999892782,
+              "samples": 3
+            },
+            "startup_ms": {
+              "median": 644.2936999956146,
+              "minimum": 604.2868999938946,
+              "maximum": 821.3803000107873,
+              "samples": 3
+            }
+          },
+          "phases": {
+            "capacity_preflight": {
+              "median": 0.2974,
+              "minimum": 0.2827,
+              "maximum": 0.3565,
+              "samples": 3
+            },
+            "parse": {
+              "median": 24.8018,
+              "minimum": 24.28,
+              "maximum": 30.3344,
+              "samples": 3
+            },
+            "legacy_freeform_reparse": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "freeform_resolve": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "mesh_validate": {
+              "median": 0.0065,
+              "minimum": 0.0061,
+              "maximum": 0.0069,
+              "samples": 3
+            },
+            "source_adoption": {
+              "median": 2.1682,
+              "minimum": 2.0699,
+              "maximum": 2.1961,
+              "samples": 3
+            },
+            "coordinate_localization": {
+              "median": 6.4364,
+              "minimum": 6.358,
+              "maximum": 6.7896,
+              "samples": 3
+            },
+            "triangulation": {
+              "median": 4.6086,
+              "minimum": 4.1964,
+              "maximum": 5.1652,
+              "samples": 3
+            },
+            "mesh_mapping": {
+              "median": 33.1976,
+              "minimum": 31.4739,
+              "maximum": 34.6455,
+              "samples": 3
+            },
+            "normals": {
+              "median": 9.7141,
+              "minimum": 9.6875,
+              "maximum": 10.4099,
+              "samples": 3
+            },
+            "mesh_bounds": {
+              "median": 4.5775,
+              "minimum": 4.551,
+              "maximum": 4.7617,
+              "samples": 3
+            },
+            "freeform_tessellation_append": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "ui_group_preparation": {
+              "median": 19.568,
+              "minimum": 19.4922,
+              "maximum": 20.579,
+              "samples": 3
+            },
+            "gpu_input_validation": {
+              "median": 2.3421,
+              "minimum": 2.3021,
+              "maximum": 2.3422,
+              "samples": 3
+            },
+            "point_membership": {
+              "median": 4.0462,
+              "minimum": 3.9487,
+              "maximum": 4.2784,
+              "samples": 3
+            },
+            "point_hierarchy": {
+              "median": 20.5888,
+              "minimum": 20.3938,
+              "maximum": 20.679,
+              "samples": 3
+            },
+            "annotation_blocks_fingerprints": {
+              "median": 20.5426,
+              "minimum": 20.5135,
+              "maximum": 26.919,
+              "samples": 3
+            },
+            "annotation_spatial_index": {
+              "median": 53.8336,
+              "minimum": 53.1369,
+              "maximum": 53.9761,
+              "samples": 3
+            },
+            "annotation_snapshot_copy": {
+              "median": 9.0201,
+              "minimum": 8.7714,
+              "maximum": 9.3374,
+              "samples": 3
+            }
+          },
+          "memory": {
+            "import_peak_commit_bytes": {
+              "median": 358440960,
+              "minimum": 358248448,
+              "maximum": 359211008,
+              "samples": 3
+            },
+            "import_peak_working_set_bytes": {
+              "median": 162754560,
+              "minimum": 162447360,
+              "maximum": 162762752,
+              "samples": 3
+            },
+            "prepared_private_bytes": {
+              "median": 358346752,
+              "minimum": 358187008,
+              "maximum": 359133184,
+              "samples": 3
+            },
+            "lifecycle_peak_commit_bytes": {
+              "median": 495009792,
+              "minimum": 494850048,
+              "maximum": 495775744,
+              "samples": 3
+            },
+            "copied_position_bytes": {
+              "median": 6024024,
+              "minimum": 6024024,
+              "maximum": 6024024,
+              "samples": 3
+            },
+            "source_adoption_private_bytes": {
+              "median": 308420608,
+              "minimum": 308146176,
+              "maximum": 309055488,
+              "samples": 3
+            }
+          },
+          "render": {
+            "steady_gpu_ms": {
+              "median": 0.188416,
+              "minimum": 0.187392,
+              "maximum": 0.188416,
+              "samples": 3
+            },
+            "steady_cpu_submit_ms": {
+              "median": 4.00435,
+              "minimum": 4.00035,
+              "maximum": 4.0142,
+              "samples": 3
+            },
+            "steady_frame_interval_ms": {
+              "median": 4.157499999999999,
+              "minimum": 4.154699999999991,
+              "maximum": 4.174049999999994,
+              "samples": 3
+            },
+            "navigation_gpu_ms": {
+              "median": 0.36352,
+              "minimum": 0.18944,
+              "maximum": 0.37632,
+              "samples": 3
+            },
+            "navigation_cpu_submit_ms": {
+              "median": 3.94165,
+              "minimum": 3.9355,
+              "maximum": 3.9719,
+              "samples": 3
+            },
+            "navigation_frame_interval_ms": {
+              "median": 4.15674999999999,
+              "minimum": 4.154299999999978,
+              "maximum": 4.187450000000027,
+              "samples": 3
+            }
+          },
+          "pacing": {
+            "msaaSamples": 4,
+            "periodNanoseconds": 4166667,
+            "resetFlags": 3,
+            "targetFps": 239.99998080000154
+          },
+          "annotation_ready": true
+        },
+        "prototype": {
+          "timings": {
+            "first_submitted_ms": {
+              "median": 146.6239,
+              "minimum": 145.55329999999998,
+              "maximum": 149.4822,
+              "samples": 3
+            },
+            "scene_commit_ms": {
+              "median": 142.34660000000002,
+              "minimum": 140.9617,
+              "maximum": 144.9271,
+              "samples": 3
+            },
+            "cpu_batch_ms": {
+              "median": 129.9967,
+              "minimum": 128.7045,
+              "maximum": 131.4373,
+              "samples": 3
+            },
+            "gpu_finalize_wall_ms": {
+              "median": 9.521799999999985,
+              "minimum": 9.4332,
+              "maximum": 10.821600000000018,
+              "samples": 3
+            },
+            "upload_cpu_ms": {
+              "median": 4.594200000000001,
+              "minimum": 4.5265,
+              "maximum": 4.611800000000001,
+              "samples": 3
+            },
+            "fully_prepared_ms": {
+              "median": 233.81960000000004,
+              "minimum": 232.53110000000004,
+              "maximum": 236.5486,
+              "samples": 3
+            },
+            "annotation_publish_after_commit_ms": {
+              "median": 91.56940000000003,
+              "minimum": 91.47300000000001,
+              "maximum": 91.6215,
+              "samples": 3
+            },
+            "load_response_ms": {
+              "median": 148.79789997939952,
+              "minimum": 145.63479999196716,
+              "maximum": 166.5647000190802,
+              "samples": 3
+            },
+            "full_detail_observed_ms": {
+              "median": 173.99499999010004,
+              "minimum": 170.86969999945723,
+              "maximum": 195.87630001478828,
+              "samples": 3
+            },
+            "preparation_settled_observed_ms": {
+              "median": 330.19519998924807,
+              "minimum": 249.73769998177886,
+              "maximum": 383.2173000264447,
+              "samples": 3
+            },
+            "verified_image_ms": {
+              "median": 849.5610999816563,
+              "minimum": 756.9238999858499,
+              "maximum": 888.1133000249974,
+              "samples": 3
+            },
+            "capture_ms": {
+              "median": 507.1870000101626,
+              "minimum": 504.8952999932226,
+              "maximum": 519.3658999924082,
+              "samples": 3
+            },
+            "startup_ms": {
+              "median": 628.6298000195529,
+              "minimum": 623.7656000012066,
+              "maximum": 639.4311999902129,
+              "samples": 3
+            }
+          },
+          "phases": {
+            "capacity_preflight": {
+              "median": 0.2433,
+              "minimum": 0.2432,
+              "maximum": 0.2502,
+              "samples": 3
+            },
+            "parse": {
+              "median": 23.6096,
+              "minimum": 22.5249,
+              "maximum": 23.6096,
+              "samples": 3
+            },
+            "legacy_freeform_reparse": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "freeform_resolve": {
+              "median": 0.0229,
+              "minimum": 0.0225,
+              "maximum": 0.0251,
+              "samples": 3
+            },
+            "mesh_validate": {
+              "median": 0.0026,
+              "minimum": 0.0025,
+              "maximum": 0.0041,
+              "samples": 3
+            },
+            "source_adoption": {
+              "median": 0.0023,
+              "minimum": 0.0022,
+              "maximum": 0.0024,
+              "samples": 3
+            },
+            "coordinate_localization": {
+              "median": 4.9075,
+              "minimum": 4.8868,
+              "maximum": 5.0322,
+              "samples": 3
+            },
+            "triangulation": {
+              "median": 5.0613,
+              "minimum": 4.5506,
+              "maximum": 5.1358,
+              "samples": 3
+            },
+            "mesh_mapping": {
+              "median": 32.2335,
+              "minimum": 31.3566,
+              "maximum": 33.8389,
+              "samples": 3
+            },
+            "normals": {
+              "median": 9.7579,
+              "minimum": 9.7284,
+              "maximum": 10.1047,
+              "samples": 3
+            },
+            "mesh_bounds": {
+              "median": 4.5968,
+              "minimum": 4.5939,
+              "maximum": 4.6286,
+              "samples": 3
+            },
+            "freeform_tessellation_append": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "ui_group_preparation": {
+              "median": 19.6144,
+              "minimum": 19.4903,
+              "maximum": 19.919,
+              "samples": 3
+            },
+            "gpu_input_validation": {
+              "median": 2.3819,
+              "minimum": 2.307,
+              "maximum": 2.3846,
+              "samples": 3
+            },
+            "point_membership": {
+              "median": 4.2064,
+              "minimum": 4.0277,
+              "maximum": 4.4397,
+              "samples": 3
+            },
+            "point_hierarchy": {
+              "median": 21.0444,
+              "minimum": 20.2989,
+              "maximum": 21.5056,
+              "samples": 3
+            },
+            "annotation_blocks_fingerprints": {
+              "median": 21.6074,
+              "minimum": 21.006,
+              "maximum": 22.3322,
+              "samples": 3
+            },
+            "annotation_spatial_index": {
+              "median": 54.1974,
+              "minimum": 53.1867,
+              "maximum": 54.2742,
+              "samples": 3
+            },
+            "annotation_snapshot_copy": {
+              "median": 9.3928,
+              "minimum": 9.2138,
+              "maximum": 9.6217,
+              "samples": 3
+            }
+          },
+          "memory": {
+            "import_peak_commit_bytes": {
+              "median": 361984000,
+              "minimum": 360873984,
+              "maximum": 366211072,
+              "samples": 3
+            },
+            "import_peak_working_set_bytes": {
+              "median": 157020160,
+              "minimum": 156815360,
+              "maximum": 157450240,
+              "samples": 3
+            },
+            "prepared_private_bytes": {
+              "median": 361922560,
+              "minimum": 360816640,
+              "maximum": 366198784,
+              "samples": 3
+            },
+            "lifecycle_peak_commit_bytes": {
+              "median": 498565120,
+              "minimum": 497422336,
+              "maximum": 502820864,
+              "samples": 3
+            },
+            "copied_position_bytes": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "source_adoption_private_bytes": {
+              "median": 305303552,
+              "minimum": 303755264,
+              "maximum": 308490240,
+              "samples": 3
+            }
+          },
+          "render": {
+            "steady_gpu_ms": {
+              "median": 0.187392,
+              "minimum": 0.187392,
+              "maximum": 0.188416,
+              "samples": 3
+            },
+            "steady_cpu_submit_ms": {
+              "median": 4.0016,
+              "minimum": 3.9935,
+              "maximum": 4.02205,
+              "samples": 3
+            },
+            "steady_frame_interval_ms": {
+              "median": 4.1638000000000375,
+              "minimum": 4.162800000000061,
+              "maximum": 4.165700000000001,
+              "samples": 3
+            },
+            "navigation_gpu_ms": {
+              "median": 0.362496,
+              "minimum": 0.193536,
+              "maximum": 0.36352,
+              "samples": 3
+            },
+            "navigation_cpu_submit_ms": {
+              "median": 3.9595,
+              "minimum": 3.93945,
+              "maximum": 3.97025,
+              "samples": 3
+            },
+            "navigation_frame_interval_ms": {
+              "median": 4.167900000000003,
+              "minimum": 4.1632000000000176,
+              "maximum": 4.16934999999998,
+              "samples": 3
+            }
+          },
+          "pacing": {
+            "msaaSamples": 4,
+            "periodNanoseconds": 4166667,
+            "resetFlags": 3,
+            "targetFps": 239.99998080000154
+          },
+          "annotation_ready": true
+        }
+      }
+    },
+    {
+      "workload": {
+        "id": "lines",
+        "label": "200,000 positions, polylines + points",
+        "category": "lines and explicit points",
+        "path": "C:\\Users\\tuncb\\AppData\\Local\\Temp\\woby-load-workflow-inputs-357dqw8b\\lines_points.obj",
+        "file_count": 1,
+        "input_bytes": 7262184,
+        "input_sha256": "6fb618abf30ea8cd6604aa299e05531b15e54326545778fa423d612793f89fa2"
+      },
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 199938,
+        "triangleCount": 0,
+        "lineSegmentCount": 196812,
+        "pointCount": 8000,
+        "groupCount": 2
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "b31fe30ba895f2f1d87b341b9c79783eac4b74a1661868b805ce729687039d27"
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 1574496,
+        "point_index_bytes": 32000,
+        "precise_position_bytes": 4800000,
+        "render_vertex_bytes": 6400000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 4800000,
+        "source_positions": 200000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 184,
+        "cloud_navigation_bytes": 12704,
+        "cloud_node_bytes": 10716,
+        "cloud_point_bytes": 3326976,
+        "cloud_points": 207936,
+        "cloud_proxies": 17367,
+        "cloud_proxy_bytes": 291312,
+        "cloud_root_bytes": 8,
+        "cloud_source_mapping_bytes": 1199628,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 48,
+        "point_membership_bytes": 0,
+        "upload_bytes": 11577360
+      },
+      "annotation_capacities": {},
+      "variants": {
+        "legacy": {
+          "timings": {
+            "first_submitted_ms": {
+              "median": 76.38580000000002,
+              "minimum": 72.79039999999999,
+              "maximum": 76.882,
+              "samples": 3
+            },
+            "scene_commit_ms": {
+              "median": 70.76240000000001,
+              "minimum": 67.2871,
+              "maximum": 71.3017,
+              "samples": 3
+            },
+            "cpu_batch_ms": {
+              "median": 62.8612,
+              "minimum": 61.8535,
+              "maximum": 62.8676,
+              "samples": 3
+            },
+            "gpu_finalize_wall_ms": {
+              "median": 4.673999999999992,
+              "minimum": 4.376300000000015,
+              "maximum": 4.716700000000003,
+              "samples": 3
+            },
+            "upload_cpu_ms": {
+              "median": 3.2851,
+              "minimum": 3.1638,
+              "maximum": 3.2868000000000004,
+              "samples": 3
+            },
+            "fully_prepared_ms": {
+              "median": 76.38580000000002,
+              "minimum": 72.79039999999999,
+              "maximum": 76.882,
+              "samples": 3
+            },
+            "annotation_publish_after_commit_ms": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "load_response_ms": {
+              "median": 74.75689999409951,
+              "minimum": 71.79369998630136,
+              "maximum": 95.4042999946978,
+              "samples": 3
+            },
+            "full_detail_observed_ms": {
+              "median": 254.90479997824878,
+              "minimum": 233.10350000974722,
+              "maximum": 266.55299999401905,
+              "samples": 3
+            },
+            "preparation_settled_observed_ms": {
+              "median": 254.9187999975402,
+              "minimum": 233.11259999172762,
+              "maximum": 266.56160000129603,
+              "samples": 3
+            },
+            "verified_image_ms": {
+              "median": 786.7972999811172,
+              "minimum": 751.8426000024192,
+              "maximum": 823.123799986206,
+              "samples": 3
+            },
+            "capture_ms": {
+              "median": 531.8670000124257,
+              "minimum": 518.7292000046,
+              "maximum": 556.5611000056379,
+              "samples": 3
+            },
+            "startup_ms": {
+              "median": 659.3756999936886,
+              "minimum": 621.173399995314,
+              "maximum": 668.1152999808546,
+              "samples": 3
+            }
+          },
+          "phases": {
+            "capacity_preflight": {
+              "median": 0.2568,
+              "minimum": 0.2446,
+              "maximum": 0.2812,
+              "samples": 3
+            },
+            "parse": {
+              "median": 13.4068,
+              "minimum": 13.3259,
+              "maximum": 14.7384,
+              "samples": 3
+            },
+            "legacy_freeform_reparse": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "freeform_resolve": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "mesh_validate": {
+              "median": 0.0173,
+              "minimum": 0.0172,
+              "maximum": 0.0174,
+              "samples": 3
+            },
+            "source_adoption": {
+              "median": 1.8858,
+              "minimum": 1.6979,
+              "maximum": 1.9853,
+              "samples": 3
+            },
+            "coordinate_localization": {
+              "median": 5.1659,
+              "minimum": 5.1343,
+              "maximum": 5.2498,
+              "samples": 3
+            },
+            "triangulation": {
+              "median": 0.0147,
+              "minimum": 0.0145,
+              "maximum": 0.0152,
+              "samples": 3
+            },
+            "mesh_mapping": {
+              "median": 10.1678,
+              "minimum": 10.0929,
+              "maximum": 10.457,
+              "samples": 3
+            },
+            "normals": {
+              "median": 0.7047,
+              "minimum": 0.6957,
+              "maximum": 0.7374,
+              "samples": 3
+            },
+            "mesh_bounds": {
+              "median": 3.6732,
+              "minimum": 3.5825,
+              "maximum": 3.724,
+              "samples": 3
+            },
+            "freeform_tessellation_append": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "ui_group_preparation": {
+              "median": 5.3377,
+              "minimum": 5.2443,
+              "maximum": 5.5327,
+              "samples": 3
+            },
+            "gpu_input_validation": {
+              "median": 0.62,
+              "minimum": 0.6134,
+              "maximum": 0.63,
+              "samples": 3
+            },
+            "point_membership": {
+              "median": 1.9199,
+              "minimum": 1.8767,
+              "maximum": 1.9891,
+              "samples": 3
+            },
+            "point_hierarchy": {
+              "median": 17.4925,
+              "minimum": 16.8673,
+              "maximum": 17.4934,
+              "samples": 3
+            },
+            "annotation_blocks_fingerprints": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_spatial_index": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_snapshot_copy": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            }
+          },
+          "memory": {
+            "import_peak_commit_bytes": {
+              "median": 348868608,
+              "minimum": 347160576,
+              "maximum": 351948800,
+              "samples": 3
+            },
+            "import_peak_working_set_bytes": {
+              "median": 127139840,
+              "minimum": 127045632,
+              "maximum": 127557632,
+              "samples": 3
+            },
+            "prepared_private_bytes": {
+              "median": 348864512,
+              "minimum": 347152384,
+              "maximum": 351940608,
+              "samples": 3
+            },
+            "lifecycle_peak_commit_bytes": {
+              "median": 485498880,
+              "minimum": 484352000,
+              "maximum": 489136128,
+              "samples": 3
+            },
+            "copied_position_bytes": {
+              "median": 4800000,
+              "minimum": 4800000,
+              "maximum": 4800000,
+              "samples": 3
+            },
+            "source_adoption_private_bytes": {
+              "median": 297492480,
+              "minimum": 295211008,
+              "maximum": 298401792,
+              "samples": 3
+            }
+          },
+          "render": {
+            "steady_gpu_ms": {
+              "median": 0.361472,
+              "minimum": 0.360448,
+              "maximum": 0.374784,
+              "samples": 3
+            },
+            "steady_cpu_submit_ms": {
+              "median": 3.9932,
+              "minimum": 3.9827500000000002,
+              "maximum": 4.0073,
+              "samples": 3
+            },
+            "steady_frame_interval_ms": {
+              "median": 4.162299999999998,
+              "minimum": 4.15679999999999,
+              "maximum": 4.162399999999991,
+              "samples": 3
+            },
+            "navigation_gpu_ms": {
+              "median": 0.997376,
+              "minimum": 0.9948159999999999,
+              "maximum": 1.0583040000000001,
+              "samples": 3
+            },
+            "navigation_cpu_submit_ms": {
+              "median": 3.8974,
+              "minimum": 3.87085,
+              "maximum": 3.92325,
+              "samples": 3
+            },
+            "navigation_frame_interval_ms": {
+              "median": 4.164800000000014,
+              "minimum": 4.162099999999995,
+              "maximum": 4.170900000000003,
+              "samples": 3
+            }
+          },
+          "pacing": {
+            "msaaSamples": 4,
+            "periodNanoseconds": 4166667,
+            "resetFlags": 3,
+            "targetFps": 239.99998080000154
+          },
+          "annotation_ready": false
+        },
+        "prototype": {
+          "timings": {
+            "first_submitted_ms": {
+              "median": 72.4531,
+              "minimum": 69.03729999999999,
+              "maximum": 72.5317,
+              "samples": 3
+            },
+            "scene_commit_ms": {
+              "median": 66.8089,
+              "minimum": 63.323800000000006,
+              "maximum": 66.8124,
+              "samples": 3
+            },
+            "cpu_batch_ms": {
+              "median": 58.2966,
+              "minimum": 57.5895,
+              "maximum": 58.4337,
+              "samples": 3
+            },
+            "gpu_finalize_wall_ms": {
+              "median": 4.492200000000011,
+              "minimum": 4.420599999999993,
+              "maximum": 4.7660000000000196,
+              "samples": 3
+            },
+            "upload_cpu_ms": {
+              "median": 3.1679000000000004,
+              "minimum": 3.1500000000000004,
+              "maximum": 3.3852,
+              "samples": 3
+            },
+            "fully_prepared_ms": {
+              "median": 72.4531,
+              "minimum": 69.03729999999999,
+              "maximum": 72.5317,
+              "samples": 3
+            },
+            "annotation_publish_after_commit_ms": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "load_response_ms": {
+              "median": 82.95179999549873,
+              "minimum": 71.47799999802373,
+              "maximum": 84.64690000982955,
+              "samples": 3
+            },
+            "full_detail_observed_ms": {
+              "median": 246.2064999854192,
+              "minimum": 242.9709999996703,
+              "maximum": 341.4168999879621,
+              "samples": 3
+            },
+            "preparation_settled_observed_ms": {
+              "median": 246.2140999850817,
+              "minimum": 242.97910000314005,
+              "maximum": 341.42829998745583,
+              "samples": 3
+            },
+            "verified_image_ms": {
+              "median": 789.7260999889113,
+              "minimum": 763.4650000254624,
+              "maximum": 860.8464999997523,
+              "samples": 3
+            },
+            "capture_ms": {
+              "median": 520.4859000223223,
+              "minimum": 519.4153999909759,
+              "maximum": 543.5120000038296,
+              "samples": 3
+            },
+            "startup_ms": {
+              "median": 621.4994000038132,
+              "minimum": 612.7401999838185,
+              "maximum": 659.618399979081,
+              "samples": 3
+            }
+          },
+          "phases": {
+            "capacity_preflight": {
+              "median": 0.2493,
+              "minimum": 0.2417,
+              "maximum": 0.3616,
+              "samples": 3
+            },
+            "parse": {
+              "median": 13.0592,
+              "minimum": 12.6416,
+              "maximum": 13.4637,
+              "samples": 3
+            },
+            "legacy_freeform_reparse": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "freeform_resolve": {
+              "median": 0.0205,
+              "minimum": 0.0195,
+              "maximum": 0.0216,
+              "samples": 3
+            },
+            "mesh_validate": {
+              "median": 0.0142,
+              "minimum": 0.0138,
+              "maximum": 0.022,
+              "samples": 3
+            },
+            "source_adoption": {
+              "median": 0.0028,
+              "minimum": 0.0021,
+              "maximum": 0.0035,
+              "samples": 3
+            },
+            "coordinate_localization": {
+              "median": 3.929,
+              "minimum": 3.9277,
+              "maximum": 4.1418,
+              "samples": 3
+            },
+            "triangulation": {
+              "median": 0.0085,
+              "minimum": 0.0067,
+              "maximum": 0.0091,
+              "samples": 3
+            },
+            "mesh_mapping": {
+              "median": 10.0663,
+              "minimum": 10.0659,
+              "maximum": 10.1112,
+              "samples": 3
+            },
+            "normals": {
+              "median": 0.7141,
+              "minimum": 0.7096,
+              "maximum": 0.741,
+              "samples": 3
+            },
+            "mesh_bounds": {
+              "median": 3.7129,
+              "minimum": 3.6879,
+              "maximum": 3.7842,
+              "samples": 3
+            },
+            "freeform_tessellation_append": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "ui_group_preparation": {
+              "median": 5.3044,
+              "minimum": 5.2928,
+              "maximum": 5.3749,
+              "samples": 3
+            },
+            "gpu_input_validation": {
+              "median": 0.621,
+              "minimum": 0.6139,
+              "maximum": 0.6249,
+              "samples": 3
+            },
+            "point_membership": {
+              "median": 1.8785,
+              "minimum": 1.864,
+              "maximum": 1.8946,
+              "samples": 3
+            },
+            "point_hierarchy": {
+              "median": 17.4386,
+              "minimum": 17.2932,
+              "maximum": 17.4524,
+              "samples": 3
+            },
+            "annotation_blocks_fingerprints": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_spatial_index": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_snapshot_copy": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            }
+          },
+          "memory": {
+            "import_peak_commit_bytes": {
+              "median": 350769152,
+              "minimum": 346144768,
+              "maximum": 350773248,
+              "samples": 3
+            },
+            "import_peak_working_set_bytes": {
+              "median": 126595072,
+              "minimum": 125882368,
+              "maximum": 126722048,
+              "samples": 3
+            },
+            "prepared_private_bytes": {
+              "median": 350760960,
+              "minimum": 346136576,
+              "maximum": 350765056,
+              "samples": 3
+            },
+            "lifecycle_peak_commit_bytes": {
+              "median": 487780352,
+              "minimum": 483344384,
+              "maximum": 487899136,
+              "samples": 3
+            },
+            "copied_position_bytes": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "source_adoption_private_bytes": {
+              "median": 290668544,
+              "minimum": 289886208,
+              "maximum": 292147200,
+              "samples": 3
+            }
+          },
+          "render": {
+            "steady_gpu_ms": {
+              "median": 0.361472,
+              "minimum": 0.360448,
+              "maximum": 0.36672,
+              "samples": 3
+            },
+            "steady_cpu_submit_ms": {
+              "median": 3.99675,
+              "minimum": 3.99025,
+              "maximum": 4.0026,
+              "samples": 3
+            },
+            "steady_frame_interval_ms": {
+              "median": 4.16089999999997,
+              "minimum": 4.155499999999961,
+              "maximum": 4.17,
+              "samples": 3
+            },
+            "navigation_gpu_ms": {
+              "median": 0.99456,
+              "minimum": 0.993792,
+              "maximum": 1.062912,
+              "samples": 3
+            },
+            "navigation_cpu_submit_ms": {
+              "median": 3.90785,
+              "minimum": 3.9076500000000003,
+              "maximum": 3.91,
+              "samples": 3
+            },
+            "navigation_frame_interval_ms": {
+              "median": 4.1662000000000035,
+              "minimum": 4.1492000000000075,
+              "maximum": 4.1684999999999945,
+              "samples": 3
+            }
+          },
+          "pacing": {
+            "msaaSamples": 4,
+            "periodNanoseconds": 4166667,
+            "resetFlags": 3,
+            "targetFps": 239.99998080000154
+          },
+          "annotation_ready": false
+        }
+      }
+    },
+    {
+      "workload": {
+        "id": "cloud",
+        "label": "Semantic3D \u00b7 10 million points",
+        "category": "positions and explicit point records",
+        "path": "D:\\temp\\obj_tests\\pointclouds\\semantic3d_sg27_station8_10000000_xyz_points.obj",
+        "file_count": 1,
+        "input_bytes": 312472131,
+        "input_sha256": "3f1fa9211d7287f39e933de94ef1ed1bf9b385ed15129e52281fbd2c4681fd3c"
+      },
+      "geometry": {
+        "fileCount": 1,
+        "vertexCount": 10000000,
+        "triangleCount": 0,
+        "lineSegmentCount": 0,
+        "pointCount": 10000000,
+        "groupCount": 1
+      },
+      "image": {
+        "size": [
+          1920,
+          1800
+        ],
+        "sha256": "47bcf80b4aa07a35c7f0ee6bb51b7a5204458198f47ce5fffea8923951bfaba3"
+      },
+      "mesh_capacities": {
+        "line_index_bytes": 0,
+        "point_index_bytes": 40000000,
+        "precise_position_bytes": 240000000,
+        "render_vertex_bytes": 320000000,
+        "source_id_bytes": 0,
+        "source_index_bytes": 0,
+        "source_position_bytes": 240000000,
+        "source_positions": 10000000,
+        "triangle_index_bytes": 0
+      },
+      "preparation_capacities": {
+        "cloud_group_bytes": 92,
+        "cloud_navigation_bytes": 115160,
+        "cloud_node_bytes": 922488,
+        "cloud_point_bytes": 160000000,
+        "cloud_points": 10000000,
+        "cloud_proxies": 1094079,
+        "cloud_proxy_bytes": 25196848,
+        "cloud_root_bytes": 4,
+        "cloud_source_mapping_bytes": 40000000,
+        "edge_index_bytes": 0,
+        "node_range_bytes": 24,
+        "point_membership_bytes": 0,
+        "upload_bytes": 177505264
+      },
+      "annotation_capacities": {},
+      "variants": {
+        "legacy": {
+          "timings": {
+            "first_submitted_ms": {
+              "median": 2700.6752,
+              "minimum": 2682.6085,
+              "maximum": 2765.9343,
+              "samples": 3
+            },
+            "scene_commit_ms": {
+              "median": 2694.9898000000003,
+              "minimum": 2677.4629,
+              "maximum": 2760.8535,
+              "samples": 3
+            },
+            "cpu_batch_ms": {
+              "median": 2644.7806,
+              "minimum": 2626.204,
+              "maximum": 2709.7478,
+              "samples": 3
+            },
+            "gpu_finalize_wall_ms": {
+              "median": 48.878200000000106,
+              "minimum": 48.55670000000009,
+              "maximum": 50.35400000000027,
+              "samples": 3
+            },
+            "upload_cpu_ms": {
+              "median": 36.92850000000001,
+              "minimum": 36.772499999999994,
+              "maximum": 37.2595,
+              "samples": 3
+            },
+            "fully_prepared_ms": {
+              "median": 2700.6752,
+              "minimum": 2682.6085,
+              "maximum": 2765.9343,
+              "samples": 3
+            },
+            "annotation_publish_after_commit_ms": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "load_response_ms": {
+              "median": 2730.2297999849543,
+              "minimum": 2697.787999990396,
+              "maximum": 2805.0877999921795,
+              "samples": 3
+            },
+            "full_detail_observed_ms": {
+              "median": 2988.1683999847155,
+              "minimum": 2967.3213999776635,
+              "maximum": 3061.2415999930818,
+              "samples": 3
+            },
+            "preparation_settled_observed_ms": {
+              "median": 2988.1767999904696,
+              "minimum": 2967.3301999864634,
+              "maximum": 3061.249399994267,
+              "samples": 3
+            },
+            "verified_image_ms": {
+              "median": 3514.051299978746,
+              "minimum": 3512.8734999743756,
+              "maximum": 3574.5498999895062,
+              "samples": 3
+            },
+            "capture_ms": {
+              "median": 524.6952000015881,
+              "minimum": 513.2997000182513,
+              "maximum": 546.7210000206251,
+              "samples": 3
+            },
+            "startup_ms": {
+              "median": 630.7579000131227,
+              "minimum": 619.4727999973111,
+              "maximum": 636.6325999842957,
+              "samples": 3
+            }
+          },
+          "phases": {
+            "capacity_preflight": {
+              "median": 0.0417,
+              "minimum": 0.0358,
+              "maximum": 0.0419,
+              "samples": 3
+            },
+            "parse": {
+              "median": 401.0762,
+              "minimum": 348.6659,
+              "maximum": 426.477,
+              "samples": 3
+            },
+            "legacy_freeform_reparse": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "freeform_resolve": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "mesh_validate": {
+              "median": 0.0052,
+              "minimum": 0.0048,
+              "maximum": 0.0055,
+              "samples": 3
+            },
+            "source_adoption": {
+              "median": 83.9865,
+              "minimum": 80.7647,
+              "maximum": 84.0725,
+              "samples": 3
+            },
+            "coordinate_localization": {
+              "median": 256.5089,
+              "minimum": 255.6679,
+              "maximum": 260.0609,
+              "samples": 3
+            },
+            "triangulation": {
+              "median": 0.0229,
+              "minimum": 0.0198,
+              "maximum": 0.0237,
+              "samples": 3
+            },
+            "mesh_mapping": {
+              "median": 451.7564,
+              "minimum": 431.8529,
+              "maximum": 453.3797,
+              "samples": 3
+            },
+            "normals": {
+              "median": 39.0462,
+              "minimum": 37.8097,
+              "maximum": 39.2864,
+              "samples": 3
+            },
+            "mesh_bounds": {
+              "median": 206.7389,
+              "minimum": 197.1226,
+              "maximum": 223.2655,
+              "samples": 3
+            },
+            "freeform_tessellation_append": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "ui_group_preparation": {
+              "median": 155.1077,
+              "minimum": 145.5604,
+              "maximum": 158.4922,
+              "samples": 3
+            },
+            "gpu_input_validation": {
+              "median": 18.2053,
+              "minimum": 17.9139,
+              "maximum": 39.9711,
+              "samples": 3
+            },
+            "point_membership": {
+              "median": 74.6745,
+              "minimum": 74.614,
+              "maximum": 86.2515,
+              "samples": 3
+            },
+            "point_hierarchy": {
+              "median": 951.3728,
+              "minimum": 921.2012,
+              "maximum": 973.5609,
+              "samples": 3
+            },
+            "annotation_blocks_fingerprints": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_spatial_index": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_snapshot_copy": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            }
+          },
+          "memory": {
+            "import_peak_commit_bytes": {
+              "median": 1570467840,
+              "minimum": 1567760384,
+              "maximum": 1571819520,
+              "samples": 3
+            },
+            "import_peak_working_set_bytes": {
+              "median": 1341333504,
+              "minimum": 1341210624,
+              "maximum": 1341628416,
+              "samples": 3
+            },
+            "prepared_private_bytes": {
+              "median": 1565671424,
+              "minimum": 1563254784,
+              "maximum": 1569193984,
+              "samples": 3
+            },
+            "lifecycle_peak_commit_bytes": {
+              "median": 1702825984,
+              "minimum": 1699860480,
+              "maximum": 1705787392,
+              "samples": 3
+            },
+            "copied_position_bytes": {
+              "median": 240000000,
+              "minimum": 240000000,
+              "maximum": 240000000,
+              "samples": 3
+            },
+            "source_adoption_private_bytes": {
+              "median": 886390784,
+              "minimum": 883781632,
+              "maximum": 887566336,
+              "samples": 3
+            }
+          },
+          "render": {
+            "steady_gpu_ms": {
+              "median": 0.175104,
+              "minimum": 0.167936,
+              "maximum": 0.186368,
+              "samples": 3
+            },
+            "steady_cpu_submit_ms": {
+              "median": 3.9732000000000003,
+              "minimum": 3.9613,
+              "maximum": 4.00065,
+              "samples": 3
+            },
+            "steady_frame_interval_ms": {
+              "median": 4.16560000000004,
+              "minimum": 4.1655000000000655,
+              "maximum": 4.167300000000068,
+              "samples": 3
+            },
+            "navigation_gpu_ms": {
+              "median": 4.481024,
+              "minimum": 4.361216,
+              "maximum": 4.844544,
+              "samples": 3
+            },
+            "navigation_cpu_submit_ms": {
+              "median": 4.1876,
+              "minimum": 4.1155,
+              "maximum": 4.454,
+              "samples": 3
+            },
+            "navigation_frame_interval_ms": {
+              "median": 4.447999999999979,
+              "minimum": 4.41100000000003,
+              "maximum": 4.725399999999979,
+              "samples": 3
+            }
+          },
+          "pacing": {
+            "msaaSamples": 4,
+            "periodNanoseconds": 4166667,
+            "resetFlags": 3,
+            "targetFps": 239.99998080000154
+          },
+          "annotation_ready": false
+        },
+        "prototype": {
+          "timings": {
+            "first_submitted_ms": {
+              "median": 2529.8523,
+              "minimum": 2493.5535,
+              "maximum": 2537.5514,
+              "samples": 3
+            },
+            "scene_commit_ms": {
+              "median": 2524.4006,
+              "minimum": 2488.2963999999997,
+              "maximum": 2532.2111999999997,
+              "samples": 3
+            },
+            "cpu_batch_ms": {
+              "median": 2470.153,
+              "minimum": 2435.6504,
+              "maximum": 2477.6654,
+              "samples": 3
+            },
+            "gpu_finalize_wall_ms": {
+              "median": 49.71150000000034,
+              "minimum": 48.5015999999996,
+              "maximum": 50.87239999999974,
+              "samples": 3
+            },
+            "upload_cpu_ms": {
+              "median": 36.8088,
+              "minimum": 36.6609,
+              "maximum": 37.23149999999999,
+              "samples": 3
+            },
+            "fully_prepared_ms": {
+              "median": 2529.8523,
+              "minimum": 2493.5535,
+              "maximum": 2537.5514,
+              "samples": 3
+            },
+            "annotation_publish_after_commit_ms": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "load_response_ms": {
+              "median": 2529.518299998017,
+              "minimum": 2508.2424000138417,
+              "maximum": 2539.0846999944188,
+              "samples": 3
+            },
+            "full_detail_observed_ms": {
+              "median": 2801.285399997141,
+              "minimum": 2773.1513000035193,
+              "maximum": 2824.9869999999646,
+              "samples": 3
+            },
+            "preparation_settled_observed_ms": {
+              "median": 2801.293299999088,
+              "minimum": 2773.1612999923527,
+              "maximum": 2824.9947000003885,
+              "samples": 3
+            },
+            "verified_image_ms": {
+              "median": 3334.2105000047013,
+              "minimum": 3305.786899989471,
+              "maximum": 3389.0047000022605,
+              "samples": 3
+            },
+            "capture_ms": {
+              "median": 532.9162999987602,
+              "minimum": 532.6233000087086,
+              "maximum": 564.0095999988262,
+              "samples": 3
+            },
+            "startup_ms": {
+              "median": 624.9353000021074,
+              "minimum": 617.640799988294,
+              "maximum": 631.7045999749098,
+              "samples": 3
+            }
+          },
+          "phases": {
+            "capacity_preflight": {
+              "median": 0.0413,
+              "minimum": 0.0358,
+              "maximum": 0.0464,
+              "samples": 3
+            },
+            "parse": {
+              "median": 353.3207,
+              "minimum": 345.8838,
+              "maximum": 364.4338,
+              "samples": 3
+            },
+            "legacy_freeform_reparse": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "freeform_resolve": {
+              "median": 0.0117,
+              "minimum": 0.0107,
+              "maximum": 0.0127,
+              "samples": 3
+            },
+            "mesh_validate": {
+              "median": 0.0033,
+              "minimum": 0.0032,
+              "maximum": 0.0035,
+              "samples": 3
+            },
+            "source_adoption": {
+              "median": 0.0024,
+              "minimum": 0.0023,
+              "maximum": 0.0026,
+              "samples": 3
+            },
+            "coordinate_localization": {
+              "median": 196.3891,
+              "minimum": 195.2893,
+              "maximum": 199.575,
+              "samples": 3
+            },
+            "triangulation": {
+              "median": 0.0179,
+              "minimum": 0.0155,
+              "maximum": 0.0202,
+              "samples": 3
+            },
+            "mesh_mapping": {
+              "median": 434.8343,
+              "minimum": 431.6978,
+              "maximum": 446.2327,
+              "samples": 3
+            },
+            "normals": {
+              "median": 35.0539,
+              "minimum": 35.0364,
+              "maximum": 36.4589,
+              "samples": 3
+            },
+            "mesh_bounds": {
+              "median": 215.5267,
+              "minimum": 204.355,
+              "maximum": 220.0344,
+              "samples": 3
+            },
+            "freeform_tessellation_append": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "ui_group_preparation": {
+              "median": 159.11,
+              "minimum": 144.8056,
+              "maximum": 159.9388,
+              "samples": 3
+            },
+            "gpu_input_validation": {
+              "median": 17.4357,
+              "minimum": 17.1258,
+              "maximum": 20.1938,
+              "samples": 3
+            },
+            "point_membership": {
+              "median": 67.1343,
+              "minimum": 65.7803,
+              "maximum": 68.5267,
+              "samples": 3
+            },
+            "point_hierarchy": {
+              "median": 954.3921,
+              "minimum": 949.5492,
+              "maximum": 996.1134,
+              "samples": 3
+            },
+            "annotation_blocks_fingerprints": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_spatial_index": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "annotation_snapshot_copy": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            }
+          },
+          "memory": {
+            "import_peak_commit_bytes": {
+              "median": 1569234944,
+              "minimum": 1565634560,
+              "maximum": 1569300480,
+              "samples": 3
+            },
+            "import_peak_working_set_bytes": {
+              "median": 1303625728,
+              "minimum": 1303416832,
+              "maximum": 1304772608,
+              "samples": 3
+            },
+            "prepared_private_bytes": {
+              "median": 1565011968,
+              "minimum": 1563172864,
+              "maximum": 1565417472,
+              "samples": 3
+            },
+            "lifecycle_peak_commit_bytes": {
+              "median": 1701597184,
+              "minimum": 1699799040,
+              "maximum": 1702023168,
+              "samples": 3
+            },
+            "copied_position_bytes": {
+              "median": 0,
+              "minimum": 0,
+              "maximum": 0,
+              "samples": 3
+            },
+            "source_adoption_private_bytes": {
+              "median": 644710400,
+              "minimum": 643702784,
+              "maximum": 647172096,
+              "samples": 3
+            }
+          },
+          "render": {
+            "steady_gpu_ms": {
+              "median": 0.17408,
+              "minimum": 0.168192,
+              "maximum": 0.186368,
+              "samples": 3
+            },
+            "steady_cpu_submit_ms": {
+              "median": 3.9791499999999997,
+              "minimum": 3.9682500000000003,
+              "maximum": 3.9976000000000003,
+              "samples": 3
+            },
+            "steady_frame_interval_ms": {
+              "median": 4.164900000000102,
+              "minimum": 4.164200000000051,
+              "maximum": 4.170500000000061,
+              "samples": 3
+            },
+            "navigation_gpu_ms": {
+              "median": 4.369408,
+              "minimum": 4.33152,
+              "maximum": 4.427776,
+              "samples": 3
+            },
+            "navigation_cpu_submit_ms": {
+              "median": 4.0274,
+              "minimum": 3.9865,
+              "maximum": 4.1049,
+              "samples": 3
+            },
+            "navigation_frame_interval_ms": {
+              "median": 4.335899999999981,
+              "minimum": 4.3271000000000015,
+              "maximum": 4.489250000000027,
+              "samples": 3
+            }
+          },
+          "pacing": {
+            "msaaSamples": 4,
+            "periodNanoseconds": 4166667,
+            "resetFlags": 3,
+            "targetFps": 239.99998080000154
+          },
+          "annotation_ready": false
+        }
+      }
+    }
+  ],
+  "excluded": []
+}
