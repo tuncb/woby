@@ -1,5 +1,7 @@
 # Parser regression investigation — 2026-10-05
 
+**Follow-up:** [Merge validation, worker scaling, sanitizers and cross-platform CI](merge-validation.md) (2026-10-06).
+
 The fixes meet the **roughly legacy or better** target on all 12 measured
 workloads. Every final prototype median is below legacy in the completed
 **180-process campaign**: five repeats each for legacy, the saved pre-fix
