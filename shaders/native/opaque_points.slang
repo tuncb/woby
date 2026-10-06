@@ -13,17 +13,20 @@ float2 samplePosition(uint sample) {
 }
 [numthreads(8,8,1)] void cs_opaque_batch_clear(uint3 thread:SV_DispatchThreadID) {
     if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
-    for (uint sample=0;sample<cloud.samples;++sample)
-        cloud.batch[(thread.y*cloud.width+thread.x)*cloud.samples+sample]=uint2(0,0);
+    for (uint sample=0;sample<cloud.samples;++sample) {
+        uint index=(thread.y*cloud.width+thread.x)*cloud.samples+sample;
+        cloud.batch[index].depth=0;
+        cloud.batch[index].id=0;
+    }
 }
 [numthreads(8,8,1)] void cs_opaque_merge(uint3 thread:SV_DispatchThreadID) {
     if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
     for (uint sample=0;sample<cloud.samples;++sample) {
         uint index=(thread.y*cloud.width+thread.x)*cloud.samples+sample;
-        uint2 winner=cloud.batch[index];
+        OpaquePointBatchSample winner=cloud.batch[index];
         // One invocation owns this sample. No 64-bit atomic is needed to merge
         // a completed batch into the persistent lexicographic depth/ID winner.
-        uint64 key=(uint64(winner.x)<<32)|uint64(winner.y);
+        uint64 key=(uint64(winner.depth)<<32)|uint64(winner.id);
         cloud.winners[index]=max(cloud.winners[index],key);
     }
 }
@@ -53,8 +56,8 @@ float2 samplePosition(uint sample) {
             InterlockedMax(cloud.winners[index],(uint64(depth)<<32)|uint64(id),ignored);
 #else
             uint ignored;
-            if (!ids) InterlockedMax(cloud.batch[index].x,depth,ignored);
-            else if (cloud.batch[index].x==depth) InterlockedMax(cloud.batch[index].y,id,ignored);
+            if (!ids) InterlockedMax(cloud.batch[index].depth,depth,ignored);
+            else if (cloud.batch[index].depth==depth) InterlockedMax(cloud.batch[index].id,id,ignored);
 #endif
         }
     }
