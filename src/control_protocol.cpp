@@ -57,7 +57,7 @@ const std::vector<ControlMethod>& controlMethods()
         {ControlAction::cameraGet, "camera.get", "camera get", {}, {}, {}},
         {ControlAction::cameraFrame, "camera.frame", "camera frame", {}, {"object"}, {}, false, true},
         {ControlAction::cameraSet, "camera.set", "camera set", {},
-            {"target", "yawDegrees", "pitchDegrees", "rollDegrees", "distance", "fovDegrees", "nearPlane"}, {}, true, true},
+            {"target", "yawDegrees", "pitchDegrees", "rollDegrees", "distance", "fovDegrees", "nearPlane", "automaticNearPlane"}, {}, true, true},
         {ControlAction::cameraLookAt, "camera.look-at", "camera look-at", {}, {"eye", "target"}, {"eye", "target"}, false, true},
         {ControlAction::cameraOrbit, "camera.orbit", "camera orbit", {}, {"yawDegrees", "pitchDegrees"}, {}, true, true},
         {ControlAction::cameraPan, "camera.pan", "camera pan", {}, {"right", "up"}, {}, true, true},
@@ -124,7 +124,7 @@ bool booleanOption(const std::string& name)
     if (name == "uvThresholdEnabled" || name == "uvOverlapEnabled" || name == "uvRangeEnabled" || name == "uvSeparated" || name == "uvLinkedSelection" || name == "isolate" || name == "uvGrid" || name == "lineDepthTest") { return true; }
     return name == "autoUpdateBoundaries" || name == "autoUpdateNonManifold" || name == "autoUpdateWinding" || name == "autoUpdateSelfIntersections" || name == "selfIntersections" || name == "showSelfIntersections" || name == "nonManifoldVertices" || name == "showNonManifoldVertices" || name == "fins" || name == "showFins" || name == "holes" || name == "showHoles" || name == "degenerateTriangles" || name == "showDegenerateTriangles" || name == "duplicatePoints" || name == "duplicateTriangles" || name == "showDuplicatePoints" || name == "showDuplicateTriangles"
         || name == "adaptivePoints" || name == "xray" || name == "locked" || name == "enabled" || name == "visible" || name == "propertiesVisible" || name == "solid" || name == "triangles" || name == "vertices"
-        || name == "tree" || name == "remember" || name == "distanceOnA"
+        || name == "tree" || name == "remember" || name == "distanceOnA" || name == "automaticNearPlane"
         || name == "showEdges" || name == "showBoundaries" || name == "showNonManifold" || name == "showWinding" || name == "qualityOnA" || name == "qualityMinimumEnabled" || name == "qualityMaximumEnabled";
 }
 bool stringOption(const std::string& name)
@@ -173,6 +173,7 @@ std::string cliOption(const std::string& name)
     if (name == "rollDegrees") { return "--roll-degrees"; }
     if (name == "fovDegrees") { return "--fov-degrees"; }
     if (name == "nearPlane") { return "--near-plane"; }
+    if (name == "automaticNearPlane") { return "--automatic-near-plane"; }
     if (name == "distanceOnA") { return "--distance-on-a"; }
     if (name == "colorRange") { return "--color-range"; }
     if (name == "showEdges") { return "--show-edges"; }
@@ -315,7 +316,7 @@ ControlOperation parseControlOperation(const ControlMethod& method, const Json& 
     BOOL_FIELD(autoUpdateSelfIntersections) BOOL_FIELD(selfIntersections) BOOL_FIELD(showSelfIntersections)
     BOOL_FIELD(degenerateTriangles) BOOL_FIELD(showDegenerateTriangles)
     BOOL_FIELD(duplicatePoints) BOOL_FIELD(duplicateTriangles) BOOL_FIELD(showDuplicatePoints) BOOL_FIELD(showDuplicateTriangles)
-    BOOL_FIELD(locked) BOOL_FIELD(propertiesVisible)
+    BOOL_FIELD(locked) BOOL_FIELD(propertiesVisible) BOOL_FIELD(automaticNearPlane)
     BOOL_FIELD(qualityOnA) BOOL_FIELD(qualityMinimumEnabled) BOOL_FIELD(qualityMaximumEnabled)
     BOOL_FIELD(distanceOnA) BOOL_FIELD(showEdges) BOOL_FIELD(showBoundaries) BOOL_FIELD(showNonManifold) BOOL_FIELD(showWinding) BOOL_FIELD(enabled)
 #undef BOOL_FIELD
@@ -471,7 +472,7 @@ Json controlOperationParams(const ControlOperation& command)
     FIELD(type) FIELD(uvView)
     FIELD(scale) FIELD(value) FIELD(pixels) FIELD(width) FIELD(yawDegrees) FIELD(pitchDegrees) FIELD(rollDegrees)
     FIELD(right) FIELD(up) FIELD(forward) FIELD(factor)
-    FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane)
+    FIELD(eye) FIELD(distance) FIELD(fovDegrees) FIELD(nearPlane) FIELD(automaticNearPlane)
     FIELD(offset) FIELD(limit) FIELD(collection) FIELD(revision) FIELD(intersectionPairLimit) FIELD(intersectionCandidateLimit)
     FIELD(name) FIELD(mode) FIELD(side) FIELD(a) FIELD(b) FIELD(object) FIELD(index)
     FIELD(nonManifoldVertices) FIELD(showNonManifoldVertices) FIELD(holes) FIELD(showHoles) FIELD(holeSizeRatioTolerance) FIELD(fins) FIELD(showFins) FIELD(finMaxAreaRatio)

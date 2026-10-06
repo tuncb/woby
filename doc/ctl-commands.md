@@ -707,7 +707,7 @@ File/folder render modes report enabled/total counts and on/off/mixed state.
 | CLI | RPC method | Units / behavior |
 | --- | --- | --- |
 | `camera get` | `camera.get` | Target, eye, up vector, yaw/pitch/roll degrees, distance, vertical FOV, near/far planes, scene up-axis. |
-| `camera set [--target X Y Z] [--yaw-degrees Y] [--pitch-degrees P] [--roll-degrees R] [--distance D] [--fov-degrees F] [--near-plane N]` | `camera.set` | Absolute camera values; at least one required. Omitted fields are preserved, subject to normalization below. |
+| `camera set [--target X Y Z] [--yaw-degrees Y] [--pitch-degrees P] [--roll-degrees R] [--distance D] [--fov-degrees F] [--near-plane N] [--automatic-near-plane BOOL]` | `camera.set` | Absolute camera values; at least one required. A near distance selects manual clipping unless automatic mode is explicitly enabled. |
 | `camera look-at --eye X Y Z --target X Y Z` | `camera.look-at` | World-space eye and target. Derives yaw, pitch, and distance; preserves roll and FOV. |
 | `camera frame [--object OBJECT_ID]` | `camera.frame` | Fit the whole scene, or the union of visible, transformed occurrences/descendants of a file, folder, group, analysis, or annotation. Preserve orientation and FOV. Empty/hidden targets fail without moving the camera. Does not change selection. |
 | `camera orbit [--yaw-degrees Y] [--pitch-degrees P]` | `camera.orbit` | Relative changes to the stored camera angles, for either Y-up or Z-up. Pitch is limited to ±90 degrees, including exact poles. |
@@ -725,7 +725,7 @@ keys for relative camera commands so a retry does not move the camera twice.
 
 `camera.set` and `camera.look-at` use the existing logical camera and `.woby` mapping.
 RPC parameters use `target`/`eye` arrays and camelCase names (`yawDegrees`,
-`pitchDegrees`, `rollDegrees`, `distance`, `fovDegrees`, `nearPlane`). Both up axes are
+`pitchDegrees`, `rollDegrees`, `distance`, `fovDegrees`, `nearPlane`, `automaticNearPlane`). Both up axes are
 supported. Set angles are absolute; yaw/roll wrap modulo 360 and pitch clamps to ±90.
 Set distance must be positive and clamps to [0.001, 1e15]; target coordinates clamp
 to ±1e15, FOV to [1, 179], and near plane to [0.0001, max(distance, 10)/2].

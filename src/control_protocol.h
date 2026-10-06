@@ -52,6 +52,7 @@ struct ControlOperation {
     std::optional<float> yawDegrees, pitchDegrees, rollDegrees, right, up, forward, factor;
     std::optional<std::array<float, 3>> cameraTarget, eye;
     std::optional<float> distance, fovDegrees, nearPlane;
+    std::optional<bool> automaticNearPlane;
     std::optional<std::string> name, mode, side, a, b, object;
     SceneObjectId aId = invalidSceneObjectId, bId = invalidSceneObjectId, memberId = invalidSceneObjectId;
     std::optional<bool> distanceOnA, showEdges, showBoundaries, showNonManifold, showWinding, enabled;

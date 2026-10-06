@@ -330,6 +330,22 @@ TEST_CASE("view CRUD and reference pruning are undoable with scene content")
     REQUIRE(woby::findComparison(state, comparison));
 }
 
+TEST_CASE("applying named views restores automatic clipping and the retained manual distance")
+{
+    auto state = viewState();
+    const auto automatic = woby::createView(state);
+    woby::CameraPlacement placement;
+    placement.nearPlane = .025f;
+    woby::setUiCamera(state, placement);
+    const auto manual = woby::createView(state);
+    woby::applyView(state, automatic);
+    CHECK(state.camera.automaticNearPlane);
+    CHECK(state.camera.nearPlane == doctest::Approx(.1f));
+    woby::applyView(state, manual);
+    CHECK_FALSE(state.camera.automaticNearPlane);
+    CHECK(state.camera.nearPlane == doctest::Approx(.025f));
+}
+
 TEST_CASE("legacy scenes have no views and malformed view camera or child tables are rejected")
 {
     const ViewDirectory directory;

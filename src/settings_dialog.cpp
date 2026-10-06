@@ -48,6 +48,37 @@ SettingsDialogResult drawPreferencesDialog(UiState& state, bool requestOpen, con
             drawInformationIcon("interface_info", "Interface scale",
                 "Text and control size, in addition to Windows display scaling. Saved for this user.");
             ImGui::Spacing();
+            ImGui::SeparatorText("Camera");
+            float fov = state.camera.verticalFovDegrees;
+            ImGui::SetNextItemWidth(uiSize(100.0f));
+            if (ImGui::DragFloat("Field of view", &fov, 0.5f, 1.0f, 179.0f, "%.1f deg")) {
+                CameraPlacement placement;
+                placement.fovDegrees = fov;
+                setUiCamera(state, placement);
+            }
+            setLastItemTooltip("Field of view on the shorter viewport axis, in degrees.");
+            bool automatic = state.camera.automaticNearPlane;
+            if (ImGui::Checkbox("Automatic near clipping", &automatic)) {
+                CameraPlacement placement;
+                placement.automaticNearPlane = automatic;
+                setUiCamera(state, placement);
+            }
+            setLastItemTooltip("Adapt clipping to the scene bounds and camera position, retaining nearby surfaces during close inspection.");
+            ImGui::BeginDisabled(state.camera.automaticNearPlane);
+            float nearPlane = state.camera.nearPlane;
+            ImGui::SetNextItemWidth(uiSize(100.0f));
+            if (ImGui::InputFloat("Manual near distance", &nearPlane, 0, 0, "%.6g")) {
+                CameraPlacement placement;
+                placement.nearPlane = nearPlane;
+                setUiCamera(state, placement);
+            }
+            setLastItemTooltip("Minimum visible distance ahead of the camera, in model units. Larger values intentionally cut into nearby surfaces.");
+            ImGui::EndDisabled();
+            const auto depth = cameraDepthRange(state.camera, state.sceneBounds, state.upAxis);
+            ImGui::Text("Effective near distance: %.6g", depth.nearPlane);
+            ImGui::Text("Far distance: %.6g", depth.farPlane);
+            ImGui::TextDisabled("Camera settings are saved with the scene and views.");
+            ImGui::Spacing();
         } else {
             ImGui::SeparatorText("Updates");
             ImGui::Text("Installed version: %s", update.currentVersion.c_str());

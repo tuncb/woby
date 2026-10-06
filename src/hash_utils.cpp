@@ -48,6 +48,7 @@ void hashCamera(uint64_t& seed, const SceneCamera& camera)
     hashFloat(seed, camera.distance);
     hashFloat(seed, camera.verticalFovDegrees);
     hashFloat(seed, camera.nearPlane);
+    hashBool(seed, camera.automaticNearPlane);
 }
 
 void hashBounds(uint64_t& seed, const Bounds& bounds)

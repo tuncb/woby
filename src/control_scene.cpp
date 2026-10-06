@@ -291,6 +291,7 @@ Json controlCameraInfo(const UiState& state)
         {"yawDegrees", camera.yawRadians * radiansToDegrees}, {"pitchDegrees", camera.pitchRadians * radiansToDegrees},
         {"rollDegrees", camera.rollRadians * radiansToDegrees}, {"distance", camera.distance},
         {"verticalFovDegrees", camera.verticalFovDegrees}, {"nearPlane", camera.nearPlane},
+        {"automaticNearPlane", camera.automaticNearPlane},
         {"effectiveNearPlane", depth.nearPlane}, {"farPlane", depth.farPlane},
         {"upAxis", state.upAxis == SceneUpAxis::y ? "y" : "z"}};
 }
@@ -643,7 +644,7 @@ Json applyControlSceneOperation(UiState& state, const SceneDocument& cleanDocume
         return {{"camera", controlCameraInfo(state)}};
     case A::cameraSet:
         setUiCamera(state, {command.cameraTarget, command.yawDegrees, command.pitchDegrees,
-            command.rollDegrees, command.distance, command.fovDegrees, command.nearPlane});
+            command.rollDegrees, command.distance, command.fovDegrees, command.nearPlane, command.automaticNearPlane});
         return {{"camera", controlCameraInfo(state)}};
     case A::cameraLookAt:
         lookAtUiCamera(state, *command.eye, *command.cameraTarget);

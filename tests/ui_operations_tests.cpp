@@ -1902,6 +1902,7 @@ TEST_CASE("Fit all preserves orientation FOV and fits narrow views and near clip
     state.sceneBounds = makeBounds(10, 14);
     state.camera.verticalFovDegrees = 35;
     state.camera.nearPlane = 8;
+    state.camera.automaticNearPlane = false;
     state.camera.distance = 30;
     woby::setCameraView(state, woby::CameraView::left);
     const auto before = state.camera;
