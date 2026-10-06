@@ -621,20 +621,12 @@ Mesh loadObjMeshTextPrototype(std::string_view text, const ModelLoadProgressCall
 
 Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
 {
-#if defined(WOBY_RAPIDOBJ_PROTOTYPE)
     return loadObjMeshPrototype(path, progress);
-#else
-    return loadObjMeshLegacy(path, progress);
-#endif
 }
 
 Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress)
 {
-#if defined(WOBY_RAPIDOBJ_PROTOTYPE)
     return loadObjMeshTextPrototype(text, progress);
-#else
-    return loadObjMeshTextLegacy(text, progress);
-#endif
 }
 
 } // namespace woby

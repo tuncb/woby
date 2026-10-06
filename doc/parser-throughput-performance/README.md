@@ -310,14 +310,16 @@ additional checks; hashes alone are not a complete correctness proof.
 
 See [the runner instructions](../../experiments/parser-throughput/README.md) for
 build commands, corpus selection, worker/block sweeps, timers and report generation.
-The complete validation build used:
+The original validation enabled the application prototype switch. That switch
+has since been removed; the unified parser is now the standard implementation.
+To reproduce with current sources:
 
 ```powershell
-cmake --preset vs2026-vcpkg -DWOBY_RAPIDOBJ_PROTOTYPE=ON -DWOBY_PROFILE_LOAD_WORKFLOW=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
+cmake --preset vs2026-vcpkg -DWOBY_PROFILE_LOAD_WORKFLOW=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
 cmake --build --preset vs2026-vcpkg --config Debug
-ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure -j 8
+ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure -j 4
 cmake --build --preset vs2026-vcpkg --config Release --target woby woby_obj_prototype_benchmark woby_parser_benchmark
 ```
 
-The application prototype switch remains OFF by default in source. Nothing here
-merges or enables the prototype automatically.
+Legacy loading remains available to the comparison tools. Normal application
+builds always use the unified loader for file and in-memory OBJ input.

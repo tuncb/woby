@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
 option(WOBY_BUILD_HASH_BENCHMARKS "Build opt-in hash table and scene query benchmarks" OFF)
-option(WOBY_RAPIDOBJ_PROTOTYPE "Use the experimental unified RapidOBJ loader in Woby" OFF)
-if(WOBY_RAPIDOBJ_PROTOTYPE)
-    add_compile_definitions(WOBY_RAPIDOBJ_PROTOTYPE=1)
-endif()
 if(WOBY_BUILD_HASH_BENCHMARKS)
     list(APPEND VCPKG_MANIFEST_FEATURES hash-benchmarks)
 endif()

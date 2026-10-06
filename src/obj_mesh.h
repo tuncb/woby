@@ -39,13 +39,13 @@ inline constexpr size_t objPreflightBlockBytes = 1024 * 1024;
 [[nodiscard]] std::optional<size_t> scanObjCapacity(std::istream& input,
     const ModelLoadProgressCallback& progress = {}, uintmax_t fileBytesHint = 0);
 
+// Unified polygon/freeform loading into caller-owned coordinate buffers.
 [[nodiscard]] Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress = {});
-// OBJ held in memory, with no external material-library reads. The default
-// legacy reader accepts polygons; WOBY_RAPIDOBJ_PROTOTYPE also accepts freeforms.
+// OBJ held in memory, with no external material-library reads.
 [[nodiscard]] Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress = {});
 
-// Explicit entry points keep the reference loader available for comparisons,
-// regardless of WOBY_RAPIDOBJ_PROTOTYPE's application-wide default.
+// Reference entry points for comparison tests and benchmarks. Application
+// loading always uses the unified parser through the entry points above.
 [[nodiscard]] Mesh loadObjMeshLegacy(const std::filesystem::path& path, const ModelLoadProgressCallback& progress = {});
 [[nodiscard]] Mesh loadObjMeshTextLegacy(std::string_view text, const ModelLoadProgressCallback& progress = {});
 struct ObjPrototypeOptions {

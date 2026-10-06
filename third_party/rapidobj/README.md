@@ -38,9 +38,9 @@ delay I/O completion to check buffer lifetime deterministically. Preserve these
 changes when updating the header. CMake includes this directory as a system include path and links Threads
 for the parser's Linux threading support.
 
-## Issue 112 prototype
+## Unified OBJ loader (issue 112)
 
-`include/rapidobj/prototype.hpp` adds an opt-in scanner around RapidOBJ's existing
+`include/rapidobj/prototype.hpp` provides Woby's standard scanner around RapidOBJ's existing
 polygon decoder, index reconciliation, merge scheduling and triangulation.
 It reads file, stream and borrowed memory input through the same logical-line
 scanner. Workers scan raw blocks and decode complete statements directly from
@@ -60,18 +60,20 @@ has a temporary-memory cost relative to the legacy polygon parser's floats.
 Sparse explicit position weights are retained only until analytic patches exist.
 Woby's separate capacity preflight for potentially oversized files remains active.
 
-The application switch is OFF by default. To build and exercise the prototype:
+The application always uses this loader for files and in-memory OBJ input;
+there is no parser opt-in switch. To build and exercise it:
 
 ```powershell
-cmake --preset vs2026-vcpkg -DWOBY_RAPIDOBJ_PROTOTYPE=ON -DWOBY_TEST_HEADLESS=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
+cmake --preset vs2026-vcpkg -DWOBY_TEST_HEADLESS=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
 cmake --build --preset vs2026-vcpkg --config Debug
 ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure
 ```
 
 `tests/obj_prototype_tests.cpp` belongs to the regular unit suite and compares
 both readers directly. The optional `woby_obj_prototype_contract` target builds
-those cases separately for faster development. `loadObjMeshLegacy` and
-`loadObjMeshPrototype` remain explicitly callable with either switch setting.
+those cases separately for faster development. `loadObjMeshLegacy` remains
+available as a reference for tests and benchmarks. The `Prototype` names on
+the parser header and comparison APIs are retained for benchmark continuity.
 In-memory prototype loading uses a material-name-only policy: stable per-face
 IDs without filesystem access. File loading resolves optional MTLs beside the OBJ.
 
@@ -134,9 +136,9 @@ render-position and analysis representations.
 Ordinary large inputs took 2.8 to 4.2 times as long in the initial implementation
 at `a7286ac`, which scanned and reconstructed every line on the caller before
 dispatching decoding work. These measurements predate parallel block scanning.
-Restoring their throughput is required before enabling the prototype by default. The result
-supports modifying RapidOBJ for the grammar and ownership contract, but does not
-justify replacing the current production loader yet. Small-file differences are
+At that stage, throughput still needed to recover before replacing the production
+loader. The result supported modifying RapidOBJ for the grammar and ownership
+contract. Small-file differences are
 too small to treat as a meaningful speedup.
 
 The local `build/prototype-results.json` artifact contains all raw timings,
@@ -177,9 +179,9 @@ prototype. Its parsing phase is 3.5 to 4.8 times faster. Total load medians are
 between 3.4% faster and 2.0% slower than legacy; these small differences should
 be treated as comparable throughput, not a demonstrated improvement over legacy.
 The point cloud still saves 229 MiB of peak process commitment (1187.0 to
-958.0 MiB), with unchanged retained mesh-buffer capacities. The application
-switch remains OFF by default, and the remaining issue 112 work listed above
-is unchanged. Raw timings, phase measurements, memory counters and fingerprints
+958.0 MiB), with unchanged retained mesh-buffer capacities. At this stage the
+application switch was still OFF by default. Raw timings, phase measurements,
+memory counters and fingerprints
 are in the generated local `build/prototype-fix-results.json` artifact.
 
 The complete Debug application build and the Release comparison target built
@@ -290,5 +292,6 @@ warning-free. See the report for exact scope and measurement limits.
 
 `experiments/parser-throughput` contains opt-in benchmark-only instrumentation,
 the corpus runner, validation and report/chart generation. Production headers
-have no new timer calls. The application switch remains OFF by default in source;
-these results do not merge or enable the prototype.
+have no new timer calls. After the subsequent [merge validation](../../doc/parser-throughput-performance/merge-validation.md),
+the unified loader became the standard application implementation and the
+application switch was removed. Legacy loading is retained for comparisons.

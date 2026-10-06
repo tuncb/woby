@@ -90,6 +90,17 @@ std::string failureLine(std::string_view text, const woby::ObjPrototypeOptions& 
 }
 } // namespace
 
+TEST_CASE("Standard OBJ loaders preserve mixed primitives and weighted trimmed freeforms") {
+    const PrototypeFixture fixture;
+    const std::string* text = &polygons;
+    SUBCASE("polygons, lines and points") {}
+    SUBCASE("weighted trimmed freeforms") { text = &rationalTrimmed; }
+    const auto path = fixture.write(*text);
+    const auto reference = woby::loadObjMeshLegacy(path);
+    sameMesh(reference, woby::loadObjMesh(path));
+    sameMesh(reference, woby::loadObjMeshText(*text));
+}
+
 TEST_CASE("RapidOBJ prototype merges into caller storage and triangulates borrowed positions") {
     std::vector<woby::Coordinate> positions, normals;
     std::vector<std::array<double, 2>> texcoords;

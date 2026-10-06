@@ -60,7 +60,7 @@ def instrument(name, text):
             ('    preflightObjCapacity(path, progress);', '    workflow::setPath(path.string());\n    const auto measured = workflow::begin("capacity_preflight");\n    preflightObjCapacity(path, progress);\n    workflow::end(measured);'),
         ])
         text = section(text, 'Mesh loadObjMesh(const ', 'Mesh loadObjMeshText(', [
-            ('#if defined(WOBY_RAPIDOBJ_PROTOTYPE)\n    return loadObjMeshPrototype(path, progress);\n#else\n    return loadObjMeshLegacy(path, progress);\n#endif',
+            ('    return loadObjMeshPrototype(path, progress);',
              '    if (workflow::variant() == "legacy") { return loadObjMeshLegacy(path, progress); }\n    return loadObjMeshPrototype(path, progress);'),
         ])
     elif name == 'model_mesh':

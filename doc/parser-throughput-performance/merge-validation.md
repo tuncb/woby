@@ -1,5 +1,9 @@
 # Merge validation — 2026-10-06
 
+**Promotion:** The unified loader now replaces legacy loading in normal builds.
+The application and CI opt-in switches have been removed. The results below
+record the pre-promotion validation, when both switch settings were available.
+
 The code candidate is `f7f5d6fc0a1f3e4b76457185a5be5110b1b07124` on `codex/issue-112-rapidobj-prototype`.
 It includes main at `15376d3`, resolves the CMake test-target conflict by retaining
 both sets of targets, and keeps `WOBY_RAPIDOBJ_PROTOTYPE` OFF by default.
@@ -134,3 +138,22 @@ as C++20 with the vendored parser and doctest include directories, `-pthread`,
 Recompile separately with `-fsanitize=thread` and run with
 `TSAN_OPTIONS=halt_on_error=1`. Sanitizer checks used GCC because this WSL
 installation’s Clang lacked its sanitizer runtime libraries.
+
+## Promotion to the standard loader
+
+The application now routes both `loadObjMesh` and `loadObjMeshText` directly to
+the unified loader. The CMake option and CI input selecting the experimental
+path have been removed. Explicit legacy entry points remain for comparison
+tests and benchmarks, and the workflow instrumentation still generates its
+legacy comparison path.
+
+The new standard-loader regression case checks mixed polygons, lines, points,
+and weighted trimmed freeforms through both public entry points against the
+reference loader. With no parser-selection definition, all **993 tests passed
+in both Debug and Release**, including 11 graphics tests and four slow tests.
+Both application builds completed without compiler warnings. The workflow
+generator, its 12 analysis tests, four parser-analysis tests, and 19 CI helper
+tests also passed.
+
+The production parser headers are unchanged from the validated candidate above;
+the promotion changes application dispatch and build configuration.
