@@ -281,6 +281,10 @@ out-of-core residency and the import
 capacity limits are separate work; issues #112 and #113 remain applicable.
 Dense surface meshes still retain surface buffers as well as compact markers.
 
+The [opacity performance follow-up](point-opacity-performance.md) measures the
+current opaque-point policy with 10M/100M clouds and transparent surface overlays,
+including opacity-edit cache reuse and full-detail export checks.
+
 ### Actual app measurements
 
 Same hardware as above, Release desktop Vulkan, **1280×720 drawable / 1280×687

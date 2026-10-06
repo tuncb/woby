@@ -1,0 +1,884 @@
+{
+  "aggregation": "Median of the three round medians; p95 is the largest round p95. No pilot samples included.",
+  "hardware": {
+    "collected": "2026-10-06T21:19:24.8368479+02:00",
+    "cpu": {
+      "Name": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 16
+    },
+    "os": {
+      "Caption": "Microsoft Windows 11 Home",
+      "Version": "10.0.26300",
+      "TotalVisibleMemorySize": 66957372
+    },
+    "gpu": [
+      "name, driver_version, memory.total [MiB], pstate, temperature.gpu, clocks.current.graphics [MHz], clocks.current.memory [MHz], power.draw [W], power.limit [W]",
+      "NVIDIA GeForce RTX 3070 Laptop GPU, 616.92, 8192 MiB, P8, 58, 210 MHz, 405 MHz, 25.37 W, [N/A]"
+    ]
+  },
+  "datasets": {
+    "10m": {
+      "model": "D:\\temp\\obj_tests\\pointclouds\\semantic3d_sg27_station8_10000000_xyz_points.obj",
+      "model_sha256": "b8eb21164a8bccbd1e6cc9c9044bca8b49edf65457db302b6579336c208e0233",
+      "executable_sha256": "8d39913dc9df29341abcca6e892a0a4b8007a862cd7ec3422833ab189c16a535",
+      "source_revision": "67e8e263de508bea8f8d33c63310b3f47be6a13e",
+      "source_sha256": {
+        "src\\adaptive_points.cpp": "a77d272bf619e5f4bb65fe3d7c9cf9c8d656fcff716ace2a1b141f6e3c2ff7f6",
+        "src\\adaptive_points.h": "266c41fe13b6cc0f8273426e5648d22a150486057a198346be65420be4500c9d",
+        "src\\point_cloud.cpp": "8223bb3801807bb7ad50b7f0261272d2a79d47f2efce4f651d08c9065f59ff07",
+        "src\\point_cloud.h": "42eeaa9509001eaa3d68d1e2030579280c65efc1c43321620f1d3e499a863836",
+        "shaders\\native\\opaque_points.h": "4b616bb8f744b5fd0f07701038081c8cf54e002e85dc6a998550849278d515c3",
+        "shaders\\native\\opaque_points.slang": "90b3d85877eaa1b71ed74b506f9801775584a3604f97b13d8ce92f6b8db5ee7e",
+        "src\\graphics.cpp": "8fb6de6eecdb9683763ea016558b053316c87362cfafc712b1a2d51669e9de4d",
+        "src\\scene_renderer.cpp": "ec76f3d37bd550175995fcc81a7cdd6a7373caf7204dd37770afcd9598c687c1"
+      },
+      "runner_sha256": "91d7301434e4a6289d2f946e6c22886bea21fdab20cda5d461bbd12970087873",
+      "initial_camera": {
+        "automaticNearPlane": true,
+        "distance": 371.0730895996094,
+        "effectiveNearPlane": 3.710730791091919,
+        "eye": [
+          222.13665771484375,
+          -201.66815185546875,
+          222.13914489746094
+        ],
+        "farPlane": 920.81103515625,
+        "nearPlane": 0.10000000149011612,
+        "pitchDegrees": 35.26438903808594,
+        "rollDegrees": 0.0,
+        "target": [
+          7.897499084472656,
+          12.571002960205078,
+          7.900000095367432
+        ],
+        "up": [
+          -0.40824827551841736,
+          0.40824827551841736,
+          0.8164965510368347
+        ],
+        "upAxis": "z",
+        "verticalFovDegrees": 60.0,
+        "yawDegrees": -45.0
+      },
+      "environment": {
+        "buildConfiguration": "Release",
+        "commandId": "cmd-1460f6ab63ad122d9dd6d1f743d4828a-16",
+        "cpuFrameMilliseconds": 4.1164,
+        "cpuSubmitMilliseconds": 4.1164,
+        "display": {
+          "id": 1,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 120.0,
+          "scale": 1.25
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "fixedSize": true,
+        "fps": 239.9931640625,
+        "frameIndex": 567,
+        "frameMilliseconds": 4.2494,
+        "gpuFrameMilliseconds": 2.328576,
+        "headless": false,
+        "instance": "point-app-88430fae013b",
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 4166667,
+          "resetFlags": 3,
+          "targetFps": 239.99998080000154
+        },
+        "pane": {
+          "visible": false,
+          "width": 475.0
+        },
+        "points": {
+          "active": true,
+          "adaptive": true,
+          "budget": 2000000,
+          "fallback": "",
+          "rasterMilliseconds": 2.122752,
+          "refinedCount": 0,
+          "sourceCount": 10000000,
+          "submittedCount": 0
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 525.0
+        },
+        "renderer": "NoGraphicsAPI Vulkan",
+        "requestedDrawable": [
+          1280,
+          720
+        ],
+        "requestedWindow": null,
+        "sceneEditRevision": 14,
+        "sceneGeneration": 0,
+        "sdlVersion": 3004004,
+        "sequence": "16",
+        "stagesMilliseconds": {
+          "events": 0.004,
+          "graphics_frame": 4.1182,
+          "hover_pick": 0.0021,
+          "imgui_build": 0.0389,
+          "imgui_render": 0.0103,
+          "pending_io": 0.0021,
+          "scene_state": 0.001,
+          "state_update": 0.0013,
+          "submit_helpers": 0.0094,
+          "submit_scene": 0.0051,
+          "view_setup": 0.0567
+        },
+        "state": "succeeded",
+        "uiScale": 1.0,
+        "version": "0.27.0",
+        "viewport": {
+          "height": 687,
+          "width": 1280,
+          "x": 0,
+          "y": 33
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "load_seconds": 3.409898100013379,
+      "surface_fixture": {
+        "path": "D:\\woby\\build\\point-opacity-20261006\\final-10m\\transparent-sheets.obj",
+        "sha256": "7c5cf13f41692204b5040d7669e3bd288ca63178236203690ef62c7158facb6c",
+        "triangles": 4,
+        "vertices": 8,
+        "opacity": 0.35,
+        "edges": true,
+        "markers": true
+      },
+      "guard": {
+        "violations": [],
+        "peak_private": 1810948096,
+        "minimum_available": 44813586432,
+        "elapsed_seconds": 88.2570512999664
+      },
+      "raw": "10m.json.gz",
+      "cases": [
+        {
+          "size": 1,
+          "condition": "cloud-only",
+          "full_source_gpu_ms": 5.398528000000001,
+          "navigation_gpu_ms": 0.68608,
+          "navigation_gpu_p95_ms": 0.750592,
+          "navigation_gpu_max_ms": 0.761856,
+          "navigation_gpu_round_medians": [
+            0.557312,
+            0.726016,
+            0.68608
+          ],
+          "navigation_gpu_samples": [
+            125,
+            125,
+            123
+          ],
+          "navigation_cpu_scene_ms": 0.1037,
+          "navigation_main_thread_work_ms": 0.3423,
+          "navigation_frame_interval_ms": 4.164499999999975,
+          "navigation_frame_interval_p95_ms": 4.3596999999999895,
+          "cached_gpu_ms": 0.408576,
+          "cached_gpu_round_medians": [
+            0.34816,
+            0.408576,
+            0.411648
+          ],
+          "refinement_submitted_frames": [
+            5,
+            5,
+            5
+          ]
+        },
+        {
+          "size": 1,
+          "condition": "transparent-surfaces",
+          "full_source_gpu_ms": 5.533696,
+          "navigation_gpu_ms": 0.6251519999999999,
+          "navigation_gpu_p95_ms": 0.693248,
+          "navigation_gpu_max_ms": 0.700416,
+          "navigation_gpu_round_medians": [
+            0.67584,
+            0.594048,
+            0.6251519999999999
+          ],
+          "navigation_gpu_samples": [
+            115,
+            118,
+            128
+          ],
+          "navigation_cpu_scene_ms": 0.1095,
+          "navigation_main_thread_work_ms": 0.3503,
+          "navigation_frame_interval_ms": 4.1603999999999814,
+          "navigation_frame_interval_p95_ms": 4.3653000000000475,
+          "cached_gpu_ms": 0.321536,
+          "cached_gpu_round_medians": [
+            0.321536,
+            0.303104,
+            0.421888
+          ],
+          "refinement_submitted_frames": [
+            5,
+            5,
+            5
+          ]
+        },
+        {
+          "size": 4,
+          "condition": "cloud-only",
+          "full_source_gpu_ms": 34.388992,
+          "navigation_gpu_ms": 4.441088,
+          "navigation_gpu_p95_ms": 5.218304,
+          "navigation_gpu_max_ms": 5.54496,
+          "navigation_gpu_round_medians": [
+            4.262016,
+            4.58752,
+            4.441088
+          ],
+          "navigation_gpu_samples": [
+            134,
+            116,
+            125
+          ],
+          "navigation_cpu_scene_ms": 0.10475000000000001,
+          "navigation_main_thread_work_ms": 0.33935000000000004,
+          "navigation_frame_interval_ms": 4.174399999999999,
+          "navigation_frame_interval_p95_ms": 5.147499999999994,
+          "cached_gpu_ms": 0.265344,
+          "cached_gpu_round_medians": [
+            0.265216,
+            0.265344,
+            0.265856
+          ],
+          "refinement_submitted_frames": [
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "size": 4,
+          "condition": "transparent-surfaces",
+          "full_source_gpu_ms": 34.536448,
+          "navigation_gpu_ms": 4.465664,
+          "navigation_gpu_p95_ms": 5.208064,
+          "navigation_gpu_max_ms": 5.602304,
+          "navigation_gpu_round_medians": [
+            4.465664,
+            4.568576,
+            4.438016
+          ],
+          "navigation_gpu_samples": [
+            117,
+            120,
+            131
+          ],
+          "navigation_cpu_scene_ms": 0.1098,
+          "navigation_main_thread_work_ms": 0.352,
+          "navigation_frame_interval_ms": 4.184000000000026,
+          "navigation_frame_interval_p95_ms": 5.2607,
+          "cached_gpu_ms": 0.277504,
+          "cached_gpu_round_medians": [
+            0.27712,
+            0.279552,
+            0.277504
+          ],
+          "refinement_submitted_frames": [
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "size": 8,
+          "condition": "cloud-only",
+          "full_source_gpu_ms": 107.828224,
+          "navigation_gpu_ms": 6.414336,
+          "navigation_gpu_p95_ms": 15.048704,
+          "navigation_gpu_max_ms": 22.061056,
+          "navigation_gpu_round_medians": [
+            6.482944,
+            6.388864,
+            6.414336
+          ],
+          "navigation_gpu_samples": [
+            252,
+            222,
+            217
+          ],
+          "navigation_cpu_scene_ms": 0.1222,
+          "navigation_main_thread_work_ms": 0.33025,
+          "navigation_frame_interval_ms": 6.858800000000002,
+          "navigation_frame_interval_p95_ms": 15.540700000000001,
+          "cached_gpu_ms": 0.267264,
+          "cached_gpu_round_medians": [
+            0.267264,
+            0.265216,
+            0.269312
+          ],
+          "refinement_submitted_frames": [
+            31,
+            33,
+            31
+          ]
+        },
+        {
+          "size": 8,
+          "condition": "transparent-surfaces",
+          "full_source_gpu_ms": 108.285952,
+          "navigation_gpu_ms": 6.458112,
+          "navigation_gpu_p95_ms": 15.156224,
+          "navigation_gpu_max_ms": 23.323648,
+          "navigation_gpu_round_medians": [
+            6.458112,
+            6.372352,
+            6.489088
+          ],
+          "navigation_gpu_samples": [
+            232,
+            219,
+            217
+          ],
+          "navigation_cpu_scene_ms": 0.12669999999999998,
+          "navigation_main_thread_work_ms": 0.3431,
+          "navigation_frame_interval_ms": 6.954899999999981,
+          "navigation_frame_interval_p95_ms": 15.577600000000075,
+          "cached_gpu_ms": 0.27916799999999997,
+          "cached_gpu_round_medians": [
+            0.279552,
+            0.27916799999999997,
+            0.278528
+          ],
+          "refinement_submitted_frames": [
+            20,
+            26,
+            35
+          ]
+        }
+      ],
+      "opacity_transitions": 72,
+      "new_point_submissions_after_opacity": 0,
+      "gpu_point_raster_frames_after_opacity": 0,
+      "opacity_pixel_checks": [
+        {
+          "condition": "cloud-only",
+          "unchanged": true,
+          "dimensions": [
+            1920,
+            1800
+          ],
+          "opaque": "cloud-only-4px.png",
+          "zero": "cloud-only-4px-zero-opacity.png"
+        },
+        {
+          "condition": "transparent-surfaces",
+          "unchanged": true,
+          "dimensions": [
+            1920,
+            1800
+          ],
+          "opaque": "transparent-surfaces-4px.png",
+          "zero": "transparent-surfaces-4px-zero-opacity.png"
+        }
+      ],
+      "cloud_interior_pixel_check": {
+        "color": [
+          255,
+          84,
+          92
+        ],
+        "pixels": 43722,
+        "changed_pixels": 0,
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "note": "Exact fully covered cloud-color pixels; MSAA fringes and point IDs are outside this check."
+      }
+    },
+    "100m": {
+      "model": "D:\\temp\\obj_tests\\pointclouds\\semantic3d_sg27_station8_100000000_xyz_points.obj",
+      "model_sha256": "124735f41e9c609c251f4204c67bab3051e62b9fd13fddab907e29eb42097ac0",
+      "executable_sha256": "8d39913dc9df29341abcca6e892a0a4b8007a862cd7ec3422833ab189c16a535",
+      "source_revision": "67e8e263de508bea8f8d33c63310b3f47be6a13e",
+      "source_sha256": {
+        "src\\adaptive_points.cpp": "a77d272bf619e5f4bb65fe3d7c9cf9c8d656fcff716ace2a1b141f6e3c2ff7f6",
+        "src\\adaptive_points.h": "266c41fe13b6cc0f8273426e5648d22a150486057a198346be65420be4500c9d",
+        "src\\point_cloud.cpp": "8223bb3801807bb7ad50b7f0261272d2a79d47f2efce4f651d08c9065f59ff07",
+        "src\\point_cloud.h": "42eeaa9509001eaa3d68d1e2030579280c65efc1c43321620f1d3e499a863836",
+        "shaders\\native\\opaque_points.h": "4b616bb8f744b5fd0f07701038081c8cf54e002e85dc6a998550849278d515c3",
+        "shaders\\native\\opaque_points.slang": "90b3d85877eaa1b71ed74b506f9801775584a3604f97b13d8ce92f6b8db5ee7e",
+        "src\\graphics.cpp": "8fb6de6eecdb9683763ea016558b053316c87362cfafc712b1a2d51669e9de4d",
+        "src\\scene_renderer.cpp": "ec76f3d37bd550175995fcc81a7cdd6a7373caf7204dd37770afcd9598c687c1"
+      },
+      "runner_sha256": "91d7301434e4a6289d2f946e6c22886bea21fdab20cda5d461bbd12970087873",
+      "initial_camera": {
+        "automaticNearPlane": true,
+        "distance": 389.784423828125,
+        "effectiveNearPlane": 3.8978443145751953,
+        "eye": [
+          232.94664001464844,
+          -220.90914916992188,
+          232.93214416503906
+        ],
+        "farPlane": 967.2427978515625,
+        "nearPlane": 0.10000000149011612,
+        "pitchDegrees": 35.26438903808594,
+        "rollDegrees": 0.0,
+        "target": [
+          7.904499053955078,
+          4.133003234863281,
+          7.889999866485596
+        ],
+        "up": [
+          -0.40824827551841736,
+          0.40824827551841736,
+          0.8164965510368347
+        ],
+        "upAxis": "z",
+        "verticalFovDegrees": 60.0,
+        "yawDegrees": -45.0
+      },
+      "environment": {
+        "buildConfiguration": "Release",
+        "commandId": "cmd-0b4bc5c6cfeab794da3d390d9d34f324-16",
+        "cpuFrameMilliseconds": 3.0837,
+        "cpuSubmitMilliseconds": 3.0837,
+        "display": {
+          "id": 1,
+          "pixelDensity": 1.0,
+          "refreshRateHz": 120.0,
+          "scale": 1.25
+        },
+        "drawable": {
+          "height": 720,
+          "width": 1280
+        },
+        "fixedSize": true,
+        "fps": 240.01608276367188,
+        "frameIndex": 5903,
+        "frameMilliseconds": 3.6018,
+        "gpuFrameMilliseconds": 0.203776,
+        "headless": false,
+        "instance": "point-app-10a33b3c29d8",
+        "pacing": {
+          "msaaSamples": 4,
+          "periodNanoseconds": 4166667,
+          "resetFlags": 3,
+          "targetFps": 239.99998080000154
+        },
+        "pane": {
+          "visible": false,
+          "width": 475.0
+        },
+        "points": {
+          "active": true,
+          "adaptive": true,
+          "budget": 2000000,
+          "fallback": "",
+          "rasterMilliseconds": 0.0,
+          "refinedCount": 0,
+          "sourceCount": 100000000,
+          "submittedCount": 1999945
+        },
+        "presentation": {
+          "height": 720,
+          "physicalVisibility": "unknown",
+          "policy": "mailbox",
+          "submitted": true,
+          "width": 1280
+        },
+        "propertiesPane": {
+          "visible": false,
+          "width": 525.0
+        },
+        "renderer": "NoGraphicsAPI Vulkan",
+        "requestedDrawable": [
+          1280,
+          720
+        ],
+        "requestedWindow": null,
+        "sceneEditRevision": 14,
+        "sceneGeneration": 0,
+        "sdlVersion": 3004004,
+        "sequence": "16",
+        "stagesMilliseconds": {
+          "events": 0.0072,
+          "graphics_frame": 3.0858,
+          "hover_pick": 0.003,
+          "imgui_build": 0.0563,
+          "imgui_render": 0.0126,
+          "pending_io": 0.0036,
+          "scene_state": 0.1949,
+          "state_update": 0.0019,
+          "submit_helpers": 0.0162,
+          "submit_scene": 0.1516,
+          "view_setup": 0.0683
+        },
+        "state": "succeeded",
+        "uiScale": 1.0,
+        "version": "0.27.0",
+        "viewport": {
+          "height": 687,
+          "width": 1280,
+          "x": 0,
+          "y": 33
+        },
+        "window": {
+          "flags": 268436992,
+          "focused": true,
+          "height": 720,
+          "minimized": false,
+          "visible": true,
+          "width": 1280
+        }
+      },
+      "load_seconds": 27.060824499989394,
+      "surface_fixture": {
+        "path": "D:\\woby\\build\\point-opacity-20261006\\final-100m\\transparent-sheets.obj",
+        "sha256": "f45f7949444f8522ff345e3fcb8ab3f6a3b17ab707306adc7f80b12a27a74ac1",
+        "triangles": 4,
+        "vertices": 8,
+        "opacity": 0.35,
+        "edges": true,
+        "markers": true
+      },
+      "guard": {
+        "violations": [],
+        "peak_private": 13112164352,
+        "minimum_available": 34170249216,
+        "elapsed_seconds": 327.38885260000825
+      },
+      "raw": "100m.json.gz",
+      "cases": [
+        {
+          "size": 1,
+          "condition": "cloud-only",
+          "full_source_gpu_ms": 60.194816,
+          "navigation_gpu_ms": 0.59008,
+          "navigation_gpu_p95_ms": 0.617728,
+          "navigation_gpu_max_ms": 0.631808,
+          "navigation_gpu_round_medians": [
+            0.55808,
+            0.59008,
+            0.59392
+          ],
+          "navigation_gpu_samples": [
+            119,
+            129,
+            136
+          ],
+          "navigation_cpu_scene_ms": 0.1369,
+          "navigation_main_thread_work_ms": 0.37670000000000003,
+          "navigation_frame_interval_ms": 4.1675499999999825,
+          "navigation_frame_interval_p95_ms": 4.39650000000006,
+          "cached_gpu_ms": 0.28672,
+          "cached_gpu_round_medians": [
+            0.292864,
+            0.28672,
+            0.27136
+          ],
+          "refinement_submitted_frames": [
+            50,
+            50,
+            50
+          ]
+        },
+        {
+          "size": 1,
+          "condition": "transparent-surfaces",
+          "full_source_gpu_ms": 60.548608,
+          "navigation_gpu_ms": 0.582656,
+          "navigation_gpu_p95_ms": 0.628992,
+          "navigation_gpu_max_ms": 0.64512,
+          "navigation_gpu_round_medians": [
+            0.571392,
+            0.582656,
+            0.606848
+          ],
+          "navigation_gpu_samples": [
+            124,
+            143,
+            136
+          ],
+          "navigation_cpu_scene_ms": 0.1435,
+          "navigation_main_thread_work_ms": 0.3888,
+          "navigation_frame_interval_ms": 4.164100000000076,
+          "navigation_frame_interval_p95_ms": 4.372299999999996,
+          "cached_gpu_ms": 0.309888,
+          "cached_gpu_round_medians": [
+            0.323072,
+            0.309888,
+            0.283264
+          ],
+          "refinement_submitted_frames": [
+            50,
+            50,
+            50
+          ]
+        },
+        {
+          "size": 4,
+          "condition": "cloud-only",
+          "full_source_gpu_ms": 563.833472,
+          "navigation_gpu_ms": 4.501504,
+          "navigation_gpu_p95_ms": 5.238784,
+          "navigation_gpu_max_ms": 5.619712,
+          "navigation_gpu_round_medians": [
+            4.435456,
+            4.501504,
+            4.6576640000000005
+          ],
+          "navigation_gpu_samples": [
+            128,
+            127,
+            128
+          ],
+          "navigation_cpu_scene_ms": 0.1342,
+          "navigation_main_thread_work_ms": 0.37120000000000003,
+          "navigation_frame_interval_ms": 4.175299999999993,
+          "navigation_frame_interval_p95_ms": 4.917500000000018,
+          "cached_gpu_ms": 0.268928,
+          "cached_gpu_round_medians": [
+            0.267264,
+            0.268928,
+            0.270336
+          ],
+          "refinement_submitted_frames": [
+            92,
+            91,
+            93
+          ]
+        },
+        {
+          "size": 4,
+          "condition": "transparent-surfaces",
+          "full_source_gpu_ms": 564.7089920000001,
+          "navigation_gpu_ms": 4.637696,
+          "navigation_gpu_p95_ms": 5.154816,
+          "navigation_gpu_max_ms": 5.675008,
+          "navigation_gpu_round_medians": [
+            4.603904,
+            4.637696,
+            4.683008
+          ],
+          "navigation_gpu_samples": [
+            143,
+            139,
+            133
+          ],
+          "navigation_cpu_scene_ms": 0.1407,
+          "navigation_main_thread_work_ms": 0.3836,
+          "navigation_frame_interval_ms": 4.173899999999975,
+          "navigation_frame_interval_p95_ms": 4.906400000000076,
+          "cached_gpu_ms": 0.278528,
+          "cached_gpu_round_medians": [
+            0.27776,
+            0.278528,
+            0.281856
+          ],
+          "refinement_submitted_frames": [
+            92,
+            92,
+            93
+          ]
+        },
+        {
+          "size": 8,
+          "condition": "cloud-only",
+          "full_source_gpu_ms": 1427.4858239999999,
+          "navigation_gpu_ms": 6.811648,
+          "navigation_gpu_p95_ms": 15.296512,
+          "navigation_gpu_max_ms": 21.142784,
+          "navigation_gpu_round_medians": [
+            6.811648,
+            6.40064,
+            6.843904
+          ],
+          "navigation_gpu_samples": [
+            225,
+            218,
+            214
+          ],
+          "navigation_cpu_scene_ms": 0.16435,
+          "navigation_main_thread_work_ms": 0.3972,
+          "navigation_frame_interval_ms": 7.245900000000034,
+          "navigation_frame_interval_p95_ms": 15.872100000000046,
+          "cached_gpu_ms": 0.26995199999999997,
+          "cached_gpu_round_medians": [
+            0.26995199999999997,
+            0.26995199999999997,
+            0.272384
+          ],
+          "refinement_submitted_frames": [
+            263,
+            260,
+            272
+          ]
+        },
+        {
+          "size": 8,
+          "condition": "transparent-surfaces",
+          "full_source_gpu_ms": 1436.321792,
+          "navigation_gpu_ms": 6.648832,
+          "navigation_gpu_p95_ms": 14.804992,
+          "navigation_gpu_max_ms": 23.692288,
+          "navigation_gpu_round_medians": [
+            6.648832,
+            6.304,
+            6.658304
+          ],
+          "navigation_gpu_samples": [
+            205,
+            219,
+            225
+          ],
+          "navigation_cpu_scene_ms": 0.1659,
+          "navigation_main_thread_work_ms": 0.39999999999999997,
+          "navigation_frame_interval_ms": 6.917049999999904,
+          "navigation_frame_interval_p95_ms": 15.487099999999998,
+          "cached_gpu_ms": 0.282624,
+          "cached_gpu_round_medians": [
+            0.282624,
+            0.282624,
+            0.2816
+          ],
+          "refinement_submitted_frames": [
+            263,
+            270,
+            269
+          ]
+        }
+      ],
+      "opacity_transitions": 72,
+      "new_point_submissions_after_opacity": 0,
+      "gpu_point_raster_frames_after_opacity": 0,
+      "opacity_pixel_checks": [
+        {
+          "condition": "cloud-only",
+          "unchanged": true,
+          "dimensions": [
+            1920,
+            1800
+          ],
+          "opaque": "cloud-only-4px.png",
+          "zero": "cloud-only-4px-zero-opacity.png"
+        },
+        {
+          "condition": "transparent-surfaces",
+          "unchanged": true,
+          "dimensions": [
+            1920,
+            1800
+          ],
+          "opaque": "transparent-surfaces-4px.png",
+          "zero": "transparent-surfaces-4px-zero-opacity.png"
+        }
+      ],
+      "cloud_interior_pixel_check": {
+        "color": [
+          255,
+          84,
+          92
+        ],
+        "pixels": 40739,
+        "changed_pixels": 0,
+        "dimensions": [
+          1920,
+          1800
+        ],
+        "note": "Exact fully covered cloud-color pixels; MSAA fringes and point IDs are outside this check."
+      }
+    }
+  },
+  "artifacts": {
+    "100m-cloud-only-4px-zero-opacity.png": {
+      "bytes": 24284,
+      "sha256": "525ad063dbb6311e455f7dbf20e40218bd52eb4113eb6ba3af650745844166f5"
+    },
+    "100m-cloud-only-4px.png": {
+      "bytes": 24284,
+      "sha256": "525ad063dbb6311e455f7dbf20e40218bd52eb4113eb6ba3af650745844166f5"
+    },
+    "100m-transparent-sheets.obj.txt": {
+      "bytes": 354,
+      "sha256": "f45f7949444f8522ff345e3fcb8ab3f6a3b17ab707306adc7f80b12a27a74ac1"
+    },
+    "100m-transparent-surfaces-4px-zero-opacity.png": {
+      "bytes": 38081,
+      "sha256": "44a4bdddf26909fa0e012484e7270a42f591061e020d48341ae12050a013a4f8"
+    },
+    "100m-transparent-surfaces-4px.png": {
+      "bytes": 38081,
+      "sha256": "44a4bdddf26909fa0e012484e7270a42f591061e020d48341ae12050a013a4f8"
+    },
+    "100m-viewer.log.gz": {
+      "bytes": 639,
+      "sha256": "ee3d5a7612a2107eab7a569fded0e8e04363569ed899233f93a1a1258ba50e26"
+    },
+    "100m.json.gz": {
+      "bytes": 1299441,
+      "sha256": "55456ac3d1f5b86eb63382cb86d1ab93fdf36062924c73fd4b90b993723ad995"
+    },
+    "10m-cloud-only-4px-zero-opacity.png": {
+      "bytes": 24776,
+      "sha256": "61b20132634007771bfb6741549f28b9b8ddf0b0af81e9aace508a43071d1222"
+    },
+    "10m-cloud-only-4px.png": {
+      "bytes": 24776,
+      "sha256": "61b20132634007771bfb6741549f28b9b8ddf0b0af81e9aace508a43071d1222"
+    },
+    "10m-transparent-sheets.obj.txt": {
+      "bytes": 351,
+      "sha256": "7c5cf13f41692204b5040d7669e3bd288ca63178236203690ef62c7158facb6c"
+    },
+    "10m-transparent-surfaces-4px-zero-opacity.png": {
+      "bytes": 38611,
+      "sha256": "13f23667398853183c34a71d6d141dcb416082b227af97b9825e3325fdf29ecd"
+    },
+    "10m-transparent-surfaces-4px.png": {
+      "bytes": 38611,
+      "sha256": "13f23667398853183c34a71d6d141dcb416082b227af97b9825e3325fdf29ecd"
+    },
+    "10m-viewer.log.gz": {
+      "bytes": 625,
+      "sha256": "174e27fd41a8d1504c86770ad9bbed2bf774d55f9f68fefa5fa21b958107dd12"
+    },
+    "10m.json.gz": {
+      "bytes": 1086283,
+      "sha256": "5c9157c1d52d6ac8a9d703ede2aba177544736d6441d68da31c6b3d42a4f66ec"
+    },
+    "gpu-before.txt": {
+      "bytes": 226,
+      "sha256": "c2d4886cf187e6cd335495d0f291ea42aa0b0c280fa9cb3499a61f283c281319"
+    },
+    "point-opacity-debug-build.log.gz": {
+      "bytes": 2198,
+      "sha256": "f957f978b0f79e3fb24fa6d5790687321a1fa0e16ae549e1fef3eb5e00418661"
+    },
+    "point-opacity-release-build.log.gz": {
+      "bytes": 689,
+      "sha256": "171131c1a599f09a18f555addd046cc17d5e8d7e9d0bfc72d704599e9ce34465"
+    },
+    "point-opacity-reporting-tests.log.gz": {
+      "bytes": 221,
+      "sha256": "5f853e1da3af398e23ffda7921a2e2a4286040764b009172e2b7a8fba2c3e2fd"
+    }
+  }
+}

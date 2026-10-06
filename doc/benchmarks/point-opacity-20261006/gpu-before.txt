@@ -1,0 +1,2 @@
+name, driver_version, pstate, temperature.gpu, clocks.current.graphics [MHz], clocks.current.memory [MHz], power.draw [W], power.limit [W]
+NVIDIA GeForce RTX 3070 Laptop GPU, 616.92, P8, 53, 210 MHz, 405 MHz, 24.44 W, [N/A]
