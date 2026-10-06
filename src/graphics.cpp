@@ -852,7 +852,7 @@ void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View&
     root.winners=reinterpret_cast<uint64_t*>(packet.winners->heap.range.gpu);
     if (packet.batch) {
         require(packet.batch->bytes>=packet.winners->bytes,"Point scratch buffer is too small");
-        root.batch=reinterpret_cast<uint2*>(packet.batch->heap.range.gpu);
+        root.batch=reinterpret_cast<OpaquePointBatchSample*>(packet.batch->heap.range.gpu);
     }
     root.width=view.width; root.height=view.height; root.samples=target.samples;
     root.x=view.x; root.y=view.y; root.groupCount=static_cast<uint32_t>(packet.groups.size());

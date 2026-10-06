@@ -1,0 +1,945 @@
+{
+  "method": "Fresh processes; input warmed before each run; rotated order; guarded; ordered parser fingerprints outside timing",
+  "rounds": 3,
+  "executables": {
+    "D:\\.worktree\\woby-rapidobj-prototype\\build\\vs2026-vcpkg\\bin\\Release\\woby_parser_stage_f.exe": "1263ad11f678a2b6e03c1c2ee30df45fcfba2c9fefba0e2e2ab5ced1ab4f2b35",
+    "D:\\.worktree\\woby-rapidobj-prototype\\build\\vs2026-vcpkg\\bin\\Release\\woby_parser_before.exe": "d98bd507f968db5e68a87cb64b82d52cb7164ad0020a4298df6f6fae504da2da"
+  },
+  "records": [
+    {
+      "attribute_allocate_ms": 0.0099,
+      "chunks": 16,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.5623,
+      "merge_ms": 2.6733,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 14.546000000000005,
+      "scan_ms": 17.912,
+      "total_ms": 35.1313,
+      "worker_decode_ms_sum": 137.0193,
+      "worker_input_ms_sum": 79.9786,
+      "workers": 16,
+      "model": "quads",
+      "variant": "legacy",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 1.0907,
+      "chunks": 4,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.6999,
+      "merge_ms": 3.8654,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 1.6455999999999955,
+      "scan_ms": 37.0604,
+      "total_ms": 42.5714,
+      "workers": 4,
+      "model": "quads",
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 1.0688,
+      "chunks": 16,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.1817,
+      "merge_ms": 3.3244,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 2.112499999999998,
+      "scan_ms": 20.4921,
+      "total_ms": 25.929,
+      "worker_decode_ms_sum": 184.2213,
+      "worker_input_ms_sum": 12.4866,
+      "workers": 16,
+      "model": "quads",
+      "variant": "prototype",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 0.0107,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 0.9879,
+      "merge_ms": 1.0632,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 6.2775,
+      "scan_ms": 10.1271,
+      "total_ms": 17.4678,
+      "worker_decode_ms_sum": 68.9289,
+      "worker_input_ms_sum": 26.7683,
+      "workers": 16,
+      "model": "lines",
+      "variant": "legacy",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 0.9306,
+      "chunks": 2,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 1.3757,
+      "merge_ms": 2.3516,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 0.903199999999996,
+      "scan_ms": 29.6674,
+      "total_ms": 32.9222,
+      "workers": 2,
+      "model": "lines",
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 0.8973,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 0.7975,
+      "merge_ms": 1.7473,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 1.5345000000000004,
+      "scan_ms": 8.3323,
+      "total_ms": 11.6141,
+      "worker_decode_ms_sum": 73.2874,
+      "worker_input_ms_sum": 4.6113,
+      "workers": 16,
+      "model": "lines",
+      "variant": "prototype",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 0.0133,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 25.142,
+      "merge_ms": 25.2166,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 29.763900000000007,
+      "scan_ms": 376.9954,
+      "total_ms": 431.9759,
+      "worker_decode_ms_sum": 3128.7605,
+      "worker_input_ms_sum": 2822.7208,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "legacy",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 42.0678,
+      "chunks": 75,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 31.7289,
+      "merge_ms": 73.9308,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 24.591800000000006,
+      "scan_ms": 409.8939,
+      "total_ms": 508.4165,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "before",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 39.9517,
+      "chunks": 75,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 24.806,
+      "merge_ms": 64.9065,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 24.903599999999983,
+      "scan_ms": 297.6598,
+      "total_ms": 387.4699,
+      "worker_decode_ms_sum": 4055.578,
+      "worker_input_ms_sum": 260.0188,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "prototype",
+      "round": 1
+    },
+    {
+      "attribute_allocate_ms": 1.07,
+      "chunks": 4,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.6814,
+      "merge_ms": 3.8195,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 1.6318999999999995,
+      "scan_ms": 35.036,
+      "total_ms": 40.4874,
+      "workers": 4,
+      "model": "quads",
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 1.08,
+      "chunks": 16,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.3321,
+      "merge_ms": 3.4897,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 1.9965000000000002,
+      "scan_ms": 17.9988,
+      "total_ms": 23.485,
+      "worker_decode_ms_sum": 171.2595,
+      "worker_input_ms_sum": 9.0039,
+      "workers": 16,
+      "model": "quads",
+      "variant": "prototype",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 0.0095,
+      "chunks": 16,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.1247,
+      "merge_ms": 2.2068,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 3.2465000000000024,
+      "scan_ms": 18.746,
+      "total_ms": 24.1993,
+      "worker_decode_ms_sum": 113.0677,
+      "worker_input_ms_sum": 135.4284,
+      "workers": 16,
+      "model": "quads",
+      "variant": "legacy",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 0.8993,
+      "chunks": 2,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 1.5456,
+      "merge_ms": 2.489,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 0.8941000000000026,
+      "scan_ms": 29.5367,
+      "total_ms": 32.9198,
+      "workers": 2,
+      "model": "lines",
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 0.887,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 1.2214,
+      "merge_ms": 2.2486,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 2.2492999999999994,
+      "scan_ms": 11.1318,
+      "total_ms": 15.6297,
+      "worker_decode_ms_sum": 84.641,
+      "worker_input_ms_sum": 5.7084,
+      "workers": 16,
+      "model": "lines",
+      "variant": "prototype",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 0.01,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 0.9989,
+      "merge_ms": 1.0765,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 2.4716999999999993,
+      "scan_ms": 11.6295,
+      "total_ms": 15.1777,
+      "worker_decode_ms_sum": 64.5388,
+      "worker_input_ms_sum": 64.5487,
+      "workers": 16,
+      "model": "lines",
+      "variant": "legacy",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 39.6624,
+      "chunks": 75,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 33.6432,
+      "merge_ms": 73.4695,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 24.698700000000017,
+      "scan_ms": 446.9445,
+      "total_ms": 545.1127,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "before",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 40.2271,
+      "chunks": 75,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 25.3779,
+      "merge_ms": 65.7338,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 25.25309999999999,
+      "scan_ms": 325.9653,
+      "total_ms": 416.9522,
+      "worker_decode_ms_sum": 4325.1981,
+      "worker_input_ms_sum": 275.5546,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "prototype",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 0.0117,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 25.8398,
+      "merge_ms": 25.9151,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 20.687700000000003,
+      "scan_ms": 371.8374,
+      "total_ms": 418.4402,
+      "worker_decode_ms_sum": 3572.2601,
+      "worker_input_ms_sum": 2143.1064,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "legacy",
+      "round": 2
+    },
+    {
+      "attribute_allocate_ms": 1.08,
+      "chunks": 16,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.2372,
+      "merge_ms": 3.3974,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 2.1055,
+      "scan_ms": 18.3158,
+      "total_ms": 23.8187,
+      "worker_decode_ms_sum": 167.228,
+      "worker_input_ms_sum": 9.3757,
+      "workers": 16,
+      "model": "quads",
+      "variant": "prototype",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 0.0097,
+      "chunks": 16,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.2368,
+      "merge_ms": 2.318,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 3.5138999999999974,
+      "scan_ms": 18.1702,
+      "total_ms": 24.0021,
+      "worker_decode_ms_sum": 118.4825,
+      "worker_input_ms_sum": 101.3991,
+      "workers": 16,
+      "model": "quads",
+      "variant": "legacy",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 1.0684,
+      "chunks": 4,
+      "faces": 250000,
+      "fingerprint": 3501307340286739643,
+      "line_indices": 0,
+      "merge_execute_ms": 2.8466,
+      "merge_ms": 3.9917,
+      "point_indices": 0,
+      "positions": 251001,
+      "residual_ms": 1.6184999999999992,
+      "scan_ms": 46.2025,
+      "total_ms": 51.8127,
+      "workers": 4,
+      "model": "quads",
+      "variant": "before",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 0.9103,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 0.854,
+      "merge_ms": 1.8319,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 1.2824,
+      "scan_ms": 8.5387,
+      "total_ms": 11.653,
+      "worker_decode_ms_sum": 72.0084,
+      "worker_input_ms_sum": 4.0212,
+      "workers": 16,
+      "model": "lines",
+      "variant": "prototype",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 0.013,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 1.0901,
+      "merge_ms": 1.1714,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 2.6289,
+      "scan_ms": 11.7805,
+      "total_ms": 15.5808,
+      "worker_decode_ms_sum": 70.8965,
+      "worker_input_ms_sum": 66.5596,
+      "workers": 16,
+      "model": "lines",
+      "variant": "legacy",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 0.9273,
+      "chunks": 2,
+      "faces": 0,
+      "fingerprint": 7040585692401326055,
+      "line_indices": 199936,
+      "merge_execute_ms": 1.378,
+      "merge_ms": 2.3526,
+      "point_indices": 8000,
+      "positions": 200000,
+      "residual_ms": 0.8371999999999984,
+      "scan_ms": 29.6443,
+      "total_ms": 32.8341,
+      "workers": 2,
+      "model": "lines",
+      "variant": "before",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 39.1783,
+      "chunks": 75,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 24.9065,
+      "merge_ms": 64.2169,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 24.293899999999965,
+      "scan_ms": 325.7513,
+      "total_ms": 414.2621,
+      "worker_decode_ms_sum": 4241.4901,
+      "worker_input_ms_sum": 302.1995,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "prototype",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 0.0134,
+      "chunks": 16,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 25.1694,
+      "merge_ms": 25.2684,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 20.183800000000005,
+      "scan_ms": 368.4089,
+      "total_ms": 413.8611,
+      "worker_decode_ms_sum": 3682.4801,
+      "worker_input_ms_sum": 1889.7193,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "legacy",
+      "round": 3
+    },
+    {
+      "attribute_allocate_ms": 41.5818,
+      "chunks": 75,
+      "faces": 0,
+      "fingerprint": 9520587120179649526,
+      "line_indices": 0,
+      "merge_execute_ms": 34.0478,
+      "merge_ms": 75.7937,
+      "point_indices": 10000000,
+      "positions": 10000000,
+      "residual_ms": 25.7029,
+      "scan_ms": 444.3861,
+      "total_ms": 545.8827,
+      "workers": 16,
+      "model": "cloud",
+      "variant": "before",
+      "round": 3
+    }
+  ],
+  "excluded": [],
+  "inputs": [
+    {
+      "id": "quads",
+      "bytes": 16722966,
+      "sha256": "d323d88669284d3a7eb9e08de247b8a280662b91ccdfa4dc5bb5cd0e667ad879"
+    },
+    {
+      "id": "lines",
+      "bytes": 7262184,
+      "sha256": "6fb618abf30ea8cd6604aa299e05531b15e54326545778fa423d612793f89fa2"
+    },
+    {
+      "id": "cloud",
+      "bytes": 312472131,
+      "sha256": "3f1fa9211d7287f39e933de94ef1ed1bf9b385ed15129e52281fbd2c4681fd3c"
+    }
+  ],
+  "summaries": [
+    {
+      "model": "quads",
+      "variants": {
+        "legacy": {
+          "total_ms": {
+            "median": 24.1993,
+            "minimum": 24.0021,
+            "maximum": 35.1313
+          },
+          "scan_ms": {
+            "median": 18.1702,
+            "minimum": 17.912,
+            "maximum": 18.746
+          },
+          "merge_ms": {
+            "median": 2.318,
+            "minimum": 2.2068,
+            "maximum": 2.6733
+          },
+          "attribute_allocate_ms": {
+            "median": 0.0097,
+            "minimum": 0.0095,
+            "maximum": 0.0099
+          },
+          "merge_execute_ms": {
+            "median": 2.2368,
+            "minimum": 2.1247,
+            "maximum": 2.5623
+          },
+          "residual_ms": {
+            "median": 3.5138999999999974,
+            "minimum": 3.2465000000000024,
+            "maximum": 14.546000000000005
+          },
+          "workers": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          },
+          "chunks": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          }
+        },
+        "before": {
+          "total_ms": {
+            "median": 42.5714,
+            "minimum": 40.4874,
+            "maximum": 51.8127
+          },
+          "scan_ms": {
+            "median": 37.0604,
+            "minimum": 35.036,
+            "maximum": 46.2025
+          },
+          "merge_ms": {
+            "median": 3.8654,
+            "minimum": 3.8195,
+            "maximum": 3.9917
+          },
+          "attribute_allocate_ms": {
+            "median": 1.07,
+            "minimum": 1.0684,
+            "maximum": 1.0907
+          },
+          "merge_execute_ms": {
+            "median": 2.6999,
+            "minimum": 2.6814,
+            "maximum": 2.8466
+          },
+          "residual_ms": {
+            "median": 1.6318999999999995,
+            "minimum": 1.6184999999999992,
+            "maximum": 1.6455999999999955
+          },
+          "workers": {
+            "median": 4,
+            "minimum": 4,
+            "maximum": 4
+          },
+          "chunks": {
+            "median": 4,
+            "minimum": 4,
+            "maximum": 4
+          }
+        },
+        "prototype": {
+          "total_ms": {
+            "median": 23.8187,
+            "minimum": 23.485,
+            "maximum": 25.929
+          },
+          "scan_ms": {
+            "median": 18.3158,
+            "minimum": 17.9988,
+            "maximum": 20.4921
+          },
+          "merge_ms": {
+            "median": 3.3974,
+            "minimum": 3.3244,
+            "maximum": 3.4897
+          },
+          "attribute_allocate_ms": {
+            "median": 1.08,
+            "minimum": 1.0688,
+            "maximum": 1.08
+          },
+          "merge_execute_ms": {
+            "median": 2.2372,
+            "minimum": 2.1817,
+            "maximum": 2.3321
+          },
+          "residual_ms": {
+            "median": 2.1055,
+            "minimum": 1.9965000000000002,
+            "maximum": 2.112499999999998
+          },
+          "workers": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          },
+          "chunks": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          }
+        }
+      }
+    },
+    {
+      "model": "lines",
+      "variants": {
+        "legacy": {
+          "total_ms": {
+            "median": 15.5808,
+            "minimum": 15.1777,
+            "maximum": 17.4678
+          },
+          "scan_ms": {
+            "median": 11.6295,
+            "minimum": 10.1271,
+            "maximum": 11.7805
+          },
+          "merge_ms": {
+            "median": 1.0765,
+            "minimum": 1.0632,
+            "maximum": 1.1714
+          },
+          "attribute_allocate_ms": {
+            "median": 0.0107,
+            "minimum": 0.01,
+            "maximum": 0.013
+          },
+          "merge_execute_ms": {
+            "median": 0.9989,
+            "minimum": 0.9879,
+            "maximum": 1.0901
+          },
+          "residual_ms": {
+            "median": 2.6289,
+            "minimum": 2.4716999999999993,
+            "maximum": 6.2775
+          },
+          "workers": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          },
+          "chunks": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          }
+        },
+        "before": {
+          "total_ms": {
+            "median": 32.9198,
+            "minimum": 32.8341,
+            "maximum": 32.9222
+          },
+          "scan_ms": {
+            "median": 29.6443,
+            "minimum": 29.5367,
+            "maximum": 29.6674
+          },
+          "merge_ms": {
+            "median": 2.3526,
+            "minimum": 2.3516,
+            "maximum": 2.489
+          },
+          "attribute_allocate_ms": {
+            "median": 0.9273,
+            "minimum": 0.8993,
+            "maximum": 0.9306
+          },
+          "merge_execute_ms": {
+            "median": 1.378,
+            "minimum": 1.3757,
+            "maximum": 1.5456
+          },
+          "residual_ms": {
+            "median": 0.8941000000000026,
+            "minimum": 0.8371999999999984,
+            "maximum": 0.903199999999996
+          },
+          "workers": {
+            "median": 2,
+            "minimum": 2,
+            "maximum": 2
+          },
+          "chunks": {
+            "median": 2,
+            "minimum": 2,
+            "maximum": 2
+          }
+        },
+        "prototype": {
+          "total_ms": {
+            "median": 11.653,
+            "minimum": 11.6141,
+            "maximum": 15.6297
+          },
+          "scan_ms": {
+            "median": 8.5387,
+            "minimum": 8.3323,
+            "maximum": 11.1318
+          },
+          "merge_ms": {
+            "median": 1.8319,
+            "minimum": 1.7473,
+            "maximum": 2.2486
+          },
+          "attribute_allocate_ms": {
+            "median": 0.8973,
+            "minimum": 0.887,
+            "maximum": 0.9103
+          },
+          "merge_execute_ms": {
+            "median": 0.854,
+            "minimum": 0.7975,
+            "maximum": 1.2214
+          },
+          "residual_ms": {
+            "median": 1.5345000000000004,
+            "minimum": 1.2824,
+            "maximum": 2.2492999999999994
+          },
+          "workers": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          },
+          "chunks": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          }
+        }
+      }
+    },
+    {
+      "model": "cloud",
+      "variants": {
+        "legacy": {
+          "total_ms": {
+            "median": 418.4402,
+            "minimum": 413.8611,
+            "maximum": 431.9759
+          },
+          "scan_ms": {
+            "median": 371.8374,
+            "minimum": 368.4089,
+            "maximum": 376.9954
+          },
+          "merge_ms": {
+            "median": 25.2684,
+            "minimum": 25.2166,
+            "maximum": 25.9151
+          },
+          "attribute_allocate_ms": {
+            "median": 0.0133,
+            "minimum": 0.0117,
+            "maximum": 0.0134
+          },
+          "merge_execute_ms": {
+            "median": 25.1694,
+            "minimum": 25.142,
+            "maximum": 25.8398
+          },
+          "residual_ms": {
+            "median": 20.687700000000003,
+            "minimum": 20.183800000000005,
+            "maximum": 29.763900000000007
+          },
+          "workers": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          },
+          "chunks": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          }
+        },
+        "before": {
+          "total_ms": {
+            "median": 545.1127,
+            "minimum": 508.4165,
+            "maximum": 545.8827
+          },
+          "scan_ms": {
+            "median": 444.3861,
+            "minimum": 409.8939,
+            "maximum": 446.9445
+          },
+          "merge_ms": {
+            "median": 73.9308,
+            "minimum": 73.4695,
+            "maximum": 75.7937
+          },
+          "attribute_allocate_ms": {
+            "median": 41.5818,
+            "minimum": 39.6624,
+            "maximum": 42.0678
+          },
+          "merge_execute_ms": {
+            "median": 33.6432,
+            "minimum": 31.7289,
+            "maximum": 34.0478
+          },
+          "residual_ms": {
+            "median": 24.698700000000017,
+            "minimum": 24.591800000000006,
+            "maximum": 25.7029
+          },
+          "workers": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          },
+          "chunks": {
+            "median": 75,
+            "minimum": 75,
+            "maximum": 75
+          }
+        },
+        "prototype": {
+          "total_ms": {
+            "median": 414.2621,
+            "minimum": 387.4699,
+            "maximum": 416.9522
+          },
+          "scan_ms": {
+            "median": 325.7513,
+            "minimum": 297.6598,
+            "maximum": 325.9653
+          },
+          "merge_ms": {
+            "median": 64.9065,
+            "minimum": 64.2169,
+            "maximum": 65.7338
+          },
+          "attribute_allocate_ms": {
+            "median": 39.9517,
+            "minimum": 39.1783,
+            "maximum": 40.2271
+          },
+          "merge_execute_ms": {
+            "median": 24.9065,
+            "minimum": 24.806,
+            "maximum": 25.3779
+          },
+          "residual_ms": {
+            "median": 24.903599999999983,
+            "minimum": 24.293899999999965,
+            "maximum": 25.25309999999999
+          },
+          "workers": {
+            "median": 16,
+            "minimum": 16,
+            "maximum": 16
+          },
+          "chunks": {
+            "median": 75,
+            "minimum": 75,
+            "maximum": 75
+          }
+        }
+      }
+    }
+  ]
+}

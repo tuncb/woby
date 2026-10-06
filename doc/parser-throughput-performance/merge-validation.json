@@ -1,0 +1,105 @@
+{
+  "code_revision": "f7f5d6fc0a1f3e4b76457185a5be5110b1b07124",
+  "main_revision": "15376d38ea7daa5e3858ad1a9452018f66f96b5f",
+  "local_tests": [
+    {
+      "configuration": "Debug, prototype ON (integrated main)",
+      "tests": 992,
+      "log": "integrated-on-debug-tests.log",
+      "sha256": "ef48dea9792ccaeeed863b79efdd8ac01de5f28835ee96ce6f8ea3212d3af20a"
+    },
+    {
+      "configuration": "Debug, prototype OFF",
+      "tests": 992,
+      "log": "integrated-off-debug-tests.log",
+      "sha256": "77d6356db6735310bdb3ef8ef771a43abf4803e27c198aba531f8b95c969a555"
+    },
+    {
+      "configuration": "Release, prototype OFF",
+      "tests": 992,
+      "log": "integrated-off-release-tests.log",
+      "sha256": "2421ca40f3d3459abb2c8343f72a24246fafa7b43aafc702a53153efd70527d4"
+    },
+    {
+      "configuration": "Affected rendering tests after final Metal fix",
+      "tests": 12,
+      "log": "final-shader-tests.log",
+      "sha256": "6518c4f671ee33fb8474b0d06bda493ca970fde7281646587af9da71f9b9c6cc"
+    }
+  ],
+  "ci": [
+    {
+      "prototype": "ON",
+      "run": 37493965429,
+      "url": "https://github.com/tuncb/woby/actions/runs/37493965429",
+      "revision": "f7f5d6fc0a1f3e4b76457185a5be5110b1b07124",
+      "jobs": [
+        {
+          "name": "Build woby-windows-x64",
+          "conclusion": "success",
+          "url": "https://github.com/tuncb/woby/actions/runs/37493965429/job/112373615906",
+          "development_tests": 957,
+          "slow_tests": 4,
+          "log_sha256": "42b660500d75d4947e58a70c3b6401cc14f7988dc5673a0b69448f87b20e4013"
+        },
+        {
+          "name": "Build woby-linux-x64",
+          "conclusion": "success",
+          "url": "https://github.com/tuncb/woby/actions/runs/37493965429/job/112373616423",
+          "development_tests": 948,
+          "slow_tests": 4,
+          "log_sha256": "ba51e644e9f66d8ab9446f83cbf26208091eea0ca34e218f11c435fbda165454"
+        },
+        {
+          "name": "Build woby-macos-arm64",
+          "conclusion": "success",
+          "url": "https://github.com/tuncb/woby/actions/runs/37493965429/job/112373616491",
+          "development_tests": 949,
+          "slow_tests": 4,
+          "log_sha256": "89d887120b19751db6bda577a1a56a51c4f6aba59aed3be46a3540d7de13fc43"
+        }
+      ]
+    },
+    {
+      "prototype": "OFF",
+      "run": 37493971391,
+      "url": "https://github.com/tuncb/woby/actions/runs/37493971391",
+      "revision": "f7f5d6fc0a1f3e4b76457185a5be5110b1b07124",
+      "jobs": [
+        {
+          "name": "Build woby-windows-x64",
+          "conclusion": "success",
+          "url": "https://github.com/tuncb/woby/actions/runs/37493971391/job/112373634526",
+          "development_tests": 957,
+          "slow_tests": 4,
+          "log_sha256": "616b1d7e5e134f9791f6b577cf3b1feae028251ce10780bdb5799dad5658f566"
+        },
+        {
+          "name": "Build woby-macos-arm64",
+          "conclusion": "success",
+          "url": "https://github.com/tuncb/woby/actions/runs/37493971391/job/112373634950",
+          "development_tests": 949,
+          "slow_tests": 4,
+          "log_sha256": "b41b406e06ca31ea523905d61e0be57e36a1f625472ab6f5c2e0aaef9a313543"
+        },
+        {
+          "name": "Build woby-linux-x64",
+          "conclusion": "success",
+          "url": "https://github.com/tuncb/woby/actions/runs/37493971391/job/112373635073",
+          "development_tests": 948,
+          "slow_tests": 4,
+          "log_sha256": "31030f18cc1b59c048a167df697e3dbd04f6c0ad7bbdbd684304694dc1dfff0d"
+        }
+      ]
+    }
+  ],
+  "production_headers": {
+    "third_party\\rapidobj\\include\\rapidobj\\prototype.hpp": "4ebdbc79dc81f5b2f1ffa970b7a75cb82b37d5ea87df0531960d8877329b9792",
+    "third_party\\rapidobj\\include\\rapidobj\\rapidobj.hpp": "fa09c9e43f44a2b3fb7cb77fa314740fde825bf09388efd07f9b7023c2c45e04"
+  },
+  "asan_ubsan_assertions": 33500,
+  "tsan_assertions": 33500,
+  "performance_processes": 120,
+  "regression_flags": 0,
+  "excluded_processes": 0
+}

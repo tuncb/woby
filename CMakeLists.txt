@@ -280,6 +280,11 @@ set(woby_runtime_targets woby woby-update-helper)
 
 include(CTest)
 
+option(WOBY_PROFILE_LOAD_WORKFLOW "Instrument the viewer for the opt-in load workflow experiment" OFF)
+if(WOBY_PROFILE_LOAD_WORKFLOW)
+    add_subdirectory(experiments/load-workflow)
+endif()
+
 option(WOBY_BUILD_OVERLAY_PROTOTYPE "Build the fixed-resolution mesh overlay experiment" OFF)
 if(WOBY_BUILD_OVERLAY_PROTOTYPE)
     add_subdirectory(experiments/mesh-overlays)
@@ -296,6 +301,22 @@ if(WOBY_BUILD_NOGRAPHICSAPI_PROTOTYPE)
 endif()
 
 option(WOBY_BUILD_BENCHMARKS "Build standalone CPU performance workloads" OFF)
+option(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK "Build the RapidOBJ prototype/reference CPU comparison" OFF)
+if(WOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK)
+    add_subdirectory(experiments/parser-throughput)
+    add_executable(woby_obj_prototype_benchmark experiments/rapidobj_prototype.cpp
+        src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp
+        src/mesh_duplicates.cpp src/uv_quality.cpp src/uv_overlap.cpp src/mesh_comparison.cpp
+        src/mesh_degenerates.cpp src/mesh_topology.cpp src/mesh_intersections.cpp src/surface_mesh_quality.cpp)
+    target_include_directories(woby_obj_prototype_benchmark PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_include_directories(woby_obj_prototype_benchmark SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+    target_link_libraries(woby_obj_prototype_benchmark PRIVATE Threads::Threads CDT::CDT Boost::multiprecision nlohmann_json::nlohmann_json)
+    if(WIN32)
+        target_link_libraries(woby_obj_prototype_benchmark PRIVATE psapi)
+    endif()
+    woby_enable_project_warnings(woby_obj_prototype_benchmark)
+    list(APPEND woby_runtime_targets woby_obj_prototype_benchmark)
+endif()
 if(WOBY_BUILD_HASH_BENCHMARKS)
     find_package(unordered_dense CONFIG REQUIRED)
     add_executable(woby_hash_benchmarks tests/hash_table_benchmarks.cpp)
@@ -400,6 +421,27 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/update_helper_fixture_tests.py")
     find_package(doctest CONFIG REQUIRED)
     include(doctest)
+    # Standalone parser coverage also runs under sanitizers without viewer dependencies.
+    add_executable(woby_rapidobj_stress_tests tests/rapidobj_stress_tests.cpp)
+    target_include_directories(woby_rapidobj_stress_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+    target_link_libraries(woby_rapidobj_stress_tests PRIVATE doctest::doctest Threads::Threads)
+    woby_enable_project_warnings(woby_rapidobj_stress_tests)
+    add_test(NAME woby_rapidobj_stress COMMAND woby_rapidobj_stress_tests)
+    set_tests_properties(woby_rapidobj_stress PROPERTIES TIMEOUT 180)
+    if(TARGET woby_obj_prototype_benchmark)
+        add_test(NAME woby_parser_throughput_analysis COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/experiments/parser-throughput/tests.py")
+        # Fast development target; these cases also belong to woby_tests.
+        get_target_property(prototype_sources woby_obj_prototype_benchmark SOURCES)
+        list(REMOVE_ITEM prototype_sources experiments/rapidobj_prototype.cpp)
+        add_executable(woby_obj_prototype_contract EXCLUDE_FROM_ALL tests/obj_prototype_tests.cpp ${prototype_sources})
+        target_compile_definitions(woby_obj_prototype_contract PRIVATE DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
+        target_include_directories(woby_obj_prototype_contract PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+        target_include_directories(woby_obj_prototype_contract SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+        target_link_libraries(woby_obj_prototype_contract PRIVATE doctest::doctest Threads::Threads CDT::CDT
+            Boost::multiprecision nlohmann_json::nlohmann_json)
+        woby_enable_project_warnings(woby_obj_prototype_contract)
+    endif()
     add_executable(woby_graphics_diagnostics_allocation_tests tests/graphics_diagnostics_allocation_tests.cpp)
     target_link_libraries(woby_graphics_diagnostics_allocation_tests PRIVATE doctest::doctest woby_graphics)
     woby_enable_project_warnings(woby_graphics_diagnostics_allocation_tests)
@@ -561,6 +603,7 @@ if(BUILD_TESTING)
         tests/coordinate_origin_tests.cpp
         tests/model_mesh_tests.cpp
         tests/obj_mesh_tests.cpp
+        tests/obj_prototype_tests.cpp
         tests/freeform_tests.cpp
         tests/freeform_trim_tests.cpp
         tests/scene_file_edge_tests.cpp

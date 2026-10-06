@@ -5,9 +5,11 @@
 #include "utf8_path.h"
 
 #include <rapidobj/rapidobj.hpp>
+#include <rapidobj/prototype.hpp>
 
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <cstring>
 #include <fstream>
 #include <limits>
@@ -143,8 +145,10 @@ void preflightObjCapacity(const std::filesystem::path& path, const ModelLoadProg
     }
 }
 
+template <bool Prototype = false>
 Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPatches,
-    const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
+    const std::filesystem::path& path, const ModelLoadProgressCallback& progress,
+    rapidobj::GeometryBuffers* buffers = nullptr)
 {
     const auto throwLoadError = [&](const char* operation) {
         std::string message = std::string(operation) + ": " + pathToUtf8(path);
@@ -165,7 +169,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     // standalone cloud counts are known from the parsed primitive records.
     reportModelLoadProgress(progress, ModelLoadStage::reading);
     ObjMeshCounts counts;
-    counts.sourcePositions = result.attributes.positions.size() / 3;
+    counts.sourcePositions = Prototype ? buffers->positions.size() : result.attributes.positions.size() / 3;
     size_t primitiveVisits = 0;
     for (const auto& shape : result.shapes) {
         counts.triangleIndices += objTriangleIndexCount(shape.mesh.indices.size(), shape.mesh.num_face_vertices.size());
@@ -188,22 +192,33 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     validateObjMeshCounts(counts);
 
     std::vector<Coordinate> sourcePoints;
-    sourcePoints.reserve(result.attributes.positions.size() / 3);
-    for (size_t i = 0; i < result.attributes.positions.size(); i += 3) {
-        sourcePoints.push_back({result.attributes.positions[i], result.attributes.positions[i+1], result.attributes.positions[i+2]});
+    if constexpr (Prototype) { sourcePoints = std::move(buffers->positions); }
+    else {
+        sourcePoints.reserve(result.attributes.positions.size() / 3);
+        for (size_t i = 0; i < result.attributes.positions.size(); i += 3) {
+            sourcePoints.push_back({result.attributes.positions[i], result.attributes.positions[i+1], result.attributes.positions[i+2]});
+        }
     }
     const auto origin = coordinateOrigin(sourcePoints);
     for (size_t i = 0; i < sourcePoints.size(); ++i) {
         sourcePoints[i] = relativePosition(sourcePoints[i], origin);
-        for (size_t k = 0; k < 3; ++k) { result.attributes.positions[i*3+k] = sourcePoints[i][k]; }
+        if constexpr (!Prototype) {
+            for (size_t k = 0; k < 3; ++k) { result.attributes.positions[i*3+k] = sourcePoints[i][k]; }
+        }
     }
     reportModelLoadProgress(progress, ModelLoadStage::triangulating);
-    if (!rapidobj::Triangulate(result)) {
+    if (!(Prototype ? rapidobj::Triangulate(result, sourcePoints) : rapidobj::Triangulate(result))) {
         throwLoadError("Failed to triangulate OBJ");
     }
 
     const auto& attrib = result.attributes;
     const auto& shapes = result.shapes;
+    const auto uvValue = [&](size_t index) {
+        return Prototype ? static_cast<float>(buffers->texcoords[index / 2][index % 2]) : attrib.texcoords[index];
+    };
+    const auto normalValue = [&](size_t index) {
+        return Prototype ? static_cast<float>(buffers->normals[index / 3][index % 3]) : attrib.normals[index];
+    };
 
     Mesh mesh;
     auto source = std::make_shared<SourceMeshData>();
@@ -224,7 +239,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     const auto pointIndexCount = counts.pointIndices;
     const size_t totalIndices = indexCount + lineIndexCount + pointIndexCount;
     // Position count is only an estimate: normal/UV seams can split vertices.
-    const size_t vertexCapacity = std::min({attrib.positions.size() / 3u, totalIndices,
+    const size_t vertexCapacity = std::min({source->points.size(), totalIndices,
         size_t(std::numeric_limits<SceneBufferSize>::max() / sizeof(Vertex))});
     mesh.indices.reserve(indexCount);
     mesh.lineIndices.reserve(lineIndexCount);
@@ -234,7 +249,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     mesh.nodes.reserve(shapes.size());
     source->indices.reserve(indexCount);
     reserveIndexTable(vertexMap, source->points.size(), vertexCapacity,
-        attrib.normals.empty() && attrib.texcoords.empty());
+        Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);
 
     for (size_t shapeIndex = 0; shapeIndex < shapes.size(); ++shapeIndex) {
@@ -246,7 +261,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
             hasTexcoords = hasTexcoords && index.texcoord_index >= 0;
             if (index.texcoord_index >= 0) {
                 const auto uv = static_cast<size_t>(index.texcoord_index) * 2u;
-                hasTexcoords = hasTexcoords && std::isfinite(attrib.texcoords[uv]) && std::isfinite(attrib.texcoords[uv + 1u]);
+                hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));
             }
             if (mesh.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, mesh.indices.size(), totalIndices); }
             if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= source->points.size()) {
@@ -272,17 +287,17 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
             if (index.normal_index >= 0) {
                 const auto normalIndex = static_cast<size_t>(index.normal_index) * 3u;
                 vertex.normal = {
-                    attrib.normals[normalIndex + 0u],
-                    attrib.normals[normalIndex + 1u],
-                    attrib.normals[normalIndex + 2u],
+                    normalValue(normalIndex + 0u),
+                    normalValue(normalIndex + 1u),
+                    normalValue(normalIndex + 2u),
                 };
             }
 
             if (index.texcoord_index >= 0) {
                 const auto texcoordIndex = static_cast<size_t>(index.texcoord_index) * 2u;
                 vertex.texcoord = {
-                    attrib.texcoords[texcoordIndex + 0u],
-                    1.0f - attrib.texcoords[texcoordIndex + 1u],
+                    uvValue(texcoordIndex + 0u),
+                    1.0f - uvValue(texcoordIndex + 1u),
                 };
             }
 
@@ -518,7 +533,7 @@ std::optional<size_t> scanObjCapacity(std::istream& input, const ModelLoadProgre
     return positions;
 }
 
-Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
+Mesh loadObjMeshLegacy(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
 {
     reportModelLoadProgress(progress, ModelLoadStage::reading);
     preflightObjCapacity(path, progress);
@@ -534,7 +549,7 @@ Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallb
     return buildObjMesh(std::move(result), std::move(freeformPatches), path, progress);
 }
 
-Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress)
+Mesh loadObjMeshTextLegacy(std::string_view text, const ModelLoadProgressCallback& progress)
 {
     reportModelLoadProgress(progress, ModelLoadStage::reading);
     std::istringstream stream{std::string(text)};
@@ -542,6 +557,76 @@ Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& pro
     // unlike MaterialLibrary::Ignore, without consulting the filesystem.
     auto result = rapidobj::ParseStream(stream, rapidobj::MaterialLibrary::String(""));
     return buildObjMesh(std::move(result), {}, "<memory>", progress);
+}
+
+namespace {
+template <typename Parse>
+Mesh buildObjPrototype(Parse parse, const std::filesystem::path& path,
+    const ModelLoadProgressCallback& progress, const ObjPrototypeOptions& options, ObjPrototypeMetrics* metrics)
+{
+    using Clock = std::chrono::steady_clock;
+    if (metrics) { *metrics = {}; }
+    reportModelLoadProgress(progress, ModelLoadStage::reading);
+    std::vector<Coordinate> positions, normals;
+    std::vector<std::array<double, 2>> texcoords;
+    rapidobj::GeometryBuffers buffers{positions, texcoords, normals};
+    rapidobj::PrototypeOptions settings;
+    settings.chunk_bytes = options.chunkBytes; settings.read_bytes = options.readBytes; settings.workers = options.workers;
+    struct Checkpoint { const ModelLoadProgressCallback* callback; } checkpoint{&progress};
+    settings.user = &checkpoint;
+    settings.checkpoint = [](void* data) {
+        reportModelLoadProgress(*static_cast<Checkpoint*>(data)->callback, ModelLoadStage::reading);
+    };
+    const auto start = Clock::now();
+    auto parsed = parse(buffers, settings);
+    const auto parsedAt = Clock::now();
+    if (parsed.polygons.error) { return buildObjMesh(std::move(parsed.polygons), {}, path, progress); }
+    auto patches = resolveObjFreeform(parsed, buffers, path, progress);
+    const auto resolvedAt = Clock::now();
+    if (metrics) {
+        const auto& stats = parsed.stats;
+        metrics->inputBytes = stats.input_bytes; metrics->chunks = stats.chunks; metrics->workers = stats.workers;
+        metrics->peakInflightTextBytes = stats.peak_inflight_text_bytes; metrics->parsedChunkBytes = stats.parsed_chunk_bytes;
+        metrics->positionCopyBytesAvoided = stats.position_copy_bytes_avoided;
+        metrics->parseMs = std::chrono::duration<double, std::milli>(parsedAt - start).count();
+        metrics->freeformMs = std::chrono::duration<double, std::milli>(resolvedAt - parsedAt).count();
+    }
+    // Numeric records and sparse weights are no longer needed during mesh
+    // expansion; analytic patches now own their original-frame control data.
+    parsed.statements = decltype(parsed.statements){}; parsed.weights = decltype(parsed.weights){};
+    auto mesh = buildObjMesh<true>(std::move(parsed.polygons), std::move(patches), path, progress, &buffers);
+    if (metrics) { metrics->prepareMs = std::chrono::duration<double, std::milli>(Clock::now() - resolvedAt).count(); }
+    return mesh;
+}
+} // namespace
+
+Mesh loadObjMeshPrototype(const std::filesystem::path& path, const ModelLoadProgressCallback& progress,
+    const ObjPrototypeOptions& options, ObjPrototypeMetrics* metrics)
+{
+    preflightObjCapacity(path, progress);
+    return buildObjPrototype([&](auto buffers, const auto& settings) {
+        return rapidobj::ParseFilePrototype(path, buffers, settings);
+    }, path, progress, options, metrics);
+}
+
+Mesh loadObjMeshTextPrototype(std::string_view text, const ModelLoadProgressCallback& progress,
+    const ObjPrototypeOptions& options, ObjPrototypeMetrics* metrics)
+{
+    return buildObjPrototype([&](auto buffers, const auto& settings) {
+        auto memorySettings = settings;
+        memorySettings.material_names_only = true;
+        return rapidobj::ParseMemoryPrototype(text, buffers, rapidobj::MaterialLibrary::String(""), memorySettings);
+    }, "<memory>", progress, options, metrics);
+}
+
+Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress)
+{
+    return loadObjMeshPrototype(path, progress);
+}
+
+Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress)
+{
+    return loadObjMeshTextPrototype(text, progress);
 }
 
 } // namespace woby

@@ -1,6 +1,24 @@
 #include <NoGraphicsAPI/shader.slang>
 #include "opaque_points.h"
 GPU_ROOT(OpaquePointRoot, cloud);
+// Slang's generic InterlockedMax currently emits the value-returning Metal
+// overload even when its result is unused. Metal's ulong max returns void.
+void pointAtomicMax64(uint64* address, uint64 value) {
+    __target_switch {
+    case metal:
+        __intrinsic_asm "atomic_max_explicit((device atomic_ulong*)($0), $1, memory_order_relaxed)";
+    default:
+        InterlockedMax(*address,value);
+    }
+}
+void pointAtomicMax32(__ref uint destination, uint value) {
+    __target_switch {
+    case metal:
+        __intrinsic_asm "(void)atomic_fetch_max_explicit((device atomic_uint*)($0), $1, memory_order_relaxed)";
+    default:
+        InterlockedMax(destination,value);
+    }
+}
 float2 samplePosition(uint sample) {
     if (cloud.samples==1) return float2(.5,.5);
     const float2 positions[4]={float2(.375,.125),float2(.875,.375),float2(.125,.625),float2(.625,.875)};
@@ -13,17 +31,20 @@ float2 samplePosition(uint sample) {
 }
 [numthreads(8,8,1)] void cs_opaque_batch_clear(uint3 thread:SV_DispatchThreadID) {
     if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
-    for (uint sample=0;sample<cloud.samples;++sample)
-        cloud.batch[(thread.y*cloud.width+thread.x)*cloud.samples+sample]=uint2(0,0);
+    for (uint sample=0;sample<cloud.samples;++sample) {
+        uint index=(thread.y*cloud.width+thread.x)*cloud.samples+sample;
+        cloud.batch[index].depth=0;
+        cloud.batch[index].id=0;
+    }
 }
 [numthreads(8,8,1)] void cs_opaque_merge(uint3 thread:SV_DispatchThreadID) {
     if (any(thread.xy>=uint2(cloud.width,cloud.height))) return;
     for (uint sample=0;sample<cloud.samples;++sample) {
         uint index=(thread.y*cloud.width+thread.x)*cloud.samples+sample;
-        uint2 winner=cloud.batch[index];
+        OpaquePointBatchSample winner=cloud.batch[index];
         // One invocation owns this sample. No 64-bit atomic is needed to merge
         // a completed batch into the persistent lexicographic depth/ID winner.
-        uint64 key=(uint64(winner.x)<<32)|uint64(winner.y);
+        uint64 key=(uint64(winner.depth)<<32)|uint64(winner.id);
         cloud.winners[index]=max(cloud.winners[index],key);
     }
 }
@@ -49,12 +70,10 @@ float2 samplePosition(uint sample) {
             if (dot(delta,delta)>radius*radius) continue;
             uint index=(uint(y)*cloud.width+uint(x))*cloud.samples+min(sample,cloud.samples-1);
 #ifdef WOBY_POINT_ATOMIC64
-            uint64 ignored;
-            InterlockedMax(cloud.winners[index],(uint64(depth)<<32)|uint64(id),ignored);
+            pointAtomicMax64(cloud.winners+index,(uint64(depth)<<32)|uint64(id));
 #else
-            uint ignored;
-            if (!ids) InterlockedMax(cloud.batch[index].x,depth,ignored);
-            else if (cloud.batch[index].x==depth) InterlockedMax(cloud.batch[index].y,id,ignored);
+            if (!ids) pointAtomicMax32(cloud.batch[index].depth,depth);
+            else if (cloud.batch[index].depth==depth) pointAtomicMax32(cloud.batch[index].id,id);
 #endif
         }
     }

@@ -39,9 +39,28 @@ inline constexpr size_t objPreflightBlockBytes = 1024 * 1024;
 [[nodiscard]] std::optional<size_t> scanObjCapacity(std::istream& input,
     const ModelLoadProgressCallback& progress = {}, uintmax_t fileBytesHint = 0);
 
+// Unified polygon/freeform loading into caller-owned coordinate buffers.
 [[nodiscard]] Mesh loadObjMesh(const std::filesystem::path& path, const ModelLoadProgressCallback& progress = {});
-// Polygonal OBJ held in memory; external material libraries and freeform
-// statements are not loaded. Uses the same mesh construction as file import.
+// OBJ held in memory, with no external material-library reads.
 [[nodiscard]] Mesh loadObjMeshText(std::string_view text, const ModelLoadProgressCallback& progress = {});
+
+// Reference entry points for comparison tests and benchmarks. Application
+// loading always uses the unified parser through the entry points above.
+[[nodiscard]] Mesh loadObjMeshLegacy(const std::filesystem::path& path, const ModelLoadProgressCallback& progress = {});
+[[nodiscard]] Mesh loadObjMeshTextLegacy(std::string_view text, const ModelLoadProgressCallback& progress = {});
+struct ObjPrototypeOptions {
+    size_t chunkBytes = 4 * 1024 * 1024, readBytes = 256 * 1024, workers = 0;
+};
+struct ObjPrototypeMetrics {
+    size_t inputBytes = 0, chunks = 0, workers = 0, peakInflightTextBytes = 0, parsedChunkBytes = 0;
+    size_t positionCopyBytesAvoided = 0;
+    double parseMs = 0, freeformMs = 0, prepareMs = 0;
+};
+[[nodiscard]] Mesh loadObjMeshPrototype(const std::filesystem::path& path,
+    const ModelLoadProgressCallback& progress = {}, const ObjPrototypeOptions& options = {},
+    ObjPrototypeMetrics* metrics = nullptr);
+[[nodiscard]] Mesh loadObjMeshTextPrototype(std::string_view text,
+    const ModelLoadProgressCallback& progress = {}, const ObjPrototypeOptions& options = {},
+    ObjPrototypeMetrics* metrics = nullptr);
 
 } // namespace woby

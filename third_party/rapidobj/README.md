@@ -22,6 +22,14 @@ Woby changes are applied directly to the upstream header:
 - Parse, merge, and triangulate positions as doubles. Normals, UVs, colors, and
   material values remain floats. Woby recenters positions before triangulation
   and creates float vertices only afterward.
+- Offset the negative-reference flag pointer when splitting an index merge task;
+  each subtask must consume flags from the same range as its indices.
+- Allow merge to fill caller-owned typed coordinate buffers and triangulate a
+  view of those positions. Existing `ParseFile`/`ParseStream` ownership is unchanged.
+- Allow the native file handle to use buffered positioned reads, so prototype
+  workers can read arbitrary block boundaries through the existing reader and
+  pending-I/O lifetime guard. These handles allow concurrent read-only opens for
+  prefetched instances of the same OBJ. The legacy file reader keeps its existing mode.
 
 `tests/obj_mesh_tests.cpp`, `tests/freeform_tests.cpp`,
 `tests/coordinate_origin_tests.cpp`, and the Windows-only
@@ -29,3 +37,261 @@ Woby changes are applied directly to the upstream header:
 delay I/O completion to check buffer lifetime deterministically. Preserve these
 changes when updating the header. CMake includes this directory as a system include path and links Threads
 for the parser's Linux threading support.
+
+## Unified OBJ loader (issue 112)
+
+`include/rapidobj/prototype.hpp` provides Woby's standard scanner around RapidOBJ's existing
+polygon decoder, index reconciliation, merge scheduling and triangulation.
+It reads file, stream and borrowed memory input through the same logical-line
+scanner. Workers scan raw blocks and decode complete statements directly from
+views of those blocks. File workers perform positioned native reads; memory
+workers borrow input spans; stream input fills bounded blocks on the caller.
+Only block-boundary fragments and continued statements need reconstruction.
+Ordered collection reconciles these fragments, physical line numbers and
+declaration counts before merging numeric freeform records. Woby resolves their
+state using its existing spline and trimming algorithms. There is no parse-error
+retry, filtered polygon text, or second numeric parse.
+
+The caller supplies position, UV and normal vectors. Merge writes those buffers
+directly; Woby localizes the position pool in place, triangulates through a view,
+and moves that allocation into source geometry. The prototype retains UVs and
+normals as doubles until packing, preserving freeform control precision. This
+has a temporary-memory cost relative to the legacy polygon parser's floats.
+Sparse explicit position weights are retained only until analytic patches exist.
+Woby's separate capacity preflight for potentially oversized files remains active.
+
+The application always uses this loader for files and in-memory OBJ input;
+there is no parser opt-in switch. To build and exercise it:
+
+```powershell
+cmake --preset vs2026-vcpkg -DWOBY_TEST_HEADLESS=ON -DWOBY_BUILD_RAPIDOBJ_PROTOTYPE_BENCHMARK=ON
+cmake --build --preset vs2026-vcpkg --config Debug
+ctest --test-dir build/vs2026-vcpkg -C Debug --output-on-failure
+```
+
+`tests/obj_prototype_tests.cpp` belongs to the regular unit suite and compares
+both readers directly. The optional `woby_obj_prototype_contract` target builds
+those cases separately for faster development. `loadObjMeshLegacy` remains
+available as a reference for tests and benchmarks. The `Prototype` names on
+the parser header and comparison APIs are retained for benchmark continuity.
+In-memory prototype loading uses a material-name-only policy: stable per-face
+IDs without filesystem access. File loading resolves optional MTLs beside the OBJ.
+
+For an idle-machine CPU comparison, build the benchmark in Release and run:
+
+```powershell
+cmake --build --preset vs2026-vcpkg --config Release --target woby_obj_prototype_benchmark
+python tests/obj_prototype_benchmark.py build/vs2026-vcpkg/bin/Release/woby_obj_prototype_benchmark.exe D:/models/example.obj --rounds 3 --output build/prototype-results.json
+```
+
+Use `--reference-executable absolute/path/to/previous-benchmark.exe` to include
+the prototype from a saved executable as `prototype_before`. With three rounds,
+each reader occupies each position in the comparison order once.
+
+The runner adds 200 small files and mixed weighted polygon/freeform fixtures,
+rotates reader order, warms input before every fresh process, and requires matching
+ordered geometry fingerprints. Windows reports peak working set and peak process
+commitment. `parsed_chunk_bytes` counts live elements, not allocation capacities;
+`chunks` counts raw input blocks. `peak_inflight_text_bytes` bounds dispatched
+input spans and aligned read buffers, not total process memory; borrowed memory
+spans do not represent additional allocations. The workload measures CPU loading, excluding GPU upload, first
+visible frame and annotation preparation.
+
+This prototype bounds in-flight source text, not all temporary geometry. Parsed
+worker buffers still live until merge. File reads and scanning run in parallel;
+only boundary reconciliation, ordered collection and material dispatch run on
+the caller. Cancellation is checked while reading, dispatching and waiting for
+workers. Workers poll a stop flag and pending native reads are joined before
+their buffers can be freed. Merge and triangulation still
+need finer cancellation granularity. Render-position duplication, annotation
+snapshots, freeform append copies and shared immutable asset publication remain
+separate work for issue 112. The old source-anchor-based mapping experiments have
+not been migrated to the new loader layout; use this comparison executable.
+
+### Initial measurements (2026-10-04)
+
+Measured against the explicit legacy loader in the same Release executable,
+based on Woby `7bed51d`, on a Ryzen 7 5800H (8 cores / 16 threads) with 64 GiB RAM.
+Other build, test and viewer processes had finished before measurement. These
+are medians of three fresh-process runs per reader, with warm input, alternating
+reader order, and the default worker limit. All 36 ordered geometry fingerprints
+matched within their workload. The Debug application build was warning-free and
+all 947 CTest checks passed with the prototype enabled.
+
+| Workload | Legacy CPU load (ms) | Prototype CPU load (ms) | Legacy peak commit (MiB) | Prototype peak commit (MiB) |
+| --- | ---: | ---: | ---: | ---: |
+| 200 small files | 133.5 | 128.4 | 1.7 | 1.4 |
+| Mixed weighted polygons + rational curve | 653.0 | 104.9 | 29.6 | 24.9 |
+| BusGameMap, 75.6 MB | 240.1 | 1006.3 | 173.1 | 165.4 |
+| Semantic3D, 10 million points | 1457.8 | 5390.0 | 1187.1 | 958.5 |
+| Bennu, 815.9 MB triangles | 3646.7 | 13673.7 | 2415.1 | 2076.4 |
+| Powerplant, 817.9 MB with seams | 4499.0 | 12756.8 | 2333.1 | 2206.4 |
+
+The mixed fixture benefits from removing fallback rereading and text
+reconstruction. Direct position ownership saves about 229 MiB of peak commitment
+on the point cloud. Retained main mesh-buffer capacities are identical between
+readers: this prototype removes a temporary position copy, not the retained
+render-position and analysis representations.
+
+Ordinary large inputs took 2.8 to 4.2 times as long in the initial implementation
+at `a7286ac`, which scanned and reconstructed every line on the caller before
+dispatching decoding work. These measurements predate parallel block scanning.
+At that stage, throughput still needed to recover before replacing the production
+loader. The result supported modifying RapidOBJ for the grammar and ownership
+contract. Small-file differences are
+too small to treat as a meaningful speedup.
+
+The local `build/prototype-results.json` artifact contains all raw timings,
+prototype parse/freeform/preparation breakdowns, peak working set, peak process
+commitment, retained capacities and fingerprints. It is generated output and is
+not committed. GPU upload, first visible frame, annotation preparation and a
+measured cancellation-latency bound remain outside this comparison.
+
+### Throughput fix (2026-10-05)
+
+The serial scanner was starving the decoding workers: it read and reconstructed
+every physical line before dispatch, and numeric decoding scanned token endings
+twice. The replacement dispatches raw blocks, reads and scans file blocks on the
+workers, and decodes ordinary statements directly from their input views. Only
+boundary fragments and continued statements are reconstructed. Numeric decoding
+finds and validates the delimiter in one pass. Buffered native Windows handles
+share read access so concurrent prefetches can load the same file.
+
+The comparison below uses the same hardware and default worker limit described
+above, with three fresh Release processes per reader and workload. `Before` is
+the saved prototype executable from `a7286ac`. Reader order rotates, and input is
+warmed immediately before **each** process. The initial benchmark warmed only
+once per workload group; that produced a systematic order effect in the saved
+prototype. These results exclude earlier runs with that method or competing
+build/test processes. All 54 ordered geometry fingerprints matched.
+
+| Workload | Legacy CPU load (ms) | Before (ms) | Fixed prototype (ms) |
+| --- | ---: | ---: | ---: |
+| 200 small files | 132.6 | 124.9 | 97.2 |
+| Mixed weighted polygons + rational curve | 651.1 | 105.0 | 68.1 |
+| BusGameMap, 75.6 MB | 242.7 | 488.2 | 245.5 |
+| Semantic3D, 10 million points | 1502.8 | 3590.8 | 1452.2 |
+| Bennu, 815.9 MB triangles | 3495.6 | 6766.1 | 3446.3 |
+| Powerplant, 817.9 MB with seams | 4420.9 | 7228.8 | 4510.0 |
+
+Ordinary large-file CPU loading is 1.6 to 2.5 times faster than the saved
+prototype. Its parsing phase is 3.5 to 4.8 times faster. Total load medians are
+between 3.4% faster and 2.0% slower than legacy; these small differences should
+be treated as comparable throughput, not a demonstrated improvement over legacy.
+The point cloud still saves 229 MiB of peak process commitment (1187.0 to
+958.0 MiB), with unchanged retained mesh-buffer capacities. At this stage the
+application switch was still OFF by default. Raw timings, phase measurements,
+memory counters and fingerprints
+are in the generated local `build/prototype-fix-results.json` artifact.
+
+The complete Debug application build and the Release comparison target built
+without compiler warnings. With the prototype enabled, all 953 CTest checks
+passed. The 16 focused parser cases passed 365,145 assertions, including every
+64-byte block alignment for continued freeform bodies and earliest diagnostics,
+file/memory/stream parity, numeric delimiters, statement limits, cancellation,
+and overlapping read-only file handles.
+
+### Complete viewer workflow (2026-10-05)
+
+This campaign predates the parser fixes documented in the following section.
+Its measurements are preserved for comparison.
+
+The [full workflow report](../../doc/load-workflow-performance/index.html)
+compares legacy, the fixed prototype, and the same prototype with its position
+copy deliberately restored. It contains per-model phase timings, min/max ranges,
+memory lifetimes and capacities, GPU upload and rendering measurements, ownership
+analysis, and reproduction instructions. The adjacent CSV and JSON contain the
+measurements and per-run summaries; complete raw events, memory/frame samples,
+logs and verified images are in the generated `build/workflow-results` directory.
+
+This campaign used the real desktop viewer: 81 fresh Release processes, nine
+workloads, three readers, three repetitions, rotated reader order, and OBJ input
+warmed immediately before each import. All geometry counts, major retained
+capacities, upload payloads and decoded verification-image pixels matched.
+Build/test/viewer interference guards recorded no excluded attempts. The GPU was
+an RTX 3070 Laptop with 8 GiB VRAM. The hidden viewer used an experiment-only
+foreground pacing override (240 FPS target); Woby normally throttles hidden
+windows to 20 FPS. These are controlled workflow timings, not physical display
+latency or cold-storage results.
+
+| Workload | Legacy first scene (ms) | Direct first scene (ms) | Legacy scene + annotations (ms) | Direct scene + annotations (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| 200 small files | 248.0 | 209.9 | 1081.3 | 1043.2 |
+| Weighted polygons + rational curve | 668.0 | 85.1 | 679.2 | 96.4 |
+| 250,000 quads, generated normals | 151.4 | 163.6 | 238.6 | 250.7 |
+| 200,000 positions, polylines + points | 76.8 | 89.0 | 76.8 | 89.0 |
+| 64 trimmed rational surfaces | 342.3 | 346.4 | 375.4 | 379.7 |
+| BusGameMap | 377.4 | 357.1 | 560.5 | 535.8 |
+| Semantic3D, 10 million points | 2611.8 | 2644.0 | 2611.8 | 2644.0 |
+| Bennu | 7028.1 | 6702.7 | 12120.8 | 11323.5 |
+| Powerplant | 6591.7 | 6510.0 | 9552.1 | 9038.4 |
+
+First scene means a submitted frame. Annotation publication is timed separately;
+point refinement, observed readiness, verified PNG export, startup, and steady
+and moving render timings are also reported. For triangle-free models no
+annotation snapshot job runs, so the annotation endpoint equals first scene.
+Their annotation-ready flag remains false under the existing snapshot policy;
+this does not prevent rendering and is documented separately in the report.
+
+The mixed grammar workload is about seven times faster through annotation
+preparation. Ordinary large models remain close to legacy with overlapping run
+ranges. Quads and lines expose remaining parser regressions. Direct ownership
+removes 228.9 MiB of temporary positions on the cloud, and restoring that copy
+takes 45.7 ms, but whole-workflow peak commitment is effectively unchanged
+(1496.5 MiB legacy, 1499.3 MiB direct). Later hierarchy/staging allocations set a
+larger peak than mesh construction. The earlier CPU-only 229 MiB peak saving
+must not be presented as a complete application peak saving.
+
+Larger downstream targets include point-hierarchy preparation (about 0.9 seconds
+for the cloud), tuple mapping (3.19 seconds for Powerplant), group bounds and
+annotation spatial indexing (1.47 and 2.89 seconds for Bennu), and duplicated
+annotation snapshot arrays (about 477–480 MiB on the two large triangle models).
+The 200-file batch also has an approximately 0.84-second annotation publication
+tail despite only 4.8 ms of measured annotation CPU work. The report distinguishes
+measured costs from proposed architectural savings.
+
+`experiments/load-workflow` contains the opt-in source instrumentation, runner,
+comparison validation, and report generator. Enable it with
+`cmake --preset vs2026-vcpkg -DWOBY_PROFILE_LOAD_WORKFLOW=ON`, then build `woby`
+in Release. Normal builds compile the original sources and the option defaults
+to OFF. Both the instrumented Debug and Release builds were warning-free;
+all 954 CTest checks passed, including the comparison-analysis test target.
+
+### Parser parity follow-up (2026-10-05)
+
+The [parser investigation](../../doc/parser-throughput-performance/README.md)
+documents the quad-grid, line and cloud regressions, rejected experiments and
+final results. All 12 models meet the roughly-legacy target in 180 fresh-process
+runs, with matching ordered fingerprints and no median regression above the
+5% / 0.1 ms gate.
+The report includes ranges and the final viewer cross-check; it does not claim
+every individual run or every possible model is faster.
+
+| Workload | Legacy | Previous prototype | Fixed prototype | Fixed / legacy |
+| --- | ---: | ---: | ---: | ---: |
+| 250,000-quad grid | 24.36 ms | 39.77 ms | 21.99 ms | 0.903× |
+| 200k positions, polylines and points | 13.82 ms | 34.25 ms | 12.82 ms | 0.928× |
+| 10M positions + 10M point records | 372.53 ms | 490.72 ms | 337.62 ms | 0.906× |
+
+Medium input balancing fixes the old four-worker quad and two-worker line paths.
+Complete-line, position, UV/normal, one-point and plain-face paths reduce ordinary decoding
+work. Persistent buffered file ranges overlap reads with decoding and retain
+bounded raw text, cancellation and ordered errors. Long boundary statements
+fall back to the general scanner. Typed position chunks bulk-construct Woby's
+vector in the merge pool, overlapping index work and avoiding explicit zero-fill.
+The cloud contains 10M vertex records and 10M point records. Direct ownership
+still avoids the later flat-to-Woby position copy, but does not remove the merge
+copy from worker tuples into the final vector.
+
+An earlier standalone campaign appeared to pass but failed the viewer cloud
+check; quieter follow-ups drove further changes. Both that data and unsuccessful
+pooling/unbuffered-I/O experiments are preserved. The final 18 repeated viewer
+runs and four extended-grammar checks match geometry counts, capacities, GPU input sizes
+and decoded pixels. All 966 CTest checks pass; Debug and Release builds are
+warning-free. See the report for exact scope and measurement limits.
+
+`experiments/parser-throughput` contains opt-in benchmark-only instrumentation,
+the corpus runner, validation and report/chart generation. Production headers
+have no new timer calls. After the subsequent [merge validation](../../doc/parser-throughput-performance/merge-validation.md),
+the unified loader became the standard application implementation and the
+application switch was removed. Legacy loading is retained for comparisons.

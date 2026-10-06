@@ -2,6 +2,7 @@
 #include "freeform.h"
 #include <filesystem>
 #include <string_view>
+namespace rapidobj { struct PrototypeResult; struct GeometryBuffers; }
 namespace woby {
 struct ObjFreeformInput {
     std::string polygonText;
@@ -9,5 +10,8 @@ struct ObjFreeformInput {
 };
 [[nodiscard]] bool objFreeformStatement(std::string_view line);
 [[nodiscard]] ObjFreeformInput readObjFreeform(const std::filesystem::path& path,
+    const ModelLoadProgressCallback& progress = {});
+[[nodiscard]] std::vector<FreeformPatch> resolveObjFreeform(const rapidobj::PrototypeResult& input,
+    const rapidobj::GeometryBuffers& buffers, const std::filesystem::path& path,
     const ModelLoadProgressCallback& progress = {});
 } // namespace woby
