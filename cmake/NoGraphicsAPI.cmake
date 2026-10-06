@@ -50,7 +50,8 @@ function(woby_compile_graphics_shaders target)
         vs_marker_highlight fs_marker_highlight_single fs_marker_highlight_msaa
         cs_marker_lookup_single cs_marker_lookup_msaa cs_freeform
         vs_mesh_edges vs_triangle_lines fs_mesh_edges fs_mesh_edges_pulled
-        fs_marker_mesh_edges fs_marker_mesh_edges_pulled)
+        fs_marker_mesh_edges fs_marker_mesh_edges_pulled
+        fs_transparent_mesh fs_transparency_resolve_single fs_transparency_resolve_msaa)
     list(APPEND entries cs_opaque_clear cs_opaque_raster cs_opaque_batch_clear cs_opaque_depth cs_opaque_ids
         cs_opaque_merge vs_opaque_resolve fs_opaque_resolve fs_opaque_color)
     set(outputs)

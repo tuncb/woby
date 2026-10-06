@@ -10,6 +10,7 @@ struct MarkerGpuFixture {
     bool initialized = false;
     woby::GpuMarkerPicker picker;
     woby::TriangleEdgePrograms edges;
+    woby::TransparentSurfacePrograms transparency;
     woby::UiState state;
     std::vector<woby::LoadedModelRuntime> runtimes;
     woby::graphics::UniformHandle colorUniform = WOBY_GPU_INVALID_HANDLE, pointUniform = WOBY_GPU_INVALID_HANDLE;
@@ -28,6 +29,7 @@ struct MarkerGpuFixture {
         while (capturePending && !woby::markerFrameReached(frame, captureReady)) { frame = woby::graphics::frame(); }
         woby::destroyGpuMarkerPicker(picker);
         woby::destroyTriangleEdgePrograms(edges);
+        woby::destroyTransparentSurfacePrograms(transparency);
         woby::destroyModelRuntimes(runtimes);
         if (woby::graphics::isValid(outputFramebuffer)) { woby::graphics::destroy(outputFramebuffer); }
         if (woby::graphics::isValid(output)) { woby::graphics::destroy(output); }
@@ -91,6 +93,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
     REQUIRE(woby::graphics::isValid(fixture.staging));
     const std::filesystem::path assets = WOBY_TEST_ASSET_DIRECTORY;
     fixture.edges = woby::createTriangleEdgePrograms(assets);
+    fixture.transparency = woby::createTransparentSurfacePrograms(assets);
     auto& picker = fixture.picker;
     woby::SceneViewport viewport{0, 128, 128, 0};
     int samples = 4;
@@ -106,7 +109,7 @@ TEST_CASE("GPU marker picking highlights before readback and handles visibility 
         woby::graphics::touch(1);
         woby::submitSceneFiles(1, woby::buildSceneDrawPlan(state), fixture.runtimes,
             picker.mesh, fixture.uvUniform, picker.line, picker.point, fixture.colorUniform, fixture.pointUniform,
-            fixture.edges, viewport.width, viewport.height, &picker.context);
+            fixture.edges, viewport.width, viewport.height, &picker.context, false, nullptr, &fixture.transparency);
         woby::submitGpuMarkerPicking(picker, viewport);
         // Test output replaces the window, using the production composite/highlight.
         woby::graphics::setViewFrameBuffer(3, fixture.outputFramebuffer);

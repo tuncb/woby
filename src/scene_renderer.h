@@ -99,6 +99,13 @@ struct TriangleEdgePrograms {
     bool forceVertexPulling = false);
 void destroyTriangleEdgePrograms(TriangleEdgePrograms& programs);
 
+struct TransparentSurfacePrograms {
+    graphics::ProgramHandle mesh = WOBY_GPU_INVALID_HANDLE;
+    std::array<graphics::ProgramHandle, 2> resolve{};
+};
+[[nodiscard]] TransparentSurfacePrograms createTransparentSurfacePrograms(const std::filesystem::path& assets);
+void destroyTransparentSurfacePrograms(TransparentSurfacePrograms& programs);
+
 void submitSceneFiles(
     woby::graphics::ViewId viewId,
     const SceneDrawPlan& plan,
@@ -114,7 +121,8 @@ void submitSceneFiles(
     uint32_t viewportHeight,
     MarkerDrawContext* markers = nullptr,
     bool importedLinesOnly = false,
-    AdaptivePointRuntime* adaptivePoints = nullptr); // Line pass follows surfaces/analyses; colorProgram is vs_line_sprite.
+    AdaptivePointRuntime* adaptivePoints = nullptr,
+    const TransparentSurfacePrograms* transparency = nullptr); // Line pass follows surfaces/analyses; colorProgram is vs_line_sprite.
 
 void submitSceneHelpers(
     woby::graphics::ViewId viewId,

@@ -56,7 +56,8 @@ void submitSceneScreenshotCapture(
     const Bounds& sceneBounds,
     const SceneCamera& camera,
     bool homogeneousDepth,
-    const ComparisonRuntimes* comparison = nullptr);
+    const ComparisonRuntimes* comparison = nullptr,
+    const TransparentSurfacePrograms* transparency = nullptr);
 void failSceneScreenshotCapture(SceneScreenshotRuntime& screenshot);
 [[nodiscard]] std::optional<std::string> completeSceneScreenshotReadback(
     SceneScreenshotRuntime& screenshot,

@@ -124,6 +124,24 @@ float4 fs_mesh(VertexOutput v) : SV_Target0 {
     return float4(color,root.color.a);
 }
 float4 fs_color(VertexOutput v) : SV_Target0 { return root.color; }
+struct TransparencyOutput { float4 accumulation : SV_Target0; float4 revealage : SV_Target1; };
+TransparencyOutput fs_transparent_mesh(VertexOutput v) {
+    float4 color = fs_mesh(v);
+    if (color.a <= .000001) discard;
+    float depth = root.transparency.x > .5 ? 1-v.position.z : v.position.z;
+    if (root.transparency.w > .5) {
+        float near = root.transparency.y, far = root.transparency.z;
+        // Use the stored depth directly for the denominator: subtracting a tiny
+        // reversed depth from one would lose precision on large scenes.
+        float farDepth = root.transparency.x > .5 ? v.position.z : 1-v.position.z;
+        float distance = near*far/max(near+farDepth*(far-near),1e-8);
+        depth = saturate((distance-near)/max(far-near,1e-8));
+    }
+    // McGuire/Bavoil weighted blending, scaled to keep half-float sums finite
+    // for deep overlap. Coverage is exact; the depth-weighted color is approximate.
+    float weight = clamp(pow(min(1.0,color.a*10)+.01,3)*pow(1-depth*.9,3),1e-4,1.0);
+    return TransparencyOutput(float4(color.rgb*color.a,color.a)*weight,float4(color.a));
+}
 uint triangleIndexOffset() {
     return uint(root.triangleEdges.z) | (uint(root.triangleEdges.w) << 16);
 }
@@ -243,6 +261,20 @@ float4 loadMarkerSample(Texture2DMS<float4> texture,int2 pixel,uint sample) {
     default:
         return texture.Load(pixel,sample);
     }
+}
+float4 resolveTransparency(float4 accumulation,float revealage) {
+    if (accumulation.a <= 0 || revealage >= 1) discard;
+    return float4(accumulation.rgb/max(accumulation.a,1e-8),1-saturate(revealage));
+}
+float4 fs_transparency_resolve_single(VertexOutput v) : SV_Target0 {
+    int2 pixel = int2(v.position.xy);
+    return resolveTransparency(gpu_texture<Texture2D<float4>>(root.texture0).Load(int3(pixel,0)),
+        gpu_texture<Texture2D<float4>>(root.texture1).Load(int3(pixel,0)).r);
+}
+float4 fs_transparency_resolve_msaa(VertexOutput v,uint sample : SV_SampleIndex) : SV_Target0 {
+    int2 pixel = int2(v.position.xy);
+    return resolveTransparency(loadMarkerSample(gpu_texture<Texture2DMS<float4>>(root.texture0),pixel,sample),
+        loadMarkerSample(gpu_texture<Texture2DMS<float4>>(root.texture1),pixel,sample).r);
 }
 uint readId(int2 pixel,uint sample,bool msaa) {
     float4 value = msaa ? loadMarkerSample(gpu_texture<Texture2DMS<float4>>(root.texture0),pixel,sample)

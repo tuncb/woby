@@ -15,7 +15,9 @@ inline constexpr uint64_t WOBY_GPU_STATE_WRITE_RGB = 1ull << 0, WOBY_GPU_STATE_W
                           WOBY_GPU_STATE_DEPTH_TEST_LEQUAL = 1ull << 4, WOBY_GPU_STATE_DEPTH_TEST_ALWAYS = 1ull << 5,
                           WOBY_GPU_STATE_MSAA = 1ull << 6, WOBY_GPU_STATE_PT_LINES = 1ull << 7,
                           WOBY_GPU_STATE_PT_TRISTRIP = 1ull << 8, WOBY_GPU_STATE_BLEND_ALPHA = 1ull << 9,
-                          WOBY_GPU_STATE_BLEND_INDEPENDENT = 1ull << 10;
+                          WOBY_GPU_STATE_BLEND_INDEPENDENT = 1ull << 10,
+                          WOBY_GPU_STATE_BLEND_WEIGHTED = 1ull << 11,
+                          WOBY_GPU_STATE_PRESERVE_IDS = 1ull << 12;
 inline constexpr uint64_t WOBY_GPU_STATE_BLEND_SRC_ALPHA = 1, WOBY_GPU_STATE_BLEND_INV_SRC_ALPHA = 2,
                           WOBY_GPU_STATE_BLEND_ONE = 3, WOBY_GPU_STATE_BLEND_ZERO = 0;
 constexpr uint64_t WOBY_GPU_STATE_BLEND_FUNC(uint64_t, uint64_t)
@@ -84,7 +86,9 @@ enum Enum
     BGRA8,
     RGBA8,
     RGBA32F,
-    D24S8
+    D24S8,
+    RGBA16F,
+    R16F
 };
 }
 namespace UniformType
@@ -250,6 +254,10 @@ void setViewClear(ViewId, uint16_t flags, float depth, uint8_t stencil, uint8_t 
 void setPaletteColor(uint8_t index, uint32_t rgba);
 void touch(ViewId);
 void submit(ViewId, ProgramHandle);
+// Consecutive transparent draws share an accumulation pass and resolve before
+// the next ordinary draw. Resolve programs are single-sample / multisample.
+// The opaque depth and marker-ID attachments are preserved.
+void submitTransparent(ViewId, ProgramHandle accumulation, const std::array<ProgramHandle, 2>& resolve);
 void dispatch(ViewId, ProgramHandle, uint32_t x, uint32_t y = 1, uint32_t z = 1);
 // Opaque point packets are copied into the normal frame's retained storage.
 // Each point is {float3 position, uint32 originalId}; no source pointer escapes.

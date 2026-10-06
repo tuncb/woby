@@ -19,6 +19,7 @@ struct WobyRoot {
     uint32 sampler;
     float* freeform;
     float4 triangleEdges; // Half width, fill surface, triangle-index offset low/high.
+    float4 transparency; // Reversed depth, near/far distance, perspective flag; graphics adaptor owns these.
 };
 
 #ifndef __SLANG__
@@ -26,5 +27,6 @@ static_assert(offsetof(WobyRoot, vertices) == 256);
 static_assert(offsetof(WobyRoot, sampler) == 288);
 static_assert(offsetof(WobyRoot, freeform) == 296);
 static_assert(offsetof(WobyRoot, triangleEdges) == 304);
-static_assert(sizeof(WobyRoot) == 320);
+static_assert(offsetof(WobyRoot, transparency) == 320);
+static_assert(sizeof(WobyRoot) == 336);
 #endif

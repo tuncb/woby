@@ -101,7 +101,8 @@ void submitTriangleRange(
     uint32_t indexOffset,
     uint32_t indexCount,
     bool markerIds,
-    const std::array<float, 4>& uvGrid)
+    const std::array<float, 4>& uvGrid,
+    const TransparentSurfacePrograms* transparency)
 {
     if (!woby::graphics::isValid(mesh.vertexBuffer) || !woby::graphics::isValid(mesh.triangleIndexBuffer) || indexCount == 0) {
         return;
@@ -112,8 +113,14 @@ void submitTriangleRange(
     woby::graphics::setUniform(colorUniform, color.data());
     woby::graphics::setVertexBuffer(0, mesh.vertexBuffer);
     woby::graphics::setIndexBuffer(mesh.triangleIndexBuffer, indexOffset, indexCount);
-    setMarkerRenderState(renderState(WOBY_GPU_STATE_DEPTH_TEST_LESS, true, color, 0u), markerIds);
-    woby::graphics::submit(viewId, program);
+    const auto state = renderState(WOBY_GPU_STATE_DEPTH_TEST_LESS, true, color, 0u);
+    if (transparency && color[3] < .999f) {
+        graphics::setState(state & ~WOBY_GPU_STATE_BLEND_ALPHA);
+        graphics::submitTransparent(viewId, transparency->mesh, transparency->resolve);
+    } else {
+        setMarkerRenderState(state, markerIds);
+        graphics::submit(viewId, program);
+    }
 }
 
 void submitPointSpriteRange(
@@ -410,13 +417,33 @@ void destroyTriangleEdgePrograms(TriangleEdgePrograms& programs)
     programs = {};
 }
 
+TransparentSurfacePrograms createTransparentSurfacePrograms(const std::filesystem::path& assets)
+{
+    TransparentSurfacePrograms result;
+    try {
+        result.mesh = loadProgram(assets, "vs_mesh.bin", "fs_transparent_mesh.bin");
+        result.resolve[0] = loadProgram(assets, "vs_marker_screen.bin", "fs_transparency_resolve_single.bin");
+        result.resolve[1] = loadProgram(assets, "vs_marker_screen.bin", "fs_transparency_resolve_msaa.bin");
+    } catch (...) { destroyTransparentSurfacePrograms(result); throw; }
+    return result;
+}
+
+void destroyTransparentSurfacePrograms(TransparentSurfacePrograms& programs)
+{
+    for (auto handle : {programs.mesh, programs.resolve[0], programs.resolve[1]}) {
+        if (graphics::isValid(handle)) { graphics::destroy(handle); }
+    }
+    programs = {};
+}
+
 void submitSceneFiles(
     graphics::ViewId viewId, const SceneDrawPlan& plan, const std::vector<LoadedModelRuntime>& runtimes,
     graphics::ProgramHandle meshProgram, graphics::UniformHandle uvGridUniform,
     graphics::ProgramHandle colorProgram, graphics::ProgramHandle pointSpriteProgram,
     graphics::UniformHandle colorUniform, graphics::UniformHandle pointParamsUniform,
     const TriangleEdgePrograms& edges, uint32_t width, uint32_t height,
-    MarkerDrawContext* markers, bool importedLinesOnly, AdaptivePointRuntime* adaptivePoints)
+    MarkerDrawContext* markers, bool importedLinesOnly, AdaptivePointRuntime* adaptivePoints,
+    const TransparentSurfacePrograms* transparency)
 {
     const bool markerIds = markers != nullptr;
     MarkerDrawList localMarkers;
@@ -531,13 +558,13 @@ void submitSceneFiles(
         }
     });
     // Opaque surfaces establish visibility before transparent content or markers.
-    // Preserve stable source order for transparent blending; never fuse its edges.
+    // Transparent surfaces accumulate together and resolve before edges/points.
     for (const bool opaque : {true, false}) {
         each([&](const auto& item, const auto& mesh, const auto& range) {
             if (!item.solid || item.color[3] <= 0 || (item.color[3] >= .999f) != opaque) { return; }
             if (opaque && item.edges && !plan.triangleEdgeXray) { triangleEdges(item, mesh, range, false); }
             else { submitTriangleRange(viewId, mesh, meshProgram, uvGridUniform, colorUniform,
-                item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.uvGrid); }
+                item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.uvGrid, transparency); }
         });
     }
     each([&](const auto& item, const auto& mesh, const auto& range) {

@@ -18,6 +18,7 @@
 #endif
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <cstdio>
 #include <limits>
@@ -162,6 +163,7 @@ struct Operation
     gpu::uint32x3 groups{1, 1, 1};
     uint16_t x = 0, y = 0, sourceX = 0, sourceY = 0, width = 0, height = 0;
     std::shared_ptr<PointPacket> points;
+    std::array<std::shared_ptr<Program>, 2> transparencyResolve;
 };
 struct ArenaPage
 {
@@ -179,6 +181,7 @@ struct Frame
     std::vector<Operation> operations;
     std::vector<std::shared_ptr<void>> retained;
     std::shared_ptr<Framebuffer> output;
+    std::map<ViewId, std::shared_ptr<Framebuffer>> transparency;
     uint32_t width = 0, height = 0, samples = 0;
     std::array<uint64_t, 2> timestamps{}, pointTimestamps{};
     uint64_t pointCount = 0;
@@ -409,6 +412,10 @@ gpu::Format nativeFormat(TextureFormat::Enum format)
         return gpu::Format::rgba8_unorm;
     case TextureFormat::RGBA32F:
         return gpu::Format::rgba32_float;
+    case TextureFormat::RGBA16F:
+        return gpu::Format::rgba16_float;
+    case TextureFormat::R16F:
+        return gpu::Format::r16_float;
     case TextureFormat::D24S8:
         return gpu::Format::d32_float;
     }
@@ -416,7 +423,10 @@ gpu::Format nativeFormat(TextureFormat::Enum format)
 }
 uint32_t pixelBytes(TextureFormat::Enum format)
 {
-    return format == TextureFormat::RGBA32F ? 16u : 4u;
+    if (format == TextureFormat::RGBA32F) { return 16u; }
+    if (format == TextureFormat::RGBA16F) { return 8u; }
+    if (format == TextureFormat::R16F) { return 2u; }
+    return 4u;
 }
 uint32_t descriptor()
 {
@@ -711,7 +721,8 @@ gpu::PSO *pipeline(const Operation &op, const Attachments &targets)
     auto &c = state();
     const auto flags = op.encoder.state;
     const uint64_t mask = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_BLEND_ALPHA |
-                          WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_PT_TRISTRIP;
+                          WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_PT_TRISTRIP |
+                          WOBY_GPU_STATE_BLEND_WEIGHTED | WOBY_GPU_STATE_PRESERVE_IDS;
     PipelineKey key{op.program->id,
                     flags & mask,
                     targets.samples,
@@ -732,6 +743,16 @@ gpu::PSO *pipeline(const Operation &op, const Attachments &targets)
     colors[1].blend.enabled = false;
     // Depth-only scene passes must preserve both the color and picking targets.
     colors[1].write_mask = colors[0].write_mask;
+    if (flags & WOBY_GPU_STATE_PRESERVE_IDS) { colors[1].write_mask = 0; }
+    if (flags & WOBY_GPU_STATE_BLEND_WEIGHTED) {
+        colors[0].blend = {.enabled = true,
+            .color = {gpu::BlendFactor::one, gpu::BlendFactor::one},
+            .alpha = {gpu::BlendFactor::one, gpu::BlendFactor::one}};
+        colors[1].blend = {.enabled = true,
+            .color = {gpu::BlendFactor::zero, gpu::BlendFactor::one_minus_source_color},
+            .alpha = {gpu::BlendFactor::zero, gpu::BlendFactor::one_minus_source_alpha}};
+        colors[1].write_mask = 1; // Revealage uses only the red channel.
+    }
     auto *pso = gpu::create_graphics_pso(
         c.device, {.vertex = shaderStage(op.program->vertex),
                    .fragment = shaderStage(op.program->fragment),
@@ -749,6 +770,13 @@ gpu::PSO *pipeline(const Operation &op, const Attachments &targets)
 WobyRoot rootData(const Encoder &encoder, const View &view)
 {
     auto root = encoder.root;
+    root.transparency.x = view.reversedDepth ? 1.0f : 0.0f;
+    const float a = view.projection[10], b = view.projection[14], c = view.projection[11];
+    if (c != 0) {
+        root.transparency.y = std::abs(b / ((view.reversedDepth ? 1.0f : 0.0f)*c-a));
+        root.transparency.z = std::abs(b / ((view.reversedDepth ? 0.0f : 1.0f)*c-a));
+        root.transparency.w = 1;
+    }
     float modelView[16], modelViewProjection[16];
     bx::mtxMul(modelView, encoder.model.data(), view.view.data());
     bx::mtxMul(modelViewProjection, modelView, view.projection.data());
@@ -940,6 +968,24 @@ void ensureOutput(Frame &f)
     f.width = c.width;
     f.height = c.height;
     f.samples = samples;
+}
+void ensureTransparencyTargets(Frame& frame, ViewId id, const Framebuffer& target)
+{
+    const auto& source = target.textures.front();
+    const auto samples = attachment(source)->samples;
+    auto& cached = frame.transparency[id];
+    if (cached && cached->textures[0]->width == source->width
+        && cached->textures[0]->height == source->height
+        && attachment(cached->textures[0])->samples == samples) { return; }
+    // Each in-flight frame owns its targets. Allocate before closing the
+    // preparation commands, which record native texture initialization barriers.
+    const uint64_t flags = samples == 4 ? WOBY_GPU_TEXTURE_RT_MSAA_X4 | WOBY_GPU_TEXTURE_MSAA_SAMPLE
+        : WOBY_GPU_TEXTURE_RT;
+    auto next = std::make_shared<Framebuffer>();
+    next->textures = {
+        createTexture(source->width, source->height, TextureFormat::RGBA16F, flags),
+        createTexture(source->width, source->height, TextureFormat::R16F, flags)};
+    cached = std::move(next);
 }
 void resetEncoder()
 {
@@ -1488,6 +1534,18 @@ void submit(ViewId id, ProgramHandle h)
                                     .program = resource(state().programs, h)});
     resetEncoder();
 }
+void submitTransparent(ViewId id, ProgramHandle accumulation, const std::array<ProgramHandle, 2>& resolve)
+{
+    beginFrame();
+    Operation op;
+    op.view = id; op.type = OperationType::draw; op.encoder = state().encoder;
+    op.encoder.state = (op.encoder.state & ~(WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_WRITE_Z))
+        | WOBY_GPU_STATE_BLEND_WEIGHTED;
+    op.program = resource(state().programs, accumulation);
+    for (size_t i = 0; i < resolve.size(); ++i) { op.transparencyResolve[i] = resource(state().programs, resolve[i]); }
+    current().operations.push_back(std::move(op));
+    resetEncoder();
+}
 void dispatch(ViewId id, ProgramHandle h, uint32_t x, uint32_t y, uint32_t z)
 {
     beginFrame();
@@ -1638,6 +1696,12 @@ try
                                          });
     if (needsOutput || swap.render_view)
         ensureOutput(f);
+    for (const auto& op : f.operations) {
+        if (!op.transparencyResolve[0]) { continue; }
+        const auto target = c.views[op.view].framebuffer ? c.views[op.view].framebuffer : f.output;
+        require(bool(target), "Transparent view has no target");
+        ensureTransparencyTargets(f, op.view, *target);
+    }
     checkCommands(gpu::end_commands(f.preparations));
     gpu::set_texture_descriptor_heap(commands, c.descriptors);
     gpu::set_sampler_descriptor_heap(commands, c.samplers);
@@ -1655,6 +1719,51 @@ try
         allBarrier(commands);
         while (index < f.operations.size() && f.operations[index].view == id)
         {
+            if (f.operations[index].transparencyResolve[0]) {
+                // Establish opaque color/depth even if transparency is the first
+                // draw in a view, then leave its depth attachment read-only.
+                if (!active) {
+                    renderTargets = attachments(*target, view, first);
+                    gpu::begin_render_pass(commands, {.colors = {renderTargets.colors.data(), renderTargets.count},
+                        .depth = renderTargets.depth});
+                    first = false;
+                }
+                gpu::end_render_pass(commands);
+                active = false;
+                allBarrier(commands);
+                const auto& transparency = f.transparency.at(id);
+                auto clear = view;
+                clear.clearFlags = WOBY_GPU_CLEAR_COLOR;
+                clear.colors = {0, 0xffffffff};
+                auto accumulated = attachments(*transparency, clear, true);
+                accumulated.depth = renderTargets.depth;
+                accumulated.depth.load = gpu::LoadOp::load;
+                accumulated.depthFormat = renderTargets.depthFormat;
+                gpu::begin_render_pass(commands, {.colors = {accumulated.colors.data(), accumulated.count},
+                    .depth = accumulated.depth});
+                gpu::set_viewport(commands, {float(view.x), float(view.y), float(view.width), float(view.height)});
+                const auto resolve = f.operations[index].transparencyResolve;
+                while (index < f.operations.size() && f.operations[index].view == id
+                    && f.operations[index].transparencyResolve == resolve) {
+                    drawOperation(commands, f.operations[index++], view, accumulated);
+                }
+                gpu::end_render_pass(commands);
+                allBarrier(commands);
+                renderTargets = attachments(*target, view, false);
+                gpu::begin_render_pass(commands, {.colors = {renderTargets.colors.data(), renderTargets.count},
+                    .depth = renderTargets.depth});
+                gpu::set_viewport(commands, {float(view.x), float(view.y), float(view.width), float(view.height)});
+                Operation composite;
+                composite.program = resolve[renderTargets.samples == 4 ? 1 : 0];
+                composite.encoder.vertexCount = 4;
+                composite.encoder.state = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A
+                    | WOBY_GPU_STATE_PT_TRISTRIP | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_PRESERVE_IDS;
+                composite.encoder.textures[0] = transparency->textures[0];
+                composite.encoder.textures[1] = transparency->textures[1];
+                drawOperation(commands, composite, view, renderTargets);
+                active = true;
+                continue;
+            }
             const auto &op = f.operations[index++];
             if (op.type == OperationType::draw || op.type == OperationType::touch)
             {
@@ -1814,6 +1923,7 @@ void shutdown()
         f.operations.clear();
         f.retained.clear();
         f.output.reset();
+        f.transparency.clear();
         for (auto &arena : f.arenas)
         {
             arena.allocator.reset();

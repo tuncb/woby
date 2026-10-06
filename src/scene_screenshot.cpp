@@ -223,7 +223,8 @@ void submitSceneScreenshotCapture(
     const Bounds& sceneBounds,
     const SceneCamera& camera,
     bool homogeneousDepth,
-    const ComparisonRuntimes* comparison)
+    const ComparisonRuntimes* comparison,
+    const TransparentSurfacePrograms* transparency)
 {
     if (!screenshot.captureRequested) {
         return;
@@ -335,7 +336,7 @@ void submitSceneScreenshotCapture(
             pointParamsUniform,
             triangleEdgePrograms,
             sceneWidth,
-            screenshot.height);
+            screenshot.height, nullptr, false, nullptr, transparency);
     }
     if (comparison != nullptr) { submitComparisonScenes(screenshotSceneView, ui, *comparison, colorProgram, colorUniform, screenshot.renderScratch); }
     if (!options.resultsOnly) {

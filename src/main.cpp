@@ -2416,6 +2416,7 @@ int main(int argc, char** argv)
             assets / "shaders" / woby::rendererShaderFolder(woby::graphics::getRendererType()) / "cs_freeform.bin"), true);
         const auto presentationProgram = woby::loadProgram(assets, "vs_marker_screen.bin", "fs_marker_composite.bin");
         auto triangleEdgePrograms = woby::createTriangleEdgePrograms(assets);
+        auto transparentSurfacePrograms = woby::createTransparentSurfacePrograms(assets);
         woby::graphics::ProgramHandle meshProgram = woby::loadProgram(assets, "vs_mesh.bin", "fs_mesh.bin");
         woby::graphics::ProgramHandle colorProgram = woby::loadProgram(assets, "vs_color.bin", "fs_color.bin");
         const auto lineSpriteProgram = woby::loadProgram(assets, "vs_line_sprite.bin", "fs_color.bin");
@@ -3989,7 +3990,7 @@ int main(int argc, char** argv)
                         triangleEdgePrograms,
                         sceneViewportWidth,
                         sceneViewportHeight,
-                        gpuHover ? &markerPicker.context : nullptr, false, &adaptivePoints);
+                        gpuHover ? &markerPicker.context : nullptr, false, &adaptivePoints, &transparentSurfacePrograms);
                 }
                 woby::submitComparisonScenes(sceneView, ui, comparison,
                     gpuHover ? markerPicker.line : colorProgram, colorUniform, renderScratch,
@@ -4057,7 +4058,7 @@ int main(int argc, char** argv)
                     sceneBounds,
                     camera,
                     homogeneousDepth,
-                    &comparison);
+                    &comparison, &transparentSurfacePrograms);
             } catch (const std::exception& exception) {
                 failSceneScreenshotCapture(sceneScreenshot);
                 if (automationScreenshotCommandId) {
@@ -4166,6 +4167,7 @@ int main(int argc, char** argv)
         woby::graphics::destroy(presentationProgram);
         woby::graphics::destroy(meshProgram);
         woby::destroyTriangleEdgePrograms(triangleEdgePrograms);
+        woby::destroyTransparentSurfacePrograms(transparentSurfacePrograms);
         destroySceneScreenshotFramebuffer(sceneScreenshot);
         destroyModelRuntimes(runtimes);
         woby::graphics::shutdown();
