@@ -20,7 +20,8 @@ def test_marker_shader(compiler, source, ngapi, entry):
         ], check=True, cwd=temporary)
         metal = output.read_text()
         textures = re.findall(r'texture2d_ms<float,\s*access::read>\s+(\w+)\s*=', metal)
-        if entry not in ('fs_transparent_mesh', 'fs_transparency_resolve_single'):
+        if entry not in ('fs_transparent_mesh', 'fs_transparent_edges',
+                         'fs_transparent_edges_pulled', 'fs_transparency_resolve_single'):
             assert textures, f'{entry}: expected multisample texture'
         for texture in textures:
             reads = re.findall(r'\b' + re.escape(texture) + r'\)*\.read\(\s*([^\n;]+)', metal)
@@ -37,6 +38,7 @@ if __name__ == '__main__':
     compiler, source, ngapi = (Path(value).resolve() for value in sys.argv[1:])
     for entry in ('cs_marker_lookup_single', 'cs_marker_lookup_msaa',
                   'fs_marker_highlight_single', 'fs_marker_highlight_msaa',
-                  'fs_transparent_mesh', 'fs_transparency_resolve_single', 'fs_transparency_resolve_msaa'):
+                  'fs_transparent_mesh', 'fs_transparent_edges', 'fs_transparent_edges_pulled',
+                  'fs_transparency_resolve_single', 'fs_transparency_resolve_msaa'):
         test_marker_shader(compiler, source, ngapi, entry)
         print(f'{entry}: Metal compilation and applicable multisample-read checks passed')

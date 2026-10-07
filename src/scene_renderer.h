@@ -91,6 +91,7 @@ void destroyModelRuntimes(std::vector<LoadedModelRuntime>& runtimes);
 
 struct TriangleEdgePrograms {
     woby::graphics::ProgramHandle surface = WOBY_GPU_INVALID_HANDLE, markerSurface = WOBY_GPU_INVALID_HANDLE,
+        transparentSurface = WOBY_GPU_INVALID_HANDLE,
         lines = WOBY_GPU_INVALID_HANDLE, markerLines = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::UniformHandle parameters = WOBY_GPU_INVALID_HANDLE;
     bool nativeBarycentrics = false;

@@ -401,6 +401,8 @@ TriangleEdgePrograms createTriangleEdgePrograms(const std::filesystem::path& ass
             result.nativeBarycentrics ? "fs_mesh_edges.bin" : "fs_mesh_edges_pulled.bin");
         result.markerSurface = loadProgram(assets, vertex,
             result.nativeBarycentrics ? "fs_marker_mesh_edges.bin" : "fs_marker_mesh_edges_pulled.bin");
+        result.transparentSurface = loadProgram(assets, vertex,
+            result.nativeBarycentrics ? "fs_transparent_edges.bin" : "fs_transparent_edges_pulled.bin");
         result.lines = loadProgram(assets, "vs_triangle_lines.bin", "fs_color.bin");
         result.markerLines = loadProgram(assets, "vs_triangle_lines.bin", "fs_marker_line.bin");
         result.parameters = graphics::createUniform("u_triangleEdges", graphics::UniformType::Vec4);
@@ -410,7 +412,7 @@ TriangleEdgePrograms createTriangleEdgePrograms(const std::filesystem::path& ass
 
 void destroyTriangleEdgePrograms(TriangleEdgePrograms& programs)
 {
-    for (auto handle : {programs.surface, programs.markerSurface, programs.lines, programs.markerLines}) {
+    for (auto handle : {programs.surface, programs.markerSurface, programs.transparentSurface, programs.lines, programs.markerLines}) {
         if (graphics::isValid(handle)) { graphics::destroy(handle); }
     }
     if (graphics::isValid(programs.parameters)) { graphics::destroy(programs.parameters); }
@@ -539,9 +541,14 @@ void submitSceneFiles(
             : item.solid && !hardwareLines ? WOBY_GPU_STATE_DEPTH_TEST_LESS : WOBY_GPU_STATE_DEPTH_TEST_LEQUAL,
             !hardwareLines && item.solid, color, hardwareLines ? WOBY_GPU_STATE_PT_LINES : 0);
         if (!hardwareLines && !item.solid) { flags |= WOBY_GPU_STATE_BLEND_ALPHA; }
-        setMarkerRenderState(flags, markerIds);
-        graphics::submit(viewId, hardwareLines ? (markerIds ? edges.markerLines : edges.lines)
-            : (markerIds ? edges.markerSurface : edges.surface));
+        if (!hardwareLines && item.solid && transparency && color[3] < .999f) {
+            graphics::setState(flags & ~WOBY_GPU_STATE_BLEND_ALPHA);
+            graphics::submitTransparent(viewId, edges.transparentSurface, transparency->resolve);
+        } else {
+            setMarkerRenderState(flags, markerIds);
+            graphics::submit(viewId, hardwareLines ? (markerIds ? edges.markerLines : edges.lines)
+                : (markerIds ? edges.markerSurface : edges.surface));
+        }
     };
     // Hidden-line occluders precede every color draw, including other files.
     each([&](const auto& item, const auto& mesh, const auto& range) {
@@ -558,11 +565,12 @@ void submitSceneFiles(
         }
     });
     // Opaque surfaces establish visibility before transparent content or markers.
-    // Transparent surfaces accumulate together and resolve before edges/points.
+    // Transparent surfaces and their edges share opacity and accumulation;
+    // resolve before standalone/X-ray edges and points.
     for (const bool opaque : {true, false}) {
         each([&](const auto& item, const auto& mesh, const auto& range) {
             if (!item.solid || item.color[3] <= 0 || (item.color[3] >= .999f) != opaque) { return; }
-            if (opaque && item.edges && !plan.triangleEdgeXray) { triangleEdges(item, mesh, range, false); }
+            if (item.edges && !plan.triangleEdgeXray) { triangleEdges(item, mesh, range, false); }
             else { submitTriangleRange(viewId, mesh, meshProgram, uvGridUniform, colorUniform,
                 item.model.data(), item.color, range.triangleIndexOffset, range.triangleIndexCount, markerIds, item.uvGrid, transparency); }
         });
@@ -570,7 +578,7 @@ void submitSceneFiles(
     each([&](const auto& item, const auto& mesh, const auto& range) {
         if (!item.edges || item.color[3] <= 0) { return; }
         const bool hardwareLines = plan.triangleEdgeXray || item.color[3] < .999f;
-        if (hardwareLines || !item.solid) { triangleEdges(item, mesh, range, hardwareLines); }
+        if (plan.triangleEdgeXray || !item.solid) { triangleEdges(item, mesh, range, hardwareLines); }
     });
     each(points);
     if (adaptivePoints) {

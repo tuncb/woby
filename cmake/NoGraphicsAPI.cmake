@@ -51,7 +51,8 @@ function(woby_compile_graphics_shaders target)
         cs_marker_lookup_single cs_marker_lookup_msaa cs_freeform
         vs_mesh_edges vs_triangle_lines fs_mesh_edges fs_mesh_edges_pulled
         fs_marker_mesh_edges fs_marker_mesh_edges_pulled
-        fs_transparent_mesh fs_transparency_resolve_single fs_transparency_resolve_msaa)
+        fs_transparent_mesh fs_transparent_edges fs_transparent_edges_pulled
+        fs_transparency_resolve_single fs_transparency_resolve_msaa)
     list(APPEND entries cs_opaque_clear cs_opaque_raster cs_opaque_batch_clear cs_opaque_depth cs_opaque_ids
         cs_opaque_merge vs_opaque_resolve fs_opaque_resolve fs_opaque_color)
     set(outputs)
@@ -86,7 +87,8 @@ function(woby_compile_graphics_shaders target)
         else()
             set(output "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/spirv/${entry}.bin")
             set(capabilities -capability spvDescriptorHeapEXT)
-            if(entry STREQUAL "fs_mesh_edges" OR entry STREQUAL "fs_marker_mesh_edges")
+            if(entry STREQUAL "fs_mesh_edges" OR entry STREQUAL "fs_marker_mesh_edges"
+                OR entry STREQUAL "fs_transparent_edges")
                 list(APPEND capabilities -capability spvFragmentBarycentricKHR)
             endif()
             add_custom_command(OUTPUT "${output}"

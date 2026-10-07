@@ -143,7 +143,11 @@ TEST_CASE("GPU shader edges preserve occlusion picking targets UV color and port
         CHECK(xray == capture(fixture, plan, false, true)); // Exact hardware-line coverage.
         plan.triangleEdgeXray = false;
         for (auto& item : plan.items) { item.color[3] = .4f; }
-        CHECK(capture(fixture, plan) == capture(fixture, plan, false, true)); // Separate alpha blending.
+        const auto transparent = capture(fixture, plan);
+        CHECK(differences(transparent, capture(fixture, plan, true)) < 20);
+        CHECK(differences(transparent, capture(fixture, plan, false, true)) > 20);
+        for (auto& item : plan.items) { item.solid = false; }
+        CHECK(capture(fixture, plan) == capture(fixture, plan, false, true)); // Edge-only hardware-line coverage.
         auto& front = fixture.state.files[0].groupSettings[2]; front.uvGrid.enabled = true;
         plan = woby::buildSceneDrawPlan(fixture.state);
         CHECK(differences(visible, capture(fixture, plan)) > 100);

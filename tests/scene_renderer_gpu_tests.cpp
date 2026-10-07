@@ -75,6 +75,7 @@ struct TransparencyFixture {
     bool initialized = false;
     std::vector<woby::LoadedModelRuntime> models;
     woby::TransparentSurfacePrograms transparency;
+    woby::TriangleEdgePrograms edges, pulled;
     g::ProgramHandle mesh{}, point{};
     g::UniformHandle color{}, uv{}, params{}, base{};
     g::TextureHandle output{}, depth{}, ids{};
@@ -84,6 +85,8 @@ struct TransparencyFixture {
         if (!initialized) { return; }
         woby::destroyModelRuntimes(models);
         woby::destroyTransparentSurfacePrograms(transparency);
+        woby::destroyTriangleEdgePrograms(edges);
+        woby::destroyTriangleEdgePrograms(pulled);
         for (auto h : {mesh, point}) { if (g::isValid(h)) { g::destroy(h); } }
         for (auto h : {color, uv, params, base}) { if (g::isValid(h)) { g::destroy(h); } }
         if (g::isValid(target)) { g::destroy(target); }
@@ -95,6 +98,8 @@ void initializeTransparency(TransparencyFixture& f, bool msaa)
 {
     f.initialized = g::init({}); REQUIRE(f.initialized);
     f.transparency = woby::createTransparentSurfacePrograms(WOBY_TEST_ASSET_DIRECTORY);
+    f.edges = woby::createTriangleEdgePrograms(WOBY_TEST_ASSET_DIRECTORY);
+    f.pulled = woby::createTriangleEdgePrograms(WOBY_TEST_ASSET_DIRECTORY, true);
     f.mesh = woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_mesh.bin", "fs_marker_mesh.bin");
     f.point = woby::loadProgram(WOBY_TEST_ASSET_DIRECTORY, "vs_point_sprite.bin", "fs_marker_point.bin");
     f.color = g::createUniform("u_color", g::UniformType::Vec4);
@@ -129,9 +134,9 @@ void initializeTransparency(TransparencyFixture& f, bool msaa)
         f.plan.items.push_back(item);
     }
 }
-struct TransparencyImage { std::vector<uint8_t> color, ids; };
+struct TransparencyImage { std::vector<uint8_t> color, ids; uint32_t draws = 0; };
 TransparencyImage captureTransparency(TransparencyFixture& f, const woby::SceneDrawPlan& plan,
-    bool reversed = false, bool approximate = true, bool perspective = false)
+    bool reversed = false, bool approximate = true, bool perspective = false, bool pulled = false)
 {
     std::array<float,16> projection{}; bx::mtxIdentity(projection.data());
     if (perspective) {
@@ -146,11 +151,13 @@ TransparencyImage captureTransparency(TransparencyFixture& f, const woby::SceneD
     g::touch(0);
     woby::MarkerDrawContext markers; markers.baseUniform = f.base;
     woby::submitSceneFiles(0, plan, f.models, f.mesh, f.uv, f.mesh, f.point, f.color, f.params,
-        {}, 80, 64, &markers, false, nullptr, approximate ? &f.transparency : nullptr);
+        pulled ? f.pulled : f.edges, 80, 64, &markers, false, nullptr, approximate ? &f.transparency : nullptr);
     TransparencyImage result{std::vector<uint8_t>(96*80*4),std::vector<uint8_t>(96*80*4)};
     g::readTexture(f.output, result.color.data());
     const auto ready = g::readTexture(f.ids, result.ids.data());
-    while (g::frame() < ready) {}
+    auto frame = g::frame();
+    result.draws = g::getStats()->numDraw;
+    while (frame < ready) { frame = g::frame(); }
     return result;
 }
 int maximumColorDifference(const TransparencyImage& a, const TransparencyImage& b)
@@ -236,5 +243,120 @@ TEST_CASE("Weighted transparency preserves opaque occlusion prominent markers an
         CHECK(withSurfaces.ids[center] != 0);
         covered.items.push_back(marker);
         CHECK(captureTransparency(f, covered).ids[center] == 0); // Opaque geometry still occludes the marker.
+    }
+}
+
+TEST_CASE("Combined transparent edges retain surface opacity with native and fallback barycentrics")
+{
+    for (const bool msaa : {false,true}) {
+        CAPTURE(msaa);
+        TransparencyFixture f; initializeTransparency(f,msaa);
+        CHECK(f.edges.nativeBarycentrics == ((g::getCaps()->supported & WOBY_GPU_CAPS_FRAGMENT_BARYCENTRIC) != 0));
+        CHECK_FALSE(f.pulled.nativeBarycentrics);
+        REQUIRE(g::isValid(f.edges.transparentSurface));
+        REQUIRE(g::isValid(f.pulled.transparentSurface));
+        auto single = f.plan; single.items.resize(1);
+        for (const float alpha : {.02f,.35f,.7f,.98f}) {
+            CAPTURE(alpha);
+            single.items[0].color[3] = alpha;
+            single.items[0].edges = false;
+            const auto fill = captureTransparency(f,single);
+            single.items[0].edges = true;
+            const auto edged = captureTransparency(f,single);
+            CHECK(edged.draws == 2); // One geometry draw and the existing transparency resolve.
+            CHECK(edged.draws == fill.draws);
+            CHECK(maximumColorDifference(fill,edged) > 0);
+            CHECK(maximumColorDifference(edged,captureTransparency(f,single,false,true,false,true)) <= 3);
+            CHECK(maximumColorDifference(edged,captureTransparency(f,single,false,false)) <= 1);
+            // Edge coverage changes RGB only: revealage and final alpha must
+            // match a surface with no edges, including antialiased boundaries.
+            int alphaDifference = 0;
+            for (size_t i = 3; i < edged.color.size(); i += 4) {
+                alphaDifference = std::max(alphaDifference,std::abs(int(edged.color[i])-int(fill.color[i])));
+            }
+            CHECK(alphaDifference <= 1);
+        }
+    }
+}
+
+TEST_CASE("Combined transparent edges preserve intersecting order UVs and large index offsets")
+{
+    for (const bool msaa : {false,true}) {
+        CAPTURE(msaa);
+        TransparencyFixture f; initializeTransparency(f,msaa);
+        auto& mesh = f.models[0].gpuMesh;
+        constexpr uint32_t offset = 65538;
+        std::vector<uint32_t> indices(offset,0);
+        indices.insert(indices.end(),{0,1,2,3,4,5});
+        auto replaceIndices = [&] {
+            const auto old = mesh.triangleIndexBuffer;
+            mesh.triangleIndexBuffer = g::createIndexBuffer(g::copy(indices.data(),
+                static_cast<uint32_t>(indices.size()*sizeof(uint32_t))),WOBY_GPU_BUFFER_INDEX32);
+            g::destroy(old);
+        };
+        replaceIndices();
+        for (auto& range : mesh.nodeRanges) { range.triangleIndexOffset += offset; }
+        CHECK_FALSE(g::isValid(mesh.lineIndexBuffer));
+        auto edged = f.plan; for (auto& item : edged.items) { item.edges = true; }
+        const auto image = captureTransparency(f,edged);
+        CHECK(image.draws == 3); // Two geometry draws share one resolve.
+        std::reverse(edged.items.begin(),edged.items.end());
+        CHECK(maximumColorDifference(image,captureTransparency(f,edged)) <= 1);
+        CHECK(maximumColorDifference(image,captureTransparency(f,edged,false,true,false,true)) <= 3);
+        CHECK(maximumColorDifference(image,captureTransparency(f,edged,true)) <= 1);
+        CHECK(maximumColorDifference(captureTransparency(f,edged,false,true,true),
+            captureTransparency(f,edged,true,true,true)) <= 1);
+        for (const bool pulled : {false,true}) {
+            CAPTURE(pulled);
+            auto oneGroup = f.plan; oneGroup.items.resize(1); oneGroup.items[0].edges = true;
+            mesh.nodeRanges[0].triangleIndexCount = 6;
+            const auto original = captureTransparency(f,oneGroup,false,true,false,pulled);
+            std::swap_ranges(indices.end()-6,indices.end()-3,indices.end()-3);
+            replaceIndices();
+            CHECK(maximumColorDifference(original,captureTransparency(f,oneGroup,false,true,false,pulled)) <= 1);
+            mesh.nodeRanges[0].triangleIndexCount = 3;
+        }
+        edged = f.plan; for (auto& item : edged.items) { item.edges = true; item.uvGrid = {8,8,1,0}; }
+        const auto uv = captureTransparency(f,edged);
+        CHECK(maximumColorDifference(image,uv) > 10);
+        CHECK(maximumColorDifference(uv,captureTransparency(f,edged,false,true,false,true)) <= 3);
+        edged.triangleEdgeXray = true;
+        const auto xray = captureTransparency(f,edged);
+        CHECK(xray.draws == 5); // X-ray retains independent hardware lines.
+        CHECK(xray.color == captureTransparency(f,edged,false,true,false,true).color);
+        CHECK(maximumColorDifference(uv,xray) > 10);
+    }
+}
+
+TEST_CASE("Combined transparent edges preserve opaque occlusion zero opacity and point IDs")
+{
+    for (const bool msaa : {false,true}) {
+        CAPTURE(msaa);
+        TransparencyFixture f; initializeTransparency(f,msaa);
+        woby::SceneDrawItem marker; bx::mtxIdentity(marker.model.data());
+        marker.groupIndex = 2; marker.points = true; marker.pointSize = 12; marker.color = {0,1,0,0};
+        auto pointOnly = f.plan; pointOnly.items = {marker};
+        const auto referencePoint = captureTransparency(f,pointOnly);
+        for (const bool pulled : {false,true}) {
+            CAPTURE(pulled);
+            auto edged = f.plan; for (auto& item : edged.items) { item.edges = true; }
+            edged.items.push_back(marker);
+            const auto marked = captureTransparency(f,edged,false,true,false,pulled);
+            const size_t center = (39*96+49)*4;
+            for (size_t c = 0; c < 4; ++c) {
+                CHECK(marked.color[center+c] == referencePoint.color[center+c]);
+                CHECK(marked.ids[center+c] == referencePoint.ids[center+c]);
+            }
+            CHECK(marked.ids[center] != 0);
+            for (auto& item : edged.items) if (item.solid) item.color[3] = 0;
+            CHECK(captureTransparency(f,edged,false,true,false,pulled).color == referencePoint.color);
+            auto covered = f.plan; covered.items[0].color[3] = 1;
+            covered.items[0].model[10] = 0; covered.items[0].model[14] = .05f;
+            covered.items[1].edges = true; covered.items.push_back(marker);
+            const auto opaque = captureTransparency(f,covered,false,true,false,pulled);
+            covered.items.resize(1);
+            CHECK(opaque.color == captureTransparency(f,covered,false,true,false,pulled).color);
+            CHECK(opaque.ids[center] == 0);
+        }
     }
 }

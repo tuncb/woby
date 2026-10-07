@@ -125,8 +125,7 @@ float4 fs_mesh(VertexOutput v) : SV_Target0 {
 }
 float4 fs_color(VertexOutput v) : SV_Target0 { return root.color; }
 struct TransparencyOutput { float4 accumulation : SV_Target0; float4 revealage : SV_Target1; };
-TransparencyOutput fs_transparent_mesh(VertexOutput v) {
-    float4 color = fs_mesh(v);
+TransparencyOutput transparentMaterial(VertexOutput v, float4 color) {
     if (color.a <= .000001) discard;
     float depth = root.transparency.x > .5 ? 1-v.position.z : v.position.z;
     if (root.transparency.w > .5) {
@@ -142,6 +141,7 @@ TransparencyOutput fs_transparent_mesh(VertexOutput v) {
     float weight = clamp(pow(min(1.0,color.a*10)+.01,3)*pow(1-depth*.9,3),1e-4,1.0);
     return TransparencyOutput(float4(color.rgb*color.a,color.a)*weight,float4(color.a));
 }
+TransparencyOutput fs_transparent_mesh(VertexOutput v) { return transparentMaterial(v,fs_mesh(v)); }
 uint triangleIndexOffset() {
     return uint(root.triangleEdges.z) | (uint(root.triangleEdges.w) << 16);
 }
@@ -156,7 +156,7 @@ EdgeVertexOutput vs_mesh_edges(uint corner : SV_VertexID) {
     v.bary = float3(k == 0 ? 1.0 : 0.0, k == 1 ? 1.0 : 0.0, k == 2 ? 1.0 : 0.0);
     return v;
 }
-// X-ray and transparent overlays keep hardware-line coverage without a second
+// X-ray and transparent edge-only views keep hardware-line coverage without a second
 // CPU/GPU edge-index buffer. Each triangle emits (0,1), (1,2), (2,0).
 VertexOutput vs_triangle_lines(uint vertex : SV_VertexID) {
     uint corner = ((vertex % 6 + 1) / 2) % 3;
@@ -172,12 +172,19 @@ float4 triangleEdgeColor(VertexOutput v, float3 bary) {
         if (coverage <= 0) discard;
         return float4(edge,root.color.a*coverage);
     }
+    // Edge coverage changes the material color, retaining the surface opacity.
     return float4(lerp(fs_mesh(v).rgb,edge,coverage),root.color.a);
 }
 float4 fs_mesh_edges(VertexOutput v, noperspective float3 bary : SV_Barycentrics) : SV_Target0 {
     return triangleEdgeColor(v,bary);
 }
 float4 fs_mesh_edges_pulled(EdgeVertexOutput v) : SV_Target0 { return triangleEdgeColor(v.mesh,v.bary); }
+TransparencyOutput fs_transparent_edges(VertexOutput v, noperspective float3 bary : SV_Barycentrics) {
+    return transparentMaterial(v,triangleEdgeColor(v,bary));
+}
+TransparencyOutput fs_transparent_edges_pulled(EdgeVertexOutput v) {
+    return transparentMaterial(v.mesh,triangleEdgeColor(v.mesh,v.bary));
+}
 float4 fs_point_sprite(VertexOutput v) : SV_Target0 {
     if (length(v.uv) > .5 || root.color.a <= .000001) discard;
     return root.color;

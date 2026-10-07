@@ -1,0 +1,378 @@
+{
+  "base_revision": "27230842906d3a45170bc9f30c02a3e41baa02c5",
+  "executable_sha256": "818f9d55fcab80554b602ab7a25e7369d7702d39046623b80147b3d9593e9cd8",
+  "source_hashes": {
+    "src\\scene_renderer.cpp": "4b748fbe290da79c00526073aca9918e074420a8d8143ff8dcdbc49d9b03189e",
+    "src\\graphics.cpp": "573f04a7c17a253f1597cb0304bafdf86086454251db6078d5db576c129730ab",
+    "src\\main.cpp": "b6b79efbd213208cef13d221ae1d7a95f074ba80d8cdbab5275ec5d196af2605",
+    "shaders\\native\\woby.slang": "4772d10e10825d6e0cb3adb9040d0bafe687e368f5b0a21039d2b7db81cbbf88",
+    "shaders\\native\\root.h": "820c6513027ed4f6187ea53754f016288fd004a64a994150b79b64b7f7b17d2b"
+  },
+  "shader_hashes": {
+    "cs_freeform.bin": "ad5618d32e5916840e1b8f281411db69e7a82a37252e0aa51482e0e39d08d756",
+    "cs_marker_lookup_msaa.bin": "a4dd93c41358f9d408ab98db7367743af355d3af14f0423e9d0db7badcb49382",
+    "cs_marker_lookup_single.bin": "7629196b58c0fd2bb3714942040b7fe2c8adfd57095626042c835e832e02b124",
+    "cs_opaque_batch_clear.bin": "e84749d65516c007ad93cc1f7f018632bc51a70d2169034d39b1c389c87a55a6",
+    "cs_opaque_clear.bin": "822a07ae048066a1ec58da73411742534727f1000adb2c45fc13f05fa21405bf",
+    "cs_opaque_depth.bin": "e4cb7bfd9fdae528e978e676fc34a69998e1b33b393db57615159261eafc0d4d",
+    "cs_opaque_ids.bin": "83d937a6d0a621b36680ff1dbdfddc812ae0f309d7605c1ccd48715af318fb03",
+    "cs_opaque_merge.bin": "7546c84ed18310eddeef90aa74dc7815dc2f016a8b07811d7c3c8136bad48b94",
+    "cs_opaque_raster.bin": "1ab965e07563f22af834658c26f69db9b76d54dbda513e6db8258ff2212ae728",
+    "fs_color.bin": "6e71de1169249752435531e57fa4fdd1ce009ea0db56ddbebe153388241be47c",
+    "fs_comparison.bin": "97a47e51c39337f5fba99864abe2e3921b8b0c272163a45729d7423281fea058",
+    "fs_imgui.bin": "6723b2479185103684c256717ad1016bbfdbd9958ccc9bd1359fff4422e4165e",
+    "fs_marker_comparison.bin": "e45ba1c3948f880220d2d5a42e4198d1d645157618043dfc16e07b51f6c8fc26",
+    "fs_marker_composite.bin": "dcca2e99b53ea5f567486590385fa24015bec91de76217c76843b8dd427708a1",
+    "fs_marker_highlight_msaa.bin": "b7b009ec0f5e4963013f0cd5e4654bcbfb1daf2ca3e84fe00b4e6cab7c9efe5f",
+    "fs_marker_highlight_single.bin": "5b093d713026e44b6b7af1a09e6ca3ec8b9050923c4f99819d0fb2e484ced2bd",
+    "fs_marker_line.bin": "6f790c4642d79111dbaf35a720ae660f7b91bd3a785a46590285ab6db4f4694b",
+    "fs_marker_mesh.bin": "5f5584048bd26dbbcb7b63e90c63d4c2ac4d6b4b1bddcd3aa125b8ca596f48c9",
+    "fs_marker_mesh_edges.bin": "2ea3320c25bafb6e373c927f695bf780e53107b24765f6e559e56f480f0be313",
+    "fs_marker_mesh_edges_pulled.bin": "b18beec9fa91290b23e292e89deebdc031a609d2545843db5ab74a2e4737d61a",
+    "fs_marker_point.bin": "757ec2d9cb0cd9938c7604945ccc22892a57b158ae4430e4a413467ee9728215",
+    "fs_mesh.bin": "15723b391a56c9b0a5cbff6c09dd4b7a7d15b153e94fbeb08a90f85121c88121",
+    "fs_mesh_edges.bin": "a3cfa46957d0cc95c22c6908c2c3ed29208af3fb4fab36ee0024ce51bc04164e",
+    "fs_mesh_edges_pulled.bin": "677d6f06b3a71bbc2d287d6a46cc3279baf58e634ae0b223eb8fac2601559bc7",
+    "fs_opaque_color.bin": "6c4a665322e455f9ec1e47370e9223a12d612a21df792793a4c57123f048e6f4",
+    "fs_opaque_resolve.bin": "b9b58f6a4f496c7f06acf2c08df76adac0d3c8a55a3f32ed7abfcd16521b5072",
+    "fs_point_sprite.bin": "652847a2c311608c20f7d8e9af3b8f8c28026926ad5f0bf487f3f972488aa17e",
+    "fs_transparency_overlay_resolve_msaa.bin": "c30bd75e8e9e59d1354975adce6ea4819836f5c392f18339b96d240acb77b307",
+    "fs_transparency_overlay_resolve_single.bin": "f14d03bd4dcf62841040868d6aab80621243426192187c3dddfda6590029f159",
+    "fs_transparency_resolve_msaa.bin": "aaa57c308649b0e3d9e3d23bd38fe061dd73379acd9f1b15f8fbe46069d82500",
+    "fs_transparency_resolve_single.bin": "ad4896ce022c6ba56eb45c37b897a135a9d44fca433ba9089ef7398776498e97",
+    "fs_transparent_edges.bin": "cf5ef6a41bc36365f19e204adbd581abe807ea660de41e4c5221e283687dc7f6",
+    "fs_transparent_edges_pulled.bin": "7a4a6d49f5bf430a5943f4fbae40efc0f612d1bd57c2ed6fa9d1c4d9c8c549e0",
+    "fs_transparent_edge_overlay.bin": "2b97f135e956e9f138a7243a5c430d361d307b8c02854a43507f1f9ea3a00ef4",
+    "fs_transparent_edge_overlay_pulled.bin": "cb0452ff2d0512f6018b238dfed4ad25932ceed86ad68808b0b92bf4cf800b83",
+    "fs_transparent_mesh.bin": "2d36cd5eb17c26cff33257239778e52f0b7cfb2f04a24d764e5771ee9bd51a80",
+    "vs_annotation.bin": "23b7e5fbec9a3835ea3ce3eee06bd44ec5659bdf3bce6b15af880330ce65957a",
+    "vs_color.bin": "5bca893a4c71a98826945554f6f7fdd5736a949d2ebc33b455f42b10a3c8c028",
+    "vs_comparison.bin": "6f9005de3fb888a38782e640dad01f4c837a6c59691382509ce8454aac0bdab7",
+    "vs_imgui.bin": "70e35e3dbf81220bb57ee834b06037d0723477ca0380cbae493989efb0396986",
+    "vs_line_sprite.bin": "beb08d57341b271253f98a0b9e90bfae4d819a9722fec7e8e440621a77a2a24d",
+    "vs_marker_highlight.bin": "ff7b618fdc2b0a2a22413c05ad4a2e992b3936da0a477dd506547ec9ee6dd7b2",
+    "vs_marker_point.bin": "7c09bec1e5ea6148132f03c7a0c7bf9249e2c65c5ab5cdfe8af5254b7cdb53a8",
+    "vs_marker_screen.bin": "7c625b795d25791f43d6a89b858ad53299e5a11ee3492ec0bcb1d8eb6a7f2fa3",
+    "vs_mesh.bin": "d2e4ce67ad5f5666a02e3c2161ab5e6ad78a91a1573308a96b61df4218252349",
+    "vs_mesh_edges.bin": "17ef89e5cfc95d8d7920abae855d988cb882ee9646c2059a7de7b7fc189a0572",
+    "vs_opaque_resolve.bin": "1b59dfb9da01cad3d58d898d4477cd2371c60c97e55ff25f26ed71f3511ad0b6",
+    "vs_point_sprite.bin": "5c6e086f873bd5b4f8384e0e03e02268596d7b755ec4683a4190f8849ecec3fe",
+    "vs_triangle_lines.bin": "d45983f1d894c58549a3b49a2959729b0a7d74472002ed897a5549e0b2848202"
+  },
+  "runs": [
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bus-4x",
+      "raw_sha256": "9a5aea6429916fe69793c22bc987b8d3bffb5ea1f50be745429b75ece153f82f",
+      "raw_bytes": 1439814,
+      "guard": {
+        "violations": [],
+        "peak_private": 1054957568,
+        "minimum_available": 51647057920,
+        "elapsed_seconds": 271.348382199998
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bennu-4x",
+      "raw_sha256": "ae0c8ea80351702dfa93a9401b902ea1626f5ed2772d60157b8adfb052d1c5f7",
+      "raw_bytes": 688885,
+      "guard": {
+        "violations": [],
+        "peak_private": 3492585472,
+        "minimum_available": 49901617152,
+        "elapsed_seconds": 191.11351960001048
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bear-4x",
+      "raw_sha256": "a97ba7201cc4406e9df780116a83997a95e8a24c9fc3cacf2009e2e036825df9",
+      "raw_bytes": 294150,
+      "guard": {
+        "violations": [],
+        "peak_private": 13054386176,
+        "minimum_available": 41363607552,
+        "elapsed_seconds": 241.50194579997333
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\sanmiguel-4x",
+      "raw_sha256": "940dce4892f91f77d1fa2ced18f66147f712df805b66fe0655fa6def5fd304e6",
+      "raw_bytes": 6918448,
+      "guard": {
+        "violations": [],
+        "peak_private": 3414417408,
+        "minimum_available": 49620172800,
+        "elapsed_seconds": 1019.4467329999898
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bus-1x",
+      "raw_sha256": "2c9fc32d5891f0d00ea367aa35c87e1ed71f6190ff4190991e198cf7e60132d4",
+      "raw_bytes": 1111022,
+      "guard": {
+        "violations": [],
+        "peak_private": 462991360,
+        "minimum_available": 50944991232,
+        "elapsed_seconds": 80.87926190003054
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bear-1x",
+      "raw_sha256": "179cc41a40be4ede96213d82fffdb631cd486dfb8d174bc571338a0d579e1967",
+      "raw_bytes": 232701,
+      "guard": {
+        "violations": [],
+        "peak_private": 12497358848,
+        "minimum_available": 41355374592,
+        "elapsed_seconds": 151.81262969999807
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bus-alpha10",
+      "raw_sha256": "bf0122f035464a934c28db21e93f3666ba451615b191d8ae34486ccb0165323f",
+      "raw_bytes": 1134064,
+      "guard": {
+        "violations": [],
+        "peak_private": 736710656,
+        "minimum_available": 51687989248,
+        "elapsed_seconds": 80.95455339999171
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bus-alpha70",
+      "raw_sha256": "5032d6cc03c4dc09084c5aca158c366fa44b38ea6a46eedd2d3a11347fe5c3be",
+      "raw_bytes": 1136597,
+      "guard": {
+        "violations": [],
+        "peak_private": 736346112,
+        "minimum_available": 51678093312,
+        "elapsed_seconds": 80.87833769997815
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bus-close",
+      "raw_sha256": "87c2a3ae9ff357fb4374597681d07a51192c95f0c626b7fc95dc19b60462250b",
+      "raw_bytes": 1136618,
+      "guard": {
+        "violations": [],
+        "peak_private": 736411648,
+        "minimum_available": 51681513472,
+        "elapsed_seconds": 80.53003910003463
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\bus-far",
+      "raw_sha256": "38cd3adc55a5888abde94c45e475a260e172e9a33fdf4267f3c5d926f2c162d7",
+      "raw_bytes": 1123251,
+      "guard": {
+        "violations": [],
+        "peak_private": 731459584,
+        "minimum_available": 51714445312,
+        "elapsed_seconds": 80.62440970004536
+      }
+    },
+    {
+      "run": "D:\\.worktree\\transparent-edge-benchmark\\woby\\build\\transparent-edges\\intersections-2",
+      "raw_sha256": "29d50047200c4db24dbc0c01ab9f2419248d5a7165a32deec4ce3154767f89c7",
+      "raw_bytes": 255678,
+      "guard": {
+        "violations": [],
+        "peak_private": 770977792,
+        "minimum_available": 51797450752,
+        "elapsed_seconds": 28.957634799997322
+      }
+    }
+  ],
+  "image_checks": [
+    {
+      "run": "bus-4x",
+      "policy": "matched",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bus-4x",
+      "policy": "coating",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bus-4x",
+      "policy": "opaque",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bus-4x",
+      "policy": "overlay",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bennu-4x",
+      "policy": "matched",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bennu-4x",
+      "policy": "coating",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bennu-4x",
+      "policy": "opaque",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bennu-4x",
+      "policy": "overlay",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bear-4x",
+      "policy": "matched",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bear-4x",
+      "policy": "coating",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bear-4x",
+      "policy": "opaque",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "bear-4x",
+      "policy": "overlay",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "sanmiguel-4x",
+      "policy": "matched",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "sanmiguel-4x",
+      "policy": "coating",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "sanmiguel-4x",
+      "policy": "opaque",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "sanmiguel-4x",
+      "policy": "overlay",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "run": "intersections-2",
+      "policy": "matched",
+      "maximum_channel_difference": 0,
+      "mean_channel_difference": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "excluded": [
+    "pilot-bus: insufficient frames",
+    "pilot-bus-2: hidden-window P8 clocks",
+    "pilot-visible: setup pilot",
+    "intersections: failed color setup (RPC CLI alias)"
+  ],
+  "benchmark_cases": 306,
+  "benchmark_valid_frames": 116419,
+  "qualitative_cases": 9,
+  "qualitative_valid_frames": 3000,
+  "debug_tests": 1006,
+  "focused_assertions": 332,
+  "artifact_hashes": {
+    "summary.json": "335d0025a747728762ce6cd68a16bee479590deb817acefec9f436e5c61ab4f9",
+    "summary.csv": "86fa9b6872c9067a3c68e642727f18d96518da05b5a6fab6f98563b5ba1b20a5",
+    "gpu-times.png": "373ea8b5514c0c3dc230bb3ee7a51c867630d709c6fee5dcbe1ffaf974c212a0",
+    "edge-appearance.png": "a08a32e1d9b1019d02eb8ce101d7507352e8d0bdb3674e7a961f61a39c6e0181",
+    "prototype-sources.zip": "79f050b9cc932a95d1bbbaab9a2cd920faa1daa6abe6ae3284f9969d6b507a8a"
+  },
+  "image_check_scope": "Export captures: native and forced-pulled paths; full RGB pixels, no resampling.",
+  "analysis_unit_tests": 3
+}

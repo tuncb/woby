@@ -44,9 +44,9 @@ def main():
                 with Image.open(path) as image:
                     return image.convert("RGB")
 
-            def add_sheet(name):
+            def add_sheet(name, edges=False):
                 identity = ctl("model", "add", root / (name + ".obj"))["addedIds"][0]
-                ctl("render", "set", identity, "--solid", "true", "--triangles", "false", "--vertices", "false")
+                ctl("render", "set", identity, "--solid", "true", "--triangles", str(edges).lower(), "--vertices", "false")
                 ctl("color", "set", identity, "--rgb", *((1, 0, 0) if name == "red" else (0, 0, 1)))
                 ctl("opacity", "set", identity, "--value", .4 if name == "red" else .55)
                 return identity
@@ -67,6 +67,17 @@ def main():
             right = original.getpixel((int(original.width*.6), original.height//2))
             assert left[0]*right[2] > right[0]*left[2]*1.1, (left, right)
 
+            for identity in files:
+                ctl("render", "set", identity, "--triangles", "true")
+            edged = capture("combined-blue-red")
+            assert max(high for _, high in ImageChops.difference(swapped, edged).getextrema()) > 10
+            for identity in files:
+                ctl("model", "remove", identity)
+            files = [add_sheet(name, edges=True) for name in ("red", "blue")]
+            ctl("camera", "look-at", "--eye", 0, 0, 4, "--target", 0, 0, 0)
+            difference = ImageChops.difference(edged, capture("combined-red-blue"))
+            assert max(high for _, high in difference.getextrema()) <= 1, difference.getextrema()
+
             point = ctl("model", "add", root / "point.obj")["addedIds"][0]
             ctl("color", "set", point, "--rgb", 0, 1, 0)
             ctl("render", "set", point, "--vertices", "true")
@@ -84,7 +95,7 @@ def main():
                 ctl("opacity", "set", identity, "--value", 1)
             opaque = capture("opaque-occlusion")
             assert all(opaque.getpixel(pixel) != (0, 255, 0) for pixel in green)
-        print("PNG exports preserve surface ordering, prominent opaque points, and opaque occlusion")
+        print("PNG exports preserve combined surface/edge ordering, prominent opaque points, and opaque occlusion")
 
 
 if __name__ == "__main__":
