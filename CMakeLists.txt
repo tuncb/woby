@@ -8,7 +8,7 @@ endif()
 if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "Minimum macOS version (Metal 4)")
 endif()
-project(woby_obj_viewer VERSION 0.27.0 LANGUAGES CXX)
+project(woby_obj_viewer VERSION 0.28.0 LANGUAGES CXX)
 
 if(APPLE)
     # Enable Objective-C++ in the common scope of the backend and Metal tests.
