@@ -1,0 +1,140 @@
+{
+  "date": "2026-10-07",
+  "application": "woby",
+  "version": "0.27.0",
+  "commit": "33ddf9fe8022782d4d64eaa25a817e2a13f8b0e1",
+  "buildConfiguration": "Release",
+  "preset": "vs2026-vcpkg",
+  "screenshot": "beartrap-fps.png",
+  "screenshotFps": 54.2,
+  "screenshotWidth": 3840,
+  "screenshotHeight": 2100,
+  "model": "20190810_BearTrap_Ground_Model.obj",
+  "modelBytes": 7108991827,
+  "triangleCount": 75771986,
+  "vertexCount": 38414391,
+  "gpu": "NVIDIA GeForce RTX 3070 Laptop GPU",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+  "renderer": "NoGraphicsAPI Vulkan",
+  "drawable": {
+    "height": 2071,
+    "width": 3840
+  },
+  "viewport": {
+    "height": 2038,
+    "width": 3365,
+    "x": 475,
+    "y": 33
+  },
+  "msaaSamples": 4,
+  "presentationPolicy": "mailbox",
+  "renderModes": {
+    "solid": {
+      "enabled": 1,
+      "state": "on",
+      "total": 1
+    },
+    "triangles": {
+      "enabled": 0,
+      "state": "off",
+      "total": 1
+    },
+    "vertices": {
+      "enabled": 0,
+      "state": "off",
+      "total": 1
+    }
+  },
+  "showGrid": false,
+  "showOrigin": false,
+  "camera": {
+    "automaticNearPlane": true,
+    "distance": 8.780763626098633,
+    "effectiveNearPlane": 0.08780763298273087,
+    "eye": [
+      5.335851669311523,
+      -4.086986541748047,
+      0.4205183982849121
+    ],
+    "farPlane": 33.79718017578125,
+    "nearPlane": 0.10000000149011612,
+    "pitchDegrees": 35.26438903808594,
+    "rollDegrees": 0,
+    "target": [
+      0.26627519726753235,
+      0.982589840888977,
+      -4.649057865142822
+    ],
+    "up": [
+      -0.40824827551841736,
+      0.40824827551841736,
+      0.8164965510368347
+    ],
+    "upAxis": "z",
+    "verticalFovDegrees": 60,
+    "yawDegrees": -45
+  },
+  "samples": [
+    {
+      "capturedAtUtc": "2026-10-07T19:46:07.1211821Z",
+      "fps": 54.10450744628906,
+      "frameMilliseconds": 18.5564,
+      "gpuFrameMilliseconds": 17.8944
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:08.2615521Z",
+      "fps": 54.15877151489258,
+      "frameMilliseconds": 18.2243,
+      "gpuFrameMilliseconds": 17.814528
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:09.3862223Z",
+      "fps": 54.291996002197266,
+      "frameMilliseconds": 18.4022,
+      "gpuFrameMilliseconds": 17.883136
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:10.4938934Z",
+      "fps": 54.114261627197266,
+      "frameMilliseconds": 18.6306,
+      "gpuFrameMilliseconds": 17.871872
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:11.619022Z",
+      "fps": 54.16864776611328,
+      "frameMilliseconds": 18.49,
+      "gpuFrameMilliseconds": 17.845248
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:12.7088237Z",
+      "fps": 54.19337463378906,
+      "frameMilliseconds": 18.6631,
+      "gpuFrameMilliseconds": 17.83936
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:13.8165181Z",
+      "fps": 54.18595886230469,
+      "frameMilliseconds": 18.5152,
+      "gpuFrameMilliseconds": 17.87392
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:14.923684Z",
+      "fps": 54.189186096191406,
+      "frameMilliseconds": 18.4735,
+      "gpuFrameMilliseconds": 17.896448
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:16.0327694Z",
+      "fps": 54.12277603149414,
+      "frameMilliseconds": 18.8436,
+      "gpuFrameMilliseconds": 18.0224
+    },
+    {
+      "capturedAtUtc": "2026-10-07T19:46:17.1781112Z",
+      "fps": 54.07881164550781,
+      "frameMilliseconds": 18.3772,
+      "gpuFrameMilliseconds": 17.696768
+    }
+  ],
+  "notes": "Native Windows window capture saved as a lossless PNG without resizing. The image includes the title bar; drawable dimensions describe the application render resolution. Live FPS samples were taken from the stationary desktop view. Frame rate depends on the hardware, view, and render settings."
+}

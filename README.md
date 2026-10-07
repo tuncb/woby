@@ -33,3 +33,41 @@ The Mac hardware minimum is Apple M1 or newer.
 | AMD on Linux with RADV | RDNA 2 | The AMD GPU in the Steam Deck. Radeon RX 6400 and RX 6600 are desktop candidates from this generation. |
 
 ## Screenshots
+
+**Large models**
+
+The Bear Trap ground model contains **75,771,986 triangles** and **38,414,391 vertices** in a 7.11 GB OBJ file. The lower-left status area shows the geometry counts and live FPS.
+
+This capture shows **54.2 FPS** with solid rendering at **3840 × 2071** and 4× MSAA. It uses woby 0.27.0, a Release build, on Windows with an NVIDIA GeForce RTX 3070 Laptop GPU and an AMD Ryzen 7 5800H.
+
+[![Bear Trap ground model with geometry counts and live FPS](doc/screenshots/beartrap-fps.png)](doc/screenshots/beartrap-fps.png)
+
+**Surface comparison**
+
+Compare an original surface with a repaired surface. The distance heatmap shows the changed areas. The Properties pane shows the tolerance, color range, and distance statistics.
+
+[![Surface comparison with a distance heatmap and statistics](doc/screenshots/surface-comparison.png)](doc/screenshots/surface-comparison.png)
+
+**Mesh diagnostics**
+
+Find topology errors and select a finding to highlight the affected geometry. This sample shows a selected non-manifold edge, detector counts, and controls to move between findings.
+
+[![Mesh diagnostics with a highlighted finding and detector counts](doc/screenshots/mesh-diagnostics.png)](doc/screenshots/mesh-diagnostics.png)
+
+**Surface mesh quality**
+
+Compare gradual and abrupt changes in triangle size. The selected result shows local size-jump statistics and a distribution histogram. Each result uses its own color range.
+
+[![Mesh quality analysis with local size-jump colors, statistics, and a histogram](doc/screenshots/mesh-quality.png)](doc/screenshots/mesh-quality.png)
+
+**Freeform geometry and UV inspection**
+
+Inspect a trimmed Bézier surface with a circular hole beside its 2D UV layout. Cyan lines show constant U values; orange lines show constant V values.
+
+[![Trimmed freeform surface and UV layout with U and V grid lines](doc/screenshots/uv-inspection.png)](doc/screenshots/uv-inspection.png)
+
+**Surface annotations and saved views**
+
+Add lines, review areas, and comments to a surface. Select an annotation to edit its shape and appearance. Save a named view to return to the same scene settings and camera position.
+
+[![Surface annotations with edit handles, a comment, and a saved view](doc/screenshots/surface-annotations.png)](doc/screenshots/surface-annotations.png)
