@@ -50,3 +50,7 @@ Keep expensive CPU work that can run asynchronously off the render/UI thread. Us
 - Use eye icon for showing visibility state.
 - Use settings icon for showing settings for detectors
 - If a button opens a dialog box the dialog box should be opened near the button.
+
+# Writing Style
+
+Use the ASD-STE100 standard.
