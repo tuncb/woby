@@ -54,6 +54,11 @@ set(stage_refresh_timestamps ${refresh_timestamps})
         COMMENT "Staging runtime assets"
         VERBATIM)
     add_custom_target(${target}_assets DEPENDS "${stamp}")
+    if(TARGET ${target}_native_shaders)
+        # MSBuild can execute shared output rules in independent projects.
+        # Finish shader generation before the asset project checks those files.
+        add_dependencies(${target}_assets ${target}_native_shaders)
+    endif()
     add_dependencies(${target} ${target}_assets)
 endfunction()
 
