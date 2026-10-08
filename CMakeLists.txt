@@ -51,6 +51,16 @@ if(NOT WIN32)
     find_package(OpenSSL REQUIRED)
 endif()
 
+add_library(woby_recent_files STATIC src/recent_files.cpp src/recent_files_storage.cpp src/recent_files_runtime.cpp)
+target_include_directories(woby_recent_files PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(woby_recent_files PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
+if(WIN32)
+    target_link_libraries(woby_recent_files PRIVATE shell32 ole32)
+elseif(APPLE)
+    target_link_libraries(woby_recent_files PRIVATE SDL3::SDL3)
+endif()
+woby_enable_project_warnings(woby_recent_files)
+
 add_library(woby_update_core STATIC src/update_core.cpp src/update_platform.cpp src/update.h)
 target_include_directories(woby_update_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(woby_update_core PUBLIC nlohmann_json::nlohmann_json)
@@ -233,6 +243,7 @@ target_include_directories(woby SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thir
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}" WOBY_BUILD_CONFIG="$<CONFIG>")
 
 target_link_libraries(woby PRIVATE
+    woby_recent_files
     CDT::CDT
     Boost::multiprecision
     Boost::unordered
@@ -586,6 +597,7 @@ if(BUILD_TESTING)
         src/ui_layout.h
         tests/scene_history_tests.cpp
         tests/scene_lifecycle_tests.cpp
+        tests/recent_files_tests.cpp
         tests/analysis_results_tests.cpp
         tests/control_tests.cpp
         tests/importer_tests.cpp
@@ -681,6 +693,7 @@ if(BUILD_TESTING)
         add_dependencies(woby_tests woby_native_metal_allocation_tests)
     endif()
     target_link_libraries(woby_tests PRIVATE
+        woby_recent_files
         CDT::CDT
         Boost::multiprecision
         Boost::unordered

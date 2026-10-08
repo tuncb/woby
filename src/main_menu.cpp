@@ -2,12 +2,13 @@
 
 #include "annotation_ui.h"
 #include "ui_operations.h"
+#include "utf8_path.h"
 
 #include <utility>
 
 namespace woby {
 MainMenuResult drawMainMenu(UiState& state, AnnotationInteraction& annotation,
-    const MainMenuAvailability& availability)
+    const MainMenuAvailability& availability, const RecentFiles& recentFiles)
 {
     MainMenuResult result;
     const bool ready = !availability.fileActionsDisabled;
@@ -18,16 +19,43 @@ MainMenuResult drawMainMenu(UiState& state, AnnotationInteraction& annotation,
             result.popupPosition = ImVec2(ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y);
         }
     };
+    const auto recentMenu = [&](const char* label, RecentFileKind kind) {
+        if (!ImGui::BeginMenu(label, ready && recentFileCount(recentFiles, kind) > 0)) { return; }
+        for (const auto& entry : recentFiles.entries) {
+            if (entry.kind != kind) { continue; }
+            const auto path = pathToUtf8(entry.path);
+            const auto name = pathToUtf8(entry.path.filename());
+            const auto folder = pathToUtf8(entry.path.parent_path());
+            ImGui::PushID(path.c_str());
+            if (ImGui::MenuItem(name.c_str(), folder.c_str())) {
+                result.command = kind == RecentFileKind::scene ? MainMenuCommand::openRecentScene : MainMenuCommand::addRecentModel;
+                result.recentPath = entry.path;
+            }
+            if (ImGui::IsItemHovered()) { ImGui::SetTooltip("%s\nRight-click to remove this entry.", path.c_str()); }
+            if (ImGui::BeginPopupContextItem("recent-file-options")) {
+                if (ImGui::MenuItem("Remove from history")) {
+                    result.command = kind == RecentFileKind::scene ? MainMenuCommand::removeRecentScene : MainMenuCommand::removeRecentModel;
+                    result.recentPath = entry.path;
+                }
+                ImGui::EndPopup();
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndMenu();
+    };
     if (!ImGui::BeginMainMenuBar()) { return result; }
     if (ImGui::BeginMenu("File")) {
         command("New scene", nullptr, MainMenuCommand::newScene, captureReady);
         command("Open scene...", "Ctrl+O", MainMenuCommand::openScene, ready);
+        recentMenu("Recent scenes", RecentFileKind::scene);
         ImGui::Separator();
         command("Save", "Ctrl+S", MainMenuCommand::saveScene, ready);
         command("Save as...", "Ctrl+Shift+S", MainMenuCommand::saveSceneAs, ready);
         ImGui::Separator();
         command("Add models...", nullptr, MainMenuCommand::addModels, ready);
         command("Add model folder...", nullptr, MainMenuCommand::addModelFolder, ready);
+        recentMenu("Recent models", RecentFileKind::model);
+        command("Clear recent history", nullptr, MainMenuCommand::clearRecentFiles, ready && !recentFiles.entries.empty());
         ImGui::Separator();
         command("Export PNG...", nullptr, MainMenuCommand::exportPng, captureReady);
         ImGui::Separator();

@@ -37,6 +37,7 @@
 #include "ui_popup_controls.h"
 #include "settings_dialog.h"
 #include "main_menu.h"
+#include "recent_files_runtime.h"
 #include "utf8_path.h"
 #include "automation.h"
 #include "control_scene.h"
@@ -1261,6 +1262,15 @@ std::vector<LoadedModelFile> loadModelFiles(
     return files;
 }
 
+void rememberAddedModels(woby::RecentFilesRuntime& recentFiles, const woby::UiState& state, size_t firstFileIndex)
+{
+    const size_t retainedStart = state.files.size() > woby::recentFileLimit
+        ? state.files.size() - woby::recentFileLimit : 0;
+    for (size_t i = std::max(firstFileIndex, retainedStart); i < state.files.size(); ++i) {
+        woby::rememberRecentFile(recentFiles, woby::RecentFileKind::model, state.files[i].path);
+    }
+}
+
 void appendInitialModelFiles(
     const ResolvedModelInputs& modelInputs,
     const woby::graphics::VertexLayout& meshLayout,
@@ -2379,6 +2389,8 @@ int main(int argc, char** argv)
         const auto layout = meshVertexLayout();
         const auto helperLayout = helperLineVertexLayout();
         woby::UiState ui;
+        woby::RecentFilesRuntime recentFiles;
+        if (!headless) { woby::startRecentFiles(recentFiles); }
         // Destroyed before ui on every exit, including exception unwinding.
         woby::AnnotationPreparationRuntime annotationPreparation;
         woby::ComparisonRuntimes comparison;
@@ -2391,6 +2403,7 @@ int main(int argc, char** argv)
         woby::SceneDocument cleanSceneDocument = woby::createSceneDocument(ui);
 
         const auto initialLoadStart = woby::PerformanceClock::now();
+        size_t firstInitialModel = 0;
         if (commandLine.scenePath.has_value()) {
             loadSceneFromPath(
                 commandLine.scenePath.value(),
@@ -2399,6 +2412,7 @@ int main(int argc, char** argv)
                 runtimes,
                 currentScenePath,
                 cleanSceneDocument);
+            firstInitialModel = ui.files.size();
             appendInitialModelFiles(modelInputs, layout, ui, runtimes);
         } else {
             ui.files = loadModelFiles(modelInputs.paths, layout, runtimes);
@@ -2407,6 +2421,8 @@ int main(int argc, char** argv)
             woby::frameCameraToScene(ui);
             woby::updateSceneDirty(ui, cleanSceneDocument);
         }
+        if (currentScenePath) { woby::rememberRecentFile(recentFiles, woby::RecentFileKind::scene, *currentScenePath); }
+        rememberAddedModels(recentFiles, ui, firstInitialModel);
         woby::logDuration("startup_initial_scene", elapsedMilliseconds(initialLoadStart));
         woby::SceneHistory sceneHistory;
         woby::resetSceneHistory(sceneHistory, ui);
@@ -2808,6 +2824,8 @@ int main(int argc, char** argv)
             }
 
             const bool finalizeCanceled = gpuFinalize.active && gpuFinalize.cancelRequested;
+            const auto finalizingKind = gpuFinalize.kind;
+            const size_t firstAddedFile = ui.files.size();
             if (finalizeCanceled && automationAppend) { automationAppend->canceled = true; }
             const auto previousGpuFailures = gpuFinalize.gpuFailures.size();
             if (gpuFinalize.active && gpuFinalize.kind == AsyncLoadKind::openScene) {
@@ -2824,6 +2842,13 @@ int main(int argc, char** argv)
             if (finalized) {
                 woby::finishSceneHistoryInteraction(sceneHistory);
                 woby::recordSceneHistory(sceneHistory, ui);
+                if (finalized->empty()) {
+                    if (finalizingKind == AsyncLoadKind::openScene && currentScenePath) {
+                        woby::rememberRecentFile(recentFiles, woby::RecentFileKind::scene, *currentScenePath);
+                    } else if (isAppendModelLoadKind(finalizingKind)) {
+                        rememberAddedModels(recentFiles, ui, firstAddedFile);
+                    }
+                }
             }
             if (automationAppend) {
                 for (size_t i = previousGpuFailures; i < gpuFinalize.gpuFailures.size(); ++i) {
@@ -2855,11 +2880,16 @@ int main(int argc, char** argv)
                 woby::finishSceneHistoryInteraction(sceneHistory);
                 try {
                     const auto savedPath = saveSceneToPath(path, ui, currentScenePath, cleanSceneDocument);
+                    woby::rememberRecentFile(recentFiles, woby::RecentFileKind::scene, savedPath);
                     setToastMessage(toast, "Saved scene " + fileDisplayName(savedPath));
                 } catch (const std::exception& exception) {
                     setToastMessage(toast, std::string("Save scene failed: ") + exception.what());
                 }
             };
+            if (const auto warning = woby::pollRecentFiles(recentFiles); !warning.empty()) {
+                spdlog::warn("{}", warning);
+                setToastMessage(toast, warning);
+            }
             if (!headless) {
                 const bool processingFiles = backgroundLoad.active || gpuFinalize.active;
                 const auto pendingModelPaths = takePendingModelPaths(modelFileDialogState);
@@ -3115,7 +3145,7 @@ int main(int argc, char** argv)
                 }
                 const auto menu = woby::drawMainMenu(ui, annotationInteraction,
                     {fileActionsDisabled(), sceneScreenshot.captureRequested || sceneScreenshot.readbackPending,
-                        woby::canUndoScene(sceneHistory), woby::canRedoScene(sceneHistory), woby::updateBusy(updateRuntime.state)});
+                        woby::canUndoScene(sceneHistory), woby::canRedoScene(sceneHistory), woby::updateBusy(updateRuntime.state)}, recentFiles.files);
                 switch (menu.command) {
                 case woby::MainMenuCommand::newScene:
                     woby::updateSceneDirty(ui, cleanSceneDocument);
@@ -3127,6 +3157,27 @@ int main(int argc, char** argv)
                 case woby::MainMenuCommand::saveSceneAs: documentCommand(woby::SceneAction::saveAs); break;
                 case woby::MainMenuCommand::addModels: showModelFileDialog(window.get(), modelFileDialogState); break;
                 case woby::MainMenuCommand::addModelFolder: showModelFolderTreeDialog(window.get(), modelFileDialogState); break;
+                case woby::MainMenuCommand::openRecentScene:
+                    woby::cancelAnnotationPointer(annotationInteraction);
+                    if (annotationCommand) { woby::cancelAnnotationWork(annotationCommand->work); }
+                    woby::updateSceneDirty(ui, cleanSceneDocument);
+                    openSceneOrRequestDirtyWarning(menu.recentPath, ui, backgroundLoad, gpuFinalize,
+                        sceneFileDialogState, toast, pendingDirtyOpenScenePath, requestDirtyOpenWarning);
+                    modalDialogOpen = modalDialogOpen || requestDirtyOpenWarning;
+                    break;
+                case woby::MainMenuCommand::addRecentModel:
+                    if (!startAppendModelBackgroundLoad(backgroundLoad, {menu.recentPath}, woby::totalGroupCount(ui))) {
+                        setToastMessage(toast, "Already processing files");
+                    }
+                    break;
+                case woby::MainMenuCommand::removeRecentScene:
+                case woby::MainMenuCommand::removeRecentModel:
+                    woby::removeRecentFile(recentFiles, menu.command == woby::MainMenuCommand::removeRecentScene
+                        ? woby::RecentFileKind::scene : woby::RecentFileKind::model, menu.recentPath);
+                    break;
+                case woby::MainMenuCommand::clearRecentFiles:
+                    woby::clearRecentFiles(recentFiles);
+                    break;
                 case woby::MainMenuCommand::exportPng:
                     ImGui::OpenPopup("Export PNG");
                     ImGui::SetNextWindowPos(menu.popupPosition, ImGuiCond_Appearing);
@@ -3750,9 +3801,15 @@ int main(int argc, char** argv)
                             // Lifecycle operations use the last committed scene and cancel pending geometry.
                             woby::cancelAnnotationPointer(annotationInteraction);
                             if (annotationCommand) { woby::cancelAnnotationWork(annotationCommand->work); }
+                            woby::updateSceneDirty(ui, cleanSceneDocument);
+                            const bool savesScene = payload.action == woby::SceneAction::save || payload.action == woby::SceneAction::saveAs
+                                || (ui.isDirty && payload.onDirty == woby::DirtyPolicy::save);
                             if (const auto error = woby::beginSceneLifecycle(payload, ui, currentScenePath, cleanSceneDocument, busy)) {
                                 completeLifecycleError(command->id, *error);
                                 return;
+                            }
+                            if (savesScene && currentScenePath) {
+                                woby::rememberRecentFile(recentFiles, woby::RecentFileKind::scene, *currentScenePath);
                             }
                             if (payload.action == woby::SceneAction::open) {
                                 if (!startOpenSceneBackgroundLoad(backgroundLoad, payload.path)) {
@@ -4137,6 +4194,8 @@ int main(int argc, char** argv)
         }
 
         updateRuntime.worker.request_stop();
+        woby::finishRecentFiles(recentFiles);
+        if (const auto warning = woby::pollRecentFiles(recentFiles); !warning.empty()) { spdlog::warn("{}", warning); }
         if (updateRuntime.worker.joinable()) { updateRuntime.worker.join(); }
         automation.reset();
         automationComparison.reset();

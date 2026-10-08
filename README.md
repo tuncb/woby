@@ -13,7 +13,10 @@ woby is a desktop application for viewing and analyzing 3D geometry.
 - **UV inspection:** Examine an existing 2D UV layout or a 3D surface grid. Measure distortion, stretch, orientation, and overlaps. Select linked points in the source and analysis. Woby does not create UV coordinates.
 - **Surface annotations:** Draw lines and rectangles on surfaces. Change their shape or add comments. Save annotations with the scene.
 - **Saved states:** Save named Views and `.woby` scenes. Use Undo/Redo for scene changes, object additions and removals, and analysis settings.
+- **Recent files:** Use File > Recent scenes or File > Recent models to open a file again. Each list keeps up to 20 files. Right-click an entry to remove it, or use File > Clear recent history to clear both lists.
 - **Export and automation:** Export PNG images at a specified resolution. Include analysis legends and labels if necessary. Export diagnostic results as JSON. Use the [CLI and local API](doc/ctl-commands.md) to control an active viewer.
+
+Recent file history is saved for each user. On Windows, the file is `%LOCALAPPDATA%\woby\recents.json`. On macOS, it is `~/Library/Application Support/woby/woby/recents.json`. On Linux, it is `$XDG_STATE_HOME/woby/recents.json`, with `~/.local/state/woby/recents.json` as the default. History is separate from saved scenes and Undo/Redo. Headless sessions do not update it.
 
 ## Requirements
 
