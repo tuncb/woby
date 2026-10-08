@@ -6,10 +6,10 @@
 
 An optional second argument writes a persistent curved-patch demo and screenshots.
 """
+import argparse
 import math
 import os
 from pathlib import Path
-import sys
 import tempfile
 
 from PIL import ImageChops
@@ -128,7 +128,7 @@ def analysis_demo(executable, output, env):
         assert viewer.wait(timeout=15) == 0
 
 
-def layout_orientation(executable, root, env):
+def layout_orientation(executable, root, env, kinds=("uv", "uv_quality")):
     # Five patches exercise both rows and columns in the separated layout.
     # The source lies in XZ with a matching UV mapping, so its rendered surface
     # is an independent reference for the layout's orientation in each camera.
@@ -148,6 +148,8 @@ def layout_orientation(executable, root, env):
             ctl("visibility", "set", group, "--visible", "false")
         for kind, option, modes in (("uv", "--uv-color", ("grid", "u", "v")),
                                     ("uv_quality", "--uv-metric", ("angle", "area", "orientation"))):
+            if kind not in kinds:
+                continue
             analysis = ctl("analysis", "create", "--type", kind, "--a", file_id)["target"]
             ctl("analysis", "set", analysis, "--uv-view", "layout", "--show-edges", "false")
             for separated in ("false", "true"):
@@ -197,7 +199,7 @@ def layout_orientation(executable, root, env):
                         if mode == "grid":
                             assert all(count > 1000 for count in grid_pixels(image)), (label, grid_pixels(image))
             # Keep only the current analysis visible during each comparison.
-            if kind == "uv":
+            if kind == "uv" and "uv_quality" in kinds:
                 ctl("visibility", "set", analysis, "--visible", "false")
         ctl("scene", "save-as", saved)
         ctl("quit")
@@ -297,13 +299,9 @@ def inspection_demo(executable, output, env):
         assert viewer.wait(timeout=15) == 0
 
 
-def main():
-    executable = Path(sys.argv[1]).resolve()
-    env = dict(os.environ, SDL_VIDEO_DRIVER="woby-test-no-video-driver")
-    with tempfile.TemporaryDirectory(prefix="woby uv grid ") as directory:
-        root = Path(directory).resolve()
-        model = root / "parts.obj"
-        model.write_text("""v -2 -1 0
+def grid_render(executable, root, env):
+    model = root / "parts.obj"
+    model.write_text("""v -2 -1 0
 v -.2 -1 0
 v -.2 1 0
 v -2 1 0
@@ -322,51 +320,78 @@ g missing
 f 5 6 7
 f 5 7 8
 """, encoding="utf-8")
-        saved = root / "saved.woby"
-        with session(executable, root, env) as (ctl, viewer):
-            groups = prepare(ctl, model)
-            ctl("up-axis", "set", "y")
-            ctl("camera", "look-at", "--eye", 0, 0, 7, "--target", 0, 0, 0)
-            baseline = capture(ctl, root / "solid.png")
-            ctl("render", "set", "scene", "--uv-grid", "true", "--uv-density-u", 4, "--uv-density-v", 4)
-            grid = capture(ctl, root / "grid.png")
-            assert all(count > 1000 for count in grid_pixels(grid)), grid_pixels(grid)
-            no_uv = (0, 0, grid.width // 2, grid.height)
-            assert ImageChops.difference(grid.crop(no_uv), baseline.crop(no_uv)).getbbox() is None
-            ctl("render", "set", groups[1], "--uv-grid", "true", code=-32602)
-            ctl("render","set",groups[0],"--uv-color","u","--uv-minimum",-.25,"--uv-maximum",1.75)
-            u_color = capture(ctl,root / "source-u.png")
-            ctl("render","set",groups[0],"--uv-color","v")
-            v_color = capture(ctl,root / "source-v.png")
-            assert ImageChops.difference(u_color,v_color).getbbox()
-            assert ImageChops.difference(u_color.crop(no_uv),baseline.crop(no_uv)).getbbox() is None
-            ctl("render","set",groups[0],"--uv-color","grid")
-            ctl("render", "set", groups[0], "--uv-density-u", 8)
-            dense = capture(ctl, root / "dense.png")
-            assert grid_pixels(dense)[0] > grid_pixels(grid)[0] * 1.4
-            ctl("scene", "undo")
-            assert ImageChops.difference(grid, capture(ctl, root / "undo.png")).getbbox() is None
-            ctl("scene", "redo")
-            assert ImageChops.difference(dense, capture(ctl, root / "redo.png")).getbbox() is None
-            ctl("render", "set", "scene", "--uv-grid", "false")
-            assert ImageChops.difference(baseline, capture(ctl, root / "off.png")).getbbox() is None
-            ctl("render", "set", "scene", "--uv-grid", "true")
-            ctl("scene", "save-as", saved)
-            ctl("quit")
-            assert viewer.wait(timeout=15) == 0
-        with session(executable, root, env, "--scene", saved) as (ctl, viewer):
-            assert ImageChops.difference(dense, capture(ctl, root / "restored.png")).getbbox() is None
-            ctl("quit")
-            assert viewer.wait(timeout=15) == 0
-        analysis_demo(executable, root / "analysis", env)
-        inspection_demo(executable, root / "inspection", env)
-        layout_orientation(executable, root, env)
-    print("UV grid render passed: U/V lines, density, up-axis changes, missing UV fallback, disable, undo/redo, and reload.")
-    if len(sys.argv) > 2:
-        inspection_demo(executable, Path(sys.argv[2]).resolve() / "inspection", env)
-        demo(executable, Path(sys.argv[2]).resolve(), env)
-        analysis_demo(executable, Path(sys.argv[2]).resolve(), env)
-        print("Demo screenshots and scene:", Path(sys.argv[2]).resolve())
+    saved = root / "saved.woby"
+    with session(executable, root, env) as (ctl, viewer):
+        groups = prepare(ctl, model)
+        ctl("up-axis", "set", "y")
+        ctl("camera", "look-at", "--eye", 0, 0, 7, "--target", 0, 0, 0)
+        baseline = capture(ctl, root / "solid.png")
+        ctl("render", "set", "scene", "--uv-grid", "true", "--uv-density-u", 4, "--uv-density-v", 4)
+        grid = capture(ctl, root / "grid.png")
+        assert all(count > 1000 for count in grid_pixels(grid)), grid_pixels(grid)
+        no_uv = (0, 0, grid.width // 2, grid.height)
+        assert ImageChops.difference(grid.crop(no_uv), baseline.crop(no_uv)).getbbox() is None
+        ctl("render", "set", groups[1], "--uv-grid", "true", code=-32602)
+        ctl("render","set",groups[0],"--uv-color","u","--uv-minimum",-.25,"--uv-maximum",1.75)
+        u_color = capture(ctl,root / "source-u.png")
+        ctl("render","set",groups[0],"--uv-color","v")
+        v_color = capture(ctl,root / "source-v.png")
+        assert ImageChops.difference(u_color,v_color).getbbox()
+        assert ImageChops.difference(u_color.crop(no_uv),baseline.crop(no_uv)).getbbox() is None
+        ctl("render","set",groups[0],"--uv-color","grid")
+        ctl("render", "set", groups[0], "--uv-density-u", 8)
+        dense = capture(ctl, root / "dense.png")
+        assert grid_pixels(dense)[0] > grid_pixels(grid)[0] * 1.4
+        ctl("scene", "undo")
+        assert ImageChops.difference(grid, capture(ctl, root / "undo.png")).getbbox() is None
+        ctl("scene", "redo")
+        assert ImageChops.difference(dense, capture(ctl, root / "redo.png")).getbbox() is None
+        ctl("render", "set", "scene", "--uv-grid", "false")
+        assert ImageChops.difference(baseline, capture(ctl, root / "off.png")).getbbox() is None
+        ctl("render", "set", "scene", "--uv-grid", "true")
+        ctl("scene", "save-as", saved)
+        ctl("quit")
+        assert viewer.wait(timeout=15) == 0
+    with session(executable, root, env, "--scene", saved) as (ctl, viewer):
+        assert ImageChops.difference(dense, capture(ctl, root / "restored.png")).getbbox() is None
+        ctl("quit")
+        assert viewer.wait(timeout=15) == 0
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("executable", type=Path)
+    parser.add_argument("output", type=Path, nargs="?")
+    parser.add_argument("--case", choices=("all", "grid", "analysis", "inspection", "layout_uv", "layout_quality"),
+                        default="all", help="Run one independent rendering scenario")
+    args = parser.parse_args(argv)
+    executable = args.executable.resolve()
+    env = dict(os.environ, SDL_VIDEO_DRIVER="woby-test-no-video-driver")
+    with tempfile.TemporaryDirectory(prefix="woby uv grid ") as directory:
+        root = Path(directory).resolve()
+        if args.case in ("all", "grid"):
+            print("UV grid: source rendering and persistence", flush=True)
+            grid_render(executable, root, env)
+        if args.case in ("all", "analysis"):
+            print("UV grid: analysis rendering and persistence", flush=True)
+            analysis_demo(executable, root / "analysis", env)
+        if args.case in ("all", "inspection"):
+            print("UV grid: inspection rendering and persistence", flush=True)
+            inspection_demo(executable, root / "inspection", env)
+        if args.case == "all":
+            print("UV grid: layout orientation", flush=True)
+            layout_orientation(executable, root, env)
+        elif args.case in ("layout_uv", "layout_quality"):
+            kind = "uv" if args.case == "layout_uv" else "uv_quality"
+            print(f"UV grid: {kind} layout orientation", flush=True)
+            layout_orientation(executable, root, env, kinds=(kind,))
+    print(f"UV grid render passed: {args.case}.")
+    if args.output:
+        output = args.output.resolve()
+        inspection_demo(executable, output / "inspection", env)
+        demo(executable, output, env)
+        analysis_demo(executable, output, env)
+        print("Demo screenshots and scene:", output)
 
 
 if __name__ == "__main__":

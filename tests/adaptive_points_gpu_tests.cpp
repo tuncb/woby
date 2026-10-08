@@ -5,6 +5,7 @@
 #include <bit>
 #include <cmath>
 #include <cstring>
+#include <future>
 
 namespace {
 namespace g=woby::graphics;
@@ -187,6 +188,55 @@ TEST_CASE("Integrated reduced point GPU picking queries all original circle foot
     for (uint32_t y=5;y<23;++y) for (uint32_t x=11;x<27;++x) for (uint32_t sample=0;sample<4;++sample) {
         const auto i=(size_t(y)*f.view.width+x)*4+sample; CHECK(uint32_t(actual[i])==expected[i]);
     }
+    }
+}
+TEST_CASE("Adaptive point cuts only add work while navigation is active") {
+    enum class Completion { navigation, stationary, refined };
+    for (const auto backend:{g::PointBackend::atomic32,g::PointBackend::atomic64,g::PointBackend::quads})
+        for (const auto completion:{Completion::navigation,Completion::stationary,Completion::refined}) {
+        INFO("backend=" << int(backend) << ", completion=" << int(completion));
+        const bool quads=backend==g::PointBackend::quads;
+        PointGpuFixture f; if (!initialize(f,1,!quads,backend)) continue;
+        f.runtime.budget=64;
+        draw(f,1,true); g::frame();
+        // Replace the real worker with a controlled completion. No sleeps or
+        // assumptions about CPU/GPU speed are needed to reproduce a late cut.
+        REQUIRE(f.runtime.pending.valid());
+        (void)f.runtime.pending.get();
+        std::promise<woby::AdaptivePointCut> worker;
+        f.runtime.pending=worker.get_future();
+        woby::AdaptivePointCut cut{f.runtime.epoch,f.runtime.full};
+        const auto total=f.runtime.total;
+        const auto epoch=f.runtime.epoch;
+        REQUIRE(total==257);
+        uint64_t navigationPoints=0;
+        for (const auto& selection:f.runtime.navigation) navigationPoints+=selection.points;
+        if (completion==Completion::refined) {
+            f.runtime.budget=1000;
+            f.runtime.lastTiming=g::getStats()->pointRasterFrame;
+            draw(f,2,true); g::frame();
+            REQUIRE(f.runtime.refined==total);
+        }
+        worker.set_value(std::move(cut));
+        f.runtime.budget=1000;
+        f.runtime.lastTiming=g::getStats()->pointRasterFrame;
+        if (completion==Completion::navigation) {
+            // Keep the original navigation budget so this frame does not
+            // create an additional cut for a budget change.
+            f.runtime.budget=64;
+            draw(f,1.01,true);
+            CHECK(f.runtime.submitted==total+(quads?navigationPoints:0));
+            CHECK(f.runtime.refined==0);
+        } else {
+            draw(f,completion==Completion::stationary?2:3,true);
+            const auto expected=(completion==Completion::stationary || quads)?total:0;
+            CHECK(f.runtime.submitted==expected);
+            CHECK(f.runtime.refined==total);
+            if (!quads) checkIds(winners(f),reference(f));
+        }
+        CHECK(f.runtime.epoch==epoch);
+        CHECK_FALSE(f.runtime.pending.valid());
+        g::frame();
     }
 }
 TEST_CASE("Transparent surfaces retain adaptive point rendering cached visibility and picking") {

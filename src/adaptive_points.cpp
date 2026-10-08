@@ -138,10 +138,13 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         runtime.previousAdaptive=runtime.adaptive;
         runtime.previousBackend=runtime.backend;
     }
+    const bool navigating=runtime.adaptive && runtime.now-runtime.lastChange<.15;
     std::vector<graphics::OpaquePointTask> tasks;
     if (runtime.pending.valid() && runtime.pending.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
         auto result=runtime.pending.get();
-        if (result.epoch==runtime.epoch) {
+        // Navigation cuts supplement the coarse preview. Once full-source
+        // refinement starts, a late cut would only submit those points again.
+        if (result.epoch==runtime.epoch && navigating) {
             for (size_t i=0;i<result.selections.size();++i)
                 appendTasks(tasks,runtime.draws[i],result.selections[i],static_cast<uint32_t>(i));
         }
@@ -162,7 +165,6 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
             return result;
         });
     }
-    const bool navigating=runtime.adaptive && runtime.now-runtime.lastChange<.15;
     if (navigating) {
         // A cut always covers every spatial region, including during fast turns.
         // It is cached between changes; the GPU rejects complete offscreen circles.

@@ -105,9 +105,8 @@ if(MSVC)
         VS_SETTINGS "Optimization=MaxSpeed;InlineFunctionExpansion=AnySuitable;BasicRuntimeChecks=Default")
 endif()
 
-add_executable(woby
-    src/console.cpp
-    src/console.h
+# Compile production code once for the viewer and its tests.
+add_library(woby_core STATIC
     src/comparison_report.cpp
     src/comparison_legend.cpp
     src/surface_mesh_quality.cpp
@@ -137,8 +136,6 @@ add_executable(woby
     src/background_load.h
     src/graphics_helpers.cpp
     src/graphics_helpers.h
-    src/renderer_startup.cpp
-    src/renderer_startup.h
     src/camera.cpp
     src/camera.h
     src/scene_viewport.h
@@ -167,9 +164,6 @@ add_executable(woby
     src/scene_dimensions.h
     src/scene_scale_overlay.cpp
     src/scene_scale_overlay.h
-    src/imgui_graphics.cpp
-    src/imgui_graphics.h
-    src/main.cpp
     src/main_menu.cpp
     src/main_menu.h
     src/settings_dialog.cpp
@@ -217,8 +211,6 @@ add_executable(woby
     src/scene_renderer.cpp
     src/freeform_gpu.cpp
     src/scene_renderer.h
-    src/scene_screenshot.cpp
-    src/scene_screenshot.h
     src/scene_objects.cpp
     src/scene_objects.h
     src/ui_operations.cpp
@@ -230,6 +222,45 @@ add_executable(woby
     src/ui_layout.h
 )
 
+target_compile_features(woby_core PUBLIC cxx_std_20)
+target_include_directories(woby_core PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(woby_core SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
+target_link_libraries(woby_core
+    PUBLIC
+        woby_recent_files
+        woby_update
+        woby_automation
+        SDL3::SDL3
+        woby_graphics
+        woby_math
+        Threads::Threads
+        imgui::imgui
+        Boost::unordered
+    PRIVATE
+        CDT::CDT
+        Boost::multiprecision
+        ${CMAKE_DL_LIBS}
+        spdlog::spdlog
+)
+# Static-library compilation need not wait for link-only dependencies.
+set_target_properties(woby_core PROPERTIES OPTIMIZE_DEPENDENCIES ON)
+woby_enable_project_warnings(woby_core)
+woby_enable_enum_switch_warnings(woby_core)
+woby_enable_precompiled_headers(woby_core)
+
+add_executable(woby
+    src/console.cpp
+    src/console.h
+    src/renderer_startup.cpp
+    src/renderer_startup.h
+    src/imgui_graphics.cpp
+    src/imgui_graphics.h
+    src/main.cpp
+    src/scene_screenshot.cpp
+    src/scene_screenshot.h
+)
+
 target_compile_features(woby PRIVATE cxx_std_20)
 if(WIN32)
     set_target_properties(woby PROPERTIES WIN32_EXECUTABLE TRUE)
@@ -237,25 +268,9 @@ if(WIN32)
     target_sources(woby PRIVATE packaging/windows/woby.rc)
     target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icons")
 endif()
-target_include_directories(woby PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_include_directories(woby SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
-
 target_compile_definitions(woby PRIVATE WOBY_VERSION="${PROJECT_VERSION}" WOBY_BUILD_CONFIG="$<CONFIG>")
 
-target_link_libraries(woby PRIVATE
-    woby_recent_files
-    CDT::CDT
-    Boost::multiprecision
-    Boost::unordered
-    woby_update
-    woby_automation
-    SDL3::SDL3
-    ${CMAKE_DL_LIBS}
-    woby_graphics
-    Threads::Threads
-    imgui::imgui
-    spdlog::spdlog
-)
+target_link_libraries(woby PRIVATE woby_core spdlog::spdlog)
 
 if(UNIX AND NOT APPLE)
     set_target_properties(woby PROPERTIES
@@ -263,12 +278,6 @@ if(UNIX AND NOT APPLE)
         INSTALL_RPATH "$ORIGIN"
     )
 endif()
-
-foreach(optional_math_target IN ITEMS woby_math)
-    if(TARGET "${optional_math_target}")
-        target_link_libraries(woby PRIVATE "${optional_math_target}")
-    endif()
-endforeach()
 
 woby_enable_project_warnings(woby)
 woby_enable_enum_switch_warnings(woby)
@@ -402,14 +411,23 @@ if(BUILD_TESTING)
         add_test(NAME woby_freeform_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_freeform_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_uv_grid_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_grid_smoke.py" "$<TARGET_FILE:woby>")
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_grid_smoke.py" "$<TARGET_FILE:woby>" --case grid)
+        set(woby_uv_grid_tests woby_uv_grid_render)
+        foreach(case IN ITEMS analysis inspection layout_uv layout_quality)
+            set(test "woby_uv_grid_${case}_render")
+            add_test(NAME ${test} COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_grid_smoke.py" "$<TARGET_FILE:woby>" --case ${case})
+            list(APPEND woby_uv_grid_tests ${test})
+        endforeach()
+        add_test(NAME woby_uv_grid_suite_selection COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/uv_grid_suite_selection_tests.py")
         add_test(NAME woby_uv_quality_render COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_uv_quality_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_loading_preparation COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render woby_uv_grid_render woby_uv_quality_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -475,126 +493,20 @@ if(BUILD_TESTING)
         tests/frame_pacing_tests.cpp
         tests/performance_capture_tests.cpp
         tests/manual_path_dialog_tests.cpp
-        src/manual_path_dialog.cpp
-        src/manual_path_dialog_ui.cpp
-        src/native_dialogs.cpp
         tests/app_icon_tests.cpp
         tests/update_tests.cpp
-        src/comparison_report.cpp
-        src/ui_views.cpp
-        src/analysis_presentation.cpp
         tests/analysis_presentation_tests.cpp
-        src/comparison_runtime.cpp
-        src/comparison_gpu.cpp
-        src/comparison_view.cpp
-        src/uv_quality_view.cpp
-        src/comparison_legend.cpp
-        src/surface_mesh_quality.cpp
-        src/mesh_intersections.cpp
-        src/mesh_topology.cpp
-        src/mesh_degenerates.cpp
-        src/mesh_duplicates.cpp
-        src/mesh_comparison.cpp
-        src/uv_quality.cpp
-        src/uv_overlap.cpp
-        src/comparison_scene.cpp
         tests/mesh_intersections_tests.cpp
         tests/mesh_topology_tests.cpp
         tests/mesh_degenerates_tests.cpp
         tests/mesh_duplicates_tests.cpp
         tests/mesh_comparison_tests.cpp
-        src/control_importers.cpp
-        src/control_importers.h
-        src/analysis_results.cpp
-        src/analysis_results.h
-        src/control_scene.cpp
-        src/control_uv.cpp
-        src/control_annotation.cpp
-        src/control_scene.h
-        src/background_load.cpp
-        src/background_load.h
-        src/camera_sdl.cpp
         tests/keyboard_input_tests.cpp
-        src/scene_inspector_queries.cpp
-        src/scene_queries.cpp
-        src/scene_inspector.cpp
         tests/comparison_name_tests.cpp
         tests/comparison_inspector_tests.cpp
         tests/scene_inspector_queries_tests.cpp
         tests/scene_queries_tests.cpp
-        src/main_menu.cpp
-        src/main_menu.h
-        src/settings_dialog.cpp
-        src/ui_icon_controls.cpp
-        src/camera.cpp
-        src/command_line.cpp
-        src/command_line.h
-        src/file_discovery.cpp
-        src/file_discovery.h
-        src/hash_utils.cpp
-        src/hash_utils.h
-        src/marker_pick.cpp
-        src/marker_pick.h
-        src/marker_pick_logic.cpp
-        src/marker_pick_logic.h
-        src/hover_pick.cpp
-        src/hover_pick.h
-        src/surface_annotation.cpp
-        src/ui_annotation_operations.cpp
-        src/annotation_work.cpp
-        src/annotation_command.cpp
-        src/annotation_preparation.cpp
-        src/annotation_ui.cpp
-        src/scene_pick.cpp
-        src/scene_pick.h
-        src/scene_dimensions.cpp
-        src/scene_dimensions.h
-        src/scene_scale_overlay.cpp
-        src/scene_scale_overlay.h
         tests/scene_dimensions_tests.cpp
-        src/importer_host.cpp
-        src/importer_host.h
-        src/model_load.cpp
-        src/model_load.h
-        src/utf8_path.h
-        src/model_mesh.cpp
-        src/model_mesh.h
-        src/obj_mesh.cpp
-        src/obj_freeform.cpp
-        src/freeform.cpp
-        src/freeform_trim.cpp
-        src/obj_mesh.h
-        src/performance_log.cpp
-        src/performance_log.h
-        src/scene_history_load.cpp
-        src/scene_history_load.h
-        src/scene_history.cpp
-        src/scene_history.h
-        src/ui_history_controls.h
-        src/scene_lifecycle.cpp
-        src/scene_lifecycle.h
-        src/scene_file.cpp
-        src/scene_file.h
-        src/scene_objects.cpp
-        src/scene_objects.h
-        src/graphics_helpers.cpp
-        src/graphics_helpers.h
-        src/adaptive_points.cpp
-        src/point_cloud.cpp
-        src/scene_mesh_preparation.cpp
-        src/scene_mesh_preparation.h
-        src/scene_draw_plan.cpp
-        src/scene_draw_plan.h
-        src/scene_renderer.cpp
-        src/freeform_gpu.cpp
-        src/scene_renderer.h
-        src/ui_operations.cpp
-        src/ui_view_operations.cpp
-        src/ui_property_operations.cpp
-        src/ui_operations.h
-        src/ui_state.cpp
-        src/ui_state.h
-        src/ui_layout.h
         tests/scene_history_tests.cpp
         tests/scene_lifecycle_tests.cpp
         tests/recent_files_tests.cpp
@@ -642,9 +554,7 @@ if(BUILD_TESTING)
         target_compile_definitions(NoGraphicsAPI PRIVATE WOBY_GPU_ALLOCATION_TESTS)
         target_compile_definitions(woby_tests PRIVATE WOBY_GPU_ALLOCATION_TESTS)
     endif()
-    target_compile_features(woby_tests PRIVATE cxx_std_20)
-    target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
+    target_include_directories(woby_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/native")
     target_include_directories(woby_tests SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/rapidobj/include")
     if(WIN32)
         # Isolate the deterministic Windows I/O shim from the application's parser.
@@ -693,27 +603,12 @@ if(BUILD_TESTING)
         add_dependencies(woby_tests woby_native_metal_allocation_tests)
     endif()
     target_link_libraries(woby_tests PRIVATE
-        woby_recent_files
-        CDT::CDT
-        Boost::multiprecision
-        Boost::unordered
-        woby_update
+        woby_core
         ${woby_archive_target}
-        woby_automation
         doctest::doctest
-        imgui::imgui
-        ${CMAKE_DL_LIBS}
-        woby_graphics
         NoGraphicsAPIUtility::types
-        Threads::Threads
         spdlog::spdlog
     )
-
-    foreach(optional_math_target IN ITEMS woby_math)
-        if(TARGET "${optional_math_target}")
-            target_link_libraries(woby_tests PRIVATE "${optional_math_target}")
-        endif()
-    endforeach()
 
     woby_enable_project_warnings(woby_tests)
     woby_enable_precompiled_headers(woby_tests <doctest/doctest.h>)
@@ -783,6 +678,20 @@ if(BUILD_TESTING)
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
         "-DSTAGING_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/StageRuntimeFiles.cmake"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/runtime_files_tests.cmake")
+    # Check the configured targets, including optional source replacements.
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/shared-sources-$<CONFIG>.cmake" CONTENT
+"set(source_root [==[${CMAKE_CURRENT_SOURCE_DIR}]==])
+set(core_type [==[$<TARGET_PROPERTY:woby_core,TYPE>]==])
+set(core_sources [==[$<TARGET_PROPERTY:woby_core,SOURCES>]==])
+set(core_definitions [==[$<TARGET_PROPERTY:woby_core,COMPILE_DEFINITIONS>]==])
+set(app_sources [==[$<TARGET_PROPERTY:woby,SOURCES>]==])
+set(app_links [==[$<TARGET_PROPERTY:woby,LINK_LIBRARIES>]==])
+set(test_sources [==[$<TARGET_PROPERTY:woby_tests,SOURCES>]==])
+set(test_links [==[$<TARGET_PROPERTY:woby_tests,LINK_LIBRARIES>]==])
+")
+    add_test(NAME woby_shared_sources COMMAND "${CMAKE_COMMAND}"
+        "-DPROPERTY_FILE=${CMAKE_CURRENT_BINARY_DIR}/shared-sources-$<CONFIG>.cmake"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/shared_sources_tests.cmake")
     add_test(NAME woby_test_discovery COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
         "-DDISCOVERY_SCRIPT=${CMAKE_CURRENT_SOURCE_DIR}/cmake/DiscoverTestsIfNeeded.cmake"
