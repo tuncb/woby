@@ -45,6 +45,7 @@ if(BUILD_TESTING)
     target_compile_definitions(mesh_memory_lab_tests PRIVATE MESH_LAB_WORKFLOW_DIRECTORY="${CMAKE_CURRENT_SOURCE_DIR}/workflows")
     woby_enable_project_warnings(mesh_memory_lab_tests)
     add_test(NAME mesh_memory_lab_unit COMMAND mesh_memory_lab_tests)
+    set_tests_properties(mesh_memory_lab_unit PROPERTIES LABELS "unit;cpu")
     if(WIN32)
         add_test(NAME mesh_memory_lab_windows_launch COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/windows_launch_tests.py" "$<TARGET_FILE:mesh_memory_lab>")
@@ -54,10 +55,10 @@ if(BUILD_TESTING)
         add_test(NAME mesh_memory_lab_gpu COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/workflow_render_tests.py" "$<TARGET_FILE:mesh_memory_lab>"
             "${CMAKE_CURRENT_SOURCE_DIR}/workflows" --smoke)
-        set_tests_properties(mesh_memory_lab_gpu PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
+        set_tests_properties(mesh_memory_lab_gpu PROPERTIES TIMEOUT 60 LABELS graphics RESOURCE_LOCK woby_gpu)
         add_test(NAME mesh_memory_lab_workflow_render COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/workflow_render_tests.py" "$<TARGET_FILE:mesh_memory_lab>"
             "${CMAKE_CURRENT_SOURCE_DIR}/workflows")
-        set_tests_properties(mesh_memory_lab_workflow_render PROPERTIES TIMEOUT 180 RUN_SERIAL TRUE)
+        set_tests_properties(mesh_memory_lab_workflow_render PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
     endif()
 endif()

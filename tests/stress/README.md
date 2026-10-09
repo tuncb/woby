@@ -7,7 +7,8 @@ Run from the repository root in PowerShell. Build and test before measuring. Run
 ```powershell
 cmake --build --preset vs2026-vcpkg --target woby woby_tests woby_benchmarks
 ctest --preset vs2026-vcpkg --output-on-failure
-ctest --test-dir build/vs2026-vcpkg -C Debug -L slow --output-on-failure
+ctest --preset vs2026-vcpkg-slow
+ctest --preset vs2026-vcpkg-graphics
 cmake --build --preset vs2026-vcpkg --config Release --target woby woby_benchmarks
 uv run --with psutil tests/stress/test_runner.py
 

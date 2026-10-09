@@ -74,3 +74,19 @@ Inspect a trimmed Bézier surface with a circular hole beside its 2D UV layout. 
 Add lines, review areas, and comments to a surface. Select an annotation to edit its shape and appearance. Save a named view to return to the same scene settings and camera position.
 
 [![Surface annotations with edit handles, a comment, and a saved view](doc/screenshots/surface-annotations.png)](doc/screenshots/surface-annotations.png)
+
+## Development tests
+
+Build the Debug configuration, then run the CPU, slow, and graphics suites separately:
+
+```powershell
+cmake --preset vs2026-vcpkg
+cmake --build --preset vs2026-vcpkg
+ctest --preset vs2026-vcpkg
+ctest --preset vs2026-vcpkg-slow
+ctest --preset vs2026-vcpkg-graphics
+```
+
+The presets use four CTest jobs. CPU tests run in source-file groups. Slow cases run separately and are excluded from their file groups. Graphics tests share a resource lock. Enable `WOBY_TEST_HEADLESS` at configuration time to include the headless rendering tests.
+
+Use `ctest --preset vs2026-vcpkg -R scene_history` to run a file group. To run one case, call `build/vs2026-vcpkg/bin/Debug/woby_tests.exe --test-case="case name"`. Individual case names and source locations remain in failure output. CI uses Ninja and the same three suite filters.

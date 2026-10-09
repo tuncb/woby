@@ -77,9 +77,12 @@
       "output": {
         "outputOnFailure": true
       },
+      "execution": {
+        "jobs": 4
+      },
       "filter": {
         "exclude": {
-          "label": "^slow$"
+          "label": "^(slow|graphics)$"
         }
       }
     },
@@ -89,7 +92,58 @@
       "output": {
         "outputOnFailure": true
       },
+      "execution": {
+        "jobs": 4
+      },
       "filter": {
+        "exclude": {
+          "label": "^(slow|graphics)$"
+        }
+      }
+    },
+    {
+      "name": "vs2026-vcpkg-slow",
+      "inherits": "vs2026-vcpkg",
+      "filter": {
+        "include": {
+          "label": "^slow$"
+        },
+        "exclude": {
+          "label": "^$"
+        }
+      }
+    },
+    {
+      "name": "vs2026-vcpkg-graphics",
+      "inherits": "vs2026-vcpkg",
+      "filter": {
+        "include": {
+          "label": "^graphics$"
+        },
+        "exclude": {
+          "label": "^slow$"
+        }
+      }
+    },
+    {
+      "name": "ninja-vcpkg-slow",
+      "inherits": "ninja-vcpkg",
+      "filter": {
+        "include": {
+          "label": "^slow$"
+        },
+        "exclude": {
+          "label": "^$"
+        }
+      }
+    },
+    {
+      "name": "ninja-vcpkg-graphics",
+      "inherits": "ninja-vcpkg",
+      "filter": {
+        "include": {
+          "label": "^graphics$"
+        },
         "exclude": {
           "label": "^slow$"
         }

@@ -236,11 +236,15 @@ jobs:
 
       - name: Test development suite
         shell: pwsh
-        run: ctest --test-dir "build/${{ matrix.package_name }}" --build-config Release --output-on-failure --no-tests=error -LE '^slow$'
+        run: ctest --test-dir "build/${{ matrix.package_name }}" --build-config Release --parallel 4 --output-on-failure --no-tests=error -LE '^(slow|graphics)$'
 
       - name: Test slow suite
         shell: pwsh
-        run: ctest --test-dir "build/${{ matrix.package_name }}" --build-config Release --output-on-failure --no-tests=error -L '^slow$'
+        run: ctest --test-dir "build/${{ matrix.package_name }}" --build-config Release --parallel 4 --output-on-failure --no-tests=error -L '^slow$'
+
+      - name: Test graphics suite
+        shell: pwsh
+        run: ctest --test-dir "build/${{ matrix.package_name }}" --build-config Release --parallel 4 --output-on-failure -L '^graphics$' -LE '^slow$'
 
       - name: Stage runtime files
         shell: pwsh

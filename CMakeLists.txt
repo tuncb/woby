@@ -427,7 +427,7 @@ if(BUILD_TESTING)
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_loading_preparation_smoke.py" "$<TARGET_FILE:woby>")
         add_test(NAME woby_coordinate_origin COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_coordinate_origin_smoke.py" "$<TARGET_FILE:woby>")
-        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics)
+        set_tests_properties(woby_headless woby_headless_camera woby_vertex_render woby_transparency_render woby_obj_primitives_render woby_freeform_render ${woby_uv_grid_tests} woby_uv_quality_render woby_loading_preparation woby_coordinate_origin PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
     endif()
     add_test(NAME woby_python_selection COMMAND "${CMAKE_COMMAND}"
         "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/build-system-tests"
@@ -461,7 +461,7 @@ if(BUILD_TESTING)
     target_link_libraries(woby_rapidobj_stress_tests PRIVATE doctest::doctest Threads::Threads)
     woby_enable_project_warnings(woby_rapidobj_stress_tests)
     add_test(NAME woby_rapidobj_stress COMMAND woby_rapidobj_stress_tests)
-    set_tests_properties(woby_rapidobj_stress PROPERTIES TIMEOUT 180)
+    set_tests_properties(woby_rapidobj_stress PROPERTIES TIMEOUT 180 LABELS "unit;cpu;slow")
     if(TARGET woby_obj_prototype_benchmark)
         add_test(NAME woby_parser_throughput_analysis COMMAND "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/experiments/parser-throughput/tests.py")
@@ -480,11 +480,13 @@ if(BUILD_TESTING)
     target_link_libraries(woby_graphics_diagnostics_allocation_tests PRIVATE doctest::doctest woby_graphics)
     woby_enable_project_warnings(woby_graphics_diagnostics_allocation_tests)
     add_test(NAME woby_graphics_diagnostics_allocations COMMAND woby_graphics_diagnostics_allocation_tests)
+    set_tests_properties(woby_graphics_diagnostics_allocations PROPERTIES LABELS "unit;cpu")
     add_subdirectory(tests/utility_fixture)
     add_executable(woby_utility_allocation_tests tests/utility_allocation_tests.cpp)
     target_link_libraries(woby_utility_allocation_tests PRIVATE doctest::doctest woby_utility_allocation_fixture)
     woby_enable_project_warnings(woby_utility_allocation_tests)
     add_test(NAME woby_utility_allocations COMMAND woby_utility_allocation_tests)
+    set_tests_properties(woby_utility_allocations PROPERTIES LABELS "unit;cpu")
 
     add_executable(woby_tests
         tests/graphics_tests.cpp
@@ -563,6 +565,7 @@ if(BUILD_TESTING)
         target_link_libraries(woby_rapidobj_reader_tests PRIVATE doctest::doctest Threads::Threads)
         woby_enable_project_warnings(woby_rapidobj_reader_tests)
         add_test(NAME woby_rapidobj_reader COMMAND woby_rapidobj_reader_tests)
+        set_tests_properties(woby_rapidobj_reader PROPERTIES LABELS "unit;cpu")
         add_dependencies(woby_tests woby_rapidobj_reader_tests)
         find_package(Vulkan REQUIRED)
         add_executable(woby_native_allocation_tests tests/native_allocation_tests.cpp)
@@ -571,6 +574,7 @@ if(BUILD_TESTING)
         target_link_libraries(woby_native_allocation_tests PRIVATE doctest::doctest Vulkan::Vulkan)
         woby_enable_project_warnings(woby_native_allocation_tests)
         add_test(NAME woby_native_allocations COMMAND woby_native_allocation_tests)
+        set_tests_properties(woby_native_allocations PROPERTIES LABELS "unit;cpu")
         add_dependencies(woby_tests woby_native_allocation_tests)
         add_executable(woby_native_command_tests tests/native_command_tests.cpp)
         target_include_directories(woby_native_command_tests SYSTEM PRIVATE
@@ -578,6 +582,7 @@ if(BUILD_TESTING)
         target_link_libraries(woby_native_command_tests PRIVATE doctest::doctest Vulkan::Vulkan)
         woby_enable_project_warnings(woby_native_command_tests)
         add_test(NAME woby_native_commands COMMAND woby_native_command_tests)
+        set_tests_properties(woby_native_commands PROPERTIES LABELS "unit;cpu")
         add_dependencies(woby_tests woby_native_command_tests)
         add_executable(woby_native_device_allocation_tests tests/native_device_allocation_tests.cpp)
         target_include_directories(woby_native_device_allocation_tests SYSTEM PRIVATE
@@ -585,7 +590,7 @@ if(BUILD_TESTING)
         target_link_libraries(woby_native_device_allocation_tests PRIVATE doctest::doctest Vulkan::Vulkan)
         woby_enable_project_warnings(woby_native_device_allocation_tests)
         add_test(NAME woby_native_device_allocations COMMAND woby_native_device_allocation_tests)
-        set_tests_properties(woby_native_device_allocations PROPERTIES TIMEOUT 120)
+        set_tests_properties(woby_native_device_allocations PROPERTIES TIMEOUT 120 LABELS "unit;graphics" RESOURCE_LOCK woby_gpu)
         add_dependencies(woby_tests woby_native_device_allocation_tests)
     endif()
     if(APPLE)
@@ -599,7 +604,7 @@ if(BUILD_TESTING)
             -Wno-missing-field-initializers)
         woby_enable_project_warnings(woby_native_metal_allocation_tests)
         add_test(NAME woby_native_metal_allocations COMMAND woby_native_metal_allocation_tests)
-        set_tests_properties(woby_native_metal_allocations PROPERTIES TIMEOUT 120)
+        set_tests_properties(woby_native_metal_allocations PROPERTIES TIMEOUT 120 LABELS "unit;graphics" RESOURCE_LOCK woby_gpu)
         add_dependencies(woby_tests woby_native_metal_allocation_tests)
     endif()
     target_link_libraries(woby_tests PRIVATE
@@ -645,11 +650,11 @@ if(BUILD_TESTING)
         add_test(NAME woby_portable_importers COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/portable_importers_smoke.py" "$<TARGET_FILE:woby>"
             "$<TARGET_FILE:woby-update-helper>" "${woby_resource_directory}/assets" "$<TARGET_FILE:woby_off_importer>")
-        set_tests_properties(woby_portable_importers PROPERTIES TIMEOUT 180 LABELS graphics)
+        set_tests_properties(woby_portable_importers PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
         add_test(NAME woby_ctl_lines COMMAND "${WOBY_UV_EXECUTABLE}" run --python "${Python3_EXECUTABLE}"
             "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctl_lines_smoke.py" "$<TARGET_FILE:woby>"
             "$<TARGET_FILE:woby_importer_lines_fixture>")
-        set_tests_properties(woby_ctl_lines PROPERTIES TIMEOUT 180 LABELS graphics)
+        set_tests_properties(woby_ctl_lines PROPERTIES TIMEOUT 180 LABELS graphics RESOURCE_LOCK woby_gpu)
     endif()
     add_dependencies(woby_tests woby woby_importer_fixture woby_importer_hierarchy_fixture woby_importer_lines_fixture woby_importer_geometry_fixture woby_importer_point_ids_fixture woby_importer_bad_abi woby_importer_missing_export woby_off_importer woby_importer_conflict woby_importer_reserved)
     target_compile_definitions(woby_tests PRIVATE
@@ -669,9 +674,12 @@ if(BUILD_TESTING)
     )
 
     include(cmake/WobyTestDiscovery.cmake)
-    woby_discover_tests(woby_tests SLOW_TESTS
+    woby_discover_tests(woby_tests GROUP_BY_SOURCE SLOW_TESTS
         "analysis measures both surfaces above the former triangle cap"
-        "command history evicts results without ever reusing admitted retry keys")
+        "command history evicts results without ever reusing admitted retry keys"
+        "OBJ prototype preserves continued bodies at every raw block alignment"
+        "updater removes obsolete renderer assets and restores them on rollback"
+        "detector snapshots and stages accept meshes beyond the distance heatmap limit")
     list(APPEND woby_runtime_targets woby_tests)
 
     add_test(NAME woby_runtime_staging COMMAND "${CMAKE_COMMAND}"
