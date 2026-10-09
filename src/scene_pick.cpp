@@ -1,4 +1,5 @@
 #include "comparison_scene.h"
+#include "math_utils.h"
 #include "scene_pick.h"
 #include "scene_queries.h"
 #include "point_cloud.h"
@@ -14,16 +15,12 @@ using Clip = std::array<double, 4>;
 
 PickMatrix identity()
 {
-    PickMatrix result;
-    bx::mtxIdentity(result.data());
-    return result;
+    return woby::identityMatrix();
 }
 PickMatrix compose(const PickMatrix& parent, const PickMatrix& child)
 {
-    PickMatrix result;
     // Compose a child transform in its parent's coordinates.
-    bx::mtxMul(result.data(), parent.data(), child.data());
-    return result;
+    return woby::multiplyMatrices(parent, child);
 }
 template<typename Scalar>
 Clip transform(const std::array<Scalar, 16>& m, const Clip& p)
@@ -260,12 +257,12 @@ ScenePickView scenePickView(const SceneCamera& camera, SceneUpAxis upAxis, const
     result.pixelScale = pixelScale;
     const float aspect = static_cast<float>(result.width) / static_cast<float>(result.height);
     const auto depth = cameraDepthRange(camera, bounds, upAxis);
-    bx::mtxLookAt(result.view.data(), cameraEye(camera, upAxis), cameraLookAt(camera), cameraUp(camera, upAxis));
-    bx::mtxProj(result.projection.data(), cameraViewportFov(camera, aspect), aspect,
+    woby::lookAtMatrix(result.view.data(), cameraEye(camera, upAxis), cameraLookAt(camera), cameraUp(camera, upAxis));
+    woby::perspectiveMatrix(result.projection.data(), cameraViewportFov(camera, aspect), aspect,
         depth.nearPlane, depth.farPlane, homogeneousDepth);
     // Build reversed Z directly; subtracting forward depth from 1 would retain
     // its rounding error. Both native backends use a [0, 1] clip volume.
-    bx::mtxProj(result.renderProjection.data(), cameraViewportFov(camera, aspect), aspect,
+    woby::perspectiveMatrix(result.renderProjection.data(), cameraViewportFov(camera, aspect), aspect,
         depth.farPlane, depth.nearPlane, false);
     return result;
 }
@@ -309,7 +306,7 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     part.mesh = &surface.source;
     part.indexCount = surface.source.indices.size();
     part.bounds = surface.source.bounds;
-    bx::mtxTranslate(part.model.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+    woby::translationMatrix(part.model.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
     part.solid = true;
     part.edges = settings.showEdges;
     part.edgeXray = false;
@@ -370,9 +367,9 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
     // Inverting a combined float matrix can erase a tiny near distance next to
     // a large camera translation. Unproject in view space, then move to world
     // space with double intermediates to preserve the separation of ray points.
-    bx::mtxInverse(inverse.data(), view.projection.data());
+    woby::inverseMatrix(inverse.data(), view.projection.data());
     PickMatrix inverseView;
-    bx::mtxInverse(inverseView.data(), view.view.data());
+    woby::inverseMatrix(inverseView.data(), view.view.data());
     const double x = 2.0 * point[0] / view.width - 1.0, y = 1.0 - 2.0 * point[1] / view.height;
     const auto near = position(inverseView, position(inverse, {x, y, view.homogeneousDepth ? -1.0 : 0.0}));
     // With a very large far/near ratio, float projection coefficients can put
@@ -427,7 +424,7 @@ SceneObjectId pickSceneObject(std::span<const ScenePickPart> parts, const SceneP
             // geometry; float composition otherwise rounds visible hits to the
             // cleared far depth and rejects them during CPU selection.
             const auto mvp = composeDouble(compose(part.model, view.view), view.projection);
-            bx::mtxInverse(inverse.data(), part.model.data());
+            woby::inverseMatrix(inverse.data(), part.model.data());
             const auto origin = position(inverse, near), end = position(inverse, middle);
             const auto direction = subtract(end, origin);
             const bool testSurface = part.opacity > 0 && (part.solid || hiddenLineDepth(part)) && (!part.bounds || intersectsBounds(*part.bounds, origin, direction));

@@ -12,7 +12,7 @@
 #include "camera.h"
 #include <nlohmann/json.hpp>
 
-#include <bx/math.h>
+#include "math_utils.h"
 #include <doctest/doctest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -70,7 +70,7 @@ Mesh tessellatedSurface(uint32_t n, uint32_t layers = 1)
 ScenePickView view()
 {
     ScenePickView result;
-    bx::mtxIdentity(result.view.data()); bx::mtxIdentity(result.projection.data());
+    woby::identityMatrix(result.view.data()); woby::identityMatrix(result.projection.data());
     result.width = result.height = 200;
     return result;
 }
@@ -143,8 +143,8 @@ TEST_CASE("annotations retain projection precision with a distant camera and tin
     mesh.bounds = calculateBounds(mesh.vertices);
     auto distant = view();
     distant.homogeneousDepth = homogeneous;
-    bx::mtxLookAt(distant.view.data(), cameraEye(camera, SceneUpAxis::y), cameraLookAt(camera), cameraUp(camera, SceneUpAxis::y));
-    bx::mtxProj(distant.projection.data(), 60, 1, camera.nearPlane, cameraFarPlane(camera, mesh.bounds), homogeneous);
+    woby::lookAtMatrix(distant.view.data(), cameraEye(camera, SceneUpAxis::y), cameraLookAt(camera), cameraUp(camera, SceneUpAxis::y));
+    woby::perspectiveMatrix(distant.projection.data(), 60, 1, camera.nearPlane, cameraFarPlane(camera, mesh.bounds), homogeneous);
     const auto parts = scenePickParts(fixture.state);
     const std::array<float, 2> start{-.2f, -.2f}, end{.2f, .2f};
     auto projection = annotationGestureProjection(parts, distant, fixture.target(), start);
@@ -181,8 +181,8 @@ TEST_CASE("distant annotation projection distinguishes overlapping surface depth
     fixture.state.files.push_back(createUiFileState(fixture.root / "front.obj", front, 1));
     appendDefaultSceneNodesForFiles(fixture.state, 0);
     auto distant = view();
-    bx::mtxLookAt(distant.view.data(), bx::Vec3(0, 0, -44366.6055f), bx::Vec3(0, 0, 0));
-    bx::mtxProj(distant.projection.data(), 60, 1, .00131279614f, 200000, false);
+    woby::lookAtMatrix(distant.view.data(), woby::Vec3(0, 0, -44366.6055f), woby::Vec3(0, 0, 0));
+    woby::perspectiveMatrix(distant.projection.data(), 60, 1, .00131279614f, 200000, false);
     const auto parts = scenePickParts(fixture.state);
     const auto frontId = fixture.state.files[1].groupSettings[0].objectId;
     const auto projection = annotationProjection(parts, distant, frontId);
@@ -229,7 +229,7 @@ TEST_CASE("large mesh annotation cache preserves the source fingerprint")
     copy.vertices[0].position[2] += .1f;
     ScenePickPart part;
     part.objectId = 1; part.mesh = &copy; part.indexCount = copy.indices.size(); part.solid = true;
-    bx::mtxIdentity(part.model.data());
+    woby::identityMatrix(part.model.data());
     const auto gesture = annotationGestureProjection(std::array{part}, view(), 1, {0, 0});
     CHECK(gesture.definition.fingerprint == annotationFingerprint(copy, 0, copy.indices.size()));
 }
@@ -248,7 +248,7 @@ TEST_CASE("regional annotation projection preserves exact geometry and bounds sc
     REQUIRE_FALSE(mesh.annotationCache->spatial->tree.empty());
     ScenePickPart part;
     part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size(); part.solid = true;
-    bx::mtxIdentity(part.model.data());
+    woby::identityMatrix(part.model.data());
     const std::array<float, 2> start{-.025f, -.021f}, end{.024f, .031f};
     const auto full = annotationProjection(std::array{part}, view(), 1);
     const auto region = annotationProjection(std::array{part}, view(), 1, {}, annotationRegion(start, end));
@@ -270,7 +270,7 @@ TEST_CASE("regional annotation scratch does not scale with unused source vertice
     prepareAnnotationMeshCache(mesh);
     ScenePickPart part;
     part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size(); part.solid = true;
-    bx::mtxIdentity(part.model.data());
+    woby::identityMatrix(part.model.data());
     const auto region = annotationProjection(std::array{part}, view(), 1, {}, annotationRegion({-.02f, 0}, {.02f, 0}));
     CHECK(region.triangles.size() < mesh.indices.size() / 30);
     CHECK(region.vertices.size() < mesh.vertices.size() / 10);
@@ -442,7 +442,7 @@ TEST_CASE("cached surface picking agrees with a full triangle scan")
     ScenePickPart part;
     part.objectId = 1; part.mesh = &mesh; part.indexCount = mesh.indices.size();
     part.solid = true; part.bounds = mesh.bounds;
-    bx::mtxIdentity(part.model.data());
+    woby::identityMatrix(part.model.data());
     for (const PickPoint point : {PickPoint{0, 0}, {20, 150}, {100, 100}, {199, 199}, {200, 100}}) {
         const auto cached = pickSceneObject(std::array{part}, view(), point);
         mesh.annotationCache.reset();
@@ -1250,7 +1250,7 @@ TEST_CASE("annotation edge movement uses the original projector after changing t
 {
     Fixture fixture;
     const auto id = fixture.add();
-    auto rotated = view(); bx::mtxRotateZ(rotated.view.data(), bx::kPiHalf);
+    auto rotated = view(); woby::rotateZMatrix(rotated.view.data(), woby::radians(90.0f));
     const auto screen = [&](float x, float y) {
         const auto p = annotationTransform(rotated.view, {x,y,.5f,1});
         return PickPoint{(p[0]+1)*100, (1-p[1])*100};
@@ -1421,8 +1421,8 @@ TEST_CASE("surface annotations bridge foreground edges onto rear layers")
     SUBCASE("overlapping layers") {}
     SUBCASE("adjacent layers without overlap") { mesh.indices.erase(mesh.indices.begin(), mesh.indices.begin() + 6); }
     SUBCASE("perspective layers") {
-        bx::mtxLookAt(drawingView.view.data(), bx::Vec3(0,0,-3), bx::Vec3(0,0,0));
-        bx::mtxProj(drawingView.projection.data(), 45, 1, .1f, 10, false);
+        woby::lookAtMatrix(drawingView.view.data(), woby::Vec3(0,0,-3), woby::Vec3(0,0,0));
+        woby::perspectiveMatrix(drawingView.projection.data(), 45, 1, .1f, 10, false);
     }
     mesh.nodes[0].indexCount = static_cast<uint32_t>(mesh.indices.size());
     mesh.bounds = calculateBounds(mesh.vertices);
@@ -1898,8 +1898,8 @@ TEST_CASE("surface annotation projection handles perspective and near clipping")
 {
     Fixture fixture(true);
     auto perspective = view();
-    bx::mtxLookAt(perspective.view.data(), {0,0,-3}, {0,0,0}, {0,1,0});
-    bx::mtxProj(perspective.projection.data(), 60, 1, .1f, 10, false);
+    woby::lookAtMatrix(perspective.view.data(), {0,0,-3}, {0,0,0}, {0,1,0});
+    woby::perspectiveMatrix(perspective.projection.data(), 60, 1, .1f, 10, false);
     const auto projection = annotationProjection(scenePickParts(fixture.state), perspective, fixture.target());
     const auto geometry = projectAnnotation(projection, AnnotationShape::rectangle, {-.25f,-.2f}, {.25f,.2f});
     auto gesture = annotationGestureProjection(scenePickParts(fixture.state), perspective,
@@ -2169,10 +2169,10 @@ TEST_CASE("annotation projection keeps shared mesh groups in their own transform
     const auto mesh = surface();
     ScenePickPart first;
     first.mesh = &mesh; first.objectId = 1; first.indexCount = mesh.indices.size(); first.solid = true;
-    bx::mtxIdentity(first.model.data());
+    woby::identityMatrix(first.model.data());
     auto second = first;
     second.objectId = 2;
-    bx::mtxTranslate(second.model.data(), 1.5f, 0, -.1f);
+    woby::translationMatrix(second.model.data(), 1.5f, 0, -.1f);
     std::array<ScenePickPart, 2> parts{first, second};
     for (int order = 0; order < 2; ++order) {
         const auto projection = annotationProjection(parts, view(), first.objectId);

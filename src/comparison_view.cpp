@@ -13,7 +13,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
-#include <bx/math.h>
+#include "math_utils.h"
 
 #include <algorithm>
 #include <chrono>
@@ -1407,7 +1407,7 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     const bool heatmap = settings.mode == ComparisonMode::distance || quality;
     if (quality && !woby::graphics::isValid(gpu.quality)) { return; }
     float identity[16];
-    bx::mtxTranslate(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+    woby::translationMatrix(identity, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
     if (isUvAnalysis(settings.type)) {
         if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles)) { return; }
         const std::array<float, 4> gray = {.58f, .63f, .69f, 1};
@@ -1637,15 +1637,15 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
         // some backends and would merge into the yellow object-selection outline.
         auto& triangles = faceFill;
         triangles.reserve(triangles.size() + points.size()*3);
-        const auto direction = bx::sub(cameraEye(state.camera, state.upAxis), cameraLookAt(state.camera));
+        const auto direction = woby::subtractVectors(cameraEye(state.camera, state.upAxis), cameraLookAt(state.camera));
         const float halfWidth = state.camera.distance * .0025f;
         for (size_t i = 0; i < points.size(); i += 2) {
             const auto& a = points[i];
             const auto& b = points[i + 1];
-            const auto normal = bx::cross(bx::Vec3{b[0] - a[0], b[1] - a[1], b[2] - a[2]}, direction);
-            const float length = bx::length(normal);
+            const auto normal = woby::cross(woby::Vec3{b[0] - a[0], b[1] - a[1], b[2] - a[2]}, direction);
+            const float length = woby::vectorLength(normal);
             if (length <= 0.0f) { continue; }
-            const auto offset = bx::mul(normal, halfWidth / length);
+            const auto offset = woby::scaleVector(normal, halfWidth / length);
             const std::array<float, 3> a0 = {a[0] - offset.x, a[1] - offset.y, a[2] - offset.z};
             const std::array<float, 3> a1 = {a[0] + offset.x, a[1] + offset.y, a[2] + offset.z};
             const std::array<float, 3> b0 = {b[0] - offset.x, b[1] - offset.y, b[2] - offset.z};
@@ -1660,7 +1660,7 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
         woby::graphics::allocTransientVertexBuffer(&buffer, vertexCount, layout);
         std::memcpy(buffer.data, triangles.data(), triangles.size() * sizeof(triangles[0]));
         float transform[16];
-        bx::mtxTranslate(transform, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+        woby::translationMatrix(transform, comparison.translation[0], comparison.translation[1], comparison.translation[2]);
         const std::array<float, 4> yellow = {1, 1, .1f, 1};
         woby::graphics::setTransform(transform);
         woby::graphics::setUniform(colorUniform, yellow.data());

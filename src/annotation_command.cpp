@@ -1,4 +1,5 @@
 #include "annotation_command.h"
+#include "math_utils.h"
 #include "ui_operations.h"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
@@ -24,7 +25,7 @@ AnnotationCommand prepareAnnotationCommand(const UiState& state, const ControlOp
         view = scenePickView(state.camera, state.upAxis, state.sceneBounds, 1000, 1000, true, 1);
         const float aspect = operation.aspect.value_or(1);
         const auto depth = cameraDepthRange(state.camera, state.sceneBounds, state.upAxis);
-        bx::mtxProj(view.projection.data(), cameraViewportFov(state.camera, aspect), aspect, depth.nearPlane, depth.farPlane, true);
+        woby::perspectiveMatrix(view.projection.data(), cameraViewportFov(state.camera, aspect), aspect, depth.nearPlane, depth.farPlane, true);
         targets = annotationGroupTargets(state, operation.objectId);
         shape = *operation.shape == "line" ? AnnotationShape::line : AnnotationShape::rectangle;
         start = *operation.start; end = *operation.end;

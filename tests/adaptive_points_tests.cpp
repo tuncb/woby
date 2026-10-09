@@ -1,4 +1,5 @@
 #include "adaptive_points.h"
+#include "math_utils.h"
 #include "scene_history.h"
 #include "ui_operations.h"
 #include "automation_registry.h"
@@ -25,7 +26,7 @@ TEST_CASE("Adaptive point queue keeps vertices opaque independently of surface o
     mesh.pointCloud=std::make_shared<const woby::points::Cloud>(woby::points::buildCloud(cloudMesh(16),8,4));
     woby::AdaptivePointRuntime runtime; runtime.enabled=true;
     woby::SceneDrawItem item; item.points=true;
-    bx::mtxIdentity(item.model.data());
+    woby::identityMatrix(item.model.data());
     for (const float alpha:{0.0f,.35f,.998f,.999f,1.0f}) {
         item.color={.4f,.5f,.6f,alpha}; runtime.draws.clear();
         REQUIRE(woby::queueAdaptivePoints(runtime,mesh,item,1));
@@ -111,11 +112,11 @@ TEST_CASE("Navigation cuts cover source regions and refinement visits all origin
 TEST_CASE("Full-source point picking remains independent of navigation proxies") {
     auto mesh=cloudMesh(20000); auto cloud=woby::points::buildCloud(mesh,256,16);
     woby::ScenePickView view; view.width=803; view.height=607;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
-    bx::mtxIdentity(view.renderProjection.data()); view.renderProjection[10]=-1; view.renderProjection[14]=1;
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
+    woby::identityMatrix(view.renderProjection.data()); view.renderProjection[10]=-1; view.renderProjection[14]=1;
     woby::ScenePickPart part; part.mesh=&mesh; part.objectId=7; part.sourceMesh=true; part.vertices=true;
     part.pointIndexCount=static_cast<uint32_t>(mesh.pointIndices.size()); part.pointSize=4;
-    bx::mtxIdentity(part.model.data()); part.model[0]=.83f; part.model[13]=.07f;
+    woby::identityMatrix(part.model.data()); part.model[0]=.83f; part.model[13]=.07f;
     for (uint32_t i=0;i<32;++i) {
         const woby::PickPoint query{float((i*71+19)%803),float((i*43+29)%607)};
         part.pointCloud=nullptr; const auto reference=woby::pickSceneObject({&part,1},view,query);

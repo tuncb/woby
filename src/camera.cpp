@@ -1,4 +1,5 @@
 #include "camera.h"
+#include "math_utils.h"
 
 #include <algorithm>
 #include <cmath>
@@ -9,9 +10,9 @@ namespace {
 
 constexpr float pi = 3.14159265358979323846f;
 
-bx::Vec3 toVec3(const std::array<float, 3>& value)
+woby::Vec3 toVec3(const std::array<float, 3>& value)
 {
-    return bx::Vec3(value[0], value[1], value[2]);
+    return {value[0], value[1], value[2]};
 }
 
 std::array<float, 3> viewDirection(const SceneCamera& camera, SceneUpAxis upAxis)
@@ -208,21 +209,21 @@ float cameraViewportFov(const SceneCamera& camera, float aspectRatio)
     return 2.0f * std::atan(std::tan(camera.verticalFovDegrees * pi / 360.0f) / aspect) * 180.0f / pi;
 }
 
-bx::Vec3 cameraEye(const SceneCamera& camera, SceneUpAxis upAxis)
+woby::Vec3 cameraEye(const SceneCamera& camera, SceneUpAxis upAxis)
 {
     const std::array<float, 3> view = viewDirection(camera, upAxis);
-    return bx::Vec3(
+    return {
         camera.target[0] + view[0] * camera.distance,
         camera.target[1] + view[1] * camera.distance,
-        camera.target[2] + view[2] * camera.distance);
+        camera.target[2] + view[2] * camera.distance};
 }
 
-bx::Vec3 cameraLookAt(const SceneCamera& camera)
+woby::Vec3 cameraLookAt(const SceneCamera& camera)
 {
     return toVec3(camera.target);
 }
 
-bx::Vec3 cameraUp(const SceneCamera& camera, SceneUpAxis upAxis)
+woby::Vec3 cameraUp(const SceneCamera& camera, SceneUpAxis upAxis)
 {
     return toVec3(rolledUpDirection(camera, upAxis));
 }

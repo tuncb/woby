@@ -1,4 +1,5 @@
 #include "adaptive_points.h"
+#include "math_utils.h"
 #include "graphics_helpers.h"
 #include "marker_pick.h"
 #include <doctest/doctest.h>
@@ -52,7 +53,7 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::
     f.base=g::createUniform("u_markerBase",g::UniformType::Vec4); f.markers.baseUniform=f.base;
     f.uv=g::createUniform("u_uvGrid",g::UniformType::Vec4);
     f.view.width=37; f.view.height=29;
-    bx::mtxIdentity(f.view.view.data()); bx::mtxIdentity(f.view.renderProjection.data());
+    woby::identityMatrix(f.view.view.data()); woby::identityMatrix(f.view.renderProjection.data());
     const auto flags=samples==4?WOBY_GPU_TEXTURE_RT_MSAA_X4:WOBY_GPU_TEXTURE_RT;
     f.output=g::createTexture2D(43,37,false,1,g::TextureFormat::RGBA8,flags|WOBY_GPU_TEXTURE_READ_BACK);
     f.depth=g::createTexture2D(43,37,false,1,g::TextureFormat::D24S8,flags);
@@ -79,7 +80,7 @@ bool initialize(PointGpuFixture& f,uint32_t samples,bool requireAtomics=true,g::
     for (size_t i=0;i<2;++i) {
         woby::SceneDrawItem item; item.groupIndex=i; item.points=true; item.pointSize=8;
         item.color=i?std::array<float,4>{0,.6f,.2f,1}:std::array<float,4>{.6f,0,.2f,1};
-        bx::mtxIdentity(item.model.data()); item.model[0]=.81f; item.model[5]=1.07f; item.model[12]=i?.1f:-.03f;
+        woby::identityMatrix(item.model.data()); item.model[0]=.81f; item.model[5]=1.07f; item.model[12]=i?.1f:-.03f;
         f.plan.items.push_back(item);
     }
     return true;
@@ -266,7 +267,7 @@ TEST_CASE("Transparent surfaces retain adaptive point rendering cached visibilit
         surface.indices={0,1,2,0,2,3}; surface.nodes={{"surface",0,6}};
         f.models.push_back({woby::createGpuMesh(surface,woby::meshVertexLayout(),woby::gpuMeshPoints)});
         woby::SceneDrawItem item; item.fileIndex=1; item.solid=true; item.color={0,0,1,.35f};
-        bx::mtxIdentity(item.model.data()); f.plan.items.push_back(item);
+        woby::identityMatrix(item.model.data()); f.plan.items.push_back(item);
         double now=2;
         const float blue=.32f+.68f*.7f/std::sqrt(.35f*.35f+.6f*.6f+.7f*.7f);
         for (const float alpha:{.35f,.6f,1.0f,.2f}) {
@@ -307,7 +308,7 @@ TEST_CASE("Integrated cached points obey current opaque surfaces and color-only 
     g::allocTransientVertexBuffer(&vertices,3,woby::helperLineVertexLayout());
     const std::array<std::array<float,3>,3> triangle={{{-1,-1,1},{1,-1,1},{0,1,1}}};
     std::memcpy(vertices.data,triangle.data(),sizeof(triangle));
-    std::array<float,16> identity; bx::mtxIdentity(identity.data());
+    std::array<float,16> identity; woby::identityMatrix(identity.data());
     // The view halves Z; choose a surface at .9 after that transform.
     identity[14]=.8f;
     const std::array<float,4> blue{0,0,1,1};

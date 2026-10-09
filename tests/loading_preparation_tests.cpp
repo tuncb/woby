@@ -8,7 +8,7 @@
 
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
-#include <bx/math.h>
+#include "math_utils.h"
 #include <atomic>
 #include <chrono>
 #include <fstream>
@@ -199,7 +199,7 @@ TEST_CASE("annotation gestures are disabled until ready and never replay old inp
 {
     auto state = preparationScene();
     woby::ScenePickView view;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     view.width = view.height = 200;
     woby::AnnotationInteraction interaction;
     interaction.tool = woby::AnnotationShape::line;

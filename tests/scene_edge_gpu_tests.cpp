@@ -1,4 +1,5 @@
 #include "scene_renderer.h"
+#include "math_utils.h"
 #include "graphics_helpers.h"
 #include "marker_pick.h"
 #include "ui_operations.h"
@@ -58,7 +59,7 @@ void initialize(EdgeGpuFixture& fixture, bool multisample, bool markerIds)
     fixture.target = g::createFrameBuffer(markerIds ? 3 : 2, attachments.data());
     g::setViewFrameBuffer(0, fixture.target); g::setViewRect(0, 0, 0, 128, 96);
     g::setViewClear(0, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x20242aff, 1);
-    std::array<float,16> identity{}; bx::mtxIdentity(identity.data());
+    std::array<float,16> identity{}; woby::identityMatrix(identity.data());
     g::setViewTransform(0, identity.data(), identity.data());
     woby::Mesh mesh;
     for (const auto& position : std::array<std::array<float,3>,7>{{

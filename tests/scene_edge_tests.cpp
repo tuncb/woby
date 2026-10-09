@@ -1,4 +1,5 @@
 #include "scene_draw_plan.h"
+#include "math_utils.h"
 #include "scene_history.h"
 #include "scene_pick.h"
 #include "ui_operations.h"
@@ -33,7 +34,7 @@ woby::UiState edgeScene(const std::filesystem::path& root)
 woby::ScenePickView edgeView()
 {
     woby::ScenePickView view; view.width = view.height = 100;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     return view;
 }
 }

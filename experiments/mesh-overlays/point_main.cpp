@@ -1,4 +1,5 @@
 #include "point_renderer.h"
+#include "math_utils.h"
 #include "obj_mesh.h"
 #include "utf8_path.h"
 #include <nlohmann/json.hpp>
@@ -44,10 +45,10 @@ Json compare(const o::Capture& a,const o::Capture& b) {
 p::Matrix camera(const woby::Bounds& bounds,uint32_t width,uint32_t height,float angle,float zoom) {
     auto c=woby::frameCameraBounds(bounds); c.distance*=zoom; c.yawRadians+=angle; c.pitchRadians+=std::sin(angle)*.12f;
     const auto range=woby::cameraDepthRange(c,bounds); float view[16],projection[16];
-    bx::mtxLookAt(view,woby::cameraEye(c),woby::cameraLookAt(c),woby::cameraUp(c)); const float aspect=float(width)/float(height);
-    bx::mtxProj(projection,woby::cameraViewportFov(c,aspect),aspect,range.nearPlane,range.farPlane,false);
+    woby::lookAtMatrix(view,woby::cameraEye(c),woby::cameraLookAt(c),woby::cameraUp(c)); const float aspect=float(width)/float(height);
+    woby::perspectiveMatrix(projection,woby::cameraViewportFov(c,aspect),aspect,range.nearPlane,range.farPlane,false);
     for (size_t i=0;i<4;++i) projection[i*4+2]=projection[i*4+3]-projection[i*4+2];
-    p::Matrix result; bx::mtxMul(result.data(),view,projection); return result;
+    p::Matrix result; woby::multiplyMatrices(result.data(),view,projection); return result;
 }
 }
 int main(int argc,char** argv) {

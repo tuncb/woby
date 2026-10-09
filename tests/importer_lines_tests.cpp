@@ -1,4 +1,5 @@
 #include "automation_registry.h"
+#include "math_utils.h"
 #include "background_load.h"
 #include "command_line.h"
 #include "control_scene.h"
@@ -292,7 +293,7 @@ TEST_CASE("Imported line picking respects width depth transforms and selection b
     state.files.push_back(woby::createUiFileState({}, std::move(mesh), 0));
     woby::appendDefaultSceneNodesForFiles(state,0);
     auto& groups = state.files[0].groupSettings;
-    woby::ScenePickView view; bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    woby::ScenePickView view; woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     view.width = view.height = 100;
     auto pick = [&](float y) { return woby::pickSceneObject(woby::scenePickParts(state), view, {50,y}); };
     CHECK(pick(50) == groups[0].objectId);
@@ -319,8 +320,8 @@ TEST_CASE("Line picking clips near-plane crossings and skips degenerate and offs
     woby::ScenePickPart part;
     part.objectId = 1; part.mesh = &mesh; part.lineIndexCount = 2;
     part.lineWidth = 4; part.edges = true; part.solid = false; part.edgeXray = false;
-    bx::mtxIdentity(part.model.data());
-    woby::ScenePickView view; bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    woby::identityMatrix(part.model.data());
+    woby::ScenePickView view; woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     view.width = view.height = 100;
     auto pick = [&](float x) { return woby::pickSceneObject(std::span(&part, 1), view, {x,50}); };
     CHECK(pick(70) == 1); CHECK(pick(30) == woby::invalidSceneObjectId);

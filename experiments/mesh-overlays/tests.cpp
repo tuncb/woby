@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
+#include "math_utils.h"
 #include "renderer.h"
 #include "visibility.h"
 #include <algorithm>
@@ -7,7 +8,7 @@
 
 namespace o=woby::overlay;
 namespace {
-std::array<float,16> identity() { std::array<float,16> result{}; bx::mtxIdentity(result.data()); return result; }
+std::array<float,16> identity() { std::array<float,16> result{}; woby::identityMatrix(result.data()); return result; }
 size_t difference(const o::Capture& a,const o::Capture& b) {
     size_t count=0;
     for (size_t p=0;p<a.rgba.size();p+=4)

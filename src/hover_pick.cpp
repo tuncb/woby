@@ -2,7 +2,7 @@
 
 #include "hash_utils.h"
 
-#include <bx/math.h>
+#include "math_utils.h"
 
 #include <algorithm>
 #include <cmath>
@@ -194,7 +194,7 @@ std::span<const uint32_t> hoverCandidates(const GpuMesh& mesh,size_t group,const
     const size_t begin=std::min<size_t>(range.pointIndexOffset,indices.size());
     if (!mesh.pointCloud) return indices.subspan(begin,std::min<size_t>(range.pointIndexCount,indices.size()-begin));
     points::Matrix modelView,matrix;
-    bx::mtxMul(modelView.data(),model,view); bx::mtxMul(matrix.data(),modelView.data(),projection);
+    woby::multiplyMatrices(modelView.data(),model,view); woby::multiplyMatrices(matrix.data(),modelView.data(),projection);
     if (homogeneousDepth) for (size_t col=0;col<4;++col) matrix[col*4+2]=(matrix[col*4+2]+matrix[col*4+3])*.5f;
     const auto leaves=points::queryFootprints(*mesh.pointCloud,static_cast<uint32_t>(group),matrix,width,height,radius*2,
         {mouse.x,mouse.y,mouse.x,mouse.y});
@@ -231,7 +231,7 @@ void findHoveredGroupVertex(
     float groupModel[16];
     float groupWorld[16];
     groupTransformMatrix(settings, groupModel);
-    bx::mtxMul(groupWorld, model, groupModel);
+    woby::multiplyMatrices(groupWorld, model, groupModel);
 
     const uint32_t pointSize = vertexPointSize(
         masterVertexPointSize,
@@ -292,7 +292,7 @@ void findHoveredSceneNodeVertex(
         float nodeModel[16];
         float model[16];
         sceneNodeTransformMatrix(node.settings, nodeModel);
-        bx::mtxMul(model, parentModel, nodeModel);
+        woby::multiplyMatrices(model, parentModel, nodeModel);
         for (const auto& child : node.children) {
             findHoveredSceneNodeVertex(
                 files,
@@ -324,7 +324,7 @@ void findHoveredSceneNodeVertex(
         float fileModel[16];
         float model[16];
         fileTransformMatrix(file.fileSettings, fileModel);
-        bx::mtxMul(model, parentModel, fileModel);
+        woby::multiplyMatrices(model, parentModel, fileModel);
         const auto& gpuMesh = runtimes[node.fileIndex].gpuMesh;
         if (node.children.empty()) {
             const size_t groupCount = std::min(file.groupSettings.size(), gpuMesh.nodeRanges.size());
@@ -483,7 +483,7 @@ std::optional<HoveredVertex> findHoveredVertex(
     std::optional<HoveredVertex> hoveredVertex;
     if (!sceneNodes.empty()) {
         float identity[16];
-        bx::mtxIdentity(identity);
+        woby::identityMatrix(identity);
         for (const auto& node : sceneNodes) {
             findHoveredSceneNodeVertex(
                 files,
@@ -522,7 +522,7 @@ std::optional<HoveredVertex> findHoveredVertex(
             float groupModel[16];
             float model[16];
             groupTransformMatrix(settings, groupModel);
-            bx::mtxMul(model, fileModel, groupModel);
+            woby::multiplyMatrices(model, fileModel, groupModel);
 
             const uint32_t pointSize = vertexPointSize(
                 masterVertexPointSize,

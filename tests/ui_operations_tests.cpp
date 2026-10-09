@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "math_utils.h"
 #include "scene_viewport.h"
 #include "ui_layout.h"
 
@@ -626,7 +627,7 @@ bool finiteVec3(const std::array<float, 3>& value)
     return std::isfinite(value[0]) && std::isfinite(value[1]) && std::isfinite(value[2]);
 }
 
-bool finiteBxVec3(const bx::Vec3& value)
+bool finiteVec3(const woby::Vec3& value)
 {
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
@@ -1191,7 +1192,7 @@ TEST_CASE("camera roll changes the view up direction")
     woby::SceneCamera camera;
 
     woby::rollCamera(camera, 100.0f);
-    const bx::Vec3 up = woby::cameraUp(camera);
+    const woby::Vec3 up = woby::cameraUp(camera);
 
     CHECK(camera.rollRadians == doctest::Approx(0.6f));
     CHECK(up.x == doctest::Approx(0.0f));
@@ -1206,7 +1207,7 @@ TEST_CASE("camera supports Y-up scene controls")
     camera.verticalFovDegrees = 60.0f;
 
     woby::panCamera(camera, 100.0f, 100.0f, 100.0f, woby::SceneUpAxis::y);
-    const bx::Vec3 up = woby::cameraUp(camera, woby::SceneUpAxis::y);
+    const woby::Vec3 up = woby::cameraUp(camera, woby::SceneUpAxis::y);
 
     CHECK(camera.target[0] == doctest::Approx(0.0f));
     CHECK(camera.target[1] > 0.0f);
@@ -1749,9 +1750,9 @@ TEST_CASE("generated camera operations keep finite clamped view state")
             CHECK(camera.distance >= 0.001f);
             CHECK(std::isfinite(camera.distance));
             CHECK(finiteVec3(camera.target));
-            CHECK(finiteBxVec3(woby::cameraEye(camera, upAxis)));
-            CHECK(finiteBxVec3(woby::cameraLookAt(camera)));
-            CHECK(finiteBxVec3(woby::cameraUp(camera, upAxis)));
+            CHECK(finiteVec3(woby::cameraEye(camera, upAxis)));
+            CHECK(finiteVec3(woby::cameraLookAt(camera)));
+            CHECK(finiteVec3(woby::cameraUp(camera, upAxis)));
             CHECK(std::isfinite(woby::cameraFarPlane(camera, makeBounds(-1.0f, 1.0f))));
         }
     }
@@ -1789,7 +1790,7 @@ TEST_CASE("Camera presets align with each scene axis and retain target and dista
             CHECK(cameraUp.x * cameraUp.x + cameraUp.y * cameraUp.y + cameraUp.z * cameraUp.z
                 == doctest::Approx(1));
             float matrix[16];
-            bx::mtxLookAt(matrix, eye, woby::cameraLookAt(state.camera), cameraUp);
+            woby::lookAtMatrix(matrix, eye, woby::cameraLookAt(state.camera), cameraUp);
             for (const float value : matrix) { CHECK(std::isfinite(value)); }
             const auto before = state.camera;
             woby::orbitUiCamera(state, 0, 0);

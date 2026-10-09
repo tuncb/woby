@@ -2,7 +2,7 @@
 
 #include "graphics_helpers.h"
 
-#include <bx/math.h>
+#include "math_utils.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -277,7 +277,7 @@ void renderToView(ImDrawData* drawData, woby::graphics::ViewId viewId)
     const float right = drawData->DisplayPos.x + drawData->DisplaySize.x;
     const float top = drawData->DisplayPos.y;
     const float bottom = drawData->DisplayPos.y + drawData->DisplaySize.y;
-    bx::mtxOrtho(ortho, left, right, bottom, top, 0.0f, 1000.0f, 0.0f, woby::graphics::getCaps()->homogeneousDepth);
+    woby::orthographicMatrix(ortho, left, right, bottom, top, 0.0f, 1000.0f, 0.0f, woby::graphics::getCaps()->homogeneousDepth);
     woby::graphics::setViewTransform(viewId, nullptr, ortho);
 
     const ImVec2 clipOffset = drawData->DisplayPos;

@@ -9,7 +9,7 @@
 #include <NoGraphicsAPIUtility/texture_allocator.hpp>
 #include <NoGraphicsAPIUtility/upload_queue.hpp>
 #include <SDL3/SDL.h>
-#include <bx/math.h>
+#include "math_utils.h"
 #if defined(__APPLE__)
 #include <SDL3/SDL_metal.h>
 #else
@@ -778,8 +778,8 @@ WobyRoot rootData(const Encoder &encoder, const View &view)
         root.transparency.w = 1;
     }
     float modelView[16], modelViewProjection[16];
-    bx::mtxMul(modelView, encoder.model.data(), view.view.data());
-    bx::mtxMul(modelViewProjection, modelView, view.projection.data());
+    woby::multiplyMatrices(modelView, encoder.model.data(), view.view.data());
+    woby::multiplyMatrices(modelViewProjection, modelView, view.projection.data());
     matrix(root.modelViewProj, modelViewProjection);
     matrix(root.model, encoder.model.data());
     root.vertices = static_cast<float *>(encoder.vertices.gpu);
@@ -854,7 +854,7 @@ void pointQuadOperation(gpu::CommandBuffer* commands,const Operation& op,const V
         const auto& group=packet.groups[task.group];
         WobyRoot root{};
         float modelView[16],mvp[16];
-        bx::mtxMul(modelView,group.model.data(),view.view.data()); bx::mtxMul(mvp,modelView,view.projection.data());
+        woby::multiplyMatrices(modelView,group.model.data(),view.view.data()); woby::multiplyMatrices(mvp,modelView,view.projection.data());
         matrix(root.modelViewProj,mvp);
         std::memcpy(&root.color,group.color.data(),sizeof(root.color));
         root.vertices=reinterpret_cast<float*>(task.points); root.stride=sizeof(OpaquePoint)/sizeof(float);
@@ -890,7 +890,7 @@ void pointOperation(gpu::CommandBuffer* commands,const Operation& op,const View&
     for (size_t i=0;i<packet.groups.size();++i) {
         const auto& source=packet.groups[i];
         float modelView[16],mvp[16];
-        bx::mtxMul(modelView,source.model.data(),view.view.data()); bx::mtxMul(mvp,modelView,view.projection.data());
+        woby::multiplyMatrices(modelView,source.model.data(),view.view.data()); woby::multiplyMatrices(mvp,modelView,view.projection.data());
         auto& group=destination[i]; matrix(group.matrix,mvp);
         std::memcpy(&group.color,source.color.data(),sizeof(group.color));
         group.firstId=source.firstId; group.endId=source.endId; group.sourceFirstId=source.sourceFirstId; group.pointSize=source.pointSize;
@@ -1496,11 +1496,11 @@ void setViewTransform(ViewId id, const float *view, const float *projection, boo
     if (view)
         std::copy_n(view, 16, v.view.begin());
     else
-        bx::mtxIdentity(v.view.data());
+        woby::identityMatrix(v.view.data());
     if (projection)
         std::copy_n(projection, 16, v.projection.begin());
     else
-        bx::mtxIdentity(v.projection.data());
+        woby::identityMatrix(v.projection.data());
 }
 void setViewClear(ViewId id, uint16_t flags, uint32_t color, float depth, uint8_t)
 {

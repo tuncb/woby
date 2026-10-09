@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "math_utils.h"
 #include "visibility_run.h"
 #include "obj_mesh.h"
 #include "utf8_path.h"
@@ -98,7 +99,7 @@ int main(int argc,char** argv) {
         const auto uploadStart=Clock::now(); o::upload(renderer,mesh);
         const double uploadMs=std::chrono::duration<double,std::milli>(Clock::now()-uploadStart).count();
         std::array<float,16> projection{};
-        if (fixture) bx::mtxIdentity(projection.data());
+        if (fixture) woby::identityMatrix(projection.data());
         else projection=o::fittedProjection(mesh.bounds,options.width,options.height,zoom,orthographic);
         if (gpuCulling) {
             o::measureGpuCulling(renderer,projection,{output,fixture?"fixture":std::filesystem::absolute(model).string(),

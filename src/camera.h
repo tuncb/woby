@@ -6,7 +6,7 @@
 #include <array>
 #include <optional>
 
-#include <bx/math.h>
+#include "math_utils.h"
 
 namespace woby {
 
@@ -52,11 +52,11 @@ struct CameraPlacement {
 // Validate persisted values before they enter logical state or a scene file.
 [[nodiscard]] SceneCamera normalizedSceneCamera(SceneCamera camera);
 [[nodiscard]] float cameraViewportFov(const SceneCamera& camera, float aspectRatio);
-[[nodiscard]] bx::Vec3 cameraEye(
+[[nodiscard]] woby::Vec3 cameraEye(
     const SceneCamera& camera,
     SceneUpAxis upAxis = SceneUpAxis::z);
-[[nodiscard]] bx::Vec3 cameraLookAt(const SceneCamera& camera);
-[[nodiscard]] bx::Vec3 cameraUp(
+[[nodiscard]] woby::Vec3 cameraLookAt(const SceneCamera& camera);
+[[nodiscard]] woby::Vec3 cameraUp(
     const SceneCamera& camera,
     SceneUpAxis upAxis = SceneUpAxis::z);
 struct CameraDepthRange {

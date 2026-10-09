@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "math_utils.h"
 #include "visibility.h"
 #include "scene_buffer_size.h"
 #include <SDL3/SDL.h>
@@ -252,7 +253,7 @@ Measurement render(Renderer& r,const Display& d,const std::array<float,16>& view
         if ((isPoint && pointCount==0) || (!isPoint && range.triangleIndexCount==0)) return;
         auto root=r.arena->allocate<WobyRoot>(); require(root.cpu!=nullptr,"Overlay root arena exhausted");
         *root.cpu={};
-        float mvp[16]; bx::mtxMul(mvp,group.model.data(),viewProjection.data());
+        float mvp[16]; woby::multiplyMatrices(mvp,group.model.data(),viewProjection.data());
         shaderMatrix(root.cpu->modelViewProj,mvp);
         shaderMatrix(root.cpu->model,group.model.data());
         const float scale=isPoint?1.5f:isLine?1.25f:1;
@@ -401,15 +402,15 @@ std::array<float,16> fittedProjection(const Bounds& bounds,uint32_t width,uint32
     auto camera=frameCameraBounds(bounds); camera.distance*=distanceScale;
     const auto range=cameraDepthRange(camera,bounds);
     float view[16],projection[16];
-    bx::mtxLookAt(view,cameraEye(camera),cameraLookAt(camera),cameraUp(camera));
+    woby::lookAtMatrix(view,cameraEye(camera),cameraLookAt(camera),cameraUp(camera));
     const float aspect=float(width)/float(height);
     if (orthographic) {
         const float radius=bounds.radius*1.2f*distanceScale;
-        bx::mtxOrtho(projection,-radius*aspect,radius*aspect,-radius,radius,range.nearPlane,range.farPlane,0,false);
-    } else bx::mtxProj(projection,cameraViewportFov(camera,aspect),aspect,range.nearPlane,range.farPlane,false);
+        woby::orthographicMatrix(projection,-radius*aspect,radius*aspect,-radius,radius,range.nearPlane,range.farPlane,0,false);
+    } else woby::perspectiveMatrix(projection,cameraViewportFov(camera,aspect),aspect,range.nearPlane,range.farPlane,false);
     // Same forward-to-reversed [0,1] transformation used by scenePickView.
     for (size_t column=0;column<4;++column) projection[column*4+2]=projection[column*4+3]-projection[column*4+2];
-    std::array<float,16> result{}; bx::mtxMul(result.data(),view,projection); return result;
+    std::array<float,16> result{}; woby::multiplyMatrices(result.data(),view,projection); return result;
 }
 void savePng(const Capture& capture,const std::filesystem::path& path) {
     auto* surface=SDL_CreateSurfaceFrom(static_cast<int>(capture.width),static_cast<int>(capture.height),

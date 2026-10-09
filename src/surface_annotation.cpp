@@ -1,7 +1,7 @@
 #include "surface_annotation.h"
 #include "hash_utils.h"
 
-#include <bx/math.h>
+#include "math_utils.h"
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -622,7 +622,7 @@ void projectEdge(AnnotationGeometry& result, OutlineJoins& joins, const Annotati
 PickMatrix annotationCompose(const PickMatrix& first, const PickMatrix& second)
 {
     PickMatrix result;
-    bx::mtxMul(result.data(), first.data(), second.data());
+    woby::multiplyMatrices(result.data(), first.data(), second.data());
     return result;
 }
 std::array<float, 4> annotationTransform(const PickMatrix& m, const std::array<float, 4>& p)
@@ -888,7 +888,7 @@ AnnotationProjection annotationProjection(std::span<const ScenePickPart> parts,
         const auto primary = std::find_if(parts.begin(), parts.end(), [target](const auto& p) { return p.objectId == target; });
         if (primary == parts.end() || !primary->mesh) { throw std::runtime_error("The annotation target is unavailable."); }
         PickMatrix inverse;
-        bx::mtxInverse(inverse.data(), primary->model.data());
+        woby::inverseMatrix(inverse.data(), primary->model.data());
         for (size_t i = 0; i < result.targetIds.size(); ++i) {
             const auto source = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == result.targetIds[i]; });
             result.definition.sources[i] = {composeProjector(source->model, vp),
@@ -962,7 +962,7 @@ void setAnnotationProjectionTargets(AnnotationProjection& projection,
     if (!projection.targetIds.empty()) {
         projection.definition.sources.resize(projection.targetIds.size());
         PickMatrix inverse;
-        bx::mtxInverse(inverse.data(), primary->model.data());
+        woby::inverseMatrix(inverse.data(), primary->model.data());
         for (size_t i = 0; i < projection.targetIds.size(); ++i) {
             const auto source = std::find_if(parts.begin(), parts.end(), [&](const auto& p) { return p.objectId == projection.targetIds[i]; });
             auto& entry = projection.definition.sources[i];
@@ -1192,7 +1192,7 @@ void validateAnnotationGeometry(const AnnotationGeometry& geometry)
             for (const auto v : source.projector) { if (!std::isfinite(v)) { throw std::runtime_error("Invalid annotation source transform."); } }
             if (!invertibleProjector(source.projector)) { throw std::runtime_error("Singular annotation source transform."); }
             for (const auto v : source.toPrimary) { if (!std::isfinite(v)) { throw std::runtime_error("Invalid annotation source transform."); } }
-            bx::mtxInverse(inverse.data(), source.toPrimary.data());
+            woby::inverseMatrix(inverse.data(), source.toPrimary.data());
             for (const auto v : inverse) { if (!std::isfinite(v)) { throw std::runtime_error("Singular annotation source transform."); } }
         }
     }
@@ -1331,7 +1331,7 @@ void appendAnnotationPickParts(std::vector<ScenePickPart>& parts, const UiState&
     for (size_t i = 0; i < state.annotations.size(); ++i) {
         ScenePickPart part;
         part.objectId = state.annotations[i].objectId; part.edgeXray = false;
-        bx::mtxIdentity(part.model.data());
+        woby::identityMatrix(part.model.data());
         part.diagnosticEdges = storage[i];
         part.annotationOverlay = true;
         parts.push_back(part);
@@ -1347,7 +1347,7 @@ bool annotationEdgeHit(const UiAnnotation& item, std::span<const ScenePickPart> 
     ScenePickPart outline;
     outline.objectId = item.objectId; outline.edgeXray = false;
     outline.diagnosticEdges = lines;
-    bx::mtxIdentity(outline.model.data());
+    woby::identityMatrix(outline.model.data());
     // Reject off-outline pointers before testing source/occluder triangles.
     if (pickSceneObject(std::span<const ScenePickPart>(&outline, 1), view, point) != item.objectId) { return false; }
     std::vector<ScenePickPart> pickParts(parts.begin(), parts.end());

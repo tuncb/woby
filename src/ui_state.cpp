@@ -11,7 +11,7 @@
 #include <boost/unordered/unordered_flat_map.hpp>
 #include <tuple>
 
-#include <bx/math.h>
+#include "math_utils.h"
 
 namespace woby {
 namespace {
@@ -77,8 +77,8 @@ void transformFromSettings(
     float scale, double* model)
 {
     float rotation[16];
-    bx::mtxSRT(rotation, scale, scale, scale, bx::toRad(rotationDegrees[0]),
-        bx::toRad(rotationDegrees[1]), bx::toRad(rotationDegrees[2]), 0, 0, 0);
+    woby::transformMatrix(rotation, scale, scale, scale, woby::radians(rotationDegrees[0]),
+        woby::radians(rotationDegrees[1]), woby::radians(rotationDegrees[2]), 0, 0, 0);
     CoordinateMatrix toOrigin{}, transformed{};
     coordinateIdentity(toOrigin.data());
     std::copy_n(rotation, 16, transformed.begin());
@@ -306,7 +306,7 @@ void expandSceneNodeBounds(
         float nodeModel[16];
         float model[16];
         sceneNodeTransformMatrix(node.settings, nodeModel);
-        bx::mtxMul(model, parentModel, nodeModel);
+        woby::multiplyMatrices(model, parentModel, nodeModel);
         for (const auto& child : node.children) {
             expandSceneNodeBounds(bounds, files, child, model, selection, included);
         }
@@ -326,7 +326,7 @@ void expandSceneNodeBounds(
         float fileModel[16];
         float model[16];
         fileTransformMatrix(file.fileSettings, fileModel);
-        bx::mtxMul(model, parentModel, fileModel);
+        woby::multiplyMatrices(model, parentModel, fileModel);
         if (node.children.empty()) {
             const size_t groupCount = std::min(file.groupSettings.size(), file.mesh.nodes.size());
             for (size_t groupIndex = 0; groupIndex < groupCount; ++groupIndex) {
@@ -337,7 +337,7 @@ void expandSceneNodeBounds(
                 float groupModel[16];
                 float groupWorld[16];
                 groupTransformMatrix(file.groupSettings[groupIndex], groupModel);
-                bx::mtxMul(groupWorld, model, groupModel);
+                woby::multiplyMatrices(groupWorld, model, groupModel);
                 const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
                     ? file.groupSettings[groupIndex].localBounds
                     : nodeBounds(file.mesh, file.mesh.nodes[groupIndex]);
@@ -365,7 +365,7 @@ void expandSceneNodeBounds(
     float groupModel[16];
     float model[16];
     groupTransformMatrix(group, groupModel);
-    bx::mtxMul(model, parentModel, groupModel);
+    woby::multiplyMatrices(model, parentModel, groupModel);
     const Bounds localBounds = group.localBoundsValid
         ? group.localBounds
         : nodeBounds(file.mesh, file.mesh.nodes[node.groupIndex]);
@@ -381,7 +381,7 @@ Bounds sceneNodesBounds(const std::vector<UiFileState>& files, const std::vector
 {
     Bounds bounds = emptyAccumulatedBounds();
     float identity[16];
-    bx::mtxIdentity(identity);
+    woby::identityMatrix(identity);
     for (const auto& node : sceneNodes) {
         expandSceneNodeBounds(bounds, files, node, identity);
     }
@@ -426,7 +426,7 @@ void refreshFolderCentersRecursive(UiState& state, UiSceneNode& node)
 
     Bounds bounds = emptyAccumulatedBounds();
     float identity[16];
-    bx::mtxIdentity(identity);
+    woby::identityMatrix(identity);
     for (const auto& child : node.children) {
         expandSceneNodeBounds(bounds, state.files, child, identity);
     }
@@ -577,7 +577,7 @@ Bounds combineBounds(const std::vector<UiFileState>& files)
             float groupModel[16];
             float model[16];
             groupTransformMatrix(file.groupSettings[groupIndex], groupModel);
-            bx::mtxMul(model, fileModel, groupModel);
+            woby::multiplyMatrices(model, fileModel, groupModel);
             const Bounds localBounds = file.groupSettings[groupIndex].localBoundsValid
                 ? file.groupSettings[groupIndex].localBounds
                 : nodeBounds(file.mesh, file.mesh.nodes[groupIndex]);
@@ -686,7 +686,7 @@ std::optional<Bounds> sceneObjectBounds(const UiState& state, const std::vector<
     if (objects.empty()) { return std::nullopt; }
     Bounds bounds = emptyAccumulatedBounds();
     float identity[16];
-    bx::mtxIdentity(identity);
+    woby::identityMatrix(identity);
     if (state.sceneNodes.empty()) {
         for (size_t index = 0; index < state.files.size(); ++index) {
             expandSceneNodeBounds(bounds, state.files, createFileSceneNode(state.files[index], index),

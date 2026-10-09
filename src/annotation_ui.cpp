@@ -4,7 +4,7 @@
 #include "ui_operations.h"
 #include "ui_icon_controls.h"
 
-#include <bx/math.h>
+#include "math_utils.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <algorithm>
@@ -428,7 +428,7 @@ bool beginAnnotationPointer(UiState& state, AnnotationInteraction& interaction, 
         if (!near) {
             const auto lines = annotationWorldLines(*selected, parts);
             ScenePickPart outline; outline.objectId = selected->objectId; outline.diagnosticEdges = lines;
-            bx::mtxIdentity(outline.model.data());
+            woby::identityMatrix(outline.model.data());
             near = pickSceneObject(std::span<const ScenePickPart>(&outline, 1), view, point) == selected->objectId;
         }
         if (!near) { return false; }

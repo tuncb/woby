@@ -1,4 +1,5 @@
 #include "control_scene.h"
+#include "math_utils.h"
 #include "annotation_command.h"
 #include "annotation_preparation.h"
 #include "surface_annotation.h"
@@ -61,7 +62,7 @@ Json applyControlAnnotationOperation(UiState& state, const SceneDocument& cleanD
         auto view = scenePickView(state.camera, state.upAxis, state.sceneBounds, 1000, 1000, true, 1);
         const float aspect = command.aspect.value_or(1);
         const auto depth = cameraDepthRange(state.camera, state.sceneBounds, state.upAxis);
-        bx::mtxProj(view.projection.data(), cameraViewportFov(state.camera, aspect), aspect,
+        woby::perspectiveMatrix(view.projection.data(), cameraViewportFov(state.camera, aspect), aspect,
             depth.nearPlane, depth.farPlane, true);
         AnnotationProjection projection;
         if (!computed) { projection = annotationProjection(scenePickParts(state), view, id, annotationGroupTargets(state, id), annotationRegion(*command.start, *command.end)); }

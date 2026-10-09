@@ -1,4 +1,5 @@
 #include "scene_queries.h"
+#include "math_utils.h"
 #include "scene_inspector_queries.h"
 #include "scene_history.h"
 #include "annotation_work.h"
@@ -37,7 +38,7 @@ struct QueryFixture {
     SceneObjectId part(size_t i = 0) const { return state.files[0].groupSettings[i].objectId; }
     SceneObjectId annotation() {
         ScenePickView view;
-        bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+        woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
         view.width = view.height = 200;
         const auto projection = annotationProjection(scenePickParts(state), view, part());
         return createAnnotation(state, part(), projectAnnotation(projection, AnnotationShape::line, {-.1f,-.2f}, {.1f,-.2f}));
@@ -385,7 +386,7 @@ TEST_CASE("annotation edits rebuild only the affected world outline") {
     const auto original = f.queries.annotations.objects.at(id).lines;
     const auto duplicateBuilds = f.queries.annotations.objects.at(duplicate).builds;
     ScenePickView view;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     view.width = view.height = 200;
     auto geometry = projectAnnotation(annotationProjection(scenePickParts(f.state), view, f.part()),
         AnnotationShape::line, {-.2f, 0}, {.2f, 0});
@@ -440,7 +441,7 @@ TEST_CASE("annotation projection caches camera inputs separately from world geom
     auto& query = f.queries.annotations.objects.at(id);
     auto parts = scenePickParts(f.state);
     ScenePickView view;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.renderProjection.data());
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.renderProjection.data());
     view.width = view.height = 200;
     const auto update = [&] { updateAnnotationProjection(query, *findAnnotation(f.state, id), parts, view); };
     update();
@@ -499,7 +500,7 @@ TEST_CASE("cached hover parts preserve CPU picking coordinates") {
     runtimes[0].gpuMesh.nodeRanges[0].pointIndexCount = 3;
     runtimes[0].gpuMesh.pointVertexIndices = {0,1,2};
     ScenePickView view;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     view.width = view.height = 200;
     std::vector<ScenePickPart> parts;
     resolveSceneParts(f.queries, f.state, parts);
@@ -609,7 +610,7 @@ TEST_CASE("scene query cache benchmark" * doctest::skip()) {
     report("annotation_20000_segments", 1, [&] { annotationWorldLines(item, parts, worldScratch, sourceScratch); },
         [&] { updateSceneAnnotationQueries(f.queries, f.state); }, query.lines.capacity() * sizeof(DiagnosticEdge), query.builds);
     ScenePickView view;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.renderProjection.data());
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.renderProjection.data());
     view.width = view.height = 1000;
     updateAnnotationProjection(query, item, parts, view);
     report("annotation_projection", 1, [&] {

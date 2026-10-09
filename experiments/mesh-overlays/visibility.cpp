@@ -1,4 +1,5 @@
 #include "visibility.h"
+#include "math_utils.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -57,7 +58,7 @@ VisibilityAudit inspectVisibility(const Mesh& mesh,const Scene& scene,
     for (const auto& group : scene.groups) {
         beginGroup(result.frustum); beginGroup(result.conservative); beginGroup(result.center);
         if (!group.points) continue;
-        std::array<float,16> matrix{}; bx::mtxMul(matrix.data(),group.model.data(),viewProjection.data());
+        std::array<float,16> matrix{}; woby::multiplyMatrices(matrix.data(),group.model.data(),viewProjection.data());
         for (uint32_t i=0;i<group.range.pointIndexCount;++i) {
             const auto marker=group.range.pointIndexOffset+i;
             const auto& p=mesh.vertices.at(scene.markerVertices.at(marker)).position;

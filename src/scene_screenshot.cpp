@@ -9,7 +9,7 @@
 #include "imgui_graphics.h"
 
 #include <SDL3/SDL.h>
-#include <bx/math.h>
+#include "math_utils.h"
 
 #include <algorithm>
 #include <cctype>

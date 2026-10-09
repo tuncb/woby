@@ -43,7 +43,7 @@ foreach(entry_stage IN ITEMS "sceneVertex,vertex" "markerVertex,vertex" "sceneFr
     list(APPEND shader_outputs "${output}")
 endforeach()
 add_custom_target(woby_ngapi_shaders DEPENDS ${shader_outputs})
-add_library(woby_ngapi_logic STATIC logic.cpp ../../src/marker_pick_logic.cpp)
+add_library(woby_ngapi_logic STATIC logic.cpp ../../src/marker_pick_logic.cpp ../../src/model_mesh.cpp)
 target_include_directories(woby_ngapi_logic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(woby_ngapi_logic PUBLIC woby_math)
 woby_enable_project_warnings(woby_ngapi_logic)

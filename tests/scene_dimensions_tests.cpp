@@ -1,4 +1,5 @@
 #include "scene_dimensions.h"
+#include "math_utils.h"
 #include "allocation_probe.h"
 #include "scene_history.h"
 #include "ui_operations.h"
@@ -33,8 +34,8 @@ woby::ScenePickView identityView()
     woby::ScenePickView result;
     result.width = 400;
     result.height = 200;
-    bx::mtxIdentity(result.view.data());
-    bx::mtxIdentity(result.projection.data());
+    woby::identityMatrix(result.view.data());
+    woby::identityMatrix(result.projection.data());
     return result;
 }
 } // namespace
@@ -62,7 +63,7 @@ TEST_CASE("combined dimensions use tight world extents instead of transformed lo
     auto state = dimensionScene();
     auto parts = woby::scenePickParts(state);
     REQUIRE(parts.size() == 1);
-    bx::mtxIdentity(parts[0].model.data());
+    woby::identityMatrix(parts[0].model.data());
     const float c = std::sqrt(.5f);
     parts[0].model[0] = c;
     parts[0].model[1] = c;
@@ -148,7 +149,7 @@ TEST_CASE("dimension lengths preserve small values at large scene translations")
 {
     auto state = dimensionScene();
     auto parts = woby::scenePickParts(state);
-    bx::mtxIdentity(parts[0].model.data());
+    woby::identityMatrix(parts[0].model.data());
     parts[0].model[12] = 1e15f;
     parts[0].model[0] = .01f;
     const auto dimensions = woby::sceneDimensions(parts);

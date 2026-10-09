@@ -1,4 +1,5 @@
 #include "scene_pick.h"
+#include "math_utils.h"
 #include "scene_viewport.h"
 #include "ui_operations.h"
 #include "allocation_probe.h"
@@ -36,8 +37,8 @@ woby::UiState scene()
 woby::ScenePickView view()
 {
     woby::ScenePickView result;
-    bx::mtxIdentity(result.view.data());
-    bx::mtxIdentity(result.projection.data());
+    woby::identityMatrix(result.view.data());
+    woby::identityMatrix(result.projection.data());
     result.width = result.height = 100;
     return result;
 }
@@ -96,7 +97,7 @@ TEST_CASE("reversed render projection separates distant layers while preserving 
     REQUIRE(depth.nearPlane == camera.nearPlane);
     const auto view = woby::scenePickView(camera, woby::SceneUpAxis::z, bounds, 320, 240, false, 1);
     const auto& projection = view.renderProjection;
-    // bx defaults to a left-handed camera; positive view-space Z is forward.
+    // Woby uses a left-handed camera; positive view-space Z is forward.
     const auto projectedDepth = [&](float z) {
         return (projection[10] * z + projection[14]) / (projection[11] * z);
     };
@@ -223,7 +224,7 @@ TEST_CASE("scene projection retains all bounding corners across scales axes and 
                 const auto view = woby::scenePickView(camera, up, bounds, 320, 240, homogeneous, 1);
                 const auto depth = woby::cameraDepthRange(camera, bounds, up);
                 std::array<float, 16> expected;
-                bx::mtxProj(expected.data(), woby::cameraViewportFov(camera, 320.0f/240.0f), 320.0f/240.0f,
+                woby::perspectiveMatrix(expected.data(), woby::cameraViewportFov(camera, 320.0f/240.0f), 320.0f/240.0f,
                     depth.nearPlane, depth.farPlane, homogeneous);
                 CHECK(view.projection == expected);
                 for (const auto& vertex : corners) {
@@ -589,8 +590,8 @@ TEST_CASE("perspective picking works with roll up axis depth conventions and DPI
                     const std::array<float, 3> interior{0, -.2f, .4f};
                     float eye[4], clip[4];
                     const float p[4] = {interior[0], interior[1], interior[2], 1};
-                    bx::vec4MulMtx(eye, p, pickView.view.data());
-                    bx::vec4MulMtx(clip, eye, pickView.projection.data());
+                    woby::transformVector4(eye, p, pickView.view.data());
+                    woby::transformVector4(clip, eye, pickView.projection.data());
                     const float px = (clip[0] / clip[3] * .5f + .5f) * static_cast<float>(viewport.width);
                     const float py = (.5f - clip[1] / clip[3] * .5f) * static_cast<float>(viewport.height);
                     CAPTURE(up);

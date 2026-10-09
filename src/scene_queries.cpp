@@ -1,4 +1,5 @@
 #include "scene_queries.h"
+#include "math_utils.h"
 #include "comparison_runtime.h"
 #include "hash_utils.h"
 #include "ui_operations.h"
@@ -90,7 +91,7 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
             part.pointIndexOffset = node.pointIndexOffset; part.pointIndexCount = node.pointIndexCount;
             PickMatrix local;
             groupTransformMatrix(settings, local.data());
-            bx::mtxMul(part.model.data(), parent.data(), local.data());
+            woby::multiplyMatrices(part.model.data(), parent.data(), local.data());
             if (settings.localBoundsValid) { part.bounds = settings.localBounds; }
             part.solid = node.indexCount && settings.showSolidMesh;
             part.edges = node.lineIndexCount || (node.indexCount && settings.showTriangles);
@@ -114,14 +115,14 @@ void updateScenePartQueries(ScenePartQueries& cache, const UiState& state)
                     fileTransformMatrix(file.fileSettings, local.data());
                     opacity *= file.fileSettings.opacity; visible = visible && file.fileSettings.visible;
                 }
-                bx::mtxMul(model.data(), parent.data(), local.data());
+                woby::multiplyMatrices(model.data(), parent.data(), local.data());
                 if (node.kind == UiSceneNodeKind::file && node.children.empty()) {
                     for (size_t g = 0; g < state.files[node.fileIndex].groupSettings.size(); ++g) { group(node.fileIndex, g, model, opacity, visible); }
                 } else { for (const auto& child : node.children) { self(self, child, model, opacity, visible); } }
             }
             ancestors.pop_back();
         };
-        PickMatrix identity; bx::mtxIdentity(identity.data());
+        PickMatrix identity; woby::identityMatrix(identity.data());
         if (!state.sceneNodes.empty()) { for (const auto& node : state.sceneNodes) { visit(visit, node, identity, 1, true); } }
         else {
             for (size_t f = 0; f < state.files.size(); ++f) {
@@ -293,7 +294,7 @@ void appendSceneAnnotationParts(SceneQueryRuntime& runtime, const UiState& state
         const auto& entry = runtime.annotations.objects.at(item.objectId);
         ScenePickPart part;
         part.objectId = item.objectId; part.edgeXray = false; part.annotationOverlay = true;
-        bx::mtxIdentity(part.model.data()); part.diagnosticEdges = entry.lines;
+        woby::identityMatrix(part.model.data()); part.diagnosticEdges = entry.lines;
         parts.push_back(part);
     }
 }

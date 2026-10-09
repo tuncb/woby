@@ -1,4 +1,5 @@
 #include <doctest/doctest.h>
+#include "math_utils.h"
 #include "renderer.h"
 #include "visibility.h"
 #include <algorithm>
@@ -6,7 +7,7 @@
 
 namespace o=woby::overlay;
 namespace {
-std::array<float,16> identity() { std::array<float,16> result{}; bx::mtxIdentity(result.data()); return result; }
+std::array<float,16> identity() { std::array<float,16> result{}; woby::identityMatrix(result.data()); return result; }
 void addPoints(woby::Mesh& mesh,const std::vector<std::array<float,3>>& positions) {
     woby::MeshNode node; node.name="culling markers";
     node.pointIndexOffset=static_cast<uint32_t>(mesh.pointIndices.size());

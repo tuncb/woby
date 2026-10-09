@@ -5,7 +5,7 @@
 #include "graphics_helpers.h"
 #include "adaptive_points.h"
 
-#include <bx/math.h>
+#include "math_utils.h"
 
 #include <algorithm>
 #include <array>
@@ -164,7 +164,7 @@ void submitHelperBuffer(
     const std::array<float, 4>& color)
 {
     float model[16];
-    bx::mtxIdentity(model);
+    woby::identityMatrix(model);
     woby::graphics::setTransform(model);
     woby::graphics::setUniform(colorUniform, color.data());
     woby::graphics::setVertexBuffer(0, &vertexBuffer);

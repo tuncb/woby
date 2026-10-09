@@ -1,6 +1,6 @@
 #include "gpu_runtime.h"
 #include "graphics_helpers.h"
-#include <bx/math.h>
+#include "math_utils.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -74,21 +74,21 @@ ViewMatrices viewMatrices(const Trace& trace, const UiState& state, float aspect
     const float radius = trace.mesh.bounds.radius;
     const auto& center = trace.mesh.bounds.center;
     const float distance = radius * 3.4f / state.zoom;
-    const bx::Vec3 target{center[0], center[1], center[2]};
-    const bx::Vec3 eye{center[0] + std::sin(state.yaw) * std::cos(state.pitch) * distance,
+    const woby::Vec3 target{center[0], center[1], center[2]};
+    const woby::Vec3 eye{center[0] + std::sin(state.yaw) * std::cos(state.pitch) * distance,
         center[1] + std::sin(state.pitch) * distance,
         center[2] + std::cos(state.yaw) * std::cos(state.pitch) * distance};
     ViewMatrices result;
-    bx::mtxLookAt(result.view.data(), eye, target);
-    bx::mtxProj(result.projection.data(), 43.0f, aspect,
+    woby::lookAtMatrix(result.view.data(), eye, target);
+    woby::perspectiveMatrix(result.projection.data(), 43.0f, aspect,
         radius * 0.01f, radius * 20.0f, homogeneousDepth);
     return result;
 }
 std::array<float, 2> projectVertex(const ViewMatrices& matrices, const woby::Vertex& vertex)
 {
-    const bx::Vec3 p{vertex.position[0], vertex.position[1], vertex.position[2]};
-    const auto camera = bx::mul(p, matrices.view.data());
-    const auto projected = bx::mulH(camera, matrices.projection.data());
+    const woby::Vec3 p{vertex.position[0], vertex.position[1], vertex.position[2]};
+    const auto camera = woby::transformPoint(p, matrices.view.data());
+    const auto projected = woby::projectPoint(camera, matrices.projection.data());
     return {(projected.x + 1) * 0.5f, (1 - projected.y) * 0.5f};
 }
 void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& trace, const UiState& state, g::ViewId viewId)
@@ -96,7 +96,7 @@ void renderViewport(const Viewport& view, const GpuCapture& gpu, const Trace& tr
     if (!g::isValid(view.target)) { return; }
     const auto matrices = viewMatrices(trace, state, static_cast<float>(view.width) / static_cast<float>(view.height), g::getCaps()->homogeneousDepth);
     float model[16];
-    bx::mtxIdentity(model);
+    woby::identityMatrix(model);
     g::setViewFrameBuffer(viewId, view.target);
     g::setViewRect(viewId, 0, 0, view.width, view.height);
     g::setViewClear(viewId, WOBY_GPU_CLEAR_COLOR | WOBY_GPU_CLEAR_DEPTH, 0x111920ff);

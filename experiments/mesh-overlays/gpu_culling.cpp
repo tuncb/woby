@@ -1,4 +1,5 @@
 #include "gpu_culling.h"
+#include "math_utils.h"
 #include "renderer.h"
 #include <algorithm>
 #include <cmath>
@@ -118,7 +119,7 @@ void updateGpuCullInputs(Renderer& r,const std::array<float,16>& projection) {
     c.inputs.clear(); c.projection=projection;
     for (size_t i=0;i<c.layout.size();++i) {
         const auto& group=r.scene.groups[i]; auto& input=c.layout[i];
-        float mvp[16]; bx::mtxMul(mvp,group.model.data(),projection.data());
+        float mvp[16]; woby::multiplyMatrices(mvp,group.model.data(),projection.data());
         for (size_t row=0;row<4;++row) for (size_t col=0;col<4;++col) input.modelViewProj.rows[row][col]=mvp[col*4+row];
         input.enabled=group.points?1u:0u; c.inputs.push_back({group.model,group.points});
     }

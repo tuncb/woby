@@ -6,7 +6,7 @@
 #include <numeric>
 #include <queue>
 #include <stdexcept>
-#include <bx/math.h>
+#include "math_utils.h"
 
 namespace woby::points {
 namespace {
@@ -67,7 +67,7 @@ uint32_t buildNode(Cloud& cloud,uint32_t begin,uint32_t count,uint32_t group,uin
     for (const auto sample:samples) cloud.proxies.push_back(cloud.points[sample]);
     cloud.nodes[index]=node; return index;
 }
-Matrix multiply(const Matrix& model,const Matrix& projection) { Matrix result; bx::mtxMul(result.data(),model.data(),projection.data()); return result; }
+Matrix multiply(const Matrix& model,const Matrix& projection) { return woby::multiplyMatrices(model,projection); }
 std::array<float,4> transform(const Matrix& m,const std::array<float,3>& p) {
     std::array<float,4> r{};
     for (size_t i=0;i<4;++i) r[i]=m[i]*p[0]+m[4+i]*p[1]+m[8+i]*p[2]+m[12+i];

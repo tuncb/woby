@@ -47,7 +47,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include "graphics.h"
-#include <bx/math.h>
+#include "math_utils.h"
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <spdlog/sinks/basic_file_sink.h>

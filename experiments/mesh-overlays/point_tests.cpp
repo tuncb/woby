@@ -1,4 +1,5 @@
 #include "point_renderer.h"
+#include "math_utils.h"
 #include <doctest/doctest.h>
 #include <algorithm>
 #include <cmath>
@@ -8,7 +9,7 @@
 namespace p=woby::points;
 namespace o=woby::overlay;
 namespace {
-p::Matrix identity() { p::Matrix m; bx::mtxIdentity(m.data()); return m; }
+p::Matrix identity() { p::Matrix m; woby::identityMatrix(m.data()); return m; }
 woby::Mesh pointMesh(uint32_t count) {
     woby::Mesh mesh;
     for (uint32_t i=0;i<count;++i) {
@@ -22,7 +23,7 @@ p::Pick brute(const p::Cloud& cloud,const p::Matrix& projection,uint32_t width,u
     p::Pick result;
     for (const auto& group:cloud.groups) {
         if (!group.enabled) continue;
-        p::Matrix m; bx::mtxMul(m.data(),group.model.data(),projection.data());
+        p::Matrix m; woby::multiplyMatrices(m.data(),group.model.data(),projection.data());
         for (const auto& point:cloud.points) {
             if (point.id<group.firstId || point.id>=group.endId) continue;
             std::array<float,4> clip{};

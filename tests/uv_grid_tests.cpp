@@ -1,4 +1,5 @@
 #include "ui_operations.h"
+#include "math_utils.h"
 #include "scene_history.h"
 #include "control_scene.h"
 #include "automation_registry.h"
@@ -1131,8 +1132,8 @@ TEST_CASE("UV rectangles turn with their source instead of staying upright when 
             const auto project = [&](const std::array<float, 3>& position) {
                 const float point[4] = {position[0], position[1], position[2], 1};
                 float eye[4], clip[4];
-                bx::vec4MulMtx(eye, point, view.view.data());
-                bx::vec4MulMtx(clip, eye, view.projection.data());
+                woby::transformVector4(eye, point, view.view.data());
+                woby::transformVector4(clip, eye, view.projection.data());
                 return std::array<float, 2>{clip[0] / clip[3], clip[1] / clip[3]};
             };
             for (size_t i = 0; i < source.vertices.size(); ++i) {
@@ -1417,7 +1418,7 @@ TEST_CASE("UV triangle probes link barycentric points on source and separated la
     auto parts = woby::scenePickParts(state);
     std::erase_if(parts,[&](const auto& p) { return p.objectId != sourceId; });
     woby::ScenePickView view;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data()); view.width = view.height = 100;
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data()); view.width = view.height = 100;
     woby::SceneTriangleHit hit;
     CHECK(woby::pickSceneObject(parts,view,{60,35},&hit) == sourceId);
     REQUIRE(hit.triangle == 1); CHECK(hit.analysisId == 0);

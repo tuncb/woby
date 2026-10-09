@@ -6,7 +6,7 @@
 #include "uv_analysis.h"
 #include "uv_quality.h"
 
-#include <bx/math.h>
+#include "math_utils.h"
 
 #include <algorithm>
 #include <limits>

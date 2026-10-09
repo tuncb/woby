@@ -1,4 +1,5 @@
 #include "scene_renderer.h"
+#include "math_utils.h"
 #include "graphics_helpers.h"
 #include "marker_pick.h"
 
@@ -129,7 +130,7 @@ void initializeTransparency(TransparencyFixture& f, bool msaa)
     f.models.push_back({woby::createGpuMesh(source, woby::meshVertexLayout(), woby::gpuMeshPoints)});
     for (size_t i = 0; i < 2; ++i) {
         woby::SceneDrawItem item;
-        bx::mtxIdentity(item.model.data()); item.groupIndex = i; item.solid = true;
+        woby::identityMatrix(item.model.data()); item.groupIndex = i; item.solid = true;
         item.color = i == 0 ? std::array<float,4>{1,0,0,.4f} : std::array<float,4>{0,0,1,.55f};
         f.plan.items.push_back(item);
     }
@@ -138,7 +139,7 @@ struct TransparencyImage { std::vector<uint8_t> color, ids; uint32_t draws = 0; 
 TransparencyImage captureTransparency(TransparencyFixture& f, const woby::SceneDrawPlan& plan,
     bool reversed = false, bool approximate = true, bool perspective = false, bool pulled = false)
 {
-    std::array<float,16> projection{}; bx::mtxIdentity(projection.data());
+    std::array<float,16> projection{}; woby::identityMatrix(projection.data());
     if (perspective) {
         projection[10] = 1.2f/1.1f; projection[14] = -.12f/1.1f;
         projection[11] = 1; projection[15] = 0;
@@ -229,7 +230,7 @@ TEST_CASE("Weighted transparency preserves opaque occlusion prominent markers an
         covered.items.resize(1);
         CHECK(opaque.color == captureTransparency(f, covered).color);
         woby::SceneDrawItem marker;
-        bx::mtxIdentity(marker.model.data()); marker.groupIndex = 2; marker.points = true;
+        woby::identityMatrix(marker.model.data()); marker.groupIndex = 2; marker.points = true;
         marker.pointSize = 12; marker.color = {0,1,0,0}; // Surface opacity never affects this marker.
         auto marked = f.plan; marked.items.push_back(marker);
         const auto withSurfaces = captureTransparency(f, marked);
@@ -333,7 +334,7 @@ TEST_CASE("Combined transparent edges preserve opaque occlusion zero opacity and
     for (const bool msaa : {false,true}) {
         CAPTURE(msaa);
         TransparencyFixture f; initializeTransparency(f,msaa);
-        woby::SceneDrawItem marker; bx::mtxIdentity(marker.model.data());
+        woby::SceneDrawItem marker; woby::identityMatrix(marker.model.data());
         marker.groupIndex = 2; marker.points = true; marker.pointSize = 12; marker.color = {0,1,0,0};
         auto pointOnly = f.plan; pointOnly.items = {marker};
         const auto referencePoint = captureTransparency(f,pointOnly);

@@ -1,4 +1,5 @@
 #include "model_load.h"
+#include "math_utils.h"
 #include "obj_mesh.h"
 #include "scene_buffer_size.h"
 #include "utf8_path.h"
@@ -831,7 +832,7 @@ TEST_CASE("OBJ point and line parts support picking dimensions and appearance co
     const auto lines = state.files[0].groupSettings[1].objectId;
     CHECK(state.files[0].groupSettings[0].showVertices);
     woby::ScenePickView view;
-    bx::mtxIdentity(view.view.data()); bx::mtxIdentity(view.projection.data());
+    woby::identityMatrix(view.view.data()); woby::identityMatrix(view.projection.data());
     view.width = view.height = 100;
     CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {50,50}) == points);
     CHECK(woby::pickSceneObject(woby::scenePickParts(state), view, {50,75}) == lines);

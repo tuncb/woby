@@ -1,6 +1,6 @@
 #include "adaptive_points.h"
 #include "graphics_helpers.h"
-#include <bx/math.h>
+#include "math_utils.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -47,7 +47,7 @@ void prepareAdaptivePoints(AdaptivePointRuntime& runtime,const std::filesystem::
     runtime.draws.clear(); runtime.active=false; runtime.submitted=0;
     runtime.width=view.width; runtime.height=view.height; runtime.now=now; runtime.adaptive=adaptive;
     runtime.queryEnabled=queryEnabled; runtime.query=query;
-    bx::mtxMul(runtime.projection.data(),view.view.data(),view.renderProjection.data());
+    woby::multiplyMatrices(runtime.projection.data(),view.view.data(),view.renderProjection.data());
     const auto* caps=graphics::getCaps();
     runtime.backend=graphics::selectPointBackend(caps->supported,runtime.preference);
     if (uint64_t(view.width)*view.height*4*sizeof(uint64_t)>UINT32_MAX) runtime.backend=graphics::PointBackend::quads;
@@ -205,7 +205,7 @@ void submitAdaptivePoints(AdaptivePointRuntime& runtime,graphics::ViewId view,bo
         runtime.queryRectangle=query; runtime.querySelections.clear();
         for (size_t i=0;i<runtime.draws.size();++i) {
             const auto& draw=runtime.draws[i]; points::Matrix matrix;
-            bx::mtxMul(matrix.data(),draw.key.group.model.data(),runtime.projection.data());
+            woby::multiplyMatrices(matrix.data(),draw.key.group.model.data(),runtime.projection.data());
             runtime.querySelections.push_back(points::queryFootprints(*draw.key.cloud,draw.key.sourceGroup,matrix,runtime.width,runtime.height,
                 draw.key.group.pointSize,rectangle));
         }

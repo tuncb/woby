@@ -1,4 +1,5 @@
 #include "point_renderer.h"
+#include "math_utils.h"
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -117,7 +118,7 @@ Timing render(PointRenderer& r,const Cloud& cloud,const Selection& selection,con
         r.previousRanges=selection.ranges;
     }
     if (matricesChanged) for (size_t i=0;i<cloud.groups.size();++i) {
-        const auto& group=cloud.groups[i]; CloudGroup value{}; Matrix m; bx::mtxMul(m.data(),group.model.data(),projection.data()); matrix(value.matrix,m);
+        const auto& group=cloud.groups[i]; CloudGroup value{}; Matrix m; woby::multiplyMatrices(m.data(),group.model.data(),projection.data()); matrix(value.matrix,m);
         value.color={group.color[0],group.color[1],group.color[2],1}; value.firstId=group.firstId; value.endId=group.endId; value.enabled=group.enabled?1u:0u;
         std::memcpy(r.groups.range.cpu+i*sizeof(CloudGroup),&value,sizeof(value));
     }
@@ -138,7 +139,7 @@ Timing render(PointRenderer& r,const Cloud& cloud,const Selection& selection,con
         if (solid) for (size_t i=0;i<g.scene.groups.size();++i) {
             const auto& group=g.scene.groups[i]; if (!group.range.triangleIndexCount || !cloud.groups[i].enabled) continue;
             auto data=g.arena->allocate<WobyRoot>(); require(data.cpu!=nullptr,"Surface root arena exhausted"); *data.cpu={};
-            Matrix m; bx::mtxMul(m.data(),cloud.groups[i].model.data(),projection.data()); matrix(data.cpu->modelViewProj,m); matrix(data.cpu->model,cloud.groups[i].model);
+            Matrix m; woby::multiplyMatrices(m.data(),cloud.groups[i].model.data(),projection.data()); matrix(data.cpu->modelViewProj,m); matrix(data.cpu->model,cloud.groups[i].model);
             data.cpu->vertices=reinterpret_cast<float*>(g.scene.vertices.range.gpu); data.cpu->stride=sizeof(Vertex)/4;
             data.cpu->color={group.color[0],group.color[1],group.color[2],1};
             gpu::set_depth_stencil(commands,{.depth_test=true,.depth_write=true,.depth_compare=gpu::CompareOp::greater}); gpu::bind_pso(commands,r.surface);

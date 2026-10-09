@@ -1,4 +1,5 @@
 #include "control_scene.h"
+#include "math_utils.h"
 #include "uv_quality.h"
 #include "analysis_results.h"
 #include "comparison_scene.h"
@@ -188,7 +189,7 @@ Json treeNode(const UiState& state, const UiSceneNode& node, const ObjectIdForma
                 state.masterVertexPointSize * (file.vertexSizeScale * group.vertexSizeScale), minVertexPointSize, maxVertexPointSize));
         }
     }
-    bx::mtxMul(world.data(), parent.data(), local.data());
+    woby::multiplyMatrices(world.data(), parent.data(), local.data());
     result["effective"] = {{"visible", parentVisible && visible}, {"opacity", parentOpacity * opacity}, {"worldMatrix", world}};
     result["children"] = Json::array();
     if (node.kind == UiSceneNodeKind::group) { return result; }
@@ -299,7 +300,7 @@ Json controlCameraInfo(const UiState& state)
 Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
 {
     std::array<float, 16> identity{};
-    bx::mtxIdentity(identity.data());
+    woby::identityMatrix(identity.data());
     Json result = Json::array();
     if (state.sceneNodes.empty()) {
         for (size_t index = 0; index < state.files.size(); ++index) {
@@ -312,7 +313,7 @@ Json controlSceneTree(const UiState& state, const ObjectIdFormatter& formatId)
     }
     for (const auto& comparison : state.comparisons) {
         std::array<float, 16> world{};
-        bx::mtxTranslate(world.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
+        woby::translationMatrix(world.data(), comparison.translation[0], comparison.translation[1], comparison.translation[2]);
         result.push_back({{"id", formatId(comparison.objectId)}, {"name", comparison.name}, {"kind", "analysis"},
             {"parentId", nullptr},
             {"occurrence", {result.size()}}, {"implicit", false}, {"children", Json::array()},

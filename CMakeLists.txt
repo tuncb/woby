@@ -35,8 +35,8 @@ include(cmake/WobyPrecompiledHeaders.cmake)
 include(cmake/WobyRuntimeFiles.cmake)
 
 find_package(SDL3 3.4 CONFIG REQUIRED)
+include(cmake/WobyMath.cmake)
 include(cmake/NoGraphicsAPI.cmake)
-include(cmake/BxMath.cmake)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
@@ -489,6 +489,7 @@ if(BUILD_TESTING)
     set_tests_properties(woby_utility_allocations PROPERTIES LABELS "unit;cpu")
 
     add_executable(woby_tests
+        tests/math_utils_tests.cpp
         tests/graphics_tests.cpp
         tests/graphics_diagnostics_tests.cpp
         tests/shader_types_tests.cpp
