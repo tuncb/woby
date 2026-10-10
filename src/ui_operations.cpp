@@ -589,7 +589,7 @@ void selectUvFinding(UiState& state, const Mesh& display, uint64_t resultSignatu
     if (!comparison || !comparison->settings.enabled || comparison->settings.type != AnalysisType::uvQuality
         || !resultSignature || resultSignature != comparisonGeometrySignature(state, id)
         || !display.uvQuality || index >= display.uvQuality->findings.size()) { return; }
-    const auto& triangle = display.uvQuality->triangles.at(display.uvQuality->findings[index]);
+    const auto& triangle = uvTriangleQuality(*display.uvQuality, display.uvQuality->findings[index]);
     if (comparison->settings.uvView == UvView::layout && (triangle.missing || triangle.collapsed)) {
         auto settings = comparison->settings;
         settings.uvView = UvView::surface;

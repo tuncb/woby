@@ -56,9 +56,9 @@ std::vector<std::string> comparisonReportLines(
                     lines.push_back("Threshold "+measurementNumber(q.settings.uvThreshold)+": "+std::to_string(s.thresholdCount)+" faces; "+measurementNumber(s.thresholdAreaPercent)+"% surface area");
                 }
                 lines.push_back(std::to_string(s.nearCollapseCount)+" near-collapse triangles (stretch < "+measurementNumber(q.settings.uvNearCollapse)+")");
-                if (q.overlapChecked) { lines.push_back(std::to_string(q.overlaps.size())+" UV overlap pairs; "+std::to_string(q.crossPatchPairs)+" cross-patch (may be intentional)"+(q.overlapTruncated ? "; PARTIAL: work limit" : "")); }
+                if (bool(q.overlap)) { lines.push_back(std::to_string(uvOverlapResult(q).pairs.size())+" UV overlap pairs; "+std::to_string(uvOverlapResult(q).crossPatchPairs)+" cross-patch (may be intentional)"+(uvOverlapResult(q).truncated ? "; PARTIAL: work limit" : "")); }
                 if (settings.uvThresholdEnabled || settings.uvRangeEnabled) { lines.push_back("Cyan: highlighted threshold / histogram range"); }
-                lines.push_back(std::to_string(q.collapsed)+" collapsed UV triangles; "+std::to_string(q.mixedOrientationPatches)+" patches with mixed orientation");
+                lines.push_back(std::to_string(uvMeasurements(q).collapsed)+" collapsed UV triangles; "+std::to_string(uvMeasurements(q).mixedOrientationPatches)+" patches with mixed orientation");
             }
         } else if (options.legend && settings.uvGrid.enabled && settings.uvGrid.mode != UvColorMode::grid) {
             lines.push_back(std::string(uvColorModeKey(settings.uvGrid.mode))+" gradient: blue "+measurementNumber(settings.uvGrid.minimum)+"; yellow "+measurementNumber(settings.uvGrid.maximum));

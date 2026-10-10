@@ -15,7 +15,6 @@ struct UvTriangleQuality {
     double angleDegrees = 0, areaLog2 = 0, surfaceArea = 0, uvArea = 0;
     // Surface -> UV; per-patch mode divides by sqrt(total UV / surface area).
     double minStretch = 0, maxStretch = 0, anisotropy = 1;
-    double absoluteMaxStretch = 0; // Canonical value; normalization edits never accumulate rounding error.
     std::array<UvPoint, 3> uv{};
     int orientation = 0;
     bool missing = false, collapsed = false, degenerateSurface = false, mixedOrientation = false;
@@ -32,24 +31,44 @@ struct UvQualityStatistics {
     std::array<double, uvHistogramBins> areas{};
 };
 struct UvOverlapPair { size_t first = 0, second = 0; bool crossPatch = false; };
-struct UvOverlapLimits { size_t candidates = 2000000, pairs = 10000; };
+struct UvOverlapLimits {
+    size_t candidates = 2000000, pairs = 10000;
+    friend bool operator==(const UvOverlapLimits&, const UvOverlapLimits&) = default;
+};
+
+struct UvMeasurements {
+    // Absolute values. Normalization and overlap flags are applied only by uvTriangleQuality.
+    std::vector<UvTriangleQuality> triangles;
+    std::vector<double> patchAreaLog2, patchStretchScale;
+    size_t missing = 0, collapsed = 0, degenerateSurface = 0, mixedOrientationPatches = 0;
+};
+struct UvOverlapResult {
+    std::shared_ptr<const UvMeasurements> measurements;
+    UvOverlapScope scope = UvOverlapScope::perPatch;
+    UvOverlapLimits limits;
+    std::vector<uint8_t> flags; // Bit 0: within patch; bit 1: cross patch.
+    std::vector<UvOverlapPair> pairs;
+    size_t candidates = 0, overlappingTriangles = 0, crossPatchPairs = 0;
+    bool truncated = false;
+};
 
 struct UvQuality {
-    std::vector<UvTriangleQuality> triangles;
-    std::vector<double> patchAreaLog2;
+    std::shared_ptr<const UvMeasurements> measurements;
+    std::shared_ptr<const UvOverlapResult> overlap, overlapCache;
+    UvOverlapLimits overlapLimits;
     // Metric distributions exclude threshold/range-dependent counts and findings.
-    std::array<std::optional<UvQualityStatistics>, 6> distributions;
+    std::array<std::optional<UvQualityStatistics>, 12> distributions;
     // Computed once on the worker; UI navigation never scans all triangles.
     std::vector<size_t> findings;
     UvAreaNormalization normalization = UvAreaNormalization::perPatch;
     UvQualityMetric metric = UvQualityMetric::angle;
     ComparisonSettings settings;
     UvQualityStatistics statistics;
-    size_t missing = 0, collapsed = 0, degenerateSurface = 0, mixedOrientationPatches = 0;
-    std::vector<UvOverlapPair> overlaps;
-    size_t overlapCandidates = 0, overlappingTriangles = 0, crossPatchPairs = 0;
-    bool overlapChecked = false, overlapTruncated = false;
 };
+
+[[nodiscard]] const UvMeasurements& uvMeasurements(const UvQuality& quality);
+[[nodiscard]] const UvOverlapResult& uvOverlapResult(const UvQuality& quality);
+[[nodiscard]] UvTriangleQuality uvTriangleQuality(const UvQuality& quality, size_t index);
 
 [[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric,
     std::stop_token stop = {});

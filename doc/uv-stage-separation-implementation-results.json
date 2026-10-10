@@ -1,0 +1,210 @@
+{
+  "metadata": {
+    "base_commit": "7ca527f9c9a22f205dacd94f0c934c3ef0ae5490",
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+    "executable_sha256": "033821C9D255709E33E0A4C56CC7D4963F30C0EFFF34895E516CE1AB0BD92B4A",
+    "source_sha256": "0D96641225CD7A7E5D79FB2B1225A9A9D466B6F8C5DDC47F642AF297A4E6D27F",
+    "date": "2026-10-10",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "samples": 3,
+    "notes": "Release CPU timings in one process after load. All parts, identity transforms, surface angle per-patch normalization. Fixed operation order; no warmup excluded. Overlap off except the separate enable-overlap timing, which uses default limits. No concurrent builds or tests. layout_from_surface times exclude face packing and smooth normals; prepare_*_cached times include full CPU preparation with shared measurements. All timings exclude GPU upload and runtime publication. Surface and cold layout remain resident during cached layout timing. Array capacities exclude allocator overhead and scratch storage.",
+    "implementation": "UV stage separation measured with uncommitted changes on the recorded base commit."
+  },
+  "results": {
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "samples": [
+      {
+        "analyze_existing_surface_ms": 768.3223,
+        "area_metric_cached_threshold_ms": 87.132,
+        "area_metric_cold_refresh_ms": 260.037,
+        "area_normalization_cached_return_ms": 84.9953,
+        "area_normalization_refresh_ms": 245.387,
+        "copy_quality_ms": 0.2857,
+        "display_face_capacity_bytes": 50618016,
+        "enable_overlap_owned_ms": 1073.3405,
+        "layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "layout_from_surface_ms": 94.3608,
+        "layout_from_surface_separated_ms": 94.4742,
+        "near_collapse_refresh_ms": 22.8218,
+        "overlap": {
+          "candidates": 2000000,
+          "pairs": 9566,
+          "scope": "per_patch",
+          "truncated": true
+        },
+        "prepare_layout_cached_ms": 251.616,
+        "prepare_layout_ms": 993.5764,
+        "prepare_separated_cached_ms": 254.0431,
+        "prepare_separated_ms": 993.6939,
+        "prepare_surface_ms": 920.4092,
+        "quality": {
+          "collapsed": 0,
+          "degenerate_surface": 0,
+          "finding_capacity_bytes": 1106040,
+          "missing": 95868,
+          "overlap_capacity_bytes": 0,
+          "patch_capacity_bytes": 752,
+          "triangle_capacity_bytes": 151854048,
+          "triangles": 1054542,
+          "valid": 958674
+        },
+        "separated_layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "surface": {
+          "faces": 1054542,
+          "index_capacity_bytes": 12654504,
+          "node_count": 65,
+          "position_capacity_bytes": 28586280,
+          "vertex_capacity_bytes": 38115040,
+          "vertices": 547469
+        },
+        "threshold_findings": 1053786,
+        "threshold_pack_faces_ms": 46.7134,
+        "threshold_refresh_ms": 83.06,
+        "threshold_update_owned_ms": 30.3615
+      },
+      {
+        "analyze_existing_surface_ms": 775.7887,
+        "area_metric_cached_threshold_ms": 93.489,
+        "area_metric_cold_refresh_ms": 257.9535,
+        "area_normalization_cached_return_ms": 86.2823,
+        "area_normalization_refresh_ms": 241.9964,
+        "copy_quality_ms": 0.2863,
+        "display_face_capacity_bytes": 50618016,
+        "enable_overlap_owned_ms": 1061.9578,
+        "layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "layout_from_surface_ms": 98.3447,
+        "layout_from_surface_separated_ms": 98.5053,
+        "near_collapse_refresh_ms": 22.3577,
+        "overlap": {
+          "candidates": 2000000,
+          "pairs": 9566,
+          "scope": "per_patch",
+          "truncated": true
+        },
+        "prepare_layout_cached_ms": 252.6808,
+        "prepare_layout_ms": 997.199,
+        "prepare_separated_cached_ms": 255.9363,
+        "prepare_separated_ms": 992.1234,
+        "prepare_surface_ms": 906.0102,
+        "quality": {
+          "collapsed": 0,
+          "degenerate_surface": 0,
+          "finding_capacity_bytes": 1106040,
+          "missing": 95868,
+          "overlap_capacity_bytes": 0,
+          "patch_capacity_bytes": 752,
+          "triangle_capacity_bytes": 151854048,
+          "triangles": 1054542,
+          "valid": 958674
+        },
+        "separated_layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "surface": {
+          "faces": 1054542,
+          "index_capacity_bytes": 12654504,
+          "node_count": 65,
+          "position_capacity_bytes": 28586280,
+          "vertex_capacity_bytes": 38115040,
+          "vertices": 547469
+        },
+        "threshold_findings": 1053786,
+        "threshold_pack_faces_ms": 47.8559,
+        "threshold_refresh_ms": 81.7276,
+        "threshold_update_owned_ms": 30.872
+      },
+      {
+        "analyze_existing_surface_ms": 768.1484,
+        "area_metric_cached_threshold_ms": 85.5827,
+        "area_metric_cold_refresh_ms": 258.1706,
+        "area_normalization_cached_return_ms": 86.0306,
+        "area_normalization_refresh_ms": 243.507,
+        "copy_quality_ms": 0.3202,
+        "display_face_capacity_bytes": 50618016,
+        "enable_overlap_owned_ms": 1068.832,
+        "layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "layout_from_surface_ms": 95.3313,
+        "layout_from_surface_separated_ms": 92.9852,
+        "near_collapse_refresh_ms": 22.7601,
+        "overlap": {
+          "candidates": 2000000,
+          "pairs": 9566,
+          "scope": "per_patch",
+          "truncated": true
+        },
+        "prepare_layout_cached_ms": 253.8776,
+        "prepare_layout_ms": 993.8988,
+        "prepare_separated_cached_ms": 251.4375,
+        "prepare_separated_ms": 987.0475,
+        "prepare_surface_ms": 896.884,
+        "quality": {
+          "collapsed": 0,
+          "degenerate_surface": 0,
+          "finding_capacity_bytes": 1106040,
+          "missing": 95868,
+          "overlap_capacity_bytes": 0,
+          "patch_capacity_bytes": 752,
+          "triangle_capacity_bytes": 151854048,
+          "triangles": 1054542,
+          "valid": 958674
+        },
+        "separated_layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "surface": {
+          "faces": 1054542,
+          "index_capacity_bytes": 12654504,
+          "node_count": 65,
+          "position_capacity_bytes": 28586280,
+          "vertex_capacity_bytes": 38115040,
+          "vertices": 547469
+        },
+        "threshold_findings": 1053786,
+        "threshold_pack_faces_ms": 46.8738,
+        "threshold_refresh_ms": 81.3812,
+        "threshold_update_owned_ms": 30.8339
+      }
+    ],
+    "sizeof_display_face": 48,
+    "sizeof_triangle": 144
+  }
+}

@@ -102,7 +102,7 @@ void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const U
     const auto& q = *quality;
     const auto& s = q.statistics;
     ImGui::TextWrapped("%zu collapsed UV; %zu mixed-orientation patches; %zu missing UV; %zu degenerate surface triangles",
-        q.collapsed,q.mixedOrientationPatches,q.missing,q.degenerateSurface);
+        uvMeasurements(q).collapsed,uvMeasurements(q).mixedOrientationPatches,uvMeasurements(q).missing,uvMeasurements(q).degenerateSurface);
     ImGui::TextWrapped("%zu valid triangles near collapse (stretch < %.6g)",s.nearCollapseCount,q.settings.uvNearCollapse);
     if (numeric && s.count) {
         ImGui::TextWrapped("Minimum %.6g | Median %.6g | P95 %.6g | Maximum %.6g",s.minimum,s.median,s.percentile95,s.maximum);
@@ -111,14 +111,14 @@ void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const U
         ImGui::TextWrapped("Percentiles weight faces equally. Invalid triangles are excluded. Area statistics use physical surface area.");
         histogram(s,settings);
     }
-    if (q.overlapChecked) {
+    if (bool(q.overlap)) {
         ImGui::TextWrapped("%zu overlap pairs: %zu within patches, %zu cross-patch; %zu affected triangles",
-            q.overlaps.size(),q.overlaps.size()-q.crossPatchPairs,q.crossPatchPairs,q.overlappingTriangles);
-        if (q.overlapTruncated) { ImGui::TextColored({1,.65f,.25f,1},"Partial result: work limit reached. Isolate fewer patches."); }
+            uvOverlapResult(q).pairs.size(),uvOverlapResult(q).pairs.size()-uvOverlapResult(q).crossPatchPairs,uvOverlapResult(q).crossPatchPairs,uvOverlapResult(q).overlappingTriangles);
+        if (uvOverlapResult(q).truncated) { ImGui::TextColored({1,.65f,.25f,1},"Partial result: work limit reached. Isolate fewer patches."); }
         if (ImGui::TreeNode("Overlap pairs")) {
-            for (size_t i=0;i<std::min(q.overlaps.size(),size_t{100});++i) {
-                const auto& pair = q.overlaps[i];
-                const auto& a = q.triangles[pair.first]; const auto& b = q.triangles[pair.second];
+            for (size_t i=0;i<std::min(uvOverlapResult(q).pairs.size(),size_t{100});++i) {
+                const auto& pair = uvOverlapResult(q).pairs[i];
+                const auto& a = uvTriangleQuality(q, pair.first); const auto& b = uvTriangleQuality(q, pair.second);
                 ImGui::PushID(static_cast<int>(i));
                 ImGui::Text("%s: %zu / %zu",pair.crossPatch ? "Cross-patch" : "Within patch",a.triangle,b.triangle);
                 ImGui::SameLine();
@@ -127,23 +127,24 @@ void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const U
                 if (ImGui::SmallButton("Second")) { setUvProbe(state,id,b.partId,b.triangle,{1.0/3,1.0/3,1.0/3}); }
                 ImGui::PopID();
             }
-            if (q.overlaps.size()>100) { ImGui::TextDisabled("First 100 pairs shown. Isolate patches to narrow the list."); }
+            if (uvOverlapResult(q).pairs.size()>100) { ImGui::TextDisabled("First 100 pairs shown. Isolate patches to narrow the list."); }
             ImGui::TreePop();
         }
     }
     const auto* comparison = findComparison(state,id);
     if (comparison && comparison->uvProbe && comparison->uvProbe->signature == signature) {
         const auto& probe = *comparison->uvProbe;
-        const auto it = std::find_if(q.triangles.begin(),q.triangles.end(),[&](const auto& t) { return t.partId == probe.partId && t.triangle == probe.triangle; });
-        if (it != q.triangles.end()) {
+        const auto it = std::find_if(uvMeasurements(q).triangles.begin(),uvMeasurements(q).triangles.end(),[&](const auto& t) { return t.partId == probe.partId && t.triangle == probe.triangle; });
+        if (it != uvMeasurements(q).triangles.end()) {
+            const auto resolved = uvTriangleQuality(q, static_cast<size_t>(it - uvMeasurements(q).triangles.begin()));
             UvPoint uv{};
             for (size_t i=0;i<3;++i) { for (size_t k=0;k<2;++k) { uv[k] += it->uv[i][k]*probe.barycentric[i]; } }
             ImGui::SeparatorText("Linked triangle probe");
             ImGui::Text("Part %llu / triangle %zu",static_cast<unsigned long long>(probe.partId),probe.triangle);
             if (!it->missing) { ImGui::Text("U %.9g | V %.9g",uv[0],uv[1]); }
             if (validUvTriangle(*it)) {
-                ImGui::Text("Angle %.6g deg | Area log2 %.6g",it->angleDegrees,it->areaLog2);
-                ImGui::Text("Anisotropy %.6g | Stretch %.6g to %.6g",it->anisotropy,it->minStretch,it->maxStretch);
+                ImGui::Text("Angle %.6g deg | Area log2 %.6g",it->angleDegrees,resolved.areaLog2);
+                ImGui::Text("Anisotropy %.6g | Stretch %.6g to %.6g",it->anisotropy,resolved.minStretch,resolved.maxStretch);
             } else { ImGui::TextWrapped("Metric unavailable: missing UVs or degenerate mapping."); }
             if (ImGui::Button("Clear probe")) { clearUvProbe(state,id); }
         }

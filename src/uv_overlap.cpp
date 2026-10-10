@@ -40,16 +40,21 @@ bool interiorsOverlap(const UvTriangleQuality& a, const UvTriangleQuality& b)
 void inspectUvOverlaps(UvQuality& quality, std::stop_token stop, UvOverlapLimits limits)
 {
     quality.distributions[static_cast<size_t>(UvQualityMetric::overlap)].reset();
-    quality.overlaps.clear(); quality.overlapCandidates = quality.overlappingTriangles = quality.crossPatchPairs = 0;
-    quality.overlapTruncated = quality.overlapChecked = false;
-    for (auto& q : quality.triangles) { q.overlapping = q.crossPatchOverlap = false; }
+    quality.overlap.reset();
+    quality.overlapLimits = limits;
     if (!quality.settings.uvOverlapEnabled) { updateUvQualityStatistics(quality, stop); return; }
+    auto result = std::make_shared<UvOverlapResult>();
+    result->measurements = quality.measurements;
+    result->scope = quality.settings.uvOverlapScope;
+    result->limits = limits;
+    const auto& triangles = uvMeasurements(quality).triangles;
+    result->flags.resize(triangles.size());
     const auto canceled = [&] { if (stop.stop_requested()) { throw std::runtime_error("UV overlap analysis canceled."); } };
     struct Box { size_t triangle; UvPoint min, max; };
     std::vector<Box> boxes;
-    for (size_t i = 0; i < quality.triangles.size(); ++i) {
+    for (size_t i = 0; i < triangles.size(); ++i) {
         canceled();
-        const auto& q = quality.triangles[i];
+        const auto& q = triangles[i];
         if (!validUvTriangle(q)) { continue; }
         Box box{i,q.uv[0],q.uv[0]};
         for (const auto& p : q.uv) {
@@ -59,32 +64,33 @@ void inspectUvOverlaps(UvQuality& quality, std::stop_token stop, UvOverlapLimits
     }
     const bool perPatch = quality.settings.uvOverlapScope == UvOverlapScope::perPatch;
     std::sort(boxes.begin(),boxes.end(),[&](const auto& a, const auto& b) {
-        const auto pa = quality.triangles[a.triangle].patch, pb = quality.triangles[b.triangle].patch;
+        const auto pa = triangles[a.triangle].patch, pb = triangles[b.triangle].patch;
         if (perPatch && pa != pb) { return pa < pb; }
         return a.min[0] == b.min[0] ? a.triangle < b.triangle : a.min[0] < b.min[0];
     });
-    for (size_t i=0;i<boxes.size() && !quality.overlapTruncated;++i) {
+    for (size_t i=0;i<boxes.size() && !result->truncated;++i) {
         canceled();
-        auto& a = quality.triangles[boxes[i].triangle];
+        auto& a = triangles[boxes[i].triangle];
         for (size_t j=i+1;j<boxes.size();++j) {
             canceled();
-            auto& b = quality.triangles[boxes[j].triangle];
+            auto& b = triangles[boxes[j].triangle];
             if ((perPatch && a.patch != b.patch) || boxes[j].min[0] >= boxes[i].max[0]) { break; }
             // Bound broad-phase work too: long strips can have few actual hits.
-            if (quality.overlapCandidates == limits.candidates) { quality.overlapTruncated = true; break; }
-            ++quality.overlapCandidates;
+            if (result->candidates == limits.candidates) { result->truncated = true; break; }
+            ++result->candidates;
             if (boxes[j].min[1] >= boxes[i].max[1] || boxes[i].min[1] >= boxes[j].max[1]) { continue; }
             if (!interiorsOverlap(a,b)) { continue; }
-            if (quality.overlaps.size() == limits.pairs) { quality.overlapTruncated = true; break; }
+            if (result->pairs.size() == limits.pairs) { result->truncated = true; break; }
             const bool cross = a.patch != b.patch;
-            quality.overlaps.push_back({boxes[i].triangle,boxes[j].triangle,cross});
-            if (cross) { a.crossPatchOverlap = b.crossPatchOverlap = true; ++quality.crossPatchPairs; }
-            else { a.overlapping = b.overlapping = true; }
+            result->pairs.push_back({boxes[i].triangle,boxes[j].triangle,cross});
+            const uint8_t flag = cross ? uint8_t{2} : uint8_t{1};
+            result->flags[boxes[i].triangle] |= flag; result->flags[boxes[j].triangle] |= flag;
+            if (cross) { ++result->crossPatchPairs; }
         }
     }
     canceled();
-    quality.overlapChecked = true;
-    for (const auto& q : quality.triangles) { if (q.overlapping || q.crossPatchOverlap) { ++quality.overlappingTriangles; } }
+    for (const auto flags : result->flags) { if (flags) { ++result->overlappingTriangles; } }
+    quality.overlapCache = quality.overlap = std::move(result);
     updateUvQualityStatistics(quality, stop);
 }
 } // namespace woby

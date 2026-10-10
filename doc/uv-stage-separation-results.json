@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "base_commit": "7ca527f9c9a22f205dacd94f0c934c3ef0ae5490",
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+    "executable_sha256": "43C22325DB2FB515A3A4FB2E10AE5DD5A40E3F436F38E331B650E9FDABA8C377",
+    "source_sha256": "7C01DE21604728DD4C543DE4A8392346DE8FC653884E8416DEEA48EAD3D28F4B",
+    "date": "2026-10-10",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "samples": 3,
+    "notes": "Release CPU timings in one process after load. All parts, identity transforms, surface angle per-patch normalization. Fixed operation order; no warmup excluded. Overlap off except the separate enable-overlap timing, which uses default limits. No concurrent builds or tests. Cached layout API timing excludes face packing, smooth normals, GPU upload and runtime publication. Array capacities exclude allocator overhead and scratch storage. Production behavior is unchanged."
+  },
+  "results": {
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "samples": [
+      {
+        "analyze_existing_surface_ms": 785.1571,
+        "area_metric_cached_threshold_ms": 114.4734,
+        "area_metric_cold_refresh_ms": 269.6674,
+        "area_normalization_refresh_ms": 304.0543,
+        "copy_quality_ms": 30.9412,
+        "display_face_capacity_bytes": 50618016,
+        "enable_overlap_owned_ms": 1088.8605,
+        "layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "layout_from_surface_ms": 94.6606,
+        "layout_from_surface_separated_ms": 97.1267,
+        "near_collapse_refresh_ms": 58.604,
+        "overlap": {
+          "candidates": 2000000,
+          "pairs": 9566,
+          "scope": "per_patch",
+          "truncated": true
+        },
+        "prepare_layout_ms": 1073.3408,
+        "prepare_separated_ms": 1089.8259,
+        "prepare_surface_ms": 986.2588,
+        "quality": {
+          "collapsed": 0,
+          "degenerate_surface": 0,
+          "finding_capacity_bytes": 854144,
+          "missing": 95868,
+          "overlap_capacity_bytes": 0,
+          "patch_capacity_bytes": 520,
+          "triangle_capacity_bytes": 160290384,
+          "triangles": 1054542,
+          "valid": 958674
+        },
+        "separated_layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "surface": {
+          "faces": 1054542,
+          "index_capacity_bytes": 12654504,
+          "node_count": 65,
+          "position_capacity_bytes": 28586280,
+          "vertex_capacity_bytes": 38115040,
+          "vertices": 547469
+        },
+        "threshold_findings": 1053786,
+        "threshold_pack_faces_ms": 39.1528,
+        "threshold_refresh_ms": 114.3764,
+        "threshold_update_owned_ms": 39.3759
+      },
+      {
+        "analyze_existing_surface_ms": 783.2734,
+        "area_metric_cached_threshold_ms": 114.5013,
+        "area_metric_cold_refresh_ms": 269.5313,
+        "area_normalization_refresh_ms": 304.7851,
+        "copy_quality_ms": 31.766,
+        "display_face_capacity_bytes": 50618016,
+        "enable_overlap_owned_ms": 1124.4661,
+        "layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "layout_from_surface_ms": 94.304,
+        "layout_from_surface_separated_ms": 94.4882,
+        "near_collapse_refresh_ms": 56.2944,
+        "overlap": {
+          "candidates": 2000000,
+          "pairs": 9566,
+          "scope": "per_patch",
+          "truncated": true
+        },
+        "prepare_layout_ms": 1080.9799,
+        "prepare_separated_ms": 1075.1338,
+        "prepare_surface_ms": 986.789,
+        "quality": {
+          "collapsed": 0,
+          "degenerate_surface": 0,
+          "finding_capacity_bytes": 854144,
+          "missing": 95868,
+          "overlap_capacity_bytes": 0,
+          "patch_capacity_bytes": 520,
+          "triangle_capacity_bytes": 160290384,
+          "triangles": 1054542,
+          "valid": 958674
+        },
+        "separated_layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "surface": {
+          "faces": 1054542,
+          "index_capacity_bytes": 12654504,
+          "node_count": 65,
+          "position_capacity_bytes": 28586280,
+          "vertex_capacity_bytes": 38115040,
+          "vertices": 547469
+        },
+        "threshold_findings": 1053786,
+        "threshold_pack_faces_ms": 39.729,
+        "threshold_refresh_ms": 113.9264,
+        "threshold_update_owned_ms": 39.079
+      },
+      {
+        "analyze_existing_surface_ms": 782.6715,
+        "area_metric_cached_threshold_ms": 114.6527,
+        "area_metric_cold_refresh_ms": 271.6253,
+        "area_normalization_refresh_ms": 304.4919,
+        "copy_quality_ms": 31.232,
+        "display_face_capacity_bytes": 50618016,
+        "enable_overlap_owned_ms": 1095.5948,
+        "layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "layout_from_surface_ms": 93.9969,
+        "layout_from_surface_separated_ms": 93.7644,
+        "near_collapse_refresh_ms": 56.0279,
+        "overlap": {
+          "candidates": 2000000,
+          "pairs": 9566,
+          "scope": "per_patch",
+          "truncated": true
+        },
+        "prepare_layout_ms": 1072.4281,
+        "prepare_separated_ms": 1071.6912,
+        "prepare_surface_ms": 985.7918,
+        "quality": {
+          "collapsed": 0,
+          "degenerate_surface": 0,
+          "finding_capacity_bytes": 854144,
+          "missing": 95868,
+          "overlap_capacity_bytes": 0,
+          "patch_capacity_bytes": 520,
+          "triangle_capacity_bytes": 160290384,
+          "triangles": 1054542,
+          "valid": 958674
+        },
+        "separated_layout": {
+          "faces": 958674,
+          "index_capacity_bytes": 14173224,
+          "node_count": 64,
+          "position_capacity_bytes": 16797912,
+          "vertex_capacity_bytes": 22397216,
+          "vertices": 492271
+        },
+        "surface": {
+          "faces": 1054542,
+          "index_capacity_bytes": 12654504,
+          "node_count": 65,
+          "position_capacity_bytes": 28586280,
+          "vertex_capacity_bytes": 38115040,
+          "vertices": 547469
+        },
+        "threshold_findings": 1053786,
+        "threshold_pack_faces_ms": 39.1952,
+        "threshold_refresh_ms": 112.6541,
+        "threshold_update_owned_ms": 38.5696
+      }
+    ],
+    "sizeof_display_face": 48,
+    "sizeof_triangle": 152
+  }
+}

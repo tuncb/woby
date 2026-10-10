@@ -26,38 +26,38 @@ TEST_CASE("UV quality distinguishes scale distortion collapse and mixed orientat
     editMeshGeometry(mesh).nodes[0].hasTexcoords = true;
     editMeshGeometry(mesh).nodes[0].sourceObjectId = 42;
     auto q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
-    CHECK(q.triangles[0].angleDegrees == doctest::Approx(0));
-    CHECK(q.triangles[0].areaLog2 == doctest::Approx(0));
+    CHECK(woby::uvTriangleQuality(q, 0).angleDegrees == doctest::Approx(0));
+    CHECK(woby::uvTriangleQuality(q, 0).areaLog2 == doctest::Approx(0));
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::absolute,woby::UvQualityMetric::area);
-    CHECK(q.triangles[0].areaLog2 == doctest::Approx(2));
+    CHECK(woby::uvTriangleQuality(q, 0).areaLog2 == doctest::Approx(2));
     editMeshGeometry(mesh).vertices[1].texcoord[0] = -2;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
-    CHECK(q.triangles[0].orientation == -1);
-    CHECK(q.mixedOrientationPatches == 0);
-    CHECK(q.triangles[0].angleDegrees == doctest::Approx(0));
+    CHECK(woby::uvTriangleQuality(q, 0).orientation == -1);
+    CHECK(woby::uvMeasurements(q).mixedOrientationPatches == 0);
+    CHECK(woby::uvTriangleQuality(q, 0).angleDegrees == doctest::Approx(0));
     editMeshGeometry(mesh).vertices[1].texcoord[0] = 4;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
-    CHECK(q.triangles[0].angleDegrees == doctest::Approx(18.4349488));
+    CHECK(woby::uvTriangleQuality(q, 0).angleDegrees == doctest::Approx(18.4349488));
     editMeshGeometry(mesh).indices.insert(meshGeometry(mesh).indices.end(),{0,2,1}); editMeshGeometry(mesh).nodes[0].indexCount = 6;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::orientation);
-    CHECK(q.mixedOrientationPatches == 1);
-    CHECK(q.triangles[0].mixedOrientation);
-    CHECK(q.triangles[1].triangle == 2);
-    CHECK(q.triangles[1].partId == 42);
+    CHECK(woby::uvMeasurements(q).mixedOrientationPatches == 1);
+    CHECK(woby::uvTriangleQuality(q, 0).mixedOrientation);
+    CHECK(woby::uvTriangleQuality(q, 1).triangle == 2);
+    CHECK(woby::uvTriangleQuality(q, 1).partId == 42);
     // Opposite orientation in independent patches is not a mixed-domain finding.
     editMeshGeometry(mesh).nodes[0].indexCount = 3;
     editMeshGeometry(mesh).nodes.push_back(meshGeometry(mesh).nodes[0]); editMeshGeometry(mesh).nodes[1].indexOffset = 3;
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
-    CHECK(q.mixedOrientationPatches == 0);
+    CHECK(woby::uvMeasurements(q).mixedOrientationPatches == 0);
     editMeshGeometry(mesh).vertices[2].texcoord = {0,0};
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
-    CHECK(q.collapsed == 2);
-    CHECK(std::isfinite(q.triangles[0].areaLog2));
+    CHECK(woby::uvMeasurements(q).collapsed == 2);
+    CHECK(std::isfinite(woby::uvTriangleQuality(q, 0).areaLog2));
     editMeshGeometry(mesh).nodes[1].hasTexcoords = false;
     editMeshGeometry(mesh).vertices[2].position = {0,0,0};
     q = woby::analyzeUvQuality(mesh,woby::UvAreaNormalization::perPatch,woby::UvQualityMetric::angle);
-    CHECK(q.missing == 1);
-    CHECK(q.degenerateSurface == 1);
+    CHECK(woby::uvMeasurements(q).missing == 1);
+    CHECK(woby::uvMeasurements(q).degenerateSurface == 1);
 }
 
 namespace {
@@ -270,7 +270,7 @@ TEST_CASE("UV worker snapshot owns inputs and prepares matching geometry quality
     const auto& actual = (*prepared.meshes)[0];
     CHECK_FALSE(actual.uvQuality);
     REQUIRE(prepared.buffers[0].uvQuality);
-    CHECK(prepared.buffers[0].uvQuality->missing == expected.uvQuality->missing);
+    CHECK(woby::uvMeasurements(*prepared.buffers[0].uvQuality).missing == woby::uvMeasurements(*expected.uvQuality).missing);
     CHECK(meshGeometry(actual).indices == meshGeometry(expected).indices);
     CHECK(meshGeometry(actual).precisePositions == meshGeometry(expected).precisePositions);
     CHECK(actual.bounds.min == expected.bounds.min);
@@ -315,8 +315,8 @@ TEST_CASE("UV worker prepares overlap colors and cached findings before publishi
     auto mesh = (*prepared.meshes)[0];
     mesh.uvQuality = prepared.buffers[0].uvQuality;
     REQUIRE(mesh.uvQuality);
-    CHECK(mesh.uvQuality->overlapChecked);
-    CHECK(mesh.uvQuality->crossPatchPairs == 1);
+    CHECK(bool(mesh.uvQuality->overlap));
+    CHECK(woby::uvOverlapResult(*mesh.uvQuality).crossPatchPairs == 1);
     CHECK(mesh.uvQuality->statistics.highlightedCount == 2);
     CHECK(mesh.uvQuality->findings == std::vector<size_t>{0, 1, 2});
     REQUIRE(prepared.buffers[0].quality.size() >= 2);
@@ -382,6 +382,8 @@ TEST_CASE("UV preparation identity excludes quality settings but tracks source a
     const auto id = woby::createComparison(f.state, woby::AnalysisType::uvQuality);
     woby::setComparisonObjects(f.state, {f.state.files[0].objectId}, woby::ComparisonSide::a, true, id);
     const auto signature = woby::comparisonPreparationSignature(f.state, id);
+    const auto measurementSignature = woby::comparisonMeasurementSignature(f.state, id);
+    bool layoutOnly = false;
     auto settings = woby::comparisonSettings(f.state, id);
     SUBCASE("quality settings") {
         settings.uvMetric = woby::UvQualityMetric::overlap;
@@ -391,15 +393,17 @@ TEST_CASE("UV preparation identity excludes quality settings but tracks source a
         settings.uvRangeEnabled = true; settings.uvRangeMaximum = 4;
         woby::setComparisonSettings(f.state, settings, id);
         CHECK(woby::comparisonPreparationSignature(f.state, id) == signature);
+        CHECK(woby::comparisonMeasurementSignature(f.state, id) == measurementSignature);
         return;
     }
-    SUBCASE("layout") { settings.uvSeparated = !settings.uvSeparated; woby::setComparisonSettings(f.state, settings, id); }
-    SUBCASE("view") { settings.uvView = woby::UvView::surface; woby::setComparisonSettings(f.state, settings, id); }
+    SUBCASE("layout") { layoutOnly = true; settings.uvSeparated = !settings.uvSeparated; woby::setComparisonSettings(f.state, settings, id); }
+    SUBCASE("view") { layoutOnly = true; settings.uvView = woby::UvView::surface; woby::setComparisonSettings(f.state, settings, id); }
     SUBCASE("transform") { f.state.files[0].groupSettings[0].translation[0] = 2; }
     SUBCASE("source revision") { f.state.files[0].mesh.contentRevision = woby::nextMeshContentRevision(); }
     SUBCASE("UV availability") { editMeshGeometry(f.state.files[0].mesh).nodes[0].hasTexcoords = false; }
     SUBCASE("membership") { woby::setComparisonObjects(f.state, {f.state.files[0].groupSettings[0].objectId}, woby::ComparisonSide::a, false, id); }
     CHECK(woby::comparisonPreparationSignature(f.state, id) != signature);
+    CHECK((woby::comparisonMeasurementSignature(f.state, id) == measurementSignature) == layoutOnly);
 }
 
 TEST_CASE("UV runtime rejects stale preparation results and survives removal during preparation")
@@ -460,10 +464,63 @@ TEST_CASE("UV runtime discards stale setting refreshes and rebuilds changed sour
         CHECK(runtime.sources.inputs != inputs);
         const auto fresh = woby::comparisonWorldMesh(state, woby::ComparisonSide::a, f.id);
         CHECK(meshGeometry(runtime.results.value.original.source).precisePositions == meshGeometry(fresh).precisePositions);
-        CHECK(runtime.results.value.original.source.uvQuality->triangles[0].angleDegrees
-            == fresh.uvQuality->triangles[0].angleDegrees);
+        CHECK(woby::uvTriangleQuality(*runtime.results.value.original.source.uvQuality, 0).angleDegrees
+            == woby::uvTriangleQuality(*fresh.uvQuality, 0).angleDegrees);
     }
     CHECK(runtime.results.signature == woby::comparisonGeometrySignature(state, f.id));
+}
+
+TEST_CASE("UV runtime retains measurements across layouts without retaining the inactive mesh")
+{
+    UvRuntimeFixture f;
+    REQUIRE(f.initialized);
+    auto& state = f.fixture.state;
+    auto settings = woby::comparisonSettings(state, f.id);
+    settings.uvView = woby::UvView::surface;
+    settings.uvOverlapEnabled = true;
+    settings.uvOverlapScope = woby::UvOverlapScope::selectedPatches;
+    woby::setComparisonSettings(state, settings, f.id);
+    REQUIRE(f.ready());
+    auto& runtime = f.runtimes.objects[f.id];
+    const auto measurements = runtime.sources.uvQualities[0]->measurements;
+    const auto overlap = runtime.sources.uvQualities[0]->overlap;
+    REQUIRE(overlap);
+    const auto measurementSignature = woby::comparisonMeasurementSignature(state, f.id);
+    const auto inputs = runtime.sources.inputs.get();
+    settings.uvSeparated = true; // No effect in surface view.
+    woby::setComparisonSettings(state, settings, f.id);
+    REQUIRE(f.ready());
+    CHECK(runtime.sources.inputs.get() == inputs);
+    for (const auto view : {woby::UvView::layout, woby::UvView::surface, woby::UvView::layout}) {
+        std::weak_ptr<const std::array<woby::Mesh,2>> previous = runtime.sources.inputs;
+        settings.uvView = view;
+        woby::setComparisonSettings(state, settings, f.id);
+        REQUIRE(f.ready());
+        CHECK(previous.expired());
+        CHECK(woby::comparisonMeasurementSignature(state, f.id) == measurementSignature);
+        const auto q = runtime.results.value.original.source.uvQuality;
+        REQUIRE(q);
+        CHECK(q->measurements == measurements);
+        CHECK(q->overlap == overlap);
+        CHECK(woby::uvMeasurements(*q).missing == 1);
+        const auto fresh = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(state, f.id));
+        CHECK(meshGeometry(runtime.results.value.original.source).indices == meshGeometry((*fresh.meshes)[0]).indices);
+        CHECK(meshGeometry(runtime.results.value.original.source).precisePositions == meshGeometry((*fresh.meshes)[0]).precisePositions);
+        CHECK(q->findings == fresh.buffers[0].uvQuality->findings);
+    }
+    // Change source scale after a completed, unpublished layout preparation.
+    settings.uvSeparated = false;
+    woby::setComparisonSettings(state, settings, f.id);
+    woby::updateComparisonRuntimes(f.runtimes, state);
+    REQUIRE(runtime.jobs.preparationWorker.valid());
+    runtime.jobs.preparationWorker.wait();
+    woby::setGroupScale(state.files[0].groupSettings[0], 2);
+    woby::notifySceneEdit(state, woby::SceneChange::geometry);
+    REQUIRE(f.ready());
+    REQUIRE(runtime.sources.uvQualities[0]);
+    CHECK(runtime.sources.uvQualities[0]->measurements != measurements);
+    CHECK(runtime.sources.uvQualities[0]->overlap != overlap);
+    CHECK(runtime.sources.measurementSignature == woby::comparisonMeasurementSignature(state, f.id));
 }
 
 TEST_CASE("UV setting refresh preserves separated layout triangle identity and matches fresh colors")
@@ -481,7 +538,7 @@ TEST_CASE("UV setting refresh preserves separated layout triangle identity and m
     const std::array qualities{initial.buffers[0].uvQuality, initial.buffers[1].uvQuality};
     const auto refresh = woby::refreshUvComparisonInputs(initial.meshes, qualities, settings);
     CHECK(refresh.meshes == initial.meshes);
-    CHECK_FALSE(qualities[0]->overlapChecked);
+    CHECK_FALSE(bool(qualities[0]->overlap));
     woby::setComparisonSettings(f.state, settings, id);
     const auto fresh = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
     REQUIRE(refresh.buffers[0].quality.size() == fresh.buffers[0].quality.size());
@@ -898,7 +955,7 @@ TEST_CASE("Separated UV patches preserve source identities scale and UVs for lin
     CHECK(meshGeometry(mesh).nodes[0].sourceObjectId == state.files[0].groupSettings[0].objectId);
     const auto result = woby::computeComparisonStages(mesh,{},woby::comparisonSource);
     REQUIRE(result.original.source.uvQuality);
-    CHECK(result.original.source.uvQuality->missing == 1);
+    CHECK(woby::uvMeasurements(*result.original.source.uvQuality).missing == 1);
     CHECK(woby::uvQualityVertices(result.original.source).size() == meshGeometry(mesh).indices.size());
     const auto report = woby::controlComparisonResults(result,.01,false);
     CHECK(report["uvQuality"]["validTriangles"] == 2);
@@ -1235,10 +1292,10 @@ TEST_CASE("UV findings include every affected triangle and retain source identit
         woby::UvAreaNormalization::perPatch, woby::UvQualityMetric::angle));
     const auto& quality = *mesh.uvQuality;
     REQUIRE(quality.findings.size() == 125);
-    CHECK(quality.missing == 60);
-    CHECK(quality.collapsed == 65);
-    CHECK(quality.triangles[quality.findings.back()].triangle == 65);
-    CHECK(quality.triangles[quality.findings.back()].partId == 42);
+    CHECK(woby::uvMeasurements(quality).missing == 60);
+    CHECK(woby::uvMeasurements(quality).collapsed == 65);
+    CHECK(woby::uvTriangleQuality(quality, quality.findings.back()).triangle == 65);
+    CHECK(woby::uvTriangleQuality(quality, quality.findings.back()).partId == 42);
     CHECK(woby::uvFindingGeometry(mesh, 124).has_value());
     CHECK_FALSE(woby::uvFindingGeometry(mesh, 125));
     const auto layout = woby::uvLayoutMesh(mesh, true);

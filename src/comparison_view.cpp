@@ -1075,7 +1075,7 @@ void drawUvFindings(UiState& state, const Mesh& display, uint64_t signature, Sce
     if (ImGui::Button("Next finding")) { navigateUvFinding(state, display, signature, 1, id); scrollToFocus = true; }
     const auto* focus = focusedUvFinding(state, signature, id);
     if (focus) {
-        const auto& triangle = quality.triangles[quality.findings[focus->index]];
+        const auto& triangle = uvTriangleQuality(quality, quality.findings[focus->index]);
         const auto source = findSceneObject(state, triangle.partId);
         ImGui::TextWrapped("%zu / %zu | %s / triangle %zu", focus->index + 1, quality.findings.size(),
             source ? source->name.c_str() : "Missing patch", triangle.triangle);
@@ -1096,7 +1096,7 @@ void drawUvFindings(UiState& state, const Mesh& display, uint64_t signature, Sce
         while (clipper.Step()) {
             for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) {
                 const auto index = static_cast<size_t>(row);
-                const auto& triangle = quality.triangles[quality.findings[index]];
+                const auto& triangle = uvTriangleQuality(quality, quality.findings[index]);
                 const auto label = std::to_string(index + 1) + " | " + uvFindingLabel(triangle, quality.settings);
                 // Selection can replace the focus, so never retain its pointer across a click.
                 const auto* selected = focusedUvFinding(state, signature, id);
@@ -1189,11 +1189,11 @@ void drawUvInspector(UiState& state, ComparisonRuntime& runtime, SceneObjectId i
                 ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextWrapped("%s", label);
                 ImGui::TableNextColumn(); ImGui::Text("%zu", count);
             };
-            row("Triangles checked", quality.triangles.size());
-            row("Collapsed UV triangles", quality.collapsed);
-            row("Patches with mixed orientation", quality.mixedOrientationPatches);
-            row("Missing UV triangles", quality.missing);
-            row("Degenerate surface triangles", quality.degenerateSurface);
+            row("Triangles checked", uvMeasurements(quality).triangles.size());
+            row("Collapsed UV triangles", uvMeasurements(quality).collapsed);
+            row("Patches with mixed orientation", uvMeasurements(quality).mixedOrientationPatches);
+            row("Missing UV triangles", uvMeasurements(quality).missing);
+            row("Degenerate surface triangles", uvMeasurements(quality).degenerateSurface);
             ImGui::EndTable();
         }
         drawUvFindings(state, display, runtime.results.signature, id);

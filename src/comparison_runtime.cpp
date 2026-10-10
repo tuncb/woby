@@ -171,6 +171,10 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
         invalidateIntersection();
         resetComparisonDiagnosticFocus(state, id);
     }
+    if (runtime.sources.measurementSignature != runtime.inspector.queries.measurementSignature) {
+        runtime.sources.uvQualities = {};
+        runtime.sources.measurementSignature = 0;
+    }
     if (resetComparisonCache(runtime.results.cache, wanted)) {
         const bool reuseUv = wanted && settings.type == AnalysisType::uvQuality && runtime.sources.inputs
             && runtime.sources.preparationSignature == runtime.inspector.queries.preparationSignature
@@ -203,6 +207,10 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 runtime.sources.prepared = std::move(prepared);
                 runtime.sources.inputs = runtime.sources.prepared->meshes;
                 runtime.sources.preparationSignature = runtime.jobs.preparationGeometrySignature;
+                runtime.sources.measurementSignature = runtime.jobs.preparationMeasurementSignature;
+                for (size_t side = 0; side < 2; ++side) {
+                    runtime.sources.uvQualities[side] = runtime.sources.prepared->buffers[side].uvQuality;
+                }
                 if (runtime.sources.prepared->buffers[0].qualityOnly) {
                     runtime.results.value.original.source.uvQuality = runtime.sources.prepared->buffers[0].uvQuality;
                     runtime.results.value.repaired.source.uvQuality = runtime.sources.prepared->buffers[1].uvQuality;
@@ -457,6 +465,7 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                     runtime.jobs.preparationStop = std::stop_source{};
                     runtime.jobs.preparationSignature = runtime.jobs.attemptedSignature = wanted;
                     runtime.jobs.preparationGeometrySignature = runtime.inspector.queries.preparationSignature;
+                    runtime.jobs.preparationMeasurementSignature = runtime.inspector.queries.measurementSignature;
                     runtime.jobs.preparationWorker = std::async(std::launch::async,
                         [inputs = runtime.sources.inputs, qualities, settings, stop = runtime.jobs.preparationStop.get_token()] {
                             return std::make_shared<const PreparedComparisonInputs>(refreshUvComparisonInputs(inputs, qualities, settings, stop));
@@ -471,9 +480,10 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                         runtime.jobs.preparationStop = std::stop_source{};
                         runtime.jobs.preparationSignature = runtime.jobs.attemptedSignature = wanted;
                         runtime.jobs.preparationGeometrySignature = runtime.inspector.queries.preparationSignature;
+                        runtime.jobs.preparationMeasurementSignature = runtime.inspector.queries.measurementSignature;
                         runtime.jobs.preparationWorker = std::async(std::launch::async,
-                            [snapshot = std::move(snapshot), stop = runtime.jobs.preparationStop.get_token()]() -> std::shared_ptr<const PreparedComparisonInputs> {
-                                return std::make_shared<PreparedComparisonInputs>(prepareUvComparisonInputs(snapshot, stop));
+                            [snapshot = std::move(snapshot), cached = runtime.sources.uvQualities, stop = runtime.jobs.preparationStop.get_token()]() -> std::shared_ptr<const PreparedComparisonInputs> {
+                                return std::make_shared<PreparedComparisonInputs>(prepareUvComparisonInputs(snapshot, stop, cached));
                             });
                     }
                     return;
@@ -644,7 +654,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         runtime.jobs.preparationStop.request_stop();
         runtime.jobs.intersection.stop.request_stop();
         runtime.jobs.intersection.requested = false;
-        runtime.sources.prepared.reset(); runtime.sources.inputs.reset();
+        runtime.sources.prepared.reset(); runtime.sources.inputs.reset(); runtime.sources.uvQualities = {};
+        runtime.sources.measurementSignature = 0;
         runtime.sources.refreshUvQuality = false;
         // Release large retained buffers before constructing the error message.
         runtime.results.value = {};

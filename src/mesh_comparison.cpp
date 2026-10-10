@@ -1081,7 +1081,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     const auto inspect = [&](const Mesh& mesh, SurfaceComparison& surface, const ComparisonAnalysisInput& cached) {
         checkCanceled(stop);
         if ((stages & comparisonSource) && mesh.uvQuality) {
-            if (mesh.uvQuality->overlapChecked || !mesh.uvQuality->settings.uvOverlapEnabled) {
+            if (bool(mesh.uvQuality->overlap) || !mesh.uvQuality->settings.uvOverlapEnabled) {
                 surface.source.uvQuality = mesh.uvQuality;
             } else {
                 auto quality = std::make_shared<UvQuality>(*mesh.uvQuality);

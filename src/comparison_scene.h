@@ -45,7 +45,7 @@ struct ComparisonInspectorCache {
     SceneObjectId objectId = invalidSceneObjectId;
     uint64_t generation = 0, builds = 0;
     uint64_t geometryRevision = 0, analysisRevision = 0, labelsRevision = 0, signatureBuilds = 0;
-    uint64_t signature = 0, preparationSignature = 0, boundsSignature = 0;
+    uint64_t signature = 0, preparationSignature = 0, measurementSignature = 0, boundsSignature = 0;
     std::array<ComparisonInspectorInput, 2> inputs;
     std::string sources;
 };
@@ -64,6 +64,8 @@ const ComparisonInspectorCache& updateComparisonInspectorCache(ComparisonInspect
 [[nodiscard]] uint64_t comparisonGeometrySignature(const UiState &state, SceneObjectId id = invalidSceneObjectId);
 // Source/layout identity, excluding UV metrics, overlap and presentation settings.
 [[nodiscard]] uint64_t comparisonPreparationSignature(const UiState& state, SceneObjectId id);
+// UV measurement identity, independent of layout and presentation controls.
+[[nodiscard]] uint64_t comparisonMeasurementSignature(const UiState& state, SceneObjectId id);
 [[nodiscard]] uint64_t comparisonBoundsSignature(const UiState& state, SceneObjectId id);
 [[nodiscard]] std::optional<Bounds> comparisonDisplayBounds(const UiState& state, SceneObjectId id,
     std::optional<uint64_t> signature = {});
@@ -99,8 +101,9 @@ struct PreparedComparisonInputs {
     std::array<PreparedComparisonSource, 2> buffers;
 };
 // CPU-only preparation; the runtime uploads these buffers on the graphics thread.
+// Cached quality must match comparisonMeasurementSignature for this snapshot.
 [[nodiscard]] PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot& snapshot,
-    std::stop_token stop = {});
+    std::stop_token stop = {}, const std::array<std::shared_ptr<const UvQuality>, 2>& cached = {});
 [[nodiscard]] PreparedComparisonInputs refreshUvComparisonInputs(
     std::shared_ptr<const std::array<Mesh, 2>> meshes,
     const std::array<std::shared_ptr<const UvQuality>, 2>& qualities,

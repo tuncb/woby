@@ -27,8 +27,8 @@ Json triangleInfo(const UvTriangleQuality& t, const UvQuality& q, const ObjectId
         {"thresholdExceeded", uvQualityExceedsThreshold(t, q.settings)},
         {"highlighted", uvQualityHighlighted(t, q.settings)},
         {"nearCollapse", valid && t.minStretch < q.settings.uvNearCollapse},
-        {"overlapping", q.overlapChecked ? Json(t.overlapping) : Json(nullptr)},
-        {"crossPatchOverlap", q.overlapChecked ? Json(t.crossPatchOverlap) : Json(nullptr)}};
+        {"overlapping", bool(q.overlap) ? Json(t.overlapping) : Json(nullptr)},
+        {"crossPatchOverlap", bool(q.overlap) ? Json(t.crossPatchOverlap) : Json(nullptr)}};
 }
 Coordinate interpolate(const std::array<Coordinate, 3>& points, const std::array<double, 3>& weights)
 {
@@ -43,15 +43,15 @@ Coordinate interpolate(const std::array<Coordinate, 3>& points, const std::array
 nlohmann::json controlUvTrianglePage(const UvQuality& quality, size_t offset, size_t limit, const ObjectIdFormatter& formatId)
 {
     if (limit == 0 || limit > 100) { throw std::invalid_argument("limit must be from 1 to 100."); }
-    const size_t begin = std::min(offset, quality.triangles.size());
-    const size_t end = begin + std::min(limit, quality.triangles.size() - begin);
+    const size_t begin = std::min(offset, uvMeasurements(quality).triangles.size());
+    const size_t end = begin + std::min(limit, uvMeasurements(quality).triangles.size() - begin);
     auto items = Json::array();
-    for (size_t i = begin; i < end; ++i) { items.push_back(triangleInfo(quality.triangles[i], quality, formatId)); }
-    return {{"offset", offset}, {"limit", limit}, {"total", quality.triangles.size()},
-        {"nextOffset", end < quality.triangles.size() ? Json(end) : Json(nullptr)}, {"items", std::move(items)},
+    for (size_t i = begin; i < end; ++i) { items.push_back(triangleInfo(uvTriangleQuality(quality, i), quality, formatId)); }
+    return {{"offset", offset}, {"limit", limit}, {"total", uvMeasurements(quality).triangles.size()},
+        {"nextOffset", end < uvMeasurements(quality).triangles.size() ? Json(end) : Json(nullptr)}, {"items", std::move(items)},
         {"metric", uvQualityMetricKey(quality.metric)},
         {"normalization", quality.normalization == UvAreaNormalization::perPatch ? "per_patch" : "absolute"},
-        {"convention", "surface_to_uv"}, {"overlapChecked", quality.overlapChecked}, {"overlapTruncated", quality.overlapTruncated}};
+        {"convention", "surface_to_uv"}, {"overlapChecked", bool(quality.overlap)}, {"overlapTruncated", uvOverlapResult(quality).truncated}};
 }
 
 nlohmann::json controlUvProbe(UiState& state, const MeshComparison* result, uint64_t resultSignature,
@@ -86,14 +86,14 @@ nlohmann::json controlUvProbe(UiState& state, const MeshComparison* result, uint
             command.barycentric.value_or(std::array<double, 3>{1.0/3, 1.0/3, 1.0/3})};
     } else { probe = *comparison->uvProbe; }
     const auto& quality = *result->original.source.uvQuality;
-    const auto triangle = std::find_if(quality.triangles.begin(), quality.triangles.end(), [&](const auto& t) {
+    const auto triangle = std::find_if(uvMeasurements(quality).triangles.begin(), uvMeasurements(quality).triangles.end(), [&](const auto& t) {
         return t.partId == probe.partId && t.triangle == probe.triangle;
     });
     const auto surface = comparisonSourceTriangle(state, command.objectId, probe.partId, probe.triangle);
-    if (triangle == quality.triangles.end() || !surface) {
+    if (triangle == uvMeasurements(quality).triangles.end() || !surface) {
         throw std::invalid_argument("UV probe requires an enabled source part and a valid one-based triangle index.");
     }
-    auto info = triangleInfo(*triangle, quality, formatId);
+    auto info = triangleInfo(uvTriangleQuality(quality, static_cast<size_t>(triangle - uvMeasurements(quality).triangles.begin())), quality, formatId);
     info["metric"] = uvQualityMetricKey(quality.metric);
     info["normalization"] = quality.normalization == UvAreaNormalization::perPatch ? "per_patch" : "absolute";
     info["convention"] = "surface_to_uv";

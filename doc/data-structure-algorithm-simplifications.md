@@ -134,6 +134,10 @@ Sources: [CPU evaluation](../src/freeform.cpp), [ordinary upload](../src/scene_r
 
 ## UV metrics and layout
 
+Follow-up: [UV stage separation investigation](uv-stage-separation-investigation.md) measures the remaining costs after compact per-face display storage and recommends an incremental implementation order.
+
+Implementation: [shared UV measurements, overlap results, and layout identity](uv-stage-separation-implementation.md). The physical layout mesh and current compact face format remain in use.
+
 `UvQuality` mixes immutable triangle measurements and UV coordinates with settings, normalized values, overlap flags, distribution caches, and findings. A settings refresh copies the complete structure before modifying a few derived fields. The measured `UvTriangleQuality` size is **152 bytes** on this Windows x64 build; ten million triangle records alone occupy approximately **1.42 GiB**, before overlaps and findings.
 
 `uvLayoutMesh` then represents UV display as another physical mesh, copying vertices/indices and constructing double positions from its float layout coordinates. Layout/view settings enter the preparation signature, although switching views does not change the underlying surface-to-UV measurements.

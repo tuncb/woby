@@ -772,7 +772,8 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
         Json findings = Json::array();
         size_t count = 0, valid = 0;
         double angleMax = 0, areaMin = 0, areaMax = 0;
-        for (const auto& t : q.triangles) {
+        for (size_t i = 0; i < uvMeasurements(q).triangles.size(); ++i) {
+            const auto t = uvTriangleQuality(q, i);
             if (!t.missing && !t.collapsed && !t.degenerateSurface) {
                 angleMax = std::max(angleMax,t.angleDegrees);
                 if (valid++ == 0) { areaMin = areaMax = t.areaLog2; }
@@ -785,8 +786,8 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
             if (formatId) { findings.back()["sourceObject"] = formatId(t.partId); }
         }
         Json pairs = Json::array();
-        for (const auto& pair : q.overlaps) {
-            const auto& first = q.triangles[pair.first]; const auto& second = q.triangles[pair.second];
+        for (const auto& pair : uvOverlapResult(q).pairs) {
+            const auto& first = uvTriangleQuality(q, pair.first); const auto& second = uvTriangleQuality(q, pair.second);
             pairs.push_back({{"firstPartId",first.partId},{"firstTriangle",first.triangle},
                 {"secondPartId",second.partId},{"secondTriangle",second.triangle},{"crossPatch",pair.crossPatch}});
             if (formatId) {
@@ -796,8 +797,8 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
         }
         const auto& stats = q.statistics;
         answer["uvQuality"] = {{"normalization",q.normalization == UvAreaNormalization::perPatch ? "per_patch" : "absolute"},
-            {"collapsedTriangles",q.collapsed}, {"missingUvTriangles",q.missing}, {"degenerateSurfaceTriangles",q.degenerateSurface},
-            {"mixedOrientationPatches",q.mixedOrientationPatches}, {"validTriangles",valid},
+            {"collapsedTriangles",uvMeasurements(q).collapsed}, {"missingUvTriangles",uvMeasurements(q).missing}, {"degenerateSurfaceTriangles",uvMeasurements(q).degenerateSurface},
+            {"mixedOrientationPatches",uvMeasurements(q).mixedOrientationPatches}, {"validTriangles",valid},
             {"maximumAngleDegrees",valid ? Json(angleMax) : Json(nullptr)},
             {"minimumAreaLog2",valid ? Json(areaMin) : Json(nullptr)}, {"maximumAreaLog2",valid ? Json(areaMax) : Json(nullptr)},
             {"findings",std::move(findings)}, {"findingCount",count}, {"findingsTruncated",count > 1000},
@@ -812,10 +813,10 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
                 {"nearCollapseCount",stats.nearCollapseCount}, {"nearCollapseThreshold",q.settings.uvNearCollapse}}},
             {"histogram",{{"minimum",stats.histogramMinimum},{"maximum",stats.histogramMaximum},
                 {"counts",stats.counts},{"surfaceAreas",stats.areas}}},
-            {"overlaps",{{"checked",q.overlapChecked},{"truncated",q.overlapTruncated},
+            {"overlaps",{{"checked",bool(q.overlap)},{"truncated",uvOverlapResult(q).truncated},
                 {"scope",q.settings.uvOverlapScope == UvOverlapScope::selectedPatches ? "selected_patches" : "per_patch"},
-                {"affectedTriangles",q.overlappingTriangles},{"crossPatchPairs",q.crossPatchPairs},
-                {"candidateCount",q.overlapCandidates},{"pairs",std::move(pairs)}}}};
+                {"affectedTriangles",uvOverlapResult(q).overlappingTriangles},{"crossPatchPairs",uvOverlapResult(q).crossPatchPairs},
+                {"candidateCount",uvOverlapResult(q).candidates},{"pairs",std::move(pairs)}}}};
     }
     return answer;
 
