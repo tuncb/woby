@@ -56,7 +56,14 @@ std::vector<std::string> comparisonReportLines(
                     lines.push_back("Threshold "+measurementNumber(q.settings.uvThreshold)+": "+std::to_string(s.thresholdCount)+" faces; "+measurementNumber(s.thresholdAreaPercent)+"% surface area");
                 }
                 lines.push_back(std::to_string(s.nearCollapseCount)+" near-collapse triangles (stretch < "+measurementNumber(q.settings.uvNearCollapse)+")");
-                if (bool(q.overlap)) { lines.push_back(std::to_string(uvOverlapResult(q).pairs.size())+" UV overlap pairs; "+std::to_string(uvOverlapResult(q).crossPatchPairs)+" cross-patch (may be intentional)"+(uvOverlapResult(q).truncated ? "; PARTIAL: work limit" : "")); }
+                if (bool(q.overlap)) {
+                    const auto& overlap = uvOverlapResult(q);
+                    auto line = std::to_string(overlap.pairs.size())+" UV overlap pairs; "+std::to_string(overlap.crossPatchPairs)+" cross-patch (may be intentional)";
+                    if (overlap.truncated) {
+                        line += std::string("; PARTIAL: ")+uvOverlapTruncationKey(overlap.truncation)+" limit; highlights cover retained pairs only";
+                    }
+                    lines.push_back(std::move(line));
+                }
                 if (settings.uvThresholdEnabled || settings.uvRangeEnabled) { lines.push_back("Cyan: highlighted threshold / histogram range"); }
                 lines.push_back(std::to_string(uvMeasurements(q).collapsed)+" collapsed UV triangles; "+std::to_string(uvMeasurements(q).mixedOrientationPatches)+" patches with mixed orientation");
             }

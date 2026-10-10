@@ -814,6 +814,9 @@ Json controlComparisonResults(const MeshComparison& result, double tolerance, bo
             {"histogram",{{"minimum",stats.histogramMinimum},{"maximum",stats.histogramMaximum},
                 {"counts",stats.counts},{"surfaceAreas",stats.areas}}},
             {"overlaps",{{"checked",bool(q.overlap)},{"truncated",uvOverlapResult(q).truncated},
+                {"truncationReason",uvOverlapTruncationKey(uvOverlapResult(q).truncation)},
+                {"searchWorkCount",uvOverlapResult(q).searchWork},{"searchWorkLimit",uvOverlapResult(q).searchWorkLimit},
+                {"pairOrder","uv_sweep_v1"},
                 {"scope",q.settings.uvOverlapScope == UvOverlapScope::selectedPatches ? "selected_patches" : "per_patch"},
                 {"affectedTriangles",uvOverlapResult(q).overlappingTriangles},{"crossPatchPairs",uvOverlapResult(q).crossPatchPairs},
                 {"candidateCount",uvOverlapResult(q).candidates},{"pairs",std::move(pairs)}}}};

@@ -114,7 +114,13 @@ void drawUvQualityControls(UiState& state, ComparisonSettings& settings, const U
     if (bool(q.overlap)) {
         ImGui::TextWrapped("%zu overlap pairs: %zu within patches, %zu cross-patch; %zu affected triangles",
             uvOverlapResult(q).pairs.size(),uvOverlapResult(q).pairs.size()-uvOverlapResult(q).crossPatchPairs,uvOverlapResult(q).crossPatchPairs,uvOverlapResult(q).overlappingTriangles);
-        if (uvOverlapResult(q).truncated) { ImGui::TextColored({1,.65f,.25f,1},"Partial result: work limit reached. Isolate fewer patches."); }
+        if (uvOverlapResult(q).truncated) {
+            const auto reason = uvOverlapResult(q).truncation;
+            const char* limit = reason == UvOverlapTruncation::pairs ? "pair"
+                : reason == UvOverlapTruncation::candidates ? "candidate" : "search work";
+            ImGui::TextColored({1,.65f,.25f,1},"Partial result: %s limit reached.",limit);
+            ImGui::TextWrapped("Highlights show only the retained pairs. Other triangles can also overlap. Isolate fewer patches.");
+        }
         if (ImGui::TreeNode("Overlap pairs")) {
             for (size_t i=0;i<std::min(uvOverlapResult(q).pairs.size(),size_t{100});++i) {
                 const auto& pair = uvOverlapResult(q).pairs[i];

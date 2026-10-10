@@ -113,6 +113,9 @@ def main():
             capture(ctl, root / "overlap.png")
             q = ctl("analysis", "results", analysis)["uvQuality"]
             assert q["overlaps"]["checked"] and not q["overlaps"]["truncated"], q
+            assert q["overlaps"]["truncationReason"] == "none", q
+            assert q["overlaps"]["pairOrder"] == "uv_sweep_v1", q
+            assert 0 < q["overlaps"]["searchWorkCount"] <= q["overlaps"]["searchWorkLimit"], q
             assert len(q["overlaps"]["pairs"]) == 1 and q["overlaps"]["crossPatchPairs"] == 0, q
             pair = q["overlaps"]["pairs"][0]
             picked = ctl("analysis", "uv-probe", analysis, "--object", pair["firstObject"],

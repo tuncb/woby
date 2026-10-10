@@ -1,0 +1,7 @@
+add_executable(woby_uv_overlap_probe main.cpp prototype.cpp)
+target_link_libraries(woby_uv_overlap_probe PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_uv_overlap_probe)
+if(BUILD_TESTING)
+    add_test(NAME woby_uv_overlap_contract COMMAND woby_uv_overlap_probe --self-test)
+    set_tests_properties(woby_uv_overlap_contract PROPERTIES LABELS "unit;cpu")
+endif()

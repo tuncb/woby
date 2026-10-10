@@ -12,7 +12,7 @@ This assessment applies to commit `974d8a583bfa977d2cfcba76f5ea9b419d8d3888`, in
 | 4 | Split analysis geometry from topology incidence and presentation | Full topology and overlays for intersections-only jobs; repeated graph construction | High confidence; staged algorithm change |
 | 5 | Use one freeform evaluation path for fixed tessellation | CPU evaluation followed by equivalent GPU evaluation; duplicate CPU evaluation for normals | High confidence that work is duplicated; preserve visual fidelity |
 | 6 | Give UV metrics and layout separate representations | Copies of all triangle metrics for presentation edits; mesh rebuilds on layout switches | High confidence; cache and display change |
-| 7 | Use a two-dimensional UV broad phase | Quadratic scans of boxes disjoint on the other axis | Reproduced candidate-limit failure; algorithm prototype needed |
+| 7 | Use a two-dimensional UV broad phase | Quadratic scans of boxes disjoint on the other axis | Implemented incremental sweep with deterministic partial ordering and separate search limits |
 | 8 | Retain the distance distribution | Repeated full scans for area above tolerance | High confidence; small independent change |
 | 9 | Use CDT iterator input and reconsider global trim triangulation | Temporary batch vectors; potentially most interior-cell triangulation | Iterator change is small; cell approach is research |
 | 10 | Use exact predicates without constructing intersections | Rational points, rational divisions, clipping output used only for a boolean | Promising; demanding numerical equivalence work |
@@ -151,6 +151,12 @@ Represent layout through UV coordinates plus per-patch placement transforms. Ren
 The current code already caches distributions and has a quality-only refresh path. The opportunity is to remove its bulk copies and display repacking, not to add another general cache around it.
 
 ## UV overlap broad phase
+
+Implemented in production with deterministic `uv_sweep_v1` ordering, two-dimensional candidates, and a separate bounded search counter. Reports distinguish candidate, pair, and search-work truncation. See the [implementation report](uv-overlap-sweep-implementation.md) for validation and the accepted partial-highlight change.
+
+The [prototype investigation](uv-overlap-broad-phase-investigation.md) compares the current scan with eager and per-patch box trees. Both trees remove the disjoint-strip failure, but both are slower on BusGameMap. This led to an incremental sweep prototype with an interval index on the other axis. See the [raw box-tree results](uv-overlap-broad-phase-results.json).
+
+The [incremental sweep follow-up](uv-overlap-sweep-investigation.md) now implements that prototype. It avoids the large tree-construction regression and completes the strip fixtures. On BusGameMap it takes about 2% more time within patches and 9.5% more across selected patches than the current bounded scan. Its deterministic pair order changes the subset of triangles highlighted when a limit stops the search. Production adoption must make that behavior explicit. See the [sweep results](uv-overlap-sweep-results.json).
 
 `inspectUvOverlaps` sorts boxes on U and scans until U ranges separate, counting candidate work before testing V. Disjoint horizontal strips therefore trigger quadratic work even when there is no possible two-dimensional overlap.
 

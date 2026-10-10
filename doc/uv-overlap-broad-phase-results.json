@@ -1,0 +1,1154 @@
+{
+  "metadata": {
+    "base_commit": "4bfb9272044b0f20eaf2262112e2dfecff7f84b9",
+    "measured_at": "2026-10-10T23:44:45.4765858+02:00",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "configuration": "Release",
+    "preset": "vs2026-vcpkg",
+    "sample_count": 3,
+    "order": "Rotate scan, eager tree, lazy per-patch tree each sample",
+    "scope": "Overlap inspection and statistics on precomputed UV measurements; excludes load, measurement, quality copy, display preparation, GPU and worker scheduling",
+    "source_hashes": {
+      "experiments/uv-overlap/main.cpp": "8BD7C1815D40566702F1B85E58EA5F2DD32C5DB283D19FD7725C454BE89E06E3",
+      "experiments/uv-overlap/prototype.cpp": "D9089D6DBBDA08FBE459011628F2EA607B3EB286630DF8C9EDA8157522F2ADDF",
+      "experiments/uv-overlap/prototype.h": "41032C68B30A8B0F4C0EC62468A82AA45BB0D755AE9FBA5A93BB93C915590C98",
+      "experiments/uv-overlap/CMakeLists.txt": "ECE03C90DB0E4B6BE5B44869895CA8C9FB908DCDDF3E78F48649FFF17B27C029",
+      "src/uv_overlap.cpp": "F56AF30C513E432F35FFEA65045B832267992635B9A4B8BC43A74DBA13900054",
+      "src/uv_quality.cpp": "18609EB24A91841A9AF674DA80DBBB0C42C40B42297BFFA9DFFAB160A4F916E5",
+      "src/uv_quality.h": "7F5A7FED8FAE1553236ACF70D542A37578AF56FA1B41DE5C472B63C1A5041150"
+    },
+    "executable_sha256": "C6701A84A308F63F3E6B65597FF6F59BAA1483CA7F3CA64B10FE60B09EFD7254",
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+    "production_changed": false
+  },
+  "synthetic": [
+    {
+      "candidate_limit": 2000000,
+      "name": "shuffled_rows_2001",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 1.2182,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 2.0578,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.7601000000000001,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 15.1964,
+            "pairs": 0,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 1.1292,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.9824,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.759,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 1.0854,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.9378,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.7516,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 15.0084,
+            "pairs": 0,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 1.0781,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.923,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.746,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 1.1428,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 2.3396,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.9291,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 15.0168,
+            "pairs": 0,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 1.1427,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.9843,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.751,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 8128064,
+      "triangles": 2001,
+      "valid": 2001
+    },
+    {
+      "candidate_limit": 2000000,
+      "name": "shuffled_columns_2001",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 0.8360000000000001,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.4029,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.4875,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "ms": 0.6253,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 0.9031,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.4793,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.496,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 0.8418,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.4326,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.5042,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "ms": 0.4854,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 0.8431,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.4943,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.5495,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 0.8309,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.4041,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.49970000000000003,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "ms": 0.5188,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 0.8268,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 13678,
+            "ms": 1.4228,
+            "node_tests": 33507,
+            "pairs": 0,
+            "query_ms": 0.497,
+            "scratch_bytes": 157448,
+            "truncated": false,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 8128064,
+      "triangles": 2001,
+      "valid": 2001
+    },
+    {
+      "candidate_limit": 2000000,
+      "name": "shuffled_rows_10000",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 7.3723,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 12.6595,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 5.0378,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 21.3342,
+            "pairs": 0,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 7.4069,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 12.4432,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 4.7952,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 8.2996,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 13.4293,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 4.8844,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 22.4882,
+            "pairs": 0,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 7.8515,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 13.3005,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 5.1576,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 7.5896,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 12.8858,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 4.8172,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 21.3008,
+            "pairs": 0,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 7.721,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 13.0399,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 4.93,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 8640000,
+      "triangles": 10000,
+      "valid": 10000
+    },
+    {
+      "candidate_limit": 2000000,
+      "name": "shuffled_columns_10000",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 5.473800000000001,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 8.8873,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 3.0951,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "ms": 2.8505,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 5.6244,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 9.3701,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 3.2407,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 5.4379,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 8.8409,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 3.0801,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "ms": 2.9149,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 5.5884,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 9.0432,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 3.0927,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 5.6696,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 9.0054,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 3.0958,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "ms": 2.8253,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 5.7538,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 39040,
+            "ms": 9.2007,
+            "node_tests": 225906,
+            "pairs": 0,
+            "query_ms": 3.0869,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 8640000,
+      "triangles": 10000,
+      "valid": 10000
+    },
+    {
+      "candidate_limit": 2000000,
+      "name": "disjoint_grid_10000",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 9.336500000000001,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 52672,
+            "ms": 13.2498,
+            "node_tests": 238098,
+            "pairs": 0,
+            "query_ms": 3.6681999999999997,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 495000,
+            "cross_patch_pairs": 0,
+            "ms": 5.0662,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 9.4199,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 52672,
+            "ms": 13.2902,
+            "node_tests": 238098,
+            "pairs": 0,
+            "query_ms": 3.6195,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 9.5345,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 52672,
+            "ms": 13.4953,
+            "node_tests": 238098,
+            "pairs": 0,
+            "query_ms": 3.707700000000001,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 495000,
+            "cross_patch_pairs": 0,
+            "ms": 5.1947,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 11.0733,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 52672,
+            "ms": 16.3773,
+            "node_tests": 238098,
+            "pairs": 0,
+            "query_ms": 5.0146,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 9.3696,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 52672,
+            "ms": 13.3892,
+            "node_tests": 238098,
+            "pairs": 0,
+            "query_ms": 3.6679999999999993,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 495000,
+            "cross_patch_pairs": 0,
+            "ms": 5.1002,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 9.454,
+            "candidates": 0,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 52672,
+            "ms": 13.4802,
+            "node_tests": 238098,
+            "pairs": 0,
+            "query_ms": 3.648,
+            "scratch_bytes": 910816,
+            "truncated": false,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 8640000,
+      "triangles": 10000,
+      "valid": 10000
+    },
+    {
+      "candidate_limit": 2000000,
+      "name": "coincident_1000",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 1000,
+            "build_ms": 0.3781,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 10965,
+            "ms": 428.1118,
+            "node_tests": 2805,
+            "pairs": 10000,
+            "query_ms": 427.5562,
+            "scratch_bytes": 79408,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 1000,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "ms": 440.0121,
+            "pairs": 10000,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 1000,
+            "build_ms": 0.4034,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 10965,
+            "ms": 431.8587,
+            "node_tests": 2805,
+            "pairs": 10000,
+            "query_ms": 431.2918,
+            "scratch_bytes": 79408,
+            "truncated": true,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 1000,
+            "build_ms": 0.3952,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 10965,
+            "ms": 427.1607,
+            "node_tests": 2805,
+            "pairs": 10000,
+            "query_ms": 426.66360000000003,
+            "scratch_bytes": 79408,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 1000,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "ms": 426.0722,
+            "pairs": 10000,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 1000,
+            "build_ms": 0.4234,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 10965,
+            "ms": 429.1902,
+            "node_tests": 2805,
+            "pairs": 10000,
+            "query_ms": 428.6018,
+            "scratch_bytes": 79408,
+            "truncated": true,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 1000,
+            "build_ms": 0.4104,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 10965,
+            "ms": 440.2747,
+            "node_tests": 2805,
+            "pairs": 10000,
+            "query_ms": 439.7326,
+            "scratch_bytes": 79408,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 1000,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "ms": 485.1305,
+            "pairs": 10000,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 1000,
+            "build_ms": 0.4286,
+            "candidates": 10001,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 10965,
+            "ms": 443.2404,
+            "node_tests": 2805,
+            "pairs": 10000,
+            "query_ms": 442.6561,
+            "scratch_bytes": 79408,
+            "truncated": true,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 8064000,
+      "triangles": 1000,
+      "valid": 1000
+    },
+    {
+      "candidate_limit": 2000000,
+      "name": "disjoint_diagonal_512",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 0.18030000000000002,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 132608,
+            "ms": 10.2631,
+            "node_tests": 35714,
+            "pairs": 0,
+            "query_ms": 10.0403,
+            "scratch_bytes": 47264,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "ms": 8.2554,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 0.1813,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 132608,
+            "ms": 10.1654,
+            "node_tests": 35714,
+            "pairs": 0,
+            "query_ms": 9.9528,
+            "scratch_bytes": 47264,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 0.1861,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 132608,
+            "ms": 10.2239,
+            "node_tests": 35714,
+            "pairs": 0,
+            "query_ms": 10.0074,
+            "scratch_bytes": 47264,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "ms": 8.2464,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 0.1857,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 132608,
+            "ms": 10.237,
+            "node_tests": 35714,
+            "pairs": 0,
+            "query_ms": 10.0115,
+            "scratch_bytes": 47264,
+            "truncated": false,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 0,
+            "build_ms": 0.1702,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 132608,
+            "ms": 10.305,
+            "node_tests": 35714,
+            "pairs": 0,
+            "query_ms": 10.0868,
+            "scratch_bytes": 47264,
+            "truncated": false,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 0,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "ms": 8.1874,
+            "pairs": 0,
+            "truncated": false
+          },
+          "tree": {
+            "affected": 0,
+            "build_ms": 0.1265,
+            "candidates": 130816,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 132608,
+            "ms": 10.1835,
+            "node_tests": 35714,
+            "pairs": 0,
+            "query_ms": 10.0223,
+            "scratch_bytes": 47264,
+            "truncated": false,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 8032768,
+      "triangles": 512,
+      "valid": 512
+    }
+  ],
+  "model": [
+    {
+      "candidate_limit": 2000000,
+      "name": "model_per_patch",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 2800,
+            "build_ms": 1088.1880999999998,
+            "candidates": 20446,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 30380,
+            "ms": 1924.1112,
+            "node_tests": 41213,
+            "pairs": 10000,
+            "query_ms": 805.2299,
+            "scratch_bytes": 69574552,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 2800,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 1113.5496,
+            "pairs": 9566,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 2800,
+            "build_ms": 1202.4528,
+            "candidates": 20446,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 30380,
+            "ms": 2036.1707,
+            "node_tests": 41213,
+            "pairs": 10000,
+            "query_ms": 806.7425,
+            "scratch_bytes": 69574552,
+            "truncated": true,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 2800,
+            "build_ms": 1078.2908,
+            "candidates": 20446,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 30380,
+            "ms": 1952.669,
+            "node_tests": 41213,
+            "pairs": 10000,
+            "query_ms": 847.0378999999999,
+            "scratch_bytes": 69574552,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 2800,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 1302.2302,
+            "pairs": 9566,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 2800,
+            "build_ms": 1203.5764,
+            "candidates": 20446,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 30380,
+            "ms": 2027.8696,
+            "node_tests": 41213,
+            "pairs": 10000,
+            "query_ms": 796.9241,
+            "scratch_bytes": 69574552,
+            "truncated": true,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 2800,
+            "build_ms": 1218.2114,
+            "candidates": 20446,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 30380,
+            "ms": 2121.8701,
+            "node_tests": 41213,
+            "pairs": 10000,
+            "query_ms": 876.8309,
+            "scratch_bytes": 69574552,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 2800,
+            "candidates": 2000000,
+            "cross_patch_pairs": 0,
+            "ms": 1085.1663,
+            "pairs": 9566,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 2800,
+            "build_ms": 1197.8704,
+            "candidates": 20446,
+            "cross_patch_pairs": 0,
+            "leaf_tests": 30380,
+            "ms": 2039.6286,
+            "node_tests": 41213,
+            "pairs": 10000,
+            "query_ms": 814.1216,
+            "scratch_bytes": 69574552,
+            "truncated": true,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "per_patch",
+      "tree_work_limit": 75490688,
+      "triangles": 1054542,
+      "valid": 958674
+    },
+    {
+      "candidate_limit": 2000000,
+      "name": "model_selected_patches",
+      "pair_limit": 10000,
+      "samples": [
+        {
+          "lazy_tree": {
+            "affected": 10001,
+            "build_ms": 1385.0537,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "leaf_tests": 958674,
+            "ms": 1531.4737,
+            "node_tests": 262143,
+            "pairs": 10000,
+            "query_ms": 118.90830000000005,
+            "scratch_bytes": 77971792,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 10001,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "ms": 294.4392,
+            "pairs": 10000,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 10001,
+            "build_ms": 1385.8798,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "leaf_tests": 958674,
+            "ms": 1531.4578,
+            "node_tests": 262143,
+            "pairs": 10000,
+            "query_ms": 117.0485,
+            "scratch_bytes": 77971792,
+            "truncated": true,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 10001,
+            "build_ms": 1396.7552999999998,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "leaf_tests": 958674,
+            "ms": 1540.5135,
+            "node_tests": 262143,
+            "pairs": 10000,
+            "query_ms": 116.41000000000008,
+            "scratch_bytes": 77971792,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 10001,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "ms": 299.8764,
+            "pairs": 10000,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 10001,
+            "build_ms": 1363.6067,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "leaf_tests": 958674,
+            "ms": 1509.5183,
+            "node_tests": 262143,
+            "pairs": 10000,
+            "query_ms": 118.0117,
+            "scratch_bytes": 77971792,
+            "truncated": true,
+            "work_truncated": false
+          }
+        },
+        {
+          "lazy_tree": {
+            "affected": 10001,
+            "build_ms": 1383.5366,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "leaf_tests": 958674,
+            "ms": 1531.2221,
+            "node_tests": 262143,
+            "pairs": 10000,
+            "query_ms": 120.24270000000001,
+            "scratch_bytes": 77971792,
+            "truncated": true,
+            "work_truncated": false
+          },
+          "scan": {
+            "affected": 10001,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "ms": 289.692,
+            "pairs": 10000,
+            "truncated": true
+          },
+          "tree": {
+            "affected": 10001,
+            "build_ms": 1368.7633,
+            "candidates": 17365,
+            "cross_patch_pairs": 10000,
+            "leaf_tests": 958674,
+            "ms": 1516.889,
+            "node_tests": 262143,
+            "pairs": 10000,
+            "query_ms": 119.687,
+            "scratch_bytes": 77971792,
+            "truncated": true,
+            "work_truncated": false
+          }
+        }
+      ],
+      "scope": "selected_patches",
+      "tree_work_limit": 75490688,
+      "triangles": 1054542,
+      "valid": 958674
+    }
+  ]
+}

@@ -6,6 +6,10 @@
 #include <nlohmann/json.hpp>
 #include <cmath>
 #include <numeric>
+#include <algorithm>
+#include <limits>
+#include <random>
+#include <tuple>
 
 namespace {
 woby::Mesh mappedTriangle(float u = 1, float v = 1)
@@ -37,6 +41,134 @@ woby::UvQuality overlaps(const woby::Mesh& mesh, woby::UvOverlapScope scope = wo
     woby::inspectUvOverlaps(quality);
     return quality;
 }
+woby::UvTriangleQuality sweepTriangle(double x, double y, double side = 1, size_t patch = 0)
+{
+    woby::UvTriangleQuality t;
+    t.uv = {{{x,y},{x+side,y},{x,y+side}}}; t.patch = patch; t.orientation = 1;
+    t.surfaceArea = t.uvArea = .5; t.minStretch = t.maxStretch = 1;
+    return t;
+}
+woby::UvQuality sweepQuality(std::vector<woby::UvTriangleQuality> triangles)
+{
+    auto measurements = std::make_shared<woby::UvMeasurements>();
+    measurements->triangles = std::move(triangles);
+    measurements->patchAreaLog2.resize(4); measurements->patchStretchScale.resize(4,1);
+    woby::UvQuality q; q.measurements = std::move(measurements); q.settings.uvOverlapEnabled = true;
+    return q;
+}
+}
+
+TEST_CASE("UV sweep completes disjoint rows and columns with no exact candidates")
+{
+    for (bool transpose : {false,true}) {
+        std::vector<woby::UvTriangleQuality> triangles;
+        for (size_t i=0; i<2001; ++i) { triangles.push_back(sweepTriangle(0,static_cast<double>(i)*2)); }
+        std::mt19937 rng(12); std::shuffle(triangles.begin(),triangles.end(),rng);
+        if (transpose) { for (auto& t : triangles) {
+            for (auto& p : t.uv) { std::swap(p[0],p[1]); } t.orientation = -1;
+        } }
+        auto q = sweepQuality(std::move(triangles));
+        woby::inspectUvOverlaps(q,{}, {0,0});
+        const auto& r = woby::uvOverlapResult(q);
+        CHECK_FALSE(r.truncated); CHECK(r.candidates == 0); CHECK(r.pairs.empty());
+        CHECK(r.truncation == woby::UvOverlapTruncation::none);
+        CHECK(r.searchWork <= r.searchWorkLimit);
+    }
+}
+
+TEST_CASE("UV sweep agrees with independent all pairs geometry and deterministic event order")
+{
+    std::mt19937 rng(823);
+    for (int trial=0; trial<6; ++trial) {
+        std::vector<woby::UvTriangleQuality> triangles;
+        for (size_t i=0; i<160; ++i) {
+            auto t = sweepTriangle(static_cast<double>(rng()%50)-25,static_cast<double>(rng()%30)-15,
+                static_cast<double>(rng()%15+1),rng()%4);
+            t.missing = i%37 == 0; t.collapsed = i%41 == 0; t.degenerateSurface = i%43 == 0;
+            triangles.push_back(t);
+        }
+        for (auto scope : {woby::UvOverlapScope::perPatch,woby::UvOverlapScope::selectedPatches}) {
+            auto q = sweepQuality(triangles); q.settings.uvOverlapScope = scope;
+            const auto uKey = [&](size_t i) {
+                return std::tuple{scope == woby::UvOverlapScope::perPatch ? triangles[i].patch : size_t{},triangles[i].uv[0][0],i};
+            };
+            std::vector<std::pair<size_t,size_t>> expected;
+            // For these right triangles, positive area exists iff the lowest shared
+            // x+y lies strictly below both hypotenuses. This is independent of the SAT.
+            for (size_t i=0; i<triangles.size(); ++i) { for (size_t j=i+1; j<triangles.size(); ++j) {
+                const auto& a = triangles[i]; const auto& b = triangles[j];
+                if (!woby::validUvTriangle(a) || !woby::validUvTriangle(b)
+                    || (scope == woby::UvOverlapScope::perPatch && a.patch != b.patch)) { continue; }
+                const double lower = std::max(a.uv[0][0],b.uv[0][0])+std::max(a.uv[0][1],b.uv[0][1]);
+                if (lower < std::min(a.uv[1][0]+a.uv[0][1],b.uv[1][0]+b.uv[0][1])) {
+                    expected.emplace_back(uKey(i)<uKey(j) ? i : j,uKey(i)<uKey(j) ? j : i);
+                }
+            } }
+            std::sort(expected.begin(),expected.end(),[&](const auto& a, const auto& b) {
+                return std::tuple{uKey(a.second),triangles[a.first].uv[0][1],uKey(a.first)}
+                    < std::tuple{uKey(b.second),triangles[b.first].uv[0][1],uKey(b.first)};
+            });
+            for (size_t cap : {size_t{0},size_t{7},expected.size()}) {
+                woby::inspectUvOverlaps(q,{}, {100000,cap});
+                const auto& r = woby::uvOverlapResult(q);
+                REQUIRE(r.pairs.size() == std::min(cap,expected.size()));
+                CHECK(r.truncated == (cap < expected.size()));
+                CHECK(r.truncation == (r.truncated ? woby::UvOverlapTruncation::pairs : woby::UvOverlapTruncation::none));
+                std::vector<uint8_t> flags(triangles.size()); size_t cross = 0;
+                for (size_t i=0; i<r.pairs.size(); ++i) {
+                    const auto& pair = r.pairs[i];
+                    CHECK(pair.first == expected[i].first); CHECK(pair.second == expected[i].second);
+                    const bool crossPatch = triangles[pair.first].patch != triangles[pair.second].patch;
+                    CHECK(pair.crossPatch == crossPatch); if (crossPatch) { ++cross; }
+                    const uint8_t flag = crossPatch ? uint8_t{2} : uint8_t{1};
+                    flags[pair.first] |= flag; flags[pair.second] |= flag;
+                }
+                CHECK(r.flags == flags); CHECK(r.crossPatchPairs == cross);
+                CHECK(r.overlappingTriangles == static_cast<size_t>(std::count_if(flags.begin(),flags.end(),[](auto f) { return f != 0; })));
+                CHECK(r.searchWork <= r.searchWorkLimit);
+            }
+        }
+    }
+}
+
+TEST_CASE("UV sweep distinguishes limits and preserves deterministic partial prefixes")
+{
+    auto q = sweepQuality(std::vector<woby::UvTriangleQuality>(6,sweepTriangle(0,0)));
+    for (size_t cap : {size_t{0},size_t{1},size_t{4},size_t{15},size_t{16}}) {
+        woby::inspectUvOverlaps(q,{}, {cap,100});
+        CHECK(woby::uvOverlapResult(q).candidates == std::min(cap,size_t{15}));
+        CHECK(woby::uvOverlapResult(q).pairs.size() == std::min(cap,size_t{15}));
+        CHECK(woby::uvOverlapResult(q).truncation == (cap < 15 ? woby::UvOverlapTruncation::candidates : woby::UvOverlapTruncation::none));
+    }
+    woby::inspectUvOverlaps(q,{}, {100,4});
+    const auto retained = q.overlap;
+    REQUIRE(retained->pairs.size() == 4);
+    CHECK(retained->flags == std::vector<uint8_t>{1,1,1,1,0,0});
+    CHECK(retained->pairs[0].first == 0); CHECK(retained->pairs[0].second == 1);
+    CHECK(retained->pairs[1].first == 0); CHECK(retained->pairs[1].second == 2);
+    CHECK(retained->pairs[2].first == 1); CHECK(retained->pairs[2].second == 2);
+    CHECK(retained->pairs[3].first == 0); CHECK(retained->pairs[3].second == 3);
+    CHECK(retained->truncation == woby::UvOverlapTruncation::pairs);
+    auto settings = q.settings; settings.uvThreshold = 7;
+    woby::updateUvQualitySettings(q,settings); CHECK(q.overlap == retained);
+
+    for (size_t budget : {size_t{0},size_t{1},size_t{5},size_t{10}}) {
+        woby::inspectUvOverlaps(q,{}, {100,100,budget});
+        const auto bounded = q.overlap;
+        CHECK(bounded->truncated); CHECK(bounded->truncation == woby::UvOverlapTruncation::searchWork);
+        CHECK(bounded->searchWork == budget); CHECK(bounded->searchWorkLimit == budget);
+        woby::inspectUvOverlaps(q,{}, {100,100,budget});
+        REQUIRE(q.overlap->pairs.size() == bounded->pairs.size());
+        for (size_t i=0; i<bounded->pairs.size(); ++i) {
+            CHECK(q.overlap->pairs[i].first == bounded->pairs[i].first);
+            CHECK(q.overlap->pairs[i].second == bounded->pairs[i].second);
+        }
+        CHECK(q.overlap->flags == bounded->flags);
+    }
+    woby::inspectUvOverlaps(q,{}, {std::numeric_limits<size_t>::max(),100});
+    CHECK_FALSE(q.overlap->truncated); CHECK(q.overlap->searchWorkLimit == std::numeric_limits<size_t>::max());
+    auto empty = sweepQuality({}); woby::inspectUvOverlaps(empty,{}, {0,0,0});
+    CHECK_FALSE(empty.overlap->truncated);
 }
 
 TEST_CASE("UV singular values follow surface to UV convention and patch normalization")
@@ -189,6 +321,9 @@ TEST_CASE("UV overlap worker publishes immutable results and reports statistics"
     CHECK(report["convention"] == "surface_to_uv");
     CHECK(report["overlaps"]["pairs"].size() == 1);
     CHECK(report["overlaps"]["truncated"] == false);
+    CHECK(report["overlaps"]["truncationReason"] == "none");
+    CHECK(report["overlaps"]["pairOrder"] == "uv_sweep_v1");
+    CHECK(report["overlaps"]["searchWorkCount"].get<size_t>() <= report["overlaps"]["searchWorkLimit"].get<size_t>());
     CHECK(report["statistics"]["count"] == 2);
 }
 

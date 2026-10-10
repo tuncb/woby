@@ -32,9 +32,13 @@ struct UvQualityStatistics {
 };
 struct UvOverlapPair { size_t first = 0, second = 0; bool crossPatch = false; };
 struct UvOverlapLimits {
+    // Candidates overlap strictly on both UV axes. Search work bounds index updates and queries.
     size_t candidates = 2000000, pairs = 10000;
+    std::optional<size_t> searchWork = std::nullopt; // Default: saturating 64 * valid triangles + 4 * candidates.
     friend bool operator==(const UvOverlapLimits&, const UvOverlapLimits&) = default;
 };
+enum class UvOverlapTruncation { none, candidates, pairs, searchWork };
+[[nodiscard]] const char* uvOverlapTruncationKey(UvOverlapTruncation reason);
 
 struct UvMeasurements {
     // Absolute values. Normalization and overlap flags are applied only by uvTriangleQuality.
@@ -49,6 +53,8 @@ struct UvOverlapResult {
     std::vector<uint8_t> flags; // Bit 0: within patch; bit 1: cross patch.
     std::vector<UvOverlapPair> pairs;
     size_t candidates = 0, overlappingTriangles = 0, crossPatchPairs = 0;
+    size_t searchWork = 0, searchWorkLimit = 0;
+    UvOverlapTruncation truncation = UvOverlapTruncation::none;
     bool truncated = false;
 };
 
@@ -90,6 +96,8 @@ void updateUvQualitySettings(UvQuality& quality, const ComparisonSettings& setti
 [[nodiscard]] bool uvQualityHighlighted(const UvTriangleQuality& triangle, const ComparisonSettings& settings);
 [[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, const ComparisonSettings& settings, std::stop_token stop = {});
 // Run on the analysis worker; cancellation never publishes a partial result.
+// Pair order: current box in (patch if scoped, minimum U, triangle index) order,
+// then active boxes in (minimum V, sweep rank) order. first is the earlier sweep box.
 void inspectUvOverlaps(UvQuality& quality, std::stop_token stop = {}, UvOverlapLimits limits = {});
 void updateUvQualityStatistics(UvQuality& quality, std::stop_token stop = {});
 [[nodiscard]] std::array<float, 4> uvQualityColor(double encodedValue, bool area, bool highlighted = false);

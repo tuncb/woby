@@ -563,16 +563,28 @@ take precedence over threshold highlighting. Thresholds must be nonnegative;
 near-collapse thresholds must be positive. `selected_patches` explicitly treats
 selected patches as sharing a domain and reports cross-patch pairs separately.
 The default `per_patch` excludes independent domains. Checks run on the analysis
-worker, bounded by 2,000,000 broad-phase candidates and 10,000 pairs;
-`overlaps.truncated` means a partial result.
+worker, bounded by 2,000,000 candidates whose boxes overlap strictly on both UV
+axes and 10,000 retained pairs. A separate search-work budget bounds index queries
+and updates. Its default is `64 * valid triangle count + 4 * candidate limit`,
+with saturating arithmetic. `overlaps.truncated` means a partial result;
+highlights cover only retained pairs, so other triangles can also overlap.
 
 `uvQuality` includes `metric`, `convention=surface_to_uv`, `statistics` (minimum,
 median, p95, maximum, thresholdCount, thresholdAreaPercent, nearCollapseCount),
 `histogram` (bounds, counts, surfaceAreas), and `overlaps` (checked, truncated,
-scope, candidateCount, affectedTriangles, crossPatchPairs, and pairs containing
+scope, candidateCount, searchWorkCount, searchWorkLimit, truncationReason,
+pairOrder, affectedTriangles, crossPatchPairs, and pairs containing
 first/second part IDs and one-based triangle numbers). Percentiles give valid
 faces equal weight; area percentages use physical surface area. Invalid mappings
 are excluded.
+
+`truncationReason` is `none`, `candidates`, `pairs`, or `search_work`.
+`pairOrder=uv_sweep_v1` processes boxes by minimum U and triangle index, with
+patch first for `per_patch` scope. For each new box, earlier active boxes are
+visited by minimum V and then their U sweep rank. `first` identifies the earlier
+box and `second` the new box. This order is deterministic for unchanged inputs.
+It changes which pairs and triangles are retained under a limit compared with
+the previous U-only scan; a complete result has the same overlap set.
 
 
 Every UV diagnostic can be configured and checked through `ctl`, including in
