@@ -27,10 +27,10 @@ TEST_CASE("shared shader types coexist with platform half types and preserve sto
     CHECK(copy.y.bits == 0xfc00);
     CHECK(copy.z.bits == 0x8000);
     CHECK(copy.w.bits == 0x0001);
-    CHECK(sizeof(WobyRoot) == 352);
-    CHECK(offsetof(WobyRoot, triangleEdges) == 304);
-    CHECK(offsetof(WobyRoot, transparency) == 320);
-    CHECK(offsetof(WobyRoot, analysisFaces) == 336);
-    CHECK(offsetof(WobyRoot, faceKind) == 344);
-    CHECK(offsetof(WobyRoot, firstFace) == 348);
+    CHECK(sizeof(WobyRoot) == 344);
+    CHECK(offsetof(WobyRoot, triangleEdges) == 292);
+    CHECK(offsetof(WobyRoot, transparency) == 308);
+    CHECK(offsetof(WobyRoot, analysisFaces) == 328);
+    CHECK(offsetof(WobyRoot, faceKind) == 336);
+    CHECK(offsetof(WobyRoot, firstFace) == 340);
 }

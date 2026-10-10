@@ -122,17 +122,15 @@ There is still repeated construction: the edge-finding stage runs `inspectMesh`,
 
 ## Freeform evaluation
 
-The application currently pays for both complete implementations. `appendFreeformGeometry` evaluates the fixed sample grid on the CPU, writes complete vertices and connectivity, and the ordinary upload sends those buffers to the GPU. The main loop subsequently calls `dispatchFreeformGpu` once, which packs controls and basis tables and evaluates the same samples again. There is no camera-adaptive refinement in this path.
+**Implemented:** fixed freeform tessellation now uses the completed CPU mesh for rendering. `appendFreeformGeometry` reuses each `FreeformSample` for normal generation, while preserving authored normals and exceptional interior samples at singular boundaries. Native controls, parameter grids, trim triangulation, source IDs, and double source positions remain available.
 
-Within CPU preparation, each appended vertex calls `evaluateFreeform` and then `freeformNormal`, which calls `evaluateFreeform` again. Some singular-normal cases need nearby evaluations, but the common case already has the required derivatives and authored normal in the first sample.
+The second GPU evaluation has been removed, together with its packing, temporary input buffers, compute shader, readiness flag, and float-safety selection. The ordinary upload supplies complete vertices and connectivity. The upload tests now require exact agreement with CPU positions, normals, UVs, and indices, including rebased rational and trimmed geometry.
 
-Sources: [CPU evaluation](../src/freeform.cpp), [GPU packing and dispatch](../src/freeform_gpu.cpp), [first-use dispatch](../src/main.cpp), [CPU/GPU equivalence checks](../tests/freeform_gpu_tests.cpp).
+The [initial investigation](freeform-evaluation-investigation.md) measured about 45% less time in an isolated evaluation loop. It also found 1.06 seconds of CPU packing work and 139.6 MiB of packed inputs for 1,000 keycaps. Those are baseline stage measurements. The [implementation report](freeform-evaluation-implementation.md) records application validation and before/after results.
 
-For today's fixed tessellation, use the completed CPU geometry as the render geometry. Removing the second evaluation would also remove packing, temporary input buffers, compute dispatches, the readiness flag, float-safety selection, and one source of CPU/GPU geometric disagreement. Reuse the first `FreeformSample` for normal generation, keeping the exceptional fallback samples.
+GPU-first lazy or adaptive tessellation remains a separate architectural choice. Bounds, picking, annotations, and analysis require CPU geometry today. The fixed path does not add camera-adaptive refinement.
 
-An alternative is GPU-first lazy tessellation with CPU evaluation deferred until needed. That is a different architectural investment: bounds, picking, annotations, and analysis already require CPU geometry. It does not simplify the present design as directly.
-
-The existing GPU tests compare positions and normals within tolerances, not bitwise. Removing compute can change pixels slightly, so visual and picking checks still matter. Keep native control nets for provenance and future evaluation. This proposal is specifically about duplicate evaluation, not removing freeform import support or trim triangulation.
+Sources: [CPU evaluation](../src/freeform.cpp), [ordinary upload](../src/scene_renderer.cpp), [exact upload checks](../tests/freeform_gpu_tests.cpp), [render and scene restoration checks](../tests/ctl_freeform_smoke.py).
 
 ## UV metrics and layout
 

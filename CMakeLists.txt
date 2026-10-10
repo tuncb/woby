@@ -209,7 +209,6 @@ add_library(woby_core STATIC
     src/scene_draw_plan.cpp
     src/scene_draw_plan.h
     src/scene_renderer.cpp
-    src/freeform_gpu.cpp
     src/scene_renderer.h
     src/scene_objects.cpp
     src/scene_objects.h
@@ -348,6 +347,7 @@ if(WOBY_BUILD_BENCHMARKS)
     add_subdirectory(experiments/position-access)
     add_subdirectory(experiments/face-display)
     add_subdirectory(experiments/analysis-stages)
+    add_subdirectory(experiments/freeform-evaluation)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp tests/analysis_export_benchmarks.cpp src/analysis_results.cpp
         src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_comparison.cpp

@@ -86,6 +86,12 @@ def main():
             assert sum(n for n, (r, g, b) in colors if g > r + 80 and g > b + 80) > 500
             assert ctl("stats")["lineSegmentCount"] == 32
             assert ctl("stats")["pointCount"] == 0
+            annotation = ctl("annotation", "create", ids["patch"], "--shape", "line",
+                             "--start", -.1, 0, "--end", .1, 0, "--name", "Freeform surface")["target"]
+            ctl("annotation", "set", annotation, "--rgb", 0, 1, 1, "--width", 5)
+            marked = capture(ctl, root / "annotation.png")
+            assert ImageChops.difference(picture, marked).getbbox() is not None
+            picture = marked
             ctl("scene", "save-as", saved)
             ctl("quit")
             assert viewer.wait(timeout=15) == 0

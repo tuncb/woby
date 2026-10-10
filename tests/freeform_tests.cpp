@@ -1,9 +1,7 @@
 #include "freeform.h"
-#include "freeform_gpu.h"
 #include "obj_mesh.h"
 #include "utf8_path.h"
 #include <doctest/doctest.h>
-#include <bit>
 #include <chrono>
 #include <cmath>
 #include <fstream>
@@ -177,27 +175,6 @@ TEST_CASE("Freeform validation rejects invalid weights control counts and discon
     CHECK_THROWS(woby::validateFreeformPatch(p));
 }
 
-TEST_CASE("Freeform GPU packing uses rebased controls and separable partition of unity") {
-    auto p=arc(); woby::Mesh m;
-    m.origin={1,2,3};
-    woby::appendFreeformGeometry(m,{p});
-    const auto& grid=m.freeform->grids[0];
-    const auto data=woby::packFreeformGpu(p,grid,m.origin);
-    REQUIRE(!data.empty());
-    CHECK(data[16]==0); CHECK(data[17]==-2); CHECK(data[18]==-3);
-    const auto offset=std::bit_cast<uint32_t>(data[9]);
-    for (size_t i=0;i<grid.u.size();++i) {
-        double sum=0,derivative=0;
-        for (size_t j=0;j<=p.degreeU;++j) { sum+=data[offset+i*19+1+j]; derivative+=data[offset+i*19+10+j]; }
-        CHECK(sum==doctest::Approx(1)); CHECK(derivative==doctest::Approx(0));
-    }
-    auto huge=p;
-    huge.controls[0][0]=1e30;
-    CHECK(woby::packFreeformGpu(huge,grid,m.origin).empty());
-    p.controls[1][3]=1e-100;
-    CHECK(woby::packFreeformGpu(p,grid,m.origin).empty());
-}
-
 TEST_CASE("Freeform nonuniform cubic derivatives agree with finite differences") {
     woby::FreeformPatch p;
     p.degreeU=3; p.countU=5; p.knotsU={0,0,0,0,.2,1,1,1,1}; p.domainU={0,1};
@@ -267,4 +244,43 @@ TEST_CASE("freeform append retains shared coordinates after source metadata is r
     CHECK(meshGeometry(mesh).positionIndices[3] == 4);
     CHECK(mesh.sourceData->indices == std::vector<uint32_t>{2, 0, 1});
     for (size_t i=0; i<3; ++i) { CHECK(woby::meshPosition(mesh,i) == woby::meshPosition(snapshot,i)); }
+}
+
+TEST_CASE("Freeform sample reuse preserves authored and singular interior normals")
+{
+    woby::FreeformPatch patch;
+    patch.surface=true; patch.degreeU=1; patch.degreeV=1; patch.countU=2; patch.countV=2;
+    patch.knotsU={0,0,1,1}; patch.knotsV=patch.knotsU; patch.domainU={0,1}; patch.domainV={0,1};
+    // The collapsed bottom edge needs the interior normal (0,-1,0), not the default (0,0,1).
+    patch.controls={{{0,0,0,1}},{{0,0,0,1}},{{0,0,1,1}},{{1,0,1,1}}};
+    std::array<float,3> expected{0,-1,0};
+    SUBCASE("differential and collapsed boundary") {}
+    SUBCASE("authored normal takes precedence") { patch.normals.assign(4,{0,2,0}); expected={0,1,0}; }
+    SUBCASE("zero authored normal uses differential and interior fallback") { patch.normals.assign(4,{}); }
+    SUBCASE("fully collapsed surface uses the default normal") { patch.controls.assign(4,{0,0,0,1}); expected={0,0,1}; }
+    woby::Mesh mesh;
+    woby::appendFreeformGeometry(mesh,{patch});
+    for (const auto& vertex : woby::meshGeometry(mesh).vertices) { CHECK(vertex.normal==expected); }
+    for (double v : {0.,.5,1.}) {
+        const auto sample=woby::evaluateFreeform(patch,.5,v);
+        CHECK(woby::freeformNormal(patch,.5,v,sample)==expected);
+        CHECK(woby::freeformNormal(patch,.5,v)==expected);
+    }
+}
+
+TEST_CASE("Freeform CPU tessellation retains extreme rational weights and rebased coordinates")
+{
+    auto patch=arc();
+    patch.controls[1][3]=1e-100;
+    woby::Mesh mesh; mesh.origin={1e12,-1e12,1e12};
+    for (auto& control : patch.controls) for (size_t k=0;k<3;++k) { control[k]+=mesh.origin[k]; }
+    woby::appendFreeformGeometry(mesh,{patch});
+    const auto& grid=mesh.freeform->grids[0];
+    for (size_t i=0;i<grid.u.size();++i) {
+        const auto sample=woby::evaluateFreeform(patch,grid.u[i]);
+        const auto expected=woby::relativePosition(sample.position,mesh.origin);
+        CHECK(woby::meshPosition(mesh,i)==expected);
+        CHECK(woby::meshGeometry(mesh).vertices[i].position==woby::renderPosition(expected));
+        CHECK(woby::meshGeometry(mesh).vertices[i].normal==std::array<float,3>{0,0,1});
+    }
 }

@@ -115,7 +115,7 @@ struct Encoder
 {
     WobyRoot root{};
     std::array<float, 16> model{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-    Geometry vertices, indices, points, freeform, analysisFaces;
+    Geometry vertices, indices, points, analysisFaces;
     uint32_t vertexCount = 0, instances = 1;
     bool explicitVertexCount = false;
     uint64_t state = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A;
@@ -711,8 +711,7 @@ gpu::ShaderStage shaderStage(const std::shared_ptr<Shader> &shader)
 {
     // Metal dispatches use explicit threadgroup dimensions; SPIR-V embeds them.
     gpu::uint32x3 threads{1,1,1};
-    if (shader->entry=="cs_freeform") threads={64,1,1};
-    else if (shader->entry=="cs_opaque_raster" || shader->entry=="cs_opaque_depth" || shader->entry=="cs_opaque_ids") threads={128,1,1};
+    if (shader->entry=="cs_opaque_raster" || shader->entry=="cs_opaque_depth" || shader->entry=="cs_opaque_ids") threads={128,1,1};
     else if (shader->entry=="cs_opaque_clear" || shader->entry=="cs_opaque_batch_clear" || shader->entry=="cs_opaque_merge") threads={8,8,1};
     return {.code = {reinterpret_cast<const byte *>(shader->code.data()), shader->bytes},
             .entry_point = shader->entry.c_str(), .threadgroup_size = threads};
@@ -786,7 +785,6 @@ WobyRoot rootData(const Encoder &encoder, const View &view)
     root.vertices = static_cast<float *>(encoder.vertices.gpu);
     root.stride = encoder.vertices.stride / 4;
     root.pointIds = static_cast<uint32_t *>(encoder.points.gpu);
-    root.freeform = static_cast<float *>(encoder.freeform.gpu);
     root.analysisFaces = static_cast<float *>(encoder.analysisFaces.gpu);
     for (size_t i = 0; i < encoder.textures.size(); ++i)
         if (encoder.textures[i])
@@ -1408,9 +1406,8 @@ void setIndexBuffer(const TransientIndexBuffer *b, uint32_t start, uint32_t coun
 }
 void setBuffer(uint8_t binding, VertexBufferHandle h, Access::Enum)
 {
-    require(binding == 0 || binding == 2, "Unexpected vertex storage binding");
-    if (binding == 0) { setVertexBuffer(0, h); }
-    else { state().encoder.freeform = geometry(resource(state().vertexBuffers, h), 0, UINT32_MAX); }
+    require(binding == 0, "Unexpected vertex storage binding");
+    setVertexBuffer(0, h);
 }
 void setBuffer(uint8_t binding, IndexBufferHandle h, Access::Enum)
 {

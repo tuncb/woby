@@ -1,0 +1,3984 @@
+{
+  "base_commit": "cb63eb21ba38e4c8f127af241b3f195302e41577",
+  "source_sha256": {
+    "src/freeform.cpp": "b5a2e4386dd43d608d306c1ee7ea62dc7672a0abb279c75d712f84f43c8c45e1",
+    "src/freeform.h": "dba78753158d9e4ef309b49db354da7804aa91a3aec4d29e6009045a0eb5622f",
+    "src/graphics.cpp": "89bb82fe103bf4dc1200bf277492b14f3582805f79f6ca270ac6a54308d0d60b",
+    "src/main.cpp": "a15161eac8bd1cfbf7a3fb00f0d948ece76b0ade889a3a1e57d605c35eaa5118",
+    "shaders/native/root.h": "49d7059466c4b4d545172e96eaf92d4a672e80c0fa4fb45c3202cb669c8551e6",
+    "shaders/native/woby.slang": "fa6928d6a339fdc178411750e674db2bb221f74f5c2dac4765727c4e34d21453"
+  },
+  "validation": {
+    "debug_unit_groups_passed": 78,
+    "viewer_checks": [
+      "woby_headless",
+      "woby_freeform_render",
+      "woby_coordinate_origin"
+    ],
+    "geometry_stats_and_cameras_match": true,
+    "concurrent_builds_or_tests_during_measurements": false
+  },
+  "cpu": {
+    "build": "Visual Studio 2026 x64 Release, vs2026-vcpkg",
+    "probe_sha256": "E97512A897480430B5B5C92917AB59FE61F5ABBC2B587AB5FD097FF6D48E7679",
+    "base_commit": "cb63eb21ba38e4c8f127af241b3f195302e41577",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "recorded_at": "2026-10-10T22:59:14.3260105+02:00",
+    "executable_sha256": "EB6D89AEADC7A0632485F5DC417DBB83DCD3DE53FF67ABED621BD042ACC76707",
+    "scope": "CPU sample and normal loop: parameter-based wrapper versus production sample reuse. No GPU dispatch, upload, or full viewer timing. Five warm evaluation pairs with alternating order.",
+    "results": [
+      {
+        "input_sha256": null,
+        "measurement": {
+          "all_normals_exactly_equal": true,
+          "evaluation_pairs": [
+            {
+              "before_ms": 741.1612,
+              "checksum": 1913499.0450191582,
+              "reuse_ms": 417.3786
+            },
+            {
+              "before_ms": 740.2281,
+              "checksum": 1913499.0450191582,
+              "reuse_ms": 417.6636
+            },
+            {
+              "before_ms": 741.6184,
+              "checksum": 1913499.0450191582,
+              "reuse_ms": 414.2508
+            },
+            {
+              "before_ms": 745.2762,
+              "checksum": 1913499.0450191582,
+              "reuse_ms": 413.8771
+            },
+            {
+              "before_ms": 748.5264,
+              "checksum": 1913499.0450191582,
+              "reuse_ms": 420.7971
+            }
+          ],
+          "gpu_evaluation_removed": true,
+          "input": "--synthetic",
+          "load_ms_context_only": 519.3116,
+          "mesh_triangles": 2048000,
+          "mesh_vertices": 1089000,
+          "patches": 1000,
+          "samples": 1089000,
+          "singular_fallback_samples": 0,
+          "surface_samples": 1089000
+        }
+      },
+      {
+        "input_sha256": "0FAF9E86D1922C8F4C91D6D673C643042DC3B05431B961165E31CCA5C75C0A99",
+        "measurement": {
+          "all_normals_exactly_equal": true,
+          "evaluation_pairs": [
+            {
+              "before_ms": 104.4227,
+              "checksum": -314357464.2510644,
+              "reuse_ms": 55.2994
+            },
+            {
+              "before_ms": 101.0121,
+              "checksum": -314357464.2510644,
+              "reuse_ms": 55.1695
+            },
+            {
+              "before_ms": 99.9457,
+              "checksum": -314357464.2510644,
+              "reuse_ms": 55.0003
+            },
+            {
+              "before_ms": 101.1739,
+              "checksum": -314357464.2510644,
+              "reuse_ms": 55.0929
+            },
+            {
+              "before_ms": 100.0475,
+              "checksum": -314357464.2510644,
+              "reuse_ms": 55.1975
+            }
+          ],
+          "gpu_evaluation_removed": true,
+          "input": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+          "load_ms_context_only": 811.9572,
+          "mesh_triangles": 250400,
+          "mesh_vertices": 137171,
+          "patches": 63,
+          "samples": 137127,
+          "singular_fallback_samples": 0,
+          "surface_samples": 136432
+        }
+      },
+      {
+        "input_sha256": "3F6F017C958AB1925129C5B758E7117B4052F2A1A3315CE666A968EE89B51E7B",
+        "measurement": {
+          "all_normals_exactly_equal": true,
+          "evaluation_pairs": [
+            {
+              "before_ms": 1972.9501,
+              "checksum": 9883892959.860342,
+              "reuse_ms": 1099.795
+            },
+            {
+              "before_ms": 1978.0098,
+              "checksum": 9883892959.860342,
+              "reuse_ms": 1098.1071
+            },
+            {
+              "before_ms": 1983.2341,
+              "checksum": 9883892959.860342,
+              "reuse_ms": 1106.9318
+            },
+            {
+              "before_ms": 1981.6959,
+              "checksum": 9883892959.860342,
+              "reuse_ms": 1096.5561
+            },
+            {
+              "before_ms": 1978.9638,
+              "checksum": 9883892959.860342,
+              "reuse_ms": 1093.7945
+            }
+          ],
+          "gpu_evaluation_removed": true,
+          "input": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+          "load_ms_context_only": 17897.1865,
+          "mesh_triangles": 2995000,
+          "mesh_vertices": 2234000,
+          "patches": 7000,
+          "samples": 2234000,
+          "singular_fallback_samples": 129000,
+          "surface_samples": 2234000
+        }
+      }
+    ]
+  },
+  "viewer": {
+    "executables": {
+      "before": {
+        "path": "D:\\woby\\build\\freeform-evaluation\\before\\woby.exe",
+        "sha256": "e515ff1872dd3cb119963f3ed8f5a0e92785e6ca0d7b5095fa7719cbc70da7e2"
+      },
+      "after": {
+        "path": "D:\\woby\\build\\vs2026-vcpkg\\bin\\Release\\woby.exe",
+        "sha256": "5876d70224d635201244eeeb69a625f58b0c0cc9f5f45c355c382976778d8310"
+      }
+    },
+    "recorded_at": "2026-10-10T20:55:13.843504+00:00",
+    "script_sha256": "13831207662003c1a43377385827fb9f91af121f32be1120684becaa18170ba6",
+    "scope": "Wall time for model.add through completed first screenshot. Includes RPC and PNG readback; excludes viewer startup. Alternating build order.",
+    "runs": [
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "model_sha256": "55e81f516ac9b90ee379349b04da43fb9b480d232521517e839bb00fd2e79303",
+        "repeat": 0,
+        "variant": "before",
+        "add_ms": 115.04920001607388,
+        "first_capture_ms": 670.7215000642464,
+        "add_through_capture_ms": 785.7707000803202,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-df7302bbe558cc5629a30ccb21a2d149-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-3902a6d9ca1b3ab359079a94209fe8f2-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-b1c73f3279a3",
+          "outcomes": [
+            {
+              "id": "obj-df7302bbe558cc5629a30ccb21a2d149-0000000000000001",
+              "path": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "max": [
+              1.0,
+              1.0,
+              0.19140625
+            ],
+            "min": [
+              -1.0,
+              -1.0,
+              0.0
+            ],
+            "radius": 1.4174480438232422
+          },
+          "commandId": "cmd-3902a6d9ca1b3ab359079a94209fe8f2-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 17.206615447998047,
+          "groupCount": 1,
+          "instance": "headless-b1c73f3279a3",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 1,
+              "state": "on",
+              "total": 1
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2416,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 1652,
+          "visibleGroupCount": 1
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-3902a6d9ca1b3ab359079a94209fe8f2-7",
+          "cpuFrameMilliseconds": 0.1153,
+          "cpuSubmitMilliseconds": 0.1153,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 17.206615447998047,
+          "frameIndex": 23,
+          "frameMilliseconds": 0.2388,
+          "gpuFrameMilliseconds": 0.00256,
+          "headless": true,
+          "instance": "headless-b1c73f3279a3",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.201,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0262,
+            "imgui_render": 0.0048,
+            "pending_io": 0.0029,
+            "scene_state": 0.0024,
+            "state_update": 0.0009,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 3.8271098136901855,
+            "effectiveNearPlane": 0.03827109932899475,
+            "eye": [
+              3.2624247074127197,
+              1.6984537839889526,
+              1.1533465385437012
+            ],
+            "farPlane": 10.0,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-3902a6d9ca1b3ab359079a94209fe8f2-8",
+          "instance": "headless-b1c73f3279a3",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-3902a6d9ca1b3ab359079a94209fe8f2-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-b1c73f3279a3",
+          "instance": "headless-b1c73f3279a3",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 13396,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64502/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "model_sha256": "55e81f516ac9b90ee379349b04da43fb9b480d232521517e839bb00fd2e79303",
+        "repeat": 0,
+        "variant": "after",
+        "add_ms": 123.14100004732609,
+        "first_capture_ms": 593.1180999614298,
+        "add_through_capture_ms": 716.2591000087559,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-805af0e024fc2049cd850507942fca90-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-c98c45d132c8ea34b178393d99df5faa-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-6af590e72dbe",
+          "outcomes": [
+            {
+              "id": "obj-805af0e024fc2049cd850507942fca90-0000000000000001",
+              "path": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "max": [
+              1.0,
+              1.0,
+              0.19140625
+            ],
+            "min": [
+              -1.0,
+              -1.0,
+              0.0
+            ],
+            "radius": 1.4174480438232422
+          },
+          "commandId": "cmd-c98c45d132c8ea34b178393d99df5faa-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 17.430845260620117,
+          "groupCount": 1,
+          "instance": "headless-6af590e72dbe",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 1,
+              "state": "on",
+              "total": 1
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2416,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 1652,
+          "visibleGroupCount": 1
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-c98c45d132c8ea34b178393d99df5faa-7",
+          "cpuFrameMilliseconds": 0.1091,
+          "cpuSubmitMilliseconds": 0.1091,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 17.430845260620117,
+          "frameIndex": 22,
+          "frameMilliseconds": 0.2283,
+          "gpuFrameMilliseconds": 0.002816,
+          "headless": true,
+          "instance": "headless-6af590e72dbe",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0003,
+            "graphics_frame": 0.1922,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0245,
+            "imgui_render": 0.0052,
+            "pending_io": 0.0029,
+            "scene_state": 0.002,
+            "state_update": 0.0011,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 3.8271098136901855,
+            "effectiveNearPlane": 0.03827109932899475,
+            "eye": [
+              3.2624247074127197,
+              1.6984537839889526,
+              1.1533465385437012
+            ],
+            "farPlane": 10.0,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-c98c45d132c8ea34b178393d99df5faa-8",
+          "instance": "headless-6af590e72dbe",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-c98c45d132c8ea34b178393d99df5faa-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-6af590e72dbe",
+          "instance": "headless-6af590e72dbe",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 46036,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64526/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "model_sha256": "55e81f516ac9b90ee379349b04da43fb9b480d232521517e839bb00fd2e79303",
+        "repeat": 1,
+        "variant": "after",
+        "add_ms": 106.86599998734891,
+        "first_capture_ms": 613.2192999357358,
+        "add_through_capture_ms": 720.0852999230847,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-eda3cfeaac8d9d3c98d8df2a97225d26-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-397a3c818fb8e87441ff739af9d7671a-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-b852da0cf7a0",
+          "outcomes": [
+            {
+              "id": "obj-eda3cfeaac8d9d3c98d8df2a97225d26-0000000000000001",
+              "path": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "max": [
+              1.0,
+              1.0,
+              0.19140625
+            ],
+            "min": [
+              -1.0,
+              -1.0,
+              0.0
+            ],
+            "radius": 1.4174480438232422
+          },
+          "commandId": "cmd-397a3c818fb8e87441ff739af9d7671a-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 17.217529296875,
+          "groupCount": 1,
+          "instance": "headless-b852da0cf7a0",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 1,
+              "state": "on",
+              "total": 1
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2416,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 1652,
+          "visibleGroupCount": 1
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-397a3c818fb8e87441ff739af9d7671a-7",
+          "cpuFrameMilliseconds": 0.0886,
+          "cpuSubmitMilliseconds": 0.0886,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 17.217529296875,
+          "frameIndex": 21,
+          "frameMilliseconds": 0.1995,
+          "gpuFrameMilliseconds": 0.002816,
+          "headless": true,
+          "instance": "headless-b852da0cf7a0",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0003,
+            "graphics_frame": 0.1654,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0229,
+            "imgui_render": 0.0049,
+            "pending_io": 0.0026,
+            "scene_state": 0.0023,
+            "state_update": 0.001,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 3.8271098136901855,
+            "effectiveNearPlane": 0.03827109932899475,
+            "eye": [
+              3.2624247074127197,
+              1.6984537839889526,
+              1.1533465385437012
+            ],
+            "farPlane": 10.0,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-397a3c818fb8e87441ff739af9d7671a-8",
+          "instance": "headless-b852da0cf7a0",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-397a3c818fb8e87441ff739af9d7671a-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-b852da0cf7a0",
+          "instance": "headless-b852da0cf7a0",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 28580,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64550/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "model_sha256": "55e81f516ac9b90ee379349b04da43fb9b480d232521517e839bb00fd2e79303",
+        "repeat": 1,
+        "variant": "before",
+        "add_ms": 102.0328999729827,
+        "first_capture_ms": 591.7616999940947,
+        "add_through_capture_ms": 693.7945999670774,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-2dceb00290e3ced978c252a06c73c137-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-fffb09a146d9faaad6bda10e0fb5b8b1-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-1b2cc0c45b95",
+          "outcomes": [
+            {
+              "id": "obj-2dceb00290e3ced978c252a06c73c137-0000000000000001",
+              "path": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "max": [
+              1.0,
+              1.0,
+              0.19140625
+            ],
+            "min": [
+              -1.0,
+              -1.0,
+              0.0
+            ],
+            "radius": 1.4174480438232422
+          },
+          "commandId": "cmd-fffb09a146d9faaad6bda10e0fb5b8b1-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 17.353675842285156,
+          "groupCount": 1,
+          "instance": "headless-1b2cc0c45b95",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 1,
+              "state": "on",
+              "total": 1
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2416,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 1652,
+          "visibleGroupCount": 1
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-fffb09a146d9faaad6bda10e0fb5b8b1-7",
+          "cpuFrameMilliseconds": 0.1046,
+          "cpuSubmitMilliseconds": 0.1046,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 17.353675842285156,
+          "frameIndex": 22,
+          "frameMilliseconds": 0.2229,
+          "gpuFrameMilliseconds": 0.002816,
+          "headless": true,
+          "instance": "headless-1b2cc0c45b95",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0006,
+            "graphics_frame": 0.1867,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0247,
+            "imgui_render": 0.005,
+            "pending_io": 0.003,
+            "scene_state": 0.002,
+            "state_update": 0.0009,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 3.8271098136901855,
+            "effectiveNearPlane": 0.03827109932899475,
+            "eye": [
+              3.2624247074127197,
+              1.6984537839889526,
+              1.1533465385437012
+            ],
+            "farPlane": 10.0,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-fffb09a146d9faaad6bda10e0fb5b8b1-8",
+          "instance": "headless-1b2cc0c45b95",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-fffb09a146d9faaad6bda10e0fb5b8b1-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-1b2cc0c45b95",
+          "instance": "headless-1b2cc0c45b95",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 6428,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64575/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "model_sha256": "55e81f516ac9b90ee379349b04da43fb9b480d232521517e839bb00fd2e79303",
+        "repeat": 2,
+        "variant": "before",
+        "add_ms": 97.40670002065599,
+        "first_capture_ms": 591.2215000716969,
+        "add_through_capture_ms": 688.6282000923529,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-083dc11eaf2985747206a7335f97a981-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-f739cb47ff632de13b6b3b8687dce584-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-567ec76cf6fe",
+          "outcomes": [
+            {
+              "id": "obj-083dc11eaf2985747206a7335f97a981-0000000000000001",
+              "path": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "max": [
+              1.0,
+              1.0,
+              0.19140625
+            ],
+            "min": [
+              -1.0,
+              -1.0,
+              0.0
+            ],
+            "radius": 1.4174480438232422
+          },
+          "commandId": "cmd-f739cb47ff632de13b6b3b8687dce584-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 18.087039947509766,
+          "groupCount": 1,
+          "instance": "headless-567ec76cf6fe",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 1,
+              "state": "on",
+              "total": 1
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2416,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 1652,
+          "visibleGroupCount": 1
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-f739cb47ff632de13b6b3b8687dce584-7",
+          "cpuFrameMilliseconds": 0.1178,
+          "cpuSubmitMilliseconds": 0.1178,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 18.087039947509766,
+          "frameIndex": 22,
+          "frameMilliseconds": 0.2861,
+          "gpuFrameMilliseconds": 0.003072,
+          "headless": true,
+          "instance": "headless-567ec76cf6fe",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.249,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0242,
+            "imgui_render": 0.0061,
+            "pending_io": 0.0029,
+            "scene_state": 0.0021,
+            "state_update": 0.0011,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 3.8271098136901855,
+            "effectiveNearPlane": 0.03827109932899475,
+            "eye": [
+              3.2624247074127197,
+              1.6984537839889526,
+              1.1533465385437012
+            ],
+            "farPlane": 10.0,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-f739cb47ff632de13b6b3b8687dce584-8",
+          "instance": "headless-567ec76cf6fe",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-f739cb47ff632de13b6b3b8687dce584-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-567ec76cf6fe",
+          "instance": "headless-567ec76cf6fe",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 37520,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64600/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "model_sha256": "55e81f516ac9b90ee379349b04da43fb9b480d232521517e839bb00fd2e79303",
+        "repeat": 2,
+        "variant": "after",
+        "add_ms": 128.70220001786947,
+        "first_capture_ms": 594.9266999959946,
+        "add_through_capture_ms": 723.628900013864,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-fc0e8d972da5768a8b1bacc1d8c2ab80-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-93d88a157e4da81e2ae1928b29a62dc3-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-7bac3326cf75",
+          "outcomes": [
+            {
+              "id": "obj-fc0e8d972da5768a8b1bacc1d8c2ab80-0000000000000001",
+              "path": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "max": [
+              1.0,
+              1.0,
+              0.19140625
+            ],
+            "min": [
+              -1.0,
+              -1.0,
+              0.0
+            ],
+            "radius": 1.4174480438232422
+          },
+          "commandId": "cmd-93d88a157e4da81e2ae1928b29a62dc3-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 18.224834442138672,
+          "groupCount": 1,
+          "instance": "headless-7bac3326cf75",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 1,
+              "state": "on",
+              "total": 1
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 1
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2416,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 1652,
+          "visibleGroupCount": 1
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-93d88a157e4da81e2ae1928b29a62dc3-7",
+          "cpuFrameMilliseconds": 0.1018,
+          "cpuSubmitMilliseconds": 0.1018,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 18.224834442138672,
+          "frameIndex": 23,
+          "frameMilliseconds": 0.2225,
+          "gpuFrameMilliseconds": 0.002304,
+          "headless": true,
+          "instance": "headless-7bac3326cf75",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0006,
+            "graphics_frame": 0.1871,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0241,
+            "imgui_render": 0.0048,
+            "pending_io": 0.0027,
+            "scene_state": 0.0022,
+            "state_update": 0.001,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 3.8271098136901855,
+            "effectiveNearPlane": 0.03827109932899475,
+            "eye": [
+              3.2624247074127197,
+              1.6984537839889526,
+              1.1533465385437012
+            ],
+            "farPlane": 10.0,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              0.0,
+              0.0,
+              0.095703125
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-93d88a157e4da81e2ae1928b29a62dc3-8",
+          "instance": "headless-7bac3326cf75",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-93d88a157e4da81e2ae1928b29a62dc3-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-7bac3326cf75",
+          "instance": "headless-7bac3326cf75",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 8672,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64624/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "model_sha256": "0faf9e86d1922c8f4c91d6d673c643042dc3b05431b961165e31cca5c75c0a99",
+        "repeat": 0,
+        "variant": "before",
+        "add_ms": 962.196100037545,
+        "first_capture_ms": 635.4237999767065,
+        "add_through_capture_ms": 1597.6199000142515,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-eefeeda78216cdf1f5cfa1a8105a5a4d-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-f62b2104f4bae75917a2c8fda44128dc-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-a74047570686",
+          "outcomes": [
+            {
+              "id": "obj-eefeeda78216cdf1f5cfa1a8105a5a4d-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "max": [
+              -2539.9599609375,
+              96.87747955322266,
+              341.0736083984375
+            ],
+            "min": [
+              -2706.4765625,
+              43.90537643432617,
+              186.6811065673828
+            ],
+            "radius": 116.58781433105469
+          },
+          "commandId": "cmd-f62b2104f4bae75917a2c8fda44128dc-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 32.479103088378906,
+          "groupCount": 78,
+          "instance": "headless-a74047570686",
+          "lineSegmentCount": 672,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 44,
+          "renderModes": {
+            "solid": {
+              "enabled": 63,
+              "state": "mixed",
+              "total": 78
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 78
+            },
+            "vertices": {
+              "enabled": 15,
+              "state": "mixed",
+              "total": 78
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 250400,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 137171,
+          "visibleGroupCount": 78
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-f62b2104f4bae75917a2c8fda44128dc-7",
+          "cpuFrameMilliseconds": 0.104,
+          "cpuSubmitMilliseconds": 0.104,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 32.479103088378906,
+          "frameIndex": 97,
+          "frameMilliseconds": 0.2247,
+          "gpuFrameMilliseconds": 0.00256,
+          "headless": true,
+          "instance": "headless-a74047570686",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.1873,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0252,
+            "imgui_render": 0.0058,
+            "pending_io": 0.003,
+            "scene_state": 0.0019,
+            "state_update": 0.001,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 314.787109375,
+            "effectiveNearPlane": 3.1478710174560547,
+            "eye": [
+              -2354.877685546875,
+              210.09249877929688,
+              350.87054443359375
+            ],
+            "farPlane": 781.1383666992188,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-f62b2104f4bae75917a2c8fda44128dc-8",
+          "instance": "headless-a74047570686",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-f62b2104f4bae75917a2c8fda44128dc-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-a74047570686",
+          "instance": "headless-a74047570686",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 23364,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64650/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "model_sha256": "0faf9e86d1922c8f4c91d6d673c643042dc3b05431b961165e31cca5c75c0a99",
+        "repeat": 0,
+        "variant": "after",
+        "add_ms": 930.054199998267,
+        "first_capture_ms": 653.5190000431612,
+        "add_through_capture_ms": 1583.5732000414282,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-274ff8cd57774eb94ba3b9d0adc8038a-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-c7c1bd80ce35bebbd81d477f077e5c6b-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-b46631df7821",
+          "outcomes": [
+            {
+              "id": "obj-274ff8cd57774eb94ba3b9d0adc8038a-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "max": [
+              -2539.9599609375,
+              96.87747955322266,
+              341.0736083984375
+            ],
+            "min": [
+              -2706.4765625,
+              43.90537643432617,
+              186.6811065673828
+            ],
+            "radius": 116.58781433105469
+          },
+          "commandId": "cmd-c7c1bd80ce35bebbd81d477f077e5c6b-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 33.826534271240234,
+          "groupCount": 78,
+          "instance": "headless-b46631df7821",
+          "lineSegmentCount": 672,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 44,
+          "renderModes": {
+            "solid": {
+              "enabled": 63,
+              "state": "mixed",
+              "total": 78
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 78
+            },
+            "vertices": {
+              "enabled": 15,
+              "state": "mixed",
+              "total": 78
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 250400,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 137171,
+          "visibleGroupCount": 78
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-c7c1bd80ce35bebbd81d477f077e5c6b-7",
+          "cpuFrameMilliseconds": 0.1167,
+          "cpuSubmitMilliseconds": 0.1167,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 33.826534271240234,
+          "frameIndex": 96,
+          "frameMilliseconds": 0.2599,
+          "gpuFrameMilliseconds": 0.00256,
+          "headless": true,
+          "instance": "headless-b46631df7821",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0003,
+            "graphics_frame": 0.2223,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0261,
+            "imgui_render": 0.0058,
+            "pending_io": 0.0024,
+            "scene_state": 0.0019,
+            "state_update": 0.001,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 314.787109375,
+            "effectiveNearPlane": 3.1478710174560547,
+            "eye": [
+              -2354.877685546875,
+              210.09249877929688,
+              350.87054443359375
+            ],
+            "farPlane": 781.1383666992188,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-c7c1bd80ce35bebbd81d477f077e5c6b-8",
+          "instance": "headless-b46631df7821",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-c7c1bd80ce35bebbd81d477f077e5c6b-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-b46631df7821",
+          "instance": "headless-b46631df7821",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 3336,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64674/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "model_sha256": "0faf9e86d1922c8f4c91d6d673c643042dc3b05431b961165e31cca5c75c0a99",
+        "repeat": 1,
+        "variant": "after",
+        "add_ms": 924.5021999813616,
+        "first_capture_ms": 609.0031999628991,
+        "add_through_capture_ms": 1533.5053999442607,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-d8276fec253dbb91ef90d348e42f0f07-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-5aec374c14df94c600af15902c8bb2c0-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-552b1432dae8",
+          "outcomes": [
+            {
+              "id": "obj-d8276fec253dbb91ef90d348e42f0f07-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "max": [
+              -2539.9599609375,
+              96.87747955322266,
+              341.0736083984375
+            ],
+            "min": [
+              -2706.4765625,
+              43.90537643432617,
+              186.6811065673828
+            ],
+            "radius": 116.58781433105469
+          },
+          "commandId": "cmd-5aec374c14df94c600af15902c8bb2c0-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 60.75214767456055,
+          "groupCount": 78,
+          "instance": "headless-552b1432dae8",
+          "lineSegmentCount": 672,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 44,
+          "renderModes": {
+            "solid": {
+              "enabled": 63,
+              "state": "mixed",
+              "total": 78
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 78
+            },
+            "vertices": {
+              "enabled": 15,
+              "state": "mixed",
+              "total": 78
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 250400,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 137171,
+          "visibleGroupCount": 78
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-5aec374c14df94c600af15902c8bb2c0-7",
+          "cpuFrameMilliseconds": 0.1108,
+          "cpuSubmitMilliseconds": 0.1108,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 30.907068252563477,
+          "frameIndex": 92,
+          "frameMilliseconds": 0.2309,
+          "gpuFrameMilliseconds": 0.00256,
+          "headless": true,
+          "instance": "headless-552b1432dae8",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.1946,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0242,
+            "imgui_render": 0.0058,
+            "pending_io": 0.0027,
+            "scene_state": 0.002,
+            "state_update": 0.0011,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 314.787109375,
+            "effectiveNearPlane": 3.1478710174560547,
+            "eye": [
+              -2354.877685546875,
+              210.09249877929688,
+              350.87054443359375
+            ],
+            "farPlane": 781.1383666992188,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-5aec374c14df94c600af15902c8bb2c0-8",
+          "instance": "headless-552b1432dae8",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-5aec374c14df94c600af15902c8bb2c0-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-552b1432dae8",
+          "instance": "headless-552b1432dae8",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 42096,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64698/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "model_sha256": "0faf9e86d1922c8f4c91d6d673c643042dc3b05431b961165e31cca5c75c0a99",
+        "repeat": 1,
+        "variant": "before",
+        "add_ms": 963.9360998990014,
+        "first_capture_ms": 676.5097000170499,
+        "add_through_capture_ms": 1640.4457999160513,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-0c7eb5151c0bcf3e6cc086eda4b46837-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-d6d912af1f70cbca8eecf22ce7731f31-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-f181968c781b",
+          "outcomes": [
+            {
+              "id": "obj-0c7eb5151c0bcf3e6cc086eda4b46837-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "max": [
+              -2539.9599609375,
+              96.87747955322266,
+              341.0736083984375
+            ],
+            "min": [
+              -2706.4765625,
+              43.90537643432617,
+              186.6811065673828
+            ],
+            "radius": 116.58781433105469
+          },
+          "commandId": "cmd-d6d912af1f70cbca8eecf22ce7731f31-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 29.938833236694336,
+          "groupCount": 78,
+          "instance": "headless-f181968c781b",
+          "lineSegmentCount": 672,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 44,
+          "renderModes": {
+            "solid": {
+              "enabled": 63,
+              "state": "mixed",
+              "total": 78
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 78
+            },
+            "vertices": {
+              "enabled": 15,
+              "state": "mixed",
+              "total": 78
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 250400,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 137171,
+          "visibleGroupCount": 78
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-d6d912af1f70cbca8eecf22ce7731f31-7",
+          "cpuFrameMilliseconds": 0.1144,
+          "cpuSubmitMilliseconds": 0.1144,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 29.938833236694336,
+          "frameIndex": 98,
+          "frameMilliseconds": 0.2345,
+          "gpuFrameMilliseconds": 0.003072,
+          "headless": true,
+          "instance": "headless-f181968c781b",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.1983,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0249,
+            "imgui_render": 0.0052,
+            "pending_io": 0.0028,
+            "scene_state": 0.0019,
+            "state_update": 0.0009,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 314.787109375,
+            "effectiveNearPlane": 3.1478710174560547,
+            "eye": [
+              -2354.877685546875,
+              210.09249877929688,
+              350.87054443359375
+            ],
+            "farPlane": 781.1383666992188,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-d6d912af1f70cbca8eecf22ce7731f31-8",
+          "instance": "headless-f181968c781b",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-d6d912af1f70cbca8eecf22ce7731f31-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-f181968c781b",
+          "instance": "headless-f181968c781b",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 10220,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64724/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "model_sha256": "0faf9e86d1922c8f4c91d6d673c643042dc3b05431b961165e31cca5c75c0a99",
+        "repeat": 2,
+        "variant": "before",
+        "add_ms": 995.8501999499276,
+        "first_capture_ms": 629.2323999805376,
+        "add_through_capture_ms": 1625.0825999304652,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-71c98e209cc8cb2372258c02b9735d1b-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-52b1506e06b9098eb2669a73c432238a-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-3335c5078021",
+          "outcomes": [
+            {
+              "id": "obj-71c98e209cc8cb2372258c02b9735d1b-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "max": [
+              -2539.9599609375,
+              96.87747955322266,
+              341.0736083984375
+            ],
+            "min": [
+              -2706.4765625,
+              43.90537643432617,
+              186.6811065673828
+            ],
+            "radius": 116.58781433105469
+          },
+          "commandId": "cmd-52b1506e06b9098eb2669a73c432238a-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 33.51997375488281,
+          "groupCount": 78,
+          "instance": "headless-3335c5078021",
+          "lineSegmentCount": 672,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 44,
+          "renderModes": {
+            "solid": {
+              "enabled": 63,
+              "state": "mixed",
+              "total": 78
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 78
+            },
+            "vertices": {
+              "enabled": 15,
+              "state": "mixed",
+              "total": 78
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 250400,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 137171,
+          "visibleGroupCount": 78
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-52b1506e06b9098eb2669a73c432238a-7",
+          "cpuFrameMilliseconds": 0.1163,
+          "cpuSubmitMilliseconds": 0.1163,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 33.51997375488281,
+          "frameIndex": 99,
+          "frameMilliseconds": 0.2364,
+          "gpuFrameMilliseconds": 0.00256,
+          "headless": true,
+          "instance": "headless-3335c5078021",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0006,
+            "graphics_frame": 0.1996,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0252,
+            "imgui_render": 0.0054,
+            "pending_io": 0.0027,
+            "scene_state": 0.0018,
+            "state_update": 0.0009,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 314.787109375,
+            "effectiveNearPlane": 3.1478710174560547,
+            "eye": [
+              -2354.877685546875,
+              210.09249877929688,
+              350.87054443359375
+            ],
+            "farPlane": 781.1383666992188,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-52b1506e06b9098eb2669a73c432238a-8",
+          "instance": "headless-3335c5078021",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-52b1506e06b9098eb2669a73c432238a-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-3335c5078021",
+          "instance": "headless-3335c5078021",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 3680,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64750/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "model_sha256": "0faf9e86d1922c8f4c91d6d673c643042dc3b05431b961165e31cca5c75c0a99",
+        "repeat": 2,
+        "variant": "after",
+        "add_ms": 934.6096999943256,
+        "first_capture_ms": 622.081600013189,
+        "add_through_capture_ms": 1556.6913000075147,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-b7f7b348dfdac6c0a4a0fab214403383-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-f86651a5f50c8c8b958255f65f543173-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-aa898e73283b",
+          "outcomes": [
+            {
+              "id": "obj-b7f7b348dfdac6c0a4a0fab214403383-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "max": [
+              -2539.9599609375,
+              96.87747955322266,
+              341.0736083984375
+            ],
+            "min": [
+              -2706.4765625,
+              43.90537643432617,
+              186.6811065673828
+            ],
+            "radius": 116.58781433105469
+          },
+          "commandId": "cmd-f86651a5f50c8c8b958255f65f543173-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 62.31826400756836,
+          "groupCount": 78,
+          "instance": "headless-aa898e73283b",
+          "lineSegmentCount": 672,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 44,
+          "renderModes": {
+            "solid": {
+              "enabled": 63,
+              "state": "mixed",
+              "total": 78
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 78
+            },
+            "vertices": {
+              "enabled": 15,
+              "state": "mixed",
+              "total": 78
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 250400,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 137171,
+          "visibleGroupCount": 78
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-f86651a5f50c8c8b958255f65f543173-7",
+          "cpuFrameMilliseconds": 0.1152,
+          "cpuSubmitMilliseconds": 0.1152,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 31.28423309326172,
+          "frameIndex": 95,
+          "frameMilliseconds": 0.2266,
+          "gpuFrameMilliseconds": 0.003072,
+          "headless": true,
+          "instance": "headless-aa898e73283b",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0005,
+            "graphics_frame": 0.1904,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0244,
+            "imgui_render": 0.0055,
+            "pending_io": 0.0027,
+            "scene_state": 0.0022,
+            "state_update": 0.0009,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 314.787109375,
+            "effectiveNearPlane": 3.1478710174560547,
+            "eye": [
+              -2354.877685546875,
+              210.09249877929688,
+              350.87054443359375
+            ],
+            "farPlane": 781.1383666992188,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              -2623.21826171875,
+              70.39142608642578,
+              263.8773498535156
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-f86651a5f50c8c8b958255f65f543173-8",
+          "instance": "headless-aa898e73283b",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-f86651a5f50c8c8b958255f65f543173-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-aa898e73283b",
+          "instance": "headless-aa898e73283b",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 10596,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64774/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "model_sha256": "3f6f017c958ab1925129c5b758e7117b4052f2a1a3315ce666a968ee89b51e7b",
+        "repeat": 0,
+        "variant": "before",
+        "add_ms": 19777.72609994281,
+        "first_capture_ms": 5155.9692999580875,
+        "add_through_capture_ms": 24933.6953999009,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-19e85abe14f25df0d5032fa3741b4100-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-18eb7872150b22d9940ecc990ce267e6-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-856d8ef0dab6",
+          "outcomes": [
+            {
+              "id": "obj-19e85abe14f25df0d5032fa3741b4100-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "max": [
+              4492.22509765625,
+              4492.22509765625,
+              13.451009750366211
+            ],
+            "min": [
+              -8.850000381469727,
+              -8.850000381469727,
+              -2.0420986035247102e-15
+            ],
+            "radius": 3182.747802734375
+          },
+          "commandId": "cmd-18eb7872150b22d9940ecc990ce267e6-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 1.1075618267059326,
+          "groupCount": 7000,
+          "instance": "headless-856d8ef0dab6",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 7000,
+              "state": "on",
+              "total": 7000
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2995000,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 2234000,
+          "visibleGroupCount": 7000
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-18eb7872150b22d9940ecc990ce267e6-7",
+          "cpuFrameMilliseconds": 0.1303,
+          "cpuSubmitMilliseconds": 0.1303,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 1.1075618267059326,
+          "frameIndex": 1784,
+          "frameMilliseconds": 0.3238,
+          "gpuFrameMilliseconds": 0.006144,
+          "headless": true,
+          "instance": "headless-856d8ef0dab6",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.2304,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0348,
+            "imgui_render": 0.0525,
+            "pending_io": 0.0026,
+            "scene_state": 0.0019,
+            "state_update": 0.0011,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 8593.4189453125,
+            "effectiveNearPlane": 85.93418884277344,
+            "eye": [
+              9567.158203125,
+              6055.4072265625,
+              2381.5654296875
+            ],
+            "farPlane": 21324.41015625,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-18eb7872150b22d9940ecc990ce267e6-8",
+          "instance": "headless-856d8ef0dab6",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-18eb7872150b22d9940ecc990ce267e6-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-856d8ef0dab6",
+          "instance": "headless-856d8ef0dab6",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 46780,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64800/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "model_sha256": "3f6f017c958ab1925129c5b758e7117b4052f2a1a3315ce666a968ee89b51e7b",
+        "repeat": 0,
+        "variant": "after",
+        "add_ms": 18673.242500051856,
+        "first_capture_ms": 1533.5777000291273,
+        "add_through_capture_ms": 20206.820200080983,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-161fdbf3c2189d50b2adede8c39ea835-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-378219c8a330cdb61b455dff7a85ad61-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-d0a59e47aec4",
+          "outcomes": [
+            {
+              "id": "obj-161fdbf3c2189d50b2adede8c39ea835-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "max": [
+              4492.22509765625,
+              4492.22509765625,
+              13.451009750366211
+            ],
+            "min": [
+              -8.850000381469727,
+              -8.850000381469727,
+              -2.0420986035247102e-15
+            ],
+            "radius": 3182.747802734375
+          },
+          "commandId": "cmd-378219c8a330cdb61b455dff7a85ad61-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 1.4097564220428467,
+          "groupCount": 7000,
+          "instance": "headless-d0a59e47aec4",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 7000,
+              "state": "on",
+              "total": 7000
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2995000,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 2234000,
+          "visibleGroupCount": 7000
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-378219c8a330cdb61b455dff7a85ad61-7",
+          "cpuFrameMilliseconds": 0.1122,
+          "cpuSubmitMilliseconds": 0.1122,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 1.4097564220428467,
+          "frameIndex": 1684,
+          "frameMilliseconds": 0.2924,
+          "gpuFrameMilliseconds": 0.00512,
+          "headless": true,
+          "instance": "headless-d0a59e47aec4",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0006,
+            "graphics_frame": 0.2053,
+            "hover_pick": 0.0,
+            "imgui_build": 0.025,
+            "imgui_render": 0.0546,
+            "pending_io": 0.0033,
+            "scene_state": 0.0022,
+            "state_update": 0.0012,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 8593.4189453125,
+            "effectiveNearPlane": 85.93418884277344,
+            "eye": [
+              9567.158203125,
+              6055.4072265625,
+              2381.5654296875
+            ],
+            "farPlane": 21324.41015625,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-378219c8a330cdb61b455dff7a85ad61-8",
+          "instance": "headless-d0a59e47aec4",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-378219c8a330cdb61b455dff7a85ad61-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-d0a59e47aec4",
+          "instance": "headless-d0a59e47aec4",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 7568,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64830/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "model_sha256": "3f6f017c958ab1925129c5b758e7117b4052f2a1a3315ce666a968ee89b51e7b",
+        "repeat": 1,
+        "variant": "after",
+        "add_ms": 18599.066699971445,
+        "first_capture_ms": 1527.725400053896,
+        "add_through_capture_ms": 20126.79210002534,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-51b95541d36e2d776aea77f0202374f2-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-d4285b4bd85bd858bba544584442be1a-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-7fd8f9d2d9e8",
+          "outcomes": [
+            {
+              "id": "obj-51b95541d36e2d776aea77f0202374f2-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "max": [
+              4492.22509765625,
+              4492.22509765625,
+              13.451009750366211
+            ],
+            "min": [
+              -8.850000381469727,
+              -8.850000381469727,
+              -2.0420986035247102e-15
+            ],
+            "radius": 3182.747802734375
+          },
+          "commandId": "cmd-d4285b4bd85bd858bba544584442be1a-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 34.75755310058594,
+          "groupCount": 7000,
+          "instance": "headless-7fd8f9d2d9e8",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 7000,
+              "state": "on",
+              "total": 7000
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2995000,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 2234000,
+          "visibleGroupCount": 7000
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-d4285b4bd85bd858bba544584442be1a-7",
+          "cpuFrameMilliseconds": 0.1198,
+          "cpuSubmitMilliseconds": 0.1198,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 34.75755310058594,
+          "frameIndex": 1678,
+          "frameMilliseconds": 0.3104,
+          "gpuFrameMilliseconds": 0.024064,
+          "headless": true,
+          "instance": "headless-7fd8f9d2d9e8",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.2153,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0244,
+            "imgui_render": 0.0636,
+            "pending_io": 0.003,
+            "scene_state": 0.0023,
+            "state_update": 0.0012,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 8593.4189453125,
+            "effectiveNearPlane": 85.93418884277344,
+            "eye": [
+              9567.158203125,
+              6055.4072265625,
+              2381.5654296875
+            ],
+            "farPlane": 21324.41015625,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-d4285b4bd85bd858bba544584442be1a-8",
+          "instance": "headless-7fd8f9d2d9e8",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-d4285b4bd85bd858bba544584442be1a-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-7fd8f9d2d9e8",
+          "instance": "headless-7fd8f9d2d9e8",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 46436,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64864/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "model_sha256": "3f6f017c958ab1925129c5b758e7117b4052f2a1a3315ce666a968ee89b51e7b",
+        "repeat": 1,
+        "variant": "before",
+        "add_ms": 21040.680499980226,
+        "first_capture_ms": 4945.714399917051,
+        "add_through_capture_ms": 25986.394899897277,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-b1a537dbcb20344455d7a2e26e196be8-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-56aaf01cf8a54335b44d501f694f4630-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-34a99c217ae7",
+          "outcomes": [
+            {
+              "id": "obj-b1a537dbcb20344455d7a2e26e196be8-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "max": [
+              4492.22509765625,
+              4492.22509765625,
+              13.451009750366211
+            ],
+            "min": [
+              -8.850000381469727,
+              -8.850000381469727,
+              -2.0420986035247102e-15
+            ],
+            "radius": 3182.747802734375
+          },
+          "commandId": "cmd-56aaf01cf8a54335b44d501f694f4630-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 1.104455590248108,
+          "groupCount": 7000,
+          "instance": "headless-34a99c217ae7",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 7000,
+              "state": "on",
+              "total": 7000
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2995000,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 2234000,
+          "visibleGroupCount": 7000
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-56aaf01cf8a54335b44d501f694f4630-7",
+          "cpuFrameMilliseconds": 0.1119,
+          "cpuSubmitMilliseconds": 0.1119,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 1.104455590248108,
+          "frameIndex": 1885,
+          "frameMilliseconds": 0.3111,
+          "gpuFrameMilliseconds": 0.003328,
+          "headless": true,
+          "instance": "headless-34a99c217ae7",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.2103,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0252,
+            "imgui_render": 0.069,
+            "pending_io": 0.0027,
+            "scene_state": 0.0018,
+            "state_update": 0.0015,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 8593.4189453125,
+            "effectiveNearPlane": 85.93418884277344,
+            "eye": [
+              9567.158203125,
+              6055.4072265625,
+              2381.5654296875
+            ],
+            "farPlane": 21324.41015625,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-56aaf01cf8a54335b44d501f694f4630-8",
+          "instance": "headless-34a99c217ae7",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-56aaf01cf8a54335b44d501f694f4630-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-34a99c217ae7",
+          "instance": "headless-34a99c217ae7",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 30580,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:64907/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "model_sha256": "3f6f017c958ab1925129c5b758e7117b4052f2a1a3315ce666a968ee89b51e7b",
+        "repeat": 2,
+        "variant": "before",
+        "add_ms": 20884.282699902542,
+        "first_capture_ms": 4759.003600105643,
+        "add_through_capture_ms": 25643.286300008185,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-98bd5671a98430305b323e994fa3b34a-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-086f3cf36a3d4029674b9f26f2f97700-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-9df989a89bf2",
+          "outcomes": [
+            {
+              "id": "obj-98bd5671a98430305b323e994fa3b34a-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "max": [
+              4492.22509765625,
+              4492.22509765625,
+              13.451009750366211
+            ],
+            "min": [
+              -8.850000381469727,
+              -8.850000381469727,
+              -2.0420986035247102e-15
+            ],
+            "radius": 3182.747802734375
+          },
+          "commandId": "cmd-086f3cf36a3d4029674b9f26f2f97700-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 1.1884907484054565,
+          "groupCount": 7000,
+          "instance": "headless-9df989a89bf2",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 7000,
+              "state": "on",
+              "total": 7000
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2995000,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 2234000,
+          "visibleGroupCount": 7000
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-086f3cf36a3d4029674b9f26f2f97700-7",
+          "cpuFrameMilliseconds": 0.0967,
+          "cpuSubmitMilliseconds": 0.0967,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 1.1884907484054565,
+          "frameIndex": 1881,
+          "frameMilliseconds": 0.2727,
+          "gpuFrameMilliseconds": 0.002816,
+          "headless": true,
+          "instance": "headless-9df989a89bf2",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0004,
+            "graphics_frame": 0.191,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0255,
+            "imgui_render": 0.0495,
+            "pending_io": 0.0027,
+            "scene_state": 0.0021,
+            "state_update": 0.0011,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 8593.4189453125,
+            "effectiveNearPlane": 85.93418884277344,
+            "eye": [
+              9567.158203125,
+              6055.4072265625,
+              2381.5654296875
+            ],
+            "farPlane": 21324.41015625,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-086f3cf36a3d4029674b9f26f2f97700-8",
+          "instance": "headless-9df989a89bf2",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-086f3cf36a3d4029674b9f26f2f97700-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-9df989a89bf2",
+          "instance": "headless-9df989a89bf2",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 4836,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:56055/rpc",
+          "version": "0.28.0"
+        }
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "model_sha256": "3f6f017c958ab1925129c5b758e7117b4052f2a1a3315ce666a968ee89b51e7b",
+        "repeat": 2,
+        "variant": "after",
+        "add_ms": 19599.47260003537,
+        "first_capture_ms": 1534.4214999349788,
+        "add_through_capture_ms": 21133.894099970348,
+        "result": {
+          "addedCount": 1,
+          "addedIds": [
+            "obj-72764a9d8ba7a7cd25db2528ff84d103-0000000000000001"
+          ],
+          "canceled": false,
+          "commandId": "cmd-850353b4704a33a62e9b113f7bc5744f-4",
+          "dirty": true,
+          "failedCount": 0,
+          "instance": "headless-fae66e25fbff",
+          "outcomes": [
+            {
+              "id": "obj-72764a9d8ba7a7cd25db2528ff84d103-0000000000000001",
+              "path": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+              "state": "added"
+            }
+          ],
+          "requestedCount": 1,
+          "sequence": "4",
+          "skippedCount": 0,
+          "state": "succeeded"
+        },
+        "stats": {
+          "adaptivePoints": true,
+          "analysisCount": 0,
+          "annotationCount": 0,
+          "bounds": {
+            "center": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "max": [
+              4492.22509765625,
+              4492.22509765625,
+              13.451009750366211
+            ],
+            "min": [
+              -8.850000381469727,
+              -8.850000381469727,
+              -2.0420986035247102e-15
+            ],
+            "radius": 3182.747802734375
+          },
+          "commandId": "cmd-850353b4704a33a62e9b113f7bc5744f-6",
+          "coordinateOrigin": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "dirty": true,
+          "fileCount": 1,
+          "fps": 35.533077239990234,
+          "groupCount": 7000,
+          "instance": "headless-fae66e25fbff",
+          "lineSegmentCount": 0,
+          "masterVertexPointSize": 4.0,
+          "pointCount": 0,
+          "renderModes": {
+            "solid": {
+              "enabled": 7000,
+              "state": "on",
+              "total": 7000
+            },
+            "triangles": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            },
+            "vertices": {
+              "enabled": 0,
+              "state": "off",
+              "total": 7000
+            }
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "sequence": "6",
+          "showDimensions": false,
+          "showGrid": false,
+          "showOrigin": false,
+          "state": "succeeded",
+          "triangleCount": 2995000,
+          "triangleEdgeXray": false,
+          "upAxis": "z",
+          "vertexCount": 2234000,
+          "visibleGroupCount": 7000
+        },
+        "performance": {
+          "buildConfiguration": "Release",
+          "commandId": "cmd-850353b4704a33a62e9b113f7bc5744f-7",
+          "cpuFrameMilliseconds": 0.1104,
+          "cpuSubmitMilliseconds": 0.1104,
+          "drawable": null,
+          "fixedSize": false,
+          "fps": 35.533077239990234,
+          "frameIndex": 1767,
+          "frameMilliseconds": 0.2914,
+          "gpuFrameMilliseconds": 0.005632,
+          "headless": true,
+          "instance": "headless-fae66e25fbff",
+          "points": {
+            "active": false,
+            "adaptive": true,
+            "budget": 2000000,
+            "fallback": "",
+            "rasterMilliseconds": 0.0,
+            "refinedCount": 0,
+            "sourceCount": 0,
+            "submittedCount": 0
+          },
+          "renderer": "NoGraphicsAPI Vulkan",
+          "requestedDrawable": null,
+          "requestedWindow": null,
+          "sdlVersion": 3004004,
+          "sequence": "7",
+          "stagesMilliseconds": {
+            "events": 0.0003,
+            "graphics_frame": 0.2082,
+            "hover_pick": 0.0,
+            "imgui_build": 0.0248,
+            "imgui_render": 0.0518,
+            "pending_io": 0.003,
+            "scene_state": 0.0021,
+            "state_update": 0.0011,
+            "submit_helpers": 0.0,
+            "submit_scene": 0.0,
+            "view_setup": 0.0
+          },
+          "state": "succeeded",
+          "version": "0.28.0",
+          "viewport": null
+        },
+        "camera": {
+          "camera": {
+            "automaticNearPlane": true,
+            "distance": 8593.4189453125,
+            "effectiveNearPlane": 85.93418884277344,
+            "eye": [
+              9567.158203125,
+              6055.4072265625,
+              2381.5654296875
+            ],
+            "farPlane": 21324.41015625,
+            "nearPlane": 0.10000000149011612,
+            "pitchDegrees": 16.042818069458008,
+            "rollDegrees": 0.0,
+            "target": [
+              2241.6875,
+              2241.6875,
+              6.7255048751831055
+            ],
+            "up": [
+              -0.24512605369091034,
+              -0.127615287899971,
+              0.9610553979873657
+            ],
+            "upAxis": "z",
+            "verticalFovDegrees": 60.0,
+            "yawDegrees": 27.50197410583496
+          },
+          "commandId": "cmd-850353b4704a33a62e9b113f7bc5744f-8",
+          "instance": "headless-fae66e25fbff",
+          "sequence": "8",
+          "state": "succeeded"
+        },
+        "status": {
+          "activeSequence": "9",
+          "annotationPreparationError": "",
+          "annotationPreparing": false,
+          "annotationReady": true,
+          "apiVersion": 1,
+          "busy": false,
+          "capturing": false,
+          "commandId": "cmd-850353b4704a33a62e9b113f7bc5744f-9",
+          "dirty": true,
+          "gpuFinalizing": false,
+          "headless": true,
+          "id": "headless-fae66e25fbff",
+          "instance": "headless-fae66e25fbff",
+          "loading": false,
+          "pane": null,
+          "path": null,
+          "pid": 4616,
+          "propertiesPane": null,
+          "queuedCommands": 0,
+          "ready": true,
+          "renderer": "NoGraphicsAPI Vulkan",
+          "screenshot": {
+            "format": "png",
+            "height": 1800,
+            "width": 1920
+          },
+          "sequence": "9",
+          "state": "succeeded",
+          "url": "http://127.0.0.1:56748/rpc",
+          "version": "0.28.0"
+        }
+      }
+    ],
+    "comparisons": [
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "repeat": 0,
+        "changed_pixels": 1,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.0,
+          2.8935185185185185e-07,
+          0.0
+        ]
+      },
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "repeat": 1,
+        "changed_pixels": 1,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.0,
+          2.8935185185185185e-07,
+          0.0
+        ]
+      },
+      {
+        "model": "D:\\woby\\assets\\samples\\freeform-trimmed.obj",
+        "repeat": 2,
+        "changed_pixels": 1,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.0,
+          2.8935185185185185e-07,
+          0.0
+        ]
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "repeat": 0,
+        "changed_pixels": 169,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.00015885416666666665,
+          6.944444444444444e-05,
+          0.0001171875
+        ]
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "repeat": 1,
+        "changed_pixels": 169,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.00015885416666666665,
+          6.944444444444444e-05,
+          0.0001171875
+        ]
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\tubes_as_nurbs.obj",
+        "repeat": 2,
+        "changed_pixels": 169,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.00015885416666666665,
+          6.944444444444444e-05,
+          0.0001171875
+        ]
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "repeat": 0,
+        "changed_pixels": 0,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "repeat": 1,
+        "changed_pixels": 0,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "model": "D:\\temp\\obj_tests\\parametric\\SA_Row3_x01000.obj",
+        "repeat": 2,
+        "changed_pixels": 0,
+        "total_pixels": 3456000,
+        "mean_absolute_channel_difference": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
+  }
+}

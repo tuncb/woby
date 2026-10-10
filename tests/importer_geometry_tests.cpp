@@ -1,7 +1,6 @@
 #include "automation_registry.h"
 #include "background_load.h"
 #include "freeform.h"
-#include "freeform_gpu.h"
 #include "importer_host.h"
 #include "importer_geometry_fixture.h"
 #include "scene_history.h"
@@ -70,8 +69,6 @@ TEST_CASE("Geometry importer owns points rational curves and trimmed surfaces wi
     REQUIRE(ids.size() == meshGeometry(mesh).vertices.size());
     CHECK(ids[0] == 0); CHECK(ids[1] == UINT64_MAX); CHECK(ids[2] == 2); CHECK(ids[3] == 0);
     CHECK(std::set<uint64_t>(ids.begin(),ids.end()).size() == ids.size()-1);
-    CHECK_FALSE(woby::packFreeformGpu(mesh.freeform->patches[0],mesh.freeform->grids[0],mesh.origin).empty());
-    CHECK_FALSE(woby::packFreeformGpu(mesh.freeform->patches[1],grid,mesh.origin).empty());
     REQUIRE(mesh.freeform->patches[1].trimming);
     CHECK(mesh.freeform->patches[1].trimming->regions[0].holes[0].segments[0].interval == std::array<double,2>{4,0});
 }

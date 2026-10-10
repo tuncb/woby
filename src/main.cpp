@@ -1,4 +1,3 @@
-#include "freeform_gpu.h"
 #include "graphics_helpers.h"
 #include "renderer_startup.h"
 #include "background_load.h"
@@ -2428,8 +2427,6 @@ int main(int argc, char** argv)
         woby::resetSceneHistory(sceneHistory, ui);
 
         const auto shaderStart = woby::PerformanceClock::now();
-        const auto freeformProgram = woby::graphics::createProgram(woby::loadShader(
-            assets / "shaders" / woby::rendererShaderFolder(woby::graphics::getRendererType()) / "cs_freeform.bin"), true);
         const auto presentationProgram = woby::loadProgram(assets, "vs_marker_screen.bin", "fs_marker_composite.bin");
         auto triangleEdgePrograms = woby::createTriangleEdgePrograms(assets);
         auto transparentSurfacePrograms = woby::createTransparentSurfacePrograms(assets);
@@ -3921,15 +3918,6 @@ int main(int argc, char** argv)
             for (size_t i = 0; i < std::min(files.size(), runtimes.size()); ++i) {
                 const auto features = woby::requestedGpuMeshFeatures(files[i]);
                 auto& runtime = runtimes[i];
-                if (!runtime.gpuMesh.freeformPrepared) {
-                    runtime.gpuMesh.freeformPrepared = true;
-                    try {
-                        woby::dispatchFreeformGpu(files[i].mesh, runtime.gpuMesh.vertexBuffer,
-                            runtime.gpuMesh.triangleIndexBuffer, runtime.gpuMesh.importedLineBuffer, freeformProgram, clearView);
-                    } catch (const std::exception& error) {
-                        setToastMessage(toast, std::string("Freeform GPU tessellation uses CPU fallback: ") + error.what());
-                    }
-                }
                 if (runtime.requestedFeatures == features) { continue; }
                 runtime.requestedFeatures = features;
                 try {
@@ -4218,7 +4206,6 @@ int main(int argc, char** argv)
         woby::graphics::destroy(pointParamsUniform);
         woby::destroyComparisonRuntimes(comparison);
         woby::graphics::destroy(colorUniform);
-        woby::graphics::destroy(freeformProgram);
         woby::graphics::destroy(pointSpriteProgram);
         woby::graphics::destroy(colorProgram);
         woby::graphics::destroy(annotationProgram);

@@ -60,16 +60,13 @@ struct FreeformGeometry {
     std::vector<FreeformGrid> grids;
 };
 
-struct FreeformBasis {
-    size_t first = 0;
-    std::array<double, maxFreeformDegree + 1> values{}, derivatives{};
-};
-[[nodiscard]] FreeformBasis freeformBasis(const std::vector<double>& knots, uint32_t count, uint32_t degree, double t);
 [[nodiscard]] inline size_t freeformVertexCount(const FreeformGrid& grid) {
     return grid.samples.empty() ? grid.u.size()*grid.v.size() : grid.samples.size();
 }
 void validateFreeformPatch(const FreeformPatch& patch);
 [[nodiscard]] FreeformSample evaluateFreeform(const FreeformPatch& patch, double u, double v = 0);
+// The sample must come from this patch at (u, v). Singular normals may need an interior sample.
+[[nodiscard]] std::array<float, 3> freeformNormal(const FreeformPatch& patch, double u, double v, const FreeformSample& sample);
 [[nodiscard]] std::array<float, 3> freeformNormal(const FreeformPatch& patch, double u, double v);
 // Appends deterministic, camera-independent geometry and parameter provenance.
 // Does not change existing vertices, primitive ranges, or authored face normals.

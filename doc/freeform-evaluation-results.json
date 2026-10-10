@@ -1,0 +1,230 @@
+{
+  "base_commit": "cb63eb21ba38e4c8f127af241b3f195302e41577",
+  "probe_sha256": "A3769C0F9CF1BDD143EA6B741D3A1312A8C0AEC31CFBB89D2063BEDE507B0245",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "scope": "CPU sample and normal loop; production GPU packing. No GPU dispatch, upload, or full viewer timing. Five warm evaluation pairs with alternating order. All model measurements ran sequentially, without concurrent builds or tests.",
+  "build": "Visual Studio 2026 x64 Release, vs2026-vcpkg",
+  "executable_sha256": "7A36949EC960B7FBBD48F8790EB61095DF19D8FBBA5B837E3944B0B82A4F12F2",
+  "recorded_at": "2026-10-10T22:40:47.2578676+02:00",
+  "results": [
+    {
+      "measurement": {
+        "all_normals_exactly_equal": true,
+        "evaluation_pairs": [
+          {
+            "before_ms": 702.5978,
+            "checksum": 1913499.0450191582,
+            "reuse_ms": 392.555
+          },
+          {
+            "before_ms": 709.9015,
+            "checksum": 1913499.0450191582,
+            "reuse_ms": 389.4251
+          },
+          {
+            "before_ms": 701.7425,
+            "checksum": 1913499.0450191582,
+            "reuse_ms": 389.4799
+          },
+          {
+            "before_ms": 698.582,
+            "checksum": 1913499.0450191582,
+            "reuse_ms": 391.9574
+          },
+          {
+            "before_ms": 699.8221,
+            "checksum": 1913499.0450191582,
+            "reuse_ms": 387.2723
+          }
+        ],
+        "input": "--synthetic",
+        "load_ms_context_only": 902.9085,
+        "mesh_triangles": 2048000,
+        "mesh_vertices": 1089000,
+        "packing_runs": [
+          {
+            "eligible_patches": 1000,
+            "largest_patch_bytes": 5224,
+            "ms": 15.1286,
+            "payload_bytes": 5224000
+          },
+          {
+            "eligible_patches": 1000,
+            "largest_patch_bytes": 5224,
+            "ms": 15.1546,
+            "payload_bytes": 5224000
+          },
+          {
+            "eligible_patches": 1000,
+            "largest_patch_bytes": 5224,
+            "ms": 14.0227,
+            "payload_bytes": 5224000
+          },
+          {
+            "eligible_patches": 1000,
+            "largest_patch_bytes": 5224,
+            "ms": 14.0566,
+            "payload_bytes": 5224000
+          },
+          {
+            "eligible_patches": 1000,
+            "largest_patch_bytes": 5224,
+            "ms": 13.2717,
+            "payload_bytes": 5224000
+          }
+        ],
+        "patches": 1000,
+        "samples": 1089000,
+        "singular_fallback_samples": 0,
+        "surface_samples": 1089000
+      },
+      "input_sha256": null
+    },
+    {
+      "measurement": {
+        "all_normals_exactly_equal": true,
+        "evaluation_pairs": [
+          {
+            "before_ms": 101.2,
+            "checksum": -314357464.2510644,
+            "reuse_ms": 55.3664
+          },
+          {
+            "before_ms": 100.9748,
+            "checksum": -314357464.2510644,
+            "reuse_ms": 55.8989
+          },
+          {
+            "before_ms": 101.4806,
+            "checksum": -314357464.2510644,
+            "reuse_ms": 55.3538
+          },
+          {
+            "before_ms": 102.4586,
+            "checksum": -314357464.2510644,
+            "reuse_ms": 58.0211
+          },
+          {
+            "before_ms": 101.3616,
+            "checksum": -314357464.2510644,
+            "reuse_ms": 55.4228
+          }
+        ],
+        "input": "D:/temp/obj_tests/parametric/tubes_as_nurbs.obj",
+        "load_ms_context_only": 876.7799,
+        "mesh_triangles": 250400,
+        "mesh_vertices": 137171,
+        "packing_runs": [
+          {
+            "eligible_patches": 55,
+            "largest_patch_bytes": 182268,
+            "ms": 36.3913,
+            "payload_bytes": 3111960
+          },
+          {
+            "eligible_patches": 55,
+            "largest_patch_bytes": 182268,
+            "ms": 36.0564,
+            "payload_bytes": 3111960
+          },
+          {
+            "eligible_patches": 55,
+            "largest_patch_bytes": 182268,
+            "ms": 35.9321,
+            "payload_bytes": 3111960
+          },
+          {
+            "eligible_patches": 55,
+            "largest_patch_bytes": 182268,
+            "ms": 36.6567,
+            "payload_bytes": 3111960
+          },
+          {
+            "eligible_patches": 55,
+            "largest_patch_bytes": 182268,
+            "ms": 36.3023,
+            "payload_bytes": 3111960
+          }
+        ],
+        "patches": 63,
+        "samples": 137127,
+        "singular_fallback_samples": 0,
+        "surface_samples": 136432
+      },
+      "input_sha256": "0FAF9E86D1922C8F4C91D6D673C643042DC3B05431B961165E31CCA5C75C0A99"
+    },
+    {
+      "measurement": {
+        "all_normals_exactly_equal": true,
+        "evaluation_pairs": [
+          {
+            "before_ms": 1992.2399,
+            "checksum": 9883892959.860342,
+            "reuse_ms": 1101.5697
+          },
+          {
+            "before_ms": 1995.3558,
+            "checksum": 9883892959.860342,
+            "reuse_ms": 1100.7258
+          },
+          {
+            "before_ms": 2024.4363,
+            "checksum": 9883892959.860342,
+            "reuse_ms": 1102.1636
+          },
+          {
+            "before_ms": 2008.1657,
+            "checksum": 9883892959.860342,
+            "reuse_ms": 1107.8115
+          },
+          {
+            "before_ms": 1993.0886,
+            "checksum": 9883892959.860342,
+            "reuse_ms": 1110.5177
+          }
+        ],
+        "input": "D:/temp/obj_tests/parametric/SA_Row3_x01000.obj",
+        "load_ms_context_only": 18911.9332,
+        "mesh_triangles": 2995000,
+        "mesh_vertices": 2234000,
+        "packing_runs": [
+          {
+            "eligible_patches": 4000,
+            "largest_patch_bytes": 73120,
+            "ms": 1054.0705,
+            "payload_bytes": 146388000
+          },
+          {
+            "eligible_patches": 4000,
+            "largest_patch_bytes": 73120,
+            "ms": 1057.0589,
+            "payload_bytes": 146388000
+          },
+          {
+            "eligible_patches": 4000,
+            "largest_patch_bytes": 73120,
+            "ms": 1067.7707,
+            "payload_bytes": 146388000
+          },
+          {
+            "eligible_patches": 4000,
+            "largest_patch_bytes": 73120,
+            "ms": 1062.4293,
+            "payload_bytes": 146388000
+          },
+          {
+            "eligible_patches": 4000,
+            "largest_patch_bytes": 73120,
+            "ms": 1058.3049,
+            "payload_bytes": 146388000
+          }
+        ],
+        "patches": 7000,
+        "samples": 2234000,
+        "singular_fallback_samples": 129000,
+        "surface_samples": 2234000
+      },
+      "input_sha256": "3F6F017C958AB1925129C5B758E7117B4052F2A1A3315CE666A968EE89B51E7B"
+    }
+  ]
+}

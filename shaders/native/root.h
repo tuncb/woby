@@ -17,7 +17,6 @@ struct WobyRoot {
     uint32 texture1;
     uint32 image1;
     uint32 sampler;
-    float* freeform;
     float4 triangleEdges; // Half width, fill surface, triangle-index offset low/high.
     float4 transparency; // Reversed depth, near/far distance, perspective flag; graphics adaptor owns these.
     float* analysisFaces;
@@ -28,10 +27,9 @@ struct WobyRoot {
 #ifndef __SLANG__
 static_assert(offsetof(WobyRoot, vertices) == 256);
 static_assert(offsetof(WobyRoot, sampler) == 288);
-static_assert(offsetof(WobyRoot, freeform) == 296);
-static_assert(offsetof(WobyRoot, triangleEdges) == 304);
-static_assert(offsetof(WobyRoot, transparency) == 320);
-static_assert(offsetof(WobyRoot, analysisFaces) == 336);
-static_assert(offsetof(WobyRoot, faceKind) == 344);
-static_assert(sizeof(WobyRoot) == 352);
+static_assert(offsetof(WobyRoot, triangleEdges) == 292);
+static_assert(offsetof(WobyRoot, transparency) == 308);
+static_assert(offsetof(WobyRoot, analysisFaces) == 328);
+static_assert(offsetof(WobyRoot, faceKind) == 336);
+static_assert(sizeof(WobyRoot) == 344);
 #endif

@@ -9,6 +9,11 @@
 
 namespace woby {
 namespace {
+struct FreeformBasis {
+    size_t first = 0;
+    std::array<double, maxFreeformDegree + 1> values{}, derivatives{};
+};
+
 std::array<double, maxFreeformDegree + 1> basisValues(const std::vector<double>& knots,
     size_t span, uint32_t degree, double t)
 {
@@ -98,11 +103,6 @@ std::array<float, 3> normal(const FreeformSample& sample)
 }
 } // namespace
 
-FreeformBasis freeformBasis(const std::vector<double>& knots, uint32_t count, uint32_t degree, double t)
-{
-    return basis(knots, count, degree, t);
-}
-
 void validateFreeformPatch(const FreeformPatch& patch)
 {
     validateDirection(patch.knotsU, patch.countU, patch.degreeU, patch.domainU);
@@ -186,10 +186,9 @@ FreeformSample evaluateFreeform(const FreeformPatch& patch, double u, double v)
     return result;
 }
 
-std::array<float, 3> freeformNormal(const FreeformPatch& patch, double u, double v)
+std::array<float, 3> freeformNormal(const FreeformPatch& patch, double u, double v, const FreeformSample& sample)
 {
     if (!patch.surface) { return {0,0,1}; }
-    const auto sample = evaluateFreeform(patch, u, v);
     if (!patch.normals.empty()) {
         const double length = std::hypot(sample.normal[0], sample.normal[1], sample.normal[2]);
         if (length > 0 && std::isfinite(length)) {
@@ -205,6 +204,12 @@ std::array<float, 3> freeformNormal(const FreeformPatch& patch, double u, double
     const double d = std::lerp(patch.domainV[0], patch.domainV[1], 1-1e-4);
     result = normal(evaluateFreeform(patch, std::clamp(u,a,b), std::clamp(v,c,d)));
     return validNormal(result) ? result : std::array<float,3>{0,0,1};
+}
+
+std::array<float, 3> freeformNormal(const FreeformPatch& patch, double u, double v)
+{
+    if (!patch.surface) { return {0,0,1}; }
+    return freeformNormal(patch, u, v, evaluateFreeform(patch, u, v));
 }
 
 void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, const ModelLoadProgressCallback& progress)
@@ -279,7 +284,7 @@ void appendFreeformGeometry(Mesh& mesh, std::vector<FreeformPatch> patches, cons
             if (completed % 1024 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, completed, total); }
             const auto sample = evaluateFreeform(patch,u,v);
             const auto point = relativePosition(sample.position, mesh.origin);
-            Vertex vertex{renderPosition(point), freeformNormal(patch,u,v), {}};
+            Vertex vertex{renderPosition(point), freeformNormal(patch,u,v,sample), {}};
             if (!patch.texcoords.empty()) { vertex.texcoord = {static_cast<float>(sample.texcoord[0]), 1-static_cast<float>(sample.texcoord[1])}; }
             appendMeshPositionIndex(editMeshGeometry(mesh), static_cast<uint32_t>(positions.size()));
             editMeshGeometry(mesh).vertices.push_back(vertex); positions.push_back(point);

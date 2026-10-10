@@ -519,8 +519,8 @@ and inside their outer region. Touching/crossing boundaries, nested holes, and
 overlapping regions are rejected. Winding does not matter. Multiple disjoint
 regions and islands inside holes use the same rules as OBJ imports.
 
-Woby retains immutable spline data and uses the existing CPU/GPU tessellation
-path. CPU geometry supplies bounds, picking, inspection, and the GPU fallback;
+Woby retains immutable spline data and uses one fixed CPU tessellation
+path. Its geometry supplies bounds, picking, inspection, and GPU rendering;
 trimmed connectivity is constrained in parameter space. Normals and UVs follow
 the spline evaluator. Curves become line groups, surfaces become triangle groups,
 and control nets and trimming curves are not drawn. Scene files reference the
