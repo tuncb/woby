@@ -14,7 +14,7 @@ This assessment applies to commit `974d8a583bfa977d2cfcba76f5ea9b419d8d3888`, in
 | 6 | Give UV metrics and layout separate representations | Copies of all triangle metrics for presentation edits; mesh rebuilds on layout switches | High confidence; cache and display change |
 | 7 | Use a two-dimensional UV broad phase | Quadratic scans of boxes disjoint on the other axis | Implemented incremental sweep with deterministic partial ordering and separate search limits |
 | 8 | Retain the distance distribution | Repeated full scans for area above tolerance | High confidence; small independent change |
-| 9 | Use CDT iterator input and reconsider global trim triangulation | Temporary batch vectors; potentially most interior-cell triangulation | Iterator change is small; cell approach is research |
+| 9 | Use CDT iterator input and reconsider global trim triangulation | Temporary batch vectors; potentially most interior-cell triangulation | Iterator input implemented; indexed boundary-cell prototype next; backward compatibility is out of scope |
 | 10 | Use exact predicates without constructing intersections | Rational points, rational divisions, clipping output used only for a boolean | Promising; demanding numerical equivalence work |
 | 11 | Separate persistent scene content from session state | Duplicate history representations and repeated save-format conversion | High confidence in duplication; wider scene change |
 | 12 | Use typed graphics parameters | Uniform-name lookup and float encoding of integer parameters | Clear simplification; modest performance expectation |
@@ -186,6 +186,8 @@ The distribution consumes retained memory, so compare it with simply caching the
 The four midpoint subtriangles also have equal area mathematically. One parent-face area could replace four stored areas. However, current areas are computed from rounded midpoint coordinates; preserving numerical behavior requires extreme-scale and cancellation tests. Do not assume bitwise equivalence from the mathematical identity.
 
 ## CDT and trim representation
+
+The [joint investigation of 9a and 9b](trim-input-investigation.md) found exact CDT output equality for iterator input across 15 synthetic cases, with no consistent timing improvement. 9a is now implemented with the same batches and cancellation points. At a 256-cell grid resolution, only 1.6% of cropped diagonal-strip cells and 3.1% of annular cells touch trim boundaries. Those counts show potential work reduction, not a measured replacement speedup. A naive boundary scan can exceed the cost of global CDT. Use a spatial index in the next prototype. The user has excluded backward compatibility, including old annotation attachments, from 9b. See the [raw results](trim-input-results.json).
 
 Woby constructs temporary vertex vectors for every 1,024-element insertion batch and edge vectors for every 256-element batch. The installed CDT 1.4.4 headers already provide iterator-range overloads with coordinate/endpoint getters. Use those overloads with the existing batch boundaries to remove the copies while retaining cancellation opportunities. The [CDT API source](https://artem-ogre.github.io/CDT/Triangulation_8h_source.html) documents this interface; the installed headers were also checked because online documentation now describes a newer release.
 

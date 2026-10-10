@@ -1,0 +1,8 @@
+add_executable(woby_trim_input_probe main.cpp)
+target_link_libraries(woby_trim_input_probe PRIVATE CDT::CDT nlohmann_json::nlohmann_json)
+target_compile_features(woby_trim_input_probe PRIVATE cxx_std_20)
+woby_enable_project_warnings(woby_trim_input_probe)
+if(BUILD_TESTING)
+    add_test(NAME woby_trim_input_contract COMMAND woby_trim_input_probe --self-test)
+    set_tests_properties(woby_trim_input_contract PROPERTIES LABELS "unit;cpu")
+endif()

@@ -296,12 +296,14 @@ void triangulateFreeformTrim(const FreeformPatch& patch,FreeformGrid& grid,const
         for (size_t first=0;first<vertices.size();first+=1024) {
             reportModelLoadProgress(progress,ModelLoadStage::triangulating);
             const auto last=std::min(first+1024,vertices.size());
-            triangulation.insertVertices(std::vector<CDT::V2d<double>>(vertices.begin()+static_cast<ptrdiff_t>(first),vertices.begin()+static_cast<ptrdiff_t>(last)));
+            triangulation.insertVertices(vertices.begin()+static_cast<ptrdiff_t>(first),vertices.begin()+static_cast<ptrdiff_t>(last),
+                CDT::getX_V2d<double>,CDT::getY_V2d<double>);
         }
         for (size_t first=0;first<edges.size();first+=256) {
             reportModelLoadProgress(progress,ModelLoadStage::triangulating);
             const auto last=std::min(first+256,edges.size());
-            triangulation.insertEdges(std::vector<CDT::Edge>(edges.begin()+static_cast<ptrdiff_t>(first),edges.begin()+static_cast<ptrdiff_t>(last)));
+            triangulation.insertEdges(edges.begin()+static_cast<ptrdiff_t>(first),edges.begin()+static_cast<ptrdiff_t>(last),
+                CDT::edge_get_v1,CDT::edge_get_v2);
             if (triangulation.vertices.size()>indexCapacity) { fail(c,"Trim tessellation exceeds the supported triangulator index range."); }
         }
         triangulation.eraseSuperTriangle();

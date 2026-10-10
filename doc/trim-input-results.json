@@ -1,0 +1,662 @@
+{
+  "fixtures": [
+    {
+      "boundary_cells": 124,
+      "copied": {
+        "edge_median_ms": 0.5773,
+        "median_ms": 3.7762,
+        "total_samples_ms": [
+          3.7281,
+          3.6992,
+          4.2533,
+          3.7187,
+          3.9186,
+          3.8419,
+          3.7762
+        ],
+        "vertex_median_ms": 2.011
+      },
+      "cropped_cells": 1024,
+      "domain_cells_per_axis": 32,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "full_rectangle",
+      "input_edges": 2116,
+      "input_vertices": 1089,
+      "interior_cells": 900,
+      "iterator": {
+        "edge_median_ms": 0.5406,
+        "median_ms": 3.5932,
+        "total_samples_ms": [
+          3.5358,
+          3.5603,
+          3.5932,
+          3.6854,
+          3.5663,
+          3.6702,
+          3.6981
+        ],
+        "vertex_median_ms": 2.0165
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 0.0644,
+      "removed_batch_allocations": 11,
+      "removed_copy_bytes": 34352
+    },
+    {
+      "boundary_cells": 508,
+      "copied": {
+        "edge_median_ms": 9.4211,
+        "median_ms": 83.4126,
+        "total_samples_ms": [
+          82.0661,
+          79.6877,
+          81.1323,
+          83.4126,
+          90.7613,
+          93.9259,
+          87.1176
+        ],
+        "vertex_median_ms": 53.2718
+      },
+      "cropped_cells": 16384,
+      "domain_cells_per_axis": 128,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "full_rectangle",
+      "input_edges": 33028,
+      "input_vertices": 16641,
+      "interior_cells": 15876,
+      "iterator": {
+        "edge_median_ms": 10.6026,
+        "median_ms": 86.0988,
+        "total_samples_ms": [
+          79.9871,
+          86.0988,
+          86.921,
+          82.7448,
+          103.3799,
+          92.4349,
+          81.8574
+        ],
+        "vertex_median_ms": 53.5877
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 1.2273,
+      "removed_batch_allocations": 147,
+      "removed_copy_bytes": 530480
+    },
+    {
+      "boundary_cells": 1020,
+      "copied": {
+        "edge_median_ms": 53.7262,
+        "median_ms": 510.0596,
+        "total_samples_ms": [
+          451.7006,
+          514.3105,
+          510.0596,
+          481.0082,
+          576.1275,
+          467.9725,
+          527.094
+        ],
+        "vertex_median_ms": 290.8627
+      },
+      "cropped_cells": 65536,
+      "domain_cells_per_axis": 256,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "full_rectangle",
+      "input_edges": 131588,
+      "input_vertices": 66049,
+      "interior_cells": 64516,
+      "iterator": {
+        "edge_median_ms": 52.824,
+        "median_ms": 479.4425,
+        "total_samples_ms": [
+          505.5759,
+          464.8379,
+          479.4425,
+          524.2471,
+          453.0869,
+          513.2089,
+          462.1308
+        ],
+        "vertex_median_ms": 290.3639
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 4.2414,
+      "removed_batch_allocations": 580,
+      "removed_copy_bytes": 2109488
+    },
+    {
+      "boundary_cells": 94,
+      "copied": {
+        "edge_median_ms": 1.1166,
+        "median_ms": 4.4146,
+        "total_samples_ms": [
+          4.5385,
+          4.6869,
+          4.2361,
+          4.3385,
+          4.4146,
+          4.5361,
+          4.3368
+        ],
+        "vertex_median_ms": 2.1398
+      },
+      "cropped_cells": 1024,
+      "domain_cells_per_axis": 32,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 930,
+      "fixture": "diagonal_strip",
+      "input_edges": 2116,
+      "input_vertices": 1093,
+      "interior_cells": 0,
+      "iterator": {
+        "edge_median_ms": 1.0453,
+        "median_ms": 4.3056,
+        "total_samples_ms": [
+          4.4804,
+          4.3056,
+          5.4146,
+          5.1805,
+          4.141,
+          4.0434,
+          4.0896
+        ],
+        "vertex_median_ms": 2.0987
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 0.0811,
+      "removed_batch_allocations": 11,
+      "removed_copy_bytes": 34416
+    },
+    {
+      "boundary_cells": 492,
+      "copied": {
+        "edge_median_ms": 9.7635,
+        "median_ms": 82.5203,
+        "total_samples_ms": [
+          109.0427,
+          76.4476,
+          93.6787,
+          76.4351,
+          78.7887,
+          91.6944,
+          82.5203
+        ],
+        "vertex_median_ms": 51.3824
+      },
+      "cropped_cells": 15376,
+      "domain_cells_per_axis": 128,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 14526,
+      "fixture": "diagonal_strip",
+      "input_edges": 31004,
+      "input_vertices": 15629,
+      "interior_cells": 358,
+      "iterator": {
+        "edge_median_ms": 9.7066,
+        "median_ms": 89.9899,
+        "total_samples_ms": [
+          107.6095,
+          81.5297,
+          87.7795,
+          80.2143,
+          89.9899,
+          96.1665,
+          98.8441
+        ],
+        "vertex_median_ms": 61.2597
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 1.3346,
+      "removed_batch_allocations": 138,
+      "removed_copy_bytes": 498096
+    },
+    {
+      "boundary_cells": 980,
+      "copied": {
+        "edge_median_ms": 45.419,
+        "median_ms": 447.4994,
+        "total_samples_ms": [
+          403.3631,
+          461.2978,
+          447.4994,
+          428.9312,
+          496.7086,
+          420.5764,
+          473.7116
+        ],
+        "vertex_median_ms": 262.8762
+      },
+      "cropped_cells": 60516,
+      "domain_cells_per_axis": 256,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 57380,
+      "fixture": "diagonal_strip",
+      "input_edges": 121528,
+      "input_vertices": 61013,
+      "interior_cells": 2156,
+      "iterator": {
+        "edge_median_ms": 50.4676,
+        "median_ms": 442.2552,
+        "total_samples_ms": [
+          442.2552,
+          426.1569,
+          423.4952,
+          463.1769,
+          505.545,
+          489.1069,
+          384.6277
+        ],
+        "vertex_median_ms": 265.4809
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 5.398,
+      "removed_batch_allocations": 535,
+      "removed_copy_bytes": 1948432
+    },
+    {
+      "boundary_cells": 240,
+      "copied": {
+        "edge_median_ms": 3.4091,
+        "median_ms": 12.0868,
+        "total_samples_ms": [
+          12.0868,
+          8.7572,
+          11.6449,
+          13.4576,
+          13.4018,
+          11.8875,
+          13.5326
+        ],
+        "vertex_median_ms": 5.8597
+      },
+      "cropped_cells": 1024,
+      "domain_cells_per_axis": 32,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 776,
+      "fixture": "annulus",
+      "input_edges": 3136,
+      "input_vertices": 2113,
+      "interior_cells": 8,
+      "iterator": {
+        "edge_median_ms": 3.1372,
+        "median_ms": 11.1313,
+        "total_samples_ms": [
+          9.7471,
+          10.4157,
+          10.7883,
+          11.1313,
+          12.9399,
+          12.8023,
+          12.6293
+        ],
+        "vertex_median_ms": 5.7784
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 13.4454,
+      "removed_batch_allocations": 16,
+      "removed_copy_bytes": 58896
+    },
+    {
+      "boundary_cells": 944,
+      "copied": {
+        "edge_median_ms": 15.5073,
+        "median_ms": 108.6846,
+        "total_samples_ms": [
+          109.2127,
+          105.6237,
+          108.6846,
+          131.6626,
+          111.3562,
+          86.6864,
+          94.6361
+        ],
+        "vertex_median_ms": 57.941
+      },
+      "cropped_cells": 15376,
+      "domain_cells_per_axis": 128,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 12996,
+      "fixture": "annulus",
+      "input_edges": 32024,
+      "input_vertices": 16649,
+      "interior_cells": 1436,
+      "iterator": {
+        "edge_median_ms": 18.4981,
+        "median_ms": 103.6397,
+        "total_samples_ms": [
+          107.5795,
+          101.9254,
+          127.3637,
+          128.4187,
+          95.8926,
+          103.6397,
+          98.693
+        ],
+        "vertex_median_ms": 58.5132
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 153.1053,
+      "removed_batch_allocations": 143,
+      "removed_copy_bytes": 522576
+    },
+    {
+      "boundary_cells": 1880,
+      "copied": {
+        "edge_median_ms": 62.9002,
+        "median_ms": 466.4642,
+        "total_samples_ms": [
+          471.491,
+          446.6202,
+          442.1181,
+          449.2939,
+          466.4642,
+          519.154,
+          528.3073
+        ],
+        "vertex_median_ms": 273.5652
+      },
+      "cropped_cells": 60516,
+      "domain_cells_per_axis": 256,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 52028,
+      "fixture": "annulus",
+      "input_edges": 122548,
+      "input_vertices": 62033,
+      "interior_cells": 6608,
+      "iterator": {
+        "edge_median_ms": 53.1703,
+        "median_ms": 434.5648,
+        "total_samples_ms": [
+          421.2004,
+          466.4169,
+          409.3567,
+          478.5265,
+          434.5648,
+          506.4727,
+          421.4129
+        ],
+        "vertex_median_ms": 251.3848
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 645.0748,
+      "removed_batch_allocations": 540,
+      "removed_copy_bytes": 1972912
+    },
+    {
+      "boundary_cells": 12,
+      "copied": {
+        "edge_median_ms": 0.0439,
+        "median_ms": 0.1097,
+        "total_samples_ms": [
+          0.1365,
+          0.1097,
+          0.1366,
+          0.1182,
+          0.1096,
+          0.1077,
+          0.1064
+        ],
+        "vertex_median_ms": 0.0341
+      },
+      "cropped_cells": 16,
+      "domain_cells_per_axis": 32,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "small_rectangle",
+      "input_edges": 44,
+      "input_vertices": 29,
+      "interior_cells": 4,
+      "iterator": {
+        "edge_median_ms": 0.043,
+        "median_ms": 0.1097,
+        "total_samples_ms": [
+          0.1286,
+          0.1097,
+          0.2287,
+          0.1946,
+          0.108,
+          0.1064,
+          0.1073
+        ],
+        "vertex_median_ms": 0.0351
+      },
+      "max_temporary_payload_bytes": 464,
+      "naive_classification_ms": 0.0032,
+      "removed_batch_allocations": 2,
+      "removed_copy_bytes": 816
+    },
+    {
+      "boundary_cells": 52,
+      "copied": {
+        "edge_median_ms": 0.2528,
+        "median_ms": 0.8524,
+        "total_samples_ms": [
+          0.9872,
+          0.9597,
+          0.9515,
+          0.8326,
+          0.8489,
+          0.8524,
+          0.8248
+        ],
+        "vertex_median_ms": 0.3704
+      },
+      "cropped_cells": 196,
+      "domain_cells_per_axis": 128,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "small_rectangle",
+      "input_edges": 424,
+      "input_vertices": 229,
+      "interior_cells": 144,
+      "iterator": {
+        "edge_median_ms": 0.273,
+        "median_ms": 0.9318,
+        "total_samples_ms": [
+          0.8772,
+          0.9624,
+          0.9921,
+          0.8802,
+          0.9049,
+          0.9318,
+          0.9543
+        ],
+        "vertex_median_ms": 0.3979
+      },
+      "max_temporary_payload_bytes": 3664,
+      "naive_classification_ms": 0.0143,
+      "removed_batch_allocations": 3,
+      "removed_copy_bytes": 7056
+    },
+    {
+      "boundary_cells": 100,
+      "copied": {
+        "edge_median_ms": 0.6623,
+        "median_ms": 2.7597,
+        "total_samples_ms": [
+          2.8859,
+          2.9094,
+          2.7597,
+          2.6566,
+          2.6583,
+          2.8163,
+          2.745
+        ],
+        "vertex_median_ms": 1.3809
+      },
+      "cropped_cells": 676,
+      "domain_cells_per_axis": 256,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "small_rectangle",
+      "input_edges": 1408,
+      "input_vertices": 733,
+      "interior_cells": 576,
+      "iterator": {
+        "edge_median_ms": 0.629,
+        "median_ms": 2.6956,
+        "total_samples_ms": [
+          2.8793,
+          2.745,
+          2.6465,
+          2.6248,
+          3.0744,
+          2.5959,
+          2.6956
+        ],
+        "vertex_median_ms": 1.3872
+      },
+      "max_temporary_payload_bytes": 11728,
+      "naive_classification_ms": 0.0422,
+      "removed_batch_allocations": 7,
+      "removed_copy_bytes": 22992
+    },
+    {
+      "boundary_cells": 125,
+      "copied": {
+        "edge_median_ms": 0.4679,
+        "median_ms": 3.4053,
+        "total_samples_ms": [
+          3.3571,
+          3.4458,
+          3.3875,
+          3.6058,
+          3.3098,
+          3.4053,
+          3.4572
+        ],
+        "vertex_median_ms": 2.0064
+      },
+      "cropped_cells": 1024,
+      "domain_cells_per_axis": 32,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "tiny_hole",
+      "input_edges": 2120,
+      "input_vertices": 1093,
+      "interior_cells": 899,
+      "iterator": {
+        "edge_median_ms": 0.4815,
+        "median_ms": 3.5396,
+        "total_samples_ms": [
+          3.5396,
+          3.7113,
+          3.5517,
+          3.451,
+          3.3711,
+          3.6207,
+          3.3376
+        ],
+        "vertex_median_ms": 2.0301
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 0.0905,
+      "removed_batch_allocations": 11,
+      "removed_copy_bytes": 34448
+    },
+    {
+      "boundary_cells": 509,
+      "copied": {
+        "edge_median_ms": 10.925,
+        "median_ms": 94.5811,
+        "total_samples_ms": [
+          85.8812,
+          103.0324,
+          88.7738,
+          88.3447,
+          94.5811,
+          97.2656,
+          98.4218
+        ],
+        "vertex_median_ms": 56.5882
+      },
+      "cropped_cells": 16384,
+      "domain_cells_per_axis": 128,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "tiny_hole",
+      "input_edges": 33032,
+      "input_vertices": 16645,
+      "interior_cells": 15875,
+      "iterator": {
+        "edge_median_ms": 9.5559,
+        "median_ms": 82.3728,
+        "total_samples_ms": [
+          82.2797,
+          88.5978,
+          80.952,
+          84.7218,
+          82.2405,
+          82.3728,
+          97.9986
+        ],
+        "vertex_median_ms": 54.3428
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 1.9287,
+      "removed_batch_allocations": 147,
+      "removed_copy_bytes": 530576
+    },
+    {
+      "boundary_cells": 1021,
+      "copied": {
+        "edge_median_ms": 60.5962,
+        "median_ms": 511.6466,
+        "total_samples_ms": [
+          500.6606,
+          512.9353,
+          475.8728,
+          542.1167,
+          605.1368,
+          487.3538,
+          511.6466
+        ],
+        "vertex_median_ms": 295.615
+      },
+      "cropped_cells": 65536,
+      "domain_cells_per_axis": 256,
+      "exact_cdt_output_equal": true,
+      "exterior_cells": 0,
+      "fixture": "tiny_hole",
+      "input_edges": 131592,
+      "input_vertices": 66053,
+      "interior_cells": 64515,
+      "iterator": {
+        "edge_median_ms": 65.0207,
+        "median_ms": 547.8312,
+        "total_samples_ms": [
+          493.2917,
+          450.5221,
+          506.8601,
+          547.9226,
+          592.3862,
+          547.8312,
+          664.956
+        ],
+        "vertex_median_ms": 302.9842
+      },
+      "max_temporary_payload_bytes": 16384,
+      "naive_classification_ms": 11.7067,
+      "removed_batch_allocations": 580,
+      "removed_copy_bytes": 2109584
+    }
+  ],
+  "repetitions": 7,
+  "timing_scope": "CDT insertion and supertriangle removal; excludes input preparation, classification and final filtering",
+  "environment": {
+    "configuration": "Release",
+    "cdt_version": "1.4.4",
+    "preset": "vs2026-vcpkg",
+    "cpu": "AMD Ryzen 7 5800H",
+    "baseline": "f370d2e",
+    "scope": "Synthetic polyline inputs with the existing bounds crop; no local-cell triangulator implemented",
+    "os": "Windows",
+    "production_changed": false,
+    "date": "2026-10-11"
+  }
+}

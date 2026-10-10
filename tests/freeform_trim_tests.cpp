@@ -204,6 +204,27 @@ TEST_CASE("Trimming omits unused grid cells before checking triangulator capacit
     }
 }
 
+TEST_CASE("Trim batch cancellation propagates at every progress checkpoint") {
+    const auto patch=trimTestPatch();
+    woby::FreeformGrid input;
+    for (size_t i=0;i<=32;++i) { input.u.push_back(static_cast<double>(i)/32); }
+    input.v=input.u;
+    auto completed=input;
+    size_t checkpoints=0;
+    woby::triangulateFreeformTrim(patch,completed,[&](const auto&) { ++checkpoints; });
+    REQUIRE(checkpoints>10);
+    REQUIRE(!completed.triangles.empty());
+    struct Canceled {};
+    for (size_t stop=1;stop<=checkpoints;++stop) {
+        auto canceled=input;
+        size_t visits=0;
+        CHECK_THROWS_AS(woby::triangulateFreeformTrim(patch,canceled,[&](const auto&) {
+            if (++visits==stop) { throw Canceled{}; }
+        }),Canceled);
+        CHECK(visits==stop);
+    }
+}
+
 TEST_CASE("Trim grid cropping preserves cells in nonunit domains and at grid boundaries") {
     auto p=trimTestPatch();
     p.domainU={10,20}; p.knotsU={10,10,20,20};
