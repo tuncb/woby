@@ -139,7 +139,7 @@ static Trace captureSource(std::string source, woby::Mesh mesh, std::string name
                 seen[vertex] = true;
                 trace.vertexKeys[vertex] = key;
                 const auto local = woby::relativePosition(trace.positions[static_cast<size_t>(key.position)], origin);
-                if (local != meshGeometry(trace.mesh).precisePositions[vertex]) { throw std::runtime_error("Position correspondence failed."); }
+                if (local != woby::meshPosition(trace.mesh, vertex)) { throw std::runtime_error("Position correspondence failed."); }
                 if (key.normal < 0 || !woby::validNormal(trace.normals[static_cast<size_t>(key.normal)])) { trace.generatedNormals = true; }
             }
             trace.triangles.push_back(triangle);

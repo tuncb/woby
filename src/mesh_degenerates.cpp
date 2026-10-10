@@ -97,13 +97,13 @@ MeshDegenerates inspectDegenerates(const std::vector<DuplicateSource>& sources, 
         ++result.availableSources;
         const auto& data = *source.data;
         if (data.indices.size()%3) { throw std::invalid_argument("Invalid source triangle indices."); }
-        for (const auto& point : data.points) {
+        for (const auto& point : sourcePositions(data)) {
             canceled(stop);
             for (const auto value : point) { if (!std::isfinite(value)) { throw std::invalid_argument("Non-finite source coordinate."); } }
         }
         for (const auto index : data.indices) {
             canceled(stop);
-            if (index >= data.points.size()) { throw std::invalid_argument("Invalid source point index."); }
+            if (index >= sourcePositions(data).size()) { throw std::invalid_argument("Invalid source point index."); }
         }
         std::set<uint64_t> partIds, repeatedPartIds;
         for (const auto& part : source.parts) {
@@ -137,7 +137,7 @@ MeshDegenerates inspectDegenerates(const std::vector<DuplicateSource>& sources, 
                 std::array<Point, 3> points{};
                 DegenerateFinding finding;
                 for (size_t j = 0; j < 3; ++j) {
-                    const auto p = promoteSourcePoint(data.points[data.indices[i+j]]);
+                    const auto p = promoteSourcePoint(sourcePositions(data)[data.indices[i+j]]);
                     const auto& m = part.transform;
                     for (size_t k = 0; k < 3; ++k) {
                         const double value = m[k]*p[0] + m[k+4]*p[1] + m[k+8]*p[2] + m[k+12];

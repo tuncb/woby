@@ -38,7 +38,7 @@ DuplicateSource sourceFor(std::vector<Point> points = {{0,0,0}, {1,0,0}, {1,1,0}
 {
     auto data = std::make_shared<SourceMeshData>();
     for (const auto& point : points) {
-        data->points.push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
+        woby::editSourcePositions(*data).push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
     }
     data->indices = std::move(indices);
     data->provenance = SourceProvenance::objPositions;
@@ -50,7 +50,7 @@ DuplicateSource sourceFor(std::vector<Point> points = {{0,0,0}, {1,0,0}, {1,1,0}
 Mesh meshFor(const DuplicateSource& source)
 {
     Mesh mesh;
-    for (const auto& point : source.data->points) {
+    for (const auto& point : woby::sourcePositions(*source.data)) {
         Vertex v; for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(point[k]); }
         editMeshGeometry(mesh).vertices.push_back(v);
     }
@@ -89,10 +89,10 @@ TEST_CASE("topology distinguishes original IDs exact positions signed zero and n
     CHECK(welded.boundaries.size() == 4);
     CHECK(welded.sources[0].vertices[0].references.size() == 2);
     auto near = source;
-    auto data = std::make_shared<SourceMeshData>(*near.data); data->points[3][0] = 1e-16f; near.data = data;
+    auto data = std::make_shared<SourceMeshData>(*near.data); woby::editSourcePositions(*data)[3][0] = 1e-16f; near.data = data;
     CHECK(buildMeshTopology({near}, TopologyMode::exactPosition).boundaries.size() == 6);
     // Adjacent representable source coordinates remain distinct.
-    data->points[3] = {std::nextafter(1.0f, 2.0f), 0, 0};
+    woby::editSourcePositions(*data)[3] = {std::nextafter(1.0f, 2.0f), 0, 0};
     CHECK(buildMeshTopology({near}, TopologyMode::exactPosition).sources[0].vertices.size() == 5);
 }
 
@@ -130,7 +130,7 @@ TEST_CASE("topology promotes source floats before large translations")
     CHECK(vertices[1].position[0] == 16777217.0);
     CHECK(topology.excludedCollapsedFaces == 0);
     CHECK(topology.boundaries.size() == 3);
-    CHECK(source.data->points[1][0] == 1.0f);
+    CHECK(woby::sourcePositions(*source.data)[1][0] == 1.0f);
 }
 
 TEST_CASE("topology never welds files and partitions original IDs by transformed instance")
@@ -196,13 +196,13 @@ TEST_CASE("topology validates input cancellation and bounds JSON without losing 
 {
     auto source = sourceFor(); auto data = std::make_shared<SourceMeshData>(*source.data); source.data = data;
     data->indices[0] = 999; CHECK_THROWS((void)buildMeshTopology({source})); data->indices[0] = 0;
-    data->points[0][0] = std::numeric_limits<float>::infinity(); CHECK_THROWS((void)buildMeshTopology({source})); data->points[0][0] = 0;
+    woby::editSourcePositions(*data)[0][0] = std::numeric_limits<float>::infinity(); CHECK_THROWS((void)buildMeshTopology({source})); woby::editSourcePositions(*data)[0][0] = 0;
     source.parts[0].indexCount = 999; CHECK_THROWS((void)buildMeshTopology({source})); source.parts[0].indexCount = 6;
     source.parts[0].transform[0] = std::numeric_limits<float>::quiet_NaN(); CHECK_THROWS((void)buildMeshTopology({source}));
     std::stop_source stop; stop.request_stop(); CHECK_THROWS((void)buildMeshTopology({}, {}, stop.get_token()));
     data->indices.clear(); for (size_t i = 0; i < 120; ++i) { data->indices.insert(data->indices.end(), {0,1,2}); }
     std::vector<Point> sourcePoints;
-    for (const auto& point : data->points) { sourcePoints.push_back(promoteSourcePoint(point)); }
+    for (const auto& point : woby::editSourcePositions(*data)) { sourcePoints.push_back(promoteSourcePoint(point)); }
     source = sourceFor(std::move(sourcePoints), data->indices);
     const auto json = jsonFor(buildMeshTopology({source}), "non_manifold_edges");
     CHECK(json["count"] == 3); CHECK(json["findings"][0]["incidentFaceCount"] == 120);
@@ -380,7 +380,7 @@ TEST_CASE("hole loops are ordered and filtered inclusively relative to their own
         settings.holeSizeRatioTolerance = 0; (void)filterTopologyFindings(topology, settings); CHECK(topology.holes.empty());
     }
     auto source = ringSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
-    data->points.insert(data->points.end(), {{100,0,0},{10000,0,0},{100,10000,0}});
+    woby::editSourcePositions(*data).insert(woby::editSourcePositions(*data).end(), {{100,0,0},{10000,0,0},{100,10000,0}});
     data->indices.insert(data->indices.end(), {8,9,10}); source.data = data; source.parts[0].indexCount = data->indices.size();
     const auto separated = buildMeshTopology({source}); CHECK(separated.holes.empty());
     for (const auto& boundary : separated.boundaryRegions) {
@@ -418,7 +418,7 @@ TEST_CASE("hole ratios preserve translation uniform scale source isolation and d
     CHECK(result.boundaryRegions[1].sizeRatio == doctest::Approx(.25));
     CHECK(jsonFor(result, "holes") == jsonFor(buildMeshTopology({source, other}), "holes"));
     auto split = ringSource(); auto data = std::make_shared<SourceMeshData>(*split.data); split.data = data;
-    data->points.push_back(data->points[0]);
+    woby::editSourcePositions(*data).push_back(woby::editSourcePositions(*data)[0]);
     data->indices[0] = 8; // Break the source-index boundary while exact welding restores it.
     CHECK(buildMeshTopology({split}, TopologyMode::exactPosition).boundaryRegions.size() == 2);
     CHECK(buildMeshTopology({split}, TopologyMode::originalIndex).boundaries.size() > 8);
@@ -624,7 +624,7 @@ TEST_CASE("fin area ratios use the largest boundary bearing patch and inclusive 
     // An ordinary disk is included in the denominator population even though its
     // simple-loop boundary excludes it from the final candidate population.
     auto source = threeFinSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
-    data->points.insert(data->points.end(), {{10,0,0},{14,0,0},{10,4,0}});
+    woby::editSourcePositions(*data).insert(woby::editSourcePositions(*data).end(), {{10,0,0},{14,0,0},{10,4,0}});
     data->indices.insert(data->indices.end(), {5,6,7}); source.data = data; source.parts[0].indexCount = data->indices.size();
     topology = buildMeshTopology({source}); REQUIRE(topology.fins.size() == 3);
     CHECK(topology.finPatches[0].denominatorArea == 8); CHECK(topology.finPatches[0].areaRatio == .0625);
@@ -632,7 +632,7 @@ TEST_CASE("fin area ratios use the largest boundary bearing patch and inclusive 
 TEST_CASE("fin multiple loop boundary classification is explicitly heuristic")
 {
     auto source = ringSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
-    data->points.insert(data->points.end(), {{10,0,0},{11,0,0},{10,1,0}});
+    woby::editSourcePositions(*data).insert(woby::editSourcePositions(*data).end(), {{10,0,0},{11,0,0},{10,1,0}});
     data->indices.insert(data->indices.end(), {8,9,10}); source.data = data; source.parts[0].indexCount = data->indices.size();
     auto topology = buildMeshTopology({source}); REQUIRE(topology.fins.size() == 1);
     const auto& patch = topology.finPatches[topology.fins[0]];
@@ -752,7 +752,7 @@ TEST_CASE("fin settings navigate persist validate and control picking reports an
 TEST_CASE("fin analysis promotes tiny source coordinates before transforming them")
 {
     auto source = threeFinSource(); auto data = std::make_shared<SourceMeshData>(*source.data);
-    for (auto& point : data->points) { for (auto& axis : point) { axis *= 1e-30f; } }
+    for (auto& point : woby::editSourcePositions(*data)) { for (auto& axis : point) { axis *= 1e-30f; } }
     source.data = data;
     for (auto& part : source.parts) { part.transform[0] = part.transform[5] = part.transform[10] = 1e-30f; }
     const auto topology = buildMeshTopology({source});
@@ -943,8 +943,8 @@ TEST_CASE("parent analysis batches existing child volumes without merging their 
         {0,1,2}, {0,4,1}, {1,4,2}, {2,4,0}}};
     for (size_t i = 0; i < triangles.size(); ++i) {
         for (const auto index : triangles[i]) {
-            data->indices.push_back(static_cast<uint32_t>(data->points.size()));
-            data->points.push_back(points[index]);
+            data->indices.push_back(static_cast<uint32_t>(woby::editSourcePositions(*data).size()));
+            woby::editSourcePositions(*data).push_back(points[index]);
             Vertex v;
             for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(points[index][k]); }
             editMeshGeometry(mesh).vertices.push_back(v);

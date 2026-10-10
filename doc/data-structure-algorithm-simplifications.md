@@ -46,6 +46,10 @@ Do not make undo retain every removed geometry asset forever as an accidental co
 
 ## Source positions and render vertices
 
+The [item 2 investigation](source-position-storage-investigation.md) covers this change after shared geometry storage was implemented. It includes a position-access probe, ownership requirements, and validation steps. Identity access has approximately the same cost in the probe; explicit mapping can make reads substantially slower and can retain unused source positions after file removal. Item 2 is now implemented; see the [implementation report](source-position-storage-implementation.md).
+
+The [large-model application benchmarks](source-position-model-performance.md) measure actual comparison preparation, dimensions, and bounds on BearTrap and BusGameMap. They show a much smaller effect than the random-read probe: about 5-6% more comparison preparation time, with little change in most other measured operations.
+
 The OBJ loader knows which source position produced every render vertex, but retains the coordinate instead of that relationship. At each new tuple, `buildObjMesh` copies a double position into `Mesh::precisePositions` and its float form into `Vertex::position`. The authoritative source position remains in `SourceMeshData::points`. UV and normal seams multiply the render vertices and therefore multiply the double positions too.
 
 The importer path duplicates the arrays even when source and render indexing are identical: `captureSourceMesh` copies positions and triangle indices. Freeform append likewise writes positions to both precise and source arrays.

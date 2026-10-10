@@ -105,19 +105,26 @@ int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, boo
     if (expanded) {
         // Retain the flat comparison snapshot workload alongside indexed meshes.
         // Remap both position buffers; source indices and part ranges stay intact.
+        std::vector<woby::Coordinate> inputPositions;
+        inputPositions.reserve(meshGeometry(mesh).vertices.size());
+        for (size_t i=0; i<meshGeometry(mesh).vertices.size(); ++i) { inputPositions.push_back(woby::meshPosition(mesh,i)); }
         const auto vertices = std::move(editMeshGeometry(mesh).vertices);
         std::vector<woby::Coordinate> positions;
         positions.reserve(meshGeometry(mesh).indices.size());
         editMeshGeometry(mesh).vertices.reserve(meshGeometry(mesh).indices.size());
         for (auto& index : editMeshGeometry(mesh).indices) {
-            positions.push_back(meshGeometry(mesh).precisePositions.at(index));
+            positions.push_back(inputPositions.at(index));
             woby::Vertex vertex;
             vertex.position = vertices[index].position;
             vertex.texcoord = vertices[index].texcoord;
             index = static_cast<uint32_t>(meshGeometry(mesh).vertices.size());
             editMeshGeometry(mesh).vertices.push_back(vertex);
         }
-        editMeshGeometry(mesh).precisePositions = std::move(positions);
+        auto& geometry = editMeshGeometry(mesh);
+        geometry.precisePositions = std::move(positions);
+        geometry.sourcePositions.reset();
+        geometry.positionIndices.clear();
+        geometry.positionIndexing = woby::PositionIndexing::identity;
     }
     woby::publishMeshGeometry(mesh);
     if (intersections) {
@@ -135,7 +142,7 @@ int detectorBenchmark(const std::filesystem::path& path, size_t repetitions, boo
         return 0;
     }
     const auto stages = woby::requestedComparisonStages({}, false);
-    std::cout << "triangles=" << meshGeometry(mesh).indices.size() / 3 << " source_points=" << mesh.sourceData->points.size()
+    std::cout << "triangles=" << meshGeometry(mesh).indices.size() / 3 << " source_points=" << woby::sourcePositions(*mesh.sourceData).size()
               << " parts=" << meshGeometry(mesh).nodes.size() << "\nrun,stage,milliseconds,counts\n";
     for (size_t run = 0; run < repetitions; ++run) {
         double total = 0;

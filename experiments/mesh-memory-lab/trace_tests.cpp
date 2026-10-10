@@ -88,7 +88,7 @@ TEST_CASE("Large coordinates retain double precision before float localization")
     CHECK(trace.triangles.size() == 2);
     for (size_t v = 0; v < meshGeometry(trace.mesh).vertices.size(); ++v) {
         const auto p = static_cast<size_t>(trace.vertexKeys[v].position);
-        CHECK(meshGeometry(trace.mesh).precisePositions[v] == woby::relativePosition(trace.positions[p], trace.mesh.origin));
+        CHECK(woby::meshPosition(trace.mesh, v) == woby::relativePosition(trace.positions[p], trace.mesh.origin));
         CHECK(std::abs(meshGeometry(trace.mesh).vertices[v].position[0]) < 0.003f);
     }
     CHECK(trace.mesh.bounds.radius > 0.002f);
@@ -206,7 +206,7 @@ TEST_CASE("Pipeline edges alternate data and transformers with exact payload siz
     const auto trace = mesh_lab::internalExample();
     CHECK(mesh_lab::payloadBytes(Node::attributes,trace) == 328);
     CHECK(mesh_lab::payloadBytes(Node::corners,trace) == 376);
-    CHECK(mesh_lab::payloadBytes(Node::mesh,trace) == 688);
+    CHECK(mesh_lab::payloadBytes(Node::mesh,trace) == 528);
     CHECK(mesh_lab::payloadBytes(Node::gpu,trace) == 304);
     CHECK(mesh_lab::payloadBytes(Node::source,trace) == trace.source.size());
     for (size_t i = 0; i < mesh_lab::pipeline.size(); ++i) {
@@ -236,7 +236,8 @@ TEST_CASE("In-memory OBJ construction matches production file import")
     const auto memory = woby::loadObjMeshText(source);
     const auto file = woby::loadObjMesh(fixture.write(std::string(source)));
     CHECK(meshGeometry(memory).indices == meshGeometry(file).indices);
-    CHECK(meshGeometry(memory).precisePositions == meshGeometry(file).precisePositions);
+    REQUIRE(meshGeometry(memory).vertices.size() == meshGeometry(file).vertices.size());
+    for (size_t i=0; i<meshGeometry(memory).vertices.size(); ++i) { CHECK(woby::meshPosition(memory,i) == woby::meshPosition(file,i)); }
     CHECK(memory.origin == file.origin);
     REQUIRE(meshGeometry(memory).vertices.size() == meshGeometry(file).vertices.size());
     CHECK(std::memcmp(meshGeometry(memory).vertices.data(),meshGeometry(file).vertices.data(),meshGeometry(memory).vertices.size()*sizeof(woby::Vertex)) == 0);

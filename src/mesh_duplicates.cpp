@@ -76,13 +76,13 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             continue;
         }
         const auto& data = *source.data;
-        if (!data.originalPointIds.empty() && data.originalPointIds.size() != data.points.size()) {
+        if (!data.originalPointIds.empty() && data.originalPointIds.size() != sourcePositions(data).size()) {
             throw std::invalid_argument("Invalid source point ID count.");
         }
         if (result.points.enabled) { ++result.points.availableSources; }
         if (result.triangles.enabled) { ++result.triangles.availableSources; }
         if (data.indices.size() % 3 != 0) { throw std::invalid_argument("Invalid source triangle indices."); }
-        for (const auto& point : data.points) {
+        for (const auto& point : sourcePositions(data)) {
             canceled(stop);
             for (const auto value : point) {
                 if (!std::isfinite(value)) { throw std::invalid_argument("Non-finite source coordinate."); }
@@ -90,15 +90,15 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
         }
         for (const auto index : data.indices) {
             canceled(stop);
-            if (index >= data.points.size()) { throw std::invalid_argument("Invalid source point index."); }
+            if (index >= sourcePositions(data).size()) { throw std::invalid_argument("Invalid source point index."); }
         }
         // Track every transformed occurrence without counting a shared source ID twice.
         SourceOccurrences pointParts, faceParts;
         std::vector<size_t> seen;
         if (result.points.enabled) {
-            pointParts.heads.assign(data.points.size(), noOccurrence);
-            pointParts.entries.reserve(data.points.size());
-            seen.assign(data.points.size(), noOccurrence);
+            pointParts.heads.assign(sourcePositions(data).size(), noOccurrence);
+            pointParts.entries.reserve(sourcePositions(data).size());
+            seen.assign(sourcePositions(data).size(), noOccurrence);
         }
         if (result.triangles.enabled) {
             faceParts.heads.assign(data.indices.size() / 3, noOccurrence);
@@ -121,7 +121,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
             }
         }
         if (result.points.enabled && source.wholeFile && !source.parts.empty()) {
-            for (size_t i = 0; i < data.points.size(); ++i) {
+            for (size_t i = 0; i < sourcePositions(data).size(); ++i) {
                 canceled(stop);
                 // Sentinel instance: unused points follow the file transform.
                 if (pointParts.heads[i] == noOccurrence) { addOccurrence(pointParts, i, source.parts.size()); }
@@ -136,12 +136,12 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
         };
         if (result.points.enabled) {
             AnalysisIndex<double, 3> groups;
-            reserveAnalysisIndex(groups, data.points.size());
-            std::vector<size_t> heads, next(data.points.size(), noOccurrence);
+            reserveAnalysisIndex(groups, sourcePositions(data).size());
+            std::vector<size_t> heads, next(sourcePositions(data).size(), noOccurrence);
             for (size_t id = 0; id < pointParts.heads.size(); ++id) {
                 canceled(stop);
                 if (pointParts.heads[id] == noOccurrence) { continue; }
-                const auto group = analysisIndex(groups, data.points[id]);
+                const auto group = analysisIndex(groups, sourcePositions(data)[id]);
                 if (group == heads.size()) { heads.push_back(noOccurrence); }
                 next[id] = heads[group]; heads[group] = id;
             }
@@ -183,7 +183,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
         if (result.triangles.enabled) {
             const auto triple = [&](size_t id) { return std::array<uint32_t, 3>{data.indices[id*3], data.indices[id*3+1], data.indices[id*3+2]}; };
             std::vector<std::array<uint32_t, 3>> keys(faceParts.heads.size());
-            std::vector<size_t> starts(data.points.size() + 1);
+            std::vector<size_t> starts(sourcePositions(data).size() + 1);
             size_t selected = 0;
             for (size_t id = 0; id < faceParts.heads.size(); ++id) {
                 canceled(stop);
@@ -200,7 +200,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
                 if (faceParts.heads[id] != noOccurrence) { order[cursor[keys[id][0]]++] = id; }
             }
             std::vector<size_t> heads, next(faceParts.heads.size(), noOccurrence);
-            for (size_t point = 0; point < data.points.size(); ++point) {
+            for (size_t point = 0; point < sourcePositions(data).size(); ++point) {
                 canceled(stop);
                 std::sort(order.begin() + static_cast<ptrdiff_t>(starts[point]),
                     order.begin() + static_cast<ptrdiff_t>(starts[point+1]), [&](size_t a, size_t b) {
@@ -234,7 +234,7 @@ MeshDuplicates inspectDuplicates(const DuplicateInput& input, std::stop_token st
                         canceled(stop);
                         const auto part = faceParts.entries[occurrence].part;
                         std::array<std::array<float, 3>, 3> geometry;
-                        for (size_t k = 0; k < 3; ++k) { geometry[k] = transformed(data.points[ids[k]], source.parts[part].transform); }
+                        for (size_t k = 0; k < 3; ++k) { geometry[k] = transformed(sourcePositions(data)[ids[k]], source.parts[part].transform); }
                         std::sort(geometry.begin(), geometry.end());
                         geometries.insert(geometry);
                     }

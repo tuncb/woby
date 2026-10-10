@@ -86,7 +86,8 @@ TEST_CASE("Trimming supports concavity multiple regions winding and narrow retai
     const auto mesh=tessellate(p);
     CHECK(area(mesh.freeform->grids[0])==doctest::Approx(.200001).epsilon(1e-8));
     const auto again=tessellate(p);
-    CHECK(meshGeometry(mesh).indices==meshGeometry(again).indices); CHECK(meshGeometry(mesh).precisePositions==meshGeometry(again).precisePositions);
+    CHECK(meshGeometry(mesh).indices==meshGeometry(again).indices); REQUIRE(meshGeometry(mesh).vertices.size()==meshGeometry(again).vertices.size());
+    for (size_t i=0;i<meshGeometry(mesh).vertices.size();++i) { CHECK(woby::meshPosition(mesh,i)==woby::meshPosition(again,i)); }
 }
 
 TEST_CASE("Trimming rejects invalid loops with source context") {

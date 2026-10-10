@@ -7,6 +7,7 @@
 #include <stop_token>
 #include <string>
 #include <vector>
+#include <utility>
 
 namespace woby {
 
@@ -16,12 +17,34 @@ enum class SourceProvenance { objPositions, importerVertices };
 // not original polygons. Positions retain double precision in the mesh local frame.
 struct SourceMeshData {
     SourceProvenance provenance = SourceProvenance::importerVertices;
-    std::vector<std::array<double, 3>> points;
+    std::vector<std::array<double, 3>> draftPositions;
+    std::shared_ptr<const std::vector<std::array<double, 3>>> positions;
     std::vector<uint32_t> indices;
     // Optional importer identities, one per point. Only duplicate-point counting
     // uses these; connectivity and reported vertex indices remain unchanged.
     std::vector<uint64_t> originalPointIds;
 };
+
+// Published coordinates have a separate owner so render snapshots need not retain
+// source topology or importer metadata. Mutable access detaches the coordinates.
+[[nodiscard]] inline const std::vector<std::array<double, 3>>& sourcePositions(const SourceMeshData& source)
+{
+    return source.positions ? *source.positions : source.draftPositions;
+}
+[[nodiscard]] inline std::vector<std::array<double, 3>>& editSourcePositions(SourceMeshData& source)
+{
+    if (source.positions) {
+        source.draftPositions = *source.positions;
+        source.positions.reset();
+    }
+    return source.draftPositions;
+}
+inline void publishSourcePositions(SourceMeshData& source)
+{
+    if (!source.positions) {
+        source.positions = std::make_shared<const std::vector<std::array<double, 3>>>(std::move(source.draftPositions));
+    }
+}
 
 [[nodiscard]] inline std::array<double, 3> promoteSourcePoint(const std::array<double, 3>& point)
 {

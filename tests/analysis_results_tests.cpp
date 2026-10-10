@@ -139,7 +139,7 @@ TEST_CASE("direct export matches the established schema for every detector on bo
     MeshComparison r;
     for (auto& status : r.detectors) { status.phase = IntersectionPhase::complete; }
     auto mesh = std::make_shared<SourceMeshData>();
-    mesh->points = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
+    woby::editSourcePositions(*mesh) = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}};
     mesh->indices = {0, 1, 2};
     SourcePartInstance part;
     part.partId = std::numeric_limits<uint64_t>::max(); part.indexCount = 3;

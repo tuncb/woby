@@ -28,10 +28,11 @@ template <typename T> void hashBuffer(Fingerprint& out, const std::vector<T>& va
 uint64_t fingerprint(const woby::Mesh& mesh) {
     Fingerprint out;
     hash(out, mesh.origin);
-    hashBuffer(out, meshGeometry(mesh).vertices); hashBuffer(out, meshGeometry(mesh).precisePositions);
+    hashBuffer(out, meshGeometry(mesh).vertices); hashBuffer(out, meshGeometry(mesh).positionIndices);
+    if (meshGeometry(mesh).sourcePositions) { hashBuffer(out, *meshGeometry(mesh).sourcePositions); }
     hashBuffer(out, meshGeometry(mesh).indices); hashBuffer(out, meshGeometry(mesh).lineIndices); hashBuffer(out, meshGeometry(mesh).pointIndices);
     if (mesh.sourceData) {
-        hashBuffer(out, mesh.sourceData->points); hashBuffer(out, mesh.sourceData->indices);
+        hashBuffer(out, woby::sourcePositions(*mesh.sourceData)); hashBuffer(out, mesh.sourceData->indices);
         hashBuffer(out, mesh.sourceData->originalPointIds);
     }
     for (const auto& node : meshGeometry(mesh).nodes) {
@@ -56,9 +57,10 @@ uint64_t fingerprint(const woby::Mesh& mesh) {
 size_t retainedBytes(const woby::Mesh& mesh) {
     size_t bytes = meshGeometry(mesh).vertices.capacity() * sizeof(woby::Vertex)
         + meshGeometry(mesh).precisePositions.capacity() * sizeof(woby::Coordinate)
+        + meshGeometry(mesh).positionIndices.capacity() * sizeof(uint32_t)
         + (meshGeometry(mesh).indices.capacity() + meshGeometry(mesh).lineIndices.capacity() + meshGeometry(mesh).pointIndices.capacity()) * sizeof(uint32_t);
     if (mesh.sourceData) {
-        bytes += mesh.sourceData->points.capacity() * sizeof(woby::Coordinate)
+        bytes += woby::sourcePositions(*mesh.sourceData).capacity() * sizeof(woby::Coordinate)
             + mesh.sourceData->indices.capacity() * sizeof(uint32_t)
             + mesh.sourceData->originalPointIds.capacity() * sizeof(uint64_t);
     }
@@ -91,7 +93,7 @@ int run(bool prototype, const std::filesystem::path& path, size_t workers) {
         size_t vertices = 0, points = 0, indices = 0, retained = 0;
         for (const auto& mesh : meshes) {
             vertices += meshGeometry(mesh).vertices.size(); indices += meshGeometry(mesh).indices.size(); retained += retainedBytes(mesh);
-            points += mesh.sourceData ? mesh.sourceData->points.size() : 0;
+            points += mesh.sourceData ? woby::sourcePositions(*mesh.sourceData).size() : 0;
         }
         nlohmann::json result{{"mode", prototype ? "prototype" : "legacy"}, {"cpu_load_ms", elapsed}, {"files", paths.size()},
             {"render_vertices", vertices}, {"source_points", points},

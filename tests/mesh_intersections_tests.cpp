@@ -36,7 +36,7 @@ DuplicateSource sourceFor(std::vector<Point> points, std::vector<uint32_t> indic
 {
     auto data = std::make_shared<SourceMeshData>();
     for (const auto& point : points) {
-        data->points.push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
+        woby::editSourcePositions(*data).push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
     }
     data->indices = std::move(indices); data->provenance = SourceProvenance::objPositions;
     SourcePartInstance part; part.partId = 2; part.indexCount = data->indices.size();
@@ -50,7 +50,7 @@ DuplicateSource crossingSource()
 Mesh meshFor(const DuplicateSource& source)
 {
     Mesh mesh;
-    for (const auto& p : source.data->points) {
+    for (const auto& p : woby::sourcePositions(*source.data)) {
         Vertex v; for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(p[k]); } editMeshGeometry(mesh).vertices.push_back(v);
     }
     editMeshGeometry(mesh).indices = source.data->indices; mesh.bounds = calculateBounds(meshGeometry(mesh).vertices);

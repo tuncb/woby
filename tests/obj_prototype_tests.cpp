@@ -29,7 +29,8 @@ struct PrototypeFixture {
 
 void sameMesh(const woby::Mesh& a, const woby::Mesh& b) {
     CHECK(a.origin == b.origin);
-    CHECK(meshGeometry(a).precisePositions == meshGeometry(b).precisePositions);
+    REQUIRE(meshGeometry(a).vertices.size() == meshGeometry(b).vertices.size());
+    for (size_t i = 0; i < meshGeometry(a).vertices.size(); ++i) { CHECK(woby::meshPosition(a, i) == woby::meshPosition(b, i)); }
     CHECK(meshGeometry(a).indices == meshGeometry(b).indices); CHECK(meshGeometry(a).lineIndices == meshGeometry(b).lineIndices); CHECK(meshGeometry(a).pointIndices == meshGeometry(b).pointIndices);
     REQUIRE(meshGeometry(a).vertices.size() == meshGeometry(b).vertices.size());
     for (size_t i = 0; i < meshGeometry(a).vertices.size(); ++i) {
@@ -38,7 +39,7 @@ void sameMesh(const woby::Mesh& a, const woby::Mesh& b) {
         CHECK(meshGeometry(a).vertices[i].texcoord == meshGeometry(b).vertices[i].texcoord);
     }
     REQUIRE(a.sourceData); REQUIRE(b.sourceData);
-    CHECK(a.sourceData->points == b.sourceData->points);
+    CHECK(woby::sourcePositions(*a.sourceData) == woby::sourcePositions(*b.sourceData));
     CHECK(a.sourceData->indices == b.sourceData->indices);
     CHECK(a.sourceData->originalPointIds == b.sourceData->originalPointIds);
     REQUIRE(meshGeometry(a).nodes.size() == meshGeometry(b).nodes.size());

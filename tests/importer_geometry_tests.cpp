@@ -200,11 +200,11 @@ TEST_CASE("Geometry importer retains freeform precision before and after rebasin
     for (auto& point : g.arc) { point.position[0] += 100000000.0; point.position[1] += 100000000.0; }
     const auto mesh = woby::copyImportedMesh(g.result,nullptr,nullptr,nullptr,nullptr,&g.freeform);
     CHECK(mesh.origin[0] == 100000000.5);
-    CHECK(meshGeometry(mesh).precisePositions.front()[0] == .5);
+    CHECK(woby::meshPosition(mesh, 0)[0] == .5);
     CHECK(meshGeometry(mesh).vertices.front().position[0] == .5f);
     CHECK(woby::evaluateFreeform(mesh.freeform->patches[0],.5).position[0] == doctest::Approx(100000000.0+std::sqrt(.5)));
     auto rebased = mesh; woby::rebaseMesh(rebased,{100000001,100000001,0});
-    CHECK(meshGeometry(rebased).precisePositions.front()[0] == 0);
+    CHECK(woby::meshPosition(rebased, 0)[0] == 0);
     CHECK(rebased.freeform == mesh.freeform);
 }
 

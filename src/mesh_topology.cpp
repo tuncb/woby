@@ -268,13 +268,13 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
     const auto& data = *source.data;
     result.provenance = data.provenance;
     if (data.indices.size() % 3) { throw std::invalid_argument("Invalid source triangle indices."); }
-    for (const auto& point : data.points) {
+    for (const auto& point : sourcePositions(data)) {
         canceled(stop);
         for (const auto value : point) { if (!std::isfinite(value)) { throw std::invalid_argument("Non-finite source coordinate."); } }
     }
     for (const auto index : data.indices) {
         canceled(stop);
-        if (index >= data.points.size()) { throw std::invalid_argument("Invalid source point index."); }
+        if (index >= sourcePositions(data).size()) { throw std::invalid_argument("Invalid source point index."); }
     }
     std::vector<const SourcePartInstance*> parts;
     for (const auto& part : source.parts) {
@@ -302,9 +302,9 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
         });
         const size_t missingVertex = std::numeric_limits<size_t>::max();
         std::vector<size_t> originalIds;
-        if (result.mode == TopologyMode::originalIndex && uniformTransform) { originalIds.assign(data.points.size(), missingVertex); }
-        else if (result.mode == TopologyMode::originalIndex) { reserveAnalysisIndex(originalVertices, data.points.size()); }
-        else { reserveAnalysisIndex(exactVertices, data.points.size()); }
+        if (result.mode == TopologyMode::originalIndex && uniformTransform) { originalIds.assign(sourcePositions(data).size(), missingVertex); }
+        else if (result.mode == TopologyMode::originalIndex) { reserveAnalysisIndex(originalVertices, sourcePositions(data).size()); }
+        else { reserveAnalysisIndex(exactVertices, sourcePositions(data).size()); }
         std::vector<size_t> visited(data.indices.size() / 3, 0);
         size_t generation = 0;
         uint64_t previousPart = 0;
@@ -312,7 +312,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
         for (const auto* part : parts) {
             selectedFaces += std::min(part->indexCount / 3, data.indices.size() / 3 - selectedFaces);
         }
-        const auto selectedVertices = std::min(data.points.size(), selectedFaces * 3);
+        const auto selectedVertices = std::min(sourcePositions(data).size(), selectedFaces * 3);
         result.vertices.reserve(selectedVertices);
         result.faces.reserve(selectedFaces);
         referenceLists.reserve(selectedVertices);
@@ -326,7 +326,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
                 visited[i/3] = generation;
                 std::array<Point, 3> points{};
                 for (size_t j = 0; j < 3; ++j) {
-                    const auto p = promoteSourcePoint(data.points[data.indices[i+j]]);
+                    const auto p = promoteSourcePoint(sourcePositions(data)[data.indices[i+j]]);
                     const auto& m = part->transform;
                     for (size_t k = 0; k < 3; ++k) {
                         const double value = m[k]*p[0] + m[k+4]*p[1] + m[k+8]*p[2] + m[k+12];

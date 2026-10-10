@@ -35,7 +35,54 @@ MeshGeometry& editMeshGeometry(Mesh& mesh)
 }
 void publishMeshGeometry(Mesh& mesh)
 {
-    if (mesh.draft) { mesh.storage = std::shared_ptr<const MeshGeometry>(std::move(mesh.draft)); }
+    if (!mesh.draft) { return; }
+    const auto& g = *mesh.draft;
+    if (g.sourcePositions) {
+        if (!g.precisePositions.empty()) { throw std::invalid_argument("Mixed direct and source positions."); }
+        if (g.positionIndexing == PositionIndexing::identity) {
+            if (!g.positionIndices.empty() || g.vertices.size() > g.sourcePositions->size()) {
+                throw std::invalid_argument("Invalid identity position storage.");
+            }
+        } else {
+            if (g.positionIndices.size() != g.vertices.size()) { throw std::invalid_argument("Incomplete position mapping."); }
+            for (const auto index : g.positionIndices) {
+                if (index >= g.sourcePositions->size()) { throw std::invalid_argument("Invalid source position index."); }
+            }
+        }
+    } else if (!g.positionIndices.empty() || g.positionIndexing != PositionIndexing::identity
+        || (!g.precisePositions.empty() && g.precisePositions.size() != g.vertices.size())) {
+        throw std::invalid_argument("Invalid direct position storage.");
+    }
+    mesh.storage = std::shared_ptr<const MeshGeometry>(std::move(mesh.draft));
+}
+
+void appendMeshPositionIndex(MeshGeometry& geometry, uint32_t sourceIndex)
+{
+    // Called before the corresponding render vertex is appended.
+    if (geometry.positionIndexing == PositionIndexing::identity && sourceIndex != geometry.vertices.size()) {
+        geometry.positionIndices.reserve(geometry.vertices.capacity());
+        for (size_t i = 0; i < geometry.vertices.size(); ++i) { geometry.positionIndices.push_back(static_cast<uint32_t>(i)); }
+        geometry.positionIndexing = PositionIndexing::mapped;
+    }
+    if (geometry.positionIndexing == PositionIndexing::mapped) { geometry.positionIndices.push_back(sourceIndex); }
+}
+std::vector<Coordinate>& editMeshPositions(Mesh& mesh)
+{
+    std::vector<Coordinate> positions;
+    positions.reserve(meshGeometry(mesh).vertices.size());
+    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) { positions.push_back(meshPosition(mesh, i)); }
+    auto& g = editMeshGeometry(mesh);
+    g.precisePositions = std::move(positions);
+    g.sourcePositions.reset();
+    g.positionIndexing = PositionIndexing::identity;
+    std::vector<uint32_t>().swap(g.positionIndices);
+    mesh.sourceData.reset();
+    mesh.duplicateInput.reset();
+    mesh.originalBounds.reset();
+    mesh.annotationCache.reset();
+    mesh.uvQuality.reset();
+    renewMeshContentRevision(mesh);
+    return g.precisePositions;
 }
 
 uint64_t nextMeshContentRevision()
@@ -118,8 +165,13 @@ bool finiteCoordinate(const Coordinate& point) noexcept
 }
 Coordinate meshPosition(const Mesh& mesh, size_t index)
 {
-    if (!meshGeometry(mesh).precisePositions.empty()) { return meshGeometry(mesh).precisePositions.at(index); }
-    const auto& p = meshGeometry(mesh).vertices.at(index).position;
+    const auto& g = meshGeometry(mesh);
+    if (index >= g.vertices.size()) { throw std::out_of_range("Invalid render vertex index."); }
+    if (g.sourcePositions) {
+        return g.sourcePositions->at(g.positionIndexing == PositionIndexing::identity ? index : g.positionIndices.at(index));
+    }
+    if (!g.precisePositions.empty()) { return g.precisePositions.at(index); }
+    const auto& p = g.vertices[index].position;
     return {p[0], p[1], p[2]};
 }
 std::array<Coordinate, 2> originalMeshBounds(const Mesh& mesh, const MeshNode* node)
@@ -191,20 +243,36 @@ void rebaseMesh(Mesh& mesh, const Coordinate& origin)
     if (!finiteCoordinate(origin)) { throw std::invalid_argument("Non-finite mesh origin."); }
     if (mesh.origin == origin) { return; }
     const auto delta = relativePosition(mesh.origin, origin);
-    if (meshGeometry(mesh).precisePositions.empty()) {
-        editMeshGeometry(mesh).precisePositions.reserve(meshGeometry(mesh).vertices.size());
-        for (const auto& vertex : meshGeometry(mesh).vertices) { editMeshGeometry(mesh).precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]}); }
+    auto& g = editMeshGeometry(mesh);
+    if (g.sourcePositions) {
+        const auto previous = g.sourcePositions;
+        auto positions = std::make_shared<std::vector<Coordinate>>(*previous);
+        for (auto& p : *positions) { p = originalPosition(p, delta); }
+        g.sourcePositions = std::move(positions);
+        if (mesh.sourceData && mesh.sourceData->positions == previous) {
+            auto source = std::make_shared<SourceMeshData>(*mesh.sourceData);
+            source->positions = g.sourcePositions;
+            mesh.sourceData = std::move(source);
+        } else if (mesh.sourceData) {
+            auto source = std::make_shared<SourceMeshData>(*mesh.sourceData);
+            for (auto& p : editSourcePositions(*source)) { p = originalPosition(p, delta); }
+            publishSourcePositions(*source);
+            mesh.sourceData = std::move(source);
+        }
+    } else {
+        if (g.precisePositions.empty()) {
+            g.precisePositions.reserve(g.vertices.size());
+            for (const auto& vertex : g.vertices) { g.precisePositions.push_back({vertex.position[0], vertex.position[1], vertex.position[2]}); }
+        }
+        for (auto& p : g.precisePositions) { p = originalPosition(p, delta); }
+        if (mesh.sourceData) {
+            auto source = std::make_shared<SourceMeshData>(*mesh.sourceData);
+            for (auto& p : editSourcePositions(*source)) { p = originalPosition(p, delta); }
+            publishSourcePositions(*source);
+            mesh.sourceData = std::move(source);
+        }
     }
-    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) {
-        auto& p = editMeshGeometry(mesh).precisePositions.at(i);
-        p = originalPosition(p, delta);
-        editMeshGeometry(mesh).vertices[i].position = renderPosition(p);
-    }
-    if (mesh.sourceData) {
-        auto source = std::make_shared<SourceMeshData>(*mesh.sourceData);
-        for (auto& p : source->points) { p = originalPosition(p, delta); }
-        mesh.sourceData = std::move(source);
-    }
+    for (size_t i = 0; i < g.vertices.size(); ++i) { g.vertices[i].position = renderPosition(meshPosition(mesh, i)); }
     if (mesh.duplicateInput) {
         auto input = std::make_shared<DuplicateInput>(*mesh.duplicateInput);
         for (auto& source : input->sources) {
@@ -336,8 +404,18 @@ void captureSourceMesh(Mesh& mesh, SourceProvenance provenance, std::span<const 
 {
     auto data = std::make_shared<SourceMeshData>();
     data->provenance = provenance;
-    data->points.reserve(meshGeometry(mesh).vertices.size());
-    for (size_t i = 0; i < meshGeometry(mesh).vertices.size(); ++i) { data->points.push_back(meshPosition(mesh, i)); }
+    auto& g = editMeshGeometry(mesh);
+    if (!g.sourcePositions && g.precisePositions.size() == g.vertices.size()) {
+        data->draftPositions = std::move(g.precisePositions);
+    } else {
+        data->draftPositions.reserve(g.vertices.size());
+        for (size_t i = 0; i < g.vertices.size(); ++i) { data->draftPositions.push_back(meshPosition(mesh, i)); }
+    }
+    publishSourcePositions(*data);
+    g.sourcePositions = data->positions;
+    std::vector<Coordinate>().swap(g.precisePositions);
+    std::vector<uint32_t>().swap(g.positionIndices);
+    g.positionIndexing = PositionIndexing::identity;
     data->indices = meshGeometry(mesh).indices;
     data->originalPointIds.assign(originalPointIds.begin(), originalPointIds.end());
     mesh.sourceData = std::move(data);

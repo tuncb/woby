@@ -26,7 +26,7 @@ uint64_t hashSourcePoints(const woby::SourceMeshData& source) {
     uint64_t hash = 14695981039346656037ull;
     // Canonical double encoding permits comparison with the historical runs.
     // Only three coordinates are promoted at a time, after measured stages.
-    for (const auto& point : source.points) {
+    for (const auto& point : woby::sourcePositions(source)) {
         const auto promoted = woby::promoteSourcePoint(point);
         hash = hashBytes(hash, promoted.data(), sizeof(promoted));
     }
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
             {"vertex_bytes", meshGeometry(mesh).vertices.size()*sizeof(woby::Vertex)},
             {"vertex_capacity_bytes", meshGeometry(mesh).vertices.capacity()*sizeof(woby::Vertex)},
             {"index_bytes", meshGeometry(mesh).indices.size()*sizeof(uint32_t)},
-            {"source_point_bytes", mesh.sourceData->points.size()*sizeof(mesh.sourceData->points[0])},
+            {"source_point_bytes", woby::sourcePositions(*mesh.sourceData).size()*sizeof(woby::sourcePositions(*mesh.sourceData)[0])},
             {"source_index_bytes", mesh.sourceData->indices.size()*sizeof(uint32_t)},
             {"layout", {sizeof(woby::Vertex), offsetof(woby::Vertex, position), offsetof(woby::Vertex, normal), offsetof(woby::Vertex, texcoord)}},
             {"map", stats}};

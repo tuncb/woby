@@ -58,13 +58,13 @@ TEST_CASE("coordinate origin preserves small OBJ features before float conversio
     const auto mesh = woby::loadObjMesh(fixture.obj("far.obj", 8000000));
     CHECK(mesh.origin[0] != 0);
     CHECK(mesh.bounds.radius < 1);
-    REQUIRE(mesh.sourceData->points.size() == 5);
-    CHECK(mesh.sourceData->points[4][0] - mesh.sourceData->points[0][0] == doctest::Approx(.01).epsilon(1e-7));
+    REQUIRE(woby::sourcePositions(*mesh.sourceData).size() == 5);
+    CHECK(woby::sourcePositions(*mesh.sourceData)[4][0] - woby::sourcePositions(*mesh.sourceData)[0][0] == doctest::Approx(.01).epsilon(1e-7));
     CHECK(meshGeometry(mesh).vertices[0].position != meshGeometry(mesh).vertices[1].position);
     const auto bounds = woby::originalMeshBounds(mesh);
     CHECK(bounds[0][0] == 8000000);
     CHECK(bounds[1][0] == 8000000.125);
-    CHECK(meshGeometry(mesh).precisePositions.size() == meshGeometry(mesh).vertices.size());
+    CHECK(meshGeometry(mesh).sourcePositions == mesh.sourceData->positions);
 }
 
 TEST_CASE("coordinate origin makes detectors and measurements translation invariant")
@@ -143,7 +143,11 @@ TEST_CASE("coordinate origin preserves double importer positions")
     input.indices = indices; input.index_count = 3;
     const auto imported = woby::copyImportedMesh(input);
     CHECK(imported.bounds.radius < .02);
-    CHECK(meshGeometry(imported).precisePositions[1][0]-meshGeometry(imported).precisePositions[0][0] == doctest::Approx(.01).epsilon(1e-7));
+    CHECK(meshGeometry(imported).positionIndexing == woby::PositionIndexing::identity);
+    CHECK(meshGeometry(imported).positionIndices.empty());
+    CHECK(meshGeometry(imported).precisePositions.empty());
+    CHECK(meshGeometry(imported).sourcePositions == imported.sourceData->positions);
+    CHECK(woby::meshPosition(imported, 1)[0]-woby::meshPosition(imported, 0)[0] == doctest::Approx(.01).epsilon(1e-7));
 }
 
 TEST_CASE("coordinate origin aligns independently loaded meshes for direct comparisons")

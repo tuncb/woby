@@ -225,8 +225,10 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     auto source = std::make_shared<SourceMeshData>();
     source->provenance = SourceProvenance::objPositions;
     mesh.origin = origin;
-    source->points = std::move(sourcePoints);
-    reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, source->points.size(), source->points.size());
+    source->draftPositions = std::move(sourcePoints);
+    publishSourcePositions(*source);
+    meshData.sourcePositions = source->positions;
+    reportModelLoadProgress(progress, ModelLoadStage::sourcePositions, sourcePositions(*source).size(), sourcePositions(*source).size());
     VertexIndexTable vertexMap;
     counts.triangleIndices = 0;
     for (const auto& shape : shapes) {
@@ -240,16 +242,15 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     const auto pointIndexCount = counts.pointIndices;
     const size_t totalIndices = indexCount + lineIndexCount + pointIndexCount;
     // Position count is only an estimate: normal/UV seams can split vertices.
-    const size_t vertexCapacity = std::min({source->points.size(), totalIndices,
+    const size_t vertexCapacity = std::min({sourcePositions(*source).size(), totalIndices,
         size_t(std::numeric_limits<SceneBufferSize>::max() / sizeof(Vertex))});
     meshData.indices.reserve(indexCount);
     meshData.lineIndices.reserve(lineIndexCount);
     meshData.pointIndices.reserve(pointIndexCount);
     meshData.vertices.reserve(vertexCapacity);
-    meshData.precisePositions.reserve(vertexCapacity);
     meshData.nodes.reserve(shapes.size());
     source->indices.reserve(indexCount);
-    reserveIndexTable(vertexMap, source->points.size(), vertexCapacity,
+    reserveIndexTable(vertexMap, sourcePositions(*source).size(), vertexCapacity,
         Prototype ? buffers->normals.empty() && buffers->texcoords.empty() : attrib.normals.empty() && attrib.texcoords.empty());
     reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, 0, totalIndices);
 
@@ -265,7 +266,7 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
                 hasTexcoords = hasTexcoords && std::isfinite(uvValue(uv)) && std::isfinite(uvValue(uv + 1u));
             }
             if (meshData.indices.size() % 16384 == 0) { reportModelLoadProgress(progress, ModelLoadStage::buildingMesh, meshData.indices.size(), totalIndices); }
-            if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= source->points.size()) {
+            if (index.position_index < 0 || static_cast<size_t>(index.position_index) >= sourcePositions(*source).size()) {
                 throw std::runtime_error("OBJ contains an invalid source position index.");
             }
             source->indices.push_back(static_cast<uint32_t>(index.position_index));
@@ -281,8 +282,8 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
             }
 
             Vertex vertex{};
-            const auto& point = source->points[static_cast<size_t>(index.position_index)];
-            meshData.precisePositions.push_back(point);
+            const auto& point = sourcePositions(*source)[static_cast<size_t>(index.position_index)];
+            appendMeshPositionIndex(meshData, static_cast<uint32_t>(index.position_index));
             vertex.position = renderPosition(point);
 
             if (index.normal_index >= 0) {
@@ -329,13 +330,13 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
     };
     primitiveVisits = 0;
     const auto primitiveVertex = [&](int positionIndex) {
-        if (positionIndex < 0 || static_cast<size_t>(positionIndex) >= source->points.size()) {
+        if (positionIndex < 0 || static_cast<size_t>(positionIndex) >= sourcePositions(*source).size()) {
             throw std::runtime_error("OBJ contains an invalid source position index.");
         }
         const auto mapped = vertexIndex(vertexMap, {positionIndex, -1, -1});
         if (mapped == meshData.vertices.size()) {
-            const auto& point = source->points[static_cast<size_t>(positionIndex)];
-            meshData.precisePositions.push_back(point);
+            const auto& point = sourcePositions(*source)[static_cast<size_t>(positionIndex)];
+            appendMeshPositionIndex(meshData, static_cast<uint32_t>(positionIndex));
             // Unlit primitives do not need normals. A valid placeholder avoids
             // triggering regeneration of authored face normals in mixed files.
             meshData.vertices.push_back({renderPosition(point), {0, 0, 1}, {}});
@@ -374,10 +375,10 @@ Mesh buildObjMesh(rapidobj::Result result, std::vector<FreeformPatch> freeformPa
             meshData.nodes.push_back(std::move(node));
         }
     }
-    if (counts.vertexCloud && !source->points.empty()) {
+    if (counts.vertexCloud && !sourcePositions(*source).empty()) {
         MeshNode node;
         node.name = "Points";
-        for (size_t i = 0; i < source->points.size(); ++i) { meshData.pointIndices.push_back(primitiveVertex(static_cast<int>(i))); }
+        for (size_t i = 0; i < sourcePositions(*source).size(); ++i) { meshData.pointIndices.push_back(primitiveVertex(static_cast<int>(i))); }
         node.pointIndexCount = static_cast<uint32_t>(meshData.pointIndices.size());
         meshData.nodes.push_back(std::move(node));
     }

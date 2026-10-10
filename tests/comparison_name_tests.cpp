@@ -1022,7 +1022,7 @@ TEST_CASE("diagnostics show all checks including zero counts and pending results
     auto source = std::make_shared<woby::SourceMeshData>();
     source->provenance = woby::SourceProvenance::objPositions;
     for (const auto& vertex : meshGeometry(mesh).vertices) {
-        source->points.push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
+        woby::editSourcePositions(*source).push_back({vertex.position[0], vertex.position[1], vertex.position[2]});
     }
     source->indices = meshGeometry(mesh).indices;
     mesh.sourceData = std::move(source);

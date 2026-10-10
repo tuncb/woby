@@ -97,11 +97,15 @@ void coordinateMultiply(double* result, const double* a, const double* b);
 [[nodiscard]] uint64_t nextMeshContentRevision();
 // Mutable construction buffers. Published meshes share a const owner of these
 // arrays. Caches and per-use analysis settings stay outside the owner.
+enum class PositionIndexing { identity, mapped };
 struct MeshGeometry {
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
     std::vector<MeshNode> nodes;
-    std::vector<Coordinate> precisePositions; // CPU positions, in the same local frame as vertices.
+    std::vector<Coordinate> precisePositions; // Direct positions for generated meshes.
+    std::shared_ptr<const std::vector<Coordinate>> sourcePositions;
+    PositionIndexing positionIndexing = PositionIndexing::identity;
+    std::vector<uint32_t> positionIndices; // Render vertex -> source position, only in mapped mode.
     std::vector<MeshHierarchyNode> hierarchy; // Validated source defaults; editable tree lives in UiState.
     std::vector<uint32_t> lineIndices; // Independent pairs; never fed to triangle analysis.
     std::vector<uint32_t> pointIndices; // Explicit point geometry, separate from mesh vertex overlays.
@@ -142,6 +146,11 @@ struct Mesh {
 // Finish construction before passing a mesh to scene state, workers, or results.
 // Transfers the buffers without copying them. Empty meshes need no owner.
 void publishMeshGeometry(Mesh& mesh);
+// Materialize render positions before arbitrary coordinate edits. Source analysis
+// metadata is discarded because its coordinates would otherwise become stale.
+[[nodiscard]] std::vector<Coordinate>& editMeshPositions(Mesh& mesh);
+// Append an authored source ID; an identity prefix requires no mapping allocation.
+void appendMeshPositionIndex(MeshGeometry& geometry, uint32_t sourceIndex);
 
 
 // After editing published geometry, renew this identity and notify the owning UiState.

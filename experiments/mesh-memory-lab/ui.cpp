@@ -258,8 +258,8 @@ void meshTable(UiState& state, const Trace& trace)
         ImGui::EndTable();
     }
     heading("Retained CPU arrays / not uploaded");
-    ImGui::Text("precisePositions   %zu x 24 B    local coordinates per render vertex",meshGeometry(trace.mesh).precisePositions.size());
-    ImGui::Text("sourceData.points  %zu x 24 B    original position identity, local frame",trace.mesh.sourceData->points.size());
+    ImGui::Text("positionIndices   %zu x 4 B    render vertex to source position (empty for identity)",meshGeometry(trace.mesh).positionIndices.size());
+    ImGui::Text("shared positions  %zu x 24 B    original position identity, local frame",woby::sourcePositions(*trace.mesh.sourceData).size());
     ImGui::Text("sourceData.indices %zu x 4 B     corner -> source position",trace.mesh.sourceData->indices.size());
     ImGui::Text("%zu B total CPU payload; headers and capacity are excluded.",payloadBytes(Node::mesh,trace));
     heading("Render indices versus original position indices / 4 B per element");
@@ -278,15 +278,15 @@ void meshTable(UiState& state, const Trace& trace)
         }
         ImGui::EndTable();
     }
-    heading("Double sidecars / same local frame, two identity domains");
+    heading("Shared coordinates / render and source identity");
     if (dataTable("sidecars",4,ImGuiTableFlags_RowBg)) {
-        for (const auto* name : {"render vertex / +byte","precisePositions[v]","source position / +byte","sourceData.points[p]"}) { ImGui::TableSetupColumn(name); }
+        for (const auto* name : {"render vertex / +byte","meshPosition(v)","source position / +byte","shared positions[p]"}) { ImGui::TableSetupColumn(name); }
         ImGui::TableHeadersRow();
         for (size_t v = 0; v < meshGeometry(trace.mesh).vertices.size(); ++v) {
             const auto p = static_cast<size_t>(trace.vertexKeys[v].position);
-            const auto& a = meshGeometry(trace.mesh).precisePositions[v]; const auto& b = trace.mesh.sourceData->points[p];
+            const auto& a = woby::meshPosition(trace.mesh, v); const auto& b = woby::sourcePositions(*trace.mesh.sourceData)[p];
             ImGui::PushID(static_cast<int>(v)); ImGui::TableNextRow(); markRow(v == selectedVertex(state,trace));
-            ImGui::TableNextColumn(); char name[32]; std::snprintf(name,sizeof(name),"v%zu / %zu",v,v*24);
+            ImGui::TableNextColumn(); char name[32]; std::snprintf(name,sizeof(name),"v%zu / %zu",v,v*4);
             if (ImGui::Selectable(name,false,ImGuiSelectableFlags_SpanAllColumns)) { selectVertex(state,trace,v); }
             ImGui::TableNextColumn(); ImGui::Text("(%.17g, %.17g, %.17g)",a[0],a[1],a[2]);
             ImGui::TableNextColumn(); ImGui::Text("p%zu / %zu",p,p*24);

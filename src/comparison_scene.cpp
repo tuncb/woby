@@ -624,7 +624,6 @@ static uint64_t comparisonSignature(const UiState& state, SceneObjectId id, bool
             if (!boundsOnly && settings.analysisMode == AnalysisMode::model) { hashCombine(seed, static_cast<int>(file.fileSettings.analysisMode)); }
             hashCombine(seed, file.groupSettings[index].objectId);
             hashCombine(seed, file.mesh.contentRevision);
-            hashCombine(seed, meshGeometry(file.mesh).precisePositions.size());
             hashCombine(seed, meshGeometry(file.mesh).vertices.size());
             hashCombine(seed, meshGeometry(file.mesh).indices.size());
             hashCombine(seed, meshGeometry(file.mesh).nodes[index].indexOffset);

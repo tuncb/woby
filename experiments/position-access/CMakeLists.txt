@@ -1,0 +1,8 @@
+add_executable(woby_position_production main.cpp)
+target_link_libraries(woby_position_production PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_position_production)
+target_compile_definitions(woby_position_production PRIVATE POSITION_VARIANT="production")
+if(BUILD_TESTING)
+    add_test(NAME woby_position_production_contract COMMAND woby_position_production --self-test)
+    set_tests_properties(woby_position_production_contract PROPERTIES LABELS "unit;cpu")
+endif()

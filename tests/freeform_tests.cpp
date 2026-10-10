@@ -79,7 +79,7 @@ TEST_CASE("OBJ freeform supports rational curves negative indexes and continuati
     CHECK(meshGeometry(mesh).lineIndices.size()==64);
     CHECK(meshGeometry(mesh).indices.empty()); CHECK(meshGeometry(mesh).pointIndices.empty());
     CHECK(meshGeometry(mesh).nodes[0].name=="arc");
-    const auto& middle=meshGeometry(mesh).precisePositions[16];
+    const auto& middle=woby::meshPosition(mesh, 16);
     CHECK(middle[0]+mesh.origin[0] == doctest::Approx(std::sqrt(.5)));
 }
 
@@ -113,6 +113,17 @@ TEST_CASE("OBJ freeform mixes ordinary primitives without changing authored norm
     CHECK(meshGeometry(mesh).nodes.size()==4); CHECK(meshGeometry(mesh).indices.size()==3);
     CHECK(meshGeometry(mesh).lineIndices.size()==66); CHECK(meshGeometry(mesh).pointIndices.size()==1);
     CHECK(meshGeometry(mesh).vertices[0].normal[2]==-1);
+    const auto& data = meshGeometry(mesh);
+    REQUIRE(data.sourcePositions == mesh.sourceData->positions);
+    CHECK(data.precisePositions.empty());
+    REQUIRE(data.positionIndexing == woby::PositionIndexing::mapped);
+    const auto offset = mesh.freeform->grids[0].vertexOffset;
+    REQUIRE(offset > 3); // Normal splits make render and source offsets differ.
+    CHECK(data.positionIndices[offset] == 3);
+    for (size_t i=offset; i<data.vertices.size(); ++i) {
+        CHECK(data.positionIndices[i] == 3 + i-offset);
+        CHECK(woby::meshPosition(mesh,i) == (*data.sourcePositions)[3+i-offset]);
+    }
 }
 
 TEST_CASE("OBJ freeform interpolates authored UVs and normals") {
@@ -242,4 +253,18 @@ TEST_CASE("Freeform collapsed surface boundary has a finite interior-limit norma
     p.controls={{{0,0,0,1}},{{0,0,0,1}},{{0,1,0,1}},{{1,1,0,1}}};
     woby::validateFreeformPatch(p);
     CHECK(woby::freeformNormal(p,.5,0)==std::array<float,3>{0,0,1});
+}
+
+TEST_CASE("freeform append retains shared coordinates after source metadata is removed")
+{
+    auto mesh = woby::loadObjMeshText("v 0 0 0\nv 1 0 0\nv 0 1 0\nv 9 8 7\nf 3 1 2\n");
+    const auto snapshot = mesh;
+    mesh.sourceData.reset();
+    woby::appendFreeformGeometry(mesh, {arc()});
+    woby::publishMeshGeometry(mesh);
+    REQUIRE(mesh.sourceData);
+    CHECK(woby::sourcePositions(*mesh.sourceData)[3] == woby::Coordinate{9, 8, 7});
+    CHECK(meshGeometry(mesh).positionIndices[3] == 4);
+    CHECK(mesh.sourceData->indices == std::vector<uint32_t>{2, 0, 1});
+    for (size_t i=0; i<3; ++i) { CHECK(woby::meshPosition(mesh,i) == woby::meshPosition(snapshot,i)); }
 }

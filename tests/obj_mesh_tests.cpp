@@ -269,9 +269,10 @@ TEST_CASE("OBJ text import shares polygon construction with file import")
     CHECK(meshGeometry(memoryMesh).indices == meshGeometry(fileMesh).indices);
     CHECK(memoryMesh.origin == fileMesh.origin);
     CHECK(memoryMesh.origin[0] == 1000000001.0);
-    CHECK(meshGeometry(memoryMesh).precisePositions == meshGeometry(fileMesh).precisePositions);
+    REQUIRE(meshGeometry(memoryMesh).vertices.size() == meshGeometry(fileMesh).vertices.size());
+    for (size_t i = 0; i < meshGeometry(memoryMesh).vertices.size(); ++i) { CHECK(woby::meshPosition(memoryMesh, i) == woby::meshPosition(fileMesh, i)); }
     REQUIRE(memoryMesh.sourceData);
-    CHECK(memoryMesh.sourceData->points == fileMesh.sourceData->points);
+    CHECK(woby::sourcePositions(*memoryMesh.sourceData) == woby::sourcePositions(*fileMesh.sourceData));
     CHECK(memoryMesh.sourceData->indices == fileMesh.sourceData->indices);
     REQUIRE(meshGeometry(memoryMesh).nodes.size() == 1);
     CHECK(meshGeometry(memoryMesh).nodes[0].name == "rebased_quad");
@@ -437,7 +438,7 @@ TEST_CASE("OBJ dense indexing grows across many seams without merging source ide
     REQUIRE(meshGeometry(loaded).vertices.size() == 240);
     REQUIRE(meshGeometry(loaded).indices.size() == 243);
     REQUIRE(loaded.sourceData);
-    CHECK(loaded.sourceData->points.size() == (sparse ? 1003u : 3u));
+    CHECK(woby::sourcePositions(*loaded.sourceData).size() == (sparse ? 1003u : 3u));
     REQUIRE(loaded.sourceData->indices.size() == meshGeometry(loaded).indices.size());
     for (size_t i = 0; i < meshGeometry(loaded).indices.size(); ++i) {
         CHECK(loaded.sourceData->indices[i] == i % 3);
@@ -511,7 +512,7 @@ TEST_CASE("OBJ loader retains identical values with distinct source indices and 
         CHECK(meshGeometry(mesh).nodes[i].indexCount == 3u);
     }
     REQUIRE(mesh.sourceData);
-    CHECK(mesh.sourceData->points.size() == 4u);
+    CHECK(woby::sourcePositions(*mesh.sourceData).size() == 4u);
     CHECK(mesh.sourceData->indices == meshGeometry(mesh).indices);
 }
 
@@ -711,8 +712,8 @@ TEST_CASE("OBJ position lookup preserves first use across shapes and unused posi
     writeText(path, text.c_str());
     const auto mesh = woby::loadObjMesh(path);
     REQUIRE(mesh.sourceData);
-    CHECK(sizeof(mesh.sourceData->points[0]) == 3 * sizeof(double));
-    CHECK(mesh.sourceData->points.size() == (sparse ? 104u : 4u));
+    CHECK(sizeof(woby::sourcePositions(*mesh.sourceData)[0]) == 3 * sizeof(double));
+    CHECK(woby::sourcePositions(*mesh.sourceData).size() == (sparse ? 104u : 4u));
     CHECK(mesh.sourceData->indices == std::vector<uint32_t>{3,1,2,2,1,3});
     CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{0,1,2,2,1,0});
     REQUIRE(meshGeometry(mesh).vertices.size() == 3);
@@ -775,7 +776,7 @@ TEST_CASE("OBJ points select explicit vertices and preserve source coordinates")
     CHECK(meshGeometry(mesh).nodes[1].pointIndexOffset == 2);
     CHECK(meshGeometry(mesh).pointIndices == std::vector<uint32_t>{0,1,1});
     CHECK(meshGeometry(mesh).vertices.size() == 2);
-    CHECK(mesh.sourceData->points.size() == 3);
+    CHECK(woby::sourcePositions(*mesh.sourceData).size() == 3);
     CHECK(woby::originalMeshBounds(mesh)[1] == woby::Coordinate{1000000000.125,1,0});
     CHECK(woby::originalMeshBounds(mesh, &meshGeometry(mesh).nodes[1])[0] == woby::Coordinate{1000000000,0,0});
 }

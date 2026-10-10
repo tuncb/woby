@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-10",
+  "repository_commit": "d8eaa74a77d4a62f302881bd652b95776206e1a2",
+  "source_sha256": "393A95E1D9F3D9A4F91E57D8E7919B32A3A770D5B732AF49263F2A5736809619",
+  "executable_sha256": "22777C337A085AE8FA93DDAE3858B946C42A309591B5A8097BCED211034452F7",
+  "compiler_path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\cl.exe",
+  "compiler_file_version": "19.51.36243.0",
+  "compiler_flags": "/O2 /MD /std:c++20 /EHsc /W4 /WX /fp:precise",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+  "os": {
+    "Caption": "Microsoft Windows 11 Home",
+    "Version": "10.0.26300"
+  },
+  "physical_memory_bytes": 68564348928,
+  "random_seed": 1729,
+  "runs": 3,
+  "samples_per_run": 9,
+  "warmup_pairs": 1,
+  "memory_values": "Logical coordinate and mapping payloads; not process memory measurements"
+}

@@ -98,11 +98,12 @@ Json meshInfo(const Mesh& mesh) {
         {"line_indices", meshGeometry(mesh).lineIndices.size()}, {"point_indices", meshGeometry(mesh).pointIndices.size()},
         {"groups", meshGeometry(mesh).nodes.size()}, {"freeform", bool(mesh.freeform)},
         {"render_vertex_bytes", capacityBytes(meshGeometry(mesh).vertices)}, {"precise_position_bytes", capacityBytes(meshGeometry(mesh).precisePositions)},
+        {"position_mapping_bytes", capacityBytes(meshGeometry(mesh).positionIndices)},
         {"triangle_index_bytes", capacityBytes(meshGeometry(mesh).indices)}, {"line_index_bytes", capacityBytes(meshGeometry(mesh).lineIndices)},
         {"point_index_bytes", capacityBytes(meshGeometry(mesh).pointIndices)}};
     if (mesh.sourceData) {
-        result.update({{"source_positions", mesh.sourceData->points.size()},
-            {"source_position_bytes", capacityBytes(mesh.sourceData->points)},
+        result.update({{"source_positions", woby::sourcePositions(*mesh.sourceData).size()},
+            {"source_position_bytes", capacityBytes(woby::sourcePositions(*mesh.sourceData))},
             {"source_index_bytes", capacityBytes(mesh.sourceData->indices)},
             {"source_id_bytes", capacityBytes(mesh.sourceData->originalPointIds)}});
     }

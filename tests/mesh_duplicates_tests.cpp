@@ -43,7 +43,7 @@ std::shared_ptr<woby::SourceMeshData> triangle()
 {
     auto data = std::make_shared<woby::SourceMeshData>();
     data->provenance = woby::SourceProvenance::objPositions;
-    data->points = {{0,0,0}, {1,0,0}, {0,1,0}};
+    woby::editSourcePositions(*data) = {{0,0,0}, {1,0,0}, {0,1,0}};
     data->indices = {0,1,2};
     return data;
 }
@@ -61,7 +61,7 @@ woby::UiState scene(const std::filesystem::path& path)
 TEST_CASE("source duplicate points use exact coordinates signed zero and source scopes")
 {
     auto data = triangle();
-    data->points.insert(data->points.end(), {{-0.0,0,0}, {0,0,0}, {1e-15f,0,0}});
+    woby::editSourcePositions(*data).insert(woby::editSourcePositions(*data).end(), {{-0.0,0,0}, {0,0,0}, {1e-15f,0,0}});
     auto input = inputFor(data);
     auto result = woby::inspectDuplicates(input);
     CHECK(result.points.duplicateCount == 2);
@@ -84,8 +84,8 @@ TEST_CASE("source duplicate points use exact coordinates signed zero and source 
 TEST_CASE("duplicate display transforms promote source floats before cancellation")
 {
     auto data = triangle();
-    data->points[0] = {16777216.0f, 1.0f, 0};
-    data->points.push_back(data->points[0]);
+    woby::editSourcePositions(*data)[0] = {16777216.0f, 1.0f, 0};
+    woby::editSourcePositions(*data).push_back(woby::editSourcePositions(*data)[0]);
     auto input = inputFor(data);
     // x' = x + y - 2^24: float arithmetic would lose y before subtraction.
     auto transform = input.sources[0].parts[0].transform;
@@ -105,7 +105,7 @@ TEST_CASE("source duplicate triangles include all permutations and repeated coll
     std::array<uint32_t, 3> ids = {0,1,2};
     data->indices.clear();
     do { data->indices.insert(data->indices.end(), ids.begin(), ids.end()); } while (std::next_permutation(ids.begin(), ids.end()));
-    data->points.insert(data->points.end(), {{0,0,0}, {1,0,0}, {0,1,0}});
+    woby::editSourcePositions(*data).insert(woby::editSourcePositions(*data).end(), {{0,0,0}, {1,0,0}, {0,1,0}});
     data->indices.insert(data->indices.end(), {3,4,5, 0,0,1, 1,0,0});
     const auto result = woby::inspectDuplicates(inputFor(data));
     CHECK(result.triangles.duplicateCount == 6);
@@ -121,7 +121,7 @@ TEST_CASE("source duplicate triangles include all permutations and repeated coll
 TEST_CASE("source duplicate status distinguishes missing source records disabled and invalid inputs")
 {
     auto data = triangle();
-    data->points.push_back({0,0,0});
+    woby::editSourcePositions(*data).push_back({0,0,0});
     auto input = inputFor(data);
     auto result = woby::inspectDuplicates(input);
     CHECK(result.points.duplicateCount == 1);
@@ -135,9 +135,9 @@ TEST_CASE("source duplicate status distinguishes missing source records disabled
     input.settings.triangles = false;
     CHECK(std::string(woby::duplicateStatus(woby::inspectDuplicates(input).triangles)) == "disabled");
     input.sources[0].data = data;
-    data->points[0][0] = std::numeric_limits<float>::quiet_NaN();
+    woby::editSourcePositions(*data)[0][0] = std::numeric_limits<float>::quiet_NaN();
     CHECK_THROWS((void)woby::inspectDuplicates(input));
-    data->points[0][0] = 0;
+    woby::editSourcePositions(*data)[0][0] = 0;
     data->indices[0] = 900;
     CHECK_THROWS((void)woby::inspectDuplicates(input));
     data->indices[0] = 0;
@@ -173,7 +173,7 @@ TEST_CASE("OBJ source duplicates survive seams and include unused records")
         "vt 0 0\nvt 1 0\nvt 0 1\nvt .5 .5\nf 1/1 2/2 3/3\nf 1/4 3/3 2/2\n");
     const auto mesh = woby::loadObjMesh(path);
     REQUIRE(mesh.sourceData);
-    CHECK(mesh.sourceData->points.size() == 4);
+    CHECK(woby::sourcePositions(*mesh.sourceData).size() == 4);
     CHECK(mesh.sourceData->indices == std::vector<uint32_t>{0,1,2,0,2,1});
     const auto result = woby::inspectDuplicates(inputFor(mesh.sourceData));
     CHECK(result.points.duplicateCount == 1);
@@ -201,7 +201,7 @@ TEST_CASE("importer duplicate records are owned before buffers are released")
     CHECK(meshGeometry(mesh).indices == std::vector<uint32_t>{2, 1, 0, 0, 1, 2});
     REQUIRE(mesh.sourceData);
     CHECK(mesh.sourceData->provenance == woby::SourceProvenance::importerVertices);
-    CHECK(mesh.sourceData->points.size() == 4);
+    CHECK(woby::sourcePositions(*mesh.sourceData).size() == 4);
     const auto result = woby::inspectDuplicates(inputFor(mesh.sourceData));
     CHECK(result.points.duplicateCount == 1);
     CHECK(result.triangles.duplicateCount == 1);
@@ -285,7 +285,7 @@ TEST_CASE("duplicate settings migrate old scenes and JSON findings are bounded")
 TEST_CASE("unused duplicate point highlights follow the file rather than a moved part")
 {
     auto data = triangle();
-    data->points.push_back({0,0,0});
+    woby::editSourcePositions(*data).push_back({0,0,0});
     auto input = inputFor(data);
     input.sources[0].unusedPointTransform[12] = 3;
     input.sources[0].parts[0].transform[12] = 10;
@@ -348,10 +348,10 @@ TEST_CASE("duplicate Run toggles retain cached findings but hide disabled JSON r
 {
     using namespace woby;
     auto data = triangle();
-    data->points.push_back(data->points[0]);
+    woby::editSourcePositions(*data).push_back(woby::editSourcePositions(*data)[0]);
     data->indices.insert(data->indices.end(), {2,1,0});
     Mesh source;
-    for (const auto& point : data->points) {
+    for (const auto& point : woby::editSourcePositions(*data)) {
         Vertex vertex;
         for (size_t k = 0; k < 3; ++k) { vertex.position[k] = static_cast<float>(point[k]); }
         editMeshGeometry(source).vertices.push_back(vertex);

@@ -33,7 +33,7 @@ DuplicateSource sourceFor(const Points& points)
 {
     auto data = std::make_shared<SourceMeshData>();
     for (const auto& point : points) {
-        data->points.push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
+        woby::editSourcePositions(*data).push_back({static_cast<float>(point[0]), static_cast<float>(point[1]), static_cast<float>(point[2])});
     }
     data->indices = {0,1,2};
     data->provenance = SourceProvenance::objPositions;
@@ -45,7 +45,7 @@ DuplicateSource sourceFor(const Points& points)
 Mesh meshFor(const DuplicateSource& source)
 {
     Mesh mesh;
-    for (const auto& point : source.data->points) {
+    for (const auto& point : woby::sourcePositions(*source.data)) {
         Vertex v; for (size_t k = 0; k < 3; ++k) { v.position[k] = static_cast<float>(point[k]); }
         editMeshGeometry(mesh).vertices.push_back(v);
     }
@@ -199,9 +199,9 @@ TEST_CASE("degenerate validation disabled unavailable and cancellation are expli
     CHECK(std::string(degenerateStatus(inspectDegenerates({source}, off))) == "disabled");
     invalid->indices[0] = 0; invalid->indices.push_back(1);
     CHECK_THROWS((void)inspectDegenerates({source}, {}));
-    invalid->indices.pop_back(); invalid->points[0][0] = std::numeric_limits<float>::infinity();
+    invalid->indices.pop_back(); woby::editSourcePositions(*invalid)[0][0] = std::numeric_limits<float>::infinity();
     CHECK_THROWS((void)inspectDegenerates({source}, {}));
-    invalid->points[0][0] = 0; source.parts[0].firstIndex = 1;
+    woby::editSourcePositions(*invalid)[0][0] = 0; source.parts[0].firstIndex = 1;
     CHECK_THROWS((void)inspectDegenerates({source}, {}));
     source.parts[0].firstIndex = 0; source.parts[0].transform[0] = std::numeric_limits<float>::quiet_NaN();
     CHECK_THROWS((void)inspectDegenerates({source}, {}));
