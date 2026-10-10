@@ -541,16 +541,9 @@ PreparedComparisonInputs prepareUvComparisonInputs(const ComparisonInputSnapshot
         if (meshGeometry(mesh).indices.empty()) { continue; }
         // Match the previous upload path: quality uses the original normals,
         // while the indexed surface uses generated smooth normals.
-        if (buffers.uvQuality) { buffers.quality = uvQualityVertices(mesh, *buffers.uvQuality, stop); }
+        if (buffers.uvQuality) { buffers.quality = uvQualityFaces(mesh, *buffers.uvQuality, stop); }
         generateSmoothNormals(editMeshGeometry(mesh).vertices, meshGeometry(mesh).indices, [&](const ModelLoadProgress&) { check(); });
-        buffers.lines.reserve(meshGeometry(mesh).indices.size() * 2);
-        for (size_t i = 0; i < meshGeometry(mesh).indices.size(); i += 3) {
-            if (i % 12288 == 0) { check(); }
-            for (size_t k = 0; k < 3; ++k) {
-                buffers.lines.push_back(meshGeometry(mesh).indices[i + k]);
-                buffers.lines.push_back(meshGeometry(mesh).indices[i + (k + 1) % 3]);
-            }
-        }
+
     }
     check();
     for (auto& mesh : *meshes) { publishMeshGeometry(mesh); }
@@ -581,12 +574,12 @@ PreparedComparisonInputs refreshUvComparisonInputs(std::shared_ptr<const std::ar
             || (normalizationColors && before.uvNormalization != after.uvNormalization)
             || (after.uvMetric == UvQualityMetric::overlap && (before.uvOverlapEnabled != after.uvOverlapEnabled
                 || before.uvOverlapScope != after.uvOverlapScope || !qualities[side]->overlapChecked));
-        if (buffers.updateQuality) { buffers.quality = uvQualityVertices((*result.meshes)[side], *quality, stop); }
+        if (buffers.updateQuality) { buffers.quality = uvQualityFaces((*result.meshes)[side], *quality, stop); }
         // World preparation starts with zero normals; layout starts with -Y.
         // The cached indexed mesh has since received smooth normals.
         const std::array<float, 3> normal = settings.uvView == UvView::layout
             ? std::array<float, 3>{0, -1, 0} : std::array<float, 3>{};
-        for (auto& vertex : buffers.quality) { vertex.normal = normal; }
+        for (auto& face : buffers.quality) { face.normals.fill(normal); }
         buffers.uvQuality = std::move(quality);
     }
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }

@@ -1,0 +1,11 @@
+add_executable(woby_face_display_probe main.cpp)
+target_link_libraries(woby_face_display_probe PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_face_display_probe)
+if(BUILD_TESTING)
+    add_test(NAME woby_face_display_contract COMMAND woby_face_display_probe --self-test)
+    set_tests_properties(woby_face_display_contract PROPERTIES LABELS "unit;cpu")
+endif()
+
+add_executable(woby_face_display_gpu_probe gpu.cpp)
+target_link_libraries(woby_face_display_gpu_probe PRIVATE woby_core nlohmann_json::nlohmann_json)
+woby_enable_project_warnings(woby_face_display_gpu_probe)

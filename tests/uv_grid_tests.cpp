@@ -283,14 +283,12 @@ TEST_CASE("UV worker snapshot owns inputs and prepares matching geometry quality
         CHECK(meshGeometry(actual).vertices[i].position == smooth[i].position);
     }
     const auto quality = woby::uvQualityVertices(expected);
-    REQUIRE(prepared.buffers[0].quality.size() == quality.size());
+    REQUIRE(prepared.buffers[0].quality.size()*3 == quality.size());
     for (size_t i = 0; i < quality.size(); ++i) {
-        CHECK(prepared.buffers[0].quality[i].position == quality[i].position);
-        CHECK(prepared.buffers[0].quality[i].normal == quality[i].normal);
-        CHECK(prepared.buffers[0].quality[i].texcoord == quality[i].texcoord);
+        CHECK(meshGeometry(expected).vertices[meshGeometry(expected).indices[i]].position == quality[i].position);
+        CHECK(prepared.buffers[0].quality[i/3].normals[i%3] == quality[i].normal);
+        CHECK(prepared.buffers[0].quality[i/3].value == quality[i].texcoord);
     }
-    const std::vector<uint32_t> expectedLines{0,1,1,2,2,0,3,4,4,5,5,3};
-    CHECK(prepared.buffers[0].lines == expectedLines);
     CHECK(meshGeometry((*prepared.meshes)[1]).indices.empty());
     std::stop_source stop;
     stop.request_stop();
@@ -321,9 +319,9 @@ TEST_CASE("UV worker prepares overlap colors and cached findings before publishi
     CHECK(mesh.uvQuality->crossPatchPairs == 1);
     CHECK(mesh.uvQuality->statistics.highlightedCount == 2);
     CHECK(mesh.uvQuality->findings == std::vector<size_t>{0, 1, 2});
-    REQUIRE(prepared.buffers[0].quality.size() >= 6);
+    REQUIRE(prepared.buffers[0].quality.size() >= 2);
     for (size_t i = 0; i < 6; ++i) {
-        CHECK(prepared.buffers[0].quality[i].texcoord == std::array<float, 2>{.5f, 1});
+        CHECK(prepared.buffers[0].quality[i/3].value == std::array<float, 2>{.5f, 1});
     }
     const auto result = woby::computeComparisonStages(mesh, {}, woby::comparisonSource);
     CHECK(result.original.source.uvQuality == mesh.uvQuality);
@@ -351,7 +349,6 @@ TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes
     const auto* vertices = meshGeometry(runtime.results.value.original.source).vertices.data();
     const auto gpuVertices = runtime.gpu.original.vertices;
     const auto gpuTriangles = runtime.gpu.original.triangles;
-    const auto gpuLines = runtime.gpu.original.lines;
     const auto revision = runtime.results.revision;
     for (const auto axis : {woby::SceneUpAxis::y, woby::SceneUpAxis::z}) {
         woby::setSceneUpAxis(state, axis);
@@ -371,7 +368,6 @@ TEST_CASE("UV runtime prepares asynchronously retains warm buffers and refreshes
     CHECK(meshGeometry(runtime.results.value.original.source).vertices.data() == vertices);
     CHECK(runtime.gpu.original.vertices.idx == gpuVertices.idx);
     CHECK(runtime.gpu.original.triangles.idx == gpuTriangles.idx);
-    CHECK(runtime.gpu.original.lines.idx == gpuLines.idx);
     CHECK(runtime.results.value.original.source.uvQuality->metric == woby::UvQualityMetric::area);
     CHECK(runtime.results.revision != revision);
     const auto refreshed = runtime.results.revision;
@@ -485,15 +481,13 @@ TEST_CASE("UV setting refresh preserves separated layout triangle identity and m
     const std::array qualities{initial.buffers[0].uvQuality, initial.buffers[1].uvQuality};
     const auto refresh = woby::refreshUvComparisonInputs(initial.meshes, qualities, settings);
     CHECK(refresh.meshes == initial.meshes);
-    CHECK(refresh.buffers[0].lines.empty());
     CHECK_FALSE(qualities[0]->overlapChecked);
     woby::setComparisonSettings(f.state, settings, id);
     const auto fresh = woby::prepareUvComparisonInputs(woby::snapshotComparisonInputs(f.state, id));
     REQUIRE(refresh.buffers[0].quality.size() == fresh.buffers[0].quality.size());
     for (size_t i = 0; i < refresh.buffers[0].quality.size(); ++i) {
-        CHECK(refresh.buffers[0].quality[i].position == fresh.buffers[0].quality[i].position);
-        CHECK(refresh.buffers[0].quality[i].normal == fresh.buffers[0].quality[i].normal);
-        CHECK(refresh.buffers[0].quality[i].texcoord == fresh.buffers[0].quality[i].texcoord);
+        CHECK(refresh.buffers[0].quality[i].normals == fresh.buffers[0].quality[i].normals);
+        CHECK(refresh.buffers[0].quality[i].value == fresh.buffers[0].quality[i].value);
     }
     auto display = (*refresh.meshes)[0];
     display.uvQuality = refresh.buffers[0].uvQuality;

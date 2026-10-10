@@ -1,7 +1,7 @@
 #pragma once
 
 #include "comparison_settings.h"
-#include "model_mesh.h"
+#include "analysis_display.h"
 
 #include <stop_token>
 
@@ -53,6 +53,7 @@ struct UvQuality {
 
 [[nodiscard]] UvQuality analyzeUvQuality(const Mesh& mesh, UvAreaNormalization normalization, UvQualityMetric metric,
     std::stop_token stop = {});
+[[nodiscard]] std::vector<UvQualityFace> uvQualityFaces(const Mesh& display, const UvQuality& quality, std::stop_token stop = {});
 [[nodiscard]] std::vector<Vertex> uvQualityVertices(const Mesh& display, std::stop_token stop = {});
 [[nodiscard]] std::vector<Vertex> uvQualityVertices(const Mesh& display, const UvQuality& quality,
     std::stop_token stop = {});

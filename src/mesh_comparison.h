@@ -36,7 +36,8 @@ struct SurfaceComparison
     Mesh source;
     // Four subtriangles per source face, each colored by its centroid distance.
     // texcoord[0] holds the unsigned distance; the input mesh is never changed.
-    Mesh sampled;
+    std::vector<DistanceFace> distanceFaces;
+    std::vector<uint32_t> sampledIndices; // Legacy identity corner IDs; not uploaded.
     std::vector<double> distances;
     std::vector<double> sampleAreas;
     double maximum = 0;
@@ -49,7 +50,7 @@ struct SurfaceComparison
     std::vector<std::array<float, 3>> finFill;
     SurfaceMeshQuality quality;
     // Worker-prepared display data, released after successful GPU upload.
-    std::vector<Vertex> qualityVertices;
+    std::vector<SurfaceQualityFace> qualityFaces;
     MeshDuplicates duplicates;
     MeshDegenerates degenerates;
     MeshIntersections intersections;

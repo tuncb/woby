@@ -19,7 +19,6 @@ struct ComparisonGpuSurface
 {
     woby::graphics::VertexBufferHandle vertices = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::IndexBufferHandle triangles = WOBY_GPU_INVALID_HANDLE;
-    woby::graphics::IndexBufferHandle lines = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle samples = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle quality = WOBY_GPU_INVALID_HANDLE;
     woby::graphics::VertexBufferHandle boundaries = WOBY_GPU_INVALID_HANDLE;

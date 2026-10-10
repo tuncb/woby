@@ -273,3 +273,41 @@ TEST_CASE("UV presentation edits reuse bounded overlap results and invalidate on
     CHECK_FALSE(quality.overlapChecked); CHECK_FALSE(quality.triangles[0].crossPatchOverlap);
     CHECK_FALSE(quality.distributions[static_cast<size_t>(woby::UvQualityMetric::overlap)].has_value());
 }
+
+TEST_CASE("UV face records preserve corner normals measurement offsets and node order")
+{
+    auto mesh = mappedTriangle();
+    appendUvTriangle(mesh, {{{0,0},{2,0},{0,2}}}, true);
+    auto& geometry = editMeshGeometry(mesh);
+    for (size_t i = 0; i < geometry.vertices.size(); ++i) {
+        geometry.vertices[i].normal = {static_cast<float>(i),static_cast<float>(i+1),static_cast<float>(i+2)};
+    }
+    geometry.nodes[0].uvQualityOffset = 2;
+    geometry.nodes[1].uvQualityOffset = 0;
+    std::reverse(geometry.nodes.begin(), geometry.nodes.end());
+    woby::UvQuality quality;
+    quality.triangles.resize(3);
+    quality.triangles[0].angleDegrees = 45;
+    quality.triangles[0].anisotropy = 8;
+    quality.triangles[0].areaLog2 = 1;
+    quality.triangles[0].minStretch = .01;
+    quality.triangles[0].orientation = -1;
+    quality.triangles[0].overlapping = true;
+    quality.triangles[2].missing = true;
+    for (auto metric : {woby::UvQualityMetric::angle,woby::UvQualityMetric::area,woby::UvQualityMetric::anisotropy,
+        woby::UvQualityMetric::minStretch,woby::UvQualityMetric::orientation,woby::UvQualityMetric::overlap}) {
+        quality.metric = metric; quality.settings.uvMetric = metric;
+        const auto reference = woby::uvQualityVertices(mesh,quality);
+        const auto faces = woby::uvQualityFaces(mesh,quality);
+        REQUIRE(faces.size() == 2);
+        for (size_t node = 0; node < 2; ++node) for (size_t corner = 0; corner < 3; ++corner) {
+            const auto face = geometry.nodes[node].indexOffset/3;
+            CHECK(faces[face].value == reference[node*3+corner].texcoord);
+            CHECK(faces[face].normals[corner] == reference[node*3+corner].normal);
+        }
+    }
+    std::stop_source stop; stop.request_stop();
+    CHECK_THROWS((void)woby::uvQualityFaces(mesh,quality,stop.get_token()));
+    geometry.nodes[0].indexOffset = 1;
+    CHECK_THROWS((void)woby::uvQualityFaces(mesh,quality));
+}

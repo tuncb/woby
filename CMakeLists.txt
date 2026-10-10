@@ -346,6 +346,7 @@ if(WOBY_BUILD_HASH_BENCHMARKS)
 endif()
 if(WOBY_BUILD_BENCHMARKS)
     add_subdirectory(experiments/position-access)
+    add_subdirectory(experiments/face-display)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp tests/analysis_export_benchmarks.cpp src/analysis_results.cpp
         src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_comparison.cpp
@@ -552,7 +553,7 @@ if(BUILD_TESTING)
         target_sources(woby_tests PRIVATE tests/scene_query_benchmarks.cpp)
     endif()
     if(WOBY_TEST_HEADLESS)
-        target_sources(woby_tests PRIVATE tests/adaptive_points_gpu_tests.cpp tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/freeform_gpu_tests.cpp
+        target_sources(woby_tests PRIVATE tests/analysis_display_gpu_tests.cpp tests/adaptive_points_gpu_tests.cpp tests/scene_edge_gpu_tests.cpp tests/marker_pick_gpu_tests.cpp tests/freeform_gpu_tests.cpp
             tests/scene_renderer_gpu_tests.cpp)
     endif()
     if(WOBY_TEST_HEADLESS AND (WIN32 OR (UNIX AND NOT APPLE)))

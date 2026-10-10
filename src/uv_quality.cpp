@@ -325,4 +325,38 @@ std::vector<Vertex> uvQualityVertices(const Mesh& display, const UvQuality& qual
     }
     return result;
 }
+std::vector<UvQualityFace> uvQualityFaces(const Mesh& display, const UvQuality& quality, std::stop_token stop)
+{
+    if (stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
+    std::vector<UvQualityFace> result;
+    const auto& geometry = meshGeometry(display);
+    if (geometry.indices.size()%3 != 0) { throw std::runtime_error("Invalid UV display triangle count."); }
+    result.resize(geometry.indices.size()/3);
+    for (const auto& node : geometry.nodes) {
+        if (node.indexOffset%3 != 0 || node.indexCount%3 != 0
+            || size_t(node.indexOffset)+node.indexCount > geometry.indices.size()) {
+            throw std::runtime_error("Invalid UV display node range.");
+        }
+        for (size_t i = 0; i < node.indexCount; i += 3) {
+            if (i % 12288 == 0 && stop.stop_requested()) { throw std::runtime_error("UV analysis canceled."); }
+            const auto& q = quality.triangles.at(node.uvQualityOffset+i/3);
+            float value = 0;
+            if (quality.metric == UvQualityMetric::angle) { value = static_cast<float>(q.angleDegrees/90); }
+            else if (quality.metric == UvQualityMetric::area) { value = static_cast<float>(std::clamp(.5+q.areaLog2/6,0.0,1.0)); }
+            else if (quality.metric == UvQualityMetric::anisotropy) { value = static_cast<float>(std::log2(q.anisotropy)/6); }
+            else if (quality.metric == UvQualityMetric::minStretch) { value = static_cast<float>(std::clamp(-std::log10(std::max(q.minStretch,1e-30))/2,0.0,1.0)); }
+            else if (quality.metric == UvQualityMetric::overlap) { value = static_cast<float>(uvQualityValue(q,UvQualityMetric::overlap)); }
+            else { value = q.orientation < 0 ? 1.0f : 0.0f; }
+            if (q.collapsed) { value = -1; }
+            if (q.missing || q.degenerateSurface) { value = -2; }
+            UvQualityFace face;
+            face.value = {value, uvQualityHighlighted(q,quality.settings) ? 1.0f : 0.0f};
+            for (size_t k = 0; k < 3; ++k) {
+                face.normals[k] = meshGeometry(display).vertices.at(meshGeometry(display).indices.at(node.indexOffset+i+k)).normal;
+            }
+            result[(node.indexOffset+i)/3] = face;
+        }
+    }
+    return result;
+}
 } // namespace woby

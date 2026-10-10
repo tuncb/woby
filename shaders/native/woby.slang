@@ -31,6 +31,10 @@ VertexOutput vs_mesh(uint index : SV_VertexID) {
 }
 VertexOutput vs_color(uint index : SV_VertexID) {
     VertexOutput v = {};
+    if (root.faceKind == 4) {
+        uint corner = ((index % 6 + 1) / 2) % 3;
+        index = root.pointIds[(index/6)*3+corner];
+    }
     v.position = clipPosition(mul(root.modelViewProj,float4(positionAt(index),1)));
     return v;
 }
@@ -40,6 +44,35 @@ VertexOutput vs_annotation(uint index : SV_VertexID) {
     return v;
 }
 VertexOutput vs_comparison(uint index : SV_VertexID) {
+    if (root.faceKind != 0) {
+        VertexOutput v = {};
+        uint corners = root.faceKind == 3 ? 12 : 3;
+        uint face = root.firstFace + index/corners;
+        uint local = index%corners;
+        float3 position;
+        if (root.faceKind == 3) {
+            static const uint points[12] = {0,3,5, 3,1,4, 5,4,2, 3,4,5};
+            uint point = points[local];
+            uint record = face*28;
+            if (point < 3) { position = positionAt(root.pointIds[face*3+point]); }
+            else {
+                uint p = record+4+(point-3)*3;
+                position = float3(root.analysisFaces[p],root.analysisFaces[p+1],root.analysisFaces[p+2]);
+            }
+            uint n = record+13+(local/3)*3;
+            v.normal = float3(root.analysisFaces[n],root.analysisFaces[n+1],root.analysisFaces[n+2]);
+            v.uv = float2(root.analysisFaces[record+local/3],0);
+        } else {
+            position = positionAt(root.pointIds[face*3+local]);
+            uint record = face*(root.faceKind == 1 ? 8 : 12);
+            uint n = record+(root.faceKind == 1 ? 4 : 2+local*3);
+            v.normal = float3(root.analysisFaces[n],root.analysisFaces[n+1],root.analysisFaces[n+2]);
+            v.uv = root.faceKind == 1 ? float2(root.analysisFaces[record+uint(root.comparison.x)],0)
+                : float2(root.analysisFaces[record],root.analysisFaces[record+1]);
+        }
+        v.position = clipPosition(mul(root.modelViewProj,float4(position,1)));
+        return v;
+    }
     VertexOutput v = vs_mesh(index);
     uint p = index * root.stride;
     v.normal = float3(root.vertices[p+3],root.vertices[p+4],root.vertices[p+5]);

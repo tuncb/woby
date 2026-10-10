@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model_mesh.h"
+#include "analysis_display.h"
 
 #include <array>
 #include <cstddef>
@@ -70,11 +70,12 @@ struct QualitySizeLimits {
 // Values are normalized in double precision before conversion for GPU storage.
 [[nodiscard]] std::vector<Vertex> surfaceQualityVertices(const Mesh& mesh, const SurfaceMeshQuality& quality,
     SurfaceQualityMetric metric, const QualityDistribution& distribution);
-// One retained representation for all four per-face metrics, at the same size
-// as a single-metric display. Each triangle's first corner stores longest edge
-// and equivalent size in texcoord; its second stores shape and size jump. The
-// shader fetches the selected face value for all three corners. Third-corner
-// texcoords are unused. Positions and flat normals retain the mesh layout.
+// Four normalized metrics and one flat normal per face. Positions remain in
+// the shared source geometry. Metric changes do not rebuild this buffer.
+[[nodiscard]] std::vector<SurfaceQualityFace> surfaceQualityDisplayFaces(const Mesh& mesh,
+    const SurfaceMeshQuality& quality,
+    const std::array<QualityDistribution, surfaceQualityMetricCount>& distributions, std::stop_token stop = {});
+// Expanded reference representation for CPU clients and equivalence tests.
 [[nodiscard]] std::vector<Vertex> surfaceQualityDisplayVertices(const Mesh& mesh,
     const SurfaceMeshQuality& quality,
     const std::array<QualityDistribution, surfaceQualityMetricCount>& distributions, std::stop_token stop = {});

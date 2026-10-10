@@ -934,7 +934,7 @@ void submitWire(woby::graphics::ViewId view, const ComparisonGpuSurface &gpu, wo
 {
     woby::graphics::setTransform(transform);
     woby::graphics::setVertexBuffer(0, gpu.vertices);
-    woby::graphics::setIndexBuffer(gpu.lines);
+    woby::graphics::setTriangleWireframe(gpu.triangles);
     woby::graphics::setUniform(uniform, color.data());
     woby::graphics::setState(WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_LINES | WOBY_GPU_STATE_MSAA |
                    (xray ? WOBY_GPU_STATE_DEPTH_TEST_ALWAYS : WOBY_GPU_STATE_DEPTH_TEST_LEQUAL));
@@ -1417,7 +1417,10 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
             woby::graphics::setTransform(identity);
             woby::graphics::setUniform(runtimes.parameters, uv.data());
             woby::graphics::setUniform(colorUniform, gray.data());
-            if (uvQuality) { woby::graphics::setVertexBuffer(0, gpu.quality, node.indexOffset, node.indexCount); }
+            if (uvQuality) {
+                woby::graphics::setVertexBuffer(0, gpu.vertices);
+                woby::graphics::setFaceDisplay(gpu.quality, gpu.triangles, woby::graphics::FaceDisplayKind::uvQuality, node.indexOffset/3, node.indexCount/3);
+            }
             else {
                 woby::graphics::setVertexBuffer(0, gpu.vertices);
                 woby::graphics::setIndexBuffer(gpu.triangles, node.indexOffset, node.indexCount);
@@ -1436,7 +1439,9 @@ static void submitComparisonScene(woby::graphics::ViewId view, const UiCompariso
     woby::graphics::setTransform(identity);
     woby::graphics::setUniform(runtimes.parameters, parameters.data());
     woby::graphics::setUniform(colorUniform, gray.data());
-    woby::graphics::setVertexBuffer(0, quality ? gpu.quality : heatmap ? gpu.samples : gpu.vertices);
+    woby::graphics::setVertexBuffer(0, gpu.vertices);
+    if (heatmap) { woby::graphics::setFaceDisplay(quality ? gpu.quality : gpu.samples, gpu.triangles,
+        quality ? woby::graphics::FaceDisplayKind::surfaceQuality : woby::graphics::FaceDisplayKind::distance); }
     if (!heatmap)
     {
         woby::graphics::setIndexBuffer(gpu.triangles);

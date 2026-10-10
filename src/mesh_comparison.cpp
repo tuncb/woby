@@ -496,11 +496,9 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
     const auto stop = source.stop;
     auto result = distancesOnly ? SurfaceComparison{} : copySurface(mesh, stop, degenerates);
     if (!distancesOnly) { result.diagnostics = inspectMesh(mesh, stop); }
-    result.sampled.origin = mesh.origin;
-    auto& sampled = editMeshGeometry(result.sampled);
     const size_t triangleCount = meshGeometry(mesh).indices.size() / 3;
-    resizeWithCancellation(sampled.vertices, triangleCount * 12, stop);
-    resizeWithCancellation(sampled.indices, triangleCount * 12, stop);
+    resizeWithCancellation(result.distanceFaces, triangleCount, stop);
+    resizeWithCancellation(result.sampledIndices, triangleCount * 12, stop);
     resizeWithCancellation(result.distances, triangleCount * 4, stop);
     resizeWithCancellation(result.sampleAreas, triangleCount * 4, stop);
     // Each worker owns disjoint output ranges. The source order remains the
@@ -515,6 +513,8 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
             const Point ab = mul(add(t[0], t[1]), .5), bc = mul(add(t[1], t[2]), .5), ca = mul(add(t[2], t[0]), .5);
             const std::array<Triangle, 4> parts = {Triangle{t[0], ab, ca}, Triangle{ab, t[1], bc}, Triangle{ca, bc, t[2]},
                                                    Triangle{ab, bc, ca}};
+            auto& display = result.distanceFaces[face];
+            display.midpoints = {renderPosition(ab), renderPosition(bc), renderPosition(ca)};
             for (size_t sample = 0; sample < parts.size(); ++sample)
             {
                 const auto& part = parts[sample];
@@ -529,19 +529,11 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
                 result.sampleAreas[sampleIndex] = weight;
                 const auto normal = cross(sub(part[1], part[0]), sub(part[2], part[0]));
                 const double normalLength = std::sqrt(lengthSquared(normal));
-                for (size_t corner = 0; corner < part.size(); ++corner)
-                {
-                    const auto& p = part[corner];
-                    Vertex vertex;
-                    for (size_t k = 0; k < 3; ++k)
-                    {
-                        vertex.position[k] = static_cast<float>(p[k]);
-                        vertex.normal[k] = normalLength > 0 ? static_cast<float>(normal[k] / normalLength) : 0.0f;
-                    }
-                    vertex.texcoord[0] = static_cast<float>(distance);
-                    const auto index = sampleIndex * 3 + corner;
-                    sampled.indices[index] = static_cast<uint32_t>(index);
-                    sampled.vertices[index] = vertex;
+                display.distances[sample] = static_cast<float>(distance);
+                for (size_t k = 0; k < 3; ++k) {
+                    display.normals[sample][k] = normalLength > 0 ? static_cast<float>(normal[k] / normalLength) : 0.0f;
+                    const auto index = sampleIndex*3+k;
+                    result.sampledIndices[index] = static_cast<uint32_t>(index);
                 }
             }
         }
@@ -555,34 +547,6 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
         weightedDistance += result.distances[i] * result.sampleAreas[i];
         totalArea += result.sampleAreas[i];
     }
-    // Compute bounds with cancellation between small batches of vertices.
-    auto& bounds = result.sampled.bounds;
-    bounds.min = sampled.vertices.front().position;
-    bounds.max = bounds.min;
-    for (size_t i = 0; i < sampled.vertices.size(); ++i)
-    {
-        if (i % 256 == 0) { checkCanceled(stop); }
-        for (size_t k = 0; k < 3; ++k)
-        {
-            bounds.min[k] = std::min(bounds.min[k], sampled.vertices[i].position[k]);
-            bounds.max[k] = std::max(bounds.max[k], sampled.vertices[i].position[k]);
-        }
-    }
-    for (size_t k = 0; k < 3; ++k) { bounds.center[k] = (bounds.min[k] + bounds.max[k]) * .5f; }
-    float radiusSquared = 0;
-    for (size_t i = 0; i < sampled.vertices.size(); ++i)
-    {
-        if (i % 256 == 0) { checkCanceled(stop); }
-        float squared = 0;
-        for (size_t k = 0; k < 3; ++k)
-        {
-            const float offset = sampled.vertices[i].position[k] - bounds.center[k];
-            squared += offset * offset;
-        }
-        radiusSquared = std::max(radiusSquared, squared);
-    }
-    bounds.radius = std::max(std::sqrt(radiusSquared), .001f);
-    sampled.nodes.push_back({"Analysis", 0, static_cast<uint32_t>(sampled.indices.size())});
     if (totalArea > 0)
     {
         result.mean = weightedDistance / totalArea;
@@ -612,7 +576,6 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
         }
     }
     checkCanceled(stop);
-    publishMeshGeometry(result.sampled);
     return result;
 }
 } // namespace
@@ -828,7 +791,7 @@ void validateComparisonMeshSize(size_t vertexCount, size_t triangleCount)
 void validateComparisonDistanceSize(size_t vertexCount, size_t triangleCount)
 {
     validateComparisonMeshSize(vertexCount, triangleCount);
-    if (triangleCount > std::numeric_limits<uint32_t>::max() / (12 * sizeof(Vertex))) {
+    if (triangleCount > std::numeric_limits<uint32_t>::max() / (sizeof(DistanceFace))) {
         throw std::runtime_error("Distance heatmap exceeds the supported 32-bit GPU buffer size. Reduce the selected geometry or use a detector analysis.");
     }
 }
@@ -1054,8 +1017,8 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     checkCanceled(stop);
     MeshComparison result;
     if (stages & comparisonQuality) {
-        (void)comparisonBufferBytes(meshGeometry(original).indices.size(), sizeof(Vertex));
-        (void)comparisonBufferBytes(meshGeometry(repaired).indices.size(), sizeof(Vertex));
+        (void)comparisonBufferBytes(meshGeometry(original).indices.size()/3, sizeof(SurfaceQualityFace));
+        (void)comparisonBufferBytes(meshGeometry(repaired).indices.size()/3, sizeof(SurfaceQualityFace));
     }
     if ((stages & comparisonDistance) && !meshGeometry(original).indices.empty() && !meshGeometry(repaired).indices.empty()) {
         validateComparisonDistanceSize(meshGeometry(original).vertices.size(), meshGeometry(original).indices.size() / 3);
@@ -1145,8 +1108,8 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
     completeComparisonDetectors(result, stages);
     if (stages & comparisonQuality) {
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
-        result.original.qualityVertices = surfaceQualityDisplayVertices(original, result.original.quality, result.qualityDistributions, stop);
-        result.repaired.qualityVertices = surfaceQualityDisplayVertices(repaired, result.repaired.quality, result.qualityDistributions, stop);
+        result.original.qualityFaces = surfaceQualityDisplayFaces(original, result.original.quality, result.qualityDistributions, stop);
+        result.repaired.qualityFaces = surfaceQualityDisplayFaces(repaired, result.repaired.quality, result.qualityDistributions, stop);
     }
     checkCanceled(stop);
     return result;
@@ -1200,7 +1163,7 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
         }
         if (stages & comparisonQuality) {
             target.quality = std::move(source.quality);
-            target.qualityVertices = std::move(source.qualityVertices);
+            target.qualityFaces = std::move(source.qualityFaces);
         }
         if (stages & comparisonDegenerates) {
             target.degenerates = std::move(source.degenerates);
@@ -1215,7 +1178,8 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
             target.duplicateTriangleBounds = std::move(source.duplicateTriangleBounds);
         }
         if (stages & comparisonDistance) {
-            target.sampled = std::move(source.sampled);
+            target.distanceFaces = std::move(source.distanceFaces);
+            target.sampledIndices = std::move(source.sampledIndices);
             target.distances = std::move(source.distances);
             target.sampleAreas = std::move(source.sampleAreas);
             target.maximum = source.maximum;

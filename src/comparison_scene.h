@@ -89,8 +89,7 @@ struct ComparisonInputSnapshot {
     std::stop_token stop = {});
 
 struct PreparedComparisonSource {
-    std::vector<Vertex> quality;
-    std::vector<uint32_t> lines;
+    std::vector<UvQualityFace> quality;
     bool qualityOnly = false;
     bool updateQuality = true;
     std::shared_ptr<const UvQuality> uvQuality;

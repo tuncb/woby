@@ -1,0 +1,254 @@
+{
+  "metadata": {
+    "commit": "42be09d47b44698be57fef0e592e5915ec499981",
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+    "executable_sha256": "FF65963AA502F7EAEB85AA42FC83C28CF017A8A09655D3F84713E08436DAB243",
+    "source_sha256": "306E0648CC9063CCFB07DFD4DB0145CEDBE5F1A1D47C1BABB248E76DBB9252BF",
+    "date": "2026-10-10",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "runs": 3,
+    "samples": 7,
+    "warmups": 1,
+    "shuffle_seed": 1729,
+    "notes": "CPU pack and checksum fetch loops; no GPU timing. Both representations remain resident. Load and metric analysis are outside timings."
+  },
+  "runs": [
+    {
+      "compact_bytes": 33745344,
+      "equivalence": "all reconstructed vertex bits and all four shader metrics",
+      "expanded_bytes": 101236032,
+      "faces": 1054542,
+      "median_ms": {
+        "compact_pack": 68.5663,
+        "compact_sequential_cpu_fetch": 45.4567,
+        "compact_shuffled_cpu_fetch": 195.9097,
+        "expanded_pack": 111.7074,
+        "expanded_sequential_cpu_fetch": 46.3934,
+        "expanded_shuffled_cpu_fetch": 113.8649
+      },
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "render_vertices": 547469,
+      "samples_ms": {
+        "compact_pack": [
+          68.1245,
+          68.739,
+          69.101,
+          68.3792,
+          69.8493,
+          68.5663,
+          67.9467
+        ],
+        "compact_sequential_cpu_fetch": [
+          45.4918,
+          45.2631,
+          45.5528,
+          45.4567,
+          45.4922,
+          45.2879,
+          45.3493
+        ],
+        "compact_shuffled_cpu_fetch": [
+          193.4243,
+          196.0267,
+          194.4624,
+          196.654,
+          193.5008,
+          195.9097,
+          199.6725
+        ],
+        "expanded_pack": [
+          111.1213,
+          111.7074,
+          111.7139,
+          111.8558,
+          112.2174,
+          111.6781,
+          110.724
+        ],
+        "expanded_sequential_cpu_fetch": [
+          46.521,
+          46.3063,
+          46.3934,
+          46.2278,
+          45.7706,
+          46.6399,
+          46.4207
+        ],
+        "expanded_shuffled_cpu_fetch": [
+          113.8403,
+          113.8029,
+          114.7154,
+          114.759,
+          114.847,
+          113.8649,
+          113.6878
+        ]
+      },
+      "sequential_hash": 3770086081496752468,
+      "shuffled_hash": 14754543690186256848
+    },
+    {
+      "compact_bytes": 33745344,
+      "equivalence": "all reconstructed vertex bits and all four shader metrics",
+      "expanded_bytes": 101236032,
+      "faces": 1054542,
+      "median_ms": {
+        "compact_pack": 68.946,
+        "compact_sequential_cpu_fetch": 45.3284,
+        "compact_shuffled_cpu_fetch": 197.274,
+        "expanded_pack": 111.3676,
+        "expanded_sequential_cpu_fetch": 46.3201,
+        "expanded_shuffled_cpu_fetch": 113.5198
+      },
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "render_vertices": 547469,
+      "samples_ms": {
+        "compact_pack": [
+          68.8578,
+          69.3035,
+          68.462,
+          68.9149,
+          69.3105,
+          69.8516,
+          68.946
+        ],
+        "compact_sequential_cpu_fetch": [
+          45.3848,
+          45.2864,
+          45.2303,
+          45.3284,
+          45.5026,
+          45.4162,
+          45.2039
+        ],
+        "compact_shuffled_cpu_fetch": [
+          195.4192,
+          194.6244,
+          207.0133,
+          198.2171,
+          197.274,
+          205.0556,
+          195.9078
+        ],
+        "expanded_pack": [
+          111.2592,
+          112.0905,
+          110.8325,
+          111.3676,
+          114.4855,
+          113.7998,
+          110.037
+        ],
+        "expanded_sequential_cpu_fetch": [
+          46.3218,
+          46.1888,
+          45.9596,
+          46.5879,
+          46.3201,
+          46.663,
+          46.1526
+        ],
+        "expanded_shuffled_cpu_fetch": [
+          115.8569,
+          111.675,
+          112.4652,
+          114.6133,
+          114.7995,
+          113.5198,
+          112.9138
+        ]
+      },
+      "sequential_hash": 3770086081496752468,
+      "shuffled_hash": 14754543690186256848
+    },
+    {
+      "compact_bytes": 33745344,
+      "equivalence": "all reconstructed vertex bits and all four shader metrics",
+      "expanded_bytes": 101236032,
+      "faces": 1054542,
+      "median_ms": {
+        "compact_pack": 69.0768,
+        "compact_sequential_cpu_fetch": 45.2858,
+        "compact_shuffled_cpu_fetch": 195.6085,
+        "expanded_pack": 111.5881,
+        "expanded_sequential_cpu_fetch": 46.1326,
+        "expanded_shuffled_cpu_fetch": 114.434
+      },
+      "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+      "render_vertices": 547469,
+      "samples_ms": {
+        "compact_pack": [
+          69.1352,
+          68.9447,
+          69.4144,
+          68.7313,
+          70.483,
+          69.0768,
+          68.9715
+        ],
+        "compact_sequential_cpu_fetch": [
+          45.2787,
+          45.278,
+          45.3172,
+          45.281,
+          45.4213,
+          45.7305,
+          45.2858
+        ],
+        "compact_shuffled_cpu_fetch": [
+          194.7569,
+          192.6864,
+          192.3809,
+          196.4216,
+          195.711,
+          195.6085,
+          199.8983
+        ],
+        "expanded_pack": [
+          110.7446,
+          112.0517,
+          111.5881,
+          110.4086,
+          111.4388,
+          112.7662,
+          113.7649
+        ],
+        "expanded_sequential_cpu_fetch": [
+          46.0805,
+          46.1124,
+          46.4282,
+          45.9376,
+          46.1326,
+          46.4509,
+          46.2817
+        ],
+        "expanded_shuffled_cpu_fetch": [
+          115.4763,
+          116.3898,
+          114.434,
+          114.1996,
+          116.7216,
+          109.4544,
+          113.6563
+        ]
+      },
+      "sequential_hash": 3770086081496752468,
+      "shuffled_hash": 14754543690186256848
+    }
+  ],
+  "shader_validation": {
+    "SPIRV": "compiled and spirv-val passed for Vulkan 1.4",
+    "Metal": "Slang source generation passed; no Apple compiler or GPU execution"
+  },
+  "debug_build": "full build passed without warnings",
+  "release_build": "probe passed without warnings",
+  "contract_test": "passed in Debug; self-test also runs in every Release benchmark process",
+  "source_sha256": {
+    "main.cpp": "306e0648cc9063ccfb07dfd4db0145cedbe5f1a1d47c1babb248e76dbb9252bf",
+    "quality_faces.slang": "5c66781d37ac2188f0e89909ff146735b1767b3243e6737010e47c45e0bf10c4",
+    "CMakeLists.txt": "921cd0270b9c99e5ea3e8e7e784fdc1bd68b166c25171cb7137ecd029624f2d2",
+    "run.ps1": "fde0c9f362b0f70dbb71d3b4ceda8e7f753fc50e2ca9032a0a5c373267514e44",
+    "compile_shader.ps1": "31547902b5e38705f9e7ce1cf9592441393fbe4116dafbe91ce09a3bab141b8d"
+  }
+}

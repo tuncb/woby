@@ -115,8 +115,9 @@ struct Encoder
 {
     WobyRoot root{};
     std::array<float, 16> model{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
-    Geometry vertices, indices, points, freeform;
+    Geometry vertices, indices, points, freeform, analysisFaces;
     uint32_t vertexCount = 0, instances = 1;
+    bool explicitVertexCount = false;
     uint64_t state = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A;
     gpu::Scissor scissor{};
     bool hasScissor = false;
@@ -786,6 +787,7 @@ WobyRoot rootData(const Encoder &encoder, const View &view)
     root.stride = encoder.vertices.stride / 4;
     root.pointIds = static_cast<uint32_t *>(encoder.points.gpu);
     root.freeform = static_cast<float *>(encoder.freeform.gpu);
+    root.analysisFaces = static_cast<float *>(encoder.analysisFaces.gpu);
     for (size_t i = 0; i < encoder.textures.size(); ++i)
         if (encoder.textures[i])
         {
@@ -820,7 +822,7 @@ void drawOperation(gpu::CommandBuffer *commands, const Operation &op, const View
                           encoder.indices.index32 ? gpu::IndexType::uint32 : gpu::IndexType::uint16,
                           encoder.indices.count, encoder.instances);
     else
-        gpu::draw(commands, root.gpu, encoder.vertexCount ? encoder.vertexCount : encoder.vertices.count,
+        gpu::draw(commands, root.gpu, encoder.explicitVertexCount ? encoder.vertexCount : encoder.vertices.count,
                   encoder.instances);
     ++state().stats.numDraw;
 }
@@ -1415,9 +1417,42 @@ void setBuffer(uint8_t binding, IndexBufferHandle h, Access::Enum)
     require(binding == 1, "Unexpected point storage binding");
     state().encoder.points = geometry(resource(state().indexBuffers, h), 0, UINT32_MAX);
 }
+void setFaceDisplay(VertexBufferHandle faces, IndexBufferHandle triangles, FaceDisplayKind kind,
+    uint32_t firstFace, uint32_t faceCount)
+{
+    auto& encoder = state().encoder;
+    auto records = geometry(resource(state().vertexBuffers, faces), 0, UINT32_MAX);
+    auto source = geometry(resource(state().indexBuffers, triangles), 0, UINT32_MAX);
+    require(kind == FaceDisplayKind::surfaceQuality || kind == FaceDisplayKind::uvQuality || kind == FaceDisplayKind::distance, "Invalid face display kind");
+    const uint16_t stride = kind == FaceDisplayKind::surfaceQuality ? 32 : kind == FaceDisplayKind::uvQuality ? 48 : 112;
+    const uint32_t corners = kind == FaceDisplayKind::distance ? 12 : 3;
+    require(records.stride == stride && source.index32 && source.count % 3 == 0, "Invalid face display layout");
+    require(records.count == source.count/3 && firstFace <= records.count, "Invalid face display range");
+    faceCount = std::min(faceCount, records.count-firstFace);
+    require(faceCount <= UINT32_MAX/corners, "Face display draw exceeds supported range");
+    encoder.analysisFaces = std::move(records);
+    encoder.points = std::move(source);
+    encoder.indices = {};
+    encoder.root.faceKind = static_cast<uint32_t>(kind);
+    encoder.root.firstFace = firstFace;
+    encoder.vertexCount = faceCount*corners;
+    encoder.explicitVertexCount = true;
+}
+void setTriangleWireframe(IndexBufferHandle triangles)
+{
+    auto& encoder = state().encoder;
+    auto source = geometry(resource(state().indexBuffers, triangles), 0, UINT32_MAX);
+    require(source.index32 && source.count % 3 == 0 && source.count <= UINT32_MAX/2, "Invalid triangle wireframe range");
+    encoder.vertexCount = source.count*2;
+    encoder.explicitVertexCount = true;
+    encoder.points = std::move(source);
+    encoder.indices = {};
+    encoder.root.faceKind = 4;
+}
 void setVertexCount(uint32_t count)
 {
     state().encoder.vertexCount = count;
+    state().encoder.explicitVertexCount = true;
 }
 void setInstanceCount(uint32_t count)
 {
@@ -1756,6 +1791,7 @@ try
                 Operation composite;
                 composite.program = resolve[renderTargets.samples == 4 ? 1 : 0];
                 composite.encoder.vertexCount = 4;
+                composite.encoder.explicitVertexCount = true;
                 composite.encoder.state = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A
                     | WOBY_GPU_STATE_PT_TRISTRIP | WOBY_GPU_STATE_BLEND_ALPHA | WOBY_GPU_STATE_PRESERVE_IDS;
                 composite.encoder.textures[0] = transparency->textures[0];
@@ -1839,6 +1875,7 @@ try
         op.program = composite;
         op.type = OperationType::draw;
         op.encoder.vertexCount = 4;
+        op.encoder.explicitVertexCount = true;
         op.encoder.state = WOBY_GPU_STATE_WRITE_RGB | WOBY_GPU_STATE_WRITE_A | WOBY_GPU_STATE_PT_TRISTRIP;
         op.encoder.textures[0] = f.output->textures[0];
         View view;

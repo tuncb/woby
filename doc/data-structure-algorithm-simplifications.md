@@ -68,6 +68,8 @@ This also gives point clouds a simpler identity chain. The current cloud retains
 
 ## Analysis display records
 
+The four item 3 display paths are now implemented: surface quality, UV quality, distance heatmaps, and comparison wireframes. See the [implementation and validation report](face-display-storage-implementation.md). The [initial investigation](face-display-storage-investigation.md) records the design choices and CPU locality trade-off. The assessment below describes the original code.
+
 Several large arrays exist because `Vertex` is also used as a carrier for measurements:
 
 - `surfaceQualityDisplayVertices` expands every triangle to three 32-byte vertices and distributes four face metrics across their UV slots. The shader reads those slots back by triangle corner number.
@@ -89,7 +91,7 @@ These are incremental display payloads; the source geometry remains required. CP
 
 For distance display, the four subtriangles have fixed barycentric corners. The least disruptive experiment is to generate the same twelve corners in the vertex shader from the original three positions and four distance values. That removes stored expansion without changing the sample locations or triangle subdivision. A later barycentric fragment classifier could avoid generating subtriangles too, but requires separate coverage and MSAA validation.
 
-The CPU identity index buffer alone costs **48 bytes per original triangle**. It is not uploaded by the distance upload path, but CPU picking and dimensions currently consume `sampled` as a mesh, so deleting it requires a procedural triangle accessor there too. This is a data-contract change, not just erasing an unused vector.
+The CPU identity index buffer alone costs **48 bytes per original triangle**. It is not uploaded by the distance path. The item 3 audit confirms that picking already uses the source mesh and dimensions consume those source pick parts; no production reader of sampled indices was found outside construction. Removing that array is a separate candidate. Update the sampled-result contract and tests, which currently assert the indices, together. Surface-quality CPU display vertices are already released after upload, so compact quality records reduce GPU storage and transient CPU preparation/upload memory.
 
 Diagnostic overlays can similarly store source edge/face references and retrieve endpoints, rather than storing the same positions as a finding, bounds, line geometry, and fill geometry. Keep arbitrary constructed line segments representable; not every diagnostic is an original mesh edge.
 

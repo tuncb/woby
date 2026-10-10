@@ -883,7 +883,7 @@ TEST_CASE("BVH distances match exhaustive triangle queries")
         std::array<float, 3> p{};
         for (size_t k = 0; k < 3; ++k)
             for (size_t v = 0; v < 3; ++v)
-                p[k] += meshGeometry(result.original.sampled).vertices[i * 3 + v].position[k] / 3;
+                p[k] += woby::distanceDisplayVertex(a, result.original.distanceFaces, i * 3 + v).position[k] / 3;
         double expected = std::numeric_limits<double>::infinity();
         for (size_t t = 0; t < meshGeometry(b).indices.size(); t += 3)
             expected = std::min(expected, woby::pointTriangleDistance(p, meshGeometry(b).vertices[meshGeometry(b).indices[t]].position,
@@ -909,11 +909,11 @@ TEST_CASE("parallel wide BVH keeps sample order and matches irregular exhaustive
     REQUIRE(result.original.distances.size() == meshGeometry(a).indices.size() / 3 * 4);
     for (size_t i = 0; i < result.original.distances.size(); i += 257) {
         const auto face = i / 4;
-        CHECK(meshGeometry(result.original.sampled).vertices[face * 12].position == meshGeometry(a).vertices[meshGeometry(a).indices[face * 3]].position);
+        CHECK(woby::distanceDisplayVertex(a, result.original.distanceFaces, face * 12).position == meshGeometry(a).vertices[meshGeometry(a).indices[face * 3]].position);
         std::array<float, 3> center{};
         for (size_t k = 0; k < 3; ++k) {
             double sum = 0;
-            for (size_t corner = 0; corner < 3; ++corner) { sum += meshGeometry(result.original.sampled).vertices[i * 3 + corner].position[k]; }
+            for (size_t corner = 0; corner < 3; ++corner) { sum += woby::distanceDisplayVertex(a, result.original.distanceFaces, i * 3 + corner).position[k]; }
             center[k] = static_cast<float>(sum / 3);
         }
         double expected = std::numeric_limits<double>::infinity();
@@ -1324,16 +1324,16 @@ TEST_CASE("analysis measures both surfaces above the former triangle cap")
         CHECK(surface->mean == doctest::Approx(.25));
         CHECK(surface->percentile95 == doctest::Approx(.25));
         CHECK(surface->distances.size() == 4 * 51200);
-        CHECK(meshGeometry(surface->sampled).vertices.size() == 12 * 51200);
-        CHECK(meshGeometry(surface->sampled).indices.back() == meshGeometry(surface->sampled).vertices.size() - 1);
+        CHECK(surface->distanceFaces.size() == 51200);
+        CHECK(surface->sampledIndices.back() == surface->distanceFaces.size()*12 - 1);
         CHECK(surface->diagnostics.boundaryEdges.size() == 640);
         CHECK(surface->diagnostics.nonManifoldEdges.empty());
         CHECK(woby::surfacePercentAboveTolerance(*surface, .2) == doctest::Approx(100));
-        const auto bounds = woby::calculateBounds(meshGeometry(surface->sampled).vertices);
-        CHECK(surface->sampled.bounds.min == bounds.min);
-        CHECK(surface->sampled.bounds.max == bounds.max);
-        CHECK(surface->sampled.bounds.center == bounds.center);
-        CHECK(surface->sampled.bounds.radius == bounds.radius);
+        for (size_t i=0; i<surface->distanceFaces.size()*12; ++i) {
+            const auto vertex = woby::distanceDisplayVertex(surface->source, surface->distanceFaces, i);
+            CHECK(vertex.position[2] == surface->source.bounds.min[2]);
+            CHECK(vertex.texcoord[0] == .25f);
+        }
     }
     CHECK(meshGeometry(a).vertices.front().position[2] == 0);
     CHECK(meshGeometry(b).vertices.front().position[2] == .25f);
@@ -1351,7 +1351,7 @@ TEST_CASE("analysis mesh limits are independent of distance and GPU buffer sizes
         CHECK_THROWS((void)woby::comparisonBufferBytes(std::numeric_limits<size_t>::max(), stride));
     }
     CHECK_THROWS((void)woby::comparisonBufferBytes(1, 0));
-    const size_t maxDistanceTriangles = maxBytes / (12 * sizeof(woby::Vertex));
+    const size_t maxDistanceTriangles = maxBytes / sizeof(woby::DistanceFace);
     CHECK_NOTHROW(woby::validateComparisonDistanceSize(3, maxDistanceTriangles));
     CHECK_THROWS(woby::validateComparisonDistanceSize(3, maxDistanceTriangles + 1));
     CHECK_NOTHROW(woby::validateComparisonMeshSize(maxDistanceTriangles * 3, maxDistanceTriangles + 1));
@@ -1396,9 +1396,9 @@ TEST_CASE("analysis snapshots share indexed vertices within each transformed par
 
 TEST_CASE("detector snapshots and stages accept meshes beyond the distance heatmap limit")
 {
-    // Only indices are large: exercising the real call paths needs about 128 MiB
+    // Only indices are large: exercising the real call paths needs about 439 MiB
     // rather than allocating an unrepresentable multi-gigabyte heatmap.
-    const size_t triangles = std::numeric_limits<uint32_t>::max() / (12 * sizeof(woby::Vertex)) + 1;
+    const size_t triangles = std::numeric_limits<uint32_t>::max() / sizeof(woby::DistanceFace) + 1;
     auto state = stateWithFiles(1);
     auto& file = state.files[0];
     editMeshGeometry(file.mesh).indices.assign(triangles * 3, 0);
@@ -1481,7 +1481,7 @@ TEST_CASE("background analysis and diagnostics handle cancellation racing with c
             if (!diagnosticsOnly) {
                 for (const auto* surface : {&comparison.original, &comparison.repaired}) {
                     CHECK(surface->distances.size() == 8 * width * width);
-                    CHECK(meshGeometry(surface->sampled).indices.size() == 24 * width * width);
+                    CHECK(surface->sampledIndices.size() == 24 * width * width);
                     CHECK(surface->maximum == doctest::Approx(0));
                 }
             }
@@ -1849,7 +1849,7 @@ TEST_CASE("single input analysis provides topology without distance samples or m
         CHECK(surface.diagnostics.inconsistentWindingEdges.size() == expected.inconsistentWindingEdges.size());
         CHECK(surface.diagnostics.duplicateTriangles == 1);
         CHECK(surface.diagnostics.degenerateTriangles == 1);
-        CHECK(meshGeometry(surface.sampled).vertices.empty());
+        CHECK(surface.distanceFaces.empty());
         CHECK(surface.distances.empty());
         CHECK(surface.sampleAreas.empty());
         const auto json = woby::controlComparisonResults(result, .05);
@@ -2426,20 +2426,20 @@ TEST_CASE("packed quality display preserves all metrics normals and shared range
     for (const auto side : {0u, 1u}) {
         const auto& input = side == 0 ? a : b;
         const auto& surface = side == 0 ? result.original : result.repaired;
-        const auto& packed = surface.qualityVertices;
-        REQUIRE(packed.size() == meshGeometry(input).indices.size());
+        const auto& packed = surface.qualityFaces;
+        REQUIRE(packed.size()*3 == meshGeometry(input).indices.size());
         for (size_t metric = 0; metric < woby::surfaceQualityMetricCount; ++metric) {
             const auto reference = woby::surfaceQualityVertices(input, surface.quality,
                 static_cast<woby::SurfaceQualityMetric>(metric), result.qualityDistributions[metric]);
-            for (size_t i = 0; i < packed.size(); ++i) {
-                CHECK(packed[i].position == reference[i].position);
-                CHECK(packed[i].normal == reference[i].normal);
-                CHECK(packed[(i / 3) * 3 + metric / 2].texcoord[metric % 2] == reference[i].texcoord[0]);
+            for (size_t i = 0; i < reference.size(); ++i) {
+                CHECK(meshGeometry(input).vertices[meshGeometry(input).indices[i]].position == reference[i].position);
+                CHECK(packed[i/3].normal == reference[i].normal);
+                CHECK(packed[i/3].values[metric] == reference[i].texcoord[0]);
             }
         }
     }
-    CHECK(result.original.qualityVertices[0].texcoord[0] == doctest::Approx(.25));
-    CHECK(result.repaired.qualityVertices[0].texcoord[0] == doctest::Approx(1));
+    CHECK(result.original.qualityFaces[0].values[0] == doctest::Approx(.25));
+    CHECK(result.repaired.qualityFaces[0].values[0] == doctest::Approx(1));
 }
 
 TEST_CASE("packed quality display handles unavailable degenerate empty and canceled inputs")
@@ -2448,17 +2448,17 @@ TEST_CASE("packed quality display handles unavailable degenerate empty and cance
     const auto input = mesh({{0,0,0}, {1,0,0}, {0,1,0}}, {0,0,0, 0,1,2});
     const auto quality = inspectSurfaceMeshQuality(input);
     const auto distributions = surfaceQualityDistributions(quality, {});
-    const auto packed = surfaceQualityDisplayVertices(input, quality, distributions);
-    REQUIRE(packed.size() == 6);
+    const auto packed = surfaceQualityDisplayFaces(input, quality, distributions);
+    REQUIRE(packed.size() == 2);
     for (size_t metric = 0; metric < surfaceQualityMetricCount; ++metric) {
-        CHECK(packed[metric / 2].texcoord[metric % 2] == -1);
+        CHECK(packed[0].values[metric] == -1);
     }
-    CHECK(packed[4].texcoord[1] == -2);
-    CHECK(surfaceQualityDisplayVertices({}, {}, distributions).empty());
+    CHECK(packed[1].values[3] == -2);
+    CHECK(surfaceQualityDisplayFaces({}, {}, distributions).empty());
     std::stop_source stop;
     stop.request_stop();
-    CHECK_THROWS_WITH((void)surfaceQualityDisplayVertices(input, quality, distributions, stop.get_token()), "Analysis canceled.");
-    CHECK_THROWS((void)surfaceQualityDisplayVertices(input, {}, distributions));
+    CHECK_THROWS_WITH((void)surfaceQualityDisplayFaces(input, quality, distributions, stop.get_token()), "Analysis canceled.");
+    CHECK_THROWS((void)surfaceQualityDisplayFaces(input, {}, distributions));
 }
 
 TEST_CASE("quality display publication moves matching buffers and rejects stale worker results")
@@ -2467,16 +2467,16 @@ TEST_CASE("quality display publication moves matching buffers and rejects stale 
     ComparisonCacheStatus cache{17, comparisonSource};
     MeshComparison published;
     auto update = computeComparisonStages(square(), {}, comparisonQuality);
-    const auto* storage = update.original.qualityVertices.data();
+    const auto* storage = update.original.qualityFaces.data();
     REQUIRE(applyComparisonStages(published, cache, std::move(update), 17, comparisonQuality));
-    CHECK(published.original.qualityVertices.data() == storage);
+    CHECK(published.original.qualityFaces.data() == storage);
     auto stale = computeComparisonStages(square(4), {}, comparisonQuality);
     CHECK_FALSE(applyComparisonStages(published, cache, std::move(stale), 16, comparisonQuality));
-    CHECK(published.original.qualityVertices.data() == storage);
-    CHECK(published.original.qualityVertices[0].position[2] == 0);
+    CHECK(published.original.qualityFaces.data() == storage);
+    CHECK(published.original.qualityFaces[0].normal[2] == 1);
     auto unrelated = computeComparisonStages(square(), {}, comparisonSource);
     REQUIRE(applyComparisonStages(published, cache, std::move(unrelated), 17, comparisonSource));
-    CHECK(published.original.qualityVertices.data() == storage);
+    CHECK(published.original.qualityFaces.data() == storage);
 }
 
 TEST_CASE("quality metric switches reuse GPU buffers and source edits invalidate them")
@@ -2516,7 +2516,7 @@ TEST_CASE("quality metric switches reuse GPU buffers and source edits invalidate
     const auto handle = runtime.gpu.original.quality;
     const auto revision = runtime.results.revision;
     REQUIRE(graphics::isValid(handle));
-    CHECK(runtime.results.value.original.qualityVertices.empty());
+    CHECK(runtime.results.value.original.qualityFaces.empty());
     for (size_t cycle = 0; cycle < 2; ++cycle) {
         for (size_t metric = 0; metric < surfaceQualityMetricCount; ++metric) {
             auto settings = comparisonSettings(fixture.state, id);
@@ -2766,7 +2766,7 @@ TEST_CASE("topology analysis does not compute distance or quality")
     CHECK(result.repaired.diagnostics.boundaryEdges.size() == 4);
     CHECK(meshGeometry(result.original.source).indices.size() == 6);
     CHECK(result.original.distances.empty());
-    CHECK(meshGeometry(result.repaired.sampled).vertices.empty());
+    CHECK(result.repaired.distanceFaces.empty());
     CHECK(result.original.quality.triangles.empty());
     CHECK(result.repaired.quality.triangles.empty());
     CHECK(result.original.duplicates.points.unavailableSources == 0);
@@ -2826,4 +2826,44 @@ TEST_CASE("lazy analysis stages honor cancellation and single input distance req
     CHECK(result.original.distances.empty());
     CHECK(result.original.quality.triangles.size() == 2);
     CHECK(result.repaired.quality.triangles.empty());
+}
+
+TEST_CASE("distance face records retain double subdivision rounding and sample normals")
+{
+    woby::Mesh input;
+    auto& geometry = editMeshGeometry(input);
+    geometry.precisePositions = {{16777217,0,.0001},{16777218,1,.001},{16777220,0,.002}};
+    for (const auto& point : geometry.precisePositions) {
+        geometry.vertices.push_back({{static_cast<float>(point[0]),static_cast<float>(point[1]),static_cast<float>(point[2])}});
+    }
+    geometry.indices = {0,1,2,0,0,0}; geometry.nodes = {{"source",0,6}};
+    input.bounds = woby::calculateBounds(geometry.vertices);
+    const auto result = woby::computeComparisonStages(input,input,woby::comparisonDistance);
+    const auto& faces = result.original.distanceFaces;
+    REQUIRE(faces.size() == 2);
+    using Point = std::array<double,3>;
+    const auto midpoint = [](Point a, Point b) { for (size_t i=0;i<3;++i) { a[i] = (a[i]+b[i])*.5; } return a; };
+    for (size_t face=0;face<2;++face) {
+        const auto a = woby::meshPosition(input,geometry.indices[face*3]);
+        const auto b = woby::meshPosition(input,geometry.indices[face*3+1]);
+        const auto c = woby::meshPosition(input,geometry.indices[face*3+2]);
+        const auto ab = midpoint(a,b), bc = midpoint(b,c), ca = midpoint(c,a);
+        const std::array<std::array<Point,3>,4> triangles{{{a,ab,ca},{ab,b,bc},{ca,bc,c},{ab,bc,ca}}};
+        for (size_t sample=0;sample<4;++sample) {
+            const auto& t = triangles[sample];
+            Point u{},v{}; for (size_t axis=0;axis<3;++axis) { u[axis]=t[1][axis]-t[0][axis]; v[axis]=t[2][axis]-t[0][axis]; }
+            const Point n{u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]};
+            const auto length = std::sqrt(n[0]*n[0]+n[1]*n[1]+n[2]*n[2]);
+            CHECK(result.original.sampleAreas[face*4+sample] == length*.5);
+            for (size_t corner=0;corner<3;++corner) {
+                const auto vertex = woby::distanceDisplayVertex(input,faces,face*12+sample*3+corner);
+                for (size_t axis=0;axis<3;++axis) {
+                    CHECK(vertex.position[axis] == static_cast<float>(t[corner][axis]));
+                    CHECK(vertex.normal[axis] == (length > 0 ? static_cast<float>(n[axis]/length) : 0.f));
+                }
+                CHECK(vertex.texcoord[0] == static_cast<float>(result.original.distances[face*4+sample]));
+            }
+        }
+    }
+    CHECK(faces[0].midpoints[0][0] != (geometry.vertices[0].position[0]+geometry.vertices[1].position[0])*.5f);
 }

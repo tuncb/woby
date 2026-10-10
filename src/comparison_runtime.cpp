@@ -503,8 +503,8 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                     runtime.sources.refreshUvQuality = false;
                 }
                 if (stage & comparisonQuality) {
-                    std::vector<Vertex>().swap(runtime.results.value.original.qualityVertices);
-                    std::vector<Vertex>().swap(runtime.results.value.repaired.qualityVertices);
+                    std::vector<SurfaceQualityFace>().swap(runtime.results.value.original.qualityFaces);
+                    std::vector<SurfaceQualityFace>().swap(runtime.results.value.repaired.qualityFaces);
                 }
             } catch (const std::bad_alloc&) {
                 throw;

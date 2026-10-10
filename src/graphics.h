@@ -234,6 +234,12 @@ void setIndexBuffer(IndexBufferHandle, uint32_t start = 0, uint32_t count = UINT
 void setIndexBuffer(const TransientIndexBuffer *, uint32_t start = 0, uint32_t count = UINT32_MAX);
 void setBuffer(uint8_t binding, VertexBufferHandle, Access::Enum);
 void setBuffer(uint8_t binding, IndexBufferHandle, Access::Enum);
+enum class FaceDisplayKind : uint32_t { surfaceQuality = 1, uvQuality = 2, distance = 3 };
+// Retain all three buffers through submission. Draw generated corners, with
+// source indices used as storage rather than as the draw index buffer.
+void setFaceDisplay(VertexBufferHandle faces, IndexBufferHandle triangles, FaceDisplayKind kind,
+    uint32_t firstFace = 0, uint32_t faceCount = UINT32_MAX);
+void setTriangleWireframe(IndexBufferHandle triangles);
 void setVertexCount(uint32_t count);
 void setInstanceCount(uint32_t count);
 void setTransform(const float *matrix);

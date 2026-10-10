@@ -15,7 +15,7 @@ void destroySurface(ComparisonGpuSurface &gpu)
             woby::graphics::destroy(handle);
         }
     }
-    for (const auto handle : {gpu.triangles, gpu.lines})
+    for (const auto handle : {gpu.triangles})
     {
         if (woby::graphics::isValid(handle))
         {
@@ -85,24 +85,27 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
 {
     if (meshGeometry(surface.source).indices.empty()) { return; }
     if (stages & comparisonQuality) {
-        if (surface.qualityVertices.size() != meshGeometry(surface.source).indices.size()) {
+        if (surface.qualityFaces.size() != meshGeometry(surface.source).indices.size()/3) {
             throw std::runtime_error("Surface quality display does not match its source triangles.");
         }
-        const auto bytes = comparisonBufferBytes(surface.qualityVertices.size(), sizeof(Vertex));
+        const auto bytes = comparisonBufferBytes(surface.qualityFaces.size(), sizeof(SurfaceQualityFace));
         // createVertexBuffer consumes the reference synchronously; avoid an
         // additional full-size CPU copy before the native upload staging copy.
         gpu.quality = woby::graphics::createVertexBuffer(
-            woby::graphics::makeRef(surface.qualityVertices.data(), bytes), meshVertexLayout());
+            woby::graphics::makeRef(surface.qualityFaces.data(), bytes), {sizeof(SurfaceQualityFace)});
         if (!woby::graphics::isValid(gpu.quality)) { throw std::runtime_error("Cannot allocate surface mesh quality buffer."); }
     }
     if (stages & comparisonSource) {
         const auto vertexBytes = comparisonBufferBytes(meshGeometry(surface.source).vertices.size(), sizeof(Vertex));
         const auto indexBytes = comparisonBufferBytes(meshGeometry(surface.source).indices.size(), sizeof(uint32_t));
-        const auto lineBytes = comparisonBufferBytes(meshGeometry(surface.source).indices.size(), 2 * sizeof(uint32_t));
         if (surface.source.uvQuality && (!prepared || prepared->updateQuality)) {
-            const auto qualityBytes = comparisonBufferBytes(meshGeometry(surface.source).indices.size(),sizeof(Vertex));
-            const auto values = prepared ? std::vector<Vertex>{} : uvQualityVertices(surface.source);
-            const auto handle = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? prepared->quality.data() : values.data(), qualityBytes),meshVertexLayout());
+            const auto qualityBytes = comparisonBufferBytes(meshGeometry(surface.source).indices.size()/3,sizeof(UvQualityFace));
+            const auto values = prepared ? std::vector<UvQualityFace>{} : uvQualityFaces(surface.source, *surface.source.uvQuality);
+            const auto& faces = prepared ? prepared->quality : values;
+            if (faces.size() != meshGeometry(surface.source).indices.size()/3) {
+                throw std::runtime_error("UV quality display does not match its source triangles.");
+            }
+            const auto handle = woby::graphics::createVertexBuffer(woby::graphics::copy(faces.data(), qualityBytes),{sizeof(UvQualityFace)});
             if (!woby::graphics::isValid(handle)) { throw std::runtime_error("Cannot allocate UV quality buffer."); }
             if (woby::graphics::isValid(gpu.quality)) { woby::graphics::destroy(gpu.quality); }
             gpu.quality = handle;
@@ -113,22 +116,16 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         gpu.vertices = woby::graphics::createVertexBuffer(woby::graphics::copy(prepared ? meshGeometry(surface.source).vertices.data() : vertices.data(), vertexBytes), meshVertexLayout());
         const auto& indices = meshGeometry(surface.source).indices;
         gpu.triangles = woby::graphics::createIndexBuffer(woby::graphics::copy(indices.data(), indexBytes), WOBY_GPU_BUFFER_INDEX32);
-        std::vector<uint32_t> lines;
-        if (!prepared) { lines.reserve(indices.size() * 2); }
-        for (size_t i = 0; !prepared && i < indices.size(); i += 3) {
-            for (size_t k = 0; k < 3; ++k) {
-                lines.push_back(indices[i + k]);
-                lines.push_back(indices[i + (k + 1) % 3]);
-            }
-        }
-        gpu.lines = woby::graphics::createIndexBuffer(woby::graphics::copy(prepared ? prepared->lines.data() : lines.data(), lineBytes), WOBY_GPU_BUFFER_INDEX32);
-        if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles) || !woby::graphics::isValid(gpu.lines)) {
+        if (!woby::graphics::isValid(gpu.vertices) || !woby::graphics::isValid(gpu.triangles)) {
             throw std::runtime_error("Cannot allocate analysis surface buffers.");
         }
     }
-    if ((stages & comparisonDistance) && !meshGeometry(surface.sampled).vertices.empty()) {
-        const auto& samples = meshGeometry(surface.sampled).vertices;
-        gpu.samples = woby::graphics::createVertexBuffer(woby::graphics::copy(samples.data(), comparisonBufferBytes(samples.size(), sizeof(Vertex))), meshVertexLayout());
+    if ((stages & comparisonDistance) && !surface.distanceFaces.empty()) {
+        const auto& samples = surface.distanceFaces;
+        if (samples.size() != meshGeometry(surface.source).indices.size()/3) {
+            throw std::runtime_error("Distance display does not match its source triangles.");
+        }
+        gpu.samples = woby::graphics::createVertexBuffer(woby::graphics::copy(samples.data(), comparisonBufferBytes(samples.size(), sizeof(DistanceFace))), {sizeof(DistanceFace)});
         if (!woby::graphics::isValid(gpu.samples)) { throw std::runtime_error("Cannot allocate analysis distance buffer."); }
     }
     if (stages & comparisonTopology) {
@@ -166,7 +163,7 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
 void destroyStage(ComparisonGpuSurface& gpu, uint32_t stages)
 {
     const auto destroy = [](auto& handle) { if (woby::graphics::isValid(handle)) { woby::graphics::destroy(handle); } handle = WOBY_GPU_INVALID_HANDLE; };
-    if (stages & comparisonSource) { destroy(gpu.vertices); destroy(gpu.triangles); destroy(gpu.lines); destroy(gpu.quality); }
+    if (stages & comparisonSource) { destroy(gpu.vertices); destroy(gpu.triangles); destroy(gpu.quality); }
     if (stages & comparisonTopology) { for (auto* h : {&gpu.boundaries,&gpu.nonManifold,&gpu.winding,&gpu.nonManifoldVertices,&gpu.holes,&gpu.finEdges,&gpu.finFill}) { destroy(*h); } }
     if (stages & comparisonDuplicatePoints) { destroy(gpu.duplicatePoints); }
     if (stages & comparisonDuplicateTriangles) { destroy(gpu.duplicateTriangleEdges); destroy(gpu.duplicateTriangleFill); }

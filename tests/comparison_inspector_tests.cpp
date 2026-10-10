@@ -469,7 +469,7 @@ TEST_CASE("analysis submission CPU benchmark" * doctest::skip()) {
         auto gpu = createGpuMesh(runtime.results.value.original.source, meshVertexLayout(), gpuMeshEdges);
         runtime.gpu.original.vertices = gpu.vertexBuffer;
         runtime.gpu.original.triangles = gpu.triangleIndexBuffer;
-        runtime.gpu.original.lines = gpu.lineIndexBuffer;
+        if (woby::graphics::isValid(gpu.lineIndexBuffer)) { woby::graphics::destroy(gpu.lineIndexBuffer); }
         f.runtimes.program = program;
         f.runtimes.parameters = parameters;
         runtime.gpu.uploadedStages = runtime.results.cache.completed;
