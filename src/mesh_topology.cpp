@@ -28,7 +28,7 @@ void canceled(const std::stop_token& stop)
 {
     if (stop.stop_requested()) { throw std::runtime_error("Analysis canceled."); }
 }
-void inspectVertexLinks(MeshTopology& result, const SourceTopology& source, std::stop_token stop)
+void inspectVertexLinks(MeshTopology& result, const SourceTopology& source, size_t sourceIndex, std::stop_token stop)
 {
     // Reuse a sparse scratch graph across vertices. A vertex link normally has
     // only a handful of nodes; constructing map/set nodes for each was costly.
@@ -54,7 +54,7 @@ void inspectVertexLinks(MeshTopology& result, const SourceTopology& source, std:
         // Duplicate faces still contribute parallel links, as required.
         for (const auto f : vertex.faces) {
             canceled(stop);
-            const auto& ids = source.faces[f].vertices;
+            const auto& ids = source.geometry->faces[f].vertices;
             const size_t corner = ids[0] == v ? 0 : ids[1] == v ? 1 : 2;
             const std::array<size_t, 2> edge{ids[(corner+1)%3], ids[(corner+2)%3]};
             for (const auto node : edge) {
@@ -74,10 +74,10 @@ void inspectVertexLinks(MeshTopology& result, const SourceTopology& source, std:
         const bool boundary = !vertex.boundaryEdges.empty();
         const bool valid = degreesValid && components == 1 && ends == (boundary ? 2u : 0u)
             && (!boundary || vertex.boundaryEdges.size() == 2);
-        if (!valid) { result.nonManifoldVertices.push_back({result.sources.size(), v, components}); }
+        if (!valid) { result.nonManifoldVertices.push_back({sourceIndex, v, components}); }
     }
 }
-void inspectBoundaries(MeshTopology& result, const SourceTopology& source, std::stop_token stop)
+void inspectBoundaries(MeshTopology& result, const SourceTopology& source, size_t sourceIndex, std::stop_token stop)
 {
     std::vector<std::vector<size_t>> componentEdges(source.components.size());
     for (size_t e = 0; e < source.edges.size(); ++e) {
@@ -94,8 +94,8 @@ void inspectBoundaries(MeshTopology& result, const SourceTopology& source, std::
         bool first = true;
         for (const auto f : source.components[component]) {
             canceled(stop);
-            for (const auto v : source.faces[f].vertices) {
-                const auto& p = source.vertices[v].position;
+            for (const auto v : source.geometry->faces[f].vertices) {
+                const auto& p = source.geometry->vertices[v].position;
                 if (first) { minimum = maximum = p; first = false; }
                 for (size_t k = 0; k < 3; ++k) { minimum[k] = std::min(minimum[k], p[k]); maximum[k] = std::max(maximum[k], p[k]); }
             }
@@ -111,15 +111,15 @@ void inspectBoundaries(MeshTopology& result, const SourceTopology& source, std::
             canceled(stop); (void)incident;
             if (!seen.insert(seed).second) { continue; }
             TopologyBoundary finding;
-            finding.source = result.sources.size(); finding.component = component;
+            finding.source = sourceIndex; finding.component = component;
             finding.vertices.push_back(seed);
-            finding.minimum = finding.maximum = source.vertices[seed].position;
+            finding.minimum = finding.maximum = source.geometry->vertices[seed].position;
             std::set<size_t> edges;
             size_t ends = 0;
             for (size_t head = 0; head < finding.vertices.size(); ++head) {
                 canceled(stop);
                 const auto v = finding.vertices[head];
-                const auto& p = source.vertices[v].position;
+                const auto& p = source.geometry->vertices[v].position;
                 for (size_t k = 0; k < 3; ++k) { finding.minimum[k] = std::min(finding.minimum[k], p[k]); finding.maximum[k] = std::max(finding.maximum[k], p[k]); }
                 const auto& uses = adjacency.at(v);
                 ends += uses.size() == 1;
@@ -156,7 +156,7 @@ void inspectBoundaries(MeshTopology& result, const SourceTopology& source, std::
         }
     }
 }
-void inspectFinPatches(MeshTopology& result, const SourceTopology& source, std::stop_token stop)
+void inspectFinPatches(MeshTopology& result, const SourceTopology& source, size_t sourceIndex, std::stop_token stop)
 {
     // Physical boundaries determine the classification. A cut edge is retained as
     // provenance, but must not close the open rim of an attached fin artificially.
@@ -181,7 +181,7 @@ void inspectFinPatches(MeshTopology& result, const SourceTopology& source, std::
         canceled(stop);
         if (seen[seed]) { continue; }
         TopologyFinPatch patch;
-        patch.source = result.sources.size(); patch.patch = result.finPatches.size() - first;
+        patch.source = sourceIndex; patch.patch = result.finPatches.size() - first;
         patch.faces.push_back(seed); seen[seed] = true;
         std::set<size_t> physical, cuts;
         if (manifold) {
@@ -193,9 +193,10 @@ void inspectFinPatches(MeshTopology& result, const SourceTopology& source, std::
         for (size_t head = 0; head < patch.faces.size(); ++head) {
             canceled(stop);
             const auto& face = source.faces[patch.faces[head]];
-            const auto& a = source.vertices[face.vertices[0]].position;
-            const auto& b = source.vertices[face.vertices[1]].position;
-            const auto& c = source.vertices[face.vertices[2]].position;
+            const auto& ids = source.geometry->faces[patch.faces[head]].vertices;
+            const auto& a = source.geometry->vertices[ids[0]].position;
+            const auto& b = source.geometry->vertices[ids[1]].position;
+            const auto& c = source.geometry->vertices[ids[2]].position;
             Point u{}, v{};
             for (size_t k = 0; k < 3; ++k) { u[k] = b[k]-a[k]; v[k] = c[k]-a[k]; }
             patch.area += .5 * std::hypot(u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0]);
@@ -257,9 +258,9 @@ void inspectFinPatches(MeshTopology& result, const SourceTopology& source, std::
             && patch.boundary != FinBoundaryKind::simpleLoop;
     }
 }
-SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode mode, std::stop_token stop)
+SourceAnalysisGeometry buildSourceGeometry(const DuplicateSource& source, TopologyMode mode, std::stop_token stop)
 {
-    SourceTopology result;
+    SourceAnalysisGeometry result;
     result.fileId = source.fileId;
     result.batchId = source.batchId;
     result.source = source.name;
@@ -289,7 +290,6 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
         return std::tie(a->partId, a->firstIndex, a->indexCount, a->transform)
             < std::tie(b->partId, b->firstIndex, b->indexCount, b->transform);
     });
-    auto incidence = std::make_shared<TopologyIncidence>();
     {
         AnalysisIndex<size_t, 2> originalVertices;
         AnalysisIndex<double, 3> exactVertices;
@@ -338,7 +338,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
                 }
                 // Needle/cap thresholds must never change connectivity.
                 if (exactTriangleCollapsed(points)) { ++result.excludedCollapsedFaces; continue; }
-                TopologyFace face;
+                AnalysisFace face;
                 face.reference = {source.fileId, part->partId, i/3};
                 for (size_t j = 0; j < 3; ++j) {
                     const auto id = data.indices[i+j];
@@ -352,7 +352,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
                         vertex = analysisIndex(exactVertices, points[j]);
                     }
                     if (vertex == result.vertices.size()) {
-                        TopologyVertex value; value.position = points[j]; result.vertices.push_back(value);
+                        AnalysisVertex value; value.position = points[j]; result.vertices.push_back(value);
                         referenceLists.emplace_back();
                     }
                     auto& references = referenceLists[vertex];
@@ -389,18 +389,19 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
                 result.faces.push_back(face);
             }
         }
-        incidence->pointReferences.reserve(referenceNodes.size());
+        result.pointReferences.reserve(referenceNodes.size());
+        result.referenceOffsets.reserve(result.vertices.size() + 1);
         for (size_t v = 0; v < result.vertices.size(); ++v) {
             canceled(stop);
             const auto& references = referenceLists[v];
-            const auto first = incidence->pointReferences.size();
+            const auto first = result.pointReferences.size();
             for (auto node = references.first; node != noReference; node = referenceNodes[node].next) {
                 canceled(stop);
-                incidence->pointReferences.push_back(referenceNodes[node].value);
+                result.pointReferences.push_back(referenceNodes[node].value);
             }
-            result.vertices[v].references = std::span<const TopologyPointReference>(incidence->pointReferences)
-                .subspan(first, references.count);
+            result.referenceOffsets.push_back(first);
         }
+        result.referenceOffsets.push_back(result.pointReferences.size());
     } // Release welding, source-face visitation and reference-list scratch.
     const auto faceOrder = [&](const auto& a, const auto& b) {
         canceled(stop);
@@ -409,12 +410,28 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
     if (!std::is_sorted(result.faces.begin(), result.faces.end(), faceOrder)) {
         std::sort(result.faces.begin(), result.faces.end(), faceOrder);
     }
+    return result;
+}
+SourceTopology buildSourceIncidence(std::shared_ptr<const SourceAnalysisGeometry> geometry, std::stop_token stop)
+{
+    SourceTopology result;
+    result.geometry = std::move(geometry);
+    const auto& g = *result.geometry;
+    result.fileId = g.fileId; result.batchId = g.batchId; result.source = g.source;
+    result.provenance = g.provenance; result.mode = g.mode; result.available = g.available;
+    result.excludedCollapsedFaces = g.excludedCollapsedFaces;
+    result.vertices.resize(g.vertices.size()); result.faces.resize(g.faces.size());
+    for (size_t v = 0; v < result.vertices.size(); ++v) {
+        canceled(stop);
+        result.vertices[v].references = std::span(g.pointReferences).subspan(g.referenceOffsets[v], g.referenceOffsets[v+1]-g.referenceOffsets[v]);
+    }
+    auto incidence = std::make_shared<TopologyIncidence>();
     {
         const size_t corners = result.faces.size() * 3;
         incidence->vertexFaces.resize(corners);
         incidence->edgeUses.resize(corners);
         std::vector<size_t> degrees(result.vertices.size()), starts(result.vertices.size() + 1);
-        for (const auto& face : result.faces) {
+        for (const auto& face : g.faces) {
             canceled(stop);
             for (size_t k = 0; k < 3; ++k) {
                 ++degrees[face.vertices[k]];
@@ -435,7 +452,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
         std::fill(degrees.begin(), degrees.end(), 0);
         for (size_t f = 0; f < result.faces.size(); ++f) {
             canceled(stop);
-            const auto& ids = result.faces[f].vertices;
+            const auto& ids = result.geometry->faces[f].vertices;
             for (size_t k = 0; k < 3; ++k) {
                 const auto a = ids[k], b = ids[(k+1)%3];
                 entries[cursor[std::min(a,b)]++] = {std::max(a,b), f*3+k};
@@ -469,7 +486,7 @@ SourceTopology buildSourceTopology(const DuplicateSource& source, TopologyMode m
                     canceled(stop);
                     const auto corner = entries[i][1];
                     auto& face = result.faces[corner/3];
-                    incidence->edgeUses[i] = {corner/3, face.vertices[corner%3] == a};
+                    incidence->edgeUses[i] = {corner/3, g.faces[corner/3].vertices[corner%3] == a};
                     face.edges[corner%3] = index;
                 }
                 const auto uses = std::span<const TopologyEdgeUse>(incidence->edgeUses).subspan(begin, end-begin);
@@ -646,50 +663,81 @@ bool filterTopologyFindings(MeshTopology& topology, TopologyInspectionSettings s
     }
     return changed;
 }
-MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, TopologyMode mode, std::stop_token stop)
+std::shared_ptr<const AnalysisGeometry> buildAnalysisGeometry(const std::vector<DuplicateSource>& sources, TopologyMode mode, std::stop_token stop)
 {
     canceled(stop);
-    MeshTopology result;
-    result.mode = normalizedTopologyMode(mode);
-    auto sourceStorage = std::make_shared<std::vector<SourceTopology>>();
-    sourceStorage->reserve(sources.size());
+    auto result = std::make_shared<AnalysisGeometry>();
+    result->mode = normalizedTopologyMode(mode);
     std::vector<const DuplicateSource*> sorted;
     for (const auto& source : sources) { canceled(stop); sorted.push_back(&source); }
     std::sort(sorted.begin(), sorted.end(), [&](const auto* a, const auto* b) {
         canceled(stop); return std::tie(a->fileId, a->batchId) < std::tie(b->fileId, b->batchId);
     });
-    std::set<std::tuple<uint64_t, size_t, uint64_t>> windingFaces;
     for (const auto* input : sorted) {
         canceled(stop);
-        auto source = buildSourceTopology(*input, result.mode, stop);
-        if (source.available) { ++result.availableSources; } else { ++result.unavailableSources; }
-        result.excludedCollapsedFaces += source.excludedCollapsedFaces;
-        for (size_t i = 0; i < source.edges.size(); ++i) {
-            canceled(stop);
-            const auto& edge = source.edges[i];
-            const TopologyEdgeFinding finding{result.sources.size(), i};
-            if (edge.incidentFaces.size() == 1) { result.boundaries.push_back(finding); }
-            if (edge.incidentFaces.size() > 2) { result.nonManifoldEdges.push_back(finding); }
-            if (edge.windingConflict || edge.orientationContradiction) {
-                result.windingEdges.push_back(finding);
-                for (const auto& use : edge.incidentFaces) {
-                    const auto& ref = source.faces[use.face].reference;
-                    windingFaces.emplace(ref.fileId, ref.triangleId, ref.partId);
+        auto source = std::make_shared<const SourceAnalysisGeometry>(buildSourceGeometry(*input, result->mode, stop));
+        if (source->available) { ++result->availableSources; } else { ++result->unavailableSources; }
+        result->excludedCollapsedFaces += source->excludedCollapsedFaces;
+        result->sources.push_back(std::move(source));
+    }
+    return result;
+}
+MeshTopology buildTopologyIncidence(std::shared_ptr<const AnalysisGeometry> geometry, std::stop_token stop)
+{
+    canceled(stop);
+    MeshTopology result;
+    result.geometry = std::move(geometry);
+    if (!result.geometry) { return result; }
+    result.mode = result.geometry->mode;
+    result.availableSources = result.geometry->availableSources;
+    result.unavailableSources = result.geometry->unavailableSources;
+    result.excludedCollapsedFaces = result.geometry->excludedCollapsedFaces;
+    auto sources = std::make_shared<std::vector<SourceTopology>>();
+    sources->reserve(result.geometry->sources.size());
+    for (const auto& source : result.geometry->sources) {
+        canceled(stop); sources->push_back(buildSourceIncidence(source, stop));
+    }
+    result.sources = *sources; result.sourceStorage = std::move(sources);
+    return result;
+}
+void inspectTopologyFindings(MeshTopology& result, uint32_t stages, std::stop_token stop)
+{
+    canceled(stop);
+    stages &= ~result.completedFindings;
+    std::set<std::tuple<uint64_t, size_t, uint64_t>> windingFaces;
+    for (size_t sourceIndex = 0; sourceIndex < result.sources.size(); ++sourceIndex) {
+        const auto& source = result.sources[sourceIndex];
+        if (stages & topologyEdgeFindings) {
+            for (size_t i = 0; i < source.edges.size(); ++i) {
+                canceled(stop);
+                const auto& edge = source.edges[i];
+                const TopologyEdgeFinding finding{sourceIndex, i};
+                if (edge.incidentFaces.size() == 1) { result.boundaries.push_back(finding); }
+                if (edge.incidentFaces.size() > 2) { result.nonManifoldEdges.push_back(finding); }
+                if (edge.windingConflict || edge.orientationContradiction) {
+                    result.windingEdges.push_back(finding);
+                    for (const auto& use : edge.incidentFaces) {
+                        const auto& ref = source.geometry->faces[use.face].reference;
+                        windingFaces.emplace(ref.fileId, ref.triangleId, ref.partId);
+                    }
                 }
+                result.orientationContradictions += edge.orientationContradiction;
             }
-            result.orientationContradictions += edge.orientationContradiction;
         }
         parallelAnalysisBatches(3, 1, stop, [&](size_t begin, size_t) {
-            if (begin == 0) { inspectVertexLinks(result, source, stop); }
-            if (begin == 1) { inspectBoundaries(result, source, stop); }
-            if (begin == 2) { inspectFinPatches(result, source, stop); }
+            if (begin == 0 && (stages & topologyVertexLinks)) { inspectVertexLinks(result, source, sourceIndex, stop); }
+            if (begin == 1 && (stages & topologyBoundaryRegions)) { inspectBoundaries(result, source, sourceIndex, stop); }
+            if (begin == 2 && (stages & topologyFinPatches)) { inspectFinPatches(result, source, sourceIndex, stop); }
         }, source.faces.size() >= 4096 ? 3 : 4096);
-        sourceStorage->push_back(std::move(source));
-        result.sources = *sourceStorage;
     }
-    result.sourceStorage = std::move(sourceStorage);
     for (const auto& [file, triangle, part] : windingFaces) { canceled(stop); result.windingFaces.push_back({file, part, triangle}); }
-    (void)filterTopologyFindings(result, {}, stop);
+    (void)filterTopologyFindings(result, result.inspection, stop);
+    result.completedFindings |= stages;
+}
+MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources, TopologyMode mode, std::stop_token stop)
+{
+    auto result = buildTopologyIncidence(buildAnalysisGeometry(sources, mode, stop), stop);
+    inspectTopologyFindings(result, topologyAllFindings, stop);
     return result;
 }
 } // namespace woby

@@ -110,11 +110,11 @@ inline void edge(Writer& w, const MeshTopology& t, const TopologyEdgeFinding& f)
     field(o, "incidentFacesTruncated", false);
     arrayField(o, "incidentFaces", e.incidentFaces.size(), [&](size_t i) {
         const auto& use = e.incidentFaces[i]; auto item = object(w);
-        faceFields(item, s.faces[use.face].reference); field(item, "forward", use.forward); end(item);
+        faceFields(item, s.geometry->faces[use.face].reference); field(item, "forward", use.forward); end(item);
     });
     arrayField(o, "endpoints", 2, [&](size_t i) {
         const auto& v = s.vertices[e.vertices[i]]; auto item = object(w);
-        field(item, "position", originalPosition(v.position, t.coordinateOrigin));
+        field(item, "position", originalPosition(s.geometry->vertices[e.vertices[i]].position, t.coordinateOrigin));
         field(item, "sourcePointCount", v.references.size()); field(item, "sourcePointsTruncated", false);
         arrayField(item, "sourcePoints", v.references.size(), [&](size_t j) { point(w, v.references[j]); }); end(item);
     }); end(o);
@@ -122,11 +122,11 @@ inline void edge(Writer& w, const MeshTopology& t, const TopologyEdgeFinding& f)
 inline void vertex(Writer& w, const MeshTopology& t, const TopologyVertexFinding& f) {
     const auto& s = t.sources[f.source]; const auto& v = s.vertices[f.vertex];
     auto o = object(w); sourceFields(o, s); field(o, "vertexId", f.vertex + 1);
-    field(o, "position", originalPosition(v.position, t.coordinateOrigin));
+    field(o, "position", originalPosition(s.geometry->vertices[f.vertex].position, t.coordinateOrigin));
     field(o, "pointReferenceCount", v.references.size()); field(o, "incidentFaceCount", v.faces.size());
     field(o, "linkComponents", f.linkComponents); field(o, "pointReferencesTruncated", false); field(o, "incidentFacesTruncated", false);
     arrayField(o, "pointReferences", v.references.size(), [&](size_t i) { point(w, v.references[i]); });
-    arrayField(o, "incidentFaces", v.faces.size(), [&](size_t i) { face(w, s.faces[v.faces[i]].reference); }); end(o);
+    arrayField(o, "incidentFaces", v.faces.size(), [&](size_t i) { face(w, s.geometry->faces[v.faces[i]].reference); }); end(o);
 }
 inline void boundary(Writer& w, const MeshTopology& t, size_t index) {
     const auto& b = t.boundaryRegions[index]; const auto& s = t.sources[b.source];
@@ -137,12 +137,12 @@ inline void boundary(Writer& w, const MeshTopology& t, size_t index) {
     field(o, "verticesTruncated", false); field(o, "edgesTruncated", false);
     arrayField(o, "vertices", b.vertices.size(), [&](size_t i) {
         const auto vi = b.vertices[i]; const auto& v = s.vertices[vi]; auto item = object(w);
-        field(item, "vertexId", vi + 1); field(item, "position", originalPosition(v.position, t.coordinateOrigin));
+        field(item, "vertexId", vi + 1); field(item, "position", originalPosition(s.geometry->vertices[vi].position, t.coordinateOrigin));
         field(item, "pointReferenceCount", v.references.size()); field(item, "pointReferencesTruncated", false);
         arrayField(item, "pointReferences", v.references.size(), [&](size_t j) { point(w, v.references[j]); }); end(item);
     });
     arrayField(o, "edgeIds", b.edges.size(), [&](size_t i) { value(w, b.edges[i] + 1); });
-    arrayField(o, "incidentFacesByEdge", b.edges.size(), [&](size_t i) { face(w, s.faces[s.edges[b.edges[i]].incidentFaces[0].face].reference); }); end(o);
+    arrayField(o, "incidentFacesByEdge", b.edges.size(), [&](size_t i) { face(w, s.geometry->faces[s.edges[b.edges[i]].incidentFaces[0].face].reference); }); end(o);
 }
 inline void fin(Writer& w, const MeshTopology& t, size_t index) {
     const auto& p = t.finPatches[t.fins[index]]; const auto& s = t.sources[p.source];
@@ -153,7 +153,7 @@ inline void fin(Writer& w, const MeshTopology& t, size_t index) {
     field(o, "faceCount", p.faces.size()); field(o, "physicalBoundaryEdgeCount", p.physicalBoundaryEdges.size());
     field(o, "cutBoundaryEdgeCount", p.cutBoundaryEdges.size()); field(o, "facesTruncated", false);
     field(o, "physicalBoundaryEdgesTruncated", false); field(o, "cutBoundaryEdgesTruncated", false);
-    arrayField(o, "faces", p.faces.size(), [&](size_t i) { face(w, s.faces[p.faces[i]].reference); });
+    arrayField(o, "faces", p.faces.size(), [&](size_t i) { face(w, s.geometry->faces[p.faces[i]].reference); });
     arrayField(o, "physicalBoundaryEdgeIds", p.physicalBoundaryEdges.size(), [&](size_t i) { value(w, p.physicalBoundaryEdges[i] + 1); });
     arrayField(o, "cutBoundaryEdgeIds", p.cutBoundaryEdges.size(), [&](size_t i) { value(w, p.cutBoundaryEdges[i] + 1); }); end(o);
 }

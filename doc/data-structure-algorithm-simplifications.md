@@ -99,24 +99,26 @@ Diagnostic overlays can similarly store source edge/face references and retrieve
 
 ## Analysis geometry and topology stages
 
-An intersections-only stage calls `inspectSurfaceTopology` when no topology stage is requested. That function builds the complete topology result and prepares boundaries, winding lines, vertex markers, hole edges, and fin fill. `buildMeshTopology` itself constructs incidence, components, vertex-link findings, boundary regions, and fin patches. Intersections then use source positions, face vertex IDs, face references, and source status. The extra graph and overlays are discarded when only intersection fields are merged into the retained result.
+The [stage separation investigation](analysis-stage-separation-investigation.md) confirms the unused dependencies and measures the reuse opportunity on BusGameMap. It covers the benefits, memory trade-offs, correctness risks, and an incremental implementation order. The [implementation report](analysis-stage-separation-implementation.md) records geometry reuse, separate finding families, and worker display preparation.
+
+Before the change, an intersections-only stage called `inspectSurfaceTopology`, built the complete graph and findings, and prepared topology overlays. It then discarded those extra products during publication. The new path builds or reuses immutable analysis geometry directly. Topology requests add incidence to the same geometry owner and compute only the requested finding families.
 
 Sources: [stage execution and merge](../src/mesh_comparison.cpp), [topology construction](../src/mesh_topology.cpp), [intersection inputs](../src/mesh_intersections.cpp).
 
-Split construction into independently owned products:
+Construction now separates these products:
 
 1. Selected source instances, validated positions, transformed vertex identities, collapsed-face filtering, and face references.
 2. Edge/vertex incidence and connected components.
 3. Detector findings such as links, boundaries, and fins.
-4. Display buffers for requested visible findings.
+4. Worker-prepared display buffers. GPU allocation remains eager for completed stages.
 
 Intersections need the first product plus a bounding-volume hierarchy. Topology detectors add incidence and their own findings. An existing compatible topology result can provide the first product without rebuilding it. Cache keys must include geometry, membership, batching, topology mode, and relevant transforms; a hole threshold or a display toggle should not enter the geometry key.
 
 This split also allows `DuplicateSource`-based detectors to run without first constructing a general-purpose render `Mesh` in world space. The code already carries source instances and transforms inside `DuplicateInput`; separate that useful contract from its current storage inside an analysis mesh. Prepare display geometry only when needed, on a worker.
 
-There is another repeated construction: topology stages run `inspectMesh`, which welds geometric vertices and sorts incidence, before building source topology. Surface quality builds its own exact-position edge adjacency too. Share compatible indexing and incidence products, but preserve their distinct semantics. `inspectMesh` exposes geometric-duplicate and numerical-degeneracy counts through the UI and control API. It cannot simply be deleted in favor of original-index topology, and quality's degeneracy threshold differs from exact collapsed-face filtering.
+There is still repeated construction: the edge-finding stage runs `inspectMesh`, which welds geometric vertices and sorts incidence, in addition to source topology. Surface quality builds its own exact-position edge adjacency too. Share compatible indexing and incidence products, but preserve their distinct semantics. `inspectMesh` exposes geometric-duplicate and numerical-degeneracy counts through the UI and control API. It cannot simply be deleted in favor of original-index topology, and quality's degeneracy threshold differs from exact collapsed-face filtering.
 
-**First experiment:** intersections-only requests before and after a topology run. Compare full finding identity and order, shared-edge/shared-vertex rules, original-index/exact-position modes, cancellation, bounded partial results, and peak memory. Then consider sharing the compatible geometric-welding path used by quality and legacy diagnostics.
+**Validation:** the implementation report covers cold and cached intersection requests, topology upgrades, finding identity and order, both topology modes, cancellation, bounded results, display publication, and retained storage. Its compatibility review keeps quality and legacy indexing separate because their identity and degeneracy rules differ.
 
 ## Freeform evaluation
 

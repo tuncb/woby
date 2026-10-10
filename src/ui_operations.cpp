@@ -756,9 +756,9 @@ void selectComparisonDiagnostic(UiState& state, const MeshComparison& result,
             const auto& finding = findings[index];
             const auto& source = topology.sources[finding.source];
             for (const auto& use : source.edges[finding.edge].incidentFaces) {
-                for (const auto vertex : source.faces[use.face].vertices) {
+                for (const auto vertex : source.geometry->faces[use.face].vertices) {
                     Vertex point;
-                    const auto& position = source.vertices[vertex].position;
+                    const auto& position = source.geometry->vertices[vertex].position;
                     for (size_t k = 0; k < 3; ++k) { point.position[k] = static_cast<float>(position[k]); }
                     points.push_back(point);
                 }

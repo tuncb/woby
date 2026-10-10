@@ -694,7 +694,7 @@ TEST_CASE("hole threshold runtime reuses topology and honors manual requests and
         CHECK(runtime.results.cache.completed == stages);
         CHECK(runtime.results.value.original.topology.sources[0].incidence == storage);
         CHECK(runtime.results.value.original.topology.sources[0].faces.data() == faces);
-        CHECK(comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes));
+        REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes); }));
         CHECK(runtime.results.value.detectors[holes].knownCounts[0] == (threshold == 1.0f ? 2 : 0));
     }
     setComparisonAutomaticUpdate(f.state, f.id, DiagnosticCategory::holes, false);
@@ -710,7 +710,7 @@ TEST_CASE("hole threshold runtime reuses topology and honors manual requests and
     CHECK_FALSE(runtime.jobs.worker.valid());
     requestComparisonDetector(f.state, f.id, DiagnosticCategory::holes);
     updateComparisonRuntimes(f.runtimes, f.state);
-    CHECK(runtime.results.value.detectors[holes].phase == IntersectionPhase::complete);
+    REQUIRE(f.until([&] { return runtime.results.value.detectors[holes].phase == IntersectionPhase::complete; }));
     CHECK(runtime.results.value.detectors[holes].knownCounts[0] == 2);
     CHECK_FALSE(runtime.jobs.worker.valid());
     CHECK(runtime.results.value.original.topology.sources[0].incidence == storage);
@@ -831,7 +831,7 @@ TEST_CASE("fin lifecycle filters cached patches and hides stale canceled and fai
     settings = comparisonSettings(f.state,f.id); settings.topologyInspection.finMaxAreaRatio = .25f;
     setComparisonSettings(f.state,settings,f.id); updateComparisonRuntimes(f.runtimes,f.state);
     CHECK_FALSE(runtime.jobs.worker.valid()); CHECK(runtime.results.value.original.topology.finPatches.data() == patches);
-    CHECK(comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true));
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true); }));
     CHECK(runtime.results.value.original.topology.fins.size() == 1);
     CHECK(comparisonDetectorStatus(runtime.results.value,DiagnosticCategory::fins).knownCounts[0] == 1);
     settings.topologyInspection.showFins = false; setComparisonSettings(f.state,settings,f.id); updateComparisonRuntimes(f.runtimes,f.state);
@@ -845,13 +845,13 @@ TEST_CASE("fin lifecycle filters cached patches and hides stale canceled and fai
     CHECK(controlComparisonResults(runtime.results.value,.05)["aToB"]["detectors"]["fins"]["findings"].empty());
     requestComparisonDetector(f.state,f.id,DiagnosticCategory::fins); updateComparisonRuntimes(f.runtimes,f.state);
     CHECK_FALSE(runtime.jobs.worker.valid()); CHECK(runtime.results.value.original.topology.finPatches.data() == patches);
-    CHECK(comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true));
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true); }));
     CHECK(runtime.results.value.original.topology.fins.size() == 2);
     requestComparisonDetector(f.state,f.id,DiagnosticCategory::fins,true); updateComparisonRuntimes(f.runtimes,f.state);
     CHECK(comparisonDetectorStatus(runtime.results.value,DiagnosticCategory::fins).phase == IntersectionPhase::canceled);
     CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
     requestComparisonDetector(f.state,f.id,DiagnosticCategory::fins); updateComparisonRuntimes(f.runtimes,f.state);
-    CHECK(comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true));
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime,f.state,f.id,DiagnosticCategory::fins,true); }));
     auto& status = runtime.results.value.detectors[static_cast<size_t>(DiagnosticCategory::fins)];
     status.phase = IntersectionPhase::failed; status.error = "fixture failure";
     CHECK_FALSE(readyComparisonSettings(runtime,f.state,f.id).topologyInspection.showFins);
@@ -995,4 +995,126 @@ TEST_CASE("detector batch retries unaffected work after threshold edits or a sta
             ? IntersectionPhase::canceled : IntersectionPhase::complete;
         CHECK(runtime.results.value.detectors[i].phase == expected);
     }
+}
+
+TEST_CASE("cold and cached intersection stages keep geometry without constructing topology")
+{
+    const auto mesh = meshFor(crossingSource());
+    for (const auto mode : {TopologyMode::originalIndex, TopologyMode::exactPosition}) {
+        auto cold = computeComparisonStages(mesh, {}, comparisonIntersections, {}, {}, mode);
+        REQUIRE(cold.original.analysis.geometry);
+        CHECK_FALSE(cold.original.topology.sourceStorage);
+        CHECK_FALSE(cold.original.analysis.incidence.sourceStorage);
+        CHECK(cold.original.topologyBoundaries.empty()); CHECK(cold.original.finFill.empty());
+        const auto geometry = cold.original.analysis.geometry;
+        auto upgraded = computeComparisonStages(mesh, {}, comparisonTopology, {}, {}, mode, {}, comparisonAnalysisInputs(cold));
+        CHECK(upgraded.original.topology.geometry == geometry);
+        auto warm = computeComparisonStages(mesh, {}, comparisonIntersections, {}, {}, mode, {0,0}, comparisonAnalysisInputs(upgraded, false));
+        CHECK(warm.original.analysis.geometry == geometry);
+        CHECK_FALSE(warm.original.analysis.incidence.sourceStorage);
+        const auto graph = upgraded.original.topology.sourceStorage;
+        ComparisonCacheStatus upgradeCache{91, comparisonTopology}; upgradeCache.topologyMode = mode;
+        REQUIRE(applyComparisonStages(upgraded, upgradeCache, warm, 91, comparisonIntersections));
+        CHECK(upgraded.original.analysis.incidence.sourceStorage == graph);
+        CHECK(upgraded.original.topology.sourceStorage == graph);
+        CHECK(warm.original.intersections.candidateTests == cold.original.intersections.candidateTests);
+        REQUIRE(warm.original.intersections.findings.size() == 1);
+        CHECK(warm.original.intersections.findings[0].faces == cold.original.intersections.findings[0].faces);
+        CHECK(warm.original.intersections.findings[0].geometry == cold.original.intersections.findings[0].geometry);
+        CHECK(warm.original.intersectionDisplayFill.size() == 6);
+        // Identity, coordinate frame and topology mode are all part of reuse.
+        auto replaced = mesh; replaced.duplicateInput = std::make_shared<DuplicateInput>(*mesh.duplicateInput);
+        CHECK(computeComparisonStages(replaced, {}, comparisonIntersections, {}, {}, mode, {}, comparisonAnalysisInputs(cold)).original.analysis.geometry != geometry);
+        auto translated = mesh; translated.origin[0] = 1;
+        CHECK(computeComparisonStages(translated, {}, comparisonIntersections, {}, {}, mode, {}, comparisonAnalysisInputs(cold)).original.analysis.geometry != geometry);
+        const auto otherMode = mode == TopologyMode::originalIndex ? TopologyMode::exactPosition : TopologyMode::originalIndex;
+        CHECK(computeComparisonStages(mesh, {}, comparisonIntersections, {}, {}, otherMode, {}, comparisonAnalysisInputs(cold)).original.analysis.geometry != geometry);
+        ComparisonCacheStatus cache{55, 0}; cache.topologyMode = mode; MeshComparison published;
+        CHECK_FALSE(applyComparisonStages(published, cache, cold, 54, comparisonIntersections));
+        CHECK_FALSE(published.original.analysis.geometry);
+        REQUIRE(applyComparisonStages(published, cache, std::move(cold), 55, comparisonIntersections));
+        CHECK(published.original.analysis.geometry == geometry);
+    }
+}
+
+TEST_CASE("topology display workers reject old thresholds and geometry before publication")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    const auto graph = runtime.results.value.original.topology.sourceStorage;
+    const TopologyDisplayInputs inputs{runtime.results.value.original.topologyDisplayInputs, runtime.results.value.repaired.topologyDisplayInputs};
+    auto& display = runtime.jobs.display;
+    display.signature = runtime.results.cache.signature; display.baseRevision = runtime.results.stageRevisions[1];
+    display.settings = comparisonSettings(f.state, f.id).topologyInspection; display.stop = std::stop_source{};
+    std::promise<MeshComparison> pending; display.worker = pending.get_future();
+    const auto displayRevision = display.revision;
+    auto settings = comparisonSettings(f.state, f.id);
+    SUBCASE("threshold changed") { settings.topologyInspection.holeSizeRatioTolerance = 2; setComparisonSettings(f.state, settings, f.id); }
+    SUBCASE("mode changed") { settings.topologyMode = TopologyMode::exactPosition; setComparisonSettings(f.state, settings, f.id); }
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(display.stop.stop_requested());
+    auto stale = prepareComparisonTopologyDisplay(inputs, display.settings);
+    stale.original.holeEdges.push_back({{123,456,789},{123,456,790}});
+    pending.set_value(std::move(stale));
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(display.revision == displayRevision);
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id) && !display.worker.valid(); }));
+    if (settings.topologyMode == TopologyMode::originalIndex) { CHECK(runtime.results.value.original.topology.sourceStorage == graph); }
+    for (const auto& edge : runtime.results.value.original.holeEdges) { CHECK(edge.a != std::array<float,3>{123,456,789}); }
+    const auto beforeToggle = display.revision;
+    settings.topologyInspection.showHoles = !settings.topologyInspection.showHoles;
+    setComparisonSettings(f.state, settings, f.id); updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK_FALSE(display.worker.valid()); CHECK(display.revision == beforeToggle);
+}
+
+TEST_CASE("diagnostic display preparation uses worker mesh bounds and preserves finding geometry")
+{
+    SurfaceComparison surface;
+    Mesh mesh; mesh.bounds.radius = 125;
+    DuplicateFinding point; point.geometry = {{4,5,6}};
+    surface.duplicates.points.findings.push_back(point);
+    DuplicateFinding triangle; triangle.geometry = {{0,0,0},{1,0,0},{0,1,0}};
+    surface.duplicates.triangles.findings.push_back(triangle);
+    DegenerateFinding degenerate; degenerate.geometry = {{{2,3,4},{2,3,4},{2,3,4}}}; degenerate.reasons.collapsed = true;
+    surface.degenerates.findings.push_back(degenerate);
+    IntersectionFinding intersection; intersection.geometry = {{{0,0,0},{1,0,0},{0,1,0},{0,0,1},{1,0,1},{0,1,1}}};
+    surface.intersections.findings.push_back(intersection);
+    const auto stages = comparisonDuplicatePoints | comparisonDuplicateTriangles | comparisonDegenerates | comparisonIntersections;
+    prepareComparisonDiagnosticDisplay(surface, mesh, stages);
+    CHECK(surface.duplicatePointDisplay == std::vector<std::array<float,3>>{{3,5,6},{5,5,6},{4,4,6},{4,6,6},{4,5,5},{4,5,7}});
+    CHECK(surface.duplicateTriangleDisplayFill == triangle.geometry);
+    CHECK(surface.duplicateTriangleDisplayEdges == std::vector<std::array<float,3>>{{0,0,0},{1,0,0},{1,0,0},{0,1,0},{0,1,0},{0,0,0}});
+    REQUIRE(surface.degenerateDisplayEdges.size() == 12);
+    CHECK(surface.degenerateDisplayEdges[6] == std::array<float,3>{1,3,4});
+    CHECK(surface.degenerateDisplayFill.size() == 3);
+    CHECK(surface.intersectionDisplayFill == std::vector<std::array<float,3>>(intersection.geometry.begin(), intersection.geometry.end()));
+    prepareComparisonDiagnosticDisplay(surface, mesh, stages);
+    CHECK(surface.degenerateDisplayEdges.size() == 12); // Rebuild replaces display arrays.
+    std::stop_source stop; stop.request_stop();
+    CHECK_THROWS(prepareComparisonDiagnosticDisplay(surface, mesh, stages, stop.get_token()));
+}
+
+TEST_CASE("failed threshold display preserves findings and waits for explicit retry")
+{
+    WorkflowFixture f; REQUIRE(f.initialized);
+    auto& runtime = f.runtimes.objects[f.id];
+    REQUIRE(f.until([&] { return comparisonResultsReady(runtime, f.state, f.id); }));
+    const auto graph = runtime.results.value.original.topology.sourceStorage;
+    const auto previous = runtime.results.value.original.topology.holes;
+    auto settings = comparisonSettings(f.state, f.id); settings.topologyInspection.holeSizeRatioTolerance = 2;
+    setComparisonSettings(f.state, settings, f.id);
+    auto& display = runtime.jobs.display;
+    display.signature = runtime.results.cache.signature; display.baseRevision = runtime.results.stageRevisions[1];
+    display.settings = settings.topologyInspection; display.stop = std::stop_source{};
+    std::promise<MeshComparison> failed; display.worker = failed.get_future();
+    failed.set_exception(std::make_exception_ptr(std::runtime_error("Injected display failure.")));
+    updateComparisonRuntimes(f.runtimes, f.state);
+    CHECK(comparisonDetectorStatus(runtime.results.value, DiagnosticCategory::holes).phase == IntersectionPhase::failed);
+    CHECK(runtime.results.value.original.topology.holes == previous);
+    CHECK(runtime.results.value.original.topology.sourceStorage == graph);
+    updateComparisonRuntimes(f.runtimes, f.state); CHECK_FALSE(display.worker.valid());
+    requestComparisonDetector(f.state, f.id, DiagnosticCategory::holes);
+    REQUIRE(f.until([&] { return comparisonDetectorReady(runtime, f.state, f.id, DiagnosticCategory::holes, true); }));
+    CHECK(runtime.results.value.original.topology.sourceStorage == graph);
 }

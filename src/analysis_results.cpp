@@ -69,11 +69,11 @@ Node topologyEdges(const MeshTopology& t, const std::vector<TopologyEdgeFinding>
             {"topologyMode", topologyModeName(s.mode)}, {"provenance", sourceProvenanceName(s.provenance)},
             {"incidentFaceCount", e.incidentFaces.size()}, {"sameDirection", e.windingConflict}, {"orientationContradiction", e.orientationContradiction}});
         array(item, "incidentFaces", e.incidentFaces.size(), [&s, &e](size_t k) {
-            const auto& use = e.incidentFaces[k]; auto v = face(s.faces[use.face].reference); v["forward"] = use.forward; return scalar(std::move(v));
+            const auto& use = e.incidentFaces[k]; auto v = face(s.geometry->faces[use.face].reference); v["forward"] = use.forward; return scalar(std::move(v));
         }, "incidentFacesTruncated");
         array(item, "endpoints", 2, [&t, &s, &e](size_t k) {
             const auto& v = s.vertices[e.vertices[k]];
-            auto endpoint = scalar({{"position", originalPosition(v.position, t.coordinateOrigin)}, {"sourcePointCount", v.references.size()}});
+            auto endpoint = scalar({{"position", originalPosition(s.geometry->vertices[e.vertices[k]].position, t.coordinateOrigin)}, {"sourcePointCount", v.references.size()}});
             array(endpoint, "sourcePoints", v.references.size(), [&v](size_t j) { return scalar(point(v.references[j])); }, "sourcePointsTruncated");
             return endpoint;
         });
@@ -89,10 +89,10 @@ Node vertex(const SourceTopology& s, size_t index, const Coordinate& origin)
 {
     const auto& v = s.vertices[index];
     auto n = scalar({{"sourceId", std::to_string(s.fileId)}, {"batchId", std::to_string(s.batchId)}, {"source", s.source}, {"vertexId", index + 1},
-        {"position", originalPosition(v.position, origin)}, {"topologyMode", topologyModeName(s.mode)},
+        {"position", originalPosition(s.geometry->vertices[index].position, origin)}, {"topologyMode", topologyModeName(s.mode)},
         {"pointReferenceCount", v.references.size()}, {"incidentFaceCount", v.faces.size()}});
     array(n, "pointReferences", v.references.size(), [&v](size_t i) { return scalar(point(v.references[i])); }, "pointReferencesTruncated");
-    array(n, "incidentFaces", v.faces.size(), [&s, &v](size_t i) { return scalar(face(s.faces[v.faces[i]].reference)); }, "incidentFacesTruncated");
+    array(n, "incidentFaces", v.faces.size(), [&s, &v](size_t i) { return scalar(face(s.geometry->faces[v.faces[i]].reference)); }, "incidentFacesTruncated");
     return n;
 }
 Node boundary(const MeshTopology& t, size_t index)
@@ -104,12 +104,12 @@ Node boundary(const MeshTopology& t, size_t index)
         {"sizeRatio", b.ratioAvailable ? Json(b.sizeRatio) : Json(nullptr)}, {"vertexCount", b.vertices.size()}, {"edgeCount", b.edges.size()}});
     array(n, "vertices", b.vertices.size(), [&t, &s, &b](size_t i) {
         const auto index = b.vertices[i]; const auto& v = s.vertices[index];
-        auto item = scalar({{"vertexId", index + 1}, {"position", originalPosition(v.position, t.coordinateOrigin)}, {"pointReferenceCount", v.references.size()}});
+        auto item = scalar({{"vertexId", index + 1}, {"position", originalPosition(s.geometry->vertices[index].position, t.coordinateOrigin)}, {"pointReferenceCount", v.references.size()}});
         array(item, "pointReferences", v.references.size(), [&v](size_t j) { return scalar(point(v.references[j])); }, "pointReferencesTruncated", 1);
         return item;
     }, "verticesTruncated");
     array(n, "edgeIds", b.edges.size(), [&b](size_t i) { return scalar(b.edges[i] + 1); }, "edgesTruncated");
-    array(n, "incidentFacesByEdge", b.edges.size(), [&s, &b](size_t i) { return scalar(face(s.faces[s.edges[b.edges[i]].incidentFaces[0].face].reference)); });
+    array(n, "incidentFacesByEdge", b.edges.size(), [&s, &b](size_t i) { return scalar(face(s.geometry->faces[s.edges[b.edges[i]].incidentFaces[0].face].reference)); });
     return n;
 }
 Node topologyInspection(const MeshTopology& t, bool holes)
@@ -154,7 +154,7 @@ Node fins(const MeshTopology& t)
             {"boundaryKind", finBoundaryKindName(p.boundary)}, {"boundaryComponentCount", p.boundaryComponents},
             {"area", p.area}, {"denominatorArea", p.denominatorArea}, {"areaRatio", p.areaRatio}, {"faceCount", p.faces.size()},
             {"physicalBoundaryEdgeCount", p.physicalBoundaryEdges.size()}, {"cutBoundaryEdgeCount", p.cutBoundaryEdges.size()}});
-        array(item, "faces", p.faces.size(), [&s, &p](size_t j) { return scalar(face(s.faces[p.faces[j]].reference)); }, "facesTruncated");
+        array(item, "faces", p.faces.size(), [&s, &p](size_t j) { return scalar(face(s.geometry->faces[p.faces[j]].reference)); }, "facesTruncated");
         array(item, "physicalBoundaryEdgeIds", p.physicalBoundaryEdges.size(), [&p](size_t j) { return scalar(p.physicalBoundaryEdges[j] + 1); }, "physicalBoundaryEdgesTruncated");
         array(item, "cutBoundaryEdgeIds", p.cutBoundaryEdges.size(), [&p](size_t j) { return scalar(p.cutBoundaryEdges[j] + 1); }, "cutBoundaryEdgesTruncated");
         return item;

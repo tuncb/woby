@@ -26,14 +26,15 @@ MeshComparison data()
     t.availableSources = 1;
     auto sources = std::make_shared<std::vector<SourceTopology>>(1);
     (*sources)[0].fileId = 1; (*sources)[0].vertices.resize(121);
-    auto incidence = std::make_shared<TopologyIncidence>();
-    incidence->pointReferences.reserve(121 * 130);
+    auto geometry = std::make_shared<SourceAnalysisGeometry>();
+    geometry->vertices.resize(121);
+    geometry->pointReferences.reserve(121 * 130);
     for (auto& v : (*sources)[0].vertices) {
-        const auto first = incidence->pointReferences.size();
-        for (size_t i = 0; i < 130; ++i) { incidence->pointReferences.push_back({2, i}); }
-        v.references = std::span<const TopologyPointReference>(incidence->pointReferences).subspan(first, 130);
+        const auto first = geometry->pointReferences.size();
+        for (size_t i = 0; i < 130; ++i) { geometry->pointReferences.push_back({2, i}); }
+        v.references = std::span<const TopologyPointReference>(geometry->pointReferences).subspan(first, 130);
     }
-    (*sources)[0].incidence = std::move(incidence);
+    (*sources)[0].geometry = std::move(geometry);
     t.sources = *sources;
     t.sourceStorage = std::move(sources);
     TopologyBoundary b;
@@ -154,7 +155,7 @@ TEST_CASE("direct export matches the established schema for every detector on bo
     t.coordinateOrigin = {1e100, -1e-100, -0.0};
     // Seed each retained record shape; detection itself is covered separately.
     t.nonManifoldEdges = {t.boundaries[0]}; t.windingEdges = {t.boundaries[0]};
-    t.windingFaces = {t.sources[0].faces[0].reference};
+    t.windingFaces = {t.sources[0].geometry->faces[0].reference};
     t.nonManifoldVertices = {{0, 0, 2}};
     t.holes = {0};
     t.boundaryRegions[0].ratioAvailable = true; t.boundaryRegions[0].sizeRatio = .125;

@@ -708,7 +708,7 @@ void drawTopologyInspectionFindings(UiState& state, const ComparisonRuntime& run
         const auto& vertex = source.vertices[finding.vertex];
         ImGui::TextWrapped("%zu link components; %zu incident faces; %zu source point references. %s", finding.linkComponents, vertex.faces.size(), vertex.references.size(), sourceProvenanceName(source.provenance));
         for (size_t i = 0; i < std::min(size_t{100}, vertex.faces.size()); ++i) {
-            const auto& ref = source.faces[vertex.faces[i]].reference;
+            const auto& ref = source.geometry->faces[vertex.faces[i]].reference;
             ImGui::Text("Triangle %zu, part %llu", ref.triangleId+1, static_cast<unsigned long long>(ref.partId));
         }
         if (vertex.faces.size() > 100) { ImGui::TextDisabled("Showing first 100 incident faces."); }
@@ -777,7 +777,7 @@ void drawTopologyFindings(UiState& state, const ComparisonRuntime& runtime, bool
         while (clipper.Step()) {
             for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
                 const auto& use = edge.incidentFaces[static_cast<size_t>(i)];
-                const auto& ref = source.faces[use.face].reference;
+                const auto& ref = source.geometry->faces[use.face].reference;
                 ImGui::Text("Triangle %zu / part %llu / %s", ref.triangleId+1, static_cast<unsigned long long>(ref.partId), use.forward ? "forward" : "reverse");
             }
         }
@@ -1599,8 +1599,8 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
             const auto& patch = topology.finPatches[topology.fins.at(focus.index)];
             const auto& source = topology.sources[patch.source];
             for (const auto f : patch.faces) {
-                for (const auto v : source.faces[f].vertices) {
-                    const auto& p = source.vertices[v].position;
+                for (const auto v : source.geometry->faces[f].vertices) {
+                    const auto& p = source.geometry->vertices[v].position;
                     faceFill.push_back({static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2])});
                 }
             }
@@ -1611,15 +1611,15 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
                 const auto& finding = topology.nonManifoldVertices.at(focus.index);
                 const auto& source = topology.sources[finding.source];
                 const auto& vertex = source.vertices[finding.vertex];
-                appendCross(points, point(vertex.position), radius);
+                appendCross(points, point(source.geometry->vertices[finding.vertex].position), radius);
                 for (const auto f : vertex.faces) {
-                    for (const auto v : source.faces[f].vertices) { faceFill.push_back(point(source.vertices[v].position)); }
+                    for (const auto v : source.geometry->faces[f].vertices) { faceFill.push_back(point(source.geometry->vertices[v].position)); }
                 }
             } else {
                 const auto& boundary = topology.boundaryRegions[topology.holes.at(focus.index)];
                 const auto& source = topology.sources[boundary.source];
                 for (const auto e : boundary.edges) {
-                    for (const auto v : source.edges[e].vertices) { points.push_back(point(source.vertices[v].position)); }
+                    for (const auto v : source.edges[e].vertices) { points.push_back(point(source.geometry->vertices[v].position)); }
                 }
             }
         } else {
@@ -1631,8 +1631,8 @@ void submitComparisonScenes(woby::graphics::ViewId view, const UiState& state, c
                 const auto& finding = findings[focus.index];
                 const auto& source = surface.topology.sources[finding.source];
                 for (const auto& use : source.edges[finding.edge].incidentFaces) {
-                    for (const auto vertex : source.faces[use.face].vertices) {
-                        const auto& p = source.vertices[vertex].position;
+                    for (const auto vertex : source.geometry->faces[use.face].vertices) {
+                        const auto& p = source.geometry->vertices[vertex].position;
                         faceFill.push_back({static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2])});
                     }
                 }

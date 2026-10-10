@@ -1,0 +1,178 @@
+{
+  "metadata": {
+    "production_commit": "56b31023e466d424c625fe4c3b94e976cfeb3f71",
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "model_sha256": "9AC38B16814658CEE4D52415796E7C8A1CFFFA70549F9B7F0EB0C1F1704E4977",
+    "executable_sha256": "75CD25C313CC0414DD378734C1E7E77EB02DE245EA03788859A32129F267ECE4",
+    "source_sha256": "E52EBAB5180F3D12A0E7A478B370FA22ED0F7A4693ABB2CADDD280EAA18259FE",
+    "date": "2026-10-10",
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+    "samples": 3,
+    "notes": "One process, samples in fixed order; no warmup excluded. One source batch, all parts, identity transforms. Default intersection budgets. No concurrent builds or tests. Existing production APIs; no proposed cold geometry builder implemented."
+  },
+  "run": {
+    "exact_position": [
+      {
+        "build_full_topology_ms": 1186.5216,
+        "candidate_tests": 576805,
+        "current_intersections_stage_ms": 4996.1784,
+        "finding_count": 10000,
+        "inspect_existing_topology_ms": 3768.4565,
+        "inspect_geometry_only_ms": 3775.0033,
+        "topology": {
+          "component_capacity_bytes": 9050896,
+          "edge_capacity_bytes": 63583760,
+          "face_capacity_bytes": 84363360,
+          "faces": 1054306,
+          "finding_capacity_bytes": 9785712,
+          "incidence_capacity_bytes": 110179168,
+          "proposed_geometry_payload_bytes": 63455544,
+          "sizeof_edge": 40,
+          "sizeof_face": 80,
+          "sizeof_vertex": 88,
+          "total_array_capacity_bytes": 324121480,
+          "vertex_capacity_bytes": 47158584,
+          "vertices": 535369
+        },
+        "truncated": true,
+        "truncation_reason": "pair_limit",
+        "unrequested_topology_overlay_capacity_bytes": 4564104
+      },
+      {
+        "build_full_topology_ms": 1201.3369,
+        "candidate_tests": 576805,
+        "current_intersections_stage_ms": 4917.7652,
+        "finding_count": 10000,
+        "inspect_existing_topology_ms": 3755.7859,
+        "inspect_geometry_only_ms": 3789.6042,
+        "topology": {
+          "component_capacity_bytes": 9050896,
+          "edge_capacity_bytes": 63583760,
+          "face_capacity_bytes": 84363360,
+          "faces": 1054306,
+          "finding_capacity_bytes": 9785712,
+          "incidence_capacity_bytes": 110179168,
+          "proposed_geometry_payload_bytes": 63455544,
+          "sizeof_edge": 40,
+          "sizeof_face": 80,
+          "sizeof_vertex": 88,
+          "total_array_capacity_bytes": 324121480,
+          "vertex_capacity_bytes": 47158584,
+          "vertices": 535369
+        },
+        "truncated": true,
+        "truncation_reason": "pair_limit",
+        "unrequested_topology_overlay_capacity_bytes": 4564104
+      },
+      {
+        "build_full_topology_ms": 1174.6851,
+        "candidate_tests": 576805,
+        "current_intersections_stage_ms": 4898.4562,
+        "finding_count": 10000,
+        "inspect_existing_topology_ms": 3687.3628,
+        "inspect_geometry_only_ms": 3693.5794,
+        "topology": {
+          "component_capacity_bytes": 9050896,
+          "edge_capacity_bytes": 63583760,
+          "face_capacity_bytes": 84363360,
+          "faces": 1054306,
+          "finding_capacity_bytes": 9785712,
+          "incidence_capacity_bytes": 110179168,
+          "proposed_geometry_payload_bytes": 63455544,
+          "sizeof_edge": 40,
+          "sizeof_face": 80,
+          "sizeof_vertex": 88,
+          "total_array_capacity_bytes": 324121480,
+          "vertex_capacity_bytes": 47158584,
+          "vertices": 535369
+        },
+        "truncated": true,
+        "truncation_reason": "pair_limit",
+        "unrequested_topology_overlay_capacity_bytes": 4564104
+      }
+    ],
+    "model": "D:\\temp\\obj_tests\\uploads_files_2720101_BusGameMap.obj",
+    "notes": "Release timings after load. Full topology remains resident during the repeated intersection-stage run. Geometry-only is a dependency projection using current structs, not a production implementation or a compact-memory measurement. Array capacities exclude allocator overhead, source mesh and scratch/BVH memory.",
+    "original_index": [
+      {
+        "build_full_topology_ms": 857.918,
+        "candidate_tests": 538195,
+        "current_intersections_stage_ms": 4245.6815,
+        "finding_count": 10000,
+        "inspect_existing_topology_ms": 3385.134,
+        "inspect_geometry_only_ms": 3409.6708,
+        "topology": {
+          "component_capacity_bytes": 9019512,
+          "edge_capacity_bytes": 63599520,
+          "face_capacity_bytes": 84363360,
+          "faces": 1054306,
+          "finding_capacity_bytes": 9240832,
+          "incidence_capacity_bytes": 110195552,
+          "proposed_geometry_payload_bytes": 63465864,
+          "sizeof_edge": 40,
+          "sizeof_face": 80,
+          "sizeof_vertex": 88,
+          "total_array_capacity_bytes": 323577360,
+          "vertex_capacity_bytes": 47158584,
+          "vertices": 535799
+        },
+        "truncated": true,
+        "truncation_reason": "pair_limit",
+        "unrequested_topology_overlay_capacity_bytes": 4675824
+      },
+      {
+        "build_full_topology_ms": 824.4201,
+        "candidate_tests": 538195,
+        "current_intersections_stage_ms": 4239.1013,
+        "finding_count": 10000,
+        "inspect_existing_topology_ms": 3462.9263,
+        "inspect_geometry_only_ms": 3496.7082,
+        "topology": {
+          "component_capacity_bytes": 9019512,
+          "edge_capacity_bytes": 63599520,
+          "face_capacity_bytes": 84363360,
+          "faces": 1054306,
+          "finding_capacity_bytes": 9240832,
+          "incidence_capacity_bytes": 110195552,
+          "proposed_geometry_payload_bytes": 63465864,
+          "sizeof_edge": 40,
+          "sizeof_face": 80,
+          "sizeof_vertex": 88,
+          "total_array_capacity_bytes": 323577360,
+          "vertex_capacity_bytes": 47158584,
+          "vertices": 535799
+        },
+        "truncated": true,
+        "truncation_reason": "pair_limit",
+        "unrequested_topology_overlay_capacity_bytes": 4675824
+      },
+      {
+        "build_full_topology_ms": 833.5868,
+        "candidate_tests": 538195,
+        "current_intersections_stage_ms": 4321.1144,
+        "finding_count": 10000,
+        "inspect_existing_topology_ms": 3431.4578,
+        "inspect_geometry_only_ms": 3420.3912,
+        "topology": {
+          "component_capacity_bytes": 9019512,
+          "edge_capacity_bytes": 63599520,
+          "face_capacity_bytes": 84363360,
+          "faces": 1054306,
+          "finding_capacity_bytes": 9240832,
+          "incidence_capacity_bytes": 110195552,
+          "proposed_geometry_payload_bytes": 63465864,
+          "sizeof_edge": 40,
+          "sizeof_face": 80,
+          "sizeof_vertex": 88,
+          "total_array_capacity_bytes": 323577360,
+          "vertex_capacity_bytes": 47158584,
+          "vertices": 535799
+        },
+        "truncated": true,
+        "truncation_reason": "pair_limit",
+        "unrequested_topology_overlay_capacity_bytes": 4675824
+      }
+    ],
+    "render_faces": 1054542
+  }
+}

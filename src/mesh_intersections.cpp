@@ -250,7 +250,7 @@ size_t buildNode(Tree& tree, size_t begin, size_t end, std::stop_token stop)
     }
     return index;
 }
-std::array<Position, 3> positions(const SourceTopology& source, size_t face)
+std::array<Position, 3> positions(const SourceAnalysisGeometry& source, size_t face)
 {
     const auto& ids = source.faces[face].vertices;
     return {source.vertices[ids[0]].position, source.vertices[ids[1]].position, source.vertices[ids[2]].position};
@@ -341,7 +341,7 @@ const char* intersectionStatus(const MeshIntersections& result)
     if (result.unavailableSources) { return result.availableSources ? "partial" : "unavailable"; }
     return "complete";
 }
-MeshIntersections inspectIntersections(const MeshTopology& topology, IntersectionSettings settings,
+MeshIntersections inspectIntersections(const AnalysisGeometry& topology, IntersectionSettings settings,
     std::stop_token stop, IntersectionLimits limits)
 {
     MeshIntersections result; result.settings = settings; result.mode = topology.mode;
@@ -350,8 +350,9 @@ MeshIntersections inspectIntersections(const MeshTopology& topology, Intersectio
     result.availableSources = topology.availableSources; result.unavailableSources = topology.unavailableSources;
     result.excludedCollapsedFaces = topology.excludedCollapsedFaces;
     std::set<std::tuple<uint64_t, size_t, uint64_t>> affected;
-    for (const auto& source : topology.sources) {
+    for (const auto& owner : topology.sources) {
         canceled(stop);
+        const auto& source = *owner;
         if (!source.available || source.faces.empty()) { continue; }
         Tree tree;
         tree.boxes.reserve(source.faces.size());
@@ -403,5 +404,14 @@ MeshIntersections inspectIntersections(const MeshTopology& topology, Intersectio
     });
     result.affectedFaces = affected.size();
     return result;
+}
+MeshIntersections inspectIntersections(const MeshTopology& topology, IntersectionSettings settings,
+    std::stop_token stop, IntersectionLimits limits)
+{
+    if (topology.geometry) { return inspectIntersections(*topology.geometry, settings, stop, limits); }
+    AnalysisGeometry empty; empty.mode = topology.mode;
+    empty.availableSources = topology.availableSources; empty.unavailableSources = topology.unavailableSources;
+    empty.excludedCollapsedFaces = topology.excludedCollapsedFaces;
+    return inspectIntersections(empty, settings, stop, limits);
 }
 } // namespace woby

@@ -31,8 +31,20 @@ struct MeshDiagnostics
     size_t duplicateTriangles = 0;
 };
 
+struct ComparisonAnalysisInput {
+    std::shared_ptr<const DuplicateInput> source;
+    std::array<double, 3> origin{};
+    std::shared_ptr<const AnalysisGeometry> geometry;
+    MeshTopology incidence; // Only immutable graph owners; no finding vectors.
+};
 struct SurfaceComparison
 {
+    ComparisonAnalysisInput analysis;
+    // Immutable finding snapshots for threshold/display workers. Each snapshot
+    // contains only its own finding family and shared incidence owners.
+    std::array<std::shared_ptr<const MeshTopology>, 2> topologyDisplayInputs;
+    std::vector<std::array<float, 3>> duplicatePointDisplay, duplicateTriangleDisplayEdges, duplicateTriangleDisplayFill;
+    std::vector<std::array<float, 3>> degenerateDisplayEdges, degenerateDisplayFill, intersectionDisplayFill;
     Mesh source;
     // Four subtriangles per source face, each colored by its centroid distance.
     // Display records do not own a mesh or indices. CPU queries use source.
@@ -106,12 +118,21 @@ bool resetComparisonCache(ComparisonCacheStatus& cache, uint64_t signature);
 // Invalidates only the threshold-dependent detector stage.
 bool resetComparisonDegenerateCache(ComparisonCacheStatus& cache, DegenerateSettings settings);
 bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mode);
+[[nodiscard]] std::array<ComparisonAnalysisInput, 2> comparisonAnalysisInputs(const MeshComparison& result, bool includeIncidence = true);
+[[nodiscard]] uint32_t topologyFindingStage(DiagnosticCategory category);
 [[nodiscard]] MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired,
-    uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::originalIndex, IntersectionLimits intersectionLimits = {});
+    uint32_t stages, std::stop_token stop = {}, DegenerateSettings degenerates = {}, TopologyMode topologyMode = TopologyMode::originalIndex, IntersectionLimits intersectionLimits = {},
+    const std::array<ComparisonAnalysisInput, 2>& analysisInputs = {}, uint32_t topologyFindings = topologyAllFindings,
+    TopologyInspectionSettings topologySettings = {});
 // Rejects stale worker results; moves only the stages produced by that worker.
 bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache, MeshComparison update,
     uint64_t signature, uint32_t stages);
+using TopologyDisplayInputs = std::array<std::array<std::shared_ptr<const MeshTopology>, 2>, 2>;
+[[nodiscard]] MeshComparison prepareComparisonTopologyDisplay(const TopologyDisplayInputs& inputs,
+    TopologyInspectionSettings settings, std::stop_token stop = {});
+void applyComparisonTopologyDisplay(MeshComparison& result, MeshComparison update);
 bool setComparisonTopologyInspectionSettings(MeshComparison& result, TopologyInspectionSettings settings);
+void prepareComparisonDiagnosticDisplay(SurfaceComparison& surface, const Mesh& mesh, uint32_t stages, std::stop_token stop = {});
 void setComparisonDuplicateEnabled(MeshComparison& result, const DuplicateSettings& settings);
 void setComparisonIntersectionSettings(MeshComparison& result, IntersectionSettings settings);
 void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings settings);

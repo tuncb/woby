@@ -58,28 +58,6 @@ void appendCross(std::vector<std::array<float, 3>>& lines, const std::array<floa
         lines.push_back(a); lines.push_back(b);
     }
 }
-void uploadDuplicateOverlays(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, uint32_t stages)
-{
-    if (stages & comparisonDuplicatePoints) {
-        std::vector<std::array<float, 3>> points;
-        for (const auto& finding : surface.duplicates.points.findings) {
-            for (const auto& point : finding.geometry) { appendCross(points, point, surface.source.bounds.radius*.008f); }
-        }
-        gpu.duplicatePoints = uploadPositions(points);
-    }
-    if (stages & comparisonDuplicateTriangles) {
-        std::vector<std::array<float, 3>> edges, fill;
-        for (const auto& finding : surface.duplicates.triangles.findings) {
-            fill.insert(fill.end(), finding.geometry.begin(), finding.geometry.end());
-            for (size_t i = 0; i < finding.geometry.size(); i += 3) {
-                for (size_t k = 0; k < 3; ++k) { edges.push_back(finding.geometry[i+k]); edges.push_back(finding.geometry[i+(k+1)%3]); }
-            }
-        }
-        gpu.duplicateTriangleEdges = uploadPositions(edges);
-        gpu.duplicateTriangleFill = uploadPositions(fill);
-    }
-}
-
 void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, uint32_t stages,
     const PreparedComparisonSource* prepared)
 {
@@ -138,27 +116,18 @@ void uploadSurface(ComparisonGpuSurface& gpu, const SurfaceComparison& surface, 
         gpu.winding = uploadEdges(surface.topology.sources.empty() ? surface.diagnostics.inconsistentWindingEdges : surface.topologyWinding);
     }
     if (stages & comparisonDegenerates) {
-        std::vector<std::array<float, 3>> edges, fill;
-        for (const auto& finding : surface.degenerates.findings) {
-            fill.insert(fill.end(), finding.geometry.begin(), finding.geometry.end());
-            for (size_t k = 0; k < 3; ++k) { edges.push_back(finding.geometry[k]); edges.push_back(finding.geometry[(k+1)%3]); }
-            if (finding.reasons.collapsed) { appendCross(edges, finding.geometry[0], std::max(.00001f, surface.source.bounds.radius*.008f)); }
-        }
-        gpu.degenerateEdges = uploadPositions(edges);
-        gpu.degenerateFill = uploadPositions(fill);
+        gpu.degenerateEdges = uploadPositions(surface.degenerateDisplayEdges);
+        gpu.degenerateFill = uploadPositions(surface.degenerateDisplayFill);
     }
     if (stages & comparisonIntersections) {
-        std::vector<std::array<float, 3>> edges, fill;
-        for (const auto& finding : surface.intersections.findings) {
-            fill.insert(fill.end(), finding.geometry.begin(), finding.geometry.end());
-            for (size_t i = 0; i < 6; i += 3) {
-                for (size_t k = 0; k < 3; ++k) { edges.push_back(finding.geometry[i+k]); edges.push_back(finding.geometry[i+(k+1)%3]); }
-            }
-        }
-        gpu.intersectionEdges = uploadPositions(edges);
-        gpu.intersectionFill = uploadPositions(fill);
+        gpu.intersectionEdges = uploadEdges(surface.intersectionEdges);
+        gpu.intersectionFill = uploadPositions(surface.intersectionDisplayFill);
     }
-    uploadDuplicateOverlays(gpu, surface, stages);
+    if (stages & comparisonDuplicatePoints) { gpu.duplicatePoints = uploadPositions(surface.duplicatePointDisplay); }
+    if (stages & comparisonDuplicateTriangles) {
+        gpu.duplicateTriangleEdges = uploadPositions(surface.duplicateTriangleDisplayEdges);
+        gpu.duplicateTriangleFill = uploadPositions(surface.duplicateTriangleDisplayFill);
+    }
 }
 void destroyStage(ComparisonGpuSurface& gpu, uint32_t stages)
 {

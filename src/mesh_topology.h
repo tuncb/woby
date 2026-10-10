@@ -30,14 +30,36 @@ struct TopologyPointReference {
     uint64_t partId = 0;
     size_t pointId = 0;
 };
+struct AnalysisVertex { std::array<double, 3> position{}; };
+struct AnalysisFace {
+    TopologyFaceReference reference;
+    std::array<size_t, 3> vertices{};
+};
+// Geometry owns no incidence or findings. Point provenance permits a later
+// topology upgrade without transforming or welding source coordinates again.
+struct SourceAnalysisGeometry {
+    uint64_t fileId = 0, batchId = 0;
+    std::string source;
+    SourceProvenance provenance = SourceProvenance::importerVertices;
+    TopologyMode mode = TopologyMode::originalIndex;
+    bool available = true;
+    size_t excludedCollapsedFaces = 0;
+    std::vector<AnalysisVertex> vertices;
+    std::vector<AnalysisFace> faces;
+    std::vector<TopologyPointReference> pointReferences;
+    std::vector<size_t> referenceOffsets;
+};
+struct AnalysisGeometry {
+    TopologyMode mode = TopologyMode::originalIndex;
+    size_t availableSources = 0, unavailableSources = 0, excludedCollapsedFaces = 0;
+    std::vector<std::shared_ptr<const SourceAnalysisGeometry>> sources;
+};
 struct TopologyVertex {
-    std::array<double, 3> position{};
     std::span<const TopologyPointReference> references;
     std::span<const size_t> faces, edges, boundaryEdges;
 };
 struct TopologyFace {
-    TopologyFaceReference reference;
-    std::array<size_t, 3> vertices{}, edges{};
+    std::array<size_t, 3> edges{};
     size_t component = 0;
 };
 struct TopologyEdgeUse { size_t face = 0; bool forward = false; };
@@ -49,11 +71,11 @@ struct TopologyEdge {
 // Immutable incidence storage is shared when a result snapshot is copied. The
 // spans in vertices/edges remain valid across copies, moves and cache publication.
 struct TopologyIncidence {
-    std::vector<TopologyPointReference> pointReferences;
     std::vector<size_t> vertexFaces, vertexEdges, boundaryEdges;
     std::vector<TopologyEdgeUse> edgeUses;
 };
 struct SourceTopology {
+    std::shared_ptr<const SourceAnalysisGeometry> geometry;
     uint64_t fileId = 0;
     std::string source;
     SourceProvenance provenance = SourceProvenance::importerVertices;
@@ -90,7 +112,14 @@ struct TopologyFinPatch {
     double area = 0, denominatorArea = 0, areaRatio = 0;
     bool candidate = false;
 };
+enum TopologyFindingStage : uint32_t {
+    topologyEdgeFindings = 1u << 0, topologyVertexLinks = 1u << 1,
+    topologyBoundaryRegions = 1u << 2, topologyFinPatches = 1u << 3,
+    topologyAllFindings = 15
+};
 struct MeshTopology {
+    std::shared_ptr<const AnalysisGeometry> geometry;
+    uint32_t completedFindings = 0;
     TopologyMode mode = TopologyMode::originalIndex;
     size_t availableSources = 0, unavailableSources = 0, excludedCollapsedFaces = 0;
     // The source graphs are immutable after construction. Result/export copies
@@ -116,6 +145,10 @@ bool filterTopologyFindings(MeshTopology& topology, TopologyInspectionSettings s
 
 [[nodiscard]] const char* topologyStatus(const MeshTopology& topology);
 [[nodiscard]] const char* finStatus(const MeshTopology& topology);
+[[nodiscard]] std::shared_ptr<const AnalysisGeometry> buildAnalysisGeometry(
+    const std::vector<DuplicateSource>& sources, TopologyMode mode = TopologyMode::originalIndex, std::stop_token stop = {});
+[[nodiscard]] MeshTopology buildTopologyIncidence(std::shared_ptr<const AnalysisGeometry> geometry, std::stop_token stop = {});
+void inspectTopologyFindings(MeshTopology& topology, uint32_t stages = topologyAllFindings, std::stop_token stop = {});
 // Pure, source-scoped topology. Source files are never welded together.
 // Original IDs are partitioned by world transform; exact-position keys use doubles.
 [[nodiscard]] MeshTopology buildMeshTopology(const std::vector<DuplicateSource>& sources,

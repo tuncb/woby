@@ -124,7 +124,7 @@ TEST_CASE("topology promotes source floats before large translations")
     source.parts[0].transform[12] = 16777216.0f;
     const auto topology = buildMeshTopology({source}, TopologyMode::exactPosition);
     REQUIRE(topology.sources.size() == 1);
-    const auto& vertices = topology.sources[0].vertices;
+    const auto& vertices = topology.sources[0].geometry->vertices;
     REQUIRE(vertices.size() == 3);
     CHECK(vertices[0].position[0] == 16777216.0);
     CHECK(vertices[1].position[0] == 16777217.0);
@@ -810,16 +810,16 @@ TEST_CASE("topology incidence survives copied and moved result snapshots")
     const auto& source = moved.sources[0];
     REQUIRE(source.vertices[0].faces.size() == 2);
     CHECK(source.vertices[0].faces[1] == 1);
-    CHECK(source.faces[source.vertices[0].faces[0]].vertices == std::array<size_t,3>{0,1,2});
+    CHECK(source.geometry->faces[source.vertices[0].faces[0]].vertices == std::array<size_t,3>{0,1,2});
     REQUIRE(source.vertices[0].references.size() == 1);
     CHECK(source.vertices[0].references[0].partId == 2);
     CHECK(source.vertices[0].references[0].pointId == 0);
     size_t referenceOffset = 0;
     for (const auto& vertex : source.vertices) {
-        CHECK(vertex.references.data() == source.incidence->pointReferences.data() + referenceOffset);
+        CHECK(vertex.references.data() == source.geometry->pointReferences.data() + referenceOffset);
         referenceOffset += vertex.references.size();
     }
-    CHECK(referenceOffset == source.incidence->pointReferences.size());
+    CHECK(referenceOffset == source.geometry->pointReferences.size());
     auto filtered = moved;
     auto settings = filtered.inspection; settings.holeSizeRatioTolerance = 1;
     CHECK(filterTopologyFindings(filtered, settings));
@@ -842,8 +842,8 @@ TEST_CASE("topology allocates unique edges and only selected source faces")
         const auto& source = topology.sources[0];
         REQUIRE(source.edges.size() == 6);
         CHECK(source.edges.capacity() == source.edges.size());
-        CHECK(source.incidence->pointReferences.size() == 4);
-        CHECK(source.incidence->pointReferences.capacity() == 4);
+        CHECK(source.geometry->pointReferences.size() == 4);
+        CHECK(source.geometry->pointReferences.capacity() == 4);
         CHECK(topology.nonManifoldVertices.empty());
         for (const auto& edge : source.edges) { CHECK(edge.incidentFaces.size() == 2); }
     }
@@ -1087,4 +1087,77 @@ TEST_CASE("flat child batches isolate every detector and settings persist throug
     args = {"woby", "ctl", "--instance", "mode-test", "model", "set", "model", "--analysis-mode", "whole"};
     argv.clear(); for (auto& arg : args) { argv.push_back(arg.data()); }
     CHECK(parseCommandLine(static_cast<int>(argv.size()), argv.data()).control.operation.analysisMode == "whole");
+}
+
+TEST_CASE("analysis geometry upgrades share coordinates and independent findings preserve reports")
+{
+    auto first = threeFinSource(); auto second = ringSource(); second.fileId = 5;
+    auto unavailable = first; unavailable.fileId = 9; unavailable.data.reset();
+    for (const auto mode : {TopologyMode::originalIndex, TopologyMode::exactPosition}) {
+        const std::vector sources{second, unavailable, first};
+        const auto geometry = buildAnalysisGeometry(sources, mode);
+        auto staged = buildTopologyIncidence(geometry);
+        CHECK(staged.geometry == geometry);
+        CHECK(staged.completedFindings == 0);
+        CHECK(staged.boundaries.empty()); CHECK(staged.finPatches.empty());
+        for (size_t i = 0; i < staged.sources.size(); ++i) { CHECK(staged.sources[i].geometry == geometry->sources[i]); }
+        const auto graph = staged.sourceStorage;
+        const auto full = buildMeshTopology(sources, mode);
+        for (const auto stage : {topologyFinPatches, topologyEdgeFindings, topologyBoundaryRegions, topologyVertexLinks}) {
+            inspectTopologyFindings(staged, stage);
+            CHECK(staged.sourceStorage == graph);
+        }
+        CHECK(staged.completedFindings == topologyAllFindings);
+        for (const auto* detector : {"boundary_edges", "non_manifold_edges", "inconsistently_oriented_tris", "non_manifold_vertices", "holes", "fins"}) {
+            CHECK(jsonFor(staged, detector) == jsonFor(full, detector));
+        }
+        const auto before = jsonFor(staged, "fins");
+        inspectTopologyFindings(staged);
+        CHECK(jsonFor(staged, "fins") == before);
+        auto survivor = staged.geometry; staged = {};
+        CHECK(survivor->sources[0]->faces[0].reference.fileId == 1);
+        std::stop_source stop; stop.request_stop();
+        CHECK_THROWS((void)buildAnalysisGeometry(sources, mode, stop.get_token()));
+        CHECK_THROWS((void)buildTopologyIncidence(geometry, stop.get_token()));
+    }
+}
+
+TEST_CASE("comparison topology stages retain earlier findings and prepare threshold display on owned inputs")
+{
+    const auto mesh = meshFor(threeFinSource());
+    MeshComparison result; ComparisonCacheStatus cache{71, 0};
+    for (const auto family : {topologyEdgeFindings, topologyVertexLinks, topologyBoundaryRegions, topologyFinPatches}) {
+        auto next = computeComparisonStages(mesh, {}, comparisonTopology, {}, {}, {}, {}, comparisonAnalysisInputs(result), family);
+        CHECK(next.original.topology.completedFindings == family);
+        CHECK(next.original.topology.finPatches.empty() == (family != topologyFinPatches));
+        const auto graph = result.original.topology.sourceStorage;
+        REQUIRE(applyComparisonStages(result, cache, std::move(next), 71, comparisonTopology));
+        if (graph) { CHECK(result.original.topology.sourceStorage == graph); }
+    }
+    const auto expected = computeComparisonStages(mesh, {}, comparisonTopology);
+    for (const auto* detector : {"boundary_edges", "non_manifold_edges", "inconsistently_oriented_tris", "non_manifold_vertices", "holes", "fins"}) {
+        CHECK(jsonFor(result.original.topology, detector) == jsonFor(expected.original.topology, detector));
+    }
+    const auto graph = result.original.topology.sourceStorage;
+    const TopologyDisplayInputs snapshots{result.original.topologyDisplayInputs, result.repaired.topologyDisplayInputs};
+    auto settings = result.original.topology.inspection; settings.finMaxAreaRatio = .25f;
+    settings.showFins = false; settings.showHoles = false;
+    auto filtered = prepareComparisonTopologyDisplay(snapshots, settings);
+    CHECK(result.original.topology.fins.size() == 3);
+    REQUIRE(filtered.original.topology.fins.size() == 1);
+    CHECK_FALSE(filtered.original.finBounds.empty()); // Navigation survives hiding.
+    applyComparisonTopologyDisplay(result, std::move(filtered));
+    CHECK(result.original.topology.sourceStorage == graph);
+    CHECK(result.original.topology.fins.size() == 1);
+    auto sync = expected; (void)setComparisonTopologyInspectionSettings(sync, settings);
+    CHECK(result.original.finFill == sync.original.finFill);
+    CHECK(result.original.finBounds.size() == sync.original.finBounds.size());
+    // A result from an old geometry owner cannot replace a newer display.
+    auto stale = prepareComparisonTopologyDisplay(snapshots, settings);
+    auto changed = computeComparisonStages(meshFor(sourceFor()), {}, comparisonTopology);
+    const auto changedBounds = changed.original.finBounds.size();
+    applyComparisonTopologyDisplay(changed, std::move(stale));
+    CHECK(changed.original.finBounds.size() == changedBounds);
+    std::stop_source stop; stop.request_stop();
+    CHECK_THROWS((void)prepareComparisonTopologyDisplay(snapshots, settings, stop.get_token()));
 }

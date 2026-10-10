@@ -45,6 +45,8 @@ struct MeshIntersections {
 [[nodiscard]] bool trianglesSelfIntersect(const std::array<std::array<double, 3>, 3>& a,
     const std::array<std::array<double, 3>, 3>& b,
     const std::array<size_t, 3>& aIds, const std::array<size_t, 3>& bIds);
+[[nodiscard]] MeshIntersections inspectIntersections(const AnalysisGeometry& geometry,
+    IntersectionSettings settings = {true, true}, std::stop_token stop = {}, IntersectionLimits limits = {});
 [[nodiscard]] MeshIntersections inspectIntersections(const MeshTopology& topology,
     IntersectionSettings settings = {true, true}, std::stop_token stop = {}, IntersectionLimits limits = {});
 

@@ -51,7 +51,14 @@ struct ComparisonSourceRuntime {
     uint64_t preparationSignature = 0;
     bool refreshUvQuality = false;
 };
+struct ComparisonDisplayRuntime {
+    std::stop_source stop;
+    std::future<MeshComparison> worker;
+    uint64_t signature = 0, baseRevision = 0, revision = 0;
+    TopologyInspectionSettings settings;
+};
 struct ComparisonJobRuntime {
+    ComparisonDisplayRuntime display;
     std::stop_source preparationStop;
     std::future<std::shared_ptr<const PreparedComparisonInputs>> preparationWorker;
     uint64_t preparationSignature = 0, preparationGeometrySignature = 0;
@@ -116,7 +123,7 @@ struct ComparisonRuntimes {
     SceneObjectId id, uint32_t stages, bool requireGpu = false);
 // Reuse resolved scene inputs, but always evaluate live result/settings/GPU state.
 [[nodiscard]] bool comparisonStagesReady(const ComparisonRuntime& runtime, const ComparisonSettings& settings,
-    uint64_t signature, uint32_t stages, bool requireGpu = false);
+    uint64_t signature, uint32_t stages, bool requireGpu = false, uint32_t topologyFindings = topologyAllFindings);
 [[nodiscard]] ComparisonSettings readyComparisonSettings(const ComparisonRuntime& runtime,
     const UiState& state, SceneObjectId id);
 void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state);

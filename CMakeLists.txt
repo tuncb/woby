@@ -347,6 +347,7 @@ endif()
 if(WOBY_BUILD_BENCHMARKS)
     add_subdirectory(experiments/position-access)
     add_subdirectory(experiments/face-display)
+    add_subdirectory(experiments/analysis-stages)
     add_executable(woby_benchmarks
         tests/performance_benchmarks.cpp tests/analysis_export_benchmarks.cpp src/analysis_results.cpp
         src/model_mesh.cpp src/obj_mesh.cpp src/obj_freeform.cpp src/freeform.cpp src/freeform_trim.cpp src/mesh_comparison.cpp

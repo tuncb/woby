@@ -19,14 +19,18 @@ int analysisExportBenchmark(size_t count, size_t repetitions, const std::filesys
     auto sources = std::make_shared<std::vector<SourceTopology>>(1);
     auto& source = sources->front(); source.fileId = 42; source.source = "quoted\"model.obj";
     auto incidence = std::make_shared<TopologyIncidence>();
-    incidence->pointReferences = {{7, 0}, {7, 1}};
+    auto geometry = std::make_shared<SourceAnalysisGeometry>();
+    geometry->vertices.resize(2);
+    geometry->pointReferences = {{7, 0}, {7, 1}};
     incidence->edgeUses = {{0, true}};
     source.vertices.resize(2);
     for (size_t i = 0; i < 2; ++i) {
-        source.vertices[i].position = {double(i), 1.25, -2.5};
-        source.vertices[i].references = std::span<const TopologyPointReference>(incidence->pointReferences).subspan(i, 1);
+        geometry->vertices[i].position = {double(i), 1.25, -2.5};
+        source.vertices[i].references = std::span<const TopologyPointReference>(geometry->pointReferences).subspan(i, 1);
     }
-    source.faces.push_back({{42, 7, 0}});
+    geometry->faces.push_back({{42, 7, 0}});
+    source.faces.resize(1);
+    source.geometry = std::move(geometry);
     source.edges.push_back({{0, 1}, incidence->edgeUses});
     source.incidence = std::move(incidence);
     topology.sources = *sources; topology.sourceStorage = std::move(sources);

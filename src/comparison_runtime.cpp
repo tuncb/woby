@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <stdexcept>
+#include <type_traits>
 
 namespace woby {
 namespace {
@@ -34,7 +35,7 @@ bool comparisonDetectorReady(const ComparisonRuntime& runtime, const ComparisonS
     uint64_t signature, DiagnosticCategory category, bool requireGpu)
 {
     return comparisonDetectorStatus(runtime.results.value, category).phase == IntersectionPhase::complete
-        && comparisonStagesReady(runtime, settings, signature, comparisonDiagnosticStage(category), requireGpu);
+        && comparisonStagesReady(runtime, settings, signature, comparisonDiagnosticStage(category), requireGpu, topologyFindingStage(category));
 }
 
 bool comparisonStagesReady(const ComparisonRuntime& runtime, const UiState& state, SceneObjectId id,
@@ -44,7 +45,7 @@ bool comparisonStagesReady(const ComparisonRuntime& runtime, const UiState& stat
 }
 
 bool comparisonStagesReady(const ComparisonRuntime& runtime, const ComparisonSettings& settings,
-    uint64_t signature, uint32_t stages, bool requireGpu)
+    uint64_t signature, uint32_t stages, bool requireGpu, uint32_t topologyFindings)
 {
     if (!signature || runtime.results.signature != signature || runtime.results.cache.signature != signature
         || (runtime.results.cache.completed & stages) != stages
@@ -56,10 +57,12 @@ bool comparisonStagesReady(const ComparisonRuntime& runtime, const ComparisonSet
     }
     if ((stages & (comparisonTopology | comparisonIntersections)) && runtime.results.cache.topologyMode != settings.topologyMode) { return false; }
     if ((stages & comparisonDegenerates) && !sameDegenerateThresholds(runtime.results.cache.degenerates, settings.degenerates)) { return false; }
-    if ((stages & comparisonTopology) && (runtime.results.value.original.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance
-        || runtime.results.value.repaired.topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance
-        || runtime.results.value.original.topology.inspection.finMaxAreaRatio != settings.topologyInspection.finMaxAreaRatio
-        || runtime.results.value.repaired.topology.inspection.finMaxAreaRatio != settings.topologyInspection.finMaxAreaRatio)) { return false; }
+    if (stages & comparisonTopology) {
+        for (const auto* surface : {&runtime.results.value.original, &runtime.results.value.repaired}) {
+            if ((topologyFindings & topologyBoundaryRegions) && surface->topology.inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance) { return false; }
+            if ((topologyFindings & topologyFinPatches) && surface->topology.inspection.finMaxAreaRatio != settings.topologyInspection.finMaxAreaRatio) { return false; }
+        }
+    }
     if ((stages & comparisonIntersections) && (runtime.jobs.intersection.limits != settings.intersections.limits || runtime.results.value.original.intersections.phase != IntersectionPhase::complete)) { return false; }
     return true;
 }
@@ -173,6 +176,7 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
             && runtime.sources.preparationSignature == runtime.inspector.queries.preparationSignature
             && ((runtime.gpu.uploadedStages & comparisonSource) || runtime.sources.refreshUvQuality);
         runtime.jobs.preparationStop.request_stop();
+        runtime.jobs.display.stop.request_stop();
         runtime.sources.prepared.reset();
         runtime.jobs.stop.request_stop(); invalidateIntersection();
         invalidateComparisonDetectors(runtime.results.value, comparisonDetectors);
@@ -218,6 +222,7 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
         }
     }
     if (resetComparisonTopologyCache(runtime.results.cache, settings.topologyMode)) {
+        runtime.jobs.display.stop.request_stop();
         if (runtime.jobs.workerStages & comparisonTopology) { runtime.jobs.stop.request_stop(); }
         invalidateIntersection(); invalidateGpu(comparisonTopology);
         invalidateComparisonDetectors(runtime.results.value, comparisonTopology);
@@ -357,14 +362,67 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
     setComparisonDuplicateEnabled(runtime.results.value, resultSettings.duplicates);
     setComparisonDegenerateSettings(runtime.results.value, resultSettings.degenerates);
     setComparisonIntersectionSettings(runtime.results.value, settings.intersections);
-    if (setComparisonTopologyInspectionSettings(runtime.results.value, resultSettings.topologyInspection)) { recordResultPublication(runtime.results, comparisonTopology); invalidateGpu(comparisonTopology); }
+    auto& display = runtime.jobs.display;
+    if (display.worker.valid() && (display.signature != wanted
+        || display.baseRevision != runtime.results.stageRevisions[1]
+        || (display.settings.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance
+            || display.settings.finMaxAreaRatio != settings.topologyInspection.finMaxAreaRatio))) { display.stop.request_stop(); }
+    if (display.worker.valid() && display.worker.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        try {
+            auto update = display.worker.get();
+            if (!display.stop.stop_requested()) {
+                applyComparisonTopologyDisplay(runtime.results.value, std::move(update));
+                recordResultPublication(runtime.results, comparisonTopology); invalidateGpu(comparisonTopology);
+                ++display.revision;
+            }
+        } catch (const std::bad_alloc&) { if (!display.stop.stop_requested()) { throw; } }
+        catch (const std::exception& error) {
+            if (!display.stop.stop_requested()) {
+                runtime.jobs.error = error.what(); runtime.jobs.failedStages |= comparisonTopology;
+                for (const auto category : {DiagnosticCategory::holes, DiagnosticCategory::fins}) {
+                    auto& status = runtime.results.value.detectors[static_cast<size_t>(category)];
+                    if (status.phase == IntersectionPhase::queued) { status.phase = IntersectionPhase::failed; status.error = error.what(); }
+                }
+            }
+        }
+    }
+    bool displayNeeded = false;
+    for (auto* surface : {&runtime.results.value.original, &runtime.results.value.repaired}) {
+        auto& inspection = surface->topology.inspection;
+        // No finding family means there is nothing to filter. Keep settings
+        // current so an empty side never prevents readiness of the other side.
+        if (!(surface->topology.completedFindings & topologyBoundaryRegions)) { inspection.holeSizeRatioTolerance = settings.topologyInspection.holeSizeRatioTolerance; }
+        if (!(surface->topology.completedFindings & topologyFinPatches)) { inspection.finMaxAreaRatio = settings.topologyInspection.finMaxAreaRatio; }
+        displayNeeded |= (inspection.holeSizeRatioTolerance != settings.topologyInspection.holeSizeRatioTolerance
+            || inspection.finMaxAreaRatio != settings.topologyInspection.finMaxAreaRatio);
+        inspection.nonManifoldVertices = inspection.holes = inspection.fins = true;
+        inspection.showNonManifoldVertices = settings.topologyInspection.showNonManifoldVertices;
+        inspection.showHoles = settings.topologyInspection.showHoles; inspection.showFins = settings.topologyInspection.showFins;
+    }
+    if (displayNeeded && !display.worker.valid() && !runtime.jobs.worker.valid() && !job.worker.valid()
+        && wanted && allowStart && !(runtime.jobs.failedStages & comparisonTopology)) {
+        display.stop = std::stop_source{}; display.signature = wanted;
+        display.baseRevision = runtime.results.stageRevisions[1]; display.settings = settings.topologyInspection;
+        TopologyDisplayInputs inputs{runtime.results.value.original.topologyDisplayInputs, runtime.results.value.repaired.topologyDisplayInputs};
+        const std::array surfaces{&runtime.results.value.original, &runtime.results.value.repaired};
+        for (size_t side = 0; side < surfaces.size(); ++side) {
+            const auto& current = surfaces[side]->topology.inspection;
+            if (current.holeSizeRatioTolerance == display.settings.holeSizeRatioTolerance) { inputs[side][0].reset(); }
+            if (current.finMaxAreaRatio == display.settings.finMaxAreaRatio) { inputs[side][1].reset(); }
+        }
+        display.worker = std::async(std::launch::async, [inputs, filters = display.settings, stop = display.stop.get_token()] {
+            return prepareComparisonTopologyDisplay(inputs, filters, stop);
+        });
+    }
     // Hole and fin thresholds filter the current graph; neither needs a rebuild.
     // Only queued requests complete here, preserving manual/outdated/canceled
     // states and the geometry/mode invalidation checked above.
     for (const auto category : {DiagnosticCategory::holes, DiagnosticCategory::fins}) {
         auto& status = runtime.results.value.detectors[static_cast<size_t>(category)];
         if (status.phase == IntersectionPhase::queued && (runtime.results.cache.completed & comparisonTopology)
-            && !(runtime.jobs.failedStages & comparisonTopology)) {
+            && !displayNeeded && !display.worker.valid() && !(runtime.jobs.failedStages & comparisonTopology)
+            && ((runtime.results.value.original.topology.completedFindings | runtime.results.value.repaired.topology.completedFindings)
+                & topologyFindingStage(category))) {
             status.phase = IntersectionPhase::complete; status.hasResult = true;
         }
     }
@@ -425,9 +483,10 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 if (runtime.inspector.queries.inputs[1].summary.enabledPartCount) { (*inputs)[1] = comparisonWorldMesh(state, ComparisonSide::b, id); }
                 runtime.sources.inputs = std::move(inputs);
             }
-            if (missing && !runtime.jobs.worker.valid()) {
+            const auto runnable = (job.worker.valid() || display.worker.valid()) ? missing & ~comparisonDetectors : missing;
+            if (runnable && !runtime.jobs.worker.valid()) {
                 runtime.jobs.attemptedSignature = runtime.jobs.workerSignature = wanted;
-                auto stages = nextComparisonStage(missing);
+                auto stages = nextComparisonStage(runnable);
                 if (runtime.jobs.retryDetectorsSeparately && (stages & comparisonDetectors)) {
                     stages &= (~stages + 1); // Retry only the first requested stage.
                 }
@@ -441,14 +500,20 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                         runtime.jobs.workerDetectorRequests[i] = runtime.jobs.consumedDetectorRequests[i];
                     }
                 }
+                uint32_t findings = 0;
+                for (size_t i = 0; i < backgroundDetectorCount; ++i) {
+                    if (runtime.jobs.workerDetectors & (1u << i)) { findings |= topologyFindingStage(static_cast<DiagnosticCategory>(i)); }
+                }
                 runtime.jobs.stop = std::stop_source{};
                 const std::array qualities{
                     runtime.sources.prepared ? runtime.sources.prepared->buffers[0].uvQuality : nullptr,
                     runtime.sources.prepared ? runtime.sources.prepared->buffers[1].uvQuality : nullptr};
                 runtime.jobs.worker = std::async(std::launch::async, [inputs = runtime.sources.inputs, stage = runtime.jobs.workerStages,
-                    qualities, degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.jobs.stop.get_token()] {
+                    qualities, analysis = (runtime.jobs.workerStages & comparisonTopology) ? comparisonAnalysisInputs(runtime.results.value)
+                        : std::array<ComparisonAnalysisInput, 2>{}, findings, topologySettings = settings.topologyInspection,
+                    degenerates = settings.degenerates, mode = settings.topologyMode, stop = runtime.jobs.stop.get_token()] {
                     const auto started = std::chrono::steady_clock::now();
-                    auto result = computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode);
+                    auto result = computeComparisonStages((*inputs)[0], (*inputs)[1], stage, stop, degenerates, mode, {}, analysis, findings, topologySettings);
                     if (stage & comparisonQuality) {
                         spdlog::info("Surface quality CPU preparation: {:.3f} ms (worker; values, distributions and all display metrics)",
                             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
@@ -459,11 +524,11 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                     }
                     return result;
                 });
-            } else if (job.requested && !runtime.jobs.worker.valid() && !job.worker.valid()) {
+            } else if (job.requested && !runtime.jobs.worker.valid() && !job.worker.valid() && !display.worker.valid()) {
                 job.requested = false; job.workerSignature = wanted; job.workerRevision = job.revision;
                 job.stop = std::stop_source{}; job.started = std::chrono::steady_clock::now(); phase(IntersectionPhase::running);
-                job.worker = std::async(std::launch::async, [inputs = runtime.sources.inputs, mode = settings.topologyMode, limits = settings.intersections.limits, stop = job.stop.get_token()] {
-                    return computeComparisonStages((*inputs)[0], (*inputs)[1], comparisonIntersections, stop, {}, mode, limits);
+                job.worker = std::async(std::launch::async, [inputs = runtime.sources.inputs, analysis = comparisonAnalysisInputs(runtime.results.value, false), mode = settings.topologyMode, limits = settings.intersections.limits, stop = job.stop.get_token()] {
+                    return computeComparisonStages((*inputs)[0], (*inputs)[1], comparisonIntersections, stop, {}, mode, limits, analysis);
                 });
             }
         } catch (const std::bad_alloc&) {
@@ -493,6 +558,13 @@ static void updateComparisonRuntimeImpl(ComparisonRuntime& runtime, UiState& sta
                 if (stage & comparisonQuality) {
                     spdlog::info("Surface quality GPU upload: {:.3f} ms (allocation and staging; all display metrics)",
                         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
+                }
+                for (auto* surface : {&runtime.results.value.original, &runtime.results.value.repaired}) {
+                    const auto release = [](auto& values) { using Values = std::decay_t<decltype(values)>; Values{}.swap(values); };
+                    if (stage & comparisonDuplicatePoints) { release(surface->duplicatePointDisplay); }
+                    if (stage & comparisonDuplicateTriangles) { release(surface->duplicateTriangleDisplayEdges); release(surface->duplicateTriangleDisplayFill); }
+                    if (stage & comparisonDegenerates) { release(surface->degenerateDisplayEdges); release(surface->degenerateDisplayFill); }
+                    if (stage & comparisonIntersections) { release(surface->intersectionDisplayFill); }
                 }
                 runtime.gpu.uploadedStages |= stage;
                 for (size_t i = 0; i < runtime.gpu.stageRevisions.size(); ++i) {
@@ -539,10 +611,11 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
             try { (void)worker.get(); } catch (...) { }
             return true;
         };
+        const bool displayDrained = drain(runtime.jobs.display.worker);
         const bool prepared = drain(runtime.jobs.preparationWorker);
         const bool computed = drain(runtime.jobs.worker);
         const bool intersected = drain(runtime.jobs.intersection.worker);
-        if (!prepared || !computed || !intersected) { return; }
+        if (!displayDrained || !prepared || !computed || !intersected) { return; }
         const auto* comparison = findComparison(state, id);
         bool retry = runtime.jobs.error.empty() || runtime.jobs.attemptedSignature != comparisonCurrentSignature(runtime, state, id);
         if (comparison) {
@@ -567,6 +640,7 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
         updateComparisonRuntimeImpl(runtime, state, id, allowStart);
     } catch (const std::bad_alloc&) {
         runtime.jobs.stop.request_stop();
+        runtime.jobs.display.stop.request_stop();
         runtime.jobs.preparationStop.request_stop();
         runtime.jobs.intersection.stop.request_stop();
         runtime.jobs.intersection.requested = false;
@@ -593,6 +667,8 @@ static void updateComparisonRuntime(ComparisonRuntime& runtime, UiState& state, 
 
 static void destroyComparisonRuntime(ComparisonRuntime &runtime)
 {
+    runtime.jobs.display.stop.request_stop();
+    if (runtime.jobs.display.worker.valid()) { runtime.jobs.display.worker.wait(); }
     runtime.jobs.preparationStop.request_stop();
     if (runtime.jobs.preparationWorker.valid()) { runtime.jobs.preparationWorker.wait(); }
     runtime.jobs.intersection.stop.request_stop();
@@ -612,7 +688,7 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
         // Cancel every job first; shared graphics programs belong to the application, not the document.
         for (auto& [id, runtime] : runtimes.objects) {
             (void)id;
-            runtime.jobs.preparationStop.request_stop(); runtime.jobs.stop.request_stop(); runtime.jobs.intersection.stop.request_stop();
+            runtime.jobs.display.stop.request_stop(); runtime.jobs.preparationStop.request_stop(); runtime.jobs.stop.request_stop(); runtime.jobs.intersection.stop.request_stop();
         }
         for (auto& [id, runtime] : runtimes.objects) { (void)id; destroyComparisonRuntime(runtime); }
         runtimes.objects.clear();
@@ -630,6 +706,7 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
         size_t active = 0;
         for (const auto& item : runtimes.objects) {
             active += item.second.jobs.preparationWorker.valid();
+            active += item.second.jobs.display.worker.valid();
             active += item.second.jobs.worker.valid(); active += item.second.jobs.intersection.worker.valid();
         }
         updateComparisonInspectorCache(runtime.inspector.queries, state, comparison.objectId);
@@ -652,7 +729,7 @@ void updateComparisonRuntimes(ComparisonRuntimes& runtimes, UiState& state)
 
 void destroyComparisonRuntimes(ComparisonRuntimes& runtimes)
 {
-    for (auto& [id, runtime] : runtimes.objects) { (void)id; runtime.jobs.preparationStop.request_stop(); runtime.jobs.stop.request_stop(); }
+    for (auto& [id, runtime] : runtimes.objects) { (void)id; runtime.jobs.display.stop.request_stop(); runtime.jobs.preparationStop.request_stop(); runtime.jobs.stop.request_stop(); }
     for (auto& [id, runtime] : runtimes.objects) { (void)id; destroyComparisonRuntime(runtime); }
     runtimes.objects.clear();
     if (woby::graphics::isValid(runtimes.program)) { woby::graphics::destroy(runtimes.program); runtimes.program = WOBY_GPU_INVALID_HANDLE; }

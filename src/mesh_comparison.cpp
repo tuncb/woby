@@ -379,15 +379,15 @@ void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_tok
             checkCanceled(stop);
             const auto& patch = surface.topology.finPatches[index];
             const auto& source = surface.topology.sources[patch.source];
-            const auto first = point(source.vertices[source.faces[patch.faces.front()].vertices[0]].position);
+            const auto first = point(source.geometry->vertices[source.geometry->faces[patch.faces.front()].vertices[0]].position);
             DiagnosticEdge bounds{first, first};
             for (const auto f : patch.faces) {
                 checkCanceled(stop);
-                const auto& vertices = source.faces[f].vertices;
+                const auto& vertices = source.geometry->faces[f].vertices;
                 for (size_t k = 0; k < 3; ++k) {
-                    const auto p = point(source.vertices[vertices[k]].position);
+                    const auto p = point(source.geometry->vertices[vertices[k]].position);
                     surface.finFill.push_back(p);
-                    surface.finEdges.push_back({p, point(source.vertices[vertices[(k+1)%3]].position)});
+                    surface.finEdges.push_back({p, point(source.geometry->vertices[vertices[(k+1)%3]].position)});
                     for (size_t axis = 0; axis < 3; ++axis) { bounds.a[axis] = std::min(bounds.a[axis], p[axis]); bounds.b[axis] = std::max(bounds.b[axis], p[axis]); }
                 }
             }
@@ -399,12 +399,12 @@ void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_tok
             checkCanceled(stop);
             const auto& source = surface.topology.sources[finding.source];
             const auto& vertex = source.vertices[finding.vertex];
-            const auto p = point(vertex.position);
+            const auto p = point(source.geometry->vertices[finding.vertex].position);
             auto minimum = p, maximum = p;
             for (const auto f : vertex.faces) {
                 checkCanceled(stop);
-                for (const auto v : source.faces[f].vertices) {
-                    const auto q = point(source.vertices[v].position);
+                for (const auto v : source.geometry->faces[f].vertices) {
+                    const auto q = point(source.geometry->vertices[v].position);
                     for (size_t k = 0; k < 3; ++k) { minimum[k] = std::min(minimum[k], q[k]); maximum[k] = std::max(maximum[k], q[k]); }
                 }
             }
@@ -430,16 +430,46 @@ void prepareTopologyInspectionGeometry(SurfaceComparison& surface, std::stop_tok
         for (const auto e : finding.edges) {
             checkCanceled(stop);
             const auto& edge = source.edges[e];
-            surface.holeEdges.push_back({point(source.vertices[edge.vertices[0]].position), point(source.vertices[edge.vertices[1]].position)});
+            surface.holeEdges.push_back({point(source.geometry->vertices[edge.vertices[0]].position), point(source.geometry->vertices[edge.vertices[1]].position)});
         }
     }
 }
 
-void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, TopologyMode mode, std::stop_token stop)
+void prepareAnalysisGeometry(SurfaceComparison& surface, const Mesh& mesh, TopologyMode mode,
+    const ComparisonAnalysisInput& cached, std::stop_token stop)
 {
+    if (cached.geometry && cached.source == mesh.duplicateInput && cached.origin == mesh.origin
+        && cached.geometry->mode == normalizedTopologyMode(mode)) { surface.analysis = cached; return; }
+    surface.analysis.source = mesh.duplicateInput; surface.analysis.origin = mesh.origin;
     const std::vector<DuplicateSource> empty;
-    surface.topology = buildMeshTopology(mesh.duplicateInput ? mesh.duplicateInput->sources : empty, mode, stop);
+    auto geometry = buildAnalysisGeometry(mesh.duplicateInput ? mesh.duplicateInput->sources : empty, mode, stop);
+    if (!mesh.duplicateInput) {
+        auto unavailable = std::make_shared<AnalysisGeometry>(*geometry);
+        unavailable->unavailableSources = 1; geometry = std::move(unavailable);
+    }
+    surface.analysis.geometry = std::move(geometry);
+}
+void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, TopologyMode mode, std::stop_token stop,
+    uint32_t findings = topologyAllFindings, TopologyInspectionSettings settings = {})
+{
+    if (!surface.analysis.geometry) { prepareAnalysisGeometry(surface, mesh, mode, {}, stop); }
+    surface.topology = surface.analysis.incidence.sourceStorage ? surface.analysis.incidence
+        : buildTopologyIncidence(surface.analysis.geometry, stop);
+    // Retain only graph owners in the reusable input snapshot.
+    surface.analysis.incidence = surface.topology;
+    inspectTopologyFindings(surface.topology, findings, stop);
+    (void)filterTopologyFindings(surface.topology, settings, stop);
     surface.topology.coordinateOrigin = mesh.origin;
+    for (size_t family = 0; family < 2; ++family) {
+        const auto stage = family == 0 ? topologyBoundaryRegions : topologyFinPatches;
+        if (!(findings & stage)) { continue; }
+        auto snapshot = std::make_shared<MeshTopology>(surface.analysis.incidence);
+        snapshot->coordinateOrigin = mesh.origin;
+        snapshot->completedFindings = stage;
+        if (family == 0) { snapshot->boundaryRegions = surface.topology.boundaryRegions; }
+        else { snapshot->finPatches = surface.topology.finPatches; snapshot->unavailableFinAreaSources = surface.topology.unavailableFinAreaSources; }
+        surface.topologyDisplayInputs[family] = std::move(snapshot);
+    }
     if (!mesh.duplicateInput) { surface.topology.unavailableSources = 1; }
     const auto geometry = [&](const std::vector<TopologyEdgeFinding>& findings) {
         std::vector<DiagnosticEdge> result;
@@ -449,8 +479,8 @@ void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, Topolo
             const auto& edge = source.edges[finding.edge];
             DiagnosticEdge value;
             for (size_t k = 0; k < 3; ++k) {
-                value.a[k] = static_cast<float>(source.vertices[edge.vertices[0]].position[k]);
-                value.b[k] = static_cast<float>(source.vertices[edge.vertices[1]].position[k]);
+                value.a[k] = static_cast<float>(source.geometry->vertices[edge.vertices[0]].position[k]);
+                value.b[k] = static_cast<float>(source.geometry->vertices[edge.vertices[1]].position[k]);
             }
             result.push_back(value);
         }
@@ -459,7 +489,8 @@ void inspectSurfaceTopology(SurfaceComparison& surface, const Mesh& mesh, Topolo
     surface.topologyBoundaries = geometry(surface.topology.boundaries);
     surface.topologyNonManifold = geometry(surface.topology.nonManifoldEdges);
     surface.topologyWinding = geometry(surface.topology.windingEdges);
-    prepareTopologyInspectionGeometry(surface, stop);
+    prepareTopologyInspectionGeometry(surface, stop, (findings & topologyVertexLinks) != 0,
+        (findings & topologyBoundaryRegions) != 0, (findings & topologyFinPatches) != 0);
 }
 
 Mesh comparisonSourceMesh(const Mesh& mesh)
@@ -488,6 +519,7 @@ SurfaceComparison copySurface(const Mesh& mesh, std::stop_token stop, Degenerate
     result.duplicateTriangleBounds = duplicateBounds(result.duplicates.triangles, stop);
     result.source = comparisonSourceMesh(mesh);
     result.quality = inspectSurfaceMeshQuality(mesh, stop);
+    prepareComparisonDiagnosticDisplay(result, mesh, comparisonDuplicatePoints | comparisonDuplicateTriangles | comparisonDegenerates, stop);
     return result;
 }
 
@@ -925,6 +957,8 @@ void invalidateComparisonDetectors(MeshComparison& result, uint32_t stages)
         // but release the old graph before its replacement starts allocating.
         for (auto* surface : {&result.original, &result.repaired}) {
             surface->topology = {};
+            surface->analysis = {};
+            surface->topologyDisplayInputs = {};
             surface->diagnostics = {};
             for (auto* edges : {&surface->topologyBoundaries, &surface->topologyNonManifold,
                 &surface->topologyWinding, &surface->nonManifoldVertexBounds,
@@ -1004,12 +1038,32 @@ bool resetComparisonTopologyCache(ComparisonCacheStatus& cache, TopologyMode mod
     return true;
 }
 
-MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop, DegenerateSettings degenerates, TopologyMode topologyMode, IntersectionLimits intersectionLimits)
+std::array<ComparisonAnalysisInput, 2> comparisonAnalysisInputs(const MeshComparison& result, bool includeIncidence)
+{
+    std::array inputs{result.original.analysis, result.repaired.analysis};
+    if (!includeIncidence) { for (auto& input : inputs) { input.incidence = {}; } }
+    return inputs;
+}
+uint32_t topologyFindingStage(DiagnosticCategory category)
+{
+    switch (category) {
+    case DiagnosticCategory::boundary: case DiagnosticCategory::nonManifold: case DiagnosticCategory::winding: return topologyEdgeFindings;
+    case DiagnosticCategory::nonManifoldVertices: return topologyVertexLinks;
+    case DiagnosticCategory::holes: return topologyBoundaryRegions;
+    case DiagnosticCategory::fins: return topologyFinPatches;
+    case DiagnosticCategory::duplicatePoints: case DiagnosticCategory::duplicateTriangles:
+    case DiagnosticCategory::degenerateTriangles: case DiagnosticCategory::selfIntersections: return 0;
+    }
+    return 0;
+}
+MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaired, uint32_t stages, std::stop_token stop,
+    DegenerateSettings degenerates, TopologyMode topologyMode, IntersectionLimits intersectionLimits,
+    const std::array<ComparisonAnalysisInput, 2>& analysisInputs, uint32_t topologyFindings, TopologyInspectionSettings topologySettings)
 {
     if (!meshGeometry(original).vertices.empty() && !meshGeometry(repaired).vertices.empty() && original.origin != repaired.origin) {
         auto aligned = repaired;
         rebaseMesh(aligned, original.origin);
-        return computeComparisonStages(original, aligned, stages, stop, degenerates, topologyMode, intersectionLimits);
+        return computeComparisonStages(original, aligned, stages, stop, degenerates, topologyMode, intersectionLimits, analysisInputs, topologyFindings, topologySettings);
     }
     checkCanceled(stop);
     MeshComparison result;
@@ -1024,7 +1078,7 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
         result.original = compareSurface(original, a, b, true);
         result.repaired = compareSurface(repaired, b, a, true);
     }
-    const auto inspect = [&](const Mesh& mesh, SurfaceComparison& surface) {
+    const auto inspect = [&](const Mesh& mesh, SurfaceComparison& surface, const ComparisonAnalysisInput& cached) {
         checkCanceled(stop);
         if ((stages & comparisonSource) && mesh.uvQuality) {
             if (mesh.uvQuality->overlapChecked || !mesh.uvQuality->settings.uvOverlapEnabled) {
@@ -1059,13 +1113,13 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
         for (const auto task : tasks) {
             checkCanceled(stop);
             if (task == comparisonTopology) {
+                prepareAnalysisGeometry(surface, mesh, topologyMode, cached, stop);
                 if (stages & comparisonTopology) {
-                    surface.diagnostics = inspectMesh(mesh, stop);
-                    inspectSurfaceTopology(surface, mesh, topologyMode, stop);
+                    if (topologyFindings & topologyEdgeFindings) { surface.diagnostics = inspectMesh(mesh, stop); }
+                    inspectSurfaceTopology(surface, mesh, topologyMode, stop, topologyFindings, topologySettings);
                 }
                 if (stages & comparisonIntersections) {
-                    if (!(stages & comparisonTopology)) { inspectSurfaceTopology(surface, mesh, topologyMode, stop); }
-                    surface.intersections = inspectIntersections(surface.topology, {true, true}, stop, intersectionLimits);
+                    surface.intersections = inspectIntersections(*surface.analysis.geometry, {true, true}, stop, intersectionLimits);
                     for (const auto& finding : surface.intersections.findings) {
                         checkCanceled(stop);
                         DiagnosticEdge bounds{finding.geometry[0], finding.geometry[0]};
@@ -1098,10 +1152,11 @@ MeshComparison computeComparisonStages(const Mesh& original, const Mesh& repaire
             }
         }
         if (stages & comparisonQuality) { surface.quality = inspectSurfaceMeshQuality(mesh, stop); }
+        prepareComparisonDiagnosticDisplay(surface, mesh, stages, stop);
 
     };
-    inspect(original, result.original);
-    inspect(repaired, result.repaired);
+    inspect(original, result.original, analysisInputs[0]);
+    inspect(repaired, result.repaired, analysisInputs[1]);
     completeComparisonDetectors(result, stages);
     if (stages & comparisonQuality) {
         result.qualityDistributions = surfaceQualityDistributions(result.original.quality, result.repaired.quality, stop);
@@ -1142,21 +1197,54 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
             target.intersections = std::move(source.intersections);
             target.intersectionBounds = std::move(source.intersectionBounds);
             target.intersectionEdges = std::move(source.intersectionEdges);
+            target.intersectionDisplayFill = std::move(source.intersectionDisplayFill);
         }
         if (stages & comparisonSource) { target.source = std::move(source.source); }
+        if (stages & (comparisonTopology | comparisonIntersections)) {
+            // An intersection update must not discard incidence built previously.
+            if (source.analysis.geometry) {
+                if (source.analysis.geometry == target.analysis.geometry && !source.analysis.incidence.sourceStorage) {
+                    source.analysis.incidence = target.analysis.incidence;
+                }
+                target.analysis = std::move(source.analysis);
+            }
+        }
         if (stages & comparisonTopology) {
-            target.diagnostics = std::move(source.diagnostics);
-            target.topology = std::move(source.topology);
-            target.topologyBoundaries = std::move(source.topologyBoundaries);
-            target.topologyNonManifold = std::move(source.topologyNonManifold);
-            target.topologyWinding = std::move(source.topologyWinding);
-            target.nonManifoldVertexBounds = std::move(source.nonManifoldVertexBounds);
-            target.nonManifoldVertexMarkers = std::move(source.nonManifoldVertexMarkers);
-            target.holeBounds = std::move(source.holeBounds);
-            target.holeEdges = std::move(source.holeEdges);
-            target.finBounds = std::move(source.finBounds);
-            target.finEdges = std::move(source.finEdges);
-            target.finFill = std::move(source.finFill);
+            auto& old = target.topology; auto& next = source.topology;
+            if (old.geometry != next.geometry) { old = {}; }
+            old.geometry = next.geometry; old.sourceStorage = next.sourceStorage; old.sources = next.sources;
+            old.mode = next.mode; old.availableSources = next.availableSources; old.unavailableSources = next.unavailableSources;
+            old.excludedCollapsedFaces = next.excludedCollapsedFaces; old.coordinateOrigin = next.coordinateOrigin;
+            old.completedFindings |= next.completedFindings;
+            if (next.completedFindings & topologyEdgeFindings) {
+                old.boundaries = std::move(next.boundaries); old.nonManifoldEdges = std::move(next.nonManifoldEdges);
+                old.windingEdges = std::move(next.windingEdges); old.windingFaces = std::move(next.windingFaces);
+                old.orientationContradictions = next.orientationContradictions;
+                target.diagnostics = std::move(source.diagnostics);
+                target.topologyBoundaries = std::move(source.topologyBoundaries);
+                target.topologyNonManifold = std::move(source.topologyNonManifold);
+                target.topologyWinding = std::move(source.topologyWinding);
+            }
+            if (next.completedFindings & topologyVertexLinks) {
+                old.nonManifoldVertices = std::move(next.nonManifoldVertices);
+                old.excludedNonManifoldEdgeVertices = next.excludedNonManifoldEdgeVertices;
+                target.nonManifoldVertexBounds = std::move(source.nonManifoldVertexBounds);
+                target.nonManifoldVertexMarkers = std::move(source.nonManifoldVertexMarkers);
+            }
+            if (next.completedFindings & topologyBoundaryRegions) {
+                target.topologyDisplayInputs[0] = std::move(source.topologyDisplayInputs[0]);
+                old.boundaryRegions = std::move(next.boundaryRegions); old.holes = std::move(next.holes);
+                old.inspection.holeSizeRatioTolerance = next.inspection.holeSizeRatioTolerance;
+                target.holeBounds = std::move(source.holeBounds); target.holeEdges = std::move(source.holeEdges);
+            }
+            if (next.completedFindings & topologyFinPatches) {
+                target.topologyDisplayInputs[1] = std::move(source.topologyDisplayInputs[1]);
+                old.finPatches = std::move(next.finPatches); old.fins = std::move(next.fins);
+                old.unavailableFinAreaSources = next.unavailableFinAreaSources;
+                old.inspection.finMaxAreaRatio = next.inspection.finMaxAreaRatio;
+                target.finBounds = std::move(source.finBounds); target.finEdges = std::move(source.finEdges);
+                target.finFill = std::move(source.finFill);
+            }
         }
         if (stages & comparisonQuality) {
             target.quality = std::move(source.quality);
@@ -1165,14 +1253,17 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
         if (stages & comparisonDegenerates) {
             target.degenerates = std::move(source.degenerates);
             target.degenerateBounds = std::move(source.degenerateBounds);
+            target.degenerateDisplayEdges = std::move(source.degenerateDisplayEdges); target.degenerateDisplayFill = std::move(source.degenerateDisplayFill);
         }
         if (stages & comparisonDuplicatePoints) {
             target.duplicates.points = std::move(source.duplicates.points);
             target.duplicatePointBounds = std::move(source.duplicatePointBounds);
+            target.duplicatePointDisplay = std::move(source.duplicatePointDisplay);
         }
         if (stages & comparisonDuplicateTriangles) {
             target.duplicates.triangles = std::move(source.duplicates.triangles);
             target.duplicateTriangleBounds = std::move(source.duplicateTriangleBounds);
+            target.duplicateTriangleDisplayEdges = std::move(source.duplicateTriangleDisplayEdges); target.duplicateTriangleDisplayFill = std::move(source.duplicateTriangleDisplayFill);
         }
         if (stages & comparisonDistance) {
             target.distanceFaces = std::move(source.distanceFaces);
@@ -1186,7 +1277,13 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
     merge(result.original, update.original);
     merge(result.repaired, update.repaired);
     for (size_t i = 0; i < result.detectors.size(); ++i) {
-        if (stages & comparisonDiagnosticStage(static_cast<DiagnosticCategory>(i))) { result.detectors[i] = std::move(update.detectors[i]); }
+        const auto category = static_cast<DiagnosticCategory>(i);
+        const auto findingStage = topologyFindingStage(category);
+        if ((stages & comparisonDiagnosticStage(category)) && (!findingStage
+            || ((update.original.topology.completedFindings | update.repaired.topology.completedFindings) & findingStage)
+            || (!update.original.analysis.geometry && !update.repaired.analysis.geometry))) {
+            result.detectors[i] = std::move(update.detectors[i]);
+        }
     }
     if (stages & comparisonQuality) { result.qualityDistributions = std::move(update.qualityDistributions); }
     cache.completed |= stages;
@@ -1207,6 +1304,89 @@ void setComparisonDegenerateSettings(MeshComparison& result, DegenerateSettings 
         // Disabled responses still describe the current configured thresholds.
         // The cache separately invalidates findings when these thresholds change.
         if (!settings.enabled) { surface->degenerates.settings = settings; }
+    }
+}
+
+MeshComparison prepareComparisonTopologyDisplay(const TopologyDisplayInputs& inputs, TopologyInspectionSettings settings, std::stop_token stop)
+{
+    MeshComparison result;
+    const std::array surfaces{&result.original, &result.repaired};
+    for (size_t side = 0; side < 2; ++side) {
+        auto& surface = *surfaces[side];
+        for (size_t family = 0; family < 2; ++family) {
+            checkCanceled(stop);
+            if (!inputs[side][family]) { continue; }
+            auto topology = *inputs[side][family]; // Copy finding arrays on the worker.
+            if (family == 0) { surface.topology.boundaryRegions = std::move(topology.boundaryRegions); }
+            else { surface.topology.finPatches = std::move(topology.finPatches); }
+            surface.topology.geometry = topology.geometry;
+            surface.topology.sourceStorage = topology.sourceStorage; surface.topology.sources = topology.sources;
+            surface.topology.completedFindings |= topology.completedFindings;
+        }
+        (void)filterTopologyFindings(surface.topology, settings, stop);
+        prepareTopologyInspectionGeometry(surface, stop, false,
+            (surface.topology.completedFindings & topologyBoundaryRegions) != 0,
+            (surface.topology.completedFindings & topologyFinPatches) != 0);
+    }
+    return result;
+}
+void applyComparisonTopologyDisplay(MeshComparison& result, MeshComparison update)
+{
+    const auto apply = [](SurfaceComparison& target, SurfaceComparison& source) {
+        if (target.topology.geometry != source.topology.geometry) { return; }
+        if (source.topology.completedFindings & topologyBoundaryRegions) {
+            target.topology.holes = std::move(source.topology.holes);
+            target.topology.inspection.holeSizeRatioTolerance = source.topology.inspection.holeSizeRatioTolerance;
+            target.holeBounds = std::move(source.holeBounds); target.holeEdges = std::move(source.holeEdges);
+        }
+        if (source.topology.completedFindings & topologyFinPatches) {
+            target.topology.fins = std::move(source.topology.fins);
+            target.topology.inspection.finMaxAreaRatio = source.topology.inspection.finMaxAreaRatio;
+            target.finBounds = std::move(source.finBounds); target.finEdges = std::move(source.finEdges); target.finFill = std::move(source.finFill);
+        }
+    };
+    apply(result.original, update.original); apply(result.repaired, update.repaired);
+}
+void prepareComparisonDiagnosticDisplay(SurfaceComparison& surface, const Mesh& mesh, uint32_t stages, std::stop_token stop)
+{
+    checkCanceled(stop);
+    const auto cross = [](auto& lines, const auto& point, float radius) {
+        for (size_t axis = 0; axis < 3; ++axis) {
+            auto a = point, b = point; a[axis] -= radius; b[axis] += radius;
+            lines.push_back(a); lines.push_back(b);
+        }
+    };
+    const auto triangles = [&](const auto& findings, auto& edges, auto& fill) {
+        edges.clear(); fill.clear();
+        for (const auto& finding : findings) {
+            checkCanceled(stop);
+            fill.insert(fill.end(), finding.geometry.begin(), finding.geometry.end());
+            for (size_t i = 0; i < finding.geometry.size(); i += 3) {
+                for (size_t k = 0; k < 3; ++k) { edges.push_back(finding.geometry[i+k]); edges.push_back(finding.geometry[i+(k+1)%3]); }
+            }
+        }
+    };
+    if (stages & comparisonDuplicatePoints) {
+        surface.duplicatePointDisplay.clear();
+        for (const auto& finding : surface.duplicates.points.findings) {
+            checkCanceled(stop);
+            for (const auto& point : finding.geometry) { checkCanceled(stop); cross(surface.duplicatePointDisplay, point, mesh.bounds.radius*.008f); }
+        }
+    }
+    if (stages & comparisonDuplicateTriangles) { triangles(surface.duplicates.triangles.findings, surface.duplicateTriangleDisplayEdges, surface.duplicateTriangleDisplayFill); }
+    if (stages & comparisonDegenerates) {
+        triangles(surface.degenerates.findings, surface.degenerateDisplayEdges, surface.degenerateDisplayFill);
+        for (const auto& finding : surface.degenerates.findings) {
+            checkCanceled(stop);
+            if (finding.reasons.collapsed) { cross(surface.degenerateDisplayEdges, finding.geometry[0], std::max(.00001f, mesh.bounds.radius*.008f)); }
+        }
+    }
+    if (stages & comparisonIntersections) {
+        surface.intersectionDisplayFill.clear();
+        for (const auto& finding : surface.intersections.findings) {
+            checkCanceled(stop);
+            surface.intersectionDisplayFill.insert(surface.intersectionDisplayFill.end(), finding.geometry.begin(), finding.geometry.end());
+        }
     }
 }
 
