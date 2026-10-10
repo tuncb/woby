@@ -1325,7 +1325,6 @@ TEST_CASE("analysis measures both surfaces above the former triangle cap")
         CHECK(surface->percentile95 == doctest::Approx(.25));
         CHECK(surface->distances.size() == 4 * 51200);
         CHECK(surface->distanceFaces.size() == 51200);
-        CHECK(surface->sampledIndices.back() == surface->distanceFaces.size()*12 - 1);
         CHECK(surface->diagnostics.boundaryEdges.size() == 640);
         CHECK(surface->diagnostics.nonManifoldEdges.empty());
         CHECK(woby::surfacePercentAboveTolerance(*surface, .2) == doctest::Approx(100));
@@ -1481,7 +1480,7 @@ TEST_CASE("background analysis and diagnostics handle cancellation racing with c
             if (!diagnosticsOnly) {
                 for (const auto* surface : {&comparison.original, &comparison.repaired}) {
                     CHECK(surface->distances.size() == 8 * width * width);
-                    CHECK(surface->sampledIndices.size() == 24 * width * width);
+                    CHECK(surface->distanceFaces.size() == 2 * width * width);
                     CHECK(surface->maximum == doctest::Approx(0));
                 }
             }

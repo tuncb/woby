@@ -68,7 +68,7 @@ This also gives point clouds a simpler identity chain. The current cloud retains
 
 ## Analysis display records
 
-The four item 3 display paths are now implemented: surface quality, UV quality, distance heatmaps, and comparison wireframes. See the [implementation and validation report](face-display-storage-implementation.md). The [initial investigation](face-display-storage-investigation.md) records the design choices and CPU locality trade-off. The assessment below describes the original code.
+The four item 3 display paths are now implemented: surface quality, UV quality, distance heatmaps, and comparison wireframes. The separate comparison-picking cleanup also removes the unused CPU sampled indices; picking continues to use the source mesh. See the [implementation and validation report](face-display-storage-implementation.md). The [initial investigation](face-display-storage-investigation.md) records the design choices and CPU locality trade-off. The assessment below describes the original code.
 
 Several large arrays exist because `Vertex` is also used as a carrier for measurements:
 

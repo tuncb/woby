@@ -498,7 +498,6 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
     if (!distancesOnly) { result.diagnostics = inspectMesh(mesh, stop); }
     const size_t triangleCount = meshGeometry(mesh).indices.size() / 3;
     resizeWithCancellation(result.distanceFaces, triangleCount, stop);
-    resizeWithCancellation(result.sampledIndices, triangleCount * 12, stop);
     resizeWithCancellation(result.distances, triangleCount * 4, stop);
     resizeWithCancellation(result.sampleAreas, triangleCount * 4, stop);
     // Each worker owns disjoint output ranges. The source order remains the
@@ -532,8 +531,6 @@ SurfaceComparison compareSurface(const Mesh &mesh, const DistanceTree &source, c
                 display.distances[sample] = static_cast<float>(distance);
                 for (size_t k = 0; k < 3; ++k) {
                     display.normals[sample][k] = normalLength > 0 ? static_cast<float>(normal[k] / normalLength) : 0.0f;
-                    const auto index = sampleIndex*3+k;
-                    result.sampledIndices[index] = static_cast<uint32_t>(index);
                 }
             }
         }
@@ -1179,7 +1176,6 @@ bool applyComparisonStages(MeshComparison& result, ComparisonCacheStatus& cache,
         }
         if (stages & comparisonDistance) {
             target.distanceFaces = std::move(source.distanceFaces);
-            target.sampledIndices = std::move(source.sampledIndices);
             target.distances = std::move(source.distances);
             target.sampleAreas = std::move(source.sampleAreas);
             target.maximum = source.maximum;

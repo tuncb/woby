@@ -1,4 +1,5 @@
 #include "scene_pick.h"
+#include "scene_dimensions.h"
 #include "math_utils.h"
 #include "scene_viewport.h"
 #include "ui_operations.h"
@@ -761,4 +762,56 @@ TEST_CASE("scene object queries only materialize matching metadata")
     });
     CHECK(allocations == 0);
 #endif
+}
+
+TEST_CASE("comparison picking dimensions and tolerance statistics need no display geometry")
+{
+    auto a = triangle(.2f), b = triangle(.6f);
+    for (auto& vertex : editMeshGeometry(a).vertices) { vertex.position[0] += 3; }
+    a.bounds = woby::calculateBounds(meshGeometry(a).vertices);
+    auto result = woby::computeComparisonStages(a,b,woby::comparisonSource|woby::comparisonDistance);
+    REQUIRE(result.original.distanceFaces.size() == 1);
+    REQUIRE(result.repaired.distanceFaces.size() == 1);
+    woby::UiComparison comparison;
+    comparison.objectId = 42; comparison.settings.enabled = true;
+    comparison.settings.mode = woby::ComparisonMode::distance;
+    comparison.settings.showBoundaries = false; comparison.settings.showNonManifold = false;
+    for (const bool original : {false,true}) {
+        auto& surface = original ? result.original : result.repaired;
+        const auto* sourceVertices = meshGeometry(surface.source).vertices.data();
+        const auto* sourceIndices = meshGeometry(surface.source).indices.data();
+        const auto measurements = surface.distances;
+        const auto areas = surface.sampleAreas;
+        comparison.settings.distanceOnOriginal = original;
+        comparison.translation = {original ? -3.f : 0.f,.1f,0};
+        const auto percent = woby::surfacePercentAboveTolerance(surface,.25);
+        // The display payload can be absent without changing any CPU query.
+        surface.distanceFaces.clear();
+        for (const float tolerance : {0.f,.25f,100.f}) {
+            comparison.settings.tolerance = tolerance;
+            std::vector<woby::ScenePickPart> parts;
+            woby::appendComparisonPickParts(parts,comparison,comparison.settings,result,true);
+            REQUIRE(parts.size() == 1);
+            CHECK(parts[0].mesh == &surface.source);
+            CHECK(parts[0].indexCount == 3);
+            woby::SceneTriangleHit hit;
+            CHECK(woby::pickSceneObject(parts,view(),{50,50},&hit) == 42);
+            CHECK(hit.triangle == 1);
+            CHECK(hit.barycentric[0]+hit.barycentric[1]+hit.barycentric[2] == doctest::Approx(1));
+            const auto dimensions = woby::sceneDimensions(parts);
+            REQUIRE(dimensions);
+            CHECK(dimensions->lengths[0] == doctest::Approx(1.6));
+            CHECK(dimensions->lengths[1] == doctest::Approx(1.6));
+            CHECK(dimensions->lengths[2] == 0);
+            CHECK(dimensions->corners[0][0] == doctest::Approx(-.8));
+            CHECK(dimensions->corners[0][1] == doctest::Approx(-.7));
+            CHECK(dimensions->corners[0][2] == doctest::Approx(original ? .2 : .6));
+            CHECK(woby::sceneSelectionLines(parts).size() == 24);
+        }
+        CHECK(surface.distances == measurements);
+        CHECK(surface.sampleAreas == areas);
+        CHECK(woby::surfacePercentAboveTolerance(surface,.25) == percent);
+        CHECK(meshGeometry(surface.source).vertices.data() == sourceVertices);
+        CHECK(meshGeometry(surface.source).indices.data() == sourceIndices);
+    }
 }

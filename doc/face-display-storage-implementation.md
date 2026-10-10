@@ -9,7 +9,7 @@ The four display paths now reuse indexed source geometry. Surface quality stores
 | Distance display vertices | 384 B | 112 B | 70.8% |
 | Comparison wireframe indices | 24 B | 0 B | 100% |
 
-These counts exclude the source vertex/index buffers, allocator overhead, raw quality measurements, and the four double distances and four double areas required for distance statistics. Quality preparation buffers are released after upload. Distance records remain in the CPU result and on the GPU. The first implementation commit retains the 48-byte CPU identity index array for the separate comparison-picking cleanup.
+These counts exclude the source vertex/index buffers, allocator overhead, raw quality measurements, and the four double distances and four double areas required for distance statistics. Quality preparation buffers are released after upload. Distance records remain in the CPU result and on the GPU. The first implementation commit (`dc0854f`) retains the 48-byte CPU identity index array. The separate cleanup below removes it.
 
 `setFaceDisplay` binds the face record and source triangle buffer for generated corner draws. It checks the record stride, face count, and starting face. The draw retains its buffers until execution. An explicit zero vertex count now gives an empty draw. UV records use geometry face offsets independently of measurement offsets and node order.
 
@@ -65,3 +65,13 @@ cmake --build --preset vs2026-vcpkg --config Release --target woby_face_display_
 ```
 
 The GPU probe uses the shaders staged by the Debug build and a Release CPU executable. Shader optimization is controlled by the shader build. It compares both layouts in the same production shader, with the expanded reference path retained for equivalence tests. The indexed fixture uses the imported model vertex sharing. The unshared fixture gives each triangle corner its own source vertex. Both have the same faces and positions. Positions are normalized to the viewport; display values are fixed. Analysis and upload are outside GPU timings.
+
+## Comparison picking cleanup
+
+The second change removes `SurfaceComparison::sampledIndices`, its allocation, its identity-index writes, and its stage transfer. No production reader used this array. Picking already reads `surface.source`; dimensions use the same source pick parts. The picking algorithm stays the same.
+
+This saves **48 CPU bytes per source face**, or **48.27 MiB per side** on BusGameMap. Across both changes, retained CPU distance display data falls from 432 bytes per face (expanded vertices and indices) to 112 bytes, a 74.1% reduction. The 64 bytes of double distances and sample areas remain separate and unchanged. GPU payload does not change in this second commit because the identity indices were never uploaded.
+
+A new regression test computes both comparison sides, removes all display records, then checks source-based picking, source triangle identity, translated dimensions, selection outlines, and tolerance statistics. It also checks that source vertex/index storage and the measurements stay unchanged. This protects the source-query contract without requiring a sampled mesh.
+
+The cleanup passed the complete Debug build without warnings and all 76 unit test groups (57.20 seconds), including eight GPU unit groups and the large-mesh checks. The first change's performance measurements still apply to rendering; the cleanup changes CPU distance-result storage only. Probe metadata records the parent HEAD before the first commit; executable and source hashes identify the tested implementation.

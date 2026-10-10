@@ -302,7 +302,8 @@ void appendComparisonPickParts(std::vector<ScenePickPart>& parts, const UiCompar
     const auto& surface = original ? result.original : result.repaired;
     ScenePickPart part;
     part.objectId = comparison.objectId;
-    // Sampled heatmap triangles have the same surface as their source mesh.
+    // Distance display subdivides this same surface. Picking and dimensions
+    // use its source triangles; no sampled geometry or identity indices exist.
     part.mesh = &surface.source;
     part.indexCount = meshGeometry(surface.source).indices.size();
     part.bounds = surface.source.bounds;

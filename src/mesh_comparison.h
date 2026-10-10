@@ -12,7 +12,7 @@ namespace woby
 {
 
 // CPU meshes use 32-bit indices, while individual GPU buffers use 32-bit byte
-// sizes. Distance samples have a separate, expanded GPU representation limit.
+// sizes. Distance face records have a separate GPU representation limit.
 [[nodiscard]] uint32_t comparisonBufferBytes(size_t count, size_t elementBytes);
 void validateComparisonMeshSize(size_t vertexCount, size_t triangleCount);
 void validateComparisonDistanceSize(size_t vertexCount, size_t triangleCount);
@@ -35,9 +35,8 @@ struct SurfaceComparison
 {
     Mesh source;
     // Four subtriangles per source face, each colored by its centroid distance.
-    // texcoord[0] holds the unsigned distance; the input mesh is never changed.
+    // Display records do not own a mesh or indices. CPU queries use source.
     std::vector<DistanceFace> distanceFaces;
-    std::vector<uint32_t> sampledIndices; // Legacy identity corner IDs; not uploaded.
     std::vector<double> distances;
     std::vector<double> sampleAreas;
     double maximum = 0;
